@@ -1,10 +1,13 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { RACE_KINDS } from '../../data/types'
-import { fireEvent, screen, within } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import type { BtlEvent, Race } from '../../data/types'
 import { first, htmlElement, inputElement, must } from '../../test/at'
 import { renderAt } from '../../test/render'
 import { racesToOffer } from './racesToOffer'
 import { serverThat } from '../../test/serverAnswers'
+import { useSession } from '../../session/useSession'
 import { myOwnRecordFromMe, whoIAm } from '../../test/theAnswer'
 import { setupUser } from '../../test/user'
 import { SLOW } from '../../test/slow'
@@ -1462,6 +1465,89 @@ describe('a run sent back, opened again by its address', () => {
    written into the browser any more, so there is no store to hold to it; that a refusal confirms
    nothing and leaves every box as it was is `resultToTheServer.test.tsx`'s. */
 
+/**
+ * THE FORM, WHEN SOMEBODY ELSE SIGNS IN WITHOUT SIGNING OUT FIRST (PENDING, review of PR 521, finding 3).
+ *
+ * <p>`useMyResultSubmissions(me, revision)` in `NewResult.tsx` hands the hook the member, and the hook drops
+ * the answer it holds the moment the member changes (`data/useResource.ts`, `theSubmissionsNowBelongTo`). On
+ * „Moji rezultati" a case holds that (`ownResult.test.tsx`); on the form none did, and the argument written
+ * as a constant (`useMyResultSubmissions('000001', revision)`) passed all 212 cases of this file. It is the
+ * form's own argument that discards the previous reader's list when the form is the first screen of the new
+ * one, and what goes if it does not is that `?ponovo=` on a shared device opens somebody else's sent-back
+ * run, with the moderator's words about it.
+ *
+ * <p>The switch is made through the portal's own live writer (`theServerSignedMeIn`, the call
+ * `member/SignIn.tsx` makes), in place, as `ownResult.test.tsx` and `inboxFromTheServer.test.tsx` do it.
+ * The server answers the run on the list of the first member and another one on the list of the second, so
+ * a form that went on with the first list is a form that opens a run that is not his.
+ */
+describe('a run sent back, when somebody else signs in without signing out first', () => {
+  let whose: 'his' | 'hers' = 'his'
+
+  function SignInAsWithoutSigningOut({ memberNumber }: { memberNumber: string }) {
+    const { theServerSignedMeIn } = useSession()
+
+    return (
+      <button
+        type="button"
+        onClick={() => {
+          whose = 'hers'
+          theServerSignedMeIn({
+            account: 2,
+            memberNumber,
+            country: null,
+            firstSeason: null,
+            teamId: null,
+            membershipBasis: null,
+            membershipSeason: null,
+            referralCode: null,
+            referredCount: null,
+            hasARecord: true,
+            feeStands: null,
+          })
+        }}
+      >
+        sign in as somebody else, in place
+      </button>
+    )
+  }
+
+  it('is opened on the list of whoever is signed in now and not of the member the form was drawn for', async () => {
+    const user = setupUser()
+
+    whose = 'his'
+
+    const server = serverThat((path) =>
+      path.replace(/\?.*$/, '') === '/api/me/result-submissions'
+        ? new Response(JSON.stringify(whose === 'his' ? [SENT_BACK] : [{ ...SENT_BACK, id: 99, raceName: 'Njena trka' }]), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          })
+        : null,
+    )
+
+    try {
+      renderAt(`${NEW}?ponovo=77`, 'competitor', ME, undefined, TODAY, <SignInAsWithoutSigningOut memberNumber="000009" />)
+
+      /* The first member's list opens his run, which is the half that has to work. */
+      expect(await screen.findByText(/Link ne otvara rezultate/, undefined, SOON)).toBeVisible()
+
+      await user.click(screen.getByRole('button', { name: 'sign in as somebody else, in place' }))
+
+      /* HER list has no run 77, so the form no longer holds his: it opens for a new run, and the words of
+         the moderator about his are not on a screen that is hers. */
+      await waitFor(
+        () => {
+          expect(screen.queryByText(/Link ne otvara rezultate/), 'his reason stayed on her screen').toBeNull()
+        },
+        { timeout: 3000 },
+      )
+    } finally {
+      server.stop()
+    }
+  }, SLOW)
+})
+
 describe('the measures of a result entered away from the calendar', () => {
   /* Owner, 16.10.2026, chosen between the outcomes offered: the form away from the calendar
      always has BOTH lines, because here the member picks the kind himself and always enters all
@@ -1505,6 +1591,35 @@ describe('the measures of a result entered away from the calendar', () => {
     for (const stands of [/^Naziv trke/, /^Datum trke/, /^Link ka zvaničnim/, /^Komentar/]) {
       expect(screen.getByLabelText(stands).closest('.form__row')).toBeNull()
     }
+  })
+
+  /**
+   * THE SAME TWO LINES ON THE FORM THAT CORRECTS A COUNTED RESULT (PENDING, review of PR 537, 17.10.2026).
+   *
+   * <p>`ISPRAVKA_PREBROJANOG` takes its fields from `unosRezultata` and so gets the lines only because it
+   * copies them; a mutation that took the line off its fields (the `row` of each) passed 674 cases of the
+   * pages of members. The form is opened on `?ispravka=` for a result of the signed-in member, read out of
+   * the file the portal ships, and asked what the full form is asked above.
+   */
+  it('draws the length in one line and the time under it on the form of a counted result as well', async () => {
+    const shipped: { id: number; memberNumber: string }[] = JSON.parse(
+      readFileSync(join(process.cwd(), 'src', 'test', 'mock', 'results.json'), 'utf-8'),
+    )
+    const counted = must(
+      shipped.find((one) => one.memberNumber === ME),
+      'a counted result of the member',
+    )
+
+    renderAt(`${NEW}?ispravka=${String(counted.id)}`, 'competitor', ME, undefined, TODAY)
+    await screen.findByText(/Menjaš rezultat koji je već uračunat/, undefined, SOON)
+
+    const measured = must(lineOf('Dužina (km)'), 'the line of the length')
+    const timed = must(lineOf('Sati'), 'the line of the time')
+
+    expect(boxesOn(measured)).toEqual(THE_LENGTH)
+    expect(boxesOn(timed)).toEqual(THE_TIME)
+    expect(measured).not.toBe(timed)
+    expect(measured.compareDocumentPosition(timed) & Node.DOCUMENT_POSITION_FOLLOWING).toBeGreaterThan(0)
   })
 })
 

@@ -33,6 +33,7 @@ import { WHEN_LETTING_MYSELF_IN } from '../member/fromTheBalance'
 import { WHEN_CHOOSING_THE_LANGUAGE_OF_MAIL } from '../member/mailLanguage'
 import { WHEN_DELETING_A_MEMBER } from '../admin/memberWrites'
 import { WHEN_ANSWERING_A_PAIR_INVITE, WHEN_INVITING_INTO_A_PAIR } from '../member/pairWrites'
+import { WHEN_BREAKING_A_PAIR } from '../member/MyRacingPairs'
 import {
   WHEN_A_WOMAN_ANSWERS_A_TEAM_INVITE,
   WHEN_ANSWERING_A_TEAM_INVITE,
@@ -68,6 +69,14 @@ import { WHEN_SENDING_AN_INVITATION } from '../admin/memberInvitation'
  * <p><b>Read across the two halves of the repo on purpose.</b> `test/serverConfig.test.ts`
  * already reads `deploy/` and `.env.example` from here for the same reason: the fact
  * being held lives on the other side of a boundary the gate runs over anyway.
+ *
+ * <p><b>WHAT THIS FLOOR DOES NOT MEASURE, AND IT IS A BOUNDARY AND NOT A GAP (PENDING „pod nad odbijenicama
+ * meri IMENA, a nista ne meri OBLIK tela").</b> It reads the NAMES a route declares and asks that each
+ * has a sentence. A body the server cannot read at all (a number where a text is expected, a field of
+ * the wrong type, JSON that is not JSON) never reaches a name: the reader of the body (Jackson) refuses it before
+ * any of the route's own constants can be reached, so the class „the body is not of the shape the route takes"
+ * is invisible to this file by construction, and it is the class that reached QA. Nothing in this file
+ * should be read as saying a body a screen can send is a body a route can read.
  */
 
 /** Where the server's own words live. */
@@ -512,7 +521,12 @@ describe('the reasons the server can name', () => {
        also answered on the line's first dictionary, as on `TeamJoiningWriteApi`'s line below,
        because the two doors refuse with the same two words; the count stays at eight, since no
        constant was added or taken away. */
-    ['PairWriteApi.java', [WHEN_ANSWERING_A_PAIR_INVITE, WHEN_INVITING_INTO_A_PAIR], 8],
+    /* THREE MAPS SINCE 06.11.2026, AS `TeamWriteApi.java` BELOW HAS TWO, and the third is EMPTY ON PURPOSE:
+       `DELETE /api/pairs/{id}` (`PairWriteApi.end`) names no reason, only a 404 that stands for four
+       causes, so its map (`WHEN_BREAKING_A_PAIR`, which the line "Raskini" hands to `ServerSaid`) is
+       where a sentence goes the day it does. Registered here so that day makes this floor fail on a name
+       nobody answers rather than on the count alone; the count of eight does not move. */
+    ['PairWriteApi.java', [WHEN_ANSWERING_A_PAIR_INVITE, WHEN_INVITING_INTO_A_PAIR, WHEN_BREAKING_A_PAIR], 8],
     /* ADDED 28.09.2026 WITH THE SCREEN THAT ANSWERS A SERVED INVITATION INTO A TEAM, and it
        is this list's twin of the line above it in every way but one. Six constants splitting
        three ways: one is not a refusal at all (a subject line, `NOT_A_REASON`), two are real
@@ -611,7 +625,7 @@ describe('the reasons the server can name', () => {
        saving an event or one of its mornings. The race's thirteenth arrived 10.10.2026 with
        the owner's answer that a race carrying an approved result keeps its kind (PDL P4). */
     ['EventWriteApi.java', [WHEN_WRITING_AN_EVENT], 11],
-    ['RaceWriteApi.java', [WHEN_WRITING_A_RACE], 13],
+    ['RaceWriteApi.java', [WHEN_WRITING_A_RACE], 14],
     /* THE LEAGUE'S OWN ENTRY OF RESULTS FROM THE EVENT PAGE, added 19.10.2026 with the screen that
        meets it (`event/EnterResults.tsx`, PDL P9, 18.10.2026). Eight constants and six reasons then, ten reasons now; the two
        that are not are in `NOT_A_REASON`. The route also answers with three words it borrows by name
@@ -626,8 +640,11 @@ describe('the reasons the server can name', () => {
        (`theDayIsBeforeTheLeague`), went with the owner's decision that the screen takes any year up to
        today (PDL P9, 21.10.2026). Thirteen since 22.10.2026: a new race on an event of the calendar whose
        day is not in that event's year (`theDayIsNotInTheEventsYear`, PDL „Ekran 7b: dan trke mora biti u
-       godini izabranog događaja”), which until then was answered as a form not filled in. */
-    ['ResultsByTheLeagueApi.java', [WHEN_THE_LEAGUE_ENTERS_RESULTS], 13],
+       godini izabranog događaja”), which until then was answered as a form not filled in. Fourteen since
+       06.11.2026: `anEventStillAheadWouldMoveIntoTheYearJustEnded`, the one thing the owner's answer of
+       06.11.2026 takes back of the morning of 1 January (PDL P9, „server odbija trku iz stare godine na
+       događaju koji još predstoji”); `RaceWriteApi` has the same one, its fourteenth. */
+    ['ResultsByTheLeagueApi.java', [WHEN_THE_LEAGUE_ENTERS_RESULTS], 14],
     /* ADDED 25.10.2026 WITH THE BANK STATEMENT ON THE PAYMENTS SCREEN (PDL 24.10.2026). Seven constants:
        four refusals, answered by the statement box, and the three states of a line in `NOT_A_REASON`. */
     /* NINE SINCE 25.10.2026: „Nije članarina" names one refusal of its own, and a fourth state. */

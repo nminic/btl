@@ -3226,6 +3226,57 @@ class VerificationWriteApiTest {
 	}
 
 	/**
+	 * AN EVENT THAT IS STILL AHEAD IS NOT PULLED BACK INTO THE YEAR JUST ENDED BY AN APPROVAL EITHER (PDL P9,
+	 * owner, 06.11.2026, „U prozoru 1. januara od 00:00 do 10:00 server odbija trku iz stare godine na
+	 * događaju koji još predstoji”): the last second before ten on 1 January, the event dated tomorrow, the
+	 * run of New Year's Eve. The approval is refused with the sentence of its own, the run keeps waiting,
+	 * and nothing is written to the calendar. The same approval at ten o'clock, and on an event dated
+	 * today, goes through, so what is held is the window and the day and not a blanket refusal.
+	 */
+	@Test
+	void onNewYearsMorningARaceOfTheYearJustEndedIsRefusedOnAnEventThatIsStillAhead() throws Exception {
+		clock.moveTo(Instant.parse("2028-01-01T08:59:59Z"));
+
+		long tomorrows = event("novogodisnja-trka-2028", "Novogodišnja trka", LocalDate.of(2028, 1, 2));
+		race(tomorrows, "Novogodišnja desetka", LocalDate.of(2028, 1, 2), "10.0000", 20, 20);
+		long run = describedRun(ANA, "Silvestarska", "length", LocalDate.of(2027, 12, 31), "5.0000", 10, 10,
+				1500);
+		int races = howManyRaces();
+
+		MockHttpServletResponse refused = decideWith(THE_SUPERADMIN, run,
+				makingTheRaceOn(tomorrows, "Silvestarska petica"));
+
+		assertThat(refused.getStatus()).isEqualTo(409);
+		assertThat(reasonIn(refused)).startsWith("Događaj tek predstoji, a trka je iz prošle godine");
+		assertThat(howManyRaces()).isEqualTo(races);
+		assertThat(theEventAt("novogodisnja-trka-2028").date()).isEqualTo(LocalDate.of(2028, 1, 2));
+		assertThat(stateOf(run)).isEqualTo("waiting");
+		assertThat(howManyResults(ANA)).isZero();
+
+		/* The second the window closes. */
+		clock.moveTo(Instant.parse("2028-01-01T09:00:00Z"));
+
+		assertThat(decideWith(THE_SUPERADMIN, run, makingTheRaceOn(tomorrows, "Silvestarska petica"))
+				.getStatus()).as("10:00:00, the window is over").isEqualTo(200);
+		assertThat(theEventAt("novogodisnja-trka-2027").date()).isEqualTo(LocalDate.of(2027, 12, 31));
+	}
+
+	/** An event dated today is not ahead, so the approval of a race of New Year's Eve goes through. */
+	@Test
+	void onNewYearsMorningARaceOfTheYearJustEndedIsApprovedOnAnEventDatedToday() throws Exception {
+		clock.moveTo(Instant.parse("2028-01-01T08:00:00Z"));
+
+		long today = event("novogodisnja-trka-2028", "Novogodišnja trka", LocalDate.of(2028, 1, 1));
+		race(today, "Novogodišnja desetka", LocalDate.of(2028, 1, 1), "10.0000", 20, 20);
+		long run = describedRun(ANA, "Silvestarska", "length", LocalDate.of(2027, 12, 31), "5.0000", 10, 10,
+				1500);
+
+		assertThat(decideWith(THE_SUPERADMIN, run, makingTheRaceOn(today, "Silvestarska petica"))
+				.getStatus()).isEqualTo(200);
+		assertThat(theEventAt("novogodisnja-trka-2027").date()).isEqualTo(LocalDate.of(2027, 12, 31));
+	}
+
+	/**
 	 * AN EVENT THAT IS NOT A RACE TAKES NO RACE, WHETHER IT IS CHOSEN BY ITS KEY OR MET BY THE NAME
 	 * AND THE YEAR (owner, 23.08.2026, the rule the administration answers with
 	 * {@code RaceWriteApi.THE_EVENT_HOLDS_NO_RACES}), and nothing is written. The name is not made

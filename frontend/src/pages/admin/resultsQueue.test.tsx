@@ -11,7 +11,7 @@ import { useSession } from '../../session/useSession'
 import { at, must } from '../../test/at'
 import { Decided, Inbox } from '../../test/decided'
 import { renderAt } from '../../test/render'
-import { refused, serverThat, type Asked } from '../../test/serverAnswers'
+import { answeredWith, refused, serverThat, type Asked } from '../../test/serverAnswers'
 import { SLOW } from '../../test/slow'
 import { setupUser, type Pressing } from '../../test/user'
 import { figuresAsked } from './amendFields'
@@ -426,6 +426,12 @@ describe('the queue of results as the server answers it', () => {
 
       expect(await screen.findByText('Podaci se ne mogu učitati.')).toBeVisible()
       expect(screen.queryByText(sr.review.empty)).toBeNull()
+      /* AND THE NAVIGATION SAYS ITS NUMBERS CANNOT BE TRUSTED (`SectionNav.tsx`, `verification.shortCount`):
+         the file that failed feeds every queue, so five quiet noughts would read as an afternoon's work
+         done. No case held the alarm until 06.11.2026 (`data/aFailedReadIsSaid.test.ts` said so). */
+      expect(
+        within(screen.getByRole('navigation', { name: 'Odeljak Verifikacija' })).getByRole('alert'),
+      ).toHaveTextContent(sr.verification.shortCount)
     } finally {
       server.stop()
     }
@@ -620,6 +626,355 @@ describe('a decision on one run', () => {
       expect(screen.queryByText(RUNNER)).toBeNull()
       expect(screen.queryByRole('alert')).toBeNull()
       expect(await rowOf('000020')).toBeDefined()
+    } finally {
+      server.stop()
+    }
+  })
+})
+
+/**
+ * WHAT THE QUEUE OF RESULTS DOES WITH EVERY ANSWER THE ROUTE CAN GIVE A DECISION (PENDING, security review of
+ * PR 502, R1b).
+ *
+ * <p>The code asks `answer.got !== 'done'`, and `settle` and the clearing of the cache happen only for a
+ * route that took it. Mutations that read every answer but a named refusal as success (`=== 'refused'` in
+ * `sendOne` and in `sweep`, or only a bare number counted as done) survived 3886 cases across the pages,
+ * because the one answer the cases here gave was a 409. The scenario they stand for: a moderator whose
+ * session has expired, or whose right was taken, presses „Odobri sve" over twelve runs, is told „Rešeno je
+ * 12 stavki", and nothing is written. The cases of the queue of cards (`verificationDecision.test.tsx`) are
+ * the precedent, and these are the same questions of this tab: 401, 404 and 500 which carry no reason, 403,
+ * which is its own answer, and no answer at all, for one row and for the sweep.
+ */
+describe('every answer a decision can get that is not the route taking it', () => {
+  const THE_NUMBER = (status: number) => `Server je odgovorio brojem ${String(status)} i ništa nije promenjeno.`
+
+  const ANSWERS: [string, () => Response | Promise<Response>, string | RegExp][] = [
+    ['401', () => answeredWith(401), THE_NUMBER(401)],
+    ['404', () => answeredWith(404), THE_NUMBER(404)],
+    ['500', () => answeredWith(500), THE_NUMBER(500)],
+    ['403, which is its own answer', () => answeredWith(403), /nije uspeo da dokaže serveru/],
+    [
+      'no answer at all',
+      () => {
+        throw new Error('no connection')
+      },
+      sr.server.nothing,
+    ],
+  ]
+
+  it.each(ANSWERS)('settles nothing for one row when the route answers %s', async (_name, decided, said) => {
+    const user = setupUser()
+    const server = serverWith(RUNS, decided)
+
+    try {
+      openTheQueue()
+
+      await user.click((await rowOf(RUNNER)).getByRole('button', { name: sr.review.approve }))
+      await untilItHasAnswered()
+
+      expect((await rowOf(RUNNER)).getByRole('alert')).toHaveTextContent(said)
+      expect(decidedIn().queryAllByRole('listitem')).toEqual([])
+      expect(decisionsIn(server.asked)).toHaveLength(1)
+    } finally {
+      server.stop()
+    }
+  })
+
+  it.each(ANSWERS)('settles nothing and says so for the whole walk of the sweep when the route answers %s', async (_name, decided, said) => {
+    const user = setupUser()
+
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+
+    const server = serverWith(RUNS, decided)
+
+    try {
+      openTheQueue()
+
+      await rowOf(RUNNER)
+      await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
+      await sweptSays('Rešeno je 0 stavki.')
+
+      /* Every run the sweep may approve was asked and none was taken: the three on a race of the calendar. */
+      expect(decisionsIn(server.asked)).toHaveLength(3)
+      expect(decidedIn().queryAllByRole('listitem')).toEqual([])
+      expect((await rowOf(RUNNER)).getByRole('alert')).toHaveTextContent(said)
+      expect(await rowOf('000020')).toBeDefined()
+    } finally {
+      server.stop()
+    }
+  })
+})
+
+describe('a moderator’s own run', () => {
+  it('is decided by him like any other, which the owner chose against the recommendation (PDL 09.10.2026)', async () => {
+    /* The mutation this holds hides the buttons on a row sent by the signed-in member for everybody but the
+       superadmin. Every other case signs in as the superadmin, so it survived 262 of 262. The member
+       the run belongs to is the one signed in, and he is a moderator. */
+    const user = setupUser()
+    const server = serverWith(RUNS)
+
+    try {
+      renderAt(PATH, 'moderator', RUNNER, undefined, null, <Decided />)
+
+      const own = await rowOf(RUNNER)
+
+      for (const button of [sr.review.approve, sr.review.sendBack, sr.review.amend]) {
+        expect(own.getByRole('button', { name: button }), button).toBeVisible()
+      }
+
+      await user.click(own.getByRole('button', { name: sr.review.approve }))
+      await untilItHasAnswered()
+
+      expect(screen.queryByText(RUNNER)).toBeNull()
+      expect(decisionsIn(server.asked).map((one) => one.path)).toEqual(['/api/verification/701/decision'])
+    } finally {
+      server.stop()
+    }
+  })
+})
+
+describe('the order of the queue', () => {
+  it('is the order the route sent the runs in, whatever the race day or the member number would make of it', async () => {
+    /* PDL 27.08.2026: a corrected result goes to the END of the queue as a new one, and the route orders
+       by when each was raised (`VerificationApi`, `raised_at, id`). The case that held this turned the
+       list round; ordering by the day of the race or by the number of the member preserved 37 of 37,
+       because in that fixture the corrected run was last by every one of those keys too. Here the run
+       that arrived LAST has the earliest race day and the lowest member number of the three, so a
+       screen that sorts by either puts it first, and one that turns the list round does too. */
+    const arrived = (id: number, member: string, raceDate: string, sentOn: string): ServedPendingItem => ({
+      ...OF_A_LENGTH,
+      id,
+      memberNumber: member,
+      who: `Član ${member}`,
+      raceDate,
+      date: sentOn,
+    })
+    const server = serverWith([
+      arrived(801, '000090', '2027-03-20', '2027-03-21'),
+      arrived(802, '000080', '2027-03-15', '2027-03-22'),
+      arrived(803, '000011', '2027-03-01', '2027-03-23'),
+    ])
+
+    try {
+      openTheQueue()
+
+      await rowOf('000011')
+
+      expect(await membersInTheTable()).toEqual(['000090', '000080', '000011'])
+    } finally {
+      server.stop()
+    }
+  })
+})
+
+describe('a run another moderator has already decided', () => {
+  it('leaves the table once the route says so, is said over the table, and does not come back', async () => {
+    /* PDL 18.09.2026: „kad moderator odluči, automatski se skida svim ostalima". The route's „O stavci je
+       već odlučeno." says the list on the screen is no longer the queue, and the queue is read again
+       (`saysTheListIsStale`). The case above that keeps the row serves the SAME list after the refusal,
+       which a real server would not: here the run is gone from the list the second time it is asked. */
+    const user = setupUser()
+    const waiting = [...RUNS]
+    const server = serverWith(waiting, () => {
+      waiting.splice(0, 1)
+
+      return refused('O stavci je već odlučeno.', 409)
+    })
+
+    try {
+      const { router } = openTheQueue()
+
+      await user.click((await rowOf(RUNNER)).getByRole('button', { name: sr.review.approve }))
+      await waitFor(
+        () => {
+          expect(screen.queryByText(RUNNER)).toBeNull()
+        },
+        { timeout: 2000 },
+      )
+
+      /* Said once, over the table, where the row stood is no longer anywhere. */
+      expect(screen.getAllByRole('alert')).toHaveLength(1)
+      expect(screen.getByRole('alert')).toHaveTextContent('O stavci je već odlučeno.')
+      expect(within(screen.getByRole('table', { name: sr.review.waiting })).queryByRole('alert')).toBeNull()
+      expect(decidedIn().queryAllByRole('listitem')).toEqual([])
+
+      await router.navigate('/sr')
+      await screen.findByRole('heading', { level: 2, name: 'Reč predsednika' })
+      await router.navigate(PATH)
+      await screen.findByRole('table', { name: sr.review.waiting })
+
+      expect(screen.queryByText(RUNNER)).toBeNull()
+    } finally {
+      server.stop()
+    }
+  })
+})
+
+describe('where the focus goes when a box is put away', () => {
+  /* PDL 06.11.2026, the owner's: „Posle zatvaranja kutije u redu za proveru rezultata fokus se vraća na
+     dugme koje je kutiju otvorilo", as `PendingQueue` does it. Until then it fell to the top of the page. */
+
+  it('goes back to „Odbij" when the reason box is put away with „Odustani"', async () => {
+    const user = setupUser()
+    const server = serverWith(RUNS)
+
+    try {
+      openTheQueue()
+
+      const opener = (await rowOf('000020')).getByRole('button', { name: sr.review.sendBack })
+
+      await user.click(opener)
+      await user.click(
+        within(screen.getByRole('group', { name: sr.review.sendBack })).getByRole('button', { name: sr.review.cancel }),
+      )
+
+      expect(screen.queryByLabelText(sr.review.reason)).toBeNull()
+      await waitFor(
+        () => {
+          expect(opener).toHaveFocus()
+        },
+        { timeout: 2000 },
+      )
+    } finally {
+      server.stop()
+    }
+  })
+
+  it('goes back to „Ispravi" when the figures are put away with „Odustani"', async () => {
+    const user = setupUser()
+    const server = serverWith(RUNS)
+
+    try {
+      openTheQueue()
+
+      const opener = (await rowOf('000030')).getByRole('button', { name: sr.review.amend })
+
+      await user.click(opener)
+      await user.click(
+        within(screen.getByRole('group', { name: sr.review.amendTitle })).getByRole('button', {
+          name: sr.review.amendCancel,
+        }),
+      )
+
+      expect(screen.queryByRole('group', { name: sr.review.amendTitle })).toBeNull()
+      await waitFor(
+        () => {
+          expect(opener).toHaveFocus()
+        },
+        { timeout: 2000 },
+      )
+    } finally {
+      server.stop()
+    }
+  })
+
+  it('goes back to the button that names the race when that panel is put away', async () => {
+    const user = setupUser()
+    const server = serverWith(RUNS)
+
+    try {
+      openTheQueue()
+
+      const opener = (await rowOf('000040')).getByRole('button', { name: sr.review.placeRace })
+
+      await user.click(opener)
+      await user.click(
+        within(screen.getByRole('group', { name: sr.review.placeTitle })).getByRole('button', { name: sr.review.cancel }),
+      )
+
+      expect(screen.queryByRole('group', { name: sr.review.placeTitle })).toBeNull()
+      await waitFor(
+        () => {
+          expect(opener).toHaveFocus()
+        },
+        { timeout: 2000 },
+      )
+    } finally {
+      server.stop()
+    }
+  })
+
+  it('goes back there when the answer to what the box sent closes it, a refusal as much as a success', async () => {
+    const user = setupUser()
+    const server = serverWith(RUNS, () => refused('O stavci je već odlučeno.', 409))
+
+    try {
+      openTheQueue()
+
+      const opener = (await rowOf('000020')).getByRole('button', { name: sr.review.sendBack })
+
+      await user.click(opener)
+      await user.type(screen.getByLabelText(sr.review.reason), 'Vreme se ne poklapa.')
+      await user.click(screen.getByRole('button', { name: sr.review.confirmSendBack }))
+      await untilItHasAnswered()
+
+      expect(screen.queryByLabelText(sr.review.reason)).toBeNull()
+      await waitFor(
+        () => {
+          expect(opener).toHaveFocus()
+        },
+        { timeout: 2000 },
+      )
+    } finally {
+      server.stop()
+    }
+  })
+
+  it.each([
+    ['the same row', '000020'],
+    ['another row', '000030'],
+  ])('stays on the button pressed when no box is open and the route refuses it, after a box was opened and put away on %s', async (_which, pressedOn) => {
+    /* Review of PR 694: the button that opened a box was remembered for good, so the next answer for that
+       row - to a plain „Odobri" with no box open - gave the focus to „Odbij". A box that is closed spends it.
+       The control is the same press with no box before it, where the focus stays on „Odobri". */
+    const user = setupUser()
+    const server = serverWith(RUNS, () => refused('O stavci je već odlučeno.', 409))
+
+    try {
+      openTheQueue()
+
+      const opener = (await rowOf('000020')).getByRole('button', { name: sr.review.sendBack })
+
+      await user.click(opener)
+      await user.click(
+        within(screen.getByRole('group', { name: sr.review.sendBack })).getByRole('button', { name: sr.review.cancel }),
+      )
+      await waitFor(
+        () => {
+          expect(opener).toHaveFocus()
+        },
+        { timeout: 2000 },
+      )
+
+      const approve = (await rowOf(pressedOn)).getByRole('button', { name: sr.review.approve })
+
+      await user.click(approve)
+      await untilItHasAnswered()
+
+      expect(decisionsIn(server.asked)).toHaveLength(1)
+      expect(screen.getByRole('alert')).toHaveTextContent('O stavci je već odlučeno.')
+      expect((await rowOf(pressedOn)).getByRole('button', { name: sr.review.approve })).toHaveFocus()
+    } finally {
+      server.stop()
+    }
+  })
+
+  it('is not taken from a box that is open over another row when a row elsewhere is settled', async () => {
+    const user = setupUser()
+    const server = serverWith(RUNS)
+
+    try {
+      openTheQueue()
+
+      const other = (await rowOf('000020')).getByRole('button', { name: sr.review.sendBack })
+
+      await user.click(other)
+      await user.click((await rowOf(RUNNER)).getByRole('button', { name: sr.review.approve }))
+      await untilItHasAnswered()
+
+      expect(screen.queryByText(RUNNER)).toBeNull()
+      expect(screen.getByLabelText(sr.review.reason)).toBeVisible()
+      expect(other).not.toHaveFocus()
     } finally {
       server.stop()
     }

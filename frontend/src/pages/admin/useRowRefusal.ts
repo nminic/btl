@@ -24,7 +24,9 @@ import { useState } from 'react'
  * the new message. <b>And the setter does not close over the count</b>, which is why it is the
  * state's own: a refusal that arrives after another action's success is a refusal of an action that
  * did not go through, and it is shown. A setter that stamped the refusal with the count of the render
- * that sent the request would hide it on arrival.
+ * that sent the request would hide it on arrival. **Held by the cases of the hook alone**
+ * (`rowMembership.test.tsx`, "the refusal beside a row, held by its hook"): the controls of one row are
+ * sent one at a time, so a case on the row cannot make the order in which the two setters differ.
  *
  * @param settled how many actions on this row have succeeded this visit
  * @return the refusal to draw, and the way to hold a new one

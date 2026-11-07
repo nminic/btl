@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { AddressesAsLinks } from '../../components/AddressesAsLinks'
 import { Resource } from '../../components/Resource'
 import { clearResourceCache } from '../../data/client'
@@ -218,12 +218,62 @@ export function ReviewQueue() {
    */
   const [outFor, setOutFor] = useState<string | null>(null)
 
+  /**
+   * THE BUTTON THAT OPENED EACH BOX, so the focus goes back to it when the box is put away (PDL 06.11.2026,
+   * owner: „Posle zatvaranja kutije u redu za proveru rezultata fokus se vraća na dugme koje je kutiju
+   * otvorilo", as the other screen of the queue does it, `PendingQueue.tsx`). Until then it fell to the
+   * top of the page and a keyboard reader began again from the header.
+   *
+   * <p><b>Held by ref and not by `autoFocus`</b>, which is what `PendingQueue.tsx` uses: there the button is
+   * drawn again as the box goes. Here the buttons of a row stay where they are while the box stands under
+   * the table, so nothing mounts and `autoFocus` would never fire.
+   */
+  const openers = useRef(new Map<string, HTMLElement>())
+  /** Which button opened the box that is open now, for the one box there is at a time. */
+  const openedBy = useRef<string | null>(null)
+  const [focusBackTo, setFocusBackTo] = useState<string | null>(null)
+
+  const buttonFor = (id: string, box: 'reason' | 'figures' | 'race') => (button: HTMLElement | null): void => {
+    if (button === null) {
+      openers.current.delete(`${id}:${box}`)
+    } else {
+      openers.current.set(`${id}:${box}`, button)
+    }
+  }
+
+  /** A box is open now, and this is the button that opened it. */
+  const openedFrom = (id: string, box: 'reason' | 'figures' | 'race'): void => {
+    openedBy.current = `${id}:${box}`
+  }
+
+  /** The box over these rows is put away: the focus goes back to the button that opened it, and only if it
+   *  was one of these rows' that did (a box open on another row is the moderator's next piece of work). */
+  const giveTheFocusBack = (ids: ReadonlySet<string>): void => {
+    const by = openedBy.current
+
+    if (by !== null && ids.has(by.slice(0, by.lastIndexOf(':')))) {
+      /* THE BOX IS PUT AWAY, SO THE OPENER IS SPENT: left standing, the next answer for this row - to a plain
+         "Odobri" that nobody opened a box for - would take the focus from the button pressed and give it to
+         the one that opened a box long ago (review of PR 694). */
+      openedBy.current = null
+      setFocusBackTo(by)
+    }
+  }
+
+  useEffect(() => {
+    if (focusBackTo !== null) {
+      openers.current.get(focusBackTo)?.focus()
+      setFocusBackTo(null)
+    }
+  }, [focusBackTo])
+
   /** Both panels close over a row once its answer is in, whichever answer it was: the owner's
    *  choice of 02.10.2026 among the outcomes offered, in the record's wording (PDL „Odbijanje
    *  zatvara pitanje kao i uspeh"): „na svaki odgovor servera pitanje se zatvara, a razlog
    *  odbijanja stoji uz dugme". Only that row's: a box open on another row is the moderator's
    *  next piece of work. */
   const closeOver = (ids: ReadonlySet<string>): void => {
+    giveTheFocusBack(ids)
     setOpen((now) => (now !== null && ids.has(now.id) ? null : now))
     setFixing((now) => (now !== null && ids.has(now.id) ? null : now))
     setPlacing((now) => (now !== null && ids.has(now.id) ? null : now))
@@ -657,10 +707,12 @@ export function ReviewQueue() {
                                 {onARaceNotInTheCalendar(one) && counted !== null ? (
                                   <button
                                     type="button"
+                                    ref={buttonFor(one.id, 'race')}
                                     /* `review__place` lets its four words wrap where the other buttons
                                        of the cell keep to one line (Verification.css says why). */
                                     className="button button--primary review__place"
                                     onClick={() => {
+                                      openedFrom(one.id, 'race')
                                       setOpen(null)
                                       setFixing(null)
                                       setOpening((was) => was + 1)
@@ -707,7 +759,9 @@ export function ReviewQueue() {
                                   symbol={SYMBOL.back}
                                   word={t('review.sendBack')}
                                   className="button button--secondary"
+                                  ref={buttonFor(one.id, 'reason')}
                                   onClick={() => {
+                                    openedFrom(one.id, 'reason')
                                     setFixing(null)
                                     setPlacing(null)
                                     setOpen({ id: one.id, memberNumber: one.memberNumber })
@@ -724,7 +778,9 @@ export function ReviewQueue() {
                                     symbol={SYMBOL.pencil}
                                     word={t('review.amend')}
                                     className="button button--secondary"
+                                    ref={buttonFor(one.id, 'figures')}
                                     onClick={() => {
+                                      openedFrom(one.id, 'figures')
                                       setOpen(null)
                                       setPlacing(null)
                                       setFixing({ id: one.id, kind: raceKind(one.raceKind), written: writtenFrom(counted) })
@@ -751,7 +807,10 @@ export function ReviewQueue() {
                   onApprove={(amended) => {
                     void decide(fixingRow, anApprovalWith(amended))
                   }}
-                  onCancel={() => setFixing(null)}
+                  onCancel={() => {
+                    giveTheFocusBack(new Set([fixing.id]))
+                    setFixing(null)
+                  }}
                 />
               )}
 
@@ -767,7 +826,10 @@ export function ReviewQueue() {
                   onApprove={(answered) => {
                     void decide(placingRow, answered)
                   }}
-                  onCancel={() => setPlacing(null)}
+                  onCancel={() => {
+                    giveTheFocusBack(new Set([placing.id]))
+                    setPlacing(null)
+                  }}
                 />
               )}
 
@@ -833,6 +895,7 @@ export function ReviewQueue() {
                           return
                         }
 
+                        giveTheFocusBack(new Set([open.id]))
                         setOpen(null)
                       }}
                     >

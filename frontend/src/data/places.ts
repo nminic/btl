@@ -235,9 +235,11 @@ export function countriesByName(places: Place[]): Map<string, Set<string>> {
  * šifarnik mesta ne stigne, polje ostaje obično polje za tekst koje i dalje prima
  * ukucano mesto, pa član nije zaglavljen."). The races on the form a result is
  * entered on do say it (`pages/member/NewResult.tsx`); the towns do not, and this
- * is where. Held by what the field does, on the form a result is entered on
- * (`pages/member/racesUnreadable.test.tsx`), the proposal of a team and the field
- * alone: no sentence, no button, and the town that is typed is taken.
+ * is where. Silence is held by what the field does on the form a result is entered on
+ * (`pages/member/racesUnreadable.test.tsx`): no sentence, no button, and the town that is typed is
+ * taken. The proposal of a team (`pages/member/proposeTeam.test.tsx`) and the field alone
+ * (`forms/PlaceField.test.tsx`) hold the field staying a plain box and show no list, and neither asks
+ * whether anything is said.
  */
 export function usePlaces(wanted: boolean): Place[] {
   const [places, setPlaces] = useState<Place[]>([])

@@ -1031,14 +1031,18 @@ export function useInbox(
      on the front page.
 
      **NO PRODUCTION ROAD INTO THAT WINDOW WAS FOUND, and „not found" is the claim rather than
-     „cannot happen".** What was searched is every caller of `theServerSignedMeIn` in
-     `frontend/src`, of which two are production. `member/SignIn.tsx` is reachable only at
-     `/sr/prijava`, which shares the one `<Outlet />` `app/Shell.tsx` holds, so walking to it
-     unmounts this screen. `session/useTheServersSession.ts` is run by `Shell` once a visit and
-     cannot move a caller that is already mounted: `app/App.tsx` builds `SessionProvider` with no
-     `initialMemberNumber`, so `signedIn` is null until `GET /api/me` answers and
-     `TheMessageAsked` first mounts already knowing `mine`. Every other caller is a test, reaching
-     it on purpose. So this is a boundary that has been looked for and not found, not one that has
+     „cannot happen".** What moves the caller of the session is written by TWO doors, and both were
+     searched over `frontend/src` outside the tests (`git grep`, 06.11.2026). `theServerSignedMeIn`
+     (`session/SessionProvider.tsx`) has four production callers: `member/SignIn.tsx`,
+     `member/Membership.tsx` (its own exit press), `member/useLetMeIn.ts` (the hook of that same
+     screen) and `session/useTheServersSession.ts`. The first three run only on the screens of sign-in
+     and of membership, reached by walking to them, and a walk unmounts this one because every screen
+     shares the one `<Outlet />` `app/Shell.tsx` holds. The last is run by `Shell` once a visit and cannot move a caller that is
+     already mounted: `app/App.tsx` builds `SessionProvider` with no `initialMemberNumber`, so
+     `signedIn` is null until `GET /api/me` answers and `TheMessageAsked` first mounts already
+     knowing `mine`. The SECOND door is the `signIn` setter beside the type (`session/context.ts`,
+     „a second door"), which has NO production caller at all; the cases that call it do so on purpose.
+     So this is a boundary that has been looked for and not found, not one that has
      been ruled out, and the two cases in `pages/member/inboxFromTheServer.test.tsx` that switch a
      caller in place are where it would be seen moving. */
   const revision = useSyncExternalStore(whileDrawingTheInbox, theInboxRevisionNow)

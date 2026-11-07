@@ -518,6 +518,20 @@ describe('somebody who has not paid', () => {
       'href',
       '/sr/takmicar/000077/podaci#slika',
     )
+
+    /* AND THE PAGE MOVES ON, which nothing here said (PENDING, test): the session is read again once the
+       route has let him in, so the sentence that promised a number is gone, the button that gave it is
+       gone, and the header is a member's: the envelope of the messages is drawn, which is not drawn to somebody
+       who has not paid (`app/unpaidMenu.test.tsx`), and so are the pages of a profile. Skipping that read only for him left the sentence, the button and the short menu
+       standing, and all 20 cases of this file green. */
+    expect(
+      screen.queryByText(/Dobijaš ga kad aktiviraš članstvo iz balansa\./),
+      'the sentence that promised a number is still on the page',
+    ).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Aktiviraj članstvo' })).not.toBeInTheDocument()
+
+    expect(await screen.findByRole('button', { name: /Otvori poruke/ })).toBeVisible()
+    expect(screen.getByRole('link', { name: 'Moj profil', hidden: true })).toBeInTheDocument()
   }, SLOW)
 
   it('is told a moderator gives it, where his balance does not cover the fee', async () => {
