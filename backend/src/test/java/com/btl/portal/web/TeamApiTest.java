@@ -365,7 +365,7 @@ class TeamApiTest {
 	 * named on {@code endedMemberships} since 10.10.2026 like every member who left while his fee
 	 * stands, for as long as 2027 has not frozen (the clock of this class is pinned to October
 	 * 2027).</li>
-	 * <li>{@code 000003}, standing in {@code novosadski-trkaci} since 2029 with a fee that has
+	 * <li>{@code 000003}, standing in {@code novosadski-trkaci} since 2027 with a fee that has
 	 * lapsed - named nowhere, which is what dropping the condition on the seasons would change, and which
 	 * is the door the note on {@code TeamApi} keeps shut.</li>
 	 * </ul>
@@ -427,9 +427,15 @@ class TeamApiTest {
 		team("klub-lovcen", "Njegoševi trkači", "Trcimo uz Lovcen.", typed("Cetinje", "ME"), 2028,
 				theLovcenMark, "000003");
 
-		membership("000001", "novosadski-trkaci", 2027);
+		/* THE SEAT'S HOLDER JOINED LAST, AND THE ONE WHO JOINED FIRST HAS A FEE THAT HAS LAPSED. The seat
+		   names `000001`, and the member the standing rule would choose without the seat is `000002`
+		   (the earliest of those standing), so the two arms of the rule answer two different members.
+		   Written the other way - `000001` in 2027, the earliest of all - the seat and the rule chose the
+		   same man, and deleting the whole question about the seat left
+		   `theWholeRuleOfTheFourthOfSeptemberIsAnsweredByTheServer` green. */
+		membership("000001", "novosadski-trkaci", 2029);
 		membership("000002", "novosadski-trkaci", 2028);
-		membership("000003", "novosadski-trkaci", 2029);
+		membership("000003", "novosadski-trkaci", 2027);
 		membership("000004", "klub-lovcen", 2027);
 
 		/* AND THE TEAM WHOSE SEAT NAMES NOBODY GETS A ROSTER, which is the half that was

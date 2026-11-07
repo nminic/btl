@@ -628,8 +628,8 @@ class PaymentApiTest {
 	 * <p><b>This case used to say the opposite.</b> It asserted that a form without a
 	 * season is refused, which was true while the moderator chose one. The owner's
 	 * decision of 13.09.2026 says the season is a function of the day a payment is
-	 * booked - „prozor za placanje sezone S ide od 1. oktobra godine S-1 do 30. septembra
-	 * godine S" - so the field is gone and the day decides. Written the old way this case
+	 * booked (its window's dates were moved later and live in
+	 * {@code SeasonClock.transferWindowOpen}), so the field is gone and the day decides. Written the old way this case
 	 * now fails against correct code, which is how it was noticed.
 	 *
 	 * <p>What is worth a case is the other half: a body that still carries a season is

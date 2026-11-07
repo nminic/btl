@@ -2,6 +2,7 @@ package com.btl.portal.web;
 
 import com.btl.portal.domain.mail.WhatTheMessageSays.Said;
 import com.btl.portal.domain.photo.WhatAPictureIs;
+import com.btl.portal.domain.photo.WithoutMetadata;
 import com.btl.portal.domain.registration.WhatAProfileChangeSays;
 import com.btl.portal.domain.registration.WhatAProfileChangeSays.Change;
 import com.btl.portal.web.MePhotoApi.Crop;
@@ -143,6 +144,10 @@ class MemberPictureAndWordsApi {
 		if (mediaType == null) {
 			return no(MePhotoApi.THIS_IS_NOT_A_PICTURE);
 		}
+
+		/* THE METADATA GOES HERE TOO, for the same decision, which names both doors: „pri svakom otpremanju
+		   slike (član i administracija)". Before the digest, so the address names the stored bytes. */
+		bytes = WithoutMetadata.of(bytes, mediaType);
 
 		/* HIS TURN, the one his own sends take, so this and a send of his are one after the other. */
 		MePhotoApi.oneSendOfAMemberAtATime(db, member);

@@ -2417,15 +2417,32 @@ class TeamWriteApiTest {
 
 		clock.moveTo(Instant.parse(moment));
 
-		assertThat(deleteTheTeamAs("sedi-u-sedistu@primer.rs", teamId(A_TEAM_WITH_TWO))
-				.getStatus())
+		MockHttpServletResponse byTheAdministrator =
+				deleteTheTeamAs("sedi-u-sedistu@primer.rs", teamId(A_TEAM_WITH_TWO));
+		MockHttpServletResponse byTheAdministration = deleteTheTeamAs(MODERATOR_OVER_TEAMS, teamId(TAKEN_ADDRESS));
+
+		assertThat(byTheAdministrator.getStatus())
 				.as("the team's own administrator, %s (%s)", what, moment)
 				.isEqualTo(expected);
 
-		assertThat(deleteTheTeamAs(MODERATOR_OVER_TEAMS, teamId(TAKEN_ADDRESS)).getStatus())
+		assertThat(byTheAdministration.getStatus())
 				.as("the administration, %s (%s): PDL P13b says this is the same action, so it"
 						+ " is the same window", what, moment)
 				.isEqualTo(expected);
+
+		/* THE REASON, TOO, FOR BOTH CALLERS: the screen turns it into a sentence
+		   (`refusals.ts` binds `theWindowIsShut` to `membership.transferShut` and
+		   `theAddressIsTaken` to `teams.proposeTaken`), so a refusal that carried the other one
+		   would tell a man who met the deadline that his address was taken. The leaving route
+		   asks the same of its own 409 in `aMemberLeavesHisTeamOnlyInsideTheTransferWindow`. */
+		if (expected == 409) {
+			assertThat(reasonIn(byTheAdministrator))
+					.as("%s: the administrator was refused without being told what stopped him", what)
+					.isEqualTo(TeamWriteApi.THE_WINDOW_IS_SHUT);
+			assertThat(reasonIn(byTheAdministration))
+					.as("%s: the administration was refused without being told what stopped it", what)
+					.isEqualTo(TeamWriteApi.THE_WINDOW_IS_SHUT);
+		}
 
 		assertThat(teamsThatExist())
 				.as("%s: the teams standing afterwards do not match the answer given", what)

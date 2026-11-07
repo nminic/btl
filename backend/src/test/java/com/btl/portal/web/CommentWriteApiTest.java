@@ -1085,14 +1085,22 @@ class CommentWriteApiTest {
 		db.sql("update verification set state = 'approved', decided_at = now(), decided_by_name = 'Mod'"
 				+ " where id = ?").param(decided).update();
 
+		/* AND A CARD A MODERATOR REFUSED: decided too, and never withdrawn or deleted (ADL A36 O11 says
+		   "decided", not "approved"). Beside the approved one so a statement that spared only what was
+		   approved is told from one that spared both. */
+		long refused = waitingCardOf(submissionWaitingFor(ME, run, 4, 4, 4, "Moje, odbijeno"));
+
+		db.sql("update verification set state = 'rejected', reason = 'Nije u redu', decided_at = now(),"
+				+ " decided_by_name = 'Mod' where id = ?").param(refused).update();
+
 		long submissionsBefore = howManySubmissions();
 
 		MockHttpServletResponse answer = rateAs(ME, form(run, 5, 5, 5, ""));
 
 		assertThat(answer.getStatus()).isEqualTo(201);
-		assertThat(cardsStanding(hers, hersElsewhere, someoneElses, decided))
-				.as("his waiting card of the event is gone, the other three stand")
-				.containsExactlyInAnyOrder(hersElsewhere, someoneElses, decided);
+		assertThat(cardsStanding(hers, hersElsewhere, someoneElses, decided, refused))
+				.as("his waiting card of the event is gone, the other four stand")
+				.containsExactlyInAnyOrder(hersElsewhere, someoneElses, decided, refused);
 		assertThat(howManySubmissions())
 				.as("exactly one submission went with its card")
 				.isEqualTo(submissionsBefore - 1);
@@ -1114,14 +1122,22 @@ class CommentWriteApiTest {
 		db.sql("update verification set state = 'approved', decided_at = now(), decided_by_name = 'Mod'"
 				+ " where id = ?").param(decided).update();
 
+		/* AND A CARD A MODERATOR REFUSED: decided too, and never withdrawn or deleted (ADL A36 O11 says
+		   "decided", not "approved"). Beside the approved one so a statement that spared only what was
+		   approved is told from one that spared both. */
+		long refused = waitingCardOf(submissionWaitingFor(ME, run, 4, 4, 4, "Moje, odbijeno"));
+
+		db.sql("update verification set state = 'rejected', reason = 'Nije u redu', decided_at = now(),"
+				+ " decided_by_name = 'Mod' where id = ?").param(refused).update();
+
 		long submissionsBefore = howManySubmissions();
 
 		MockHttpServletResponse answer = rateAs(ME, form(run, 5, 5, 5, "Novo, s rečima."));
 
 		assertThat(waitingIn(answer)).isTrue();
-		assertThat(cardsStanding(hers, hersElsewhere, someoneElses, decided))
-				.as("his older waiting card of the event is gone, the other three stand")
-				.containsExactlyInAnyOrder(hersElsewhere, someoneElses, decided);
+		assertThat(cardsStanding(hers, hersElsewhere, someoneElses, decided, refused))
+				.as("his older waiting card of the event is gone, the other four stand")
+				.containsExactlyInAnyOrder(hersElsewhere, someoneElses, decided, refused);
 		assertThat(waitingOf(ME, run))
 				.as("the one rating of his of this event that waits is the one this request made")
 				.containsExactly(idIn(answer));
@@ -1281,6 +1297,14 @@ class CommentWriteApiTest {
 		db.sql("update verification set state = 'approved', decided_at = now(), decided_by_name = 'Mod'"
 				+ " where id = ?").param(decided).update();
 
+		/* AND A CARD A MODERATOR REFUSED: decided too, and never withdrawn or deleted (ADL A36 O11 says
+		   "decided", not "approved"). Beside the approved one so a statement that spared only what was
+		   approved is told from one that spared both. */
+		long refused = waitingCardOf(submissionWaitingFor(ME, run, 4, 4, 4, "Moje, odbijeno"));
+
+		db.sql("update verification set state = 'rejected', reason = 'Nije u redu', decided_at = now(),"
+				+ " decided_by_name = 'Mod' where id = ?").param(refused).update();
+
 		assertThat(mineOnRun).hasSize(2);
 		assertThat(theOtherMemberOnRun).hasSize(1);
 		assertThat(named)
@@ -1302,9 +1326,9 @@ class CommentWriteApiTest {
 		assertThat(everyPublished())
 				.as("nothing but his ratings of the event went")
 				.isEqualTo(theRestBefore);
-		assertThat(cardsStanding(hers, hersElsewhere, someoneElses, decided))
-				.as("his waiting card of the event is gone, the other three stand")
-				.containsExactlyInAnyOrder(hersElsewhere, someoneElses, decided);
+		assertThat(cardsStanding(hers, hersElsewhere, someoneElses, decided, refused))
+				.as("his waiting card of the event is gone, the other four stand")
+				.containsExactlyInAnyOrder(hersElsewhere, someoneElses, decided, refused);
 		assertThat(howManySubmissions())
 				.as("exactly one submission went with its card")
 				.isEqualTo(submissionsBefore - 1);

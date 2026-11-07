@@ -192,6 +192,9 @@ class ABodyIsReadAfterTheDoorOverRealHttpTest {
 	@Qualifier("requestMappingHandlerMapping")
 	private RequestMappingHandlerMapping mappings;
 
+	@Autowired
+	private org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter adapter;
+
 	private final Map<String, String> sessions = new LinkedHashMap<>();
 
 	/**
@@ -823,6 +826,63 @@ class ABodyIsReadAfterTheDoorOverRealHttpTest {
 				.as("the member whose fee has lapsed holds a row of membership, so a rule that told him"
 						+ " from somebody who never paid by the row would not be asked about him")
 				.isZero();
+	}
+
+	/**
+	 * A BODY IS TAKEN BY ONE OF THE TWO SPELLINGS THE FLOORS KNOW, AND BY NO THIRD.
+	 *
+	 * <p>{@link TheBodyOf} reads a body off the signature in two spellings: {@code @RequestBody X}, and
+	 * {@code WhatWasSent<X>} where the route reads it after it knows who is asking. A handler that took the
+	 * body as an {@code HttpEntity<X>} (or a {@code RequestEntity<X>}) is bound by Spring before the handler
+	 * runs, like the first, and is seen by neither floor: measured, {@code CommentWriteApi.rate} written that
+	 * way passed every case of the floors and moved a register by one (400 where the others said 404).
+	 *
+	 * <p><b>The question is put to Spring and not to the text of the signature.</b> Which resolver would take
+	 * a parameter is {@code RequestMappingHandlerAdapter}'s answer, the first of its resolvers that supports
+	 * it; every resolver that reads the request body through a message converter is an
+	 * {@code AbstractMessageConverterMethodProcessor}, and the one {@code @RequestBody} has is one of
+	 * them. So a parameter taken by such a processor without {@code @RequestBody} on it is a third
+	 * spelling, whatever it is called, and the case lists every one. It is not empty on the other side
+	 * either: some parameter on the portal IS taken that way, or the case asks about nothing.
+	 */
+	@Test
+	void noRouteTakesItsBodyThroughASpellingNoFloorReads() {
+		List<String> thirdSpellings = new ArrayList<>();
+		int taken = 0;
+
+		for (HandlerMethod method : mappings.getHandlerMethods().values()) {
+			for (org.springframework.core.MethodParameter parameter : method.getMethodParameters()) {
+				for (org.springframework.web.method.support.HandlerMethodArgumentResolver resolver
+						: adapter.getArgumentResolvers()) {
+					if (!resolver.supportsParameter(parameter)) {
+						continue;
+					}
+
+					if (resolver instanceof org.springframework.web.servlet.mvc.method.annotation
+							.AbstractMessageConverterMethodProcessor) {
+						taken++;
+
+						if (!parameter.hasParameterAnnotation(
+								org.springframework.web.bind.annotation.RequestBody.class)) {
+							thirdSpellings.add(method.getBeanType().getSimpleName() + "#"
+									+ method.getMethod().getName() + " takes "
+									+ parameter.getParameterType().getSimpleName() + " through "
+									+ resolver.getClass().getSimpleName());
+						}
+					}
+
+					break;
+				}
+			}
+		}
+
+		assertThat(taken)
+				.as("no parameter on the portal is taken by a message converter, so this asks about nothing")
+				.isPositive();
+		assertThat(thirdSpellings)
+				.as("a body is taken in a spelling neither {@code TheBodyOf} nor the floors that derive from"
+						+ " it read, so the route is on no list and no comparison")
+				.isEmpty();
 	}
 
 	/**

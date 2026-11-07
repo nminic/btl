@@ -77,8 +77,23 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 @Transactional
 class MembershipWriteApiTest {
 
-	/** 11:00 in Belgrade, mid season: {@code seasonBeingPaidFor} 2027, {@code transfersTakeEffect} 2028. */
-	private static final Instant IN_JUNE_2027 = Instant.parse("2027-06-15T09:00:00Z");
+	/**
+	 * 11:07:31 in Belgrade, mid season: {@code seasonBeingPaidFor} 2027, {@code transfersTakeEffect} 2028.
+	 * <b>Not a whole hour, on purpose</b>: a trail cut to the hour (a {@code date_trunc}, a rounding) is the
+	 * same value as the moment on a clock that stands on the hour, and the cases that compare a trail with
+	 * the moment of the press then cannot tell the cut from the whole.
+	 */
+	private static final Instant IN_JUNE_2027 = Instant.parse("2027-06-15T09:07:31Z");
+
+	/**
+	 * When the referral that gave a member his book was earned, a month and a half BEFORE any press in
+	 * this file. The moment of a press and the moment a balance was earned are two facts, and a trail that
+	 * took the second from the book where it means the first is the other value here.
+	 */
+	private static final Instant WHEN_THE_REFERRAL_WAS_EARNED = Instant.parse("2027-05-02T14:20:11Z");
+
+	/** When an exemption that already stands was decided: a third moment, before the other two. */
+	private static final Instant WHEN_HE_WAS_FREED_BEFORE = Instant.parse("2027-03-09T08:15:42Z");
 
 	/** Inside the renewal window: what is on sale is 2028 while the season being RUN is 2027. */
 	private static final Instant IN_OCTOBER_2027 = Instant.parse("2027-11-11T09:00:00Z");
@@ -203,6 +218,12 @@ class MembershipWriteApiTest {
 	void threeCompetitorsAndThreeAccounts() {
 		clock.moveTo(IN_JUNE_2027);
 
+		/* THE FIRST ACCOUNT OF THE DATABASE IS NOBODY WHO PRESSES ANYTHING IN THIS FILE. The cashier used to be
+		   written first, so „the lowest account" and „the account that asked" were one row and the cases that
+		   say the trail names the one who pressed (and not the first) held only the case where somebody
+		   approves himself. */
+		account("najraniji-nalog@primer.rs", "competitor", "Najraniji", "Nalog");
+
 		cashierCookie = account(CASHIER, "moderator", "Blagajnik", "Probic");
 		ticked(CASHIER, "queue:payments");
 
@@ -270,7 +291,7 @@ class MembershipWriteApiTest {
 		db.sql("insert into membership (competitor_id, season, basis, payment_id,"
 						+ " decided_by, decided_by_name, decided_at) values (?, ?, 'feeExempt', null,"
 						+ " (select id from account where email = ?), 'Blagajnik Probic', ?)")
-				.params(competitorId, season, CASHIER, Timestamp.from(IN_JUNE_2027)).update();
+				.params(competitorId, season, CASHIER, Timestamp.from(WHEN_HE_WAS_FREED_BEFORE)).update();
 	}
 
 	/**
@@ -322,7 +343,7 @@ class MembershipWriteApiTest {
 		db.sql("insert into balance_entry (competitor_id, amount, currency, reason,"
 						+ " referred_competitor_id, occurred_at, recorded_by_name)"
 						+ " values (?, ?::numeric, ?, 'referral', ?, ?, 'Neko Ko Je Knjizio')")
-				.params(competitorId, amount, currency, broughtIn, Timestamp.from(IN_JUNE_2027))
+				.params(competitorId, amount, currency, broughtIn, Timestamp.from(WHEN_THE_REFERRAL_WAS_EARNED))
 				.update();
 	}
 
@@ -792,7 +813,7 @@ class MembershipWriteApiTest {
 						+ " from membership where competitor_id = ? and season = 2027")
 						.params(SUPERADMIN, him).query(Boolean.class).single())
 				.as("the pointer named the account that asked, not the lowest id in the"
-						+ " fixture (the cashier, created first in @BeforeEach)")
+						+ " fixture (an account nobody presses with, created before the cashier in @BeforeEach)")
 				.isTrue();
 	}
 

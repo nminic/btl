@@ -2,10 +2,15 @@ package com.btl.portal.web;
 
 import com.btl.portal.TestcontainersConfiguration;
 import com.btl.portal.domain.account.SessionLife;
+import com.btl.portal.domain.photo.PicturesThatCarryMetadata;
+import com.btl.portal.domain.photo.WhatAPictureIs;
+import com.btl.portal.domain.photo.WithoutMetadata;
 import com.btl.portal.domain.token.SecretToken;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -355,6 +360,41 @@ class MemberPictureAndWordsApiTest {
 		assertThat(digestStandingOn(aThird)).isEqualTo(String.format("%064x", 2));
 
 		assertThat(messages()).containsExactly(him + ": Promenjena je vaša profilna slika");
+	}
+
+	/**
+	 * AND WHAT THE CAMERA WROTE IS TAKEN OFF AT THIS DOOR TOO, for each of the three types.
+	 *
+	 * <p>ADL, owner, 06.11.2026, which names both doors: „Server pri svakom otpremanju slike (član i
+	 * administracija) skida sve metapodatke". The file on the disk is the picture {@link WithoutMetadata}
+	 * gives back (which keeps the turn, held in {@code WithoutMetadataTest}), it no longer says where and with
+	 * what it was taken, and the size and the digest that stand on his profile are that file's.
+	 */
+	@ParameterizedTest
+	@ValueSource(strings = { "image/jpeg", "image/png", "image/webp" })
+	void whatTheCameraWroteIsTakenOffAtTheAdministrationsDoorToo(String type) throws Exception {
+		byte[] sent = switch (type) {
+			case "image/jpeg" -> PicturesThatCarryMetadata.aTelephoneJpeg(6);
+			case "image/png" -> PicturesThatCarryMetadata.aPngThatSaysEverything(6);
+			default -> PicturesThatCarryMetadata.aTelephoneWebp(6);
+		};
+
+		MockHttpServletResponse answer = picture(HIS_NUMBER, sent, "0.5", OVER_THE_MEMBERS);
+
+		assertThat(answer.getStatus()).as(answer.getContentAsString()).isEqualTo(200);
+
+		long photo = db.sql("select photo_id from competitor where id = ?").param(him).query(Long.class).single();
+		byte[] stored = Files.readAllBytes(PHOTOS.resolve(String.valueOf(photo)));
+
+		assertThat(PicturesThatCarryMetadata.says(stored, PicturesThatCarryMetadata.WHERE_AND_WITH_WHAT))
+				.as("the %s the administration set still says where, when and with what it was taken", type)
+				.isFalse();
+		assertThat(stored).isEqualTo(WithoutMetadata.of(sent, type));
+		assertThat(db.sql("select byte_size || ' ' || digest from photo where id = ?").param(photo)
+				.query(String.class).single())
+				.as("the size or the digest on his profile describe the file that was sent, not the one stored")
+				.isEqualTo(stored.length + " " + WhatAPictureIs.digestOf(stored));
+		assertThat(body(answer).get("photo").asString()).isEqualTo("/api/photos/" + WhatAPictureIs.digestOf(stored));
 	}
 
 	@Test

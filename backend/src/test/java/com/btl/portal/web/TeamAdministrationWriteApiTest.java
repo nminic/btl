@@ -578,6 +578,30 @@ class TeamAdministrationWriteApiTest {
 	}
 
 	/**
+	 * A SEAT THAT IS EMPTY IS GIVEN TO WHOEVER THE ADMINISTRATION NAMES, who stands in the team.
+	 *
+	 * <p>PDL, 04.09.2026: „Moderator ili administrator sme da dodeli drugog kad primeti da je mesto prazno."
+	 * Every other case that names a seat starts from a seat somebody holds, so a statement that wrote the
+	 * named member only OVER a held seat (and left a null where it found one) answered all of them. The seat
+	 * is emptied here first, and the member named is not the one the standing rule would choose without
+	 * the seat ({@link #THE_LONGEST} is longer in the team than {@link #THE_SEAT}), so the answer cannot
+	 * come from the rule filling the vacancy.
+	 */
+	@Test
+	void anEmptySeatIsGivenToWhoeverIsNamed() throws Exception {
+		seatOf(THE_TEAM, null);
+
+		assertThat(theSeat()).as("the seat is not empty, so this case starts from a held one").isNull();
+		assertThat(changeAs(MODERATOR_OVER_TEAMS, theTeam(),
+				form("Dunavski trkači", "Novi Sad", "RS", THE_SEAT)).getStatus())
+				.isEqualTo(200);
+
+		assertThat(theSeat())
+				.as("the member named for an empty seat did not get it")
+				.isEqualTo(competitorId(THE_SEAT));
+	}
+
+	/**
 	 * AND A SEAT NAMED AS NOTHING IS THE SAME AS A SEAT NOT NAMED: null, empty and spaces.
 	 *
 	 * <p>Asked over the lapsed member's seat, where keeping it, emptying it and working it out

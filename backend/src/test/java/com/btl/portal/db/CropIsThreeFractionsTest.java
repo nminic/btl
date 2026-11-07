@@ -130,8 +130,10 @@ class CropIsThreeFractionsTest extends DatabaseTest {
 	void theCropIsThreeColumnsAndTheThirdOfThemIsADiameter() {
 		assertThat(columnsOfPhoto())
 				.as("the crop is three fractions and the third of them is a diameter (ADL A17, V21)")
-				.containsExactly("byte_size", "crop_diameter", "crop_x", "crop_y", "digest", "id", "media_type",
-						"uploaded_at");
+				.containsExactly("byte_size", "crop_diameter", "crop_x", "crop_y", "digest", "id",
+						/* V88: whether a picture was stored before the portal took metadata off, which the
+						   one-time clean-up reads (ADL, owner, 06.11.2026). Not a crop column. */
+						"may_carry_metadata", "media_type", "uploaded_at");
 	}
 
 	/**

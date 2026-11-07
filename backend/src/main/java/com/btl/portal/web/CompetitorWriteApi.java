@@ -689,6 +689,10 @@ class CompetitorWriteApi {
 	record Group(List<Invited> members) {
 	}
 
+	/** What a row that arrived as a JSON {@code null} is read as: the same as a row that typed nothing. */
+	private static final Invited NOTHING_TYPED = new Invited(null, null, null, null, null, null, null,
+			null, null, null, null, null, null, null, null, null, null);
+
 	/**
 	 * Which row was refused and why, by its place in what was sent.
 	 *
@@ -865,7 +869,11 @@ class CompetitorWriteApi {
 		Set<String> alreadyInThisGroup = new HashSet<>();
 
 		for (int row = 0; row < members.size(); row++) {
-			Reading reading = readingOf(members.get(row), today);
+			/* A JSON `null` WHERE A ROW SHOULD BE IS A FORM THAT TYPED NOTHING, which is what `{}` is and
+			   is answered the same: refused by its index as an incomplete form. Handed to `readingOf` as
+			   it arrived it was a NullPointerException with no handler anywhere under `src/main`, so
+			   the group was answered 500 for a body the length and emptiness checks above had let in. */
+			Reading reading = readingOf(members.get(row) == null ? NOTHING_TYPED : members.get(row), today);
 
 			read.add(reading);
 

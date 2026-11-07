@@ -1,6 +1,7 @@
 package com.btl.portal.web;
 
 import com.btl.portal.domain.photo.WhatAPictureIs;
+import com.btl.portal.domain.photo.WithoutMetadata;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -445,6 +446,21 @@ class MePhotoApi {
 
 	private static final BigDecimal ALL = BigDecimal.ONE;
 
+	/** The places V21 keeps after the point: {@code numeric(9, 8)}. */
+	private static final int SCALE = 8;
+
+	/**
+	 * THE LONGEST A FRACTION MAY BE WRITTEN, IN CHARACTERS, AND THE NUMBER IS MINE.
+	 *
+	 * <p>What the column holds is ten characters at most ({@code 1.00000000}), and the screen sends
+	 * exactly that shape ({@code asTheColumnHolds} in {@code photoWrites.ts}, {@code toFixed(8)}).
+	 * Thirty two leaves room for what this method already accepted and still accepts - surrounding
+	 * blanks, a sign, leading noughts, trailing noughts past the eighth place - and is short enough
+	 * that parsing it costs nothing. It is a bound against cost and not a rule about what a crop is:
+	 * anything longer is either padding or more places than the column keeps.
+	 */
+	static final int AT_MOST_CHARACTERS = 32;
+
 	private final JdbcClient db;
 
 	private final MemberOfAccount memberOfAccount;
@@ -662,6 +678,14 @@ class MePhotoApi {
 		if (mediaType == null) {
 			return no(HttpStatus.BAD_REQUEST, THIS_IS_NOT_A_PICTURE);
 		}
+
+		/* AND WHAT THE CAMERA WROTE ABOUT IT IS TAKEN OFF BEFORE ANYTHING IS COUNTED, HASHED OR WRITTEN
+		   (ADL, owner, 06.11.2026, „Server pri svakom otpremanju slike (član i administracija) skida sve
+		   metapodatke"). From here on `bytes` are the bytes that are stored, so the size, the digest - which
+		   is the address `PhotoApi` serves them at - and the file all describe the same thing; and the way
+		   the picture asks to be turned stays with it, so the circle above means what it meant
+		   (`WithoutMetadata`). */
+		bytes = WithoutMetadata.of(bytes, mediaType);
 
 		/* HASHED ONCE. The row is written with it and the answer carries it, and on a file of
 		   five megabytes a second pass is a second pass over five megabytes for a value that
@@ -1161,6 +1185,16 @@ class MePhotoApi {
 			return null;
 		}
 
+		/* THE LENGTH IS ASKED BEFORE A SINGLE DIGIT IS PARSED, and that is the first of the two
+		   lines a review of PR 688 named as a denial of service. `new BigDecimal` of a string costs
+		   more than linear time in its length: 300 000 digits took 1,6 s here and the review measured
+		   1,5 million at about 25 s, inside a `@Transactional` mapping that is already holding a
+		   connection from the pool. Asked after the parse, the refusal comes when the cost has been
+		   paid. The number is at `AT_MOST_CHARACTERS`. */
+		if (written.length() > AT_MOST_CHARACTERS) {
+			return null;
+		}
+
 		BigDecimal value;
 
 		try {
@@ -1182,12 +1216,21 @@ class MePhotoApi {
 		   PostgreSQL would round on the way in, so the crop stored would not be the crop
 		   sent - and V21's whole reason for exact decimal is that „what the member chose is
 		   what is stored and what is read back, byte for byte". */
-		try {
-			return value.setScale(8, java.math.RoundingMode.UNNECESSARY);
-		}
-		catch (ArithmeticException finerThanTheColumn) {
+		/* AND THE SCALE IS ASKED OF THE NUMBER WITH ITS TRAILING NOUGHTS GONE, BEFORE IT IS SCALED,
+		   which is the second line, and the length above does not close it. Eleven characters,
+		   `1E-99999999`, are a number between nought and one whose scale is a hundred million, and
+		   `setScale(8, UNNECESSARY)` over it divides by ten to that power to find out it will not fit:
+		   measured at 79,6 s on Java 21, from a string the length bound lets through. Stripped, the
+		   same number is one digit with that scale, so the question „finer than the column?" is
+		   answered by comparing two ints; and a number that passes it has at most eight places, so
+		   the scaling below only ever adds noughts and cannot be refused. */
+		BigDecimal bare = value.stripTrailingZeros();
+
+		if (bare.scale() > SCALE) {
 			return null;
 		}
+
+		return bare.setScale(SCALE);
 	}
 
 	/**

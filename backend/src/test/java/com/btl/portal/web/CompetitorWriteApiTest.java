@@ -14,6 +14,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.test.web.servlet.MockMvc;
@@ -34,6 +35,7 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 /**
  * DELETING A MEMBER, END TO END: what goes with him, what stays and says it was his, who is
@@ -1148,6 +1150,43 @@ class CompetitorWriteApiTest {
 				.isEqualTo(401);
 
 		assertThat(membersThatExist()).contains(THE_TARGET);
+	}
+
+	/**
+	 * A ROW THAT ARRIVES AS A JSON {@code null} IS AN INCOMPLETE FORM, REFUSED BY ITS INDEX, AND NOT A FAULT.
+	 *
+	 * <p>{@code {"members":[null]}} passes the checks of the group's size, and there is no
+	 * {@code @ExceptionHandler} under {@code src/main}, so a row that was handed on as it arrived was a
+	 * NullPointerException and the screen's request an HTTP 500. The body carries two {@code null} rows
+	 * and not one, so the index the refusal names is asked of a row that is not the first, and what is
+	 * compared is the whole of what the route answers beside {@code {}}: the same refusal, row for row.
+	 * Nothing is written, which is counted off the accounts of the portal rather than assumed.
+	 */
+	@Test
+	void aRowThatIsJsonNullIsRefusedByItsIndexLikeARowThatTypedNothing() throws Exception {
+		long accounts = db.sql("select count(*) from account").query(Long.class).single();
+
+		MockHttpServletResponse ofNulls = enterAs(THE_DELETER, "{\"members\":[null,null]}");
+		MockHttpServletResponse ofEmpty = enterAs(THE_DELETER, "{\"members\":[{},{}]}");
+
+		assertThat(ofNulls.getStatus()).as("a row that was JSON null was not refused as a form").isEqualTo(400);
+		assertThat(reasonIn(ofNulls)).isEqualTo(CompetitorWriteApi.THE_FORM_IS_NOT_COMPLETE);
+		assertThat(mapper.readTree(ofNulls.getContentAsString()).path("rows").size())
+				.as("every null row is named, not only the first").isEqualTo(2);
+		assertThat(mapper.readTree(ofNulls.getContentAsString()).path("rows").get(1).path("row").asInt())
+				.as("the second null row is named by its own index").isEqualTo(1);
+		assertThat(ofNulls.getContentAsString())
+				.as("a row that is null is not told apart from a row that typed nothing")
+				.isEqualTo(ofEmpty.getContentAsString());
+		assertThat(db.sql("select count(*) from account").query(Long.class).single())
+				.as("a refused group wrote an account").isEqualTo(accounts);
+	}
+
+	private MockHttpServletResponse enterAs(String email, String body) throws Exception {
+		return http.perform(post("/api/competitors").with(csrf())
+						.contentType(MediaType.APPLICATION_JSON).content(body)
+						.cookie(new Cookie(SessionCookie.NAME, sessions.get(email).secret())))
+				.andReturn().getResponse();
 	}
 
 	private MockHttpServletResponse deleteAs(String email, String memberNumber, String account)
