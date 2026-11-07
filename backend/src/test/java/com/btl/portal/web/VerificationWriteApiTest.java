@@ -3292,6 +3292,42 @@ class VerificationWriteApiTest {
 	}
 
 	/**
+	 * EVERY EARLIER YEAR THAN THE EVENT'S IS REFUSED ON AN APPROVAL TOO (owner, 07.11.2026, „odbija se i trka iz
+	 * 2026. na događaju iz 2028, i trka od 30.12. na događaju zakazanom za 1.3. sledeće godine"): a run of 2026 on
+	 * an event of 2028 and a run of 30 December on an event of 1 March of the next year, in June. Nothing is
+	 * written and the run keeps waiting.
+	 */
+	@Test
+	void aRaceOfAnyEarlierYearIsRefusedOnAnEventThatIsStillAhead() throws Exception {
+		clock.moveTo(Instant.parse("2028-06-15T10:00:00Z"));
+
+		long run = describedRun(ANA, "Stara", "length", LocalDate.of(2026, 12, 31), "5.0000", 10, 10, 1500);
+		long december = describedRun(BOJAN, "Decembarska", "length", LocalDate.of(2028, 12, 30), "5.0000", 10,
+				10, 1500);
+		long ofTwentyEight = event("prolece-2028", "Prolece 2028", LocalDate.of(2028, 9, 1));
+		race(ofTwentyEight, "Jesenja", LocalDate.of(2028, 9, 1), "10.0000", 20, 20);
+		long ofNextYear = event("prolece-2029", "Prolece 2029", LocalDate.of(2029, 3, 1));
+		race(ofNextYear, "Prolecna", LocalDate.of(2029, 3, 1), "10.0000", 20, 20);
+		int races = howManyRaces();
+
+		MockHttpServletResponse first = decideWith(THE_SUPERADMIN, run,
+				makingTheRaceOn(ofTwentyEight, "Stara petica"));
+		MockHttpServletResponse second = decideWith(THE_SUPERADMIN, december,
+				makingTheRaceOn(ofNextYear, "Decembarska petica"));
+
+		for (MockHttpServletResponse refused : List.of(first, second)) {
+			assertThat(refused.getStatus()).isEqualTo(409);
+			assertThat(reasonIn(refused)).startsWith("Događaj tek predstoji, a trka je iz prošle godine");
+		}
+
+		assertThat(howManyRaces()).isEqualTo(races);
+		assertThat(theEventAt("prolece-2028").date()).isEqualTo(LocalDate.of(2028, 9, 1));
+		assertThat(theEventAt("prolece-2029").date()).isEqualTo(LocalDate.of(2029, 3, 1));
+		assertThat(stateOf(run)).isEqualTo("waiting");
+		assertThat(stateOf(december)).isEqualTo("waiting");
+	}
+
+	/**
 	 * AN EVENT THAT IS NOT AHEAD TAKES THE RACE OF THE YEAR JUST ENDED, which the decision of 20.10.2026 allowed and
 	 * the two of 06.11.2026 and 07.11.2026 leave alone: the event is dated yesterday, so it is over, and it begins
 	 * on the earlier day and answers at the address of the year before.

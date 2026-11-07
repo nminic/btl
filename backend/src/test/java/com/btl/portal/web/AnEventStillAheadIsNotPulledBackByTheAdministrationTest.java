@@ -42,7 +42,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * <p>The clock is the thing under test and {@code RaceWriteApiTest}, whose fixture stands on the real clock,
  * cannot ask it. Each road is asked what the decision refuses, at the last second of the old window, at the
  * second it closed and in the middle of June, and the neighbours it leaves alone: the event that is over, the
- * race of the new year, the year before the one that ended (written down as outside the sentence), and the
+ * race of the new year, and the
  * whole event moved by {@code PUT /api/events/{id}}. The question itself is held in
  * {@code TheDayOfAnEventTest}; what these cases hold is that each road asks it, of the right values, before it
  * writes anything.
@@ -333,18 +333,36 @@ class AnEventStillAheadIsNotPulledBackByTheAdministrationTest {
 	}
 
 	/**
-	 * THE YEAR BEFORE THE ONE THAT JUST ENDED IS OUTSIDE THE SENTENCE, written down as the boundary it is:
-	 * the owner's words are „trku iz stare godine”, and the year that has just ended is the one that is old
-	 * on that morning. A race of 2026 under the same event is written, as it is at any other time of the
-	 * year, and the event goes back two years. This is a reading of mine and one line in
-	 * {@code TheDayOfAnEvent.pullsAnEventStillAheadIntoTheYearJustEnded}.
+	 * EVERY YEAR EARLIER THAN THE EVENT'S IS REFUSED, not only the one before the current year (owner, 07.11.2026,
+	 * „odbija se i trka iz 2026. na događaju iz 2028, i trka od 30.12. na događaju zakazanom za 1.3. sledeće
+	 * godine"): both of his examples, nothing written.
 	 */
 	@Test
-	void aRaceOfTheYearBeforeTheOneThatEndedIsOutsideTheSentence() throws Exception {
-		MockHttpServletResponse written = add(moderator, ahead, "2026-12-31");
+	void aRaceOfAnyEarlierYearIsRefusedUnderAnEventThatIsAhead() throws Exception {
+		MockHttpServletResponse twoYearsBefore = add(moderator, ahead, "2026-12-31");
 
-		assertThat(written.getStatus()).isEqualTo(201);
-		assertThat(eventDay(ahead)).isEqualTo(LocalDate.of(2026, 12, 31));
+		assertThat(twoYearsBefore.getStatus()).isEqualTo(409);
+		assertThat(twoYearsBefore.getContentAsString()).contains(REFUSED);
+		assertThat(eventDay(ahead)).isEqualTo(LocalDate.of(2028, 1, 2));
+
+		clock.moveTo(IN_JUNE);
+		long nextYears = event("prolece-2029", "Proleće", "2029-03-01");
+		race(nextYears, "Prolecna", "2029-03-01");
+
+		MockHttpServletResponse thirtiethOfDecember = add(moderator, nextYears, "2028-12-30");
+
+		assertThat(thirtiethOfDecember.getStatus()).isEqualTo(409);
+		assertThat(thirtiethOfDecember.getContentAsString()).contains(REFUSED);
+		assertThat(eventDay(nextYears)).isEqualTo(LocalDate.of(2029, 3, 1));
+		assertThat(eventAddress(nextYears)).isEqualTo("prolece-2029");
+		assertThat(races(nextYears)).isEqualTo(1);
+
+		long itsSecond = race(nextYears, "Druga", "2029-03-02");
+		MockHttpServletResponse moved = change(itsSecond, "2028-12-30");
+
+		assertThat(moved.getStatus()).isEqualTo(409);
+		assertThat(moved.getContentAsString()).contains(REFUSED);
+		assertThat(dayOfRace(itsSecond)).isEqualTo(LocalDate.of(2029, 3, 2));
 	}
 
 	/**

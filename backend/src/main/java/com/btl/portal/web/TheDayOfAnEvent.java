@@ -104,14 +104,14 @@ final class TheDayOfAnEvent {
 	 * odbija i trka od 31.12. na događaju od 1.1. (najave dolaska ne nestaju)"; offered and not chosen:
 	 * only an event after today). It is the reading {@code AttendanceApi.STILL_AHEAD} has, where an event
 	 * dated today still takes announcements.
-	 * <li><b>A race of the year just ended</b> is the day the event WOULD BEGIN ON, not the day typed: the
-	 * event begins on the earliest of its races, so what is refused is the move into the year before this
-	 * one, and a race of that year added to an event that already begins in it moves nothing (that event is
-	 * not ahead, or it would be refused already). For an event that is ahead the year of the day it will begin
-	 * on and the year of the day typed are always the same one, since the event begins on the earlier of the
-	 * two and its own day is not before today; asked of the first because that is the day that moves. „Prošla godina" is read as the year before the league's
-	 * year of TODAY, the year the old window called „stara godina"; a year further back is not read into the
-	 * sentence (a reading of mine, put to the owner, and the one comparison to change).
+	 * <li><b>A race of an earlier year</b> is the day the event WOULD BEGIN ON falling in a year strictly
+	 * before the year the event now begins in. PDL P9, owner, 07.11.2026, „„Prošla godina” znači svaka godina
+	 * ranija od one u kojoj događaj sada počinje: odbija se i trka iz 2026. na događaju iz 2028, i trka od
+	 * 30.12. na događaju zakazanom za 1.3. sledeće godine." (offered and not chosen: only the year before the
+	 * current one). Nothing is compared with the league's current year. A race of the event's own year, or of
+	 * a later one, moves the event into no earlier year and is not refused. For an event that is ahead the
+	 * year of the day it will begin on is earlier than the event's exactly when the year of the day typed is,
+	 * since the event begins on the earlier of the two; asked of the first because that is the day that moves.
 	 * </ul>
 	 *
 	 * @param beginning the day the event will begin on once this write has landed
@@ -122,7 +122,7 @@ final class TheDayOfAnEvent {
 			ZonedDateTime now) {
 		LocalDate today = now.withZoneSameInstant(SeasonClock.ZONE).toLocalDate();
 
-		return !event.date().isBefore(today) && beginning.getYear() == today.getYear() - 1;
+		return !event.date().isBefore(today) && beginning.getYear() < event.date().getYear();
 	}
 
 	/**

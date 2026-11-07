@@ -63,16 +63,16 @@ class TheDayOfAnEventTest {
 	}
 
 	/**
-	 * THE YEAR IS THE LEAGUE'S, NOT UTC'S: at 23:59:59 in Belgrade on the 31st the year that is running is 2027, the
-	 * race of the 31st is of that year and not of the one before it, and nothing is pulled; a second later the year
-	 * is 2028 and the same race is of the year just ended.
+	 * TODAY IS THE LEAGUE'S DAY, NOT UTC'S: the event dated 31 December is still ahead at 23:59:59 in Belgrade on the
+	 * 31st, and a second later, which is 22:59:59 and 23:00:00 UTC, it is over and takes the race of the year
+	 * before. A day read in UTC would keep it ahead for another hour.
 	 */
 	@Test
-	void theYearIsReadInTheLeaguesZoneAtTheTurnOfTheYear() {
-		assertThat(pulled(LocalDate.of(2028, 1, 2), THE_NEW_YEARS_EVE, "2027-12-31T22:59:59Z"))
-				.as("23:59:59 on the 31st in Belgrade, the running year is 2027").isFalse();
-		assertThat(pulled(LocalDate.of(2028, 1, 2), THE_NEW_YEARS_EVE, "2027-12-31T23:00:00Z"))
-				.as("00:00:00 on the 1st in Belgrade, the running year is 2028").isTrue();
+	void todayIsReadInTheLeaguesZoneAtTheTurnOfTheYear() {
+		assertThat(pulled(THE_NEW_YEARS_EVE, LocalDate.of(2026, 12, 31), "2027-12-31T22:59:59Z"))
+				.as("23:59:59 on the 31st in Belgrade, the event is dated today").isTrue();
+		assertThat(pulled(THE_NEW_YEARS_EVE, LocalDate.of(2026, 12, 31), "2027-12-31T23:00:00Z"))
+				.as("00:00:00 on the 1st in Belgrade, the event is over").isFalse();
 	}
 
 	/**
@@ -98,21 +98,40 @@ class TheDayOfAnEventTest {
 	}
 
 	/**
-	 * A RACE OF THE YEAR JUST ENDED, and nothing older or newer: the day the event WOULD BEGIN ON is asked, and an
-	 * event that begins in the running year is not pulled back. The year before the year just ended is written
-	 * down as outside the owner's sentence (it says „u prošlu godinu"), which is a reading of mine and one
-	 * comparison to change; so is the event of NEXT year given a race of this one, which is not pulled into a year
-	 * that has ended.
+	 * "PROSLA GODINA" IS EVERY YEAR EARLIER THAN THE ONE THE EVENT NOW BEGINS IN (owner, 07.11.2026, „odbija se i
+	 * trka iz 2026. na događaju iz 2028, i trka od 30.12. na događaju zakazanom za 1.3. sledeće godine"): both of his
+	 * examples, asked on the day of the example and on another, so a year read off today's date answers one of them
+	 * the wrong way.
 	 */
 	@Test
-	void onlyTheYearJustEndedIsTheYearItIsPulledInto() {
+	void everyEarlierYearThanTheEventsIsPulledInto() {
+		assertThat(pulled(LocalDate.of(2028, 9, 1), LocalDate.of(2026, 12, 31), MIDDLE_OF_JUNE))
+				.as("a race of 2026 on an event of 2028").isTrue();
+		assertThat(pulled(LocalDate.of(2029, 3, 1), LocalDate.of(2028, 12, 30), MIDDLE_OF_JUNE))
+				.as("30 December on an event of 1 March next year").isTrue();
+		assertThat(pulled(LocalDate.of(2029, 3, 1), LocalDate.of(2028, 12, 30), "2028-12-31T12:00:00Z"))
+				.as("the same, a day later").isTrue();
+		assertThat(pulled(LocalDate.of(2028, 3, 1), LocalDate.of(2026, 12, 31), "2027-06-15T10:00:00Z"))
+				.as("a race two years before, when today is the year before the event").isTrue();
+	}
+
+	/**
+	 * AND NOTHING IS PULLED INTO THE EVENT'S OWN YEAR OR A LATER ONE: the race of the new year on an event dated
+	 * the day after, a race of the running year, the event dated today given a race of its own year, and the
+	 * event of the year just ended (which is not ahead) given a race of the year before it, which the decision
+	 * of 20.10.2026 allowed and still does.
+	 */
+	@Test
+	void theEventsOwnYearAndLaterOnesPullNothing() {
 		assertThat(pulled(TOMORROW, NEW_YEARS_DAY, THE_MORNING_OF_THE_FIRST)).as("a race of the new year")
 				.isFalse();
-		assertThat(pulled(TOMORROW, LocalDate.of(2026, 12, 31), THE_MORNING_OF_THE_FIRST))
-				.as("a race of the year before the one that ended").isFalse();
-		assertThat(pulled(LocalDate.of(2029, 3, 1), LocalDate.of(2028, 12, 30), MIDDLE_OF_JUNE))
-				.as("an event of next year, a race of this one").isFalse();
 		assertThat(pulled(LocalDate.of(2028, 9, 1), LocalDate.of(2028, 3, 1), MIDDLE_OF_JUNE))
 				.as("a race of the running year").isFalse();
+		assertThat(pulled(LocalDate.of(2028, 12, 31), LocalDate.of(2028, 12, 30), MIDDLE_OF_JUNE))
+				.as("the same year, the last days of it").isFalse();
+		assertThat(pulled(THE_NEW_YEARS_EVE, LocalDate.of(2026, 12, 31), THE_MORNING_OF_THE_FIRST))
+				.as("an event that is not ahead").isFalse();
+		assertThat(pulled(NEW_YEARS_DAY, NEW_YEARS_DAY, THE_MORNING_OF_THE_FIRST))
+				.as("the first race of the year on the event of the day").isFalse();
 	}
 }
