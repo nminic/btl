@@ -170,9 +170,10 @@ class RaceWriteApi {
 	static final String THE_ADDRESS_IS_TAKEN = "theAddressIsTaken";
 
 	/**
-	 * PDL P9, owner, 06.11.2026: on the morning of 1 January from 00:00 to 10:00 a race of the year just
-	 * ended is refused on an event that is still ahead, because the event would begin on it and be pulled
-	 * back into the year before ({@link TheDayOfAnEvent#pullsAnEventStillAheadIntoTheYearJustEnded}). The
+	 * PDL P9, owner, 06.11.2026 and 07.11.2026: a race of the year just ended is refused, at any time of
+	 * the year, on an event that is still ahead (today's included), because the event would begin on it and
+	 * be pulled back into the year before ({@link TheDayOfAnEvent#pullsAnEventStillAheadIntoTheYearJustEnded}).
+	 * The whole event moved by {@code EventWriteApi#change} is not this question and stays allowed. The
 	 * same literal {@code ResultsByTheLeagueApi} holds, declared again as {@link #THE_ADDRESS_IS_TAKEN}
 	 * is. 409.
 	 */
