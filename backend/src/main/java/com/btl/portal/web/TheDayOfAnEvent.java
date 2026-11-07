@@ -1,11 +1,13 @@
 package com.btl.portal.web;
 
 import com.btl.portal.domain.event.EventAddress;
+import com.btl.portal.domain.season.SeasonClock;
 import org.springframework.jdbc.core.simple.JdbcClient;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDate;
+import java.time.ZonedDateTime;
 import java.util.Optional;
 
 /**
@@ -78,6 +80,49 @@ final class TheDayOfAnEvent {
 		}
 
 		return others.filter(day -> day.isBefore(andThisRace)).orElse(andThisRace);
+	}
+
+	/**
+	 * WHETHER THIS WRITE WOULD PULL AN EVENT THAT IS STILL AHEAD BACK INTO THE YEAR JUST ENDED, which is
+	 * refused at every time of the year and on every road that puts a race under an event.
+	 *
+	 * <p>PDL P9, owner, 07.11.2026, „Trka koja bi događaj koji još predstoji povukla u prošlu godinu odbija
+	 * se uvek, na svim putevima (administracija, liga, odobravanje), ne samo u prozoru 1.1. Izričito
+	 * pomeranje celog događaja („Izmeni događaj”) ostaje dozvoljeno." (offered and not chosen: only in the
+	 * window, as PR 696 had it). It widens the decision of 06.11.2026, „U prozoru 1. januara od 00:00 do
+	 * 10:00 server odbija trku iz stare godine na događaju koji još predstoji. Povod (primer izložen
+	 * vlasniku): događaj zakazan za 5.1. na koji se doda trka od 31.12. pomerio bi se na prošlu godinu
+	 * (datum događaja je dan najranije trke, 21.09.2026) i izgubio najave dolaska.", which had the ten
+	 * hours of 1 January in it and no longer does. It still narrows only what the decision of 20.10.2026
+	 * allowed in those ten hours, „sme se sastaviti trka na događaju druge godine": the race of New Year's
+	 * Eve goes on an event that is not ahead, and a race of the new year goes on an event of the old.
+	 *
+	 * <p><b>The two halves of the sentence, each asked of its own value:</b>
+	 * <ul>
+	 * <li><b>Still ahead</b> is {@code event.date() >= today} in the league's day, so the event dated today
+	 * is ahead too (owner, 07.11.2026, „Događaj zakazan za danas takođe „još predstoji”, pa se u prozoru
+	 * odbija i trka od 31.12. na događaju od 1.1. (najave dolaska ne nestaju)"; offered and not chosen:
+	 * only an event after today). It is the reading {@code AttendanceApi.STILL_AHEAD} has, where an event
+	 * dated today still takes announcements.
+	 * <li><b>A race of an earlier year</b> is the day the event WOULD BEGIN ON falling in a year strictly
+	 * before the year the event now begins in. PDL P9, owner, 07.11.2026, „„Prošla godina” znači svaka godina
+	 * ranija od one u kojoj događaj sada počinje: odbija se i trka iz 2026. na događaju iz 2028, i trka od
+	 * 30.12. na događaju zakazanom za 1.3. sledeće godine." (offered and not chosen: only the year before the
+	 * current one). Nothing is compared with the league's current year. A race of the event's own year, or of
+	 * a later one, moves the event into no earlier year and is not refused. For an event that is ahead the
+	 * year of the day it will begin on is earlier than the event's exactly when the year of the day typed is,
+	 * since the event begins on the earlier of the two; asked of the first because that is the day that moves.
+	 * </ul>
+	 *
+	 * @param beginning the day the event will begin on once this write has landed
+	 *                  ({@link #theDayItWillBeginOn})
+	 * @param now       the moment of the write
+	 */
+	static boolean pullsAnEventStillAheadIntoTheYearJustEnded(Standing event, LocalDate beginning,
+			ZonedDateTime now) {
+		LocalDate today = now.withZoneSameInstant(SeasonClock.ZONE).toLocalDate();
+
+		return !event.date().isBefore(today) && beginning.getYear() < event.date().getYear();
 	}
 
 	/**

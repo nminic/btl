@@ -490,6 +490,9 @@ export function AdminModerators() {
                               setEditing({ mode: 'one', record: one })
                             }}
                             deleteRecord={() => deleteOne(one)}
+                            /* The sentence of an earlier refusal of THIS row goes when the reader
+                               puts the question away (registry item 311). */
+                            onKeep={() => setRefused((was) => (was !== null && was.id === one.id ? null : was))}
                           />
                           {refused !== null && refused.id === one.id && saying(refused.answer)}
                         </td>

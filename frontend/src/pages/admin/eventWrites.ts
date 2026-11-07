@@ -270,7 +270,7 @@ export const WHEN_WRITING_AN_EVENT: Record<string, string> = {
 }
 
 /**
- * AND THE THIRTEEN A RACE CAN MEET.
+ * AND THE FOURTEEN A RACE CAN MEET.
  *
  * <p>Its own table and not folded into the one above, although one press meets both: they
  * are two files on the server and `refusals.test.ts` counts per file, so folded together a
@@ -298,4 +298,8 @@ export const WHEN_WRITING_A_RACE: Record<string, string> = {
   theDateWouldMoveAResultToAnotherYear: 'admin.raceSaveRefused.theDateWouldMoveAResultToAnotherYear',
   theKindCannotChangeOnceRunsAreCounted:
     'admin.raceSaveRefused.theKindCannotChangeOnceRunsAreCounted',
+  /* PDL P9, 06.11.2026: on the morning of 1 January before ten, a race of the year just ended is refused
+     under an event that is still ahead, because the event would begin on it. */
+  anEventStillAheadWouldMoveIntoTheYearJustEnded:
+    'admin.raceSaveRefused.anEventStillAheadWouldMoveIntoTheYearJustEnded',
 }

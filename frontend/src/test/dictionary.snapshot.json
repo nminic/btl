@@ -1492,7 +1492,8 @@
       "theRaceCountsInALeagueOfItsSeason": "Ova trka se broji u ligi svoje sezone, pa datum ne sme da izađe iz te godine.",
       "theAddressIsTaken": "Na toj adresi već stoji jedna trka.",
       "theDateWouldMoveAResultToAnotherYear": "Datum ne može da pređe u drugu godinu dok je na trci upisan rezultat.",
-      "theKindCannotChangeOnceRunsAreCounted": "Vrsta trke ne može da se promeni dok na trci stoji odobren rezultat."
+      "theKindCannotChangeOnceRunsAreCounted": "Vrsta trke ne može da se promeni dok na trci stoji odobren rezultat.",
+      "anEventStillAheadWouldMoveIntoTheYearJustEnded": "Događaj tek predstoji, a dan ove trke je u prošloj godini, pa bi se događaj pomerio u prošlu godinu i izgubio najave dolaska. Izaberi dan trke u godini događaja."
     },
     "eventGone": "Događaj je obrisan, sa svojim trkama i rezultatima.",
     "eventDeleteAsk": "Obriši događaj?",
@@ -1937,7 +1938,8 @@
       "theRaceIsNotKnown": "Ta trka više nije u kalendaru. Izaberi je ponovo ili upiši novu.",
       "theTownIsMissing": "Upiši mesto novog događaja.",
       "theEventWouldMoveOntoAnother": "Trka bi pomerila događaj u godinu u kojoj događaj sa istim nazivom već postoji. Izaberi taj događaj.",
-      "theDayIsNotInTheEventsYear": "Dan trke nije u godini izabranog događaja."
+      "theDayIsNotInTheEventsYear": "Dan trke nije u godini izabranog događaja.",
+      "anEventStillAheadWouldMoveIntoTheYearJustEnded": "Događaj tek predstoji, a trka je iz prošle godine, pa bi se događaj pomerio u prošlu godinu i izgubio najave dolaska. Izaberi događaj iz prošle godine ili upiši nov."
     }
   },
   "memberData": {

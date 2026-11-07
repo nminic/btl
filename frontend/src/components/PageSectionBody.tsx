@@ -106,14 +106,29 @@ function drawing(gallery: PageSection['gallery']): ReactNode {
  * editor and in a diff it looks exactly like the good line.
  *
  */
-export function PageSectionBody({ section }: { section: PageSection }) {
+export function PageSectionBody({
+  section,
+  language,
+}: {
+  section: PageSection
+  /**
+   * The language the WORDS of the section are really in (`StaticPage.language`), which is not
+   * always the language of the address: a page that has no translation falls back to Serbian
+   * (ADL, 18.09.2026). It goes on the two halves of the text and NOT on the column, because the
+   * drawing between them (the fee schedule, the wall of ducats) is drawn from the portal's
+   * dictionary and speaks the language of the screen. A `lang` on the column would hand a screen
+   * reader English column headings to read with Serbian phonetics, the same fault the attribute
+   * exists to prevent turned the other way round (WCAG 2.2 AA 3.1.2).
+   */
+  language: string
+}) {
   const { before, after } = around(section.body)
 
   return (
     <div className="section-body">
-      {hasWords(before) && <Markdown text={before} />}
+      {hasWords(before) && <Markdown text={before} lang={language} />}
       {drawing(section.gallery)}
-      {hasWords(after) && <Markdown text={after} />}
+      {hasWords(after) && <Markdown text={after} lang={language} />}
     </div>
   )
 }

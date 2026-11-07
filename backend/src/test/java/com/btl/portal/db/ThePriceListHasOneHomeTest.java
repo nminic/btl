@@ -346,7 +346,7 @@ class ThePriceListHasOneHomeTest extends DatabaseTest {
 				.containsExactlyInAnyOrderElementsOf(whatDaysTheTableHolds().keySet());
 	}
 
-	private static List<java.util.regex.MatchResult> theGeneratorsRows() {
+	private static String theGeneratorsLiteral() {
 		assertThat(GENERATOR)
 				.as("the generator is not where this expects it, so home 3 is not compared")
 				.exists();
@@ -360,9 +360,12 @@ class ThePriceListHasOneHomeTest extends DatabaseTest {
 
 		int start = source.indexOf("PRICE_ROWS = [");
 		assertThat(start).as("PRICE_ROWS was not found in the generator").isNotNegative();
-		String literal = source.substring(start, source.indexOf("\n]", start));
 
-		return A_GENERATOR_ROW.matcher(literal).results().toList();
+		return source.substring(start, source.indexOf("\n]", start));
+	}
+
+	private static List<java.util.regex.MatchResult> theGeneratorsRows() {
+		return A_GENERATOR_ROW.matcher(theGeneratorsLiteral()).results().toList();
 	}
 
 	/**
@@ -389,6 +392,12 @@ class ThePriceListHasOneHomeTest extends DatabaseTest {
 	 * history by design and the table's are current. Comparing them would have this case red
 	 * from the day V75 merged. The amounts have not moved in any migration, so for them the
 	 * generator and the table still have to agree.
+	 *
+	 * <p><b>The kind, the two days and the ranking flag are not compared here either, and they are not
+	 * left alone</b>: {@link #everyRowTheGeneratorCopiesIsTheRowV4Wrote} holds EVERY field of the copy to
+	 * the text of V4, which never changes, so those fields are held to what V4 wrote and not to a table
+	 * that later migrations moved (measured on review: a day {@code '10-01'} turned into {@code '10-02'}
+	 * and a {@code True} turned into {@code False} left this class green, 7 cases passing).
 	 */
 	@Test
 	void everyPriceTheGeneratorWritesIsThePriceTheTableCharges() {
@@ -402,5 +411,50 @@ class ThePriceListHasOneHomeTest extends DatabaseTest {
 		assertThat(amounts)
 				.as("the amounts PRICE_ROWS writes into V4 are not what price_row charges")
 				.containsExactlyInAnyOrderEntriesOf(whatTheTableHolds());
+	}
+
+	/**
+	 * EVERY ROW THE GENERATOR COPIES IS THE ROW V4 WROTE, FIELD FOR FIELD: key, kind, the two days, euro,
+	 * dinars, the ranking flag and the place in the order.
+	 *
+	 * <p><b>The reference is the text of V4 and nothing else.</b> V4 is immutable (ADL A2) and
+	 * {@link #migrationSql} reads the file Flyway applied, so this is the one comparison for the generator
+	 * that cannot drift together with the table: the cases above compare the amounts to the table, which
+	 * V49 and V75 moved after V4, and they leave the kind, the days and the ranking flag to nobody. Both
+	 * sides are read as the SQL they would write, so the generator's {@code True}, {@code False} and
+	 * {@code None} meet V4's {@code true}, {@code false} and {@code null}, and its order is the position
+	 * in the list, which is what the script writes as the last column.
+	 */
+	@Test
+	void everyRowTheGeneratorCopiesIsTheRowV4Wrote() {
+		String v4 = migrationSql("4");
+		int insert = v4.indexOf("insert into price_row");
+		assertThat(insert).as("V4 no longer inserts the price list").isNotNegative();
+
+		String values = v4.substring(v4.indexOf("values", insert), v4.indexOf(';', insert));
+		List<String> written = Pattern.compile("\\(([^()]*)\\)").matcher(values).results()
+				.map(row -> asOneLine(row.group(1)))
+				.toList();
+
+		List<String> copied = new java.util.ArrayList<>();
+
+		for (java.util.regex.MatchResult row : Pattern.compile("\\(([^()]*)\\)")
+				.matcher(theGeneratorsLiteral()).results().toList()) {
+			copied.add(asOneLine(row.group(1) + ", " + (copied.size() + 1))
+					.replaceAll("\\bTrue\\b", "true")
+					.replaceAll("\\bFalse\\b", "false")
+					.replaceAll("\\bNone\\b", "null"));
+		}
+
+		assertThat(written)
+				.as("the rows of V4 were not found, so nothing is compared")
+				.hasSize(whatTheTableHolds().size());
+		assertThat(copied)
+				.as("a row of PRICE_ROWS in generate_reference_migrations.py is not the row V4 wrote")
+				.containsExactlyElementsOf(written);
+	}
+
+	private static String asOneLine(String row) {
+		return row.strip().replaceAll("\\s+", " ");
 	}
 }

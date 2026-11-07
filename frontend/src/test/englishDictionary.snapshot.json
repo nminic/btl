@@ -1492,7 +1492,8 @@
       "theRaceCountsInALeagueOfItsSeason": "This race counts in a competition of its season, so the date may not leave that year.",
       "theAddressIsTaken": "There is already a race at that address.",
       "theDateWouldMoveAResultToAnotherYear": "The date cannot cross into another year while a result stands at this race.",
-      "theKindCannotChangeOnceRunsAreCounted": "The kind of a race cannot change while an approved result stands at it."
+      "theKindCannotChangeOnceRunsAreCounted": "The kind of a race cannot change while an approved result stands at it.",
+      "anEventStillAheadWouldMoveIntoTheYearJustEnded": "The event is still ahead and the day of this race is in the year that has just ended, so the event would move back into that year and lose its announced arrivals. Choose a day of the event's year."
     },
     "eventGone": "The event has been deleted, with its races and its results.",
     "eventDeleteAsk": "Delete the event?",
@@ -1937,7 +1938,8 @@
       "theRaceIsNotKnown": "That race is no longer in the calendar. Choose it again or enter a new one.",
       "theTownIsMissing": "Enter the place of the new event.",
       "theEventWouldMoveOntoAnother": "The race would move the event into a year in which an event with the same name already exists. Choose that event.",
-      "theDayIsNotInTheEventsYear": "The day of the race is not in the year of the chosen event."
+      "theDayIsNotInTheEventsYear": "The day of the race is not in the year of the chosen event.",
+      "anEventStillAheadWouldMoveIntoTheYearJustEnded": "The event is still ahead and the race is of the year that has just ended, so the event would move back into that year and lose its announced arrivals. Choose an event of that year or enter a new one."
     }
   },
   "memberData": {

@@ -1126,6 +1126,9 @@ class PhotoApi {
 	/**
 	 * THE BYTES OF ONE FILE, AND THE OPEN REFUSES TO FOLLOW A LINK.
 	 *
+	 * <p><b>Package private since 07.11.2026 so that {@link OldPicturesAreCleaned}, which reads a file and writes
+	 * it back, reads it through this and not through a second {@code NOFOLLOW_LINKS}.</b>
+	 *
 	 * <p><b>{@code NOFOLLOW_LINKS} rather than {@code readAllBytes}</b>, which follows one.
 	 * Nothing can put a link in this folder today - the backend writes it and nothing else
 	 * is mounted there - but the two things that WILL fill it are uploading and restoring
@@ -1163,7 +1166,7 @@ class PhotoApi {
 	 * that check arrives with it and with a case that reaches it.
 	 * </ul>
 	 */
-	private static byte[] bytesOf(Path file) throws IOException {
+	static byte[] bytesOf(Path file) throws IOException {
 		try (InputStream reading = Channels.newInputStream(Files.newByteChannel(file,
 				Set.of(StandardOpenOption.READ, LinkOption.NOFOLLOW_LINKS)))) {
 

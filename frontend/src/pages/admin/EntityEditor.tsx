@@ -580,6 +580,7 @@ export function RowActions({
   deleteRecord,
   asksWith,
   asks,
+  onKeep,
 }: {
   entity: EntityDef
   record: object
@@ -649,6 +650,18 @@ export function RowActions({
    * confirming button while the question was a row).
    */
   asksWith?: string
+  /**
+   * TOLD WHEN THE READER PUTS THE QUESTION AWAY, so a screen takes back the sentence of an EARLIER
+   * attempt that it is still showing beside this row (registry item 311, `TeamDetail`; owner,
+   * 02.10.2026, PDL „Odbijanje zatvara pitanje kao i uspeh": „razlog odbijanja stoji uz dugme").
+   *
+   * <p>A refusal closes the sheet and the sentence stays beside „Obriši". The reader who asks again and
+   * then presses „Odustani" has taken the deletion back, and the sentence about the attempt before it
+   * would be read out as an alert about nothing. Every screen that keeps such a sentence hands this in;
+   * it is optional only because a list that keeps none has nothing to take back. Not told when an ANSWER
+   * closes the sheet (`DeleteSheet`): the sentence of a refusal is the answer.
+   */
+  onKeep?: () => void
 }) {
   const { remove } = useSession()
   const id = String(fieldValue(record, entity.idField))
@@ -688,7 +701,7 @@ export function RowActions({
   return (
     <div className="entity-row-actions">
       <OpenRecord name={name} onOpen={onOpen} />
-      <DeleteSheet name={name} asks={asks} onDelete={deleteRow}>
+      <DeleteSheet name={name} asks={asks} onDelete={deleteRow} onKeep={onKeep}>
         {asksWith === undefined ? null : <p>{asksWith}</p>}
       </DeleteSheet>
     </div>

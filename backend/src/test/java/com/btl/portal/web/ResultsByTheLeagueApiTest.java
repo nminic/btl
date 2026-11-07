@@ -1376,32 +1376,35 @@ class ResultsByTheLeagueApiTest {
 
 	/**
 	 * IN THE HOURS BOTH SEASONS ARE OPEN, on the morning of 1 January before ten, a race of New Year's
-	 * Eve goes on an event of the new year, and the event begins on that earlier day and answers at the
+	 * Eve was put on an event of the new year, and the event began on that earlier day and answered at the
 	 * address of the year before (PDL P9, owner, 20.10.2026, „U prozoru 1. januara od 00:00 do 10:00 sme
-	 * se sastaviti trka na događaju druge godine”, chosen against the coordinator's recommendation).
-	 * The race, the result and the new day of the event are all written in the one save.
+	 * se sastaviti trka na događaju druge godine”). It is refused now on the event dated today, the nearest
+	 * event of the new year (owner, 07.11.2026, „Događaj zakazan za danas takođe „još predstoji”, pa se u
+	 * prozoru odbija i trka od 31.12. na događaju od 1.1.”), with the sentence of its own, and the event keeps
+	 * its day and its address, and no race and no result is written. What is left of the decision of
+	 * 20.10.2026 is held by the neighbours below: a race of the new year on an event of the old, and a NEW
+	 * event, made that morning for a race of the year just ended, which no event is pulled into.
 	 */
 	@Test
-	void onNewYearsMorningARaceOfTheYearJustEndedGoesOnAnEventOfTheNewOneAndTheEventMovesBack()
+	void onNewYearsMorningARaceOfTheYearJustEndedIsRefusedOnTheEventDatedTodayAndANewEventIsStillMade()
 			throws Exception {
 		clock.moveTo(Instant.parse("2028-01-01T08:00:00Z"));
 
 		long theNewYears = event("novogodisnja-2028", "Novogodisnja", LocalDate.of(2028, 1, 1));
-		MockHttpServletResponse saved = onAnEvent(RESULTS_MODERATOR, onTheEvent(theNewYears,
+		int races = howMany("race");
+		MockHttpServletResponse refused = onAnEvent(RESULTS_MODERATOR, onTheEvent(theNewYears,
 				newRace("Silvestarska", "2027-12-31", "free", null, null, null, null),
 				row(VERA, "5.00", 1, 1, AN_HOUR)));
 
-		assertThat(saved.getStatus()).isEqualTo(201);
+		assertThat(refused.getStatus()).isEqualTo(409);
+		assertThat(reasonIn(refused))
+				.isEqualTo(ResultsByTheLeagueApi.AN_EVENT_STILL_AHEAD_WOULD_MOVE_INTO_THE_YEAR_JUST_ENDED);
+		assertThat(howMany("race")).isEqualTo(races);
 		assertThat(db.sql("select date from btl_event where id = ?").param(theNewYears)
-				.query(LocalDate.class).single()).isEqualTo(LocalDate.of(2027, 12, 31));
+				.query(LocalDate.class).single()).isEqualTo(LocalDate.of(2028, 1, 1));
 		assertThat(db.sql("select slug from btl_event where id = ?").param(theNewYears)
-				.query(String.class).single())
-				.as("the event answers at the address of the year its first race is of")
-				.isEqualTo(EventAddress.of("Novogodisnja", LocalDate.of(2027, 12, 31)))
-				.isNotEqualTo("novogodisnja-2028");
-		assertThat(db.sql("select count(*) from race where event_id = ? and date = date '2027-12-31'")
-				.param(theNewYears).query(Integer.class).single()).isEqualTo(1);
-		assertThat(resultsOf(VERA)).hasSize(1);
+				.query(String.class).single()).isEqualTo("novogodisnja-2028");
+		assertThat(resultsOf(VERA)).isEmpty();
 
 		/* While a new event of that year, that morning, is a season still open. */
 		assertThat(onAnEvent(RESULTS_MODERATOR, onANewEvent("Silvestarska trka", "2027-12-31", "Ohrid", "MK",
@@ -1461,7 +1464,9 @@ class ResultsByTheLeagueApiTest {
 
 	/**
 	 * THE WINDOW ENDS AT TEN O'CLOCK, and a minute either side of it answers differently, in both
-	 * directions of the two years. At 09:59:59 Belgrade the race goes on the event of the other year;
+	 * directions of the two years. At 09:59:59 Belgrade the race of the year just ended is refused on the
+	 * event of the new year, which is ahead (07.11.2026: dated today at the earliest), and the race of the
+	 * new year goes on the event of the other year;
 	 * at 10:00:00 the season just ended is closed, so the two years are no longer both open and the save
 	 * is refused with the sentence for a day outside the event's year in both directions: the race of the year just ended, on the event
 	 * of the new year, and the race of the new year, on the event of the old one. (Until 21.10.2026 the
@@ -1483,10 +1488,11 @@ class ResultsByTheLeagueApiTest {
 		long beforeNew = event("granica-2027-b", "Granica b", LocalDate.of(2027, 12, 31));
 		race(beforeNew, "Silvestarska b", LocalDate.of(2027, 12, 31), "free", 0, "0", 0, 0);
 
-		assertThat(onAnEvent(RESULTS_MODERATOR, onTheEvent(before,
+		assertThat(reasonIn(onAnEvent(RESULTS_MODERATOR, onTheEvent(before,
 				newRace("Silvestarska", "2027-12-31", "free", null, null, null, null),
-				row(VERA, "5.00", 1, 1, AN_HOUR))).getStatus())
-				.as("09:59:59, a race of the year just ended on an event of the new year").isEqualTo(201);
+				row(VERA, "5.00", 1, 1, AN_HOUR)))))
+				.as("09:59:59, a race of the year just ended on an event of the new year, which is ahead")
+				.isEqualTo(ResultsByTheLeagueApi.AN_EVENT_STILL_AHEAD_WOULD_MOVE_INTO_THE_YEAR_JUST_ENDED);
 		assertThat(onAnEvent(RESULTS_MODERATOR, onTheEvent(beforeNew,
 				newRace("Prva u godini", "2028-01-01", "free", null, null, null, null),
 				row(DRAGAN, "5.00", 1, 1, AN_HOUR))).getStatus())
@@ -1520,6 +1526,85 @@ class ResultsByTheLeagueApiTest {
 	}
 
 	/**
+	 * AN EVENT THAT IS STILL AHEAD IS NOT PULLED BACK INTO THE YEAR JUST ENDED (PDL P9, owner, 06.11.2026,
+	 * „U prozoru 1. januara od 00:00 do 10:00 server odbija trku iz stare godine na događaju koji još
+	 * predstoji”): the event is dated tomorrow, the race is New Year's Eve, and the save is refused with
+	 * the sentence of its own while the event keeps its day and its address and nothing is written.
+	 *
+	 * <p>The event is dated 2 January and not the day of the owner's example (5 January) because tomorrow is
+	 * the nearest day that is ahead: a reading of „predstoji" that wanted two days would let this one
+	 * through. The last second of the window is asked, and the second it closes is
+	 * {@link #theMorningAfterTenTheEventAheadIsRefusedAsAnyEventOfAnotherYearIs}.
+	 */
+	@Test
+	void onNewYearsMorningARaceOfTheYearJustEndedIsRefusedOnAnEventThatIsStillAhead() throws Exception {
+		clock.moveTo(Instant.parse("2028-01-01T08:59:59Z"));
+
+		long tomorrows = event("noc-2028", "Noc", LocalDate.of(2028, 1, 2));
+		race(tomorrows, "Jutarnja", LocalDate.of(2028, 1, 2), "free", 0, "0", 0, 0);
+		int races = howMany("race");
+
+		MockHttpServletResponse refused = onAnEvent(RESULTS_MODERATOR, onTheEvent(tomorrows,
+				newRace("Silvestarska", "2027-12-31", "free", null, null, null, null),
+				row(VERA, "5.00", 1, 1, AN_HOUR)));
+
+		assertThat(refused.getStatus()).isEqualTo(409);
+		assertThat(reasonIn(refused))
+				.isEqualTo(ResultsByTheLeagueApi.AN_EVENT_STILL_AHEAD_WOULD_MOVE_INTO_THE_YEAR_JUST_ENDED)
+				.isEqualTo("anEventStillAheadWouldMoveIntoTheYearJustEnded");
+		assertThat(howMany("race")).isEqualTo(races);
+		assertThat(db.sql("select date from btl_event where id = ?").param(tomorrows)
+				.query(LocalDate.class).single()).isEqualTo(LocalDate.of(2028, 1, 2));
+		assertThat(db.sql("select slug from btl_event where id = ?").param(tomorrows)
+				.query(String.class).single()).isEqualTo("noc-2028");
+		assertThat(resultsOf(VERA)).isEmpty();
+	}
+
+	/**
+	 * THE SAME EVENT AT TEN O'CLOCK IS REFUSED AS ANY EVENT OF ANOTHER YEAR IS: the window is over, so the
+	 * sentence is the one for a day outside the event's year and not the one for an event still ahead.
+	 * Asked of the second the window closes, so a boundary written a second late answers the other sentence.
+	 */
+	@Test
+	void theMorningAfterTenTheEventAheadIsRefusedAsAnyEventOfAnotherYearIs() throws Exception {
+		clock.moveTo(Instant.parse("2028-01-01T09:00:00Z"));
+
+		long tomorrows = event("noc-2028", "Noc", LocalDate.of(2028, 1, 2));
+		race(tomorrows, "Jutarnja", LocalDate.of(2028, 1, 2), "free", 0, "0", 0, 0);
+
+		MockHttpServletResponse refused = onAnEvent(RESULTS_MODERATOR, onTheEvent(tomorrows,
+				newRace("Silvestarska", "2027-12-31", "free", null, null, null, null),
+				row(VERA, "5.00", 1, 1, AN_HOUR)));
+
+		assertThat(refused.getStatus()).isEqualTo(409);
+		assertThat(reasonIn(refused)).isEqualTo(ResultsByTheLeagueApi.THE_DAY_IS_NOT_IN_THE_EVENTS_YEAR);
+	}
+
+	/**
+	 * AND A RACE OF THE NEW YEAR STILL GOES ON AN EVENT THAT IS AHEAD, in the same ten hours: the owner's
+	 * sentence is about a race „iz stare godine”. The event begins on the race, which is the first of the
+	 * year, and keeps its address.
+	 */
+	@Test
+	void onNewYearsMorningARaceOfTheNewYearGoesOnAnEventThatIsStillAhead() throws Exception {
+		clock.moveTo(Instant.parse("2028-01-01T08:00:00Z"));
+		membership(DRAGAN, 2028);
+
+		long tomorrows = event("noc-2028", "Noc", LocalDate.of(2028, 1, 2));
+		race(tomorrows, "Jutarnja", LocalDate.of(2028, 1, 2), "free", 0, "0", 0, 0);
+
+		MockHttpServletResponse saved = onAnEvent(RESULTS_MODERATOR, onTheEvent(tomorrows,
+				newRace("Prva u godini", "2028-01-01", "free", null, null, null, null),
+				row(DRAGAN, "5.00", 1, 1, AN_HOUR)));
+
+		assertThat(saved.getStatus()).isEqualTo(201);
+		assertThat(db.sql("select date from btl_event where id = ?").param(tomorrows)
+				.query(LocalDate.class).single()).isEqualTo(LocalDate.of(2028, 1, 1));
+		assertThat(db.sql("select slug from btl_event where id = ?").param(tomorrows)
+				.query(String.class).single()).isEqualTo("noc-2028");
+	}
+
+	/**
 	 * AN EVENT OF A SEASON THAT IS NOT OPEN IS NOT PUT A RACE ON IN THOSE TEN HOURS EITHER, and a gap of
 	 * a year is not "another year" in the owner's sense: on the morning of 1 January 2028 the seasons open
 	 * are 2027 and 2028, so an event of 2026 (a season before the league, not open) is refused
@@ -1548,13 +1633,14 @@ class ResultsByTheLeagueApiTest {
 	}
 
 	/**
-	 * THE RACE WOULD MOVE THE EVENT ONTO AN ADDRESS ANOTHER EVENT HOLDS, which the same morning makes
-	 * possible and no other time does: the event of the new year would begin on New Year's Eve and answer
-	 * where an event of the same name already stands. It is refused with its own sentence (409), as the
-	 * approval of a run and the administration refuse the same move, and nothing is written.
+	 * THE EVENT OF THE NEW YEAR IS REFUSED THE RACE OF THE YEAR JUST ENDED EVEN WHERE AN EVENT OF THE SAME NAME HOLDS
+	 * THE ADDRESS OF THAT YEAR. This was the case of the sentence „Trka bi pomerila događaj u godinu u kojoj događaj sa
+	 * istim nazivom već postoji”, which this road answered until 07.11.2026: the move it answered is the one the
+	 * decision of that day refuses at every time of the year, so the answer is the one for an event that is ahead,
+	 * and the road has no sentence of the other kind left. Nothing is written.
 	 */
 	@Test
-	void aRaceThatWouldMoveTheEventOntoTheAddressOfAnotherIsRefusedAndWritesNothing() throws Exception {
+	void aRaceThatWouldHaveMovedTheEventOntoTheAddressOfAnotherIsRefusedAsAnEventThatIsAhead() throws Exception {
 		clock.moveTo(Instant.parse("2028-01-01T08:00:00Z"));
 
 		long theNewYears = event("novogodisnja-2028", "Novogodisnja", LocalDate.of(2028, 1, 1));
@@ -1566,13 +1652,77 @@ class ResultsByTheLeagueApiTest {
 				row(VERA, "5.00", 1, 1, AN_HOUR)));
 
 		assertThat(refused.getStatus()).isEqualTo(409);
-		assertThat(reasonIn(refused)).isEqualTo("theEventWouldMoveOntoAnother");
+		assertThat(reasonIn(refused))
+				.isEqualTo(ResultsByTheLeagueApi.AN_EVENT_STILL_AHEAD_WOULD_MOVE_INTO_THE_YEAR_JUST_ENDED);
 		assertThat(howMany("race")).isEqualTo(races);
 		assertThat(db.sql("select date from btl_event where id = ?").param(theNewYears)
 				.query(LocalDate.class).single()).isEqualTo(LocalDate.of(2028, 1, 1));
 		assertThat(db.sql("select slug from btl_event where id = ?").param(theNewYears)
 				.query(String.class).single()).isEqualTo("novogodisnja-2028");
 		assertThat(resultsOf(VERA)).isEmpty();
+	}
+
+	/**
+	 * AN EVENT WITH NO RACE MOVES FORWARD, AND ONTO AN ADDRESS ANOTHER EVENT HOLDS IS REFUSED (found on the review
+	 * of PR 700, where the refusal had been taken away as unreachable and the answer was a 500 off
+	 * {@code btl_event_slug_unique}). The event "Prazna" has no race and carries the day 31 December; an event of
+	 * the same name already answers at {@code prazna-2028}. A race of 1 January given to the empty one makes it begin
+	 * on that day, in the new year, so its address would be that one. It is not ahead (it is dated yesterday), so the
+	 * question of the event that is ahead does not see it; the address does. Nothing is written. The other direction,
+	 * backwards, has no such case: an event that is not ahead and has no race is dated before today, which on that
+	 * morning is the year just ended, and a race that would take it further back is of a season not open, refused
+	 * by the day not being in the event's year.
+	 */
+	@Test
+	void anEventWithNoRaceThatWouldMoveForwardOntoTheAddressOfAnotherIsRefusedAndWritesNothing()
+			throws Exception {
+		clock.moveTo(Instant.parse("2028-01-01T08:00:00Z"));
+		membership(DRAGAN, 2028);
+
+		long empty = event("prazna-2027", "Prazna", LocalDate.of(2027, 12, 31));
+		event("prazna-2028", "Prazna", LocalDate.of(2028, 5, 5));
+		int races = howMany("race");
+		MockHttpServletResponse refused = onAnEvent(RESULTS_MODERATOR, onTheEvent(empty,
+				newRace("Prva u godini", "2028-01-01", "free", null, null, null, null),
+				row(DRAGAN, "5.00", 1, 1, AN_HOUR)));
+
+		assertThat(refused.getStatus()).isEqualTo(409);
+		assertThat(reasonIn(refused)).isEqualTo(ResultsByTheLeagueApi.THE_EVENT_WOULD_MOVE_ONTO_ANOTHER)
+				.isEqualTo("theEventWouldMoveOntoAnother");
+		assertThat(howMany("race")).isEqualTo(races);
+		assertThat(db.sql("select date from btl_event where id = ?").param(empty).query(LocalDate.class)
+				.single()).isEqualTo(LocalDate.of(2027, 12, 31));
+		assertThat(db.sql("select slug from btl_event where id = ?").param(empty).query(String.class)
+				.single()).isEqualTo("prazna-2027");
+		assertThat(resultsOf(DRAGAN)).isEmpty();
+	}
+
+	/**
+	 * IN THE MIDDLE OF JUNE THE EVENT THAT IS AHEAD IS REFUSED THE RACE OF THE YEAR JUST ENDED TOO (PDL P9, owner,
+	 * 07.11.2026, „odbija se uvek ... ne samo u prozoru 1.1."), and here it is the year of the day that refuses it:
+	 * outside the ten hours the race of another year than the event's is answered by the sentence for a day
+	 * outside the event's year, which is asked before the question of the event that is ahead and says the same
+	 * thing in other words. Held as the refusal it is, so that a road which stopped asking the first would still
+	 * be stopped by the second, and the event is neither moved nor given a race.
+	 */
+	@Test
+	void inJuneARaceOfTheYearJustEndedIsRefusedOnAnEventThatIsAhead() throws Exception {
+		clock.moveTo(Instant.parse("2028-06-15T10:00:00Z"));
+
+		long ahead = event("jesen-2028", "Jesen", LocalDate.of(2028, 9, 1));
+		race(ahead, "Jesenja", LocalDate.of(2028, 9, 1), "free", 0, "0", 0, 0);
+		int races = howMany("race");
+		MockHttpServletResponse refused = onAnEvent(RESULTS_MODERATOR, onTheEvent(ahead,
+				newRace("Silvestarska", "2027-12-31", "free", null, null, null, null),
+				row(VERA, "5.00", 1, 1, AN_HOUR)));
+
+		assertThat(refused.getStatus()).isEqualTo(409);
+		assertThat(reasonIn(refused)).isEqualTo(ResultsByTheLeagueApi.THE_DAY_IS_NOT_IN_THE_EVENTS_YEAR);
+		assertThat(howMany("race")).isEqualTo(races);
+		assertThat(db.sql("select date from btl_event where id = ?").param(ahead).query(LocalDate.class)
+				.single()).isEqualTo(LocalDate.of(2028, 9, 1));
+		assertThat(db.sql("select slug from btl_event where id = ?").param(ahead).query(String.class)
+				.single()).isEqualTo("jesen-2028");
 	}
 
 	/**

@@ -1544,6 +1544,12 @@ export function AdminEvents() {
                                whose. The cascade joins by the race's own key, which
                                answers for one race and no other. */
                             deleteRecord={() => deleteOne(one)}
+                            /* THE SENTENCE OF AN EARLIER REFUSAL OF THIS ROW GOES WHEN THE
+                               READER PUTS THE QUESTION AWAY (registry item 311), and only this
+                               row's: another row's refusal is still the last word about it. */
+                            onKeep={() =>
+                              setRefusedDelete((was) => (was !== null && was.id === one.id ? null : was))
+                            }
                           />
                           {/* Beside the row it was pressed on, because a refusal that
                               named no row would be a sentence about one of sixty. The

@@ -625,7 +625,7 @@ describe('the reasons the server can name', () => {
        saving an event or one of its mornings. The race's thirteenth arrived 10.10.2026 with
        the owner's answer that a race carrying an approved result keeps its kind (PDL P4). */
     ['EventWriteApi.java', [WHEN_WRITING_AN_EVENT], 11],
-    ['RaceWriteApi.java', [WHEN_WRITING_A_RACE], 13],
+    ['RaceWriteApi.java', [WHEN_WRITING_A_RACE], 14],
     /* THE LEAGUE'S OWN ENTRY OF RESULTS FROM THE EVENT PAGE, added 19.10.2026 with the screen that
        meets it (`event/EnterResults.tsx`, PDL P9, 18.10.2026). Eight constants and six reasons then, ten reasons now; the two
        that are not are in `NOT_A_REASON`. The route also answers with three words it borrows by name
@@ -640,8 +640,13 @@ describe('the reasons the server can name', () => {
        (`theDayIsBeforeTheLeague`), went with the owner's decision that the screen takes any year up to
        today (PDL P9, 21.10.2026). Thirteen since 22.10.2026: a new race on an event of the calendar whose
        day is not in that event's year (`theDayIsNotInTheEventsYear`, PDL „Ekran 7b: dan trke mora biti u
-       godini izabranog događaja”), which until then was answered as a form not filled in. */
-    ['ResultsByTheLeagueApi.java', [WHEN_THE_LEAGUE_ENTERS_RESULTS], 13],
+       godini izabranog događaja”), which until then was answered as a form not filled in. Fourteen since
+       06.11.2026: `anEventStillAheadWouldMoveIntoTheYearJustEnded`, the one thing the owner's answer of
+       06.11.2026 takes back of the morning of 1 January (PDL P9, „server odbija trku iz stare godine na
+       događaju koji još predstoji”); `RaceWriteApi` has the same one, its fourteenth.
+       (07.11.2026: `theEventWouldMoveOntoAnother` stays, since an event with no race moves forward into the
+       next year's address when its first race is entered; the review of PR 700 found it.) */
+    ['ResultsByTheLeagueApi.java', [WHEN_THE_LEAGUE_ENTERS_RESULTS], 14],
     /* ADDED 25.10.2026 WITH THE BANK STATEMENT ON THE PAYMENTS SCREEN (PDL 24.10.2026). Seven constants:
        four refusals, answered by the statement box, and the three states of a line in `NOT_A_REASON`. */
     /* NINE SINCE 25.10.2026: „Nije članarina" names one refusal of its own, and a fourth state. */
