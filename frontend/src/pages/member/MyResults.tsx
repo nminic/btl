@@ -404,6 +404,11 @@ function Mine({ me }: { me: string }) {
                                    promise of the deletion, or nothing where another one is
                                    already out and this press is refused (`takeBack`). */
                                 onDelete={() => takeBack(result.id)}
+                                /* THE SENTENCE OF AN EARLIER REFUSAL GOES WHEN THE READER PUTS THE
+                                   QUESTION AWAY (registry item 311, `TeamDetail`): it is drawn once
+                                   above the table, and it was said about a deletion he has just taken
+                                   back. Not told when an answer closes the sheet. */
+                                onKeep={() => setRefusal(null)}
                               />
                             </div>
                           </td>

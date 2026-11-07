@@ -440,6 +440,69 @@ describe.each(SCREENS)('the sheet that asks before $name delete a row', (one) =>
     server.stop()
   }, SLOW)
 
+  describe('the sentence of a refusal, when the reader asks again', () => {
+    /* REGISTRY ITEM 311 (`TeamDetail.tsx`), carried to the lists of the administration. A refusal closes
+       the sheet and the sentence stands beside „Obriši" (owner, 02.10.2026). The reader who presses
+       „Obriši" again and then „Odustani" has taken the deletion back, and the sentence about the attempt
+       before it was read out as an alert about nothing. Asked of the ROW that was pressed, and a second
+       case asks the other way: a sentence beside another row is still the last word about that row. */
+    async function refusedOnTheSecondRow() {
+      const server = serverThat((_, init) => (init?.method === 'DELETE' ? answeredWith(404) : null))
+      const user = setupUser()
+
+      renderAt(one.at, 'superadmin')
+
+      const rows = await twoRows()
+
+      await user.click(rows.second)
+      await sayYes(user, one.asks)
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+      expect(await within(rows.row).findByRole('alert')).toHaveTextContent('Server je odgovorio brojem 404')
+
+      return { server, user, ...rows }
+    }
+
+    it('takes it away when the question is put away', async () => {
+      const { server, user, second, row } = await refusedOnTheSecondRow()
+
+      await user.click(second)
+      await user.click(within(await theSheet(one.asks)).getByRole('button', { name: 'Odustani' }))
+
+      expect(screen.queryByRole('dialog')).toBeNull()
+      expect(within(row).queryByRole('alert')).toBeNull()
+      expect(screen.queryByText(/Server je odgovorio brojem 404/)).toBeNull()
+      /* AND NOTHING WAS DELETED OR ASKED AGAIN BY PUTTING IT AWAY. */
+      expect(deletions(server.asked)).toHaveLength(1)
+
+      server.stop()
+    }, SLOW)
+
+    it('leaves the sentence beside another row when the question is put away over this one', async () => {
+      const { server, user, first, row } = await refusedOnTheSecondRow()
+
+      await user.click(first)
+      await user.click(within(await theSheet(one.asks)).getByRole('button', { name: 'Odustani' }))
+
+      expect(screen.queryByRole('dialog')).toBeNull()
+      expect(within(row).getByRole('alert')).toHaveTextContent('Server je odgovorio brojem 404')
+
+      server.stop()
+    }, SLOW)
+
+    it('keeps it while the question is asked again, and takes it back only when it is put away', async () => {
+      /* Asking again is not putting away: the sentence is still the last answer until the reader says no
+         or the new answer replaces it. */
+      const { server, user, second, row } = await refusedOnTheSecondRow()
+
+      await user.click(second)
+      await theSheet(one.asks)
+
+      expect(within(row).getByRole('alert')).toHaveTextContent('Server je odgovorio brojem 404')
+
+      server.stop()
+    }, SLOW)
+  })
+
   it('takes the sentence of a deletion back when the next one is refused, and when a form is opened', async () => {
     let answers = 0
     const server = serverThat((_, init) => {

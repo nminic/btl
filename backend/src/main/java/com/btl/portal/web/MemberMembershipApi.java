@@ -226,6 +226,10 @@ class MemberMembershipApi {
 	 * first, then what the request says, then what the season holds.
 	 */
 	private ResponseEntity<?> cancelling(String memberNumber, Cancelling typed, WhoIsAsking.Member asking) {
+		/* THE JOB OF 1 JANUARY IS NOT RUNNING WHILE THIS CANCELLATION IS, AND THE OTHER WAY ROUND: the lock
+		   comes before the row of the member, in the order the job takes them in. */
+		teamsAndPairs.holdingTheFreezeStill();
+
 		Optional<Long> member = locked(memberNumber);
 
 		if (member.isEmpty()) {
