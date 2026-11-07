@@ -1,5 +1,6 @@
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { SLOW } from './slow'
 import { drawing, whoDraws } from './whoDraws'
 
 /**
@@ -94,7 +95,7 @@ describe('the whole of the portal', () => {
     expect(found.draws.length).toBeGreaterThan(3)
     expect(found.draws).toContain('pages/TeamDetail.tsx')
     expect(found.reExports).toEqual([])
-  })
+  }, SLOW)
 
   it('leaves out the module that defines it and the ones it is told to', () => {
     const everyone = whoDraws(SHEET, 'DeleteSheet')
@@ -104,5 +105,5 @@ describe('the whole of the portal', () => {
     expect(whoDraws(SHEET, 'DeleteSheet', ['pages/admin/EntityEditor.tsx']).draws).not.toContain(
       'pages/admin/EntityEditor.tsx',
     )
-  })
+  }, SLOW)
 })
