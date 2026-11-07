@@ -388,6 +388,14 @@ class AMembershipWrittenAsTheSeasonBeginsTest {
 	void aRoadThatMeetsTheJobWaitsForItAndIsStampedAfterTheCut(Road road) throws Exception {
 		clock.moveTo(BEFORE_THE_CUT);
 
+		/* HE JOINED HIS TEAM IN THE WINDOW FOR 2028 AND HOLDS NOTHING ELSE, so the snapshot of 2027 writes no
+		   row that names him and the job takes no lock on his row: the only thing that can put the road and the
+		   job in order is the lock the portal takes on purpose. A member of 2027 is serialized by the foreign
+		   keys of the snapshot (measured: with the lock taken away from a road, this case stayed green while he
+		   held 2027), which is the other order above. */
+		db.sql("delete from membership where competitor_id = ? and season = 2027").param(him).update();
+		db.sql("update team_membership set season_from = 2028 where competitor_id = ?").param(him).update();
+
 		Callable<MockHttpServletResponse> sending = prepared(road);
 
 		CountDownLatch jobHoldsItsRow = new CountDownLatch(1);
