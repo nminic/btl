@@ -164,11 +164,16 @@ function RulebookPage({ pages, page }: { pages: StaticPage[]; page: StaticPage }
 
   return (
     /* The language of the words, the page's own and not the address's - the same attribute
-       and the same reason as `pages/StaticPage.tsx`, which says it in full. It goes on the
-       article and therefore over the contents beside the text as well, which is right: those
-       headings are the sections' own headings and fall back with them. */
-    <article className="rulebook" lang={page.language}>
-      <h1>{page.title}</h1>
+       and the same reason as `pages/StaticPage.tsx`, which says it in full. NOT on the article:
+       the article also holds the portal's own words ("On this page", the button that opens the
+       list, the name of the navigation) and two drawings from its dictionary (the fee schedule,
+       the wall of ducats), and on a page that fell back to Serbian under /en an article marked
+       `sr` made a screen reader read all of those English words with Serbian phonetics, the
+       fault the attribute exists to prevent turned the other way round (WCAG 2.2 AA 3.1.2). It
+       stands on each element that holds the record's words instead: the title, the headings
+       of the contents, the headings of the sections, and the text. */
+    <article className="rulebook">
+      <h1 lang={page.language}>{page.title}</h1>
 
       <div className="rulebook__layout">
         {/* On a phone the list of sections would push the text off the first
@@ -197,6 +202,7 @@ function RulebookPage({ pages, page }: { pages: StaticPage[]; page: StaticPage }
                   <a
                     className="rulebook__toc-link"
                     href={`#${section.id}`}
+                    lang={page.language}
                     /* Colour alone would leave the reader who cannot see it
                        without the answer, so the state is in the markup too. */
                     aria-current={current === section.id ? 'location' : undefined}
@@ -222,12 +228,12 @@ function RulebookPage({ pages, page }: { pages: StaticPage[]; page: StaticPage }
                  the scroll position, and only a focusable element does that. */
               tabIndex={-1}
             >
-              <h2>{section.heading}</h2>
+              <h2 lang={page.language}>{section.heading}</h2>
               {/* The text, and the drawing the record names beside it (owner,
                   04.08.2026). Drawn through the one component both screens of
                   written pages share, so a section cannot mean one thing here
                   and another on the terms (src/components/PageSectionBody.tsx). */}
-              <PageSectionBody section={section} />
+              <PageSectionBody section={section} language={page.language} />
             </section>
           ))}
         </div>

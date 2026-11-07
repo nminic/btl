@@ -40,14 +40,22 @@ export function StaticPage({ slug }: { slug: string }) {
              to Serbian with no notice (ADL, 18.09.2026). This attribute is not a notice - no
              reader sees it - and without it a screen reader on /en would read that Serbian
              with English phonetics, which `i18n/config.ts` names as unintelligible (WCAG 2.2
-             AA 3.1.2). On the title too, because the title falls back with the blocks. */
-          <article className="page" lang={page.language}>
-            <h1>{page.title}</h1>
+             AA 3.1.2). On the title too, because the title falls back with the blocks.
+
+             NOT ON THE ARTICLE. The article also holds the drawings a section names (the fee
+             schedule, the wall of ducats), and those are drawn from the portal's dictionary in
+             the language of the address: an article marked `sr` over them on a page that fell
+             back to Serbian under /en has a screen reader read English column headings with
+             Serbian phonetics. So the attribute stands on each element that holds the record's
+             words - the title, the heading of a section, and the text (`PageSectionBody`) - and
+             on nothing that holds a drawing. */
+          <article className="page">
+            <h1 lang={page.language}>{page.title}</h1>
 
             {sectionsOf(pages, page).map((section) => (
               <section key={section.heading}>
-                <h2>{section.heading}</h2>
-                <PageSectionBody section={section} />
+                <h2 lang={page.language}>{section.heading}</h2>
+                <PageSectionBody section={section} language={page.language} />
               </section>
             ))}
           </article>

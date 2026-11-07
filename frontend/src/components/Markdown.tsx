@@ -244,6 +244,7 @@ export function Markdown({
   under = 2,
   addresses = false,
   outward = false,
+  lang,
 }: {
   text: string
   /**
@@ -257,12 +258,19 @@ export function Markdown({
   addresses?: Bare
   /** Whether a link to another site opens in a window of its own. */
   outward?: boolean
+  /**
+   * The language the words are written in, where that is not the language of the screen around
+   * them (WCAG 2.2 AA 3.1.2). Put on the element that holds the words and on nothing wider, so a
+   * drawing standing beside them, which is the portal's own and speaks the screen's language, is
+   * never inside it.
+   */
+  lang?: string
 }) {
   const { locale } = useI18n()
   const reading = { locale, outward }
 
   return (
-    <div className="markdown">
+    <div className="markdown" lang={lang}>
       {blocksOf(text).map((item, key) => block(item, key, reading, under, addresses))}
     </div>
   )
