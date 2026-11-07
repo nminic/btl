@@ -274,6 +274,18 @@ class ResultsByTheLeagueApi {
 	static final String THE_EVENT_WOULD_MOVE_ONTO_ANOTHER = "theEventWouldMoveOntoAnother";
 
 	/**
+	 * A RACE OF THE YEAR JUST ENDED WOULD PULL AN EVENT THAT IS STILL AHEAD BACK INTO THAT YEAR: „Događaj
+	 * tek predstoji, a trka je iz prošle godine, pa bi se događaj pomerio u prošlu godinu i izgubio najave
+	 * dolaska. Izaberi događaj iz prošle godine ili upiši nov.” PDL P9, owner, 06.11.2026, „U prozoru 1.
+	 * januara od 00:00 do 10:00 server odbija trku iz stare godine na događaju koji još predstoji”, which
+	 * narrows his decision of 20.10.2026 ({@link #THE_EVENT_WOULD_MOVE_ONTO_ANOTHER} says what that one
+	 * allows) to the events that are not ahead; {@link TheDayOfAnEvent#pullsAnEventStillAheadIntoTheYearJustEnded}
+	 * is the question. The same literal {@code RaceWriteApi} holds. 409.
+	 */
+	static final String AN_EVENT_STILL_AHEAD_WOULD_MOVE_INTO_THE_YEAR_JUST_ENDED =
+			"anEventStillAheadWouldMoveIntoTheYearJustEnded";
+
+	/**
 	 * A NEW RACE ON AN EVENT OF THE CALENDAR WHOSE DAY IS NOT IN THAT EVENT'S YEAR: „Dan trke nije u godini
 	 * izabranog događaja.” PDL, owner, 22.10.2026, „Ekran 7b: dan trke mora biti u godini izabranog
 	 * događaja” (the words were the coordinator's, approved by the choice), with his answer of the same day
@@ -668,6 +680,14 @@ class ResultsByTheLeagueApi {
 		if (event.isPresent()) {
 			TheDayOfAnEvent.Standing there = event.get();
 			LocalDate beginning = TheDayOfAnEvent.theDayItWillBeginOn(db, there, null, day);
+
+			/* AN EVENT STILL AHEAD IS NOT PULLED BACK INTO THE YEAR JUST ENDED (PDL P9, 06.11.2026), asked
+			   before the address because the move into the year before is what would change it. */
+			if (TheDayOfAnEvent.pullsAnEventStillAheadIntoTheYearJustEnded(there, beginning, now())) {
+				return Done.only(no(HttpStatus.CONFLICT,
+						AN_EVENT_STILL_AHEAD_WOULD_MOVE_INTO_THE_YEAR_JUST_ENDED));
+			}
+
 			String address = TheDayOfAnEvent.addressFor(there, beginning);
 
 			/* THE RACE MOVES THE EVENT INTO THE YEAR BEFORE, where another event of that name may stand

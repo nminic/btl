@@ -1520,6 +1520,85 @@ class ResultsByTheLeagueApiTest {
 	}
 
 	/**
+	 * AN EVENT THAT IS STILL AHEAD IS NOT PULLED BACK INTO THE YEAR JUST ENDED (PDL P9, owner, 06.11.2026,
+	 * „U prozoru 1. januara od 00:00 do 10:00 server odbija trku iz stare godine na događaju koji još
+	 * predstoji”): the event is dated tomorrow, the race is New Year's Eve, and the save is refused with
+	 * the sentence of its own while the event keeps its day and its address and nothing is written.
+	 *
+	 * <p>The event is dated 2 January and not the day of the owner's example (5 January) because tomorrow is
+	 * the nearest day that is ahead: a reading of „predstoji" that wanted two days would let this one
+	 * through. The last second of the window is asked, and the second it closes is
+	 * {@link #theMorningAfterTenTheEventAheadIsRefusedAsAnyEventOfAnotherYearIs}.
+	 */
+	@Test
+	void onNewYearsMorningARaceOfTheYearJustEndedIsRefusedOnAnEventThatIsStillAhead() throws Exception {
+		clock.moveTo(Instant.parse("2028-01-01T08:59:59Z"));
+
+		long tomorrows = event("noc-2028", "Noc", LocalDate.of(2028, 1, 2));
+		race(tomorrows, "Jutarnja", LocalDate.of(2028, 1, 2), "free", 0, "0", 0, 0);
+		int races = howMany("race");
+
+		MockHttpServletResponse refused = onAnEvent(RESULTS_MODERATOR, onTheEvent(tomorrows,
+				newRace("Silvestarska", "2027-12-31", "free", null, null, null, null),
+				row(VERA, "5.00", 1, 1, AN_HOUR)));
+
+		assertThat(refused.getStatus()).isEqualTo(409);
+		assertThat(reasonIn(refused))
+				.isEqualTo(ResultsByTheLeagueApi.AN_EVENT_STILL_AHEAD_WOULD_MOVE_INTO_THE_YEAR_JUST_ENDED)
+				.isEqualTo("anEventStillAheadWouldMoveIntoTheYearJustEnded");
+		assertThat(howMany("race")).isEqualTo(races);
+		assertThat(db.sql("select date from btl_event where id = ?").param(tomorrows)
+				.query(LocalDate.class).single()).isEqualTo(LocalDate.of(2028, 1, 2));
+		assertThat(db.sql("select slug from btl_event where id = ?").param(tomorrows)
+				.query(String.class).single()).isEqualTo("noc-2028");
+		assertThat(resultsOf(VERA)).isEmpty();
+	}
+
+	/**
+	 * THE SAME EVENT AT TEN O'CLOCK IS REFUSED AS ANY EVENT OF ANOTHER YEAR IS: the window is over, so the
+	 * sentence is the one for a day outside the event's year and not the one for an event still ahead.
+	 * Asked of the second the window closes, so a boundary written a second late answers the other sentence.
+	 */
+	@Test
+	void theMorningAfterTenTheEventAheadIsRefusedAsAnyEventOfAnotherYearIs() throws Exception {
+		clock.moveTo(Instant.parse("2028-01-01T09:00:00Z"));
+
+		long tomorrows = event("noc-2028", "Noc", LocalDate.of(2028, 1, 2));
+		race(tomorrows, "Jutarnja", LocalDate.of(2028, 1, 2), "free", 0, "0", 0, 0);
+
+		MockHttpServletResponse refused = onAnEvent(RESULTS_MODERATOR, onTheEvent(tomorrows,
+				newRace("Silvestarska", "2027-12-31", "free", null, null, null, null),
+				row(VERA, "5.00", 1, 1, AN_HOUR)));
+
+		assertThat(refused.getStatus()).isEqualTo(409);
+		assertThat(reasonIn(refused)).isEqualTo(ResultsByTheLeagueApi.THE_DAY_IS_NOT_IN_THE_EVENTS_YEAR);
+	}
+
+	/**
+	 * AND A RACE OF THE NEW YEAR STILL GOES ON AN EVENT THAT IS AHEAD, in the same ten hours: the owner's
+	 * sentence is about a race „iz stare godine”. The event begins on the race, which is the first of the
+	 * year, and keeps its address.
+	 */
+	@Test
+	void onNewYearsMorningARaceOfTheNewYearGoesOnAnEventThatIsStillAhead() throws Exception {
+		clock.moveTo(Instant.parse("2028-01-01T08:00:00Z"));
+		membership(DRAGAN, 2028);
+
+		long tomorrows = event("noc-2028", "Noc", LocalDate.of(2028, 1, 2));
+		race(tomorrows, "Jutarnja", LocalDate.of(2028, 1, 2), "free", 0, "0", 0, 0);
+
+		MockHttpServletResponse saved = onAnEvent(RESULTS_MODERATOR, onTheEvent(tomorrows,
+				newRace("Prva u godini", "2028-01-01", "free", null, null, null, null),
+				row(DRAGAN, "5.00", 1, 1, AN_HOUR)));
+
+		assertThat(saved.getStatus()).isEqualTo(201);
+		assertThat(db.sql("select date from btl_event where id = ?").param(tomorrows)
+				.query(LocalDate.class).single()).isEqualTo(LocalDate.of(2028, 1, 1));
+		assertThat(db.sql("select slug from btl_event where id = ?").param(tomorrows)
+				.query(String.class).single()).isEqualTo("noc-2028");
+	}
+
+	/**
 	 * AN EVENT OF A SEASON THAT IS NOT OPEN IS NOT PUT A RACE ON IN THOSE TEN HOURS EITHER, and a gap of
 	 * a year is not "another year" in the owner's sense: on the morning of 1 January 2028 the seasons open
 	 * are 2027 and 2028, so an event of 2026 (a season before the league, not open) is refused

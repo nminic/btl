@@ -510,6 +510,18 @@ class VerificationWriteApi {
 			+ " godinu u kojoj događaj sa istim nazivom već postoji. Izaberi taj događaj.";
 
 	/**
+	 * THE RACE WOULD PULL AN EVENT THAT IS STILL AHEAD BACK INTO THE YEAR JUST ENDED.
+	 *
+	 * <p>PDL P9, owner, 06.11.2026: „U prozoru 1. januara od 00:00 do 10:00 server odbija trku iz stare
+	 * godine na događaju koji još predstoji", which narrows his decision of 20.10.2026 to the events that
+	 * are not ahead ({@link TheDayOfAnEvent#pullsAnEventStillAheadIntoTheYearJustEnded}). {@code RaceWriteApi}
+	 * and {@code ResultsByTheLeagueApi} refuse the same move; the sentence names the way out. 409.
+	 */
+	private static final String AN_EVENT_STILL_AHEAD_WOULD_MOVE_INTO_THE_YEAR_JUST_ENDED =
+			"Događaj tek predstoji, a trka je iz prošle godine, pa bi se događaj pomerio u prošlu godinu"
+					+ " i izgubio najave dolaska. Izaberi događaj iz prošle godine ili upiši nov naziv.";
+
+	/**
 	 * A NEW EVENT WOULD BE MADE OF A RUN THAT NAMES NO TOWN, and an event of the calendar stands in one
 	 * ({@code btl_event_town_is_from_the_codebook_or_typed}, V7).
 	 *
@@ -2285,9 +2297,11 @@ class VerificationWriteApi {
 	}
 
 	/**
-	 * WHY NO RACE CAN GO ON THIS EVENT ON THAT DAY, or nothing where one can: the two refusals
+	 * WHY NO RACE CAN GO ON THIS EVENT ON THAT DAY, or nothing where one can: the three refusals
 	 * {@code RaceWriteApi.add} answers the administration with for the same write, in this route's
-	 * own sentences ({@link #THE_EVENT_HOLDS_NO_RACES}, {@link #THE_EVENT_WOULD_MOVE_ONTO_ANOTHER}).
+	 * own sentences ({@link #THE_EVENT_HOLDS_NO_RACES},
+	 * {@link #AN_EVENT_STILL_AHEAD_WOULD_MOVE_INTO_THE_YEAR_JUST_ENDED},
+	 * {@link #THE_EVENT_WOULD_MOVE_ONTO_ANOTHER}), asked in that order.
 	 * One home for the question, asked before the claim and again after it.
 	 */
 	private String whyNoRaceGoesOn(TheDayOfAnEvent.Standing event, LocalDate day) {
@@ -2296,6 +2310,11 @@ class VerificationWriteApi {
 		}
 
 		LocalDate beginning = TheDayOfAnEvent.theDayItWillBeginOn(db, event, null, day);
+
+		if (TheDayOfAnEvent.pullsAnEventStillAheadIntoTheYearJustEnded(event, beginning,
+				clock.instant().atZone(SeasonClock.ZONE))) {
+			return AN_EVENT_STILL_AHEAD_WOULD_MOVE_INTO_THE_YEAR_JUST_ENDED;
+		}
 
 		return EventWriteApi.addressIsTakenBySomebodyElse(db,
 				TheDayOfAnEvent.addressFor(event, beginning), event.id())
