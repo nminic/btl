@@ -362,6 +362,11 @@ class MemberMembershipApi {
 
 	private ResponseEntity<?> changing(String memberNumber, Changing typed, WhoIsAsking.Member asking) {
 
+		/* NO LOCK OF THE FREEZE HERE, and that is measured and not forgotten ({@code
+		   AMembershipWrittenAsTheSeasonBeginsTest#aChangeOfBasisInFlightWhenTheJobTakesItsSnapshotKeepsHim}): the
+		   change deletes the row of the season and writes it again carrying the first day
+		   ({@code first_activation_carried}, V82), so a snapshot sees the old row or the new one and both answer
+		   the same moment. Every road that writes a NEW moment takes it ({@link ASeasonBegins#holdTheFreezeStill}). */
 		Optional<Long> member = locked(memberNumber);
 
 		if (member.isEmpty()) {
