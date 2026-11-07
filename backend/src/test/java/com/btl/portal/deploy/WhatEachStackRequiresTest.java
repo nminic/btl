@@ -1109,6 +1109,16 @@ class WhatEachStackRequiresTest {
 						+ " by a larger one")
 				.isNotNegative();
 
+		/* THE STAGE THAT SHIPS IS THE LAST ONE, AND THE LAST `USER` IS ITS EVIDENCE ONLY WHILE NO `FROM`
+		   FOLLOWS IT. Without this the case measured the stage of the last `USER` and described it as
+		   the stage that ships: a third stage added after it, with neither `USER` nor `chown`, left
+		   the case green (measured on review of PR 682, 21 cases passing). */
+		assertThat(dockerfile.subList(dropsPrivilege + 1, dockerfile.size()).stream()
+				.filter(line -> line.strip().toUpperCase(java.util.Locale.ROOT).startsWith("FROM ")))
+				.as("a stage follows the one that drops privilege, so the image that ships is not the"
+						+ " stage this case reads")
+				.isEmpty();
+
 		String whoItRunsAs = dockerfile.get(dropsPrivilege).strip().substring("USER ".length())
 				.strip();
 
