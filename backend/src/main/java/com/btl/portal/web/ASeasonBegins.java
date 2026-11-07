@@ -225,6 +225,25 @@ class ASeasonBegins implements WhatFollowsTheFreeze {
 	 * reads anything.
 	 */
 	void holdingTheFreezeStill() {
+		holdTheFreezeStill(db);
+	}
+
+	/**
+	 * THE ONE STATEMENT, for the routes that have no {@link ASeasonBegins} of their own: every road that
+	 * writes a membership holds it as the FIRST statement of its transaction (PENDING, review of PR 699,
+	 * 07.11.2026), because the moment the membership is activated is read from the clock before the
+	 * transaction commits ({@link WhenASeasonWasActivated}), and a job that took its snapshot between the
+	 * two would drop a member whose fee was booked at 15:59:59 (PDL 05.11.2026, „Član koji nije platio do
+	 * 1. januara u 16h ispada iz tima i para tog trenutka"; whoever paid before 16:00 did not fail to).
+	 *
+	 * <p>{@code SHARE} conflicts with the job's {@code SHARE ROW EXCLUSIVE} and not with itself, so any
+	 * number of these run side by side and only the job waits for them (and they, for the seconds it runs).
+	 * It is taken BEFORE the row of the member for the order the job takes things in: it holds this lock
+	 * and then asks for {@code FOR KEY SHARE} on the members it writes about, so a request that held the
+	 * member and then asked for this lock would be a deadlock (measured in
+	 * {@code ACancellationAsTheSeasonBeginsTest} and in {@code AMembershipWrittenAsTheSeasonBeginsTest}).
+	 */
+	static void holdTheFreezeStill(JdbcClient db) {
 		db.sql("lock table season_frozen in share mode").update();
 	}
 

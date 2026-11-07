@@ -584,6 +584,11 @@ class PaymentApi {
 		}
 
 		return inOneTransaction.execute(committing -> {
+			/* THE LOCK OF THE FREEZE IS THE FIRST STATEMENT, before the row of the member is taken and before the clock
+			   is read: the moment this writes into the season is read after the job has either finished or been
+			   made to wait ({@link ASeasonBegins#holdTheFreezeStill}). */
+			ASeasonBegins.holdTheFreezeStill(db);
+
 			lockTheMember(typed.competitorId());
 
 			/* THE LINE OF A STATEMENT, WHEN THE ROW WAS OPENED FROM ONE, taken after the member and in
