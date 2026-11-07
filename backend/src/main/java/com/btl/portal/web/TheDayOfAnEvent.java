@@ -107,7 +107,9 @@ final class TheDayOfAnEvent {
 	 * <li><b>A race of the year just ended</b> is the day the event WOULD BEGIN ON, not the day typed: the
 	 * event begins on the earliest of its races, so what is refused is the move into the year before this
 	 * one, and a race of that year added to an event that already begins in it moves nothing (that event is
-	 * not ahead, or it would be refused already). „Prošla godina" is read as the year before the league's
+	 * not ahead, or it would be refused already). For an event that is ahead the year of the day it will begin
+	 * on and the year of the day typed are always the same one, since the event begins on the earlier of the
+	 * two and its own day is not before today; asked of the first because that is the day that moves. „Prošla godina" is read as the year before the league's
 	 * year of TODAY, the year the old window called „stara godina"; a year further back is not read into the
 	 * sentence (a reading of mine, put to the owner, and the one comparison to change).
 	 * </ul>
