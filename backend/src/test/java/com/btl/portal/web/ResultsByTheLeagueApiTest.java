@@ -1663,6 +1663,41 @@ class ResultsByTheLeagueApiTest {
 	}
 
 	/**
+	 * AN EVENT WITH NO RACE MOVES FORWARD, AND ONTO AN ADDRESS ANOTHER EVENT HOLDS IS REFUSED (found on the review
+	 * of PR 700, where the refusal had been taken away as unreachable and the answer was a 500 off
+	 * {@code btl_event_slug_unique}). The event "Prazna" has no race and carries the day 31 December; an event of
+	 * the same name already answers at {@code prazna-2028}. A race of 1 January given to the empty one makes it begin
+	 * on that day, in the new year, so its address would be that one. It is not ahead (it is dated yesterday), so the
+	 * question of the event that is ahead does not see it; the address does. Nothing is written. The other direction,
+	 * backwards, has no such case: an event that is not ahead and has no race is dated before today, which on that
+	 * morning is the year just ended, and a race that would take it further back is of a season not open, refused
+	 * by the day not being in the event's year.
+	 */
+	@Test
+	void anEventWithNoRaceThatWouldMoveForwardOntoTheAddressOfAnotherIsRefusedAndWritesNothing()
+			throws Exception {
+		clock.moveTo(Instant.parse("2028-01-01T08:00:00Z"));
+		membership(DRAGAN, 2028);
+
+		long empty = event("prazna-2027", "Prazna", LocalDate.of(2027, 12, 31));
+		event("prazna-2028", "Prazna", LocalDate.of(2028, 5, 5));
+		int races = howMany("race");
+		MockHttpServletResponse refused = onAnEvent(RESULTS_MODERATOR, onTheEvent(empty,
+				newRace("Prva u godini", "2028-01-01", "free", null, null, null, null),
+				row(DRAGAN, "5.00", 1, 1, AN_HOUR)));
+
+		assertThat(refused.getStatus()).isEqualTo(409);
+		assertThat(reasonIn(refused)).isEqualTo(ResultsByTheLeagueApi.THE_EVENT_WOULD_MOVE_ONTO_ANOTHER)
+				.isEqualTo("theEventWouldMoveOntoAnother");
+		assertThat(howMany("race")).isEqualTo(races);
+		assertThat(db.sql("select date from btl_event where id = ?").param(empty).query(LocalDate.class)
+				.single()).isEqualTo(LocalDate.of(2027, 12, 31));
+		assertThat(db.sql("select slug from btl_event where id = ?").param(empty).query(String.class)
+				.single()).isEqualTo("prazna-2027");
+		assertThat(resultsOf(DRAGAN)).isEmpty();
+	}
+
+	/**
 	 * IN THE MIDDLE OF JUNE THE EVENT THAT IS AHEAD IS REFUSED THE RACE OF THE YEAR JUST ENDED TOO (PDL P9, owner,
 	 * 07.11.2026, „odbija se uvek ... ne samo u prozoru 1.1."), and here it is the year of the day that refuses it:
 	 * outside the ten hours the race of another year than the event's is answered by the sentence for a day

@@ -41,6 +41,12 @@ export const WHEN_THE_LEAGUE_ENTERS_RESULTS: Record<string, string> = {
   theEventIsNotKnown: 'leagueResults.refused.theEventIsNotKnown',
   theRaceIsNotKnown: 'leagueResults.refused.theRaceIsNotKnown',
   theTownIsMissing: 'leagueResults.refused.theTownIsMissing',
+  /* PDL P9, 20.10.2026: on the morning of 1 January before ten a race of New Year's Eve may go on an
+     event of the new year, which then moves back into the year before, and an event with no race
+     moves forward into the new year when its first race is entered; where an event of that name stands
+     there already, the save is refused with the sentence the approval of a run has for the same move
+     (`VerificationWriteApi.THE_EVENT_WOULD_MOVE_ONTO_ANOTHER`). */
+  theEventWouldMoveOntoAnother: 'leagueResults.refused.theEventWouldMoveOntoAnother',
   /* PDL, owner, 22.10.2026, „Ekran 7b: dan trke mora biti u godini izabranog događaja”: a new race on an
      event of the calendar whose day is not in that event's year, outside the morning of 1 January. The
      block says the same words under the day before it sends anything (`eventAndRace.ts`); this is the
@@ -50,9 +56,7 @@ export const WHEN_THE_LEAGUE_ENTERS_RESULTS: Record<string, string> = {
   /* PDL P9, owner, 06.11.2026, „U prozoru 1. januara od 00:00 do 10:00 server odbija trku iz stare godine na
      događaju koji još predstoji”, widened on 07.11.2026 to every time of the year: the one thing the
      morning of 1 January does NOT allow of what the decision of 20.10.2026 allowed. Answered by the
-     server to a save. Until 07.11.2026 this map also held `theEventWouldMoveOntoAnother`, the answer to
-     an event moved onto another's address; the route can no longer reach it, since the only move into
-     the year before is the one this refuses (`ResultsByTheLeagueApi`). */
+     server to a save. */
   anEventStillAheadWouldMoveIntoTheYearJustEnded:
     'leagueResults.refused.anEventStillAheadWouldMoveIntoTheYearJustEnded',
 }

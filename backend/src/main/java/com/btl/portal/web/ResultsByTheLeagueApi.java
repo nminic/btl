@@ -263,21 +263,29 @@ class ResultsByTheLeagueApi {
 	static final String THE_TOWN_IS_MISSING = "theTownIsMissing";
 
 	/**
+	 * A RACE WOULD MOVE ITS EVENT INTO ANOTHER YEAR, to an address another event holds already: „Trka bi
+	 * pomerila događaj u godinu u kojoj događaj sa istim nazivom već postoji. Izaberi taj događaj.” The
+	 * event begins on the day of its first race and its address moves with the year ({@link
+	 * TheDayOfAnEvent#addressFor}). Reachable in the direction of the year BEFORE only for an event that is
+	 * over (PDL P9, owner, 20.10.2026, „U prozoru 1. januara od 00:00 do 10:00 sme se sastaviti trka na
+	 * događaju druge godine”), and in the direction of the year AFTER by an event with no race at all: it
+	 * begins on the day of the first race entered, so on the morning of 1 January an empty event of New
+	 * Year's Eve given a race of the new year moves forward onto the address of the new year (found on the
+	 * review of PR 700, where the sentence had been taken away as unreachable and the answer was a 500 off
+	 * {@code btl_event_slug_unique}). The sentence is {@code VerificationWriteApi}'s for the same move,
+	 * said here for the same reason; 409.
+	 */
+	static final String THE_EVENT_WOULD_MOVE_ONTO_ANOTHER = "theEventWouldMoveOntoAnother";
+
+	/**
 	 * A RACE OF THE YEAR JUST ENDED WOULD PULL AN EVENT THAT IS STILL AHEAD BACK INTO THAT YEAR: „Događaj
 	 * tek predstoji, a trka je iz prošle godine, pa bi se događaj pomerio u prošlu godinu i izgubio najave
 	 * dolaska. Izaberi događaj iz prošle godine ili upiši nov.” PDL P9, owner, 06.11.2026, „U prozoru 1.
 	 * januara od 00:00 do 10:00 server odbija trku iz stare godine na događaju koji još predstoji”, widened
-	 * on 07.11.2026 to every time of the year, which narrows his decision of 20.10.2026 to the events that
-	 * are not ahead; {@link TheDayOfAnEvent#pullsAnEventStillAheadIntoTheYearJustEnded} is the question. The
-	 * same literal {@code RaceWriteApi} holds. 409.
-	 *
-	 * <p><b>This is also why this route has no sentence for „the race would move the event onto another's
-	 * address".</b> It had one until 07.11.2026 ({@code theEventWouldMoveOntoAnother}), reachable only through
-	 * the one move this decision refuses now: an event is moved into another year only by a race of an
-	 * earlier year, this route takes a race of another year only in the ten hours when both years are open,
-	 * and in those hours every event of the new year is dated today or later, so it is still ahead. What is
-	 * left (an event of the old year given a race of the new one) moves nothing. The sentence stays in
-	 * {@code VerificationWriteApi} and {@code RaceWriteApi}, whose roads take a race of any year.
+	 * on 07.11.2026 to every time of the year, which narrows his decision of 20.10.2026
+	 * ({@link #THE_EVENT_WOULD_MOVE_ONTO_ANOTHER} says what is left of it) to the events that are not ahead;
+	 * {@link TheDayOfAnEvent#pullsAnEventStillAheadIntoTheYearJustEnded} is the question. The same literal
+	 * {@code RaceWriteApi} holds. 409.
 	 */
 	static final String AN_EVENT_STILL_AHEAD_WOULD_MOVE_INTO_THE_YEAR_JUST_ENDED =
 			"anEventStillAheadWouldMoveIntoTheYearJustEnded";
@@ -685,11 +693,16 @@ class ResultsByTheLeagueApi {
 						AN_EVENT_STILL_AHEAD_WOULD_MOVE_INTO_THE_YEAR_JUST_ENDED));
 			}
 
-			/* THE EVENT STAYS IN ITS OWN YEAR from here: a race of another year was the only thing that moved
-			   it into the year before, and it is refused just above or by the question of the year before
-			   it. So the address is the one it has, and no other event can hold it (see
-			   AN_EVENT_STILL_AHEAD_WOULD_MOVE_INTO_THE_YEAR_JUST_ENDED). */
 			String address = TheDayOfAnEvent.addressFor(there, beginning);
+
+			/* THE RACE MOVES THE EVENT INTO ANOTHER YEAR, where another event of that name may stand
+			   already (the same refusal as `RaceWriteApi` and the approval keep). Asked before anything
+			   is written; an event kept in its own year keeps its address and is never refused here. The
+			   year can be the next one: an event with no race begins on the day of the first, and the
+			   question of an event that is ahead does not ask for it. */
+			if (EventWriteApi.addressIsTakenBySomebodyElse(db, address, there.id())) {
+				return Done.only(no(HttpStatus.CONFLICT, THE_EVENT_WOULD_MOVE_ONTO_ANOTHER));
+			}
 
 			made = aNewRace(there.id(), race, day);
 			on = there.id();

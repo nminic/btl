@@ -1937,6 +1937,7 @@
       "theEventIsNotKnown": "Taj događaj više nije u kalendaru. Izaberi ga ponovo ili upiši nov.",
       "theRaceIsNotKnown": "Ta trka više nije u kalendaru. Izaberi je ponovo ili upiši novu.",
       "theTownIsMissing": "Upiši mesto novog događaja.",
+      "theEventWouldMoveOntoAnother": "Trka bi pomerila događaj u godinu u kojoj događaj sa istim nazivom već postoji. Izaberi taj događaj.",
       "theDayIsNotInTheEventsYear": "Dan trke nije u godini izabranog događaja.",
       "anEventStillAheadWouldMoveIntoTheYearJustEnded": "Događaj tek predstoji, a trka je iz prošle godine, pa bi se događaj pomerio u prošlu godinu i izgubio najave dolaska. Izaberi događaj iz prošle godine ili upiši nov."
     }
