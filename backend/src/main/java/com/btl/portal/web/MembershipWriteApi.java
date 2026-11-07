@@ -311,6 +311,10 @@ class MembershipWriteApi {
 	private ResponseEntity<?> write(Grant typed, GrantingAMembership.Ground ground,
 			WhoIsAsking.Member asking) {
 
+		/* THE FREEZE IS HELD STILL FIRST, before his row and before the clock ({@link ASeasonBegins#holdTheFreezeStill}). */
+		ASeasonBegins.holdTheFreezeStill(db);
+
+
 		/* FOR UPDATE, AND IT IS WHAT MAKES THE HARMLESS REPEAT HARMLESS WHEN THE TWO PRESSES ARRIVE
 		   TOGETHER. `ALREADY_GRANTED_ON_THIS_GROUND` answers a second press 200 and writes nothing,
 		   and it can only do that if the second press SEES the first one's row. Without the lock two

@@ -116,6 +116,9 @@ class MemberPaymentApi {
 	 * what the request says.
 	 */
 	private ResponseEntity<?> recording(String memberNumber, Paid typed, WhoIsAsking.Member asking) {
+		/* THE FREEZE IS HELD STILL FIRST, before his row and before the clock ({@link ASeasonBegins#holdTheFreezeStill}). */
+		ASeasonBegins.holdTheFreezeStill(db);
+
 		Optional<Long> member = db.sql("select id from competitor where member_number = ? for update")
 				.param(memberNumber)
 				.query(Long.class)

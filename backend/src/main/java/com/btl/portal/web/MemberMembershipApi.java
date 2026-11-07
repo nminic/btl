@@ -316,6 +316,9 @@ class MemberMembershipApi {
 	 * that writes a season asks it.
 	 */
 	private ResponseEntity<?> grantingTheExemption(String memberNumber, Granting typed, WhoIsAsking.Member asking) {
+		/* THE FREEZE IS HELD STILL FIRST, before his row and before the clock ({@link ASeasonBegins#holdTheFreezeStill}). */
+		ASeasonBegins.holdTheFreezeStill(db);
+
 		Optional<Long> member = locked(memberNumber);
 
 		if (member.isEmpty()) {

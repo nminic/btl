@@ -145,6 +145,9 @@ class MyMembershipWriteApi {
 	}
 
 	private ResponseEntity<?> write(long me, WhoIsAsking.Member asking) {
+		/* THE FREEZE IS HELD STILL FIRST, before his row and before the clock ({@link ASeasonBegins#holdTheFreezeStill}). */
+		ASeasonBegins.holdTheFreezeStill(db);
+
 		lockHim(me);
 
 		MembershipInvoice.Invoice owed = invoice.forMember(me);

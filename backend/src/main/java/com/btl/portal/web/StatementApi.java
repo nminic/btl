@@ -265,6 +265,9 @@ class StatementApi {
 	 * many were booked.
 	 */
 	private int keep(AikStatement.Read read, int season, WhoIsAsking.Member asking) {
+		/* THE FREEZE IS HELD STILL FIRST, before the rows of the members it books and before the clock ({@link ASeasonBegins#holdTheFreezeStill}). */
+		ASeasonBegins.holdTheFreezeStill(db);
+
 		String name = memberOfAccount.nameOf(asking.account());
 		Timestamp now = Timestamp.from(clock.instant());
 
