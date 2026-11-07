@@ -5,6 +5,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Set;
 import java.util.zip.CRC32;
+import java.util.zip.DataFormatException;
+import java.util.zip.Inflater;
 
 /**
  * A PICTURE WITH EVERYTHING THE CAMERA WROTE ABOUT IT TAKEN OFF, AND THE WAY IT ASKS TO BE TURNED KEPT.
@@ -39,10 +41,13 @@ import java.util.zip.CRC32;
  * <li>PNG: the four critical chunks ({@link #PNG_CRITICAL}), and of the others only those that change how
  * pixels are drawn ({@link #PNG_DRAWING}). Gone: {@code tEXt}, {@code zTXt}, {@code iTXt}, {@code eXIf},
  * {@code tIME}, {@code pHYs} and every chunk nobody here knows, whatever its first letter, and anything
- * after {@code IEND}.
+ * after {@code IEND}; {@code IEND} is written with length 0 whatever length the file gave it, and
+ * {@code IDAT} is kept exactly to the end of its zlib stream (through all the IDAT chunks), so text a length
+ * claims into is gone too.
  * <li>WebP: the chunks that draw ({@link #WEBP_DRAWING}). Gone: {@code EXIF}, {@code XMP } and every chunk
  * nobody here knows, and anything past the size the RIFF header declares. The {@code VP8X} flags are
- * rewritten to say what is still there.
+ * rewritten to say what is still there. <b>Text inside an image chunk whose size claims more than the
+ * image takes stays</b>, see the boundary below.
  * </ul>
  *
  * <p><b>THE ICC PROFILE IS KEPT, AND THAT IS THE OWNER'S WORD</b> (ADL, 06.11.2026, added to the decision
@@ -67,8 +72,16 @@ import java.util.zip.CRC32;
  * is one that draws.
  * <li>PNG and WebP carry nothing to find the next block by, so a block whose size runs past the end of the file
  * is the rest of the file, kept as far as it goes only if it draws (a picture cut in its data is shown as far
- * as it goes), and bytes too few to be a block are dropped.
+ * as it goes), and bytes too few to be a block are dropped. The one exception to „kept as far as it goes" is
+ * PNG image data, which ends where its zlib stream ends (ADL, owner, 07.11.2026, „Blok slike čija dužina
+ * prebaci stvarne podatke": „Kod PNG-a IEND se piše kanonski (dužina 0), a IDAT se zadržava tačno do kraja
+ * svog toka, pa tekst iza njega ne ostaje.").
  * </ul>
+ * <b>WebP IS A RECORDED BOUNDARY AND NOT AN OVERSIGHT</b> (the same decision): „Kod WebP-a se kraj slike
+ * unutar bloka ne može pouzdano odrediti, pa tekst iza „prebačenog" bloka slike ostaje; takav fajl ne pravi
+ * nijedan telefon ni program, nego samo neko ručno, i to sam vlasnik slike sa sopstvenim podacima." So a
+ * {@code VP8 }, {@code VP8L}, {@code ALPH} or {@code ANMF} chunk whose size covers text after the picture keeps
+ * that text, and a case says so.
  * What a break swallows from a decoder's side is swallowed here: a JPEG segment one byte too long takes the
  * first byte of the marker after it, and the bytes up to the next marker are skipped, so what is lost there is
  * lost to the viewer as well. <b>The boundary that is left, said as one:</b> bytes skipped on the way to a
@@ -260,11 +273,40 @@ public final class WithoutMetadata {
 		out.write(in, 0, 8);
 
 		int at = 8;
+		int stream = imageStreamLength(in);
+		int seen = 0;
+		boolean trimmed = false;
 
 		while (at + 12 <= in.length) {
 			long length = thirtyTwo(in, at);
 			String type = new String(in, at + 4, 4, StandardCharsets.ISO_8859_1);
 			boolean draws = PNG_CRITICAL.contains(type) || PNG_DRAWING.contains(type);
+
+			if ("IEND".equals(type)) {
+				/* WRITTEN CANONICALLY, length 0, whatever length the file gave it (ADL 07.11.2026): an IEND
+				   that claims data is a place text can sit, and what follows the end is not part of the picture. */
+				pngChunk(out, "IEND", new byte[0]);
+				return theSameWhereNothingChanged(in, out);
+			}
+
+			if ("IDAT".equals(type)) {
+				/* THE IMAGE DATA IS KEPT EXACTLY TO THE END OF ITS ZLIB STREAM, which runs through all the IDAT
+				   chunks (ADL 07.11.2026): a length that claims more than the stream holds is a place text can sit. */
+				int have = (int) Math.min(length, in.length - at - 8L);
+				int keep = Math.max(0, Math.min(have, stream - seen));
+				seen += have;
+
+				if (keep < have) {
+					trimmed = true;
+
+					if (keep > 0) {
+						pngChunk(out, "IDAT", Arrays.copyOfRange(in, at + 8, at + 8 + keep));
+					}
+
+					at = (int) Math.min(in.length, at + 12L + length);
+					continue;
+				}
+			}
 
 			if (length > in.length - at - 12L) {
 				/* A CHUNK THAT RUNS PAST THE END is the rest of the file: kept as far as it goes where it
@@ -288,15 +330,62 @@ public final class WithoutMetadata {
 				/* RIGHT AFTER THE HEADER, which is before any image data, where every reader looks. */
 				pngChunk(out, "eXIf", noteOf(turn));
 			}
+		}
 
-			if ("IEND".equals(type)) {
-				/* And what follows the end is not part of the picture. */
-				return theSameWhereNothingChanged(in, out);
-			}
+		if (trimmed) {
+			/* The chunk that claimed too much took the rest of the file with it, the end included. */
+			pngChunk(out, "IEND", new byte[0]);
 		}
 
 		/* Fewer bytes than the smallest chunk are not one. */
 		return theSameWhereNothingChanged(in, out);
+	}
+
+	/**
+	 * How many bytes of the IDAT data (all the chunks of it, one after another) the zlib stream of the image
+	 * really takes, found by inflating it to its end and asking the inflater what it did not use. Where the
+	 * stream does not end (a picture cut in its data, or data that is no zlib stream) it is all of the IDAT
+	 * data there is, which keeps what a viewer would show as far as it goes.
+	 */
+	private static int imageStreamLength(byte[] in) {
+		ByteArrayOutputStream data = new ByteArrayOutputStream();
+		byte[] idat = "IDAT".getBytes(StandardCharsets.ISO_8859_1);
+		byte[] iend = "IEND".getBytes(StandardCharsets.ISO_8859_1);
+		int at = 8;
+
+		while (at + 12 <= in.length) {
+			long length = thirtyTwo(in, at);
+
+			if (startsWith(in, at + 4, 4, idat)) {
+				data.write(in, at + 8, (int) Math.min(length, in.length - at - 8L));
+			}
+
+			if (startsWith(in, at + 4, 4, iend) || length > in.length - at - 12L) {
+				break;
+			}
+
+			at += 12 + (int) length;
+		}
+
+		byte[] all = data.toByteArray();
+		Inflater inflater = new Inflater();
+
+		try {
+			inflater.setInput(all);
+			byte[] sink = new byte[8192];
+
+			while (!inflater.finished()) {
+				if (inflater.inflate(sink) == 0 && !inflater.finished()) {
+					return all.length;
+				}
+			}
+
+			return all.length - inflater.getRemaining();
+		} catch (DataFormatException notAStream) {
+			return all.length;
+		} finally {
+			inflater.end();
+		}
 	}
 
 	/**
@@ -344,7 +433,8 @@ public final class WithoutMetadata {
 	   ------------------------------------------------------------------------------------------------ */
 
 	private static byte[] webp(byte[] in) {
-		/* WHAT THE RIFF HEADER SAYS THE FILE IS, and bytes past that are not part of it. A size that says
+		/* WHAT THE RIFF HEADER SAYS THE FILE IS, and bytes past that are not part of it. (Inside an image
+		   chunk the end of the picture cannot be found, so text its size covers stays: a recorded boundary.) A size that says
 		   more than there is, or less than the header itself, leaves the file as long as it is. */
 		long declared = littleThirtyTwo(in, 4);
 		int limit = declared >= 4 && declared + 8 <= in.length ? (int) declared + 8 : in.length;

@@ -339,6 +339,97 @@ class WithoutMetadataTest {
 		assertThat(chunksOf(kept)).doesNotContain("eXIf");
 	}
 
+	/**
+	 * ADL, owner, 07.11.2026, „Blok slike čija dužina prebaci stvarne podatke": „Kod PNG-a IEND se piše
+	 * kanonski (dužina 0), a IDAT se zadržava tačno do kraja svog toka, pa tekst iza njega ne ostaje."
+	 * The measured shapes: an IEND that claims the text after it, and an IDAT whose length claims the text
+	 * after the image. Every case asks first that the sent file says where it was taken, then that the
+	 * cleaned one does not, still decodes to the same pixels, and is cleaned into itself.
+	 */
+	private static void pngIsCleanedTo(byte[] sent, byte[] expected) {
+		assertThat(says(sent, WHERE_AND_WITH_WHAT)).as("the sent file never said where it was taken").isTrue();
+
+		byte[] kept = WithoutMetadata.of(sent, "image/png");
+
+		assertThat(says(kept, WHERE_AND_WITH_WHAT)).as("text that a length claimed into stayed").isFalse();
+		assertThat(kept).isEqualTo(expected);
+		assertThat(pixelsOf(kept, "image/png")).as("the picture does not decode to what it did")
+				.isEqualTo(pixelsOf(png(), "image/png"));
+		assertThat(WithoutMetadata.of(kept, "image/png")).as("a second run moved something").isEqualTo(kept);
+	}
+
+	private static byte[] aLengthOf(long value) {
+		return new byte[] { (byte) (value >>> 24), (byte) (value >>> 16), (byte) (value >>> 8), (byte) value };
+	}
+
+	@Test
+	void anIendThatClaimsDataIsWrittenWithNoneAndTheTextInItGoes() {
+		byte[] png = png();
+		byte[] withoutIend = Arrays.copyOf(png, png.length - 12);
+		byte[] iend = concat(aLengthOf(said().length), "IEND".getBytes(StandardCharsets.ISO_8859_1), said(),
+				new byte[] { 1, 2, 3, 4 });
+
+		pngIsCleanedTo(concat(withoutIend, iend), png);
+
+		/* A length that runs past the end of the file is no different. */
+		pngIsCleanedTo(concat(withoutIend, aLengthOf(said().length + 1000L),
+				"IEND".getBytes(StandardCharsets.ISO_8859_1), said()), png);
+	}
+
+	@Test
+	void anIdatWhoseLengthClaimsTheTextAfterTheImageIsKeptOnlyToTheEndOfItsStream() {
+		byte[] png = png();
+		int length = (int) ((png[33] & 0xFFL) << 24 | (png[34] & 0xFF) << 16 | (png[35] & 0xFF) << 8 | png[36] & 0xFF);
+		assertThat(chunksOf(png)).as("the platform wrote more than one IDAT").containsExactly("IHDR", "IDAT", "IEND");
+		byte[] text = chunk("tEXt", concat("Comment ".getBytes(StandardCharsets.ISO_8859_1), said()));
+		byte[] head = Arrays.copyOf(png, 33);
+		byte[] idatBody = Arrays.copyOfRange(png, 37, 41 + length + 4);
+
+		/* The length covers exactly the text chunk, so the walk lands on the IEND after it. */
+		pngIsCleanedTo(concat(head, aLengthOf(length + (long) text.length), idatBody, text,
+				Arrays.copyOfRange(png, png.length - 12, png.length)), png);
+		/* And it covers more than the file holds. */
+		pngIsCleanedTo(concat(head, aLengthOf(length + 100L), idatBody, text,
+				Arrays.copyOfRange(png, png.length - 12, png.length)), png);
+	}
+
+	@Test
+	void aStreamSplitOverSeveralIdatChunksEndsWhereItEndsAndNowhereElse() {
+		byte[] png = png();
+		int length = (int) ((png[33] & 0xFFL) << 24 | (png[34] & 0xFF) << 16 | (png[35] & 0xFF) << 8 | png[36] & 0xFF);
+		byte[] data = Arrays.copyOfRange(png, 41, 41 + length);
+		byte[] first = chunk("IDAT", Arrays.copyOf(data, length / 2));
+		byte[] second = chunk("IDAT", Arrays.copyOfRange(data, length / 2, length));
+		byte[] head = Arrays.copyOf(png, 33);
+		byte[] iend = Arrays.copyOfRange(png, png.length - 12, png.length);
+		byte[] split = concat(head, first, second, iend);
+
+		assertThat(WithoutMetadata.of(split, "image/png")).as("a clean split stream was changed").isSameAs(split);
+		assertThat(pixelsOf(split, "image/png")).isEqualTo(pixelsOf(png, "image/png"));
+
+		/* The last chunk of the stream claims the text after it. */
+		byte[] text = chunk("tEXt", said());
+		byte[] greedy = concat(head, first, aLengthOf((length - length / 2) + (long) text.length),
+				"IDAT".getBytes(StandardCharsets.ISO_8859_1), Arrays.copyOfRange(data, length / 2, length),
+				Arrays.copyOfRange(second, second.length - 4, second.length), text, iend);
+
+		assertThat(says(greedy, WHERE_AND_WITH_WHAT)).isTrue();
+		assertThat(WithoutMetadata.of(greedy, "image/png")).as("the second half of the stream was cut, or text stayed")
+				.isEqualTo(split);
+
+		/* A further IDAT chunk after the end of the stream is not image data. */
+		byte[] extra = chunk("IDAT", said());
+		byte[] sent = concat(head, first, second, extra, iend);
+
+		assertThat(says(sent, WHERE_AND_WITH_WHAT)).isTrue();
+		assertThat(WithoutMetadata.of(sent, "image/png")).isEqualTo(split);
+
+		/* Data that is no zlib stream at all has no end to be found, so it is all kept, as it came. */
+		byte[] notAStream = concat(head, extra, iend);
+
+		assertThat(WithoutMetadata.of(notAStream, "image/png")).isSameAs(notAStream);
+	}
+
 	/* ------------------------------------------------------------------------------------------------
 	   WEBP
 	   ------------------------------------------------------------------------------------------------ */
@@ -444,6 +535,23 @@ class WithoutMetadataTest {
 
 		assertThat(Arrays.copyOfRange(keptCut, 12, keptCut.length))
 				.isEqualTo(concat(withFlags(chunks.get(0), 0x10), chunks.get(1), cutImage));
+	}
+
+	@Test
+	void textInsideAnImageChunkWhoseSizeClaimsItStaysAndThatIsTheRecordedBoundary() {
+		/* ADL, owner, 07.11.2026: „Kod WebP-a se kraj slike unutar bloka ne može pouzdano odrediti, pa tekst iza
+		   „prebačenog" bloka slike ostaje". This case asserts the boundary and is not a wish: if the end of the
+		   image inside the chunk ever can be found, the decision has to be taken again and this case changes. */
+		byte[] webp = webp(EXTENDED_WEBP);
+		List<byte[]> chunks = riffChunksOf(webp);
+		byte[] text = riffChunk("XMP ", said());
+		byte[] image = chunks.get(2).clone();
+		setLittleEndian(image, 4, (int) littleEndian(image, 4) + text.length);
+		byte[] sent = webpOf(webp, 0, chunks.get(0), chunks.get(1), image, text);
+
+		assertThat(says(sent, WHERE_AND_WITH_WHAT)).isTrue();
+		assertThat(says(WithoutMetadata.of(sent, "image/webp"), WHERE_AND_WITH_WHAT))
+				.as("the boundary the owner recorded no longer holds, so the decision is to be taken again").isTrue();
 	}
 
 	@Test
