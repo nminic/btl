@@ -919,7 +919,7 @@ describe('the privacy policy', () => {
     /* Found by what it says rather than by its heading, which is what
        `sectionOf` reads: the sections are numbered and one inserted above moves
        the rest. */
-    const rights = sectionOf('politika-privatnosti', /polja profila menjate i brišete/)
+    const rights = sectionOf('politika-privatnosti', /Polja profila, sliku i tekst o sebi menjate i brišete/)
 
     expect(rights).not.toContain('u podnožju svake strane')
     expect(rights).toContain('ne povlači jer se ne daje')
@@ -2922,13 +2922,17 @@ describe('what the written pages say the fee buys', () => {
        (29.10.2026)") and all three carry that day. The rulebook moved on to
        30.10.2026 with Article 11 said in the owner's two sentences (V80; owner,
        30.10.2026), by the same rule; the terms and the policy did not change and keep
-       29.10.2026. Written per
+       29.10.2026. The policy moved on to 07.11.2026 with the sentence that says the
+       profile, the picture and the text about oneself are changed on the page Moji podaci
+       (V89; owner, 07.11.2026, who made the rule general: the date moves whenever the
+       words of a legal text change, to the day the change reaches QA); the terms keep
+       29.10.2026 and the rulebook 30.10.2026. Written per
        document and not as one day for all three, so a date moved on one of them,
        or left behind on one, is a failure that names the document. */
     const SIGNED_OFF = {
       pravilnik: '30.10.2026',
       'uslovi-koriscenja': '29.10.2026',
-      'politika-privatnosti': '29.10.2026',
+      'politika-privatnosti': '07.11.2026',
     } as const
 
     for (const slug of ['pravilnik', 'uslovi-koriscenja', 'politika-privatnosti'] as const) {

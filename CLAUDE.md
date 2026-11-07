@@ -11,7 +11,7 @@ Portal Balkanske trkačke lige (btl). Monorepo: `backend/` (Java 21, Spring Boot
 ## Komunikacija
 
 - Sva komunikacija sa korisnikom je na srpskom jeziku, ali se tehnički elementi (nazivi klasa, polja, komandi) referenciraju na engleskom.
-- SAV kod je isključivo na engleskom: nazivi promenljivih, polja, metoda, komentari, poruke izuzetaka, commit poruke, nazivi testova. Jedini srpski u kodu su UI tekstovi vidljivi posetiocima sajta.
+- SAV kod je isključivo na engleskom: nazivi promenljivih, polja, metoda, komentari, poruke izuzetaka, commit poruke, nazivi testova. Jedini srpski u kodu su UI tekstovi vidljivi posetiocima sajta. Izuzetak: doslovan citat vlasnikove odluke na srpskom sme da stoji u komentaru koda; izuzetak važi samo za doslovan citat, ne za obrazloženje. Razlog: prevod gubi vlasnikove reči, a citat služi kao sidro za pretragu dnevnika.
 - Nikad ne koristiti em-dash (—) u tekstu za korisnika; u krajnjem slučaju n-dash (–).
 
 ## Rad bez prekida (obavezno, iznad svega ostalog)
