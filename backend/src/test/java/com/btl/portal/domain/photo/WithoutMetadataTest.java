@@ -29,6 +29,7 @@ import static com.btl.portal.domain.photo.PicturesThatCarryMetadata.webp;
 import static com.btl.portal.domain.photo.PicturesThatCarryMetadata.webpOf;
 import static com.btl.portal.domain.photo.PicturesThatCarryMetadata.withChunks;
 import static com.btl.portal.domain.photo.PicturesThatCarryMetadata.withSegments;
+import static com.btl.portal.domain.photo.PicturesThatCarryMetadata.xmpSegment;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -152,22 +153,92 @@ class WithoutMetadataTest {
 						(byte) 0xD0, (byte) 0xFF, (byte) 0xD8 }, segment(0xC4, new byte[] { 3 }), EOI));
 	}
 
+	/**
+	 * ADL, owner, 07.11.2026: „čišćenje ne staje nego nastavlja kao pregledač: preskoči pokvareno mesto i skida
+	 * metapodatke i iza njega; slika se prima i čista je". Every case below first asks that the sent file DOES
+	 * say where it was taken (the clean-up of a file that never said it proves nothing), then that the cleaned
+	 * one does not, that the pixels are the same, the turn is the one asked for, and that the second run moves
+	 * nothing.
+	 */
+	private static void isCleanedAsAViewerWouldReadIt(byte[] sent, int turn) {
+		assertThat(says(sent, WHERE_AND_WITH_WHAT)).as("the sent file never said where it was taken").isTrue();
+
+		byte[] kept = WithoutMetadata.of(sent, "image/jpeg");
+
+		assertThat(says(kept, WHERE_AND_WITH_WHAT)).as("what the file said about where it was taken stayed behind a"
+				+ " break in its structure").isFalse();
+		assertThat(pixelsOf(kept, "image/jpeg")).as("walking past the break cost the picture something")
+				.isEqualTo(pixelsOf(jpeg(false), "image/jpeg"));
+		assertThat(SmallPicture.orientationOf(kept)).as("the turn the file asked for").isEqualTo(turn);
+		assertThat(WithoutMetadata.of(kept, "image/jpeg")).as("a second run moved something").isEqualTo(kept);
+	}
+
 	@Test
-	void aJpegWhoseStructureBreaksIsCleanedUpToTheBreakAndKeptAsItCameFromThere() {
-		byte[] before = concat(SOI, exifSegment(6), segment(0xFE, said()));
-		byte[] kept = WithoutMetadata.of(concat(before, new byte[] { 'n', 'o', 't', ' ', 'a', ' ', 'm', 'a',
-				'r', 'k', 'e', 'r' }), "image/jpeg");
+	void bytesThatAreNotAMarkerAreSkippedUntilTheNextOneAndTheMetadataBehindThemGoes() {
+		byte[][] strays = { { 0x00 }, { 0x12, 0x34 }, { (byte) 0xFF, 0x00 }, { (byte) 0xFF, (byte) 0xFF, 0x00 } };
 
-		assertThat(kept).as("the metadata in front of the break stayed, or the bytes after it were touched")
-				.isEqualTo(concat(SOI, segment(0xE1, concat(new byte[] { 'E', 'x', 'i', 'f', 0, 0 },
-						WithoutMetadata.noteOf(6))), "not a marker".getBytes(StandardCharsets.ISO_8859_1)));
-
-		/* A length under two, a length past the end, and a marker the file ends on: each is a break. */
-		for (byte[] tail : List.of(new byte[] { (byte) 0xFF, (byte) 0xE1, 0, 1, 9 },
-				new byte[] { (byte) 0xFF, (byte) 0xE1, 0, 90, 9 }, new byte[] { (byte) 0xFF, (byte) 0xE1, 0 })) {
-			assertThat(WithoutMetadata.of(concat(SOI, segment(0xFE, said()), tail), "image/jpeg"))
-					.isEqualTo(concat(SOI, tail));
+		for (byte[] stray : strays) {
+			/* In front of the first segment, between two metadata segments, and in front of the first picture one. */
+			byte[] plain = jpeg(false);
+			isCleanedAsAViewerWouldReadIt(withSegments(plain, stray, exifSegment(6), xmpSegment()), 6);
+			isCleanedAsAViewerWouldReadIt(withSegments(plain, exifSegment(6), stray, xmpSegment()), 6);
+			isCleanedAsAViewerWouldReadIt(withSegments(plain, exifSegment(6), xmpSegment(), stray), 6);
 		}
+	}
+
+	@Test
+	void aSegmentWhoseLengthIsOneTooLongSwallowsTheNextMarkerAsADecoderDoesAndLeavesNothingBehind() {
+		/* The measured shape: the XMP says one byte more than it holds, so it swallows the first byte of the
+		   next marker, exactly as a decoder reading it does, and the bytes up to the next marker are skipped. */
+		byte[] xmp = xmpSegment();
+		xmp[3]++;
+		byte[] sent = withSegments(jpeg(false), new byte[] { (byte) 0xFF }, xmp, exifSegment(6),
+				segment(0xFE, said()));
+
+		assertThat(says(sent, WHERE_AND_WITH_WHAT)).isTrue();
+
+		byte[] kept = WithoutMetadata.of(sent, "image/jpeg");
+
+		assertThat(says(kept, WHERE_AND_WITH_WHAT)).as("the segments after the one that swallowed a marker stayed")
+				.isFalse();
+		assertThat(pixelsOf(kept, "image/jpeg")).isEqualTo(pixelsOf(jpeg(false), "image/jpeg"));
+		assertThat(WithoutMetadata.of(kept, "image/jpeg")).as("a second run moved something").isEqualTo(kept);
+	}
+
+	@Test
+	void aMarkerWhoseLengthCannotBeTrueIsSkippedAndNotBelieved() {
+		/* A length under two is a break; the two bytes of the marker are dropped and the next marker is looked for. */
+		for (byte[] bogus : List.of(new byte[] { (byte) 0xFF, (byte) 0xE1, 0, 1, 9 },
+				new byte[] { (byte) 0xFF, (byte) 0xE1, 0, 0 })) {
+			isCleanedAsAViewerWouldReadIt(withSegments(jpeg(false), bogus, exifSegment(6), xmpSegment()), 6);
+		}
+	}
+
+	@Test
+	void aSegmentThatRunsPastTheEndOfTheFileTakesTheRestWithItAndIsKeptOnlyWhereItDraws() {
+		byte[] exif = exifSegment(6);
+
+		/* A metadata segment cut short: its length says more than the file holds, so it is the rest of the file. */
+		assertThat(WithoutMetadata.of(concat(SOI, segment(0xFE, said()), Arrays.copyOf(exif, exif.length - 4)),
+				"image/jpeg"))
+				.isEqualTo(concat(SOI, segment(0xE1, concat(new byte[] { 'E', 'x', 'i', 'f', 0, 0 },
+						WithoutMetadata.noteOf(6)))));
+
+		/* A marker the file ends in the middle of the length of: metadata goes, a segment that draws stays. */
+		assertThat(WithoutMetadata.of(concat(SOI, segment(0xFE, said()), new byte[] { (byte) 0xFF, (byte) 0xE1, 0 }),
+				"image/jpeg")).isEqualTo(SOI);
+
+		byte[] tail = { (byte) 0xFF, (byte) 0xC4, 0, 90, 9 };
+		byte[] cutTable = { (byte) 0xFF, (byte) 0xC4, 0 };
+
+		assertThat(WithoutMetadata.of(concat(SOI, segment(0xFE, said()), tail), "image/jpeg"))
+				.isEqualTo(concat(SOI, tail));
+		assertThat(WithoutMetadata.of(concat(SOI, segment(0xFE, said()), cutTable), "image/jpeg"))
+				.isEqualTo(concat(SOI, cutTable));
+
+		/* And a lone byte where the file ends is not a marker. */
+		assertThat(WithoutMetadata.of(concat(SOI, segment(0xC4, new byte[] { 3 }), new byte[] { (byte) 0xFF }),
+				"image/jpeg")).isEqualTo(concat(SOI, segment(0xC4, new byte[] { 3 })));
 	}
 
 	@Test
@@ -214,26 +285,50 @@ class WithoutMetadataTest {
 	}
 
 	@Test
-	void aCriticalChunkNobodyKnowsIsKeptBecauseItCannotBeANoteOnTheSide() {
+	void aCriticalChunkNobodyKnowsIsTakenTooBecauseNothingForcesItToHoldOnlyPixels() {
 		byte[] png = png();
-		byte[] critical = chunk("ZZZZ", new byte[] { 1 });
+		byte[] sent = withChunks(png, chunk("GPSx", said()), chunk("tEXt", said()));
 
-		assertThat(chunksOf(WithoutMetadata.of(withChunks(png, critical, chunk("tEXt", said())), "image/png")))
-				.contains("ZZZZ")
-				.doesNotContain("tEXt");
+		assertThat(says(sent, WHERE_AND_WITH_WHAT)).isTrue();
+
+		byte[] kept = WithoutMetadata.of(sent, "image/png");
+
+		assertThat(chunksOf(kept)).doesNotContain("GPSx", "tEXt");
+		assertThat(says(kept, WHERE_AND_WITH_WHAT)).isFalse();
+		assertThat(kept).as("one of the four critical chunks of the format was touched").isEqualTo(png);
 	}
 
 	@Test
-	void aPngWhoseStructureBreaksIsCleanedUpToTheBreakAndKeptAsItCameFromThere() {
+	void aPngWhoseStructureBreaksIsCleanedPastTheBreakAndWhatCannotBeFollowedDoesNotStay() {
 		byte[] png = png();
-		byte[] broken = { 0, 0, 0x7F, 0, 'I', 'D', 'A', 'T', 1, 2, 3, 4, 5, 6, 7 };
+		byte[] broken = concat(new byte[] { 0, 0, 0x7F, 0 }, "tEXt".getBytes(StandardCharsets.ISO_8859_1), said());
 		byte[] sent = concat(Arrays.copyOf(png, 33), chunk("tEXt", said()), broken);
 
-		assertThat(WithoutMetadata.of(sent, "image/png")).isEqualTo(concat(Arrays.copyOf(png, 33), broken));
+		assertThat(says(sent, WHERE_AND_WITH_WHAT)).isTrue();
+		assertThat(WithoutMetadata.of(sent, "image/png")).as("a chunk that cannot be followed was copied")
+				.isEqualTo(Arrays.copyOf(png, 33));
 
+		/* A tail that is shorter than any chunk is not one. */
 		byte[] tooShortForAChunk = concat(Arrays.copyOf(png, 8), new byte[] { 1, 2, 3 });
 
-		assertThat(WithoutMetadata.of(tooShortForAChunk, "image/png")).isSameAs(tooShortForAChunk);
+		assertThat(WithoutMetadata.of(tooShortForAChunk, "image/png")).isEqualTo(Arrays.copyOf(png, 8));
+
+		/* The picture itself, cut in the middle of its data, is what a viewer shows as far as it goes. */
+		byte[] cutInTheImage = Arrays.copyOf(png, png.length - 20);
+
+		assertThat(WithoutMetadata.of(withChunks(cutInTheImage, chunk("tEXt", said())), "image/png"))
+				.as("the cut image data was dropped with the break").isEqualTo(cutInTheImage);
+	}
+
+	@Test
+	void anExifChunkAfterTheEndOfThePictureIsNotWhatTheViewerTurnsItBy() {
+		byte[] png = png();
+		byte[] sent = concat(png, chunk("eXIf", tiff(6, true)));
+
+		assertThat(WithoutMetadata.of(sent, "image/png"))
+				.as("a note was written for a chunk no viewer reads, so the picture is shown turned")
+				.isEqualTo(png);
+		assertThat(WithoutMetadata.of(png, "image/png")).isSameAs(png);
 	}
 
 	@Test
@@ -314,17 +409,40 @@ class WithoutMetadataTest {
 	}
 
 	@Test
-	void aWebpWhoseStructureBreaksIsCleanedUpToTheBreakAndGetsNoNote() {
+	void aWebpWhoseStructureBreaksIsCleanedPastTheBreakAndWhatCannotBeFollowedDoesNotStay() {
 		byte[] webp = webp(EXTENDED_WEBP);
 		List<byte[]> chunks = riffChunksOf(webp);
-		byte[] broken = { 'V', 'P', '8', ' ', 0, 0, 0, 0x70, 1, 2 };
-		byte[] sent = webpOf(webp, 0x08, chunks.get(0), riffChunk("EXIF", tiff(6, false)), broken);
+		byte[] exif = riffChunk("EXIF", tiff(6, false));
+
+		/* The XMP says one byte more than the file holds: a chunk that cannot be followed and does not draw. */
+		byte[] xmp = riffChunk("XMP ", said());
+		setLittleEndian(xmp, 4, said().length + 8);
+		byte[] sent = webpOf(webp, 0x08 | 0x04, chunks.get(0), chunks.get(1), chunks.get(2), exif, xmp);
+
+		assertThat(says(sent, WHERE_AND_WITH_WHAT)).isTrue();
 
 		byte[] kept = WithoutMetadata.of(sent, "image/webp");
 
-		assertThat(Arrays.copyOfRange(kept, 12, kept.length)).as("the EXIF in front of the break stayed, a note was"
-				+ " written into a file whose end cannot be found, or the bytes after the break were touched")
-				.isEqualTo(concat(withFlags(chunks.get(0), 0x10), broken));
+		assertThat(says(kept, WHERE_AND_WITH_WHAT)).as("an XMP chunk that overran the file stayed").isFalse();
+		assertThat(riffChunksOf(kept).stream().map(PicturesThatCarryMetadata::typeOf))
+				.containsExactly("VP8X", "ALPH", "VP8 ", "EXIF");
+		assertThat(riffChunksOf(kept).get(3)).as("the turn was lost with the break")
+				.isEqualTo(riffChunk("EXIF", WithoutMetadata.noteOf(6)));
+		assertThat(WithoutMetadata.of(kept, "image/webp")).isEqualTo(kept);
+
+		/* Bytes inside the declared size that are too few for a chunk header are not a chunk. */
+		byte[] clean = webp(EXTENDED_WEBP);
+		byte[] withTail = concat(clean, new byte[] { 1, 2, 3 });
+		setLittleEndian(withTail, 4, withTail.length - 8);
+
+		assertThat(WithoutMetadata.of(withTail, "image/webp")).isEqualTo(clean);
+
+		/* An image chunk that runs past the end is kept as far as it goes, and no note goes after it. */
+		byte[] cutImage = { 'V', 'P', '8', ' ', 0, 0, 0, 0x70, 1, 2 };
+		byte[] keptCut = WithoutMetadata.of(webpOf(webp, 0, chunks.get(0), chunks.get(1), exif, cutImage), "image/webp");
+
+		assertThat(Arrays.copyOfRange(keptCut, 12, keptCut.length))
+				.isEqualTo(concat(withFlags(chunks.get(0), 0x10), chunks.get(1), cutImage));
 	}
 
 	@Test

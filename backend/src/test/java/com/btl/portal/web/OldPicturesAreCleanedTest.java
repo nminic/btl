@@ -169,6 +169,27 @@ class OldPicturesAreCleanedTest {
 	}
 
 	@Test
+	void aFileThatIsNotOfItsTypeIsLeftMarkedAndDoesNotStopTheRowsAfterIt() throws IOException {
+		/* Measured on the code before this: the first of these threw out of the run, so the picture after them
+		   kept saying where it was taken at every start, for ever. They come first, by id, on purpose. */
+		long oneByte = stored("image/jpeg", new byte[] { 1 }, true);
+		long shortPng = stored("image/png", new byte[] { 1, 2, 3 }, true);
+		long shortWebp = stored("image/webp", new byte[] { 1, 2, 3, 4, 5 }, true);
+		byte[] jpeg = PicturesThatCarryMetadata.aTelephoneJpeg(6);
+		long after = stored("image/jpeg", jpeg, true);
+		String[] asTheyWere = { row(oneByte), row(shortPng), row(shortWebp) };
+
+		cleaning.clean();
+
+		assertThat(new String[] { row(oneByte), row(shortPng), row(shortWebp) })
+				.as("a row whose file is not of its type was marked done, or changed").containsExactly(asTheyWere);
+		assertThat(fileOf(oneByte)).isEqualTo(new byte[] { 1 });
+		assertThat(fileOf(after)).as("the picture after the broken ones was not cleaned")
+				.isEqualTo(WithoutMetadata.of(jpeg, "image/jpeg"));
+		assertThat(row(after)).endsWith(" false");
+	}
+
+	@Test
 	void aRowDoneByTheTimeItsTurnComesIsPassedOver() throws IOException {
 		byte[] jpeg = PicturesThatCarryMetadata.aTelephoneJpeg(6);
 		long photo = stored("image/jpeg", jpeg, false);

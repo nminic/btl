@@ -652,7 +652,10 @@ class MePhotoApiTest {
 	 */
 	@Test
 	void theFileIsOnTheDiskUnderTheNameTheDatabaseIssued() throws Exception {
-		byte[] sent = aPng("bajtovi koji nisu ni jedna slika iz fiksture");
+		/* A PNG that is whole and carries nothing to take. (Until 07.11.2026 this sent a signature and text, and
+		   the text was stored as it came; ADL 07.11.2026 has the clean-up skip what it cannot follow instead,
+		   so text after a signature is not stored and the case would measure that and not the name.) */
+		byte[] sent = PicturesThatCarryMetadata.png();
 
 		assertThat(sending(ME, sent, MediaType.IMAGE_PNG_VALUE, "portret.png", "0", "1", "1")
 				.getStatus()).isEqualTo(200);
