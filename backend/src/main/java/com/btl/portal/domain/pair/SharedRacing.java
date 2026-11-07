@@ -67,11 +67,13 @@ public final class SharedRacing {
 	 * and her race on the SAME race gives two. The pair ran one.
 	 *
 	 * <p><b>A race counts once for each of them, the first result given for it.</b>
-	 * Nothing keys a result to (member, race) in the data the portal carries over (V7:
-	 * "one hundred and sixty five pairs that occur twice"), so one list can hold the same
-	 * race twice, and adding both would put kilometres and points on the board that
-	 * {@link #racesBothRan} has already counted as one race. Which of the two is kept is his
-	 * list's order and nothing cleverer, the same order the shared races come back in.
+	 * V65 ({@code result_one_per_member_on_a_race}) refuses a second result of one member on
+	 * one race - the owner: "član ne može da ima dva rezultata na istoj trci" - so a list read
+	 * from the database never holds the same race twice. V7 carried over one hundred and sixty
+	 * five pairs that occurred twice, and this check is the defence for a list that does not
+	 * come from there: it keeps a duplicate from putting kilometres and points on the board
+	 * for a race {@link #racesBothRan} has already counted as one. Which of the two is kept is
+	 * the order of the list it stands in, and nothing cleverer.
 	 */
 	public static Totals together(List<RanRace> his, List<RanRace> hers) {
 		List<Long> shared = racesBothRan(his, hers);

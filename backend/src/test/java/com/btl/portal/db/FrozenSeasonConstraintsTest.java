@@ -421,18 +421,37 @@ class FrozenSeasonConstraintsTest extends DatabaseTest {
 	}
 
 	/**
-	 * Changing the member's row changes nothing here, which is the state between the
-	 * other two.
+	 * Changing the member's row changes nothing here.
 	 *
-	 * <p>A37 names three: active, deactivated, deleted. The first two differ only in
-	 * whether the reader draws a link, and that is read off the seasons the member
-	 * holds (V86 took the flag away) rather than out of this table - so this measures
-	 * that the snapshot does NOT react to an update of the member. A trigger written on
-	 * the wrong event would.
+	 * <p>A37 names three states: active, deactivated, deleted. Since V86 the first two are not a
+	 * column of the member: he is active while a row of {@code membership} names a season that counts
+	 * and deactivated when none does (the case below). This one is the update of the member's own row,
+	 * which is neither - the snapshot must not react to it. A trigger written on the wrong event would.
 	 */
 	@Test
 	void updatingTheMemberLeavesTheFrozenRowAlone() {
 		db.sql("update competitor set profile_hidden = true where member_number = '001010'").update();
+
+		assertThat(db.sql("select who from season_competitor").query(String.class).single())
+				.as("updating a member's row forgot his name, which only deletion may do")
+				.isEqualTo("Prvi Zamrznuti");
+	}
+
+	/**
+	 * A member who holds no season any more is the state between the other two, and the snapshot does
+	 * not react to it either.
+	 *
+	 * <p>That is what A37 calls deactivated since V86 took the flag away: the rows of {@code membership}
+	 * are gone, and the reader stops drawing a link. A trigger on {@code membership} that rewrote
+	 * {@code season_competitor.who} when the last row went would pass the case above, which updates
+	 * another table (measured on review: 74 cases passing).
+	 */
+	@Test
+	void aMemberWhoHoldsNoSeasonAnyMoreLeavesTheFrozenRowAlone() {
+		db.sql("insert into membership (competitor_id, season, basis, decided_by_name, decided_at)"
+				+ " values (" + A_MEMBER + ", 2027, 'feeExempt', 'Moderator Probni', now())").update();
+
+		db.sql("delete from membership where competitor_id = " + A_MEMBER).update();
 
 		assertThat(db.sql("select who from season_competitor").query(String.class).single())
 				.as("deactivating a member forgot his name, which only deletion may do")

@@ -208,6 +208,27 @@ class ASeasonBegins implements WhatFollowsTheFreeze {
 	}
 
 	/**
+	 * THE FREEZE IS HELD STILL FOR AS LONG AS THE CANCELLATION RUNS: the job of 1 January cannot write its row
+	 * of {@code season_frozen} until the cancellation commits, and a cancellation that arrives while the job
+	 * runs waits for it. Both orders then give the owner's rule („bez članarine za sezonu nema tima ni para
+	 * te sezone", PDL 05.11.2026): a cancellation first is read by the job, which takes its snapshot after
+	 * it and drops the member itself; a cancellation after the job finds the row and drops him at once.
+	 *
+	 * <p>Without it neither did: the route could not see the uncommitted row of the freeze and moved nobody,
+	 * and the job, which had taken its snapshot before the route committed, still found the membership and
+	 * moved nobody either, so the member stood in his team for the whole season. It also makes
+	 * {@link #before} and {@link #cancelled} ask {@code season_frozen} twice and get one answer, since the
+	 * row cannot appear between the two questions.
+	 *
+	 * <p>Taken before the row of the member is, in the order the job takes them in (this lock, then
+	 * whatever it writes), so the two cannot wait for each other. Called by the route that cancels, before it
+	 * reads anything.
+	 */
+	void holdingTheFreezeStill() {
+		db.sql("lock table season_frozen in share mode").update();
+	}
+
+	/**
 	 * THE TEAMS OF A MEMBER WHOSE SEASON IS BEING CANCELLED, AND WHO ADMINISTERS EACH OF THEM, read while
 	 * he still holds the season. Nothing when the cancellation moves nobody ({@link #cancelled}).
 	 *

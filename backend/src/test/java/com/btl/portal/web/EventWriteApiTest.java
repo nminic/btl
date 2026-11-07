@@ -1124,6 +1124,33 @@ class EventWriteApiTest {
 	}
 
 	/**
+	 * THE LAST RACE OF THE EVENT DOES NOT DECIDE EITHER: THE RACE A LEAGUE COUNTS DOES.
+	 *
+	 * <p>The case above has the counted race as the LAST race of the event, so a guard that read the last
+	 * day of the event (the largest {@code race.date}) instead of the day of each counted race agrees with
+	 * the right one on it (measured on review: {@code max(r2.date)} in place of {@code ra.date}, 54 cases
+	 * passing). Here it is the other way round: the league counts the first race of 30 December and the
+	 * race counted nowhere stands on the 31st. A move of one day carries the last race into 2028 and the
+	 * counted one to the 31st of 2027, so it must go through.
+	 */
+	@Test
+	void theLastRaceOfAnEventThatCountsNowhereDoesNotRefuseAMoveTheCountedRaceSurvives() throws Exception {
+		long counted = event("ligaska-prva-2027", "2027-12-30", A_TOWN);
+		race(counted, "Ligaska prva", "2027-12-30");
+		race(counted, "Neligaska druga", "2027-12-31");
+		leagueCounting("liga-2027", 2027, raceCalled("Ligaska prva"));
+
+		MockHttpServletResponse answer = change(counted, aForm().withPlace(aKnownTown())
+				.withName("Trka ligaska-prva-2027").withDay(LocalDate.parse("2027-12-31")));
+
+		assertThat(answer.getStatus())
+				.as("the race nobody counts crossed into 2028 and the guard refused for it, though the race a"
+						+ " league counts stayed inside 2027")
+				.isEqualTo(200);
+		assertThat(daysOfRacesOn(counted)).containsExactly("2027-12-31", "2028-01-01");
+	}
+
+	/**
 	 * AND THE SAME EVENT MOVES FREELY INSIDE THE LEAGUE'S OWN YEAR.
 	 *
 	 * <p>The other side of the boundary, and the half that says the guard asks about the
