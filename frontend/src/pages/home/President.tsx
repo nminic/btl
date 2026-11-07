@@ -45,11 +45,13 @@ export function President() {
             {sectionsOf(pages, page).map((section) => (
               /* The language of the words, the record's own and not the address's - the same
                  attribute and the same reason as `pages/StaticPage.tsx`, which says it in
-                 full. Per block here rather than round the card, because the card is this
-                 screen's and the words inside it are the record's. */
-              <article className="address" key={section.heading} lang={page.language}>
-                <h2 className="card__title">{section.heading}</h2>
-                <PageSectionBody section={section} />
+                 full. On the heading and on the text, not round the block: the block would
+                 also hold a drawing the section names, and that is the portal's own. */
+              <article className="address" key={section.heading}>
+                <h2 className="card__title" lang={page.language}>
+                  {section.heading}
+                </h2>
+                <PageSectionBody section={section} language={page.language} />
               </article>
             ))}
           </div>
