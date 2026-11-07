@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { cleanup, screen, within } from '@testing-library/react'
-import { afterEach, describe, expect, it } from 'vitest'
+import { cleanup, screen, waitFor, within } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Competitor } from '../../data/types'
 import { at, inputElement, must } from '../../test/at'
 import { renderAt } from '../../test/render'
@@ -912,5 +912,84 @@ describe('changing a password from inside', () => {
     await user.click(within(panel).getByRole('button', { name: sr.account.passwordSubmit }))
 
     expect(await within(panel).findByText(sr.server.nothing)).toBeInTheDocument()
+  })
+
+  /**
+   * WHERE THE THREE PASSWORDS ARE WRITTEN, AS A SWEEP AND NOT AS A LIST OF SUSPECTS (review of PR 605
+   * era, PENDING „ChangePassword.tsx tvrdi pomet koji taj ekran ne pokriva").
+   *
+   * <p>`ChangePassword.tsx` says that `newPassword.test.tsx` holds this by sweeping every place a value
+   * could land. That sweep reads the OTHER screen: `console.warn(old)` in this one passed the whole
+   * suite (3087 of 3087) while the same line in `NewPassword.tsx` fails two of eighteen. This is the same
+   * question asked of this screen, with its own three values, so each of them is looked for in the
+   * addresses, the headers, the verbs, the drawn text, the address bar, both storages and everything the
+   * console was told, and in none of them may it be found.
+   *
+   * <p>Three different strings, so a line that writes only the OLD one somewhere is a fault and not an
+   * accident of the three being the same. The one request that carries them is asked first: a sweep over
+   * a screen that sent nothing measures nothing.
+   */
+  it.each([
+    ['it worked', () => answeredWith(204)],
+    ['it was refused', () => refused('theOldPasswordIsWrong')],
+  ])('writes all three only into the body of one request, when %s', async (_name, made) => {
+    const user = setupUser()
+    const OLD = 'ZxOld-7731-ancient'
+    const FRESH = 'ZxNew-4402-shiny'
+    const REPEATED = 'ZxAgain-9058-shiny'
+    const noise: string[] = []
+    let asked: Asked[] = []
+
+    for (const kind of ['debug', 'error', 'info', 'log', 'warn'] as const) {
+      vi.spyOn(console, kind).mockImplementation((...said: unknown[]) => {
+        noise.push(said.map((one) => String(one)).join(' '))
+      })
+    }
+
+    try {
+      ;({ stop, asked } = serverThat((path, init) =>
+        path === '/api/me/password' && init?.method === 'PUT' ? made() : null,
+      ))
+
+      const { router } = renderAt('/sr/podesavanja', 'competitor', ME.memberNumber)
+      const panel = await passwordPanel()
+
+      await user.type(within(panel).getByLabelText(/Trenutna lozinka/), OLD)
+      await user.type(within(panel).getByLabelText(/^Nova lozinka/), FRESH)
+      await user.type(within(panel).getByLabelText(/Ponovi novu lozinku/), REPEATED)
+      await user.click(within(panel).getByRole('button', { name: sr.account.passwordSubmit }))
+
+      await waitFor(() => {
+        expect(asked.filter((one) => one.path === '/api/me/password')).toHaveLength(1)
+      })
+
+      expect(
+        JSON.parse(String(at(asked.filter((one) => one.path === '/api/me/password'), 0).init?.body)),
+        'the passwords were not sent at all, so this sweep measures nothing',
+      ).toEqual({ oldPassword: OLD, password: FRESH, passwordRepeat: REPEATED })
+
+      const store = (kept: Storage): string =>
+        Object.keys(kept)
+          .map((key) => `${key}=${kept.getItem(key) ?? ''}`)
+          .join('|')
+      const { pathname, search, hash } = router.state.location
+      const everywhereElse = [
+        ...asked.map((one) => one.path),
+        ...asked.map((one) => JSON.stringify(one.init?.headers ?? {})),
+        ...asked.map((one) => String(one.init?.method)),
+        document.body.textContent ?? '',
+        `${pathname}${search}${hash}`,
+        window.location.href,
+        store(sessionStorage),
+        store(localStorage),
+        ...noise,
+      ]
+
+      for (const typed of [OLD, FRESH, REPEATED]) {
+        expect(everywhereElse.filter((one) => one.includes(typed)), typed).toEqual([])
+      }
+    } finally {
+      vi.restoreAllMocks()
+    }
   })
 })

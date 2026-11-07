@@ -236,6 +236,80 @@ describe('an event whose races wait', () => {
     expect(await rowsCalled(user, 'BBKT proba')).toBe(1)
   }, SLOW)
 
+  it.each(['a copy', 'an event that stands'])(
+    'names the race that is refused after „Nazad na spisak" was pressed on %s, opened by an address, and does not leave',
+    async (shape) => {
+      /**
+       * THE BUTTON OF A FORM OPENED BY ADDRESS REFUSES THE PRESS WHILE A SAVE IS OUT, LIKE THE ONE OF A NEW FORM
+       * (PENDING „cuvar dugmeta na obrazcu otvorenom preko adrese", review of PR 483, round 4, mutation B1p).
+       *
+       * <p>The refusal in the handler of the button, kept for a form that is NEW, passed twenty of twenty cases
+       * here: on `?izmena=` the router refuses the change of the address, so the reader stays, but
+       * `forgetTheForm()` has already run in the middle of the press and the list „Trke koje nisu sačuvane"
+       * comes back EMPTY. The race that was refused is then named nowhere. The press is made here with the
+       * second race write out (held, then refused by name), and what is asked is the list. Both addresses the
+       * form is opened by are asked: a copy, which draws a new form over another event's races, and an event
+       * that stands.
+       */
+      const served = shape === 'a copy' ? null : await aServedEventWithRaces()
+      let racesWritten = 0
+      let release: (answer: Response) => void = () => undefined
+
+      answering = (path, init) => {
+        if (!(path === '/api/races' || path.startsWith('/api/races/')) || init?.method === undefined || init.method === 'GET') {
+          return null
+        }
+
+        racesWritten += 1
+
+        return racesWritten === 2
+          ? new Promise<Response>((done) => {
+              release = done
+            })
+          : null
+      }
+
+      const user = setupUser()
+
+      renderAt(
+        served === null
+          ? '/sr/administracija/dogadjaji?kopija=32'
+          : `/sr/administracija/dogadjaji?izmena=${String(served.event.id)}`,
+        'superadmin',
+      )
+      await screen.findByRole('heading', { name: /^Trke na događaju/ })
+
+      if (served !== null) {
+        await touchEveryRace(user)
+      }
+
+      await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+      await waitFor(() => {
+        expect(racesWritten).toBe(2)
+      })
+
+      const back = screen.getByRole('button', { name: 'Nazad na spisak' })
+
+      await user.click(back)
+
+      expect(back).toHaveAttribute('aria-disabled', 'true')
+      expect(screen.getByRole('heading', { name: /^Trke na događaju/ })).toBeVisible()
+      expect(screen.queryByRole('table', { name: 'Događaji' })).toBeNull()
+
+      await act(async () => {
+        release(refused('theDistanceIsNotKeptExactly'))
+      })
+      await screen.findByText(sr.admin.eventSavedRacesRefused)
+
+      const [only] = notSaved()
+
+      expect(notSaved()).toHaveLength(1)
+      expect(only).toMatch(/^2\. trka \(.+\): /)
+      expect(only).toContain(sr.admin.raceSaveRefused.theDistanceIsNotKeptExactly)
+    },
+    SLOW,
+  )
+
   it('says the site is locked beside each race the proxy answered, and offers the new tab once under the list', async () => {
     /* The tab slept between the press that saved the event and the races: the event is saved, the
        second and the third race meet the lock, the first is taken and the fourth is refused by name.
@@ -550,7 +624,14 @@ describe('an event whose races wait', () => {
    * the reason beside each race is the reason it was refused for. The kind is changed on the open
    * event, which is the one way a press has races to take away and a form that draws no table.
    */
-  it('names every race the route would not take away from an event that has no races, and does not send the reader to a table that is not there', async () => {
+  it.each([
+    ['a gathering', sr.event.kind.gathering],
+    /* THE THIRD STATE OF THE AXIS (review of PR 483, round 2, PENDING „osa vrste dogadjaja ima tri stanja,
+       drzana na dva"): a race, a gathering and a training. Both halves of the correction of V1 - the list under
+       the fields and the sentence that does not point at a table - are asked of the training as well, because
+       a mutation that gave it the sentence of the table, or drew it a table, was green. */
+    ['a training', sr.event.kind.training],
+  ])('names every race the route would not take away from %s, which has no races, and does not send the reader to a table that is not there', async (_name, kind) => {
     const { event } = await aServedEventWithRaces()
     const served = (await loadResource<Race[]>('races')).filter((one) => one.eventId === event.id)
     const firstServed = must(served[0], 'the first race of the event')
@@ -573,11 +654,11 @@ describe('an event whose races wait', () => {
     renderAt(`/sr/administracija/dogadjaji?izmena=${String(event.id)}`, 'superadmin')
     await user.selectOptions(
       await screen.findByLabelText(/^Vrsta događaja/),
-      sr.event.kind.gathering,
+      kind,
     )
     expect(
       screen.queryByRole('region', { name: /^Trke na događaju/ }),
-      'a gathering draws a table of races',
+      `${kind} draws a table of races`,
     ).toBeNull()
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
 

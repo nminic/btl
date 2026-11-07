@@ -33,6 +33,7 @@ import { WHEN_LETTING_MYSELF_IN } from '../member/fromTheBalance'
 import { WHEN_CHOOSING_THE_LANGUAGE_OF_MAIL } from '../member/mailLanguage'
 import { WHEN_DELETING_A_MEMBER } from '../admin/memberWrites'
 import { WHEN_ANSWERING_A_PAIR_INVITE, WHEN_INVITING_INTO_A_PAIR } from '../member/pairWrites'
+import { WHEN_BREAKING_A_PAIR } from '../member/MyRacingPairs'
 import {
   WHEN_A_WOMAN_ANSWERS_A_TEAM_INVITE,
   WHEN_ANSWERING_A_TEAM_INVITE,
@@ -68,6 +69,14 @@ import { WHEN_SENDING_AN_INVITATION } from '../admin/memberInvitation'
  * <p><b>Read across the two halves of the repo on purpose.</b> `test/serverConfig.test.ts`
  * already reads `deploy/` and `.env.example` from here for the same reason: the fact
  * being held lives on the other side of a boundary the gate runs over anyway.
+ *
+ * <p><b>WHAT THIS FLOOR DOES NOT MEASURE, AND IT IS A BOUNDARY AND NOT A GAP (PENDING „pod nad odbijenicama
+ * meri IMENA, a nista ne meri OBLIK tela").</b> It reads the NAMES a route declares and asks that each
+ * has a sentence. A body the server cannot read at all (a number where a text is expected, a field of
+ * the wrong type, JSON that is not JSON) never reaches a name: the reader of the body (Jackson) refuses it before
+ * any of the route's own constants can be reached, so the class „the body is not of the shape the route takes"
+ * is invisible to this file by construction, and it is the class that reached QA. Nothing in this file
+ * should be read as saying a body a screen can send is a body a route can read.
  */
 
 /** Where the server's own words live. */
@@ -512,7 +521,12 @@ describe('the reasons the server can name', () => {
        also answered on the line's first dictionary, as on `TeamJoiningWriteApi`'s line below,
        because the two doors refuse with the same two words; the count stays at eight, since no
        constant was added or taken away. */
-    ['PairWriteApi.java', [WHEN_ANSWERING_A_PAIR_INVITE, WHEN_INVITING_INTO_A_PAIR], 8],
+    /* THREE MAPS SINCE 06.11.2026, AS `TeamWriteApi.java` BELOW HAS TWO, and the third is EMPTY ON PURPOSE:
+       `DELETE /api/pairs/{id}` (`PairWriteApi.end`) names no reason, only a 404 that stands for four
+       causes, so its map (`WHEN_BREAKING_A_PAIR`, which the line "Raskini" hands to `ServerSaid`) is
+       where a sentence goes the day it does. Registered here so that day makes this floor fail on a name
+       nobody answers rather than on the count alone; the count of eight does not move. */
+    ['PairWriteApi.java', [WHEN_ANSWERING_A_PAIR_INVITE, WHEN_INVITING_INTO_A_PAIR, WHEN_BREAKING_A_PAIR], 8],
     /* ADDED 28.09.2026 WITH THE SCREEN THAT ANSWERS A SERVED INVITATION INTO A TEAM, and it
        is this list's twin of the line above it in every way but one. Six constants splitting
        three ways: one is not a refusal at all (a subject line, `NOT_A_REASON`), two are real

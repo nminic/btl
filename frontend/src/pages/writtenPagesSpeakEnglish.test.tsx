@@ -445,4 +445,36 @@ describe('the other three screens that read a written record', () => {
     expect(within(table).getByText('Terms of use')).toBeVisible()
     expect(within(table).queryByText('Uslovi korišćenja')).not.toBeInTheDocument()
   })
+
+  /**
+   * THE FOURTH READER OF A WRITTEN RECORD SAYS THE LANGUAGE OF A PAGE THAT FELL BACK (PENDING „cetvrti
+   * citalac pisanog zapisa crta njegove reci BEZ ijednog jezika").
+   *
+   * <p>The case above answers every page in English, so the fallback never happens on this screen and
+   * it was in the reading of the screen by name and out of it by measurement. Here the policy is
+   * translated and the terms are not, **in the same answer**: a cell that read the language off the
+   * list, or off the address, would draw one of the two wrong. Asked of the title AND of the heading of
+   * the first section, which are two cells.
+   */
+  it('marks a title and a heading that fell back to Serbian, and leaves the translated page alone', async () => {
+    aServerAnswering({
+      sr: [POLICY_IN_SERBIAN, TERMS_IN_SERBIAN],
+      en: [POLICY_IN_ENGLISH, { ...TERMS_IN_SERBIAN, language: 'sr' }],
+    })
+
+    renderAt('/en/administracija/strane', 'superadmin')
+
+    const table = await screen.findByRole('table')
+
+    for (const [words, language] of [
+      ['Uslovi korišćenja', 'sr'],
+      ['1. Ko smo', 'sr'],
+      ['Privacy policy', 'en'],
+      ['1. The controller', 'en'],
+    ] as const) {
+      expect(within(table).getByText(words).closest('[lang]'), words).toHaveAttribute('lang', language)
+    }
+
+    expect(document.documentElement).toHaveAttribute('lang', 'en')
+  })
 })

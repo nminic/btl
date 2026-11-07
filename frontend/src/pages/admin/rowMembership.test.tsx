@@ -1,4 +1,4 @@
-import { act, configure, getConfig, screen, waitFor, within } from '@testing-library/react'
+import { act, configure, getConfig, renderHook, screen, waitFor, within } from '@testing-library/react'
 import {
   arrivedResource,
   clearResourceCache,
@@ -16,6 +16,7 @@ import { must } from '../../test/at'
 import { SLOW } from '../../test/slow'
 import { namesThatReadTheFlag, READS_THE_FLAG_AND_IS_NOT_DROPPED } from '../../test/readsTheFlag'
 import { WHAT_READS_OR_SHOWS_ACTIVE } from './whatActiveMoves'
+import { useRowRefusal } from './useRowRefusal'
 
 /**
  * „STORNIRAJ” AND THE CHANGE OF BASIS ON THE MEMBER'S ROW, AS THE MODERATOR MEETS THEM.
@@ -896,6 +897,53 @@ describe('cancelling a season or changing its basis on a member’s row', () => 
 
     server.stop()
   }, SLOW)
+})
+
+/**
+ * THE HOOK THAT HOLDS A ROW'S REFUSAL, ASKED ALONE (PENDING, review of PR 605, 20.10.2026, measured).
+ *
+ * <p>`useRowRefusal.ts` says the setter does not close over the count: a refusal that arrives after
+ * another action's success is a refusal of an action that did not go through, and it is shown, and a
+ * setter that stamped the refusal with the count of the render that sent the request would hide it on
+ * arrival. Nothing held it: the setter bound to the counter of that render passed 34 of 34. **Asked of the
+ * hook and not of the row**, and that is measured rather than convenient: on the row the actions are
+ * sent one at a time (a payment that is out holds the cancellation and the grant beside it on the same
+ * row, which a case here tried and was refused by the screen), so the order the finding names is not
+ * one the controls can make. The setter is the same function either way, and this is the order in which
+ * a setter that closed over the count and one that does not give different answers.
+ */
+describe('the refusal beside a row, held by its hook', () => {
+  it('shows a refusal that arrives after the count has moved, and drops it when the count moves again', () => {
+    const { result, rerender } = renderHook(({ settled }) => useRowRefusal<string>(settled), {
+      initialProps: { settled: 0 },
+    })
+    const sentUnderTheFirstCount = result.current[1]
+
+    rerender({ settled: 1 })
+    act(() => {
+      sentUnderTheFirstCount('late refusal')
+    })
+
+    expect(result.current[0]).toBe('late refusal')
+
+    rerender({ settled: 2 })
+
+    expect(result.current[0]).toBeNull()
+  })
+
+  it('keeps a refusal while the count stands, whatever else is drawn', () => {
+    const { result, rerender } = renderHook(({ settled }) => useRowRefusal<string>(settled), {
+      initialProps: { settled: 3 },
+    })
+
+    act(() => {
+      result.current[1]('refused')
+    })
+    rerender({ settled: 3 })
+    rerender({ settled: 3 })
+
+    expect(result.current[0]).toBe('refused')
+  })
 })
 
 describe('what a case of this file may end in', () => {

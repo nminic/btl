@@ -1,6 +1,4 @@
-import { join } from 'node:path'
 import { configure, screen, waitFor, within } from '@testing-library/react'
-import ts from 'typescript'
 import type { Role } from '../../roles/context'
 import { must } from '../../test/at'
 import { renderAt } from '../../test/render'
@@ -8,7 +6,7 @@ import { answeredWith, did, serverThat } from '../../test/serverAnswers'
 import { SLOW } from '../../test/slow'
 import { setupUser } from '../../test/user'
 import { theSheet } from '../../test/deleteSheet'
-import { sources } from '../../test/sources'
+import { whoDraws } from '../../test/whoDraws'
 import sr from '../../i18n/sr.json'
 
 /* Every wait is given half of what a case is given, for the reason `rowMembership.test.tsx` gives: a
@@ -356,41 +354,17 @@ describe('a deletion that is out with the server', () => {
   /**
    * THE FLOOR: NO SCREEN DRAWS THE SHEET WITHOUT BEING ON THE LIST ABOVE.
    *
-   * <p>Asked of the parser and not of the text, so a tag written over two lines, or imported under another name, is
-   * still a tag. `EntityEditor.tsx` itself is the one file left out: it draws the sheet inside `RowActions`, whose
-   * four callers are on the table of `deletionSheet.test.tsx`.
+   * <p>Asked of the IMPORT and not of the text of the tag (`test/whoDraws.ts`), over the whole of `src` and
+   * not only `src/pages`: a file that imports the sheet under another name, through a namespace, or from
+   * the components folder is the same sheet and is found. `EntityEditor.tsx` itself is the one file left
+   * out: it draws the sheet inside `RowActions`, whose callers are on the table of `deletionSheet.test.tsx`.
+   * A file that re-exports the sheet is a door the import cannot follow, so there is none.
    */
   it('has a row for every screen that draws the sheet', () => {
-    const pages = join(process.cwd(), 'src', 'pages')
-    const found: string[] = []
+    const found = whoDraws('pages/admin/DeleteSheet.tsx', 'DeleteSheet', ['pages/admin/EntityEditor.tsx'])
 
-    for (const { path, code } of sources()) {
-      if (!path.startsWith(pages) || path.endsWith('EntityEditor.tsx')) {
-        continue
-      }
-
-      const file = ts.createSourceFile(path, code, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
-      let draws = false
-
-      const visit = (node: ts.Node): void => {
-        if (
-          (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) &&
-          node.tagName.getText(file) === 'DeleteSheet'
-        ) {
-          draws = true
-        }
-
-        ts.forEachChild(node, visit)
-      }
-
-      visit(file)
-
-      if (draws) {
-        found.push(path.slice(pages.length + 1).split('\\').join('/'))
-      }
-    }
-
-    expect(found.sort()).toEqual(SCREENS.map((each) => each.source).sort())
+    expect(found.reExports).toEqual([])
+    expect(found.draws).toEqual(SCREENS.map((each) => `pages/${each.source}`).sort())
   })
 })
 

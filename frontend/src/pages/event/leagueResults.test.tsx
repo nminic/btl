@@ -8,6 +8,7 @@ import { expectFrontPage, moderatorWith, renderAt } from '../../test/render'
 import { serverThat, type Asked } from '../../test/serverAnswers'
 import { SLOW } from '../../test/slow'
 import { setupUser } from '../../test/user'
+import sr from '../../i18n/sr.json'
 
 /**
  * THE LEAGUE ENTERS, CHANGES AND DELETES MEMBERS' RESULTS FROM THE EVENT PAGE (PDL P9, 18.10.2026),
@@ -549,6 +550,146 @@ describe('the entry of several members', () => {
     expect(screen.getAllByRole('group', { name: /\. red$/ })).toHaveLength(2)
     /* The second went, and the first and the third stand, in their order. */
     expect(screen.getAllByLabelText('Sati').map((one) => one.getAttribute('value'))).toEqual(['1', '3'])
+    server.stop()
+  }, SLOW)
+})
+
+describe('the block of a new event on the moderator’s own screen, when the country is what is missing', () => {
+  /**
+   * THE COUNTRY IS MARKED AND THE CURSOR GOES TO IT (PENDING, review of PR 600, 20.10.2026, accessibility).
+   *
+   * <p>`TheBlockAndTheRows` handed the field of the town only `invalid`, and `FormRenderer` hands it four
+   * things for the same case (`invalid` for the town, `countryInvalid`, `withoutError`, `errorOnly`). With
+   * a town the codebook does not know and no country chosen, the sentence „Izaberi državu uz mesto." was
+   * heard, the cursor went to the town, and the country, which is what is wrong, was not marked. Asked
+   * here of the document: the country is the box marked wrong and carries the sentence, the town is not
+   * marked and does not carry it, and the cursor is on the country.
+   */
+  it('marks the country, leaves the town unmarked, and puts the cursor on the country', async () => {
+    const user = setupUser()
+    const server = serving()
+
+    renderAt('/sr/administracija/unos-rezultata', 'superadmin')
+
+    await screen.findByRole('heading', { level: 1, name: sr.leagueResults.forAnEvent })
+    await user.type(screen.getByLabelText(/^Događaj/), 'Davna trka')
+    await user.type(screen.getByLabelText(/^Datum$/), '06062015')
+    await user.type(screen.getByLabelText(/^Mesto/), 'Selo koje šifarnik ne zna')
+    await user.type(screen.getByLabelText(/^Naziv trke/), 'Nova staza')
+    await user.type(screen.getByLabelText(/^Dužina/), '8')
+    await user.type(screen.getByLabelText(/^Uspon/), '0')
+    await user.type(screen.getByLabelText(/^Spust/), '0')
+    await choose(user, 0, 'Momčilo', /Relja Momčilović \(000002\)/)
+    await user.type(box('Sati', 0), '1')
+    await user.type(box('Minuti', 0), '0')
+    await user.type(box('Sekunde', 0), '0')
+    await user.click(screen.getByRole('button', { name: sr.leagueResults.save }))
+
+    const country = await screen.findByLabelText(/^Država/)
+    const town = screen.getByLabelText(/^Mesto/)
+
+    expect(country).toHaveAttribute('aria-invalid', 'true')
+    expect(country).toHaveAccessibleDescription(sr.form.errors.countryMissing)
+    expect(town).not.toHaveAttribute('aria-invalid', 'true')
+    expect(town).not.toHaveAccessibleDescription(sr.form.errors.countryMissing)
+    expect(country).toHaveFocus()
+    expect(writes(server.asked)).toEqual([])
+    server.stop()
+  }, SLOW)
+})
+
+describe('what the server said about a row, when a row is taken away', () => {
+  /**
+   * THE SENTENCE OF THE SERVER IS TAKEN DOWN WITH THE ROW THAT IS REMOVED (PENDING, review of PR 575,
+   * 19.10.2026, test).
+   *
+   * <p>The server names a refused row by its PLACE in what was sent. Taking a row away moves every row after
+   * it up by one, so a sentence kept would stand under the member who is now where the refused one was.
+   * `setRefusal(null)` in the handler of the x is what prevents it, and no case held it: with three rows
+   * and the second refused, taking the first away left the whole file green. The sentence and the alert are
+   * both gone, and the two rows that are left carry neither.
+   */
+  it('takes the refusal of the server away with the row that is removed, so it cannot stand under another member', async () => {
+    const user = setupUser()
+    const server = serving(
+      () =>
+        new Response(
+          JSON.stringify({
+            reason: 'aRowIsWrong',
+            rows: [{ row: 1, reason: 'heHoldsNoMembershipOfTheRunningSeason' }],
+          }),
+          { status: 400, headers: { 'content-type': 'application/json' } },
+        ),
+    )
+
+    renderAt(`/sr/kalendar/${EVENT}/rezultati?trka=${String(OF_A_LENGTH)}`, 'superadmin')
+
+    await screen.findByRole('heading', { level: 1, name: /^Unos rezultata: / })
+    await choose(user, 0, 'Momčilo', /Relja Momčilović \(000002\)/)
+    await user.type(box('Sati', 0), '3')
+    await user.click(screen.getByRole('button', { name: /Dodaj člana/ }))
+    await choose(user, 1, 'Đuriš', /Vladan Đurišić \(000001\)/)
+    await user.type(box('Sati', 1), '4')
+    await user.click(screen.getByRole('button', { name: /Dodaj člana/ }))
+    await choose(user, 2, 'Momčilo', /Relja Momčilović \(000002\)/)
+    await user.type(box('Sati', 2), '5')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    const said = 'Član nema članstvo za sezonu ove trke, pa mu liga ne unosi rezultat.'
+
+    expect(await screen.findByText(said)).toBeVisible()
+    expect(screen.getAllByLabelText('Sati')[1]).toHaveAttribute('aria-invalid', 'true')
+
+    await user.click(screen.getByRole('button', { name: 'Ukloni 1. red' }))
+
+    expect(screen.queryByText(said)).toBeNull()
+    expect(screen.queryByRole('alert')).toBeNull()
+    expect(screen.getAllByRole('group', { name: /\. red$/ })).toHaveLength(2)
+
+    for (const one of screen.getAllByLabelText('Sati')) {
+      expect(one).toHaveAttribute('aria-invalid', 'false')
+    }
+
+    server.stop()
+  }, SLOW)
+
+  /**
+   * THE BOX OF THE MEMBER IS MARKED WRONG IN THE ROW THAT IS WRONG, AND ONLY IN THAT ROW (PENDING, same round,
+   * „Polje za clana u pogresnom redu nikad nije provereno kao aria-invalid (samo „Sati”)").
+   *
+   * <p>A row is wrong as a whole, and the box of the member carries the mark with the figures
+   * (`aria-invalid={words !== undefined}`). Only `Sati` was asked, so the member's box could lose its mark
+   * and every case stayed green. Asked of both boxes of both rows.
+   */
+  it('marks the box of the member in the refused row and not in the other', async () => {
+    const user = setupUser()
+    const server = serving(
+      () =>
+        new Response(
+          JSON.stringify({
+            reason: 'aRowIsWrong',
+            rows: [{ row: 1, reason: 'heHoldsNoMembershipOfTheRunningSeason' }],
+          }),
+          { status: 400, headers: { 'content-type': 'application/json' } },
+        ),
+    )
+
+    renderAt(`/sr/kalendar/${EVENT}/rezultati?trka=${String(OF_A_LENGTH)}`, 'superadmin')
+
+    await screen.findByRole('heading', { level: 1, name: /^Unos rezultata: / })
+    await choose(user, 0, 'Momčilo', /Relja Momčilović \(000002\)/)
+    await user.type(box('Sati', 0), '3')
+    await user.click(screen.getByRole('button', { name: /Dodaj člana/ }))
+    await choose(user, 1, 'Đuriš', /Vladan Đurišić \(000001\)/)
+    await user.type(box('Sati', 1), '4')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+    await screen.findByRole('alert')
+
+    const members = screen.getAllByLabelText(/^Član/)
+
+    expect(members).toHaveLength(2)
+    expect(must(members[0], 'the member of the first row')).toHaveAttribute('aria-invalid', 'false')
+    expect(must(members[1], 'the member of the second row')).toHaveAttribute('aria-invalid', 'true')
     server.stop()
   }, SLOW)
 })

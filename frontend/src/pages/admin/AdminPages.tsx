@@ -35,6 +35,10 @@ type PageRow = {
   slug: string
   title: string
   heading: string
+  /** The language the title and the heading are really in, which is the page's own and not the
+   *  address's: a page that is not whole in the language asked for comes back in Serbian
+   *  (`PageApi.pagesIn`), and the cells that draw its words have to say so. */
+  language: string
   sectionCount: number
 }
 
@@ -47,6 +51,7 @@ function pageRows(pages: StaticPage[]): PageRow[] {
     slug: page.slug,
     title: page.title,
     heading: page.sections.at(0)?.heading ?? '',
+    language: page.language,
     sectionCount: page.sections.length,
   }))
 }
@@ -94,7 +99,13 @@ export function AdminPages() {
                   <tbody>
                     {rows.map((page) => (
                       <tr key={page.slug}>
-                        <td>{page.title}</td>
+                        {/* THE WORDS OF A WRITTEN RECORD CARRY THEIR OWN LANGUAGE, here as on the three
+                            screens that draw it as a page (`StaticPage.tsx`, `Rulebook.tsx`, the card
+                            of the president). Without it a title that fell back to Serbian stood under
+                            the document's `lang="en"` and was read with English phonetics (WCAG 2.2 AA
+                            3.1.2). Only the two cells that hold the record's words: the address, the
+                            count and the column headings are the portal's and keep the document's. */}
+                        <td lang={page.language}>{page.title}</td>
                         <td>
                           {inside.has(page.slug) ? (
                             <span className="member__note">{t('admin.noAddress')}</span>
@@ -102,7 +113,7 @@ export function AdminPages() {
                             <Link to={`/${locale}/${page.slug}`}>/{page.slug}</Link>
                           )}
                         </td>
-                        <td>{page.heading}</td>
+                        <td lang={page.language}>{page.heading}</td>
                         <td>{formatNumber(page.sectionCount, locale)}</td>
                       </tr>
                     ))}

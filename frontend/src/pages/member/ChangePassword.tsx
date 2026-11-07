@@ -36,8 +36,9 @@ import { WHEN_CHANGING_MY_PASSWORD } from './myAccount'
  * precisely so that nobody adds one quietly.
  *
  * <p><b>Nothing typed here is written anywhere but into the body of one request</b>, which
- * is the rule `askTheServer` states and `newPassword.test.tsx` holds by sweeping every place
- * a value could land. The three controls are the only copy the browser has of any of them,
+ * is the rule `askTheServer` states and `myAccountScreen.test.tsx` holds for this screen by
+ * sweeping every place a value could land (`newPassword.test.tsx` does the same for the reset
+ * screen, and only for it). The three controls are the only copy the browser has of any of them,
  * and a save unmounts all three.
  */
 export function ChangePassword() {
