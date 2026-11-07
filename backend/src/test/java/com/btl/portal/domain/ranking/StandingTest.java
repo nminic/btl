@@ -90,7 +90,8 @@ class StandingTest {
 	 * that should lose holds the larger of one half. The first pair falls to a
 	 * version reading only the climb, the second to one reading only the descent,
 	 * and in both the member number is set so that a version consulting no rung at
-	 * all comes out backwards too.
+	 * all comes out backwards too. A third pair, at the end of the case, holds no half
+	 * at nought and refuses the version that reads the smaller of the two.
 	 */
 	@Test
 	void verticalIsBothHalvesAndNotOne() {
@@ -114,6 +115,19 @@ class StandingTest {
 				.as("only the descending half was counted, or the halves were subtracted, and the"
 						+ " rulebook counts both added together")
 				.containsExactly("penje", "silazi");
+
+		/* AND THE SMALLER OF THE TWO HALVES IS A THIRD WAY OF NOT ADDING THEM, which neither pair above
+		   can refuse: in each the loser holds a half at nought, so the smaller half sends him last
+		   anyway and Math.min agreed with the sum (measured on review, 1 case passing). Here neither
+		   of the loser's halves is nought (600 and 350 against 100 and 900): 950 against 1000 by the
+		   sum, but 350 against 100 by the smaller half. The gap between his halves is no wider than the
+		   winner's, which is why this pair is not enough alone: it cannot tell a version reading the
+		   difference from the right one, and the pairs above can. */
+		assertThat(orderOf(List.of(
+				row("penje", 1, "40.00", "100.00", 5, 600, 350, 3600L),
+				row("silazi", 9, "40.00", "100.00", 5, 100, 900, 3600L))))
+				.as("the smaller of the two halves was counted, and the rulebook counts both added together")
+				.containsExactly("silazi", "penje");
 	}
 
 	/**
