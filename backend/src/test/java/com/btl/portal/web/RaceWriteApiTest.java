@@ -213,6 +213,23 @@ class RaceWriteApiTest {
 		return db.sql("select id from race where name = ?").param(name).query(Long.class).single();
 	}
 
+	/**
+	 * AN EVENT THAT IS OVER, with two races, for the cases that move an event into an earlier year.
+	 *
+	 * <p>Since the owner's answer of 07.11.2026 (PDL P9, „Prošla godina" znači svaka godina ranija od one u kojoj
+	 * događaj sada počinje) a race is refused that would pull an event that is still ahead into an earlier year,
+	 * and every event of the fixture is dated 2027, so it is ahead on the real clock these cases stand on. An
+	 * event dated in 2025 is not, and it is the move of such an event that these cases are about.
+	 */
+	private long anEventThatIsOver() {
+		long over = event("stari-2025", "Stari maraton", "2025-06-02");
+
+		race("stari-2025", "Stara prva", "2025-06-02");
+		race("stari-2025", "Stara druga", "2025-06-03");
+
+		return over;
+	}
+
 	private long competitor(String number, String referral) {
 		return db.sql("insert into competitor (member_number, first_name, last_name, gender,"
 						+ " birth_date, place_id, first_season,"
@@ -855,16 +872,17 @@ class RaceWriteApiTest {
 	 */
 	@Test
 	void aRaceThatTakesItsEventIntoAnotherYearTakesTheAddressToo() throws Exception {
+		long over = anEventThatIsOver();
 		MockHttpServletResponse answer =
-				change(theMiddleRace, anEdit().on(LocalDate.parse("2026-12-30")));
+				change(raceCalled("Stara druga"), anEdit().under(over).on(LocalDate.parse("2024-12-30")));
 
 		assertThat(answer.getStatus()).isEqualTo(200);
 		assertThat(answeredAddress(answer))
-				.as("the event began in 2026 and went on answering at an address saying otherwise")
-				.isEqualTo("drugi-maraton-2026");
-		assertThat(slugOf(acted))
+				.as("the event began in 2024 and went on answering at an address saying otherwise")
+				.isEqualTo("stari-maraton-2024");
+		assertThat(slugOf(over))
 				.as("the answer said the address moved and the row says otherwise")
-				.isEqualTo("drugi-maraton-2026");
+				.isEqualTo("stari-maraton-2024");
 	}
 
 	/**
@@ -913,27 +931,29 @@ class RaceWriteApiTest {
 	@ParameterizedTest
 	@CsvSource({"add", "change"})
 	void anEventMovedOntoATakenAddressIsRefusedAndNothingIsWritten(String how) throws Exception {
-		event("drugi-maraton-2026", "Vec zauzeto", "2026-05-05");
+		long over = anEventThatIsOver();
 
-		List<String> daysBefore = daysOfRacesOn(acted);
+		event("stari-maraton-2024", "Vec zauzeto", "2024-05-05");
+
+		List<String> daysBefore = daysOfRacesOn(over);
 		long racesBefore = howManyRaces();
 
 		MockHttpServletResponse answer = how.equals("add")
-				? add(aForm().on(LocalDate.parse("2026-12-30")))
-				: change(theMiddleRace, anEdit().on(LocalDate.parse("2026-12-30")));
+				? add(aForm().under(over).on(LocalDate.parse("2024-12-30")))
+				: change(raceCalled("Stara druga"), anEdit().under(over).on(LocalDate.parse("2024-12-30")));
 
 		assertThat(answer.getStatus())
 				.as("%s moved an event onto an address another event already answers at", how)
 				.isEqualTo(409);
 		assertThat(reasonIn(answer)).isEqualTo(RaceWriteApi.THE_ADDRESS_IS_TAKEN);
 
-		assertThat(slugOf(acted))
+		assertThat(slugOf(over))
 				.as("%s was refused and the address changed anyway", how)
-				.isEqualTo(ITS_ADDRESS);
-		assertThat(dayOf(acted))
+				.isEqualTo("stari-2025");
+		assertThat(dayOf(over))
 				.as("%s was refused and the event moved anyway", how)
-				.isEqualTo(ITS_DAY.toString());
-		assertThat(daysOfRacesOn(acted))
+				.isEqualTo("2025-06-02");
+		assertThat(daysOfRacesOn(over))
 				.as("%s was refused and the calendar changed anyway", how)
 				.isEqualTo(daysBefore);
 		assertThat(howManyRaces())
@@ -955,14 +975,16 @@ class RaceWriteApiTest {
 	 */
 	@Test
 	void aDeleteThatWouldMoveTheEventOntoATakenAddressIsRefusedToo() throws Exception {
-		assertThat(add(aForm().called("Zimska", true).on(LocalDate.parse("2026-12-30")))
-				.getStatus()).isEqualTo(201);
-		assertThat(dayOf(acted)).isEqualTo("2026-12-30");
-		assertThat(slugOf(acted))
-				.as("the walk starts from an address that is not the one the collision is about")
-				.isEqualTo("drugi-maraton-2026");
+		long over = anEventThatIsOver();
 
-		event("drugi-maraton-2027", "Vec zauzeto", "2027-05-05");
+		assertThat(add(aForm().under(over).called("Zimska", true).on(LocalDate.parse("2024-12-30")))
+				.getStatus()).isEqualTo(201);
+		assertThat(dayOf(over)).isEqualTo("2024-12-30");
+		assertThat(slugOf(over))
+				.as("the walk starts from an address that is not the one the collision is about")
+				.isEqualTo("stari-maraton-2024");
+
+		event("stari-maraton-2025", "Vec zauzeto", "2025-05-05");
 
 		long racesBefore = howManyRaces();
 		MockHttpServletResponse answer = remove(raceCalled("Zimska"));
@@ -974,12 +996,12 @@ class RaceWriteApiTest {
 		assertThat(howManyRaces())
 				.as("the delete was refused and the race disappeared anyway")
 				.isEqualTo(racesBefore);
-		assertThat(dayOf(acted))
+		assertThat(dayOf(over))
 				.as("the delete was refused and the event moved anyway")
-				.isEqualTo("2026-12-30");
-		assertThat(slugOf(acted))
+				.isEqualTo("2024-12-30");
+		assertThat(slugOf(over))
 				.as("the delete was refused and the address changed anyway")
-				.isEqualTo("drugi-maraton-2026");
+				.isEqualTo("stari-maraton-2024");
 	}
 
 	/**
@@ -1669,15 +1691,17 @@ class RaceWriteApiTest {
 	 */
 	@Test
 	void aRaceLongPastIsWrittenAndChangedLikeAnyOther() throws Exception {
-		assertThat(add(aForm().under(another).on(LocalDate.parse("2019-04-06"))).getStatus())
+		long over = anEventThatIsOver();
+
+		assertThat(add(aForm().under(over).on(LocalDate.parse("2019-04-06"))).getStatus())
 				.as("a race that was run years ago could not be entered")
 				.isEqualTo(201);
-		assertThat(dayOf(another)).isEqualTo("2019-04-06");
+		assertThat(dayOf(over)).isEqualTo("2019-04-06");
 
-		assertThat(change(theMiddleRace, anEdit().on(LocalDate.parse("2018-05-05"))).getStatus())
+		assertThat(change(raceCalled("Stara druga"), anEdit().under(over).on(LocalDate.parse("2018-05-05"))).getStatus())
 				.as("a race could not be moved into the past")
 				.isEqualTo(200);
-		assertThat(dayOf(acted)).isEqualTo("2018-05-05");
+		assertThat(dayOf(over)).isEqualTo("2018-05-05");
 	}
 
 	/**
