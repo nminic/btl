@@ -5,6 +5,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Set;
 import java.util.zip.CRC32;
+import java.util.zip.DataFormatException;
+import java.util.zip.Inflater;
 
 /**
  * A PICTURE WITH EVERYTHING THE CAMERA WROTE ABOUT IT TAKEN OFF, AND THE WAY IT ASKS TO BE TURNED KEPT.
@@ -35,13 +37,17 @@ import java.util.zip.CRC32;
  * read, and without either a photograph changes colour. Gone: {@code APP0} (JFIF and its thumbnail),
  * {@code APP1} (EXIF, with GPS, the date and the device, and XMP), every other {@code APPn}, {@code COM},
  * and anything after the end of the picture, which is where some telephones put a second picture or a
- * video ({@code MPF}, motion photos).
- * <li>PNG: the critical chunks, and of the ancillary ones only those that change how pixels are drawn
- * ({@link #PNG_DRAWING}). Gone: {@code tEXt}, {@code zTXt}, {@code iTXt}, {@code eXIf}, {@code tIME},
- * {@code pHYs} and every chunk nobody here knows, and anything after {@code IEND}.
+ * video ({@code MPF}, motion photos), and bytes between segments that are not part of any.
+ * <li>PNG: the four critical chunks ({@link #PNG_CRITICAL}), and of the others only those that change how
+ * pixels are drawn ({@link #PNG_DRAWING}). Gone: {@code tEXt}, {@code zTXt}, {@code iTXt}, {@code eXIf},
+ * {@code tIME}, {@code pHYs} and every chunk nobody here knows, whatever its first letter, and anything
+ * after {@code IEND}; {@code IEND} is written with length 0 whatever length the file gave it, and
+ * {@code IDAT} is kept exactly to the end of its zlib stream (through all the IDAT chunks), so text a length
+ * claims into is gone too.
  * <li>WebP: the chunks that draw ({@link #WEBP_DRAWING}). Gone: {@code EXIF}, {@code XMP } and every chunk
  * nobody here knows, and anything past the size the RIFF header declares. The {@code VP8X} flags are
- * rewritten to say what is still there.
+ * rewritten to say what is still there. <b>Text inside an image chunk whose size claims more than the
+ * image takes stays</b>, see the boundary below.
  * </ul>
  *
  * <p><b>THE ICC PROFILE IS KEPT, AND THAT IS THE OWNER'S WORD</b> (ADL, 06.11.2026, added to the decision
@@ -49,13 +55,39 @@ import java.util.zip.CRC32;
  * a photograph move, and what it can say about anybody is at most the maker of a screen. Offered and not
  * chosen: take the profile off too.
  *
- * <p><b>A FILE WHOSE STRUCTURE CANNOT BE FOLLOWED TO ITS END IS CLEANED AS FAR AS IT CAN BE, AND THE REST IS
- * KEPT AS IT CAME.</b> {@link WhatAPictureIs#sniff} reads three or twelve bytes and decodes nothing, so a
- * file that begins like a picture and is something else after that is a file this receives. What it does
- * with one is walk segments or chunks while their lengths fit; where one does not, the bytes from there on
- * are copied untouched. That is a boundary and is said as one: metadata past such a break stays. A camera
- * does not write a broken file, so the metadata the decision is about is in front of any break; and a
- * refusal of such files would be a new rule about what a picture is, which nobody decided.
+ * <p><b>A FILE WHOSE STRUCTURE BREAKS IS CLEANED PAST THE BREAK, AS A VIEWER READS IT</b> (ADL, owner,
+ * 07.11.2026, chosen among the outcomes offered, with my recommendation): „Kad fajl na jednom mestu ne prati
+ * očekivanu strukturu (suvišan bajt, pokvaren segment), čišćenje ne staje nego nastavlja kao pregledač:
+ * preskoči pokvareno mesto i skida metapodatke i iza njega; slika se prima i čista je." Offered and not
+ * chosen: refuse such a file; leave it and write the boundary down. {@link WhatAPictureIs#sniff} reads three
+ * or twelve bytes and decodes nothing, so a file that begins like a picture and is something else after that is
+ * a file this receives, and the first version of this class copied everything from the first break on, which
+ * kept the GPS of a picture one stray byte had been put in front of while the picture was still shown.
+ * What „as a viewer" means here is MY reading of the decision and not a recorded one:
+ * <ul>
+ * <li>JPEG: bytes that are not a marker are skipped until the next {@code FF xx} with {@code xx} not 00, which
+ * is how a decoder finds the next segment, between all segments and not only in front of the first. A
+ * segment whose length is under two is dropped as a marker and the search goes on; a segment that runs past
+ * the end of the file is the rest of the file, as it is to a decoder, and is kept as far as it goes only if it
+ * is one that draws.
+ * <li>PNG and WebP carry nothing to find the next block by, so a block whose size runs past the end of the file
+ * is the rest of the file, kept as far as it goes only if it draws (a picture cut in its data is shown as far
+ * as it goes), and bytes too few to be a block are dropped. The one exception to „kept as far as it goes" is
+ * PNG image data, which ends where its zlib stream ends (ADL, owner, 07.11.2026, „Blok slike čija dužina
+ * prebaci stvarne podatke": „Kod PNG-a IEND se piše kanonski (dužina 0), a IDAT se zadržava tačno do kraja
+ * svog toka, pa tekst iza njega ne ostaje.").
+ * </ul>
+ * <b>WebP IS A RECORDED BOUNDARY AND NOT AN OVERSIGHT</b> (the same decision): „Kod WebP-a se kraj slike
+ * unutar bloka ne može pouzdano odrediti, pa tekst iza „prebačenog" bloka slike ostaje; takav fajl ne pravi
+ * nijedan telefon ni program, nego samo neko ručno, i to sam vlasnik slike sa sopstvenim podacima." So a
+ * {@code VP8 }, {@code VP8L}, {@code ALPH} or {@code ANMF} chunk whose size covers text after the picture keeps
+ * that text, and a case says so.
+ * What a break swallows from a decoder's side is swallowed here: a JPEG segment one byte too long takes the
+ * first byte of the marker after it, and the bytes up to the next marker are skipped, so what is lost there is
+ * lost to the viewer as well. <b>The boundary that is left, said as one:</b> bytes skipped on the way to a
+ * marker are never copied, but a marker that is only FOUND inside skipped bytes (an {@code FF xx} inside the
+ * content of a segment that swallowed a marker) is read as a marker, and a segment that is not metadata is
+ * kept; the content of such a segment is what a decoder would have read too, and it is not EXIF.
  *
  * <p><b>WHAT CAME IN IS WHAT GOES OUT WHEN THERE WAS NOTHING TO TAKE</b>, the same array, not a copy. And
  * the work is IDEMPOTENT: a picture this has already cleaned comes out byte for byte the same, which is what
@@ -78,11 +110,17 @@ public final class WithoutMetadata {
 	/**
 	 * The ancillary PNG chunks that change how the pixels are drawn: transparency, the four ways of saying
 	 * what a colour is, the significant bits, the HDR trio, and the three of an animated PNG. Ancillary
-	 * chunks only; a CRITICAL chunk (its first letter upper case) is kept whatever it is, because a decoder
-	 * that does not know one must refuse the file, so none of them can be a note on the side.
+	 * chunks only. The critical ones are {@link #PNG_CRITICAL}, four; a chunk with another name is dropped
+	 * even when its first letter is upper case. (Until 07.11.2026 every such chunk was kept on the ground
+	 * that a decoder must refuse the file for one, so it could not be a note on the side. That was wrong
+	 * twice: the file is stored and served whether or not a viewer can show it, and the chunk is where
+	 * a writer can put anything, GPS included, in a name that sounds critical.)
 	 */
 	static final Set<String> PNG_DRAWING = Set.of("tRNS", "gAMA", "cHRM", "sRGB", "iCCP", "sBIT", "cICP",
 			"mDCV", "cLLI", "acTL", "fcTL", "fdAT");
+
+	/** The four chunks the PNG format itself calls critical; any other critical-looking name is nobody's. */
+	static final Set<String> PNG_CRITICAL = Set.of("IHDR", "PLTE", "IDAT", "IEND");
 
 	/** The WebP chunks that draw: the extended header, the colour profile, animation, alpha, and the image. */
 	static final Set<String> WEBP_DRAWING = Set.of("VP8X", "ICCP", "ANIM", "ANMF", "ALPH", "VP8 ", "VP8L");
@@ -130,9 +168,11 @@ public final class WithoutMetadata {
 			out.write(note, 0, note.length);
 		}
 
-		int at = 2;
+		/* BYTES THAT ARE NOT A MARKER ARE SKIPPED UNTIL ONE IS, here and after every segment below, which is
+		   what a decoder does and the whole of „nastavlja kao pregledač" for this type. */
+		int at = SmallPicture.markerFrom(in, 2);
 
-		while (at + 1 < in.length && (in[at] & 0xFF) == 0xFF) {
+		while (at + 1 < in.length) {
 			int marker = in[at + 1] & 0xFF;
 
 			if (marker == 0xD9) {
@@ -145,22 +185,24 @@ public final class WithoutMetadata {
 				/* A fill byte or a marker that carries no length. */
 				int step = marker == 0xFF ? 1 : 2;
 				out.write(in, at, step);
-				at += step;
+				at = SmallPicture.markerFrom(in, at + step);
 				continue;
 			}
 
-			if (at + 4 > in.length) {
-				break;
+			boolean lengthIsThere = at + 4 <= in.length;
+			int length = lengthIsThere ? sixteen(in, at + 2) : 2;
+
+			if (length < 2) {
+				/* A length no segment can have: the marker is dropped and the next one looked for. */
+				at = SmallPicture.markerFrom(in, at + 2);
+				continue;
 			}
 
-			int length = sixteen(in, at + 2);
-			int end = at + 2 + length;
+			/* A SEGMENT THAT RUNS PAST THE END OF THE FILE (or whose length the file ends in the middle of) IS
+			   THE REST OF THE FILE, as it is to a decoder. */
+			int end = lengthIsThere ? (int) Math.min(at + 2L + length, in.length) : in.length;
 
-			if (length < 2 || end > in.length) {
-				break;
-			}
-
-			if (!isMetadata(in, at, marker, length)) {
+			if (!isMetadata(in, marker, at + 4, end)) {
 				out.write(in, at, end - at);
 			}
 
@@ -169,10 +211,10 @@ public final class WithoutMetadata {
 			if (marker == 0xDA) {
 				at = theScanFrom(in, at, out);
 			}
+
+			at = SmallPicture.markerFrom(in, at);
 		}
 
-		/* WHERE THE STRUCTURE COULD NOT BE FOLLOWED, the rest as it came (see the class note). */
-		out.write(in, at, in.length - at);
 		return theSameWhereNothingChanged(in, out);
 	}
 
@@ -206,7 +248,7 @@ public final class WithoutMetadata {
 	}
 
 	/** An application segment or a comment, except the two that say what the colours are. */
-	private static boolean isMetadata(byte[] in, int at, int marker, int length) {
+	private static boolean isMetadata(byte[] in, int marker, int dataFrom, int end) {
 		if (marker == 0xFE) {
 			return true;
 		}
@@ -215,11 +257,10 @@ public final class WithoutMetadata {
 			return false;
 		}
 
-		int data = at + 4;
-		int size = length - 2;
+		int size = Math.max(0, end - dataFrom);
 
-		return !(marker == 0xE2 && startsWith(in, data, size, ICC_PROFILE)
-				|| marker == 0xEE && startsWith(in, data, size, ADOBE));
+		return !(marker == 0xE2 && startsWith(in, dataFrom, size, ICC_PROFILE)
+				|| marker == 0xEE && startsWith(in, dataFrom, size, ADOBE));
 	}
 
 	/* ------------------------------------------------------------------------------------------------
@@ -232,18 +273,54 @@ public final class WithoutMetadata {
 		out.write(in, 0, 8);
 
 		int at = 8;
+		int stream = imageStreamLength(in);
+		int seen = 0;
+		boolean trimmed = false;
 
 		while (at + 12 <= in.length) {
 			long length = thirtyTwo(in, at);
+			String type = new String(in, at + 4, 4, StandardCharsets.ISO_8859_1);
+			boolean draws = PNG_CRITICAL.contains(type) || PNG_DRAWING.contains(type);
+
+			if ("IEND".equals(type)) {
+				/* WRITTEN CANONICALLY, length 0, whatever length the file gave it (ADL 07.11.2026): an IEND
+				   that claims data is a place text can sit, and what follows the end is not part of the picture. */
+				pngChunk(out, "IEND", new byte[0]);
+				return theSameWhereNothingChanged(in, out);
+			}
+
+			if ("IDAT".equals(type)) {
+				/* THE IMAGE DATA IS KEPT EXACTLY TO THE END OF ITS ZLIB STREAM, which runs through all the IDAT
+				   chunks (ADL 07.11.2026): a length that claims more than the stream holds is a place text can sit. */
+				int have = (int) Math.min(length, in.length - at - 8L);
+				int keep = Math.max(0, Math.min(have, stream - seen));
+				seen += have;
+
+				if (keep < have) {
+					trimmed = true;
+
+					if (keep > 0) {
+						pngChunk(out, "IDAT", Arrays.copyOfRange(in, at + 8, at + 8 + keep));
+					}
+
+					at = (int) Math.min(in.length, at + 12L + length);
+					continue;
+				}
+			}
 
 			if (length > in.length - at - 12L) {
-				break;
+				/* A CHUNK THAT RUNS PAST THE END is the rest of the file: kept as far as it goes where it
+				   draws (a picture cut in its data is shown as far as it goes), and gone where it does not. */
+				if (draws) {
+					out.write(in, at, in.length - at);
+				}
+
+				return theSameWhereNothingChanged(in, out);
 			}
 
 			int end = at + 12 + (int) length;
-			String type = new String(in, at + 4, 4, StandardCharsets.ISO_8859_1);
 
-			if (isCritical(in[at + 4]) || PNG_DRAWING.contains(type)) {
+			if (draws) {
 				out.write(in, at, end - at);
 			}
 
@@ -253,18 +330,69 @@ public final class WithoutMetadata {
 				/* RIGHT AFTER THE HEADER, which is before any image data, where every reader looks. */
 				pngChunk(out, "eXIf", noteOf(turn));
 			}
-
-			if ("IEND".equals(type)) {
-				/* And what follows the end is not part of the picture. */
-				return theSameWhereNothingChanged(in, out);
-			}
 		}
 
-		out.write(in, at, in.length - at);
+		if (trimmed) {
+			/* The chunk that claimed too much took the rest of the file with it, the end included. */
+			pngChunk(out, "IEND", new byte[0]);
+		}
+
+		/* Fewer bytes than the smallest chunk are not one. */
 		return theSameWhereNothingChanged(in, out);
 	}
 
-	/** The orientation an {@code eXIf} chunk asks for, the first one, 1 where there is none. */
+	/**
+	 * How many bytes of the IDAT data (all the chunks of it, one after another) the zlib stream of the image
+	 * really takes, found by inflating it to its end and asking the inflater what it did not use. Where the
+	 * stream does not end (a picture cut in its data, or data that is no zlib stream) it is all of the IDAT
+	 * data there is, which keeps what a viewer would show as far as it goes.
+	 */
+	private static int imageStreamLength(byte[] in) {
+		ByteArrayOutputStream data = new ByteArrayOutputStream();
+		byte[] idat = "IDAT".getBytes(StandardCharsets.ISO_8859_1);
+		byte[] iend = "IEND".getBytes(StandardCharsets.ISO_8859_1);
+		int at = 8;
+
+		while (at + 12 <= in.length) {
+			long length = thirtyTwo(in, at);
+
+			if (startsWith(in, at + 4, 4, idat)) {
+				data.write(in, at + 8, (int) Math.min(length, in.length - at - 8L));
+			}
+
+			if (startsWith(in, at + 4, 4, iend) || length > in.length - at - 12L) {
+				break;
+			}
+
+			at += 12 + (int) length;
+		}
+
+		byte[] all = data.toByteArray();
+		Inflater inflater = new Inflater();
+
+		try {
+			inflater.setInput(all);
+			byte[] sink = new byte[8192];
+
+			boolean moving = true;
+
+			while (moving && !inflater.finished()) {
+				moving = inflater.inflate(sink) > 0;
+			}
+
+			/* An inflater that stops short of the end wants more input, which this file does not have. */
+			return inflater.finished() ? all.length - inflater.getRemaining() : all.length;
+		} catch (DataFormatException notAStream) {
+			return all.length;
+		} finally {
+			inflater.end();
+		}
+	}
+
+	/**
+	 * The orientation an {@code eXIf} chunk asks for, the first one in front of {@code IEND}, 1 where there
+	 * is none: what comes after the end of the picture is not read by anybody who shows it.
+	 */
 	private static int pngOrientation(byte[] in) {
 		int at = 8;
 
@@ -279,15 +407,14 @@ public final class WithoutMetadata {
 				return orientationOfTheNote(Arrays.copyOfRange(in, at + 8, at + 8 + (int) length));
 			}
 
+			if (startsWith(in, at + 4, 4, "IEND".getBytes(StandardCharsets.ISO_8859_1))) {
+				return 1;
+			}
+
 			at += 12 + (int) length;
 		}
 
 		return 1;
-	}
-
-	/** A chunk's type whose first letter is upper case is critical (bit 5 of the first byte is clear). */
-	private static boolean isCritical(byte first) {
-		return (first & 0x20) == 0;
 	}
 
 	private static void pngChunk(ByteArrayOutputStream out, String type, byte[] data) {
@@ -307,7 +434,8 @@ public final class WithoutMetadata {
 	   ------------------------------------------------------------------------------------------------ */
 
 	private static byte[] webp(byte[] in) {
-		/* WHAT THE RIFF HEADER SAYS THE FILE IS, and bytes past that are not part of it. A size that says
+		/* WHAT THE RIFF HEADER SAYS THE FILE IS, and bytes past that are not part of it. (Inside an image
+		   chunk the end of the picture cannot be found, so text its size covers stays: a recorded boundary.) A size that says
 		   more than there is, or less than the header itself, leaves the file as long as it is. */
 		long declared = littleThirtyTwo(in, 4);
 		int limit = declared >= 4 && declared + 8 <= in.length ? (int) declared + 8 : in.length;
@@ -321,15 +449,24 @@ public final class WithoutMetadata {
 		boolean read = false;
 		int at = 12;
 
+		boolean cutImage = false;
+
 		while (at + 8 <= limit) {
 			long size = littleThirtyTwo(in, at + 4);
+			String type = new String(in, at, 4, StandardCharsets.ISO_8859_1);
 
 			if (size > limit - at - 8L) {
+				/* A CHUNK THAT RUNS PAST THE END is the rest of the file: kept as far as it goes where it
+				   draws, and gone where it does not (see the class note). */
+				if (WEBP_DRAWING.contains(type)) {
+					chunks.write(in, at, limit - at);
+					cutImage = true;
+				}
+
 				break;
 			}
 
 			int next = (int) Math.min(limit, at + 8 + size + (size & 1));
-			String type = new String(in, at, 4, StandardCharsets.ISO_8859_1);
 
 			if ("EXIF".equals(type) && !read) {
 				turn = orientationOfAWebpNote(Arrays.copyOfRange(in, at + 8, at + 8 + (int) size));
@@ -343,12 +480,10 @@ public final class WithoutMetadata {
 			at = next;
 		}
 
-		/* WHERE THE STRUCTURE COULD NOT BE FOLLOWED, the rest as it came (see the class note). */
-		chunks.write(in, at, limit - at);
-
 		/* THE NOTE GOES ONLY WHERE A READER LOOKS FOR ONE: an extended file, after the image, as the format
-		   orders it. A simple file cannot carry EXIF at all, so a note in one was never read by anybody. */
-		boolean noted = extended && turn != 1 && at == limit;
+		   orders it, and not after a chunk that was cut (a chunk written behind it would be inside it). A
+		   simple file cannot carry EXIF at all, so a note in one was never read by anybody. */
+		boolean noted = extended && turn != 1 && !cutImage;
 
 		if (noted) {
 			byte[] note = noteOf(turn);

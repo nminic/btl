@@ -381,32 +381,56 @@ public final class SmallPicture {
 	 * Which of the eight EXIF orientations a JPEG asks to be shown in, 1 when it asks for none.
 	 *
 	 * <p>Walks the segments before the picture data, finds the one that says {@code Exif},
-	 * and reads tag {@code 0x0112} out of its first directory. Anything it does not understand
-	 * - a file cut short, a value outside one to eight, a segment where a marker should be - is
-	 * „as stored", which is what a browser that cannot read the note does too.
+	 * and reads tag {@code 0x0112} out of its first directory. Bytes that are not a marker between
+	 * segments are skipped until one is ({@link #markerFrom}), as a decoder skips them, so a stray byte
+	 * in front of the EXIF does not turn a picture that is shown turned into one that is not (ADL,
+	 * 07.11.2026, and that a browser skips them the same way is my reasoning from the decoder, not
+	 * something measured in a browser). Anything else it does not understand - a file cut short, a
+	 * value outside one to eight - is „as stored", which is what a browser that cannot read the note
+	 * does too.
 	 */
 	static int orientationOf(byte[] jpeg) {
 		try {
 			int at = 2;
 
-			while ((jpeg[at] & 0xFF) == 0xFF) {
+			while (true) {
+				at = markerFrom(jpeg, at);
+
 				int marker = jpeg[at + 1] & 0xFF;
 
-				if (marker == 0xDA) {
+				if (marker == 0xDA || marker == 0xD9) {
 					return 1;
 				}
 
-				if (marker == 0xE1 && Arrays.equals(jpeg, at + 4, at + 10, EXIF, 0, EXIF.length)) {
+				if (marker == 0xFF) {
+					at++;
+				} else if (marker == 0x01 || marker >= 0xD0 && marker <= 0xD8) {
+					at += 2;
+				} else if (marker == 0xE1 && Arrays.equals(jpeg, at + 4, at + 10, EXIF, 0, EXIF.length)) {
 					return orientationIn(jpeg, at + 10);
+				} else {
+					at += 2 + sixteen(jpeg, at + 2, false);
 				}
-
-				at += 2 + sixteen(jpeg, at + 2, false);
 			}
-
-			return 1;
 		} catch (ArrayIndexOutOfBoundsException cutShort) {
 			return 1;
 		}
+	}
+
+	/**
+	 * Where the next marker is: the first {@code FF} at or after {@code from} whose next byte is not
+	 * {@code 00}, which is how a decoder finds one after bytes it cannot place. Shared with
+	 * {@link WithoutMetadata}, so that „where is the next segment" has one answer. A file with none
+	 * answers its last index, which no caller can read a marker byte after.
+	 */
+	static int markerFrom(byte[] jpeg, int from) {
+		int at = from;
+
+		while (at + 1 < jpeg.length && ((jpeg[at] & 0xFF) != 0xFF || jpeg[at + 1] == 0)) {
+			at++;
+		}
+
+		return at;
 	}
 
 	/**
