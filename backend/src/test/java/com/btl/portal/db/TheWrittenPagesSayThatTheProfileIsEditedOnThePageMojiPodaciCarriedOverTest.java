@@ -24,19 +24,19 @@ import static org.assertj.core.api.Assertions.catchThrowable;
  * <p><b>How the text before V89 is made.</b> V89 names the old text of every edit, so the pages are put back by the
  * reverse of each edit ({@link TheWrittenPagesBeforeV71#undoBodyEdits}), each new text standing exactly once to be taken
  * out. It is proved by behaviour, not by the shape of the undo: every case first asks the table of
- * {@link TheWrittenPagesSayThatTheProfileIsEditedOnTheCardPodaciTest} whether a piece of each old text really stands in
+ * {@link TheWrittenPagesSayThatTheProfileIsEditedOnThePageMojiPodaciTest} whether a piece of each old text really stands in
  * the put-back text, in both languages.
  *
  * <p><b>The floor of the sweep.</b> A sweep that finds nothing is only worth something if it can find: asked of the
  * text before V89, the sweep for the old claim finds it in the policy's section 6, in both languages.
  */
-class TheWrittenPagesSayThatTheProfileIsEditedOnTheCardPodaciCarriedOverTest extends DatabaseTest {
+class TheWrittenPagesSayThatTheProfileIsEditedOnThePageMojiPodaciCarriedOverTest extends DatabaseTest {
 
 	@Autowired
 	JdbcTemplate jdbc;
 
 	private static int theNumberOfRowsV89Edits() {
-		return TheWrittenPagesSayThatTheProfileIsEditedOnTheCardPodaciTest.CHANGES.size() * 2;
+		return TheWrittenPagesSayThatTheProfileIsEditedOnThePageMojiPodaciTest.CHANGES.size() * 2;
 	}
 
 	/** Every heading and body of both tables, by page, place and language, so two readings compare row by row. */
@@ -88,7 +88,7 @@ class TheWrittenPagesSayThatTheProfileIsEditedOnTheCardPodaciCarriedOverTest ext
 	private void theTextAsItStoodBeforeV89() {
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "89");
 
-		for (TheWrittenPagesSayThatTheProfileIsEditedOnTheCardPodaciTest.Change change : TheWrittenPagesSayThatTheProfileIsEditedOnTheCardPodaciTest.CHANGES) {
+		for (TheWrittenPagesSayThatTheProfileIsEditedOnThePageMojiPodaciTest.Change change : TheWrittenPagesSayThatTheProfileIsEditedOnThePageMojiPodaciTest.CHANGES) {
 			assertThat(bodyOf(change.slug(), change.position(), "sr"))
 					.as("%s: the fixture did not put the old Serbian text back, so V89 below has nothing to change and"
 							+ " this case measures nothing", change.id())
@@ -178,7 +178,7 @@ class TheWrittenPagesSayThatTheProfileIsEditedOnTheCardPodaciCarriedOverTest ext
 	void anOldTextThatStandsTwiceAndOneThatIsNotThereAreBothReportedAndNothingIsChanged() {
 		theTextAsItStoodBeforeV89();
 
-		TheWrittenPagesSayThatTheProfileIsEditedOnTheCardPodaciTest.Change edit = TheWrittenPagesSayThatTheProfileIsEditedOnTheCardPodaciTest.CHANGES
+		TheWrittenPagesSayThatTheProfileIsEditedOnThePageMojiPodaciTest.Change edit = TheWrittenPagesSayThatTheProfileIsEditedOnThePageMojiPodaciTest.CHANGES
 				.get(0);
 		String oldSerbian = "Deo možete i sami: polja profila menjate i brišete u podešavanjima.";
 
@@ -210,7 +210,7 @@ class TheWrittenPagesSayThatTheProfileIsEditedOnTheCardPodaciCarriedOverTest ext
 	void aNewTextThatIsAlreadyThereBesideTheOldOneStopsV89() {
 		theTextAsItStoodBeforeV89();
 
-		TheWrittenPagesSayThatTheProfileIsEditedOnTheCardPodaciTest.Change edit = TheWrittenPagesSayThatTheProfileIsEditedOnTheCardPodaciTest.CHANGES
+		TheWrittenPagesSayThatTheProfileIsEditedOnThePageMojiPodaciTest.Change edit = TheWrittenPagesSayThatTheProfileIsEditedOnThePageMojiPodaciTest.CHANGES
 				.get(0);
 
 		setBody(edit.slug(), edit.position(), "sr",
@@ -236,11 +236,11 @@ class TheWrittenPagesSayThatTheProfileIsEditedOnTheCardPodaciCarriedOverTest ext
 				.theThreePages(db);
 
 		assertThat(TheWrittenPagesDropTheirExplanationsTest.whereItMatches(rows, "sr",
-				TheWrittenPagesSayThatTheProfileIsEditedOnTheCardPodaciTest.THE_OLD_CLAIM_IN_SERBIAN))
+				TheWrittenPagesSayThatTheProfileIsEditedOnThePageMojiPodaciTest.THE_OLD_CLAIM_IN_SERBIAN))
 				.as("the Serbian sweep for the old claim cannot see it in the text that held it")
 				.containsExactly("politika-privatnosti #6");
 		assertThat(TheWrittenPagesDropTheirExplanationsTest.whereItMatches(rows, "en",
-				TheWrittenPagesSayThatTheProfileIsEditedOnTheCardPodaciTest.THE_OLD_CLAIM_IN_ENGLISH))
+				TheWrittenPagesSayThatTheProfileIsEditedOnThePageMojiPodaciTest.THE_OLD_CLAIM_IN_ENGLISH))
 				.as("the English sweep for the old claim cannot see it in the text that held it")
 				.containsExactly("politika-privatnosti #6");
 	}

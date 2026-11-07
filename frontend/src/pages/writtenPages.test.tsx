@@ -2901,7 +2901,7 @@ describe('what the written pages say the fee buys', () => {
        30.10.2026 with Article 11 said in the owner's two sentences (V80; owner,
        30.10.2026), by the same rule; the terms and the policy did not change and keep
        29.10.2026. The policy moved on to 07.11.2026 with the sentence that says the
-       profile, the picture and the text about oneself are changed on the card Podaci
+       profile, the picture and the text about oneself are changed on the page Moji podaci
        (V89; owner, 07.11.2026, who made the rule general: the date moves whenever the
        words of a legal text change, to the day the change reaches QA); the terms keep
        29.10.2026 and the rulebook 30.10.2026. Written per

@@ -9,7 +9,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * THE PRIVACY POLICY SAYS THAT THE PROFILE FIELDS, THE PICTURE AND THE TEXT ABOUT ONESELF ARE CHANGED AND DELETED ON THE
- * CARD PODACI OF ONE'S OWN PROFILE (V89, owner, 06.11.2026), IN BOTH LANGUAGES.
+ * PAGE MOJI PODACI (V89, owner, 07.11.2026), IN BOTH LANGUAGES.
  *
  * <p><b>Why this exists, and it is the other half of V89 (as {@link TheWrittenPagesSayWhoPaysInWhichCurrencyTest} is of
  * V80).</b> V89 makes one edit in each language with a {@code replace()} call. A replace is exact and has one failure
@@ -29,7 +29,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * the day the change reaches QA). The policy carries 07.11.2026 once, as its last line, in both languages, and the
  * rulebook and the terms of use keep the days they had (30.10.2026 and 29.10.2026), because their words did not change.
  */
-class TheWrittenPagesSayThatTheProfileIsEditedOnTheCardPodaciTest extends DatabaseTest {
+class TheWrittenPagesSayThatTheProfileIsEditedOnThePageMojiPodaciTest extends DatabaseTest {
 
 	static final String POLICY = "politika-privatnosti";
 
@@ -43,9 +43,9 @@ class TheWrittenPagesSayThatTheProfileIsEditedOnTheCardPodaciTest extends Databa
 
 	static final List<Change> CHANGES = List.of(
 			new Change("PROFILE-01", POLICY, 6,
-					"Polja profila, sliku i tekst o sebi menjate i brišete na kartici Podaci svog profila.",
+					"Polja profila, sliku i tekst o sebi menjate i brišete na strani Moji podaci.",
 					"menjate i brišete u podešavanjima",
-					"You change and delete profile fields, your picture and the text about yourself on the Details card of your own profile.",
+					"You change and delete profile fields, your picture and the text about yourself on the My details page.",
 					"profile fields in settings"),
 			new Change("PROFILE-02", POLICY, 7,
 					"Poslednja izmena: 07.11.2026.",
@@ -53,11 +53,16 @@ class TheWrittenPagesSayThatTheProfileIsEditedOnTheCardPodaciTest extends Databa
 					"Last amended: 07.11.2026.",
 					"amended: 29.10.2026."));
 
-	/** The old claim, by its root, in each language: the lead-in the owner's sentence does not have, and where it said it was done. */
+	/**
+	 * The old claims, by their roots, in each language: the lead-in the owner's sentence does not have, where it said it
+	 * was done first (the settings), and where it said so for the few hours it was approved on the card of the profile.
+	 */
 	static final Pattern THE_OLD_CLAIM_IN_SERBIAN = Pattern.compile(
-			"Deo možete i sami|polja profila menjate i brišete u podešavanjima", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
+			"Deo možete i sami|polja profila menjate i brišete u podešavanjima|brišete na kartici Podaci svog profila",
+			Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
 	static final Pattern THE_OLD_CLAIM_IN_ENGLISH = Pattern.compile(
-			"Some of it you can do yourself|profile fields in settings", Pattern.CASE_INSENSITIVE);
+			"Some of it you can do yourself|profile fields in settings|on the Details card of your own profile",
+			Pattern.CASE_INSENSITIVE);
 
 	private String bodyOf(String slug, int position, String language) {
 		return language.equals("sr")

@@ -1,25 +1,33 @@
-/* THE PRIVACY POLICY SAYS THAT THE PROFILE FIELDS, THE PICTURE AND THE TEXT ABOUT ONESELF ARE CHANGED AND DELETED ON THE
-   CARD PODACI OF ONE'S OWN PROFILE, IN SERBIAN AND IN ENGLISH.
+/* THE PRIVACY POLICY SAYS THAT THE PROFILE FIELDS, THE PICTURE AND THE TEXT ABOUT ONESELF ARE CHANGED AND DELETED ON THE PAGE
+   MOJI PODACI, IN SERBIAN AND IN ENGLISH.
 
-   WHOSE DECISION, AND WHERE IT IS WRITTEN. PDL, the entry "Politika privatnosti: rečenica „Deo možete i sami: polja
-   profila menjate i brišete u podešavanjima." postaje …" (owner, 06.11.2026, chosen among the offered outcomes, with the
-   assistant's recommendation). The sentence of section 6 ("6. Vaša prava")
+   WHOSE DECISION, AND WHERE IT IS WRITTEN. PDL, the entry "Politika privatnosti odmah dobija rečenicu koja postaje tačna
+   kad stigne meni" (owner, 07.11.2026, chosen with the assistant's recommendation). The sentence of section 6
+   ("6. Vaša prava")
 
      "Deo možete i sami: polja profila menjate i brišete u podešavanjima."
 
    becomes, in the owner's words,
 
-     "Polja profila, sliku i tekst o sebi menjate i brišete na kartici Podaci svog profila."
+     "Polja profila, sliku i tekst o sebi menjate i brišete na strani Moji podaci."
+
+   and in English, in the owner's words too,
+
+     "You change and delete profile fields, your picture and the text about yourself on the My details page."
+
+   replacing "Some of it you can do yourself: you change and delete profile fields in settings." The owner's sentences have
+   no lead-in, so the Serbian lead-in "Deo možete i sami:" goes with the old sentence.
+
+   THE SENTENCE IS UNTRUE UNTIL THE MENU ARRIVES, AND THAT IS KNOWN AND DECIDED. The owner: a member will reach his data from
+   the main menu ("Moji podaci") and not from the card on his profile; the menu is a later change, and until it arrives
+   the sentence says a page that a paid member cannot reach by that name. He asked for it to be merged now regardless
+   ("Iako znam da je u međuvremenu netačna"). The link on "Moji podaci" comes with the menu, as a change that touches
+   neither the words nor the date. This replaces the sentence "... na kartici Podaci svog profila" approved earlier on
+   the same day (06.11.2026 and the date rule below), which never reached QA, so no database holds it.
 
    The rest of the policy stays, and so does "U podešavanjima možete sakriti profil" in section 3: that one is still true,
-   because the privacy choice stays on Podešavanja (the same entry). The entry says the change goes in a migration after
-   the picture and the text about oneself moved from Podešavanja to the card Podaci, which reached production with PR 688.
-
-   THE ENGLISH is the translation of that sentence and the assistant's, not the owner's. The card is called "Details" in the
-   English portal (`profile.parts.data`, the name V73 already uses for it in this policy), so
-     English:  You change and delete profile fields, your picture and the text about yourself on the Details card of your own profile.
-   It replaces "Some of it you can do yourself: you change and delete profile fields in settings." as the Serbian
-   replaces the whole sentence including its lead-in, since the owner's sentence has none.
+   because the privacy choice stays on Podešavanja. The picture and the text about oneself moved from Podešavanja in PR
+   688, which reached production.
 
    THE SIGN-OFF DATE MOVES, ON THE POLICY ONLY. PDL, "Datum Poslednja izmena na pravnom tekstu pomera se uvek kad se
    reči tog teksta promene" (owner, 07.11.2026, chosen among the offered outcomes, with the assistant's recommendation): the
@@ -27,7 +35,7 @@
    do not change. It is the general rule that the entry of 16.10.2026 was the one case of. The policy's words change here, so
    its "Poslednja izmena: 29.10.2026." becomes "Poslednja izmena: 07.11.2026." and "Last amended: 29.10.2026." becomes
    "Last amended: 07.11.2026." (section 7). The day is the one the owner named: the change reaches QA on 07.11.2026, right
-   after the merge. The rulebook (30.10.2026) and the terms of use (29.10.2026) are not touched and keep theirs. If this
+   after the merge, and the entry above repeats it for these very words. The rulebook (30.10.2026) and the terms of use (29.10.2026) are not touched and keep theirs. If this
    file reaches QA on another day, the date is moved before the merge. This file was changed in place after it was written
    with the date unmoved, which ADL A2 allows because it has not been applied anywhere.
 
@@ -50,7 +58,7 @@
    WHAT HOLDS THE HOMES OF THIS TEXT TOGETHER. frontend/src/test/mock/pages.json, which PageApiTest compares the Serbian
    answer of this server to, field by field; frontend/src/test/writtenPages.snapshot.json, which
    writtenVerification.test.ts holds that fixture to in the other direction; and
-   TheWrittenPagesSayThatTheProfileIsEditedOnTheCardPodaciTest, for both languages and for every edit. */
+   TheWrittenPagesSayThatTheProfileIsEditedOnThePageMojiPodaciTest, for both languages and for every edit. */
 
 do $edit$
 declare
@@ -67,11 +75,11 @@ begin
 
             ('PROFILE-01 section 6', 'politika-privatnosti', 6, 'sr',
              $old$Deo možete i sami: polja profila menjate i brišete u podešavanjima.$old$,
-             $new$Polja profila, sliku i tekst o sebi menjate i brišete na kartici Podaci svog profila.$new$),
+             $new$Polja profila, sliku i tekst o sebi menjate i brišete na strani Moji podaci.$new$),
 
             ('PROFILE-01 section 6', 'politika-privatnosti', 6, 'en',
              $old$Some of it you can do yourself: you change and delete profile fields in settings.$old$,
-             $new$You change and delete profile fields, your picture and the text about yourself on the Details card of your own profile.$new$),
+             $new$You change and delete profile fields, your picture and the text about yourself on the My details page.$new$),
 
             ('PROFILE-02 sign-off', 'politika-privatnosti', 7, 'sr',
              $old$Poslednja izmena: 29.10.2026.$old$,
