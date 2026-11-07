@@ -1476,6 +1476,41 @@ describe('a counted result the member takes back', () => {
     },
     SLOW,
   )
+
+  it(
+    'takes the sentence of the refusal away when the question asked again is put away',
+    async () => {
+      /* REGISTRY ITEM 311 (`TeamDetail.tsx`), carried here: the refusal closes the sheet and its sentence
+         stands above the table (owner, 02.10.2026). The member who asks again and presses „Odustani" has
+         taken the deletion back, and the sentence about the attempt before it would be read out as an
+         alert about nothing. Asked of the second row, and only the sentence is measured: the row is
+         still there, and nothing else was sent. */
+      const user = setupUser()
+
+      listening(() => refused('theFormIsNotComplete'))
+      renderAt(COUNTED, 'competitor', '000001', undefined, null)
+
+      const before = await howManyCounted()
+      const row = await secondRow()
+
+      await user.click(row.getByRole('button', { name: /^Obriši: / }))
+      await sayYes(user, 'Obriši rezultat?')
+      await screen.findByText(/Proveri dužinu, uspon, spust i vreme/, undefined, SOON)
+
+      await user.click(row.getByRole('button', { name: /^Obriši: / }))
+      await user.click(
+        within(await screen.findByRole('dialog', { name: 'Obriši rezultat?' })).getByRole('button', {
+          name: 'Odustani',
+        }),
+      )
+
+      expect(screen.queryByRole('dialog')).toBeNull()
+      expect(screen.queryByText(/Proveri dužinu, uspon, spust i vreme/)).toBeNull()
+      expect(writes()).toHaveLength(1)
+      expect(await howManyCounted()).toBe(before)
+    },
+    SLOW,
+  )
 })
 
 describe('a refusal that says the counted result is not there', () => {

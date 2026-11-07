@@ -170,9 +170,11 @@ describe('a written page on an English address', () => {
     renderAt('/en/uslovi-koriscenja')
 
     const heading = await screen.findByRole('heading', { level: 1, name: 'Terms of use' })
-    const article = heading.closest('article')
 
-    expect(article).toHaveAttribute('lang', 'en')
+    /* On the element that holds the words, asked of the element itself: `closest` would find
+       a `lang` on any wrapper, and a wrapper is the shape this attribute must not take
+       (`StaticPage.tsx`, "NOT ON THE ARTICLE"). */
+    expect(heading).toHaveAttribute('lang', 'en')
     /* The document says the language of the DICTIONARY, which is the right answer for the
        header and the navigation around this page (`app/useRouteChrome.ts`). The article says
        the language of the RECORD. The two agree here and the next case is the one where they
@@ -227,7 +229,7 @@ describe('a written page that has no translation yet', () => {
     /* THE TWO MUST DISAGREE HERE, and that is the whole of WCAG 2.2 AA 3.1.2: the chrome is
        English and these words are not, so a screen reader has to be told where one stops. An
        article marked `en` over this text is what `i18n/config.ts` calls unintelligible. */
-    expect(heading.closest('article')).toHaveAttribute('lang', 'sr')
+    expect(heading).toHaveAttribute('lang', 'sr')
     expect(document.documentElement).toHaveAttribute('lang', 'en')
   })
 
@@ -238,7 +240,7 @@ describe('a written page that has no translation yet', () => {
 
     const heading = await screen.findByRole('heading', { level: 1, name: 'Privacy policy' })
 
-    expect(heading.closest('article')).toHaveAttribute('lang', 'en')
+    expect(heading).toHaveAttribute('lang', 'en')
     expect(screen.getByText('The association holds your data.')).toBeVisible()
   })
 })
@@ -406,7 +408,7 @@ describe('the other three screens that read a written record', () => {
 
     const heading = await screen.findByRole('heading', { level: 1, name: 'General Rulebook' })
 
-    expect(heading.closest('article')).toHaveAttribute('lang', 'en')
+    expect(heading).toHaveAttribute('lang', 'en')
     expect(screen.getByText('This rulebook governs the league.')).toBeVisible()
     expect(screen.getByText('A member is whoever has been activated.')).toBeVisible()
     expect(askedForPages(asked)).toEqual(['/api/pages?lang=en'])
@@ -427,9 +429,7 @@ describe('the other three screens that read a written record', () => {
     expect(await screen.findByText('Welcome to the league.')).toBeVisible()
     expect(screen.queryByText('Dobro došli u ligu.')).not.toBeInTheDocument()
 
-    const block = screen.getByText('Welcome to the league.').closest('article')
-
-    expect(block).toHaveAttribute('lang', 'en')
+    expect(screen.getByText('Welcome to the league.').closest('[lang]')).toHaveAttribute('lang', 'en')
   })
 
   it("lists the pages in the administration in the reader's language too", async () => {
@@ -476,5 +476,129 @@ describe('the other three screens that read a written record', () => {
     }
 
     expect(document.documentElement).toHaveAttribute('lang', 'en')
+  })
+})
+
+describe('a written page that fell back to Serbian, with the portal’s own words round it', () => {
+  /* THE LANGUAGE IS THE RECORD'S AND ONLY THE RECORD'S (WCAG 2.2 AA 3.1.2). The attribute used
+     to stand on the whole article, so on `/en/pravilnik` with no English rulebook "On this
+     page", the button that opens the list, the name of the navigation and the fee schedule
+     (all English, all from the portal's dictionary) sat under `lang="sr"` and a screen reader
+     read them with Serbian phonetics. Measured before this branch: each of them resolved
+     `closest('[lang]')` to `sr`.
+
+     Two questions per screen and both are asked, because either alone is satisfied by the
+     wrong shape: the record's words are marked `sr` (a `lang` left off altogether passes the
+     second), and the portal's words are NOT inside anything marked `sr` (a `lang` on the whole
+     article passes the first). The headings are asked of the element itself, since `closest`
+     accepts a wrapper and a wrapper is the shape that failed. */
+  const FEE = '[[gallery]]'
+  const PRICES_AMONG_WORDS = ['Pre cene.', '', FEE, '', 'Posle cene.'].join('\n')
+
+  const RULEBOOK_IN_SERBIAN: StaticPage = {
+    slug: 'pravilnik',
+    title: 'Pravilnik',
+    language: 'sr',
+    sections: [
+      { heading: '1. Opšte odredbe', body: 'Pravilnik uređuje takmičenje.' },
+      { heading: '2. Cena i rokovi', body: PRICES_AMONG_WORDS, gallery: 'prices' },
+    ],
+  }
+
+  const TERMS_WITH_PRICES: StaticPage = {
+    ...TERMS_IN_SERBIAN,
+    sections: [{ heading: '1. Članarina', body: PRICES_AMONG_WORDS, gallery: 'prices' }],
+  }
+
+  const ADDRESS_IN_SERBIAN: StaticPage = {
+    slug: 'rec-predsednika',
+    title: 'Reč predsednika',
+    language: 'sr',
+    sections: [{ heading: 'Dragi trkači', body: PRICES_AMONG_WORDS, gallery: 'prices' }],
+  }
+
+  /* The English answer is the Serbian page with its language saying so: that is what the route
+     answers when it is not whole in English (`PageApi.pagesIn`). */
+  const NOT_TRANSLATED = {
+    sr: [RULEBOOK_IN_SERBIAN, TERMS_WITH_PRICES, ADDRESS_IN_SERBIAN],
+    en: [RULEBOOK_IN_SERBIAN, TERMS_WITH_PRICES, ADDRESS_IN_SERBIAN],
+  }
+
+  /** The language that governs this element, which is what a screen reader asks. */
+  function languageOf(element: HTMLElement): string | null {
+    const one = element.closest<HTMLElement>('[lang]')
+
+    return one === null ? null : one.getAttribute('lang')
+  }
+
+  /** The portal's own words on this screen: in the language of the screen, never the record's. */
+  function expectTheScreenSpeaksItsOwn(words: HTMLElement[]) {
+    for (const one of words) {
+      expect(languageOf(one), one.textContent ?? '').toBe('en')
+      expect(one.closest('[lang="sr"]'), one.textContent ?? '').toBeNull()
+    }
+
+    expect(document.documentElement).toHaveAttribute('lang', 'en')
+  }
+
+  it('marks the rulebook’s title, contents and text Serbian, and leaves the portal’s own words English', async () => {
+    aServerAnswering(NOT_TRANSLATED)
+
+    renderAt('/en/pravilnik')
+
+    const title = await screen.findByRole('heading', { level: 1, name: 'Pravilnik' })
+    const sectionHeading = screen.getByRole('heading', { level: 2, name: '2. Cena i rokovi' })
+    const contents = screen.getByRole('navigation', { name: 'On this page' })
+    const contentsLink = within(contents).getByRole('link', { name: '2. Cena i rokovi' })
+
+    expect(title).toHaveAttribute('lang', 'sr')
+    expect(sectionHeading).toHaveAttribute('lang', 'sr')
+    expect(contentsLink).toHaveAttribute('lang', 'sr')
+    expect(languageOf(screen.getByText('Pravilnik uređuje takmičenje.'))).toBe('sr')
+    expect(languageOf(screen.getByText('Pre cene.'))).toBe('sr')
+    expect(languageOf(screen.getByText('Posle cene.'))).toBe('sr')
+
+    expectTheScreenSpeaksItsOwn([
+      contents,
+      within(contents).getByText('On this page'),
+      within(contents).getByRole('button', { name: 'Rulebook sections' }),
+      await screen.findByRole('table', { name: 'Membership price list' }),
+      screen.getByRole('columnheader', { name: 'Period' }),
+    ])
+  })
+
+  it('does the same on a written page', async () => {
+    aServerAnswering(NOT_TRANSLATED)
+
+    renderAt('/en/uslovi-koriscenja')
+
+    const title = await screen.findByRole('heading', { level: 1, name: 'Uslovi korišćenja' })
+
+    expect(title).toHaveAttribute('lang', 'sr')
+    expect(screen.getByRole('heading', { level: 2, name: '1. Članarina' })).toHaveAttribute('lang', 'sr')
+    expect(languageOf(screen.getByText('Pre cene.'))).toBe('sr')
+    expect(languageOf(screen.getByText('Posle cene.'))).toBe('sr')
+
+    expectTheScreenSpeaksItsOwn([
+      await screen.findByRole('table', { name: 'Membership price list' }),
+      screen.getByRole('columnheader', { name: 'Period' }),
+    ])
+  })
+
+  it('does the same on the card of the address on the front page', async () => {
+    aServerAnswering(NOT_TRANSLATED)
+
+    renderAt('/en')
+
+    const heading = await screen.findByRole('heading', { level: 2, name: 'Dragi trkači' })
+
+    expect(heading).toHaveAttribute('lang', 'sr')
+    expect(languageOf(screen.getByText('Pre cene.'))).toBe('sr')
+    expect(languageOf(screen.getByText('Posle cene.'))).toBe('sr')
+
+    expectTheScreenSpeaksItsOwn([
+      await screen.findByRole('table', { name: 'Membership price list' }),
+      screen.getByRole('columnheader', { name: 'Period' }),
+    ])
   })
 })

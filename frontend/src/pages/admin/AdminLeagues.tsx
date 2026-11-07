@@ -410,6 +410,9 @@ export function AdminLeagues() {
                             name={league.name}
                             onOpen={() => setEditing({ mode: 'one', record: league })}
                             deleteRecord={() => deleteOne(league)}
+                            /* The sentence of an earlier refusal of THIS row goes when the reader
+                               puts the question away (registry item 311). */
+                            onKeep={() => setRefused((was) => (was !== null && was.id === league.id ? null : was))}
                           />
                           {/* Why this one did not go, in the row it was pressed in.
                               The question closed with the answer and the focus is back

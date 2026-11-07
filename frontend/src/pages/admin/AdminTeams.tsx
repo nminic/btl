@@ -371,6 +371,9 @@ export function AdminTeams() {
                                  `DELETE /api/teams/-1` is an address nothing answers to.
                                  See `standsOnTheServer`. */
                               deleteRecord={served ? () => deleteOne(team) : undefined}
+                              /* The sentence of an earlier refusal of THIS row goes when the
+                                 reader puts the question away (registry item 311). */
+                              onKeep={() => setRefused((was) => (was !== null && was.id === team.id ? null : was))}
                               /**
                                * AND WHAT GOES WITH THE TEAM, FOR THE SESSION HALF AND FOR
                                * THAT HALF ALONE.

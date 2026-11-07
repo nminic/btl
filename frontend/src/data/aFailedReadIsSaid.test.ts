@@ -293,7 +293,7 @@ const OPENING: { file: string; how: How; why: string; calls?: { shape: Shape; ca
   {
     file: 'pages/admin/PendingQueue.tsx',
     how: 'says',
-    why: 'THE FILE\'S OWN: the queue of teams says `verification.membersFailed` and refuses the decision while the list of members failed, two states and not one. NO CASE HOLDS THAT SENTENCE: the search of the tests for its key and its words found none, which is a finding about the cases and not about the screen.',
+    why: 'THE FILE\'S OWN: the queue of teams says `verification.membersFailed` and refuses the decision while the list of members failed, two states and not one. HELD since 07.11.2026 by `pages/member/proposeTeam.test.tsx` ("the queue of teams without the members"): the sentence is asked by its words from the dictionary, once, as the description of every button that would decide, with a press that takes nothing, and the state on its way is asked not to say it. No case held it before (a search of the tests for its key and its words found none).',
     calls: [{ shape: 'dataOr', call: 'dataOr(membersState, [])' }],
   },
   {
