@@ -122,8 +122,8 @@ class TheWrittenPagesSayThatTheProfileIsEditedOnTheCardPodaciCarriedOverTest ext
 
 	/**
 	 * V89 OVER THE TEXT IT FOUND GIVES THE TEXT THE PORTAL SERVES, character for character, in every heading and body of
-	 * every page in both languages, and changes exactly the sections it names and no other: two rows, section 6 of the
-	 * policy in two languages. The sign-off of every page is among the sections it leaves alone.
+	 * every page in both languages, and changes exactly the sections it names and no other: four rows, sections 6 and 7 of
+	 * the policy in two languages. The sign-offs of the rulebook and of the terms are among the sections it leaves alone.
 	 */
 	@Test
 	void v89OverTheTextItFoundGivesTheTextThePortalServesAndChangesNothingElse() {
@@ -145,7 +145,8 @@ class TheWrittenPagesSayThatTheProfileIsEditedOnTheCardPodaciCarriedOverTest ext
 
 		assertThat(changed)
 				.as("V89 changed a different set of sections than the ones its edits name, in both languages")
-				.containsExactlyInAnyOrder("politika-privatnosti #6 sr", "politika-privatnosti #6 en");
+				.containsExactlyInAnyOrder("politika-privatnosti #6 sr", "politika-privatnosti #6 en",
+						"politika-privatnosti #7 sr", "politika-privatnosti #7 en");
 	}
 
 	/**
@@ -164,7 +165,9 @@ class TheWrittenPagesSayThatTheProfileIsEditedOnTheCardPodaciCarriedOverTest ext
 				.hasSize(theNumberOfRowsV89Edits())
 				.allMatch(line -> line.contains(": found 0 times"))
 				.contains("PROFILE-01 section 6 @ politika-privatnosti #6 sr: found 0 times, and its new text is already there",
-						"PROFILE-01 section 6 @ politika-privatnosti #6 en: found 0 times, and its new text is already there");
+						"PROFILE-01 section 6 @ politika-privatnosti #6 en: found 0 times, and its new text is already there",
+						"PROFILE-02 sign-off @ politika-privatnosti #7 sr: found 0 times, and its new text is already there",
+						"PROFILE-02 sign-off @ politika-privatnosti #7 en: found 0 times, and its new text is already there");
 	}
 
 	/**
@@ -193,10 +196,12 @@ class TheWrittenPagesSayThatTheProfileIsEditedOnTheCardPodaciCarriedOverTest ext
 
 		assertThat(error.getServerErrorMessage().getMessage()).contains("2 of " + theNumberOfRowsV89Edits() + " edits");
 		assertThat(error.getServerErrorMessage().getDetail().lines().toList())
-				.as("the report must name both problems")
+				.as("the report must name both problems and the edits that found their text once")
 				.hasSize(theNumberOfRowsV89Edits())
 				.contains("PROFILE-01 section 6 @ politika-privatnosti #6 sr: found 2 times",
-						"PROFILE-01 section 6 @ politika-privatnosti #6 en: found 0 times");
+						"PROFILE-01 section 6 @ politika-privatnosti #6 en: found 0 times")
+				.filteredOn(line -> line.endsWith("found once"))
+				.hasSize(theNumberOfRowsV89Edits() - 2);
 		assertThat(everyText()).as("a refused V89 changed a page").isEqualTo(before);
 	}
 

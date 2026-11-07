@@ -21,13 +21,15 @@
    It replaces "Some of it you can do yourself: you change and delete profile fields in settings." as the Serbian
    replaces the whole sentence including its lead-in, since the owner's sentence has none.
 
-   THE SIGN-OFF DATE IS NOT MOVED HERE, and that is a question left to the owner and not an omission. The words of this
-   page change, and the practice of V58, V60, V70, V73, V76, V77 and V80 is to move "Poslednja izmena" on a document whose
-   text changes (PDL, "Datum Poslednja izmena se pomera", owner, 16.10.2026, about that one change), but the entry of
-   06.11.2026 that decides this sentence says nothing about the date, and V73 states that moving it was the assistant's
-   derivation and not the owner's decision. So "Poslednja izmena: 29.10.2026." and "Last amended: 29.10.2026." (V77) stand
-   as they are. If the owner decides that the date moves, it is two more edits of this table, to the day this file
-   reaches QA, and this file has not been applied anywhere until then.
+   THE SIGN-OFF DATE MOVES, ON THE POLICY ONLY. PDL, "Datum Poslednja izmena na pravnom tekstu pomera se uvek kad se
+   reči tog teksta promene" (owner, 07.11.2026, chosen among the offered outcomes, with the assistant's recommendation): the
+   date moves whenever the words of a legal text change, to the day the change reaches QA, and does not move when the words
+   do not change. It is the general rule that the entry of 16.10.2026 was the one case of. The policy's words change here, so
+   its "Poslednja izmena: 29.10.2026." becomes "Poslednja izmena: 07.11.2026." and "Last amended: 29.10.2026." becomes
+   "Last amended: 07.11.2026." (section 7). The day is the one the owner named: the change reaches QA on 07.11.2026, right
+   after the merge. The rulebook (30.10.2026) and the terms of use (29.10.2026) are not touched and keep theirs. If this
+   file reaches QA on another day, the date is moved before the merge. This file was changed in place after it was written
+   with the date unmoved, which ADL A2 allows because it has not been applied anywhere.
 
    HOW. The shape of V73 and V80: every edit is asked how many times its old text stands in the text it is aimed at, and
    anything but exactly once is a problem. A section that already carries the new text is a problem too, asked of the
@@ -37,9 +39,9 @@
    succeeded while the old text went on being published (V57 has the whole argument). The old text of each edit is the
    whole sentence, which stands once in section 6 of the policy in each language and nowhere else on the written pages.
 
-   WHAT IT DOES NOT TOUCH: no schema, no constraint, no key, no index, no row added or removed; the body of two section
-   texts (section 6 of the policy, in both languages) and in them only the one sentence. Not the sentence after it
-   about the consent for cookies, not the table of rights, not the date.
+   WHAT IT DOES NOT TOUCH: no schema, no constraint, no key, no index, no row added or removed; the body of four section
+   texts (sections 6 and 7 of the policy, in both languages) and in them only the one sentence and the date. Not the
+   sentence after it about the consent for cookies, not the table of rights.
 
    WHY A NEW FILE AND NOT AN EDIT OF V24, V43 OR V57: ADL A2. They have been applied, their checksums are in
    flyway_schema_history, and MigrationsAreImmutableTest holds Flyway to them. V89 and not another number: main stood at V88
@@ -69,7 +71,15 @@ begin
 
             ('PROFILE-01 section 6', 'politika-privatnosti', 6, 'en',
              $old$Some of it you can do yourself: you change and delete profile fields in settings.$old$,
-             $new$You change and delete profile fields, your picture and the text about yourself on the Details card of your own profile.$new$)
+             $new$You change and delete profile fields, your picture and the text about yourself on the Details card of your own profile.$new$),
+
+            ('PROFILE-02 sign-off', 'politika-privatnosti', 7, 'sr',
+             $old$Poslednja izmena: 29.10.2026.$old$,
+             $new$Poslednja izmena: 07.11.2026.$new$),
+
+            ('PROFILE-02 sign-off', 'politika-privatnosti', 7, 'en',
+             $old$Last amended: 29.10.2026.$old$,
+             $new$Last amended: 07.11.2026.$new$)
 
         ) as edits (label, slug, section_position, in_language, old_text, new_text)
     loop

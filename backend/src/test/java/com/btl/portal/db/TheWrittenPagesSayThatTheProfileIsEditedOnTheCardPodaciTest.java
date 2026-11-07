@@ -25,9 +25,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  * changed sentence is untouched, and so is the sentence in section 3 that is still true, that the choice of who sees the
  * profile is made in the settings.
  *
- * <p><b>The sign-off is deliberately NOT held here.</b> V89 does not move "Poslednja izmena" (it is a question for the
- * owner, written at the head of V89), and the older guards that count the sign-offs of all three documents say that
- * 29.10.2026 stands on all three. If the owner moves the date, those guards and V89's table change together.
+ * <p><b>The sign-off is held here too</b> (owner, 07.11.2026: the date moves whenever the words of a legal text change, to
+ * the day the change reaches QA). The policy carries 07.11.2026 once, as its last line, in both languages, and the
+ * rulebook and the terms of use keep the days they had (30.10.2026 and 29.10.2026), because their words did not change.
  */
 class TheWrittenPagesSayThatTheProfileIsEditedOnTheCardPodaciTest extends DatabaseTest {
 
@@ -46,7 +46,12 @@ class TheWrittenPagesSayThatTheProfileIsEditedOnTheCardPodaciTest extends Databa
 					"Polja profila, sliku i tekst o sebi menjate i brišete na kartici Podaci svog profila.",
 					"menjate i brišete u podešavanjima",
 					"You change and delete profile fields, your picture and the text about yourself on the Details card of your own profile.",
-					"profile fields in settings"));
+					"profile fields in settings"),
+			new Change("PROFILE-02", POLICY, 7,
+					"Poslednja izmena: 07.11.2026.",
+					"izmena: 29.10.2026.",
+					"Last amended: 07.11.2026.",
+					"amended: 29.10.2026."));
 
 	/** The old claim, by its root, in each language: the lead-in the owner's sentence does not have, and where it said it was done. */
 	static final Pattern THE_OLD_CLAIM_IN_SERBIAN = Pattern.compile(
@@ -67,7 +72,7 @@ class TheWrittenPagesSayThatTheProfileIsEditedOnTheCardPodaciTest extends Databa
 	}
 
 	private void everyEditHolds(String language) {
-		assertThat(CHANGES).as("the table of edits is empty, so this case measures nothing").hasSize(1);
+		assertThat(CHANGES).as("the table of edits is empty, so this case measures nothing").hasSize(2);
 
 		for (Change change : CHANGES) {
 			boolean serbian = language.equals("sr");
@@ -98,7 +103,7 @@ class TheWrittenPagesSayThatTheProfileIsEditedOnTheCardPodaciTest extends Databa
 
 	/**
 	 * THE TABLE KNOWS EVERY EDIT THE MIGRATION MAKES, so a second edit added to V89 without a line here fails (the floor
-	 * is the file Flyway resolved): each of the 2 rows of V89 carries one old text, written between two {@code $old$}
+	 * is the file Flyway resolved): each of the 4 rows of V89 carries one old text, written between two {@code $old$}
 	 * marks.
 	 */
 	@Test
@@ -132,6 +137,26 @@ class TheWrittenPagesSayThatTheProfileIsEditedOnTheCardPodaciTest extends Databa
 	void theSentenceThatSaysTheProfileIsHiddenInTheSettingsIsStillThere() {
 		assertThat(bodyOf(POLICY, 3, "sr")).containsOnlyOnce("U podešavanjima možete sakriti profil");
 		assertThat(bodyOf(POLICY, 3, "en")).containsOnlyOnce("In settings you can hide your profile");
+	}
+
+	/**
+	 * ONLY THE POLICY IS SIGNED WITH THE NEW DAY: its sign-off stands once as the last line, in both languages, and the
+	 * other two documents keep the day of their own last change, so a sign-off moved on all three (or on none) fails.
+	 */
+	@Test
+	void thePolicyIsSignedOffOnTheSeventhOfNovemberAndTheOtherTwoKeepTheirDays() {
+		for (String language : List.of("sr", "en")) {
+			boolean serbian = language.equals("sr");
+			String mark = serbian ? "Poslednja izmena: " : "Last amended: ";
+
+			assertThat(bodyOf(POLICY, 7, language)).as("the %s policy ends with its sign-off", language)
+					.endsWith(serbian ? CHANGES.get(1).standsInSerbian() : CHANGES.get(1).standsInEnglish())
+					.containsOnlyOnce(mark).doesNotContain("29.10.2026");
+			assertThat(bodyOf("pravilnik", 19, language)).as("the %s rulebook keeps its day", language)
+					.endsWith(mark + "30.10.2026.");
+			assertThat(bodyOf("uslovi-koriscenja", 11, language)).as("the %s terms keep their day", language)
+					.endsWith(mark + "29.10.2026.");
+		}
 	}
 
 	@Test
