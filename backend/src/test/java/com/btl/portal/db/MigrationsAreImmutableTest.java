@@ -749,7 +749,18 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   main stood at V87 on 06.11.2026 (3945bff3) and no open branch held a migration.
 
 			   Pinned LAST, when the file was final, off this very assertion. */
-			new Applied("88", "V88__a_photo_stored_before_its_metadata_went_may_carry_it.sql", 1848344939));
+			new Applied("88", "V88__a_photo_stored_before_its_metadata_went_may_carry_it.sql", 1848344939),
+
+			/* V89. The privacy policy says the profile fields, the picture and the text about oneself are changed and
+			   deleted on the card Podaci of one's own profile, and no longer in the settings (owner, 06.11.2026, PDL
+			   „Politika privatnosti: rečenica „Deo možete i sami…“”): one edit in each language, stopping the
+			   migration unless its old text stands exactly once. The sign-off date is not moved (a question for the owner,
+			   written at the head of the file).
+
+			   89 and no other: main stood at V88 on 07.11.2026 (b70d7dfe) and no open pull request held a migration.
+
+			   Pinned LAST, when the file was final, off this very assertion. */
+			new Applied("89", "V89__the_privacy_policy_says_the_profile_is_edited_on_the_card_podaci.sql", -1291798405));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {

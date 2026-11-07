@@ -897,7 +897,7 @@ describe('the privacy policy', () => {
     /* Found by what it says rather than by its heading, which is what
        `sectionOf` reads: the sections are numbered and one inserted above moves
        the rest. */
-    const rights = sectionOf('politika-privatnosti', /polja profila menjate i brišete/)
+    const rights = sectionOf('politika-privatnosti', /Polja profila, sliku i tekst o sebi menjate i brišete/)
 
     expect(rights).not.toContain('u podnožju svake strane')
     expect(rights).toContain('ne povlači jer se ne daje')
