@@ -513,8 +513,8 @@ class VerificationWriteApi {
 	 * THE RACE WOULD PULL AN EVENT THAT IS STILL AHEAD BACK INTO THE YEAR JUST ENDED.
 	 *
 	 * <p>PDL P9, owner, 06.11.2026: „U prozoru 1. januara od 00:00 do 10:00 server odbija trku iz stare
-	 * godine na događaju koji još predstoji", which narrows his decision of 20.10.2026 to the events that
-	 * are not ahead ({@link TheDayOfAnEvent#pullsAnEventStillAheadIntoTheYearJustEnded}). {@code RaceWriteApi}
+	 * godine na događaju koji još predstoji", widened on 07.11.2026 to every time of the year, which
+	 * narrows his decision of 20.10.2026 to the events that are not ahead ({@link TheDayOfAnEvent#pullsAnEventStillAheadIntoTheYearJustEnded}). {@code RaceWriteApi}
 	 * and {@code ResultsByTheLeagueApi} refuse the same move; the sentence names the way out. 409.
 	 */
 	private static final String AN_EVENT_STILL_AHEAD_WOULD_MOVE_INTO_THE_YEAR_JUST_ENDED =

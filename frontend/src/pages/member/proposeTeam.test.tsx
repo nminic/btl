@@ -1143,6 +1143,75 @@ describe('the queue of teams without the members', () => {
       back()
     }
   }, SLOW)
+
+  it('says in the words of the dictionary that no decision is possible, once, and takes none', async () => {
+    /* THE SENTENCE OF `verification.membersFailed`, asked by its words and not by a fragment of
+       them (`data/aFailedReadIsSaid.test.ts` said no case held it): `/ne može učitati/` is a
+       pattern any sentence about a list may satisfy, and a queue that said the OTHER state's
+       sentence, or the screen's `data.error`, would have passed it. Said ONCE for the whole queue
+       and pointed at by every button that cannot act (`pending__blocked`), so the two states are
+       told apart by what each is: the failed one says the list cannot be loaded, the one on its way
+       says the decision waits for it. */
+    const user = setupUser()
+    const server = serverThat(() => null)
+    const back = await withMembers(async () => new Response('', { status: 500 }))
+
+    try {
+      renderAt('/sr/administracija/verifikacija/timovi', 'superadmin', '000002', undefined, DAY)
+
+      const said = await screen.findByText(sr.verification.membersFailed)
+
+      expect(said).toBeVisible()
+      expect(screen.getAllByText(sr.verification.membersFailed)).toHaveLength(1)
+      expect(screen.queryByText(sr.verification.waitingForMembers)).toBeNull()
+
+      const decide = screen.getAllByRole('button', { name: 'Odobri' })
+
+      expect(decide.length, 'one button cannot tell a button from the first button').toBeGreaterThan(1)
+
+      /* EVERY BUTTON THAT WOULD DECIDE says it cannot, and the ones with no reason of their own point
+         at THIS sentence. A card whose name is already taken points at its own reason first
+         (`why`), which is why the fixture's second proposal is not asked to agree. */
+      const describedBy = decide.map(
+        (one) => document.getElementById(one.getAttribute('aria-describedby') ?? '')?.textContent ?? null,
+      )
+
+      for (const one of decide) {
+        expect(one).toHaveAttribute('aria-disabled', 'true')
+      }
+
+      expect(describedBy).toContain(sr.verification.membersFailed)
+      expect(describedBy).not.toContain(sr.verification.waitingForMembers)
+
+      /* AND A PRESS TAKES NOTHING: the proposal is still on the queue and nothing was written. */
+      const names = screen.getAllByRole('heading', { level: 3 }).map((one) => one.textContent)
+
+      await user.click(must(decide[0], 'the first button'))
+
+      expect(screen.getAllByRole('heading', { level: 3 }).map((one) => one.textContent)).toEqual(names)
+      expect(
+        server.asked.filter((one) => one.init?.method !== undefined && one.init.method !== 'GET'),
+      ).toEqual([])
+    } finally {
+      back()
+      server.stop()
+    }
+  }, SLOW)
+
+  it('does not say the list failed while it is still coming', async () => {
+    /* THE OTHER HALF OF THE PAIR, so a queue that swapped the two sentences, or said the failed one
+       for both states, does not pass on the strength of the case above. */
+    const back = await withMembers(async () => new Promise<Response>(() => undefined))
+
+    try {
+      renderAt('/sr/administracija/verifikacija/timovi', 'superadmin', '000002', undefined, DAY)
+
+      expect(await screen.findByText(sr.verification.waitingForMembers)).toBeVisible()
+      expect(screen.queryByText(sr.verification.membersFailed)).toBeNull()
+    } finally {
+      back()
+    }
+  }, SLOW)
 })
 
 describe('a team the moment it is approved', () => {

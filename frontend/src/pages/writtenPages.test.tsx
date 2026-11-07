@@ -744,12 +744,12 @@ describe('one written section, drawn on its own', () => {
      to have: without them the guards around them are executed and nothing reads
      what they did, which is how three of these lines could be deleted with the
      whole suite staying green. */
-  function draw(section: PageSection) {
+  function draw(section: PageSection, language = 'sr') {
     return render(
       <I18nProvider locale="sr">
         <SessionProvider>
           <MemoryRouter>
-            <PageSectionBody section={section} />
+            <PageSectionBody section={section} language={language} />
           </MemoryRouter>
         </SessionProvider>
       </I18nProvider>,
@@ -764,6 +764,28 @@ describe('one written section, drawn on its own', () => {
       block.classList.contains('markdown') ? `words(${block.textContent ?? ''})` : 'the drawing',
     )
   }
+
+  it('puts the language of the words on the words and not on the drawing between them', () => {
+    /* WCAG 2.2 AA 3.1.2. The drawing is the portal's own, drawn in the language of the screen,
+       and the words are the record's, which may be in another one. Measured on a section that
+       has both, with a language no dictionary of the portal speaks so that nothing in the
+       drawing can agree with it by accident. */
+    const { container } = draw(
+      { heading: 'Proba', body: ['Pre.', '', '[[gallery]]', '', 'Posle.'].join(NL), gallery: 'prices' },
+      'cnr',
+    )
+    const column = must(container.querySelector('.section-body'), 'the column of the section')
+    const halves = [...column.children].filter((block) => block.classList.contains('markdown'))
+    const drawing = must(
+      [...column.children].find((block) => !block.classList.contains('markdown')),
+      'the drawing',
+    )
+
+    expect(halves.map((half) => half.getAttribute('lang'))).toEqual(['cnr', 'cnr'])
+    expect(column).not.toHaveAttribute('lang')
+    expect(drawing).not.toHaveAttribute('lang')
+    expect(drawing.querySelector('[lang]')).toBeNull()
+  })
 
   it('takes the mark with spaces around it, and never prints it', () => {
     /* The trimming, which nothing else reads. A mark written with a space in
@@ -897,7 +919,7 @@ describe('the privacy policy', () => {
     /* Found by what it says rather than by its heading, which is what
        `sectionOf` reads: the sections are numbered and one inserted above moves
        the rest. */
-    const rights = sectionOf('politika-privatnosti', /polja profila menjate i brišete/)
+    const rights = sectionOf('politika-privatnosti', /Polja profila, sliku i tekst o sebi menjate i brišete/)
 
     expect(rights).not.toContain('u podnožju svake strane')
     expect(rights).toContain('ne povlači jer se ne daje')
@@ -2900,13 +2922,17 @@ describe('what the written pages say the fee buys', () => {
        (29.10.2026)") and all three carry that day. The rulebook moved on to
        30.10.2026 with Article 11 said in the owner's two sentences (V80; owner,
        30.10.2026), by the same rule; the terms and the policy did not change and keep
-       29.10.2026. Written per
+       29.10.2026. The policy moved on to 07.11.2026 with the sentence that says the
+       profile, the picture and the text about oneself are changed on the page Moji podaci
+       (V89; owner, 07.11.2026, who made the rule general: the date moves whenever the
+       words of a legal text change, to the day the change reaches QA); the terms keep
+       29.10.2026 and the rulebook 30.10.2026. Written per
        document and not as one day for all three, so a date moved on one of them,
        or left behind on one, is a failure that names the document. */
     const SIGNED_OFF = {
       pravilnik: '30.10.2026',
       'uslovi-koriscenja': '29.10.2026',
-      'politika-privatnosti': '29.10.2026',
+      'politika-privatnosti': '07.11.2026',
     } as const
 
     for (const slug of ['pravilnik', 'uslovi-koriscenja', 'politika-privatnosti'] as const) {

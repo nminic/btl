@@ -33,16 +33,19 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 
 /**
- * THE ADMINISTRATION'S TWO ROADS THAT PUT A RACE UNDER AN EVENT, ON THE MORNING OF 1 JANUARY: {@code POST
- * /api/races} and {@code PUT /api/races/{id}} (PDL P9, owner, 06.11.2026, „U prozoru 1. januara od 00:00 do
- * 10:00 server odbija trku iz stare godine na događaju koji još predstoji”).
+ * THE ADMINISTRATION'S TWO ROADS THAT PUT A RACE UNDER AN EVENT: {@code POST /api/races} and {@code PUT
+ * /api/races/{id}} (PDL P9, owner, 06.11.2026, „U prozoru 1. januara od 00:00 do 10:00 server odbija trku iz
+ * stare godine na događaju koji još predstoji”, widened on 07.11.2026: „odbija se uvek, na svim putevima
+ * (administracija, liga, odobravanje), ne samo u prozoru 1.1. Izričito pomeranje celog događaja („Izmeni
+ * događaj”) ostaje dozvoljeno”).
  *
- * <p>The decision is about the window, so the clock is the thing under test and {@code RaceWriteApiTest}, whose
- * fixture stands on the real clock, cannot ask it. Each road is asked what the decision refuses and the
- * neighbours it leaves alone: the event that is not ahead, the race of the new year, the second the window
- * closes, and the year before the one that ended (written down as outside the sentence). The question itself
- * is held in {@code TheDayOfAnEventTest}; what these cases hold is that each road asks it, of the right
- * values, before it writes anything.
+ * <p>The clock is the thing under test and {@code RaceWriteApiTest}, whose fixture stands on the real clock,
+ * cannot ask it. Each road is asked what the decision refuses, at the last second of the old window, at the
+ * second it closed and in the middle of June, and the neighbours it leaves alone: the event that is over, the
+ * race of the new year, and the
+ * whole event moved by {@code PUT /api/events/{id}}. The question itself is held in
+ * {@code TheDayOfAnEventTest}; what these cases hold is that each road asks it, of the right values, before it
+ * writes anything.
  *
  * <p><b>The event is dated 2 January</b>, the nearest day that is ahead on the morning of the 1st. The edit
  * cases give it a second race on the 3rd, so the race moved is neither the earliest nor the only one.
@@ -61,6 +64,9 @@ class AnEventStillAheadIsNotPulledBackByTheAdministrationTest {
 
 	/** 10:00:00 in Belgrade: the window is over. */
 	private static final Instant THE_TENTH_HOUR = Instant.parse("2028-01-01T09:00:00Z");
+
+	/** The middle of June 2028: nothing of the old window is left to say anything. */
+	private static final Instant IN_JUNE = Instant.parse("2028-06-15T10:00:00Z");
 
 	private static final String MODERATOR = "kalendar-nova-godina@primer.rs";
 
@@ -206,6 +212,16 @@ class AnEventStillAheadIsNotPulledBackByTheAdministrationTest {
 		return db.sql("select count(*) from race where event_id = ?").param(event).query(Integer.class).single();
 	}
 
+	private MockHttpServletResponse movedToNewYearsEve(long event, String name) throws Exception {
+		long town = db.sql("select geonames_id from place where rank = 1").query(Long.class).single();
+
+		return http.perform(put("/api/events/" + event).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+						.content("{\"name\":\"" + name + "\",\"date\":\"2027-12-31\",\"placeId\":" + town
+								+ ",\"kind\":\"race\",\"featured\":false,\"description\":\"\",\"link\":\"\"}")
+						.cookie(new Cookie(SessionCookie.NAME, moderator)))
+				.andReturn().getResponse();
+	}
+
 	private LocalDate dayOfRace(long race) {
 		return db.sql("select date from race where id = ?").param(race).query(LocalDate.class).single();
 	}
@@ -231,31 +247,79 @@ class AnEventStillAheadIsNotPulledBackByTheAdministrationTest {
 	}
 
 	/**
-	 * THE SECOND THE WINDOW CLOSES: at ten o'clock the road is what it was before the decision, and the
-	 * administration moves the calendar backwards as it always could (owner, 31.07.2026), the event
-	 * beginning on the race and answering at the address of the year it is now in.
+	 * THE SECOND THE OLD WINDOW CLOSED AND THE MIDDLE OF JUNE ASK THE SAME QUESTION (07.11.2026): the same race
+	 * under an event that is ahead is refused at ten o'clock and in June, and the event keeps its day, its address
+	 * and its races. In June the event is dated September, since "ahead" there means any day from the 15th on.
 	 */
 	@Test
-	void atTenOClockTheSameRaceIsWrittenAndTheEventMovesBack() throws Exception {
+	void atTenOClockAndInJuneTheSameRaceIsStillRefused() throws Exception {
 		clock.moveTo(THE_TENTH_HOUR);
 
-		MockHttpServletResponse written = add(moderator, ahead, "2027-12-31");
+		MockHttpServletResponse refused = add(moderator, ahead, "2027-12-31");
 
-		assertThat(written.getStatus()).isEqualTo(201);
-		assertThat(eventDay(ahead)).isEqualTo(LocalDate.of(2027, 12, 31));
-		assertThat(eventAddress(ahead)).isEqualTo("noc-2027");
+		assertThat(refused.getStatus()).isEqualTo(409);
+		assertThat(refused.getContentAsString()).contains(REFUSED);
+		assertThat(eventDay(ahead)).isEqualTo(LocalDate.of(2028, 1, 2));
+		assertThat(eventAddress(ahead)).isEqualTo("noc-2028");
+		assertThat(races(ahead)).isEqualTo(2);
+
+		clock.moveTo(IN_JUNE);
+		long september = event("jesen-2028", "Jesen", "2028-09-01");
+		race(september, "Jesenja", "2028-09-01");
+
+		MockHttpServletResponse inJune = add(moderator, september, "2027-12-31");
+
+		assertThat(inJune.getStatus()).isEqualTo(409);
+		assertThat(inJune.getContentAsString()).contains(REFUSED);
+		assertThat(eventDay(september)).isEqualTo(LocalDate.of(2028, 9, 1));
+		assertThat(eventAddress(september)).isEqualTo("jesen-2028");
+		assertThat(races(september)).isEqualTo(1);
 	}
 
-	/** An event dated today is not ahead: the decision of 20.10.2026 stands for it. */
+	/**
+	 * AN EVENT DATED TODAY IS AHEAD TOO (owner, 07.11.2026, „Događaj zakazan za danas takođe „još predstoji””): on
+	 * the morning of 1 January and in June alike, nothing is written and the event keeps its day.
+	 */
 	@Test
-	void anEventDatedTodayTakesTheRaceOfNewYearsEve() throws Exception {
+	void anEventDatedTodayIsRefusedTheRaceOfNewYearsEve() throws Exception {
 		long today = event("danas-2028", "Danas", "2028-01-01");
 		race(today, "Podnevna", "2028-01-01");
 
-		MockHttpServletResponse written = add(moderator, today, "2027-12-31");
+		MockHttpServletResponse refused = add(moderator, today, "2027-12-31");
+
+		assertThat(refused.getStatus()).isEqualTo(409);
+		assertThat(refused.getContentAsString()).contains(REFUSED);
+		assertThat(eventDay(today)).isEqualTo(LocalDate.of(2028, 1, 1));
+		assertThat(races(today)).isEqualTo(1);
+
+		clock.moveTo(IN_JUNE);
+		long theFifteenth = event("danas-jun-2028", "Danas jun", "2028-06-15");
+		race(theFifteenth, "Podnevna", "2028-06-15");
+
+		MockHttpServletResponse inJune = add(moderator, theFifteenth, "2027-12-31");
+
+		assertThat(inJune.getStatus()).isEqualTo(409);
+		assertThat(inJune.getContentAsString()).contains(REFUSED);
+		assertThat(eventDay(theFifteenth)).isEqualTo(LocalDate.of(2028, 6, 15));
+		assertThat(races(theFifteenth)).isEqualTo(1);
+	}
+
+	/**
+	 * AN EVENT THAT IS OVER TAKES THE RACE OF THE YEAR JUST ENDED, which is what the decision of 20.10.2026 left
+	 * standing: dated yesterday in June, it begins on the earlier race and answers at the address of the year
+	 * before.
+	 */
+	@Test
+	void anEventDatedYesterdayTakesTheRaceOfTheYearJustEnded() throws Exception {
+		clock.moveTo(IN_JUNE);
+		long yesterdays = event("juce-2028", "Juce", "2028-06-14");
+		race(yesterdays, "Podnevna", "2028-06-14");
+
+		MockHttpServletResponse written = add(moderator, yesterdays, "2027-12-31");
 
 		assertThat(written.getStatus()).isEqualTo(201);
-		assertThat(eventDay(today)).isEqualTo(LocalDate.of(2027, 12, 31));
+		assertThat(eventDay(yesterdays)).isEqualTo(LocalDate.of(2027, 12, 31));
+		assertThat(eventAddress(yesterdays)).isEqualTo("juce-2027");
 	}
 
 	/** A race of the new year is not a race of the old one, whatever the event is. */
@@ -269,18 +333,36 @@ class AnEventStillAheadIsNotPulledBackByTheAdministrationTest {
 	}
 
 	/**
-	 * THE YEAR BEFORE THE ONE THAT JUST ENDED IS OUTSIDE THE SENTENCE, written down as the boundary it is:
-	 * the owner's words are „trku iz stare godine”, and the year that has just ended is the one that is old
-	 * on that morning. A race of 2026 under the same event is written, as it is at any other time of the
-	 * year, and the event goes back two years. This is a reading of mine and one line in
-	 * {@code TheDayOfAnEvent.pullsAnEventStillAheadIntoTheYearJustEnded}.
+	 * EVERY YEAR EARLIER THAN THE EVENT'S IS REFUSED, not only the one before the current year (owner, 07.11.2026,
+	 * „odbija se i trka iz 2026. na događaju iz 2028, i trka od 30.12. na događaju zakazanom za 1.3. sledeće
+	 * godine"): both of his examples, nothing written.
 	 */
 	@Test
-	void aRaceOfTheYearBeforeTheOneThatEndedIsOutsideTheSentence() throws Exception {
-		MockHttpServletResponse written = add(moderator, ahead, "2026-12-31");
+	void aRaceOfAnyEarlierYearIsRefusedUnderAnEventThatIsAhead() throws Exception {
+		MockHttpServletResponse twoYearsBefore = add(moderator, ahead, "2026-12-31");
 
-		assertThat(written.getStatus()).isEqualTo(201);
-		assertThat(eventDay(ahead)).isEqualTo(LocalDate.of(2026, 12, 31));
+		assertThat(twoYearsBefore.getStatus()).isEqualTo(409);
+		assertThat(twoYearsBefore.getContentAsString()).contains(REFUSED);
+		assertThat(eventDay(ahead)).isEqualTo(LocalDate.of(2028, 1, 2));
+
+		clock.moveTo(IN_JUNE);
+		long nextYears = event("prolece-2029", "Proleće", "2029-03-01");
+		race(nextYears, "Prolecna", "2029-03-01");
+
+		MockHttpServletResponse thirtiethOfDecember = add(moderator, nextYears, "2028-12-30");
+
+		assertThat(thirtiethOfDecember.getStatus()).isEqualTo(409);
+		assertThat(thirtiethOfDecember.getContentAsString()).contains(REFUSED);
+		assertThat(eventDay(nextYears)).isEqualTo(LocalDate.of(2029, 3, 1));
+		assertThat(eventAddress(nextYears)).isEqualTo("prolece-2029");
+		assertThat(races(nextYears)).isEqualTo(1);
+
+		long itsSecond = race(nextYears, "Druga", "2029-03-02");
+		MockHttpServletResponse moved = change(itsSecond, "2028-12-30");
+
+		assertThat(moved.getStatus()).isEqualTo(409);
+		assertThat(moved.getContentAsString()).contains(REFUSED);
+		assertThat(dayOfRace(itsSecond)).isEqualTo(LocalDate.of(2029, 3, 2));
 	}
 
 	/**
@@ -298,16 +380,60 @@ class AnEventStillAheadIsNotPulledBackByTheAdministrationTest {
 		assertThat(eventAddress(ahead)).isEqualTo("noc-2028");
 	}
 
-	/** The same edit at ten o'clock is written, and the event goes back with the race. */
+	/**
+	 * THE SAME MOVE AT TEN O'CLOCK, IN JUNE AND ON AN EVENT DATED TODAY IS REFUSED ALL THE SAME (07.11.2026), and the
+	 * race stays where it was. The event dated yesterday, in June, is over: the move is written and it goes back
+	 * with the race.
+	 */
 	@Test
-	void atTenOClockTheSameMoveIsWritten() throws Exception {
+	void theSameMoveIsRefusedAtAnyTimeOfTheYearForAnEventThatIsAheadAndWrittenForOneThatIsOver()
+			throws Exception {
 		clock.moveTo(THE_TENTH_HOUR);
 
-		MockHttpServletResponse written = change(theSecondRace, "2027-12-31");
+		MockHttpServletResponse atTen = change(theSecondRace, "2027-12-31");
 
-		assertThat(written.getStatus()).isEqualTo(200);
-		assertThat(dayOfRace(theSecondRace)).isEqualTo(LocalDate.of(2027, 12, 31));
+		assertThat(atTen.getStatus()).isEqualTo(409);
+		assertThat(atTen.getContentAsString()).contains(REFUSED);
+		assertThat(dayOfRace(theSecondRace)).isEqualTo(LocalDate.of(2028, 1, 3));
+		assertThat(eventDay(ahead)).isEqualTo(LocalDate.of(2028, 1, 2));
+
+		clock.moveTo(IN_JUNE);
+		long today = event("danas-jun-2028", "Danas jun", "2028-06-15");
+		race(today, "Prva", "2028-06-15");
+		long itsSecond = race(today, "Druga", "2028-06-16");
+
+		MockHttpServletResponse onAnEventDatedToday = change(itsSecond, "2027-12-31");
+
+		assertThat(onAnEventDatedToday.getStatus()).isEqualTo(409);
+		assertThat(onAnEventDatedToday.getContentAsString()).contains(REFUSED);
+		assertThat(dayOfRace(itsSecond)).isEqualTo(LocalDate.of(2028, 6, 16));
+		assertThat(eventDay(today)).isEqualTo(LocalDate.of(2028, 6, 15));
+
+		long over = event("juce-2028", "Juce", "2028-06-14");
+		race(over, "Prva", "2028-06-14");
+		long itsOther = race(over, "Druga", "2028-06-15");
+
+		assertThat(change(itsOther, "2027-12-31").getStatus()).isEqualTo(200);
+		assertThat(dayOfRace(itsOther)).isEqualTo(LocalDate.of(2027, 12, 31));
+		assertThat(eventDay(over)).isEqualTo(LocalDate.of(2027, 12, 31));
+	}
+
+	/**
+	 * THE WHOLE EVENT MOVED BY "IZMENI DOGAĐAJ" IS NOT THIS QUESTION AND STAYS ALLOWED (owner, 07.11.2026): the
+	 * event that is ahead is moved onto New Year's Eve with its races, at any time of the year, because that is the
+	 * owner's own explicit act and not a race that pulls the event.
+	 */
+	@Test
+	void movingTheWholeEventBackIsStillAllowedAtAnyTimeOfTheYear() throws Exception {
+		assertThat(movedToNewYearsEve(ahead, "Noc").getStatus()).as("the old window").isEqualTo(200);
 		assertThat(eventDay(ahead)).isEqualTo(LocalDate.of(2027, 12, 31));
+
+		clock.moveTo(IN_JUNE);
+		long september = event("jesen-2028", "Jesen", "2028-09-01");
+		race(september, "Jesenja", "2028-09-01");
+
+		assertThat(movedToNewYearsEve(september, "Jesen").getStatus()).as("June").isEqualTo(200);
+		assertThat(eventDay(september)).isEqualTo(LocalDate.of(2027, 12, 31));
 	}
 
 	/**

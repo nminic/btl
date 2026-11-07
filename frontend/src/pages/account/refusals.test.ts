@@ -643,7 +643,9 @@ describe('the reasons the server can name', () => {
        godini izabranog događaja”), which until then was answered as a form not filled in. Fourteen since
        06.11.2026: `anEventStillAheadWouldMoveIntoTheYearJustEnded`, the one thing the owner's answer of
        06.11.2026 takes back of the morning of 1 January (PDL P9, „server odbija trku iz stare godine na
-       događaju koji još predstoji”); `RaceWriteApi` has the same one, its fourteenth. */
+       događaju koji još predstoji”); `RaceWriteApi` has the same one, its fourteenth.
+       (07.11.2026: `theEventWouldMoveOntoAnother` stays, since an event with no race moves forward into the
+       next year's address when its first race is entered; the review of PR 700 found it.) */
     ['ResultsByTheLeagueApi.java', [WHEN_THE_LEAGUE_ENTERS_RESULTS], 14],
     /* ADDED 25.10.2026 WITH THE BANK STATEMENT ON THE PAYMENTS SCREEN (PDL 24.10.2026). Seven constants:
        four refusals, answered by the statement box, and the three states of a line in `NOT_A_REASON`. */
