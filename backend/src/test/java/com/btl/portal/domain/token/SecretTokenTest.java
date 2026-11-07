@@ -106,6 +106,11 @@ class SecretTokenTest {
 	 * and passed the first version of this case with all twelve green. Swapping the algorithm
 	 * on purpose (for instance {@code SecureRandom.getInstanceStrong()}, which returns a
 	 * subclass) fails this on purpose too, and that is the moment somebody should decide.
+	 *
+	 * <p><b>The limit, measured rather than argued:</b> the class is the whole of what this asks, so a
+	 * plain {@code SecureRandom} built with {@code getInstance("SHA1PRNG")} and seeded with
+	 * {@code setSeed(42L)} is exactly that class and passes (12 cases, none failing). Whether the
+	 * generator is seeded is not a question any case here can answer.
 	 */
 	@Test
 	void theNumbersComeFromAGeneratorMeantForThis() {

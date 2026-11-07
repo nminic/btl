@@ -15,7 +15,9 @@ import java.io.UncheckedIOException;
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.Base64;
+import java.util.List;
 import java.util.zip.CRC32;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -464,6 +466,30 @@ class SmallPictureTest {
 				.as("something where a marker should be").isEqualTo(1);
 		assertThat(SmallPicture.orientationOf(concat(SOI, new byte[] { (byte) 0xFF, (byte) 0xE1, 0 })))
 				.as("a file cut short in a segment's length").isEqualTo(1);
+	}
+
+	/**
+	 * ADL, owner, 07.11.2026: the clean-up goes on „kao pregledač", and the turn it keeps is read the way a
+	 * decoder finds segments: bytes that are not a marker are skipped until one is. So a stray byte, an
+	 * {@code FF 00} or a fill in front of the EXIF does not make a picture that is shown turned look as stored.
+	 */
+	@Test
+	void theTurnIsFoundPastBytesThatAreNotAMarkerAndMarkersThatCarryNoLength() {
+		byte[] exif = exifSaying(0x0112, 6, false);
+
+		for (byte[] before : List.of(new byte[] { 0x00 }, new byte[] { 0x12, 0x34 },
+				new byte[] { (byte) 0xFF, 0x00 }, new byte[] { (byte) 0xFF }, new byte[] { (byte) 0xFF, (byte) 0xD0 },
+				new byte[] { (byte) 0xFF, 0x01 })) {
+			assertThat(SmallPicture.orientationOf(concat(SOI, concat(before, concat(exif, SOS)))))
+					.as("the turn was lost behind %s", Arrays.toString(before)).isEqualTo(6);
+		}
+
+		assertThat(SmallPicture.orientationOf(concat(SOI, concat(new byte[] { (byte) 0xFF, (byte) 0xD9 }, exif))))
+				.as("what follows the end of the picture is not read").isEqualTo(1);
+		assertThat(SmallPicture.orientationOf(concat(SOI, new byte[] { 7, 7, 7 })))
+				.as("no marker anywhere").isEqualTo(1);
+		assertThat(SmallPicture.markerFrom(new byte[] { 1, (byte) 0xFF, 0, 2, (byte) 0xFF, 5 }, 0))
+				.as("an FF 00 is data and not a marker").isEqualTo(4);
 	}
 
 	/** Garbage under a picture's type is refused by the reader, as an exception and not a cut. */
