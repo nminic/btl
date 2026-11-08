@@ -47,7 +47,10 @@ import java.util.TreeSet;
  * writer put in first. One message per act, with every ducat the act won him, in the words the owner
  * approved on 08.11.2026 (relayed by the coordinator): „Osvojili ste dukat” and „Odobren vam je rezultat
  * sa trke {trka} od {dan}, i njime ste osvojili dukat „{ime}”. Dukat stoji na vašem profilu.” The sender
- * is the league, PDL P13, 19.09.2026: „Kad portal sam piše poruku članu, pošiljalac je naziv lige.”
+ * is the league, PDL P13, 19.09.2026: „Kad portal sam piše poruku članu, pošiljalac je naziv lige.” <b>The
+ * name of a ducat stands in English quotes</b>, not in the low ones the relayed words carry: PDL, 18.10.2026,
+ * „Tekst koji portal piše koristi engleske navodnike”, the whole portal and the inbox included, which
+ * {@code TheQuotesAMemberReadsAreEnglishTest} holds over every string compiled into the portal.
  */
 @Component
 class DucatsFollowTheResults {
@@ -132,7 +135,7 @@ class DucatsFollowTheResults {
 		List<String> each = new ArrayList<>();
 
 		for (AwardingDucats.Won one : won) {
-			each.add("„" + names.get(one.code()) + "”" + period(one));
+			each.add("\"" + names.get(one.code()) + "\"" + period(one));
 		}
 
 		boolean many = each.size() > 1;

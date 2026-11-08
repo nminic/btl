@@ -172,7 +172,7 @@ class DucatsFollowTheResultsTest {
 		assertThat(ducatsOf(ANA)).containsExactly(THE_MONTHLY + " 2027/5");
 		assertThat(ducatMessagesTo(ANA)).containsExactly("Balkanska trkačka liga | " + THE_SUBJECT + " | "
 				+ "Odobren vam je rezultat sa trke Majska trka od 20.05.2027, i njime ste osvojili dukat"
-				+ " „Mesečni kilometri” za maj 2027. Dukat stoji na vašem profilu.");
+				+ " \"Mesečni kilometri\" za maj 2027. Dukat stoji na vašem profilu.");
 		assertThat(nobodyElseGotADucat()).isTrue();
 	}
 
@@ -219,7 +219,7 @@ class DucatsFollowTheResultsTest {
 		assertThat(ducatsOf(VERA)).containsExactly(THE_MONTHLY + " 2027/5");
 		assertThat(ducatMessagesTo(ANA)).containsExactly("Balkanska trkačka liga | " + THE_SUBJECT + " | "
 				+ "Liga vam je unela rezultat sa trke Majska trka od 20.05.2027, i njime ste osvojili dukat"
-				+ " „Mesečni kilometri” za maj 2027. Dukat stoji na vašem profilu.");
+				+ " \"Mesečni kilometri\" za maj 2027. Dukat stoji na vašem profilu.");
 		assertThat(ducatMessagesTo(VERA)).hasSize(1);
 		assertThat(ducatsOf(BOJAN)).isEmpty();
 	}
@@ -266,8 +266,8 @@ class DucatsFollowTheResultsTest {
 
 		assertThat(ducatMessagesTo(ANA)).containsExactly("Balkanska trkačka liga | " + THE_SUBJECT + " | "
 				+ "Liga vam je unela rezultat sa trke Majska trka od 20.05.2027, i njime ste osvojili dukate"
-				+ " „Mesečni kilometri” za maj 2027, „Mesečni sati” za maj 2027, „Sezonski kilometri” za"
-				+ " sezonu 2027, „Sezonski sati” za sezonu 2027 i „Karmanov uspon”."
+				+ " \"Mesečni kilometri\" za maj 2027, \"Mesečni sati\" za maj 2027, \"Sezonski kilometri\" za"
+				+ " sezonu 2027, \"Sezonski sati\" za sezonu 2027 i \"Karmanov uspon\"."
 				+ " Dukati stoje na vašem profilu.");
 	}
 
