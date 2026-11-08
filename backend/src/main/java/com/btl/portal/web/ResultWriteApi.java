@@ -307,6 +307,8 @@ class ResultWriteApi {
 
 	private final JdbcClient db;
 
+	private final DucatsFollowTheResults ducats;
+
 	/** Who is asking, and whether his fee stands: the one question each verb opens with. */
 	private final ActiveMemberOrAdministration readers;
 
@@ -323,8 +325,9 @@ class ResultWriteApi {
 	private final TransactionTemplate inOneTransaction;
 
 	ResultWriteApi(JdbcClient db, ActiveMemberOrAdministration readers, Postman postman, Clock clock,
-			TransactionTemplate inOneTransaction) {
+			TransactionTemplate inOneTransaction, DucatsFollowTheResults ducats) {
 		this.db = db;
+		this.ducats = ducats;
 		this.readers = readers;
 		this.postman = postman;
 		this.clock = clock;
@@ -574,6 +577,10 @@ class ResultWriteApi {
 		});
 
 		post(asking.account(), him, said);
+
+		/* AND HIS DUCATS AFTER THE COMMIT, in silence: „Kad se dukat oduzme, član ne dobija posebnu
+		   poruku; poruku o brisanju ili ispravci rezultata ionako dobija.” (PDL, 08.11.2026) */
+		ducats.quietly(me);
 
 		return ResponseEntity.noContent().build();
 	}

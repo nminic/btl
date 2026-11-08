@@ -626,6 +626,8 @@ class VerificationWriteApi {
 
 	private final JdbcClient db;
 
+	private final DucatsFollowTheResults ducats;
+
 	private final WhatHeMayDo mayHe;
 
 	private final TransactionTemplate inOneTransaction;
@@ -682,8 +684,9 @@ class VerificationWriteApi {
 	VerificationWriteApi(JdbcClient db, WhatHeMayDo mayHe, TransactionTemplate inOneTransaction,
 			Clock clock, MemberOfAccount memberOfAccount, BestOfficialSeason bestOfficialSeason,
 			Postman postman, ObjectMapper json, AMembershipOfTheSeasonHeWouldJoin holdsTheSeason,
-			@Value("${btl.mail.league}") String theLeague) {
+			@Value("${btl.mail.league}") String theLeague, DucatsFollowTheResults ducats) {
 		this.db = db;
+		this.ducats = ducats;
 		this.holdsTheSeason = holdsTheSeason;
 		this.mayHe = mayHe;
 		this.inOneTransaction = inOneTransaction;
@@ -1171,6 +1174,14 @@ class VerificationWriteApi {
 				   thirty seconds. The line in his inbox is a ROW and stays inside with
 				   everything else the answer writes; only what leaves the building waits. */
 				postAfterwards(carried);
+
+				/* AND THE DUCATS AFTER IT, for the same reason and from the same place: an approved run,
+				   new or a correction, and nothing for a refusal, which moves no result. */
+				if (carried.approved() != null) {
+					ducats.follow(Set.of(carried.member()), new DucatsFollowTheResults.Told(
+							DucatsFollowTheResults.Brought.APPROVED, carried.approved().raceName(),
+							carried.approved().day()));
+				}
 
 				yield carried.answer();
 			}

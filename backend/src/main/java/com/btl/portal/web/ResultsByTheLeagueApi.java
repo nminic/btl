@@ -312,6 +312,8 @@ class ResultsByTheLeagueApi {
 
 	private final JdbcClient db;
 
+	private final DucatsFollowTheResults ducats;
+
 	private final TransactionTemplate inOneTransaction;
 
 	private final Postman postman;
@@ -326,8 +328,9 @@ class ResultsByTheLeagueApi {
 
 	ResultsByTheLeagueApi(JdbcClient db, TransactionTemplate inOneTransaction, Postman postman,
 			BestOfficialSeason bestOfficialSeason, Clock clock,
-			@Value("${btl.mail.league}") String theLeague) {
+			@Value("${btl.mail.league}") String theLeague, DucatsFollowTheResults ducats) {
 		this.db = db;
+		this.ducats = ducats;
 		this.inOneTransaction = inOneTransaction;
 		this.postman = postman;
 		this.bestOfficialSeason = bestOfficialSeason;
@@ -740,7 +743,7 @@ class ResultsByTheLeagueApi {
 				.query(String.class).single();
 
 		return new Done(ResponseEntity.status(HttpStatus.CREATED)
-				.body(new EnteredOn(entered.results(), address)), done.letters());
+				.body(new EnteredOn(entered.results(), address)), done.letters(), done.members(), done.told());
 	}
 
 	/**
@@ -899,8 +902,11 @@ class ResultsByTheLeagueApi {
 			written.add(enterOne(judged.whose().get(at), race, judged.counted().get(at), letters));
 		}
 
+		/* WHOSE RESULTS MOVED AND THAT THE LEAGUE ENTERED THEM, carried to the step after the commit: every
+		   row is one member on this one race, so the race and its day are what the message names. */
 		return new Done(ResponseEntity.status(HttpStatus.CREATED).body(new Entered(written)),
-				letters);
+				letters, judged.whose(), new DucatsFollowTheResults.Told(DucatsFollowTheResults.Brought.ENTERED,
+						race.name(), race.day()));
 	}
 
 	/**
@@ -958,7 +964,7 @@ class ResultsByTheLeagueApi {
 				tellIfTheCategoryMoved(standing.member(), season, wasOpen, Act.CHANGED, after);
 			}
 
-			return new Done(ResponseEntity.noContent().build(), letters);
+			return new Done(ResponseEntity.noContent().build(), letters, List.of(standing.member()), null);
 		});
 
 		return postAfterwards(done);
@@ -1000,7 +1006,7 @@ class ResultsByTheLeagueApi {
 				tellIfTheCategoryMoved(standing.member(), season, wasOpen, Act.DELETED, before);
 			}
 
-			return new Done(ResponseEntity.noContent().build(), letters);
+			return new Done(ResponseEntity.noContent().build(), letters, List.of(standing.member()), null);
 		});
 
 		return postAfterwards(done);
@@ -1170,6 +1176,11 @@ class ResultsByTheLeagueApi {
 			}
 		}
 
+		/* AND THE DUCATS, after the commit and never inside it (ADL 21.09.2026, „dukati i pošta idu posle
+		   nje”): the save holds every member it names `for update`, so a reconciliation from inside would
+		   wait on this very request. */
+		ducats.follow(done.members(), done.told());
+
 		return done.answer();
 	}
 
@@ -1290,10 +1301,18 @@ class ResultsByTheLeagueApi {
 	}
 
 	/** The answer, and the letters that leave only once it has committed. */
-	private record Done(ResponseEntity<?> answer, List<Letter> letters) {
+	/**
+	 * What a save did, for after its commit.
+	 *
+	 * @param members whose results moved, each to be reconciled with his ducats
+	 * @param told    how the message about a ducat won begins, or empty where moving the result tells
+	 *                nothing of the ducats (a change and a deletion, PDL 08.11.2026)
+	 */
+	private record Done(ResponseEntity<?> answer, List<Letter> letters, List<Long> members,
+			DucatsFollowTheResults.Told told) {
 
 		static Done only(ResponseEntity<?> answer) {
-			return new Done(answer, List.of());
+			return new Done(answer, List.of(), List.of(), null);
 		}
 	}
 
