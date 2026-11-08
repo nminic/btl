@@ -760,7 +760,15 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   89 and no other: main stood at V88 on 07.11.2026 (b70d7dfe) and no open pull request held a migration.
 
 			   Pinned LAST, when the file was final, off this very assertion. */
-			new Applied("89", "V89__the_privacy_policy_says_the_profile_is_edited_on_the_page_moji_podaci.sql", -939250551));
+			new Applied("89", "V89__the_privacy_policy_says_the_profile_is_edited_on_the_page_moji_podaci.sql", -939250551),
+
+			/* V91. A ducat award remembers its tier, the day of the race that won it and the result that won it
+			   (A36 O13; PDL, owner, „Dukat pamti dan trke kojom je prag pređen“ and „Dukat se oduzima kad se njegov
+			   rezultat obriše“): the schema of the first of seven steps, nothing writes to the table yet. 91 and no
+			   other: main stood at V89 on 08.11.2026 (b8b9aa59), V90 is taken by the open branch b315.
+
+			   Pinned LAST, when the file was final, off this very assertion. */
+			new Applied("91", "V91__a_ducat_award_remembers_its_tier_the_day_of_the_race_and_the_result_that_won_it.sql", 0));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {

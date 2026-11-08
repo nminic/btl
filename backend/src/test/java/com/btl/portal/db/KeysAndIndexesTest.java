@@ -529,6 +529,9 @@ class KeysAndIndexesTest extends DatabaseTest {
 			new Index("ducat_award_competitor_idx", "every badge one member has won"),
 			new Index("ducat_award_ducat_idx", "everybody who has won one badge"),
 			new Index("ducat_award_kind_idx", "the recognitions given for one quantity"),
+			/* V91. The end of ducat_award_result_fk: the badges one result won, which is what deleting the
+			   result has to find so as to empty their pointer. */
+			new Index("ducat_award_result_idx", "the badges one result won, the end of ducat_award_result_fk"),
 			/* V16. Three ends of keys, and one the screen of payments is actually drawn from:
 			   everything still waiting for one season. */
 			new Index("payment_competitor_idx", "what one member has paid, season by season"),
