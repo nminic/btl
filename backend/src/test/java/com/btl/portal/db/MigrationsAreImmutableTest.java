@@ -771,7 +771,15 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   90 and no other: main stood at V89 on 08.11.2026 (c898e39d).
 
 			   Pinned LAST, when the file was final, off this very assertion. */
-			new Applied("90", "V90__the_privacy_policy_says_moji_podaci_where_it_said_the_card_podaci_and_links_it.sql", 491027654));
+			new Applied("90", "V90__the_privacy_policy_says_moji_podaci_where_it_said_the_card_podaci_and_links_it.sql", 491027654),
+
+			/* V91. A ducat award remembers its tier, the day of the race that won it and the result that won it
+			   (A36 O13; PDL, owner, „Dukat pamti dan trke kojom je prag pređen“ and „Dukat se oduzima kad se njegov
+			   rezultat obriše“): the schema of the first of seven steps, nothing writes to the table yet. 91 and no
+			   other: main stood at V90 on 08.11.2026 (1eea9c16).
+
+			   Pinned LAST, when the file was final, off this very assertion. */
+			new Applied("91", "V91__a_ducat_award_remembers_its_tier_the_day_of_the_race_and_the_result_that_won_it.sql", -1262018098));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {
