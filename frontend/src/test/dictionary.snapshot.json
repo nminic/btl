@@ -57,7 +57,7 @@
     },
     "myData": {
       "title": "Moji BTL podaci",
-      "description": "Ime, adresa, telefon, mesto i veličina majice, dok članarina još nije evidentirana."
+      "description": "Ime, adresa, telefon, mesto, veličina majice, profilna slika i tekst o sebi."
     },
     "membership": {
       "title": "Moja BTL članarina",
@@ -210,7 +210,7 @@
     },
     "competitorData": {
       "title": "Podaci takmičara",
-      "description": "Podaci jednog člana Balkanske trkačke lige, koje vide samo on i administracija."
+      "description": "Podaci jednog člana Balkanske trkačke lige, koje vidi samo administracija."
     }
   },
   "shell": {
@@ -259,6 +259,7 @@
     "forgottenPassword": "Zaboravljena lozinka",
     "myProfile": "Moj profil",
     "myData": "Moji podaci",
+    "completeData": "Dopuni podatke",
     "myResults": "Moji rezultati",
     "membership": "Moja članarina",
     "messages": "Poruke",
@@ -805,8 +806,7 @@
       "label": "Delovi profila",
       "overview": "Rezultati",
       "awards": "Priznanja",
-      "data": "Podaci",
-      "finish": "Dovrši profil"
+      "data": "Podaci"
     },
     "moreDucats": "Učitaj još dukata",
     "showingDucats": "Prikazano {shown} od {total}",

@@ -8,6 +8,8 @@ import { SLOW } from '../../test/slow'
 import { setupUser } from '../../test/user'
 import { useSession } from '../../session/useSession'
 import { hisPageAsServed } from '../../test/hisPage'
+import competitors from '../../test/mock/competitors.json'
+import sr from '../../i18n/sr.json'
 
 /**
  * „MOJI PODACI", THE PAGE SOMEBODY WHO REGISTERED AND HAS NOT PAID CHANGES HIS DATA ON.
@@ -237,18 +239,52 @@ describe('the page of somebody who has not paid, when somebody else signs in bes
 })
 
 describe('the page, to everybody who is not somebody who has not paid', () => {
-  /* **WHAT THE OWNER SAID IS WHERE THE ENTRY GOES AND NOT WHAT THE ADDRESS ANSWERS**, so these are
-     derived (PDL 22.10.2026, „posle odobrenja „Moji podaci" nestaje iz navigacije, a podatke menja na
-     kartici Podaci profila"): a member whose fee stands is sent to the card, where his data are; a
-     member whose fee has lapsed to the page he renews on, which is all that is open to him; and the
-     rest are told what every screen of the member area tells them. */
-  it('sends a member whose fee stands to the card „Podaci" of his own profile', async () => {
-    const { router } = renderAt(PAGE, 'competitor', '000001')
+  /* **EVERY MEMBER'S SINCE 07.11.2026** (owner, PDL „Član svojim podacima pristupa iz glavnog menija”: „Član
+     svojim podacima pristupa iz glavnog menija, stavkom „Moji podaci” (`/moji-podaci`): forma, slika i tekst o
+     sebi"): a member whose fee stands is drawn the form and under it his picture and his words. A member whose
+     fee has lapsed is sent to the page he renews on (owner, 07.11.2026: „adresa ga šalje na „Moja članarina”,
+     kao do sada"), and the rest are told what every screen of the member area tells them. */
+  it('draws a member whose fee stands his form, and under it his own picture and his own words', async () => {
+    /* 000007 and not the first member of the file, who has words about himself: boxes drawn off the first row of
+       the list instead of off his would hold the first man's words. */
+    const first = must(competitors[0], 'the first member of the file')
+    const hisWords = must(first.bio, 'the words of the first member of the file')
 
-    await waitFor(() => {
-      expect(router.state.location.pathname).toBe('/sr/takmicar/000001/podaci')
-    })
-    expect(router.state.historyAction).toBe('REPLACE')
+    expect(first.memberNumber).not.toBe('000007')
+
+    const { router } = renderAt(PAGE, 'competitor', '000007')
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Moji podaci' })).toBeVisible()
+    expect(await screen.findByRole('heading', { level: 2, name: 'Lični podaci' })).toBeVisible()
+    expect(await screen.findByRole('region', { name: 'Profilna slika' })).toBeVisible()
+
+    const words = within(await screen.findByRole('region', { name: 'Tekst o sebi' }))
+
+    expect(await words.findByRole('button', { name: 'Pošalji na odobrenje' })).toBeVisible()
+    /* Read off every box's own value, because the words run over two paragraphs and a matcher of display values
+       folds their blank line away, which is how this case once let the first man's words through. */
+    expect(
+      screen.getAllByRole('textbox').map((one) => (one instanceof HTMLTextAreaElement ? one.value : '')),
+    ).not.toContain(hisWords)
+    expect(router.state.location.pathname).toBe(PAGE)
+  }, SLOW)
+
+  /* An account of the administration that races for nobody is told so, as on every screen of the member area
+     (derived 07.11.2026: the owner's decision names the members). */
+  it('tells an account with no record what every screen of the member area tells it', async () => {
+    stand(
+      serverThat((path) =>
+        path === '/api/me'
+          ? new Response(JSON.stringify({ role: 'moderator', account: 11 }), {
+              status: 200,
+              headers: { 'content-type': 'application/json' },
+            })
+          : null,
+      ),
+    )
+    renderAt(PAGE, 'visitor', null)
+
+    expect(await screen.findByRole('heading', { level: 1, name: sr.signIn.noRecord })).toBeVisible()
     expect(screen.queryByRole('heading', { level: 1, name: 'Moji podaci' })).not.toBeInTheDocument()
   }, SLOW)
 

@@ -19,9 +19,15 @@ export function Dropdown({
   label: string
   className: string
   trigger: ReactNode
-  children: (close: () => void) => ReactNode
+  /**
+   * What the panel holds, given the way to shut it and HOW MANY TIMES IT HAS BEEN OPENED. The panel is
+   * drawn while it is shut as well, so what it holds stays mounted for the whole visit; the count is how
+   * something in it that has to be asked again asks it each time a reader opens it (`AccountMenu.tsx`).
+   */
+  children: (close: () => void, opens: number) => ReactNode
 }) {
   const [open, setOpen] = useState(false)
+  const [opens, setOpens] = useState(0)
   const box = useRef<HTMLDivElement>(null)
   const button = useRef<HTMLButtonElement>(null)
 
@@ -88,13 +94,19 @@ export function Dropdown({
         aria-expanded={open}
         aria-controls={id}
         aria-label={label}
-        onClick={() => setOpen((was) => !was)}
+        onClick={() => {
+          if (!open) {
+            setOpens((times) => times + 1)
+          }
+
+          setOpen(!open)
+        }}
       >
         {trigger}
       </button>
 
       <div className={`${className}__panel`} id={id} hidden={!open}>
-        {children(() => setOpen(false))}
+        {children(() => setOpen(false), opens)}
       </div>
     </div>
   )

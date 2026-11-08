@@ -274,9 +274,9 @@ class TheWrittenPagesSayEachThingInOnePlaceTest extends DatabaseTest {
 			assertThat(placesWhichCarry(signOff[0], signOff[1]))
 					.as("%s: the terms alone are signed off on 29.10.2026, V89 having moved the policy's on", signOff[0])
 					.containsExactly(new Place(TERMS, 11));
-			/* V89 (owner, 07.11.2026) moved the policy on from the day V77 gave it. */
-			assertThat(placesWhichCarry(signOff[0], signOff[1].replace("29.10.2026", "07.11.2026")))
-					.as("%s: the policy alone is signed off on 07.11.2026", signOff[0])
+			/* V89 (owner, 07.11.2026) and then V90 (owner, 08.11.2026) moved the policy on from the day V77 gave it. */
+			assertThat(placesWhichCarry(signOff[0], signOff[1].replace("29.10.2026", "08.11.2026")))
+					.as("%s: the policy alone is signed off on 08.11.2026", signOff[0])
 					.containsExactly(new Place(POLICY, 7));
 			/* V80 (owner, 30.10.2026) moved the rulebook on from the day V77 gave it. */
 			assertThat(placesWhichCarry(signOff[0], signOff[1].replace("29.10.2026", "30.10.2026")))
@@ -346,8 +346,10 @@ class TheWrittenPagesSayEachThingInOnePlaceTest extends DatabaseTest {
 		jdbc.execute(migrationSql("80"));
 		/* And V89 over that, because the policy's section 6 the portal serves carries it (07.11.2026). */
 		jdbc.execute(migrationSql("89"));
+		/* And V90 over that, because the policy's sections 2, 3, 6 and 7 the portal serves carry it (08.11.2026). */
+		jdbc.execute(migrationSql("90"));
 
-		assertThat(everyText()).as("V71, V73, V76, V77, V78, V80 and V89 over the text V71 found do not give the text the portal serves")
+		assertThat(everyText()).as("V71, V73, V76, V77, V78, V80, V89 and V90 over the text V71 found do not give the text the portal serves")
 				.isEqualTo(finished);
 	}
 

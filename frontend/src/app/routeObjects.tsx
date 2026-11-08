@@ -150,7 +150,8 @@ const DETAILS: RouteObject[] = [
   { path: 'kalendar/:slug/ocena', element: <RateEvent /> },
   { path: 'takmicar/:memberNumber', element: <CompetitorProfile /> },
   { path: 'takmicar/:memberNumber/priznanja', element: <CompetitorAwards /> },
-  /* The card „Podaci", which only the member himself and the administration open (owner, 22.10.2026). */
+  /* The card „Podaci", which only the administration opens (owner, 22.10.2026 and 07.11.2026); the member
+     himself is sent to „Moji podaci" (`CompetitorData.tsx`). */
   { path: 'takmicar/:memberNumber/podaci', element: <CompetitorData /> },
   { path: 'tim/:slug', element: <TeamDetail /> },
   /* Changing a team is the team's own address plus a word, the way reporting a

@@ -32,7 +32,8 @@ import type { Answers, At } from './support/harness.ts'
  *
  * <p>Asked with no button (a visitor), with one („Pozovi u trkački par") and with two (and „Pozovi u tim",
  * which is offered only inside the transfer window, so only on a day that is inside it), on „Rezultati",
- * which carries the season, on „Priznanja", and on „Podaci", which carries neither the season nor a button.
+ * which carries the season, on „Priznanja", and on „Podaci", which carries neither the season nor a button and
+ * which only the administration opens since 07.11.2026 (PDL „Član svojim podacima pristupa iz glavnog menija”).
  *
  * <p><b>Relations, never pixels</b>, as in `settings.geometry.ts`.
  */
@@ -76,6 +77,25 @@ const ONE_BUTTON = '000002'
 const TWO_BUTTONS = '000005'
 
 /** What `/api/me` answers about a member whose fee stands. */
+/** What the administration's route says of her, which its form opens with (`profile/TheMembersData.tsx`). */
+const HER_DATA = {
+  memberNumber: HER,
+  firstName: 'Isidora',
+  lastName: 'Živković',
+  fatherName: 'Petar',
+  gender: 'F',
+  birthDate: '1990-04-02',
+  idNumber: 'AB12345',
+  email: 'isidora@primer.rs',
+  emailConfirmed: true,
+  address: 'Bulevar Pupina 10',
+  phone: '+381 60 123 456',
+  placeId: null,
+  city: 'Beograd',
+  country: 'RS',
+  shirtSize: 'M',
+}
+
 const meAs = (memberNumber: string): unknown => {
   const row = rowOf(memberNumber)
 
@@ -153,12 +173,18 @@ const THE_LISTS: Answers = {
 
 type Reader = { name: string; buttons: 0 | 1 | 2; tabs: 2 | 3; answers: Answers }
 
+/** The superadmin, who races for nobody and holds every right, so he is offered the card „Podaci" of a member. */
+const THE_SUPERADMIN = { role: 'superadmin', account: 11, mailLanguage: 'sr' }
+
 const READERS: Reader[] = [
   { name: 'a visitor', buttons: 0, tabs: 2, answers: THE_LISTS },
-  /* THE MEMBER ON HER OWN PROFILE: three parts („Podaci" is hers alone) and no invitation. The reader the
-     season-beside-the-parts claim was missing: the belt rule that keeps the two on one line had a selector
-     that matched nothing, and no reader here had three parts on „Rezultati" to show it. */
-  { name: 'the member on her own page', buttons: 0, tabs: 3, answers: { ...THE_LISTS, '/api/me': meAs(HER) } },
+  /* THE MEMBER ON HER OWN PROFILE: two parts and no invitation. „Podaci" was hers until 07.11.2026, when her data
+     went to „Moji podaci" in the menu (owner: „na svom profilu član vidi samo „Rezultati” i „Priznanja”"). */
+  { name: 'the member on her own page', buttons: 0, tabs: 2, answers: { ...THE_LISTS, '/api/me': meAs(HER) } },
+  /* THE ADMINISTRATION: three parts („Podaci" is the administration's on somebody else's profile) and no
+     invitation, since the superadmin races for nobody. The reader of the season-beside-the-parts claim with three
+     parts on „Rezultati", which the belt rule that keeps the two on one line is about. */
+  { name: 'the administration', buttons: 0, tabs: 3, answers: { ...THE_LISTS, '/api/me': THE_SUPERADMIN } },
   {
     name: 'a member who may ask her into a pair',
     buttons: 1,
@@ -339,7 +365,7 @@ for (const at of WIDTHS) {
            godine u drugi red"). The line is planned around the floor of the parts, eight rem (`Profile.css`,
            `.profile__belt .parts`), the gap and the season with its label. Measured 06.11.2026 at 360px: at 100%
            text that is 266px of 328, so the season stands beside the parts for a visitor (two parts, one line)
-           and for the member on her own page (three parts, which wrap onto two lines beside it); at 200% the
+           and for the administration (three parts, which wrap onto two lines beside it); at 200% the
            floor alone is 256px and the belt wraps by design, the season falls under the parts, which is the
            one case this does not ask. What is asked: no part is a taller box than another (asked of a season
            that merely overlaps a part, a part made tall by wrapping its own words would satisfy it alone),
@@ -412,9 +438,12 @@ for (const at of WIDTHS) {
   }
 
   test(`„Podaci" carries neither the season nor a button, ${label(at)}`, async ({ open }) => {
-    const { page, probe } = await open(at, `${HER_PAGE}/podaci`, 'section[aria-labelledby="form-licni-podaci-title"]', {
+    /* Read by the administration, the one reader the card has since 07.11.2026: the member herself is sent from
+       this address to „Moji podaci", which draws no head (`myData.geometry.ts`). */
+    const { page, probe } = await open(at, `${HER_PAGE}/podaci`, 'section[aria-labelledby="form-podaci-clana-title"]', {
       ...THE_LISTS,
-      '/api/me': meAs(HER),
+      '/api/me': THE_SUPERADMIN,
+      [`/api/members/${HER}/data`]: HER_DATA,
     })
     const measured = await measure(page)
 

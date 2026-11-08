@@ -490,8 +490,8 @@ export const myOwnRecordFromMe = {
   smallPhoto: aCompetitor.smallPhoto,
   address: 'Bulevar Pupina 10',
   phone: '+381 60 123 456',
-  /* His shirt size (`MeApi.MyOwnRecord.shirtSize`, since 23.10.2026): the card „Podaci" of his own
-     profile opens with it. Private like the two above, so not on the public list either. */
+  /* His shirt size (`MeApi.MyOwnRecord.shirtSize`, since 23.10.2026): „Moji podaci" opens
+     with it. Private like the two above, so not on the public list either. */
   shirtSize: 'L',
   /* The three he sees LOCKED on his card (`MeApi.MyOwnRecord.fatherName`, `.birthDate`, `.idNumber`, PDL
      24.10.2026), his alone: the public list carries none of them. */

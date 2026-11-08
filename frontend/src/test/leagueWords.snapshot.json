@@ -71,7 +71,7 @@
     },
     "myData": {
       "title": "Moji BTL podaci",
-      "description": "Ime, adresa, telefon, mesto i veličina majice, dok članarina još nije evidentirana."
+      "description": "Ime, adresa, telefon, mesto, veličina majice, profilna slika i tekst o sebi."
     },
     "membership": {
       "title": "Moja BTL članarina",
@@ -224,7 +224,7 @@
     },
     "competitorData": {
       "title": "Podaci takmičara",
-      "description": "Podaci jednog člana Balkanske trkačke lige, koje vide samo on i administracija."
+      "description": "Podaci jednog člana Balkanske trkačke lige, koje vidi samo administracija."
     }
   },
   "pager": {

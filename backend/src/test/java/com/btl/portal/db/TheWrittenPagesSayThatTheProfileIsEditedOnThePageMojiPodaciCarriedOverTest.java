@@ -86,6 +86,7 @@ class TheWrittenPagesSayThatTheProfileIsEditedOnThePageMojiPodaciCarriedOverTest
 
 	/** The pages as they stood before V89, and the proof that this is so: a piece of every old text stands again. */
 	private void theTextAsItStoodBeforeV89() {
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "90");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "89");
 
 		for (TheWrittenPagesSayThatTheProfileIsEditedOnThePageMojiPodaciTest.Change change : TheWrittenPagesSayThatTheProfileIsEditedOnThePageMojiPodaciTest.CHANGES) {
@@ -139,7 +140,12 @@ class TheWrittenPagesSayThatTheProfileIsEditedOnThePageMojiPodaciCarriedOverTest
 
 		Map<String, String> after = everyText();
 
-		assertThat(after).as("V89 over the text it found does not give the text the portal serves").isEqualTo(finished);
+		/* And V90 over that (owner, 08.11.2026), because the policy the portal serves carries it: V89 and V90 over the text
+		   V89 found give the text the portal serves. Which sections V89 changed is read before V90 runs. */
+		jdbc.execute(migrationSql("90"));
+
+		assertThat(everyText()).as("V89 and V90 over the text V89 found do not give the text the portal serves")
+				.isEqualTo(finished);
 
 		List<String> changed = before.keySet().stream().filter(key -> !before.get(key).equals(after.get(key))).toList();
 
@@ -155,6 +161,9 @@ class TheWrittenPagesSayThatTheProfileIsEditedOnThePageMojiPodaciCarriedOverTest
 	 */
 	@Test
 	void v89RunAgainOverTheFinishedTextStopsAndListsEveryEdit() {
+		/* The text V89 finished, which is the text before V90 linked its sentence and moved its sign-off (08.11.2026). */
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "90");
+
 		PSQLException error = v89Refused();
 
 		assertThat(error.getServerErrorMessage().getMessage())

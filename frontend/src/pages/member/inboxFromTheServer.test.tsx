@@ -1,5 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { must } from '../../test/at'
 import { aLapsedMembersPage } from '../../test/hisPage'
 import { renderAt } from '../../test/render'
 import {
@@ -407,6 +408,11 @@ function theEnvelope(): Promise<HTMLElement> {
  * so the panel these cases read from was gone by the time they looked. The reader of the portal
  * does not press the envelope inside that gap; the case should not either.
  */
+/** The panel the envelope opens, read on its own where the page under it lists the same messages. */
+function inTheEnvelope() {
+  return within(must(document.getElementById('messages-menu'), 'the panel of the envelope'))
+}
+
 async function afterTheSignInHasLanded(): Promise<void> {
   await waitFor(() => {
     expect(screen.getByRole('main')).toHaveFocus()
@@ -924,8 +930,12 @@ describe('the inbox across signing out and signing back in', () => {
        own rule („One request per resource per visit", `data/client.ts`), and this member is the
        same member. That the answer never crosses from one caller to another is a different
        claim with a different mechanism, and it is measured in the case below rather than
-       assumed here. */
-    expect(await screen.findByRole('link', { name: new RegExp(FORGED.subject) })).toBeVisible()
+       assumed here.
+
+       Read inside the panel, because the sign in page sends him back to the inbox he signed out on (owner,
+       07.11.2026, PDL „Prijava vraća čitaoca na adresu sa koje je došao”), so the page holds the subject
+       too. */
+    expect(await inTheEnvelope().findByRole('link', { name: new RegExp(FORGED.subject) })).toBeVisible()
     expect(asksFor('/api/inbox')).toBeGreaterThanOrEqual(askedFirst)
   }, SLOW * 2)
 
@@ -956,7 +966,7 @@ describe('the inbox across signing out and signing back in', () => {
        and a cache keyed by the name „inbox" alone would hand the second one the first one's
        mail. `data/useResource.ts` drops the answer the moment it stops being this caller's,
        and this is the case that says so. */
-    expect(await screen.findByRole('link', { name: new RegExp(HERS.subject) })).toBeVisible()
+    expect(await inTheEnvelope().findByRole('link', { name: new RegExp(HERS.subject) })).toBeVisible()
     expect(screen.queryByText(FORGED.subject)).not.toBeInTheDocument()
     /* And it is a fresh read and not the same answer relabelled, which is the half the case
        above deliberately does not claim: her sign in changed who is asking, so the answer the
