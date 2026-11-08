@@ -86,7 +86,8 @@ class AxisConstraintsTest extends DatabaseTest {
 
 	/** Carried by the floor and not by a row, for the reason in the class comment. */
 	private static final Set<String> KEYS_THAT_ONLY_EXIST_AS_A_TARGET =
-			Set.of("race_day_unique", "competitor_id_gender_unique", "race_season_unique");
+			Set.of("race_day_unique", "competitor_id_gender_unique", "race_season_unique",
+					"result_competitor_unique");
 
 	/* A town and a country out of the codebooks, looked up rather than numbered:
 	   V2 and V3 hand the ids out of a sequence and nothing here may depend on

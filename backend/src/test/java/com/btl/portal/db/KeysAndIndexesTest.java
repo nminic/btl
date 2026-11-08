@@ -142,6 +142,12 @@ class KeysAndIndexesTest extends DatabaseTest {
 					"it exists only to be pointed at: result_race_fk names (id, date) so a race that moves carries "
 							+ "the day on its results with it, and a deferrable key may be named by nothing"),
 			new Key("result_pk", false, "a surrogate key nothing outside the portal sees, so nothing moves it"),
+			/* V91. The target of ducat_award_result_fk, which names (result_id, competitor_id) so a badge of
+			   one member cannot point at the result of another; V22's payment_competitor_season_unique is the
+			   precedent, and a deferrable key may be named by nothing. */
+			new Key("result_competitor_unique", false,
+					"it exists only to be pointed at: ducat_award_result_fk names (id, competitor_id) so a badge"
+							+ " cannot carry another member's result, and a deferrable key may be named by nothing"),
 			/* V65. The one key on `result` that IS the fact: a member has at most one result on
 			   one race (PDL P6, 09.09.2026), and the approval names it in `on conflict`. */
 			new Key("result_one_per_member_on_a_race", false,

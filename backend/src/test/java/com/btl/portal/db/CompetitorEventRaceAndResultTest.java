@@ -1,6 +1,7 @@
 package com.btl.portal.db;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import java.util.List;
 
@@ -430,6 +431,11 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 
 		db.sql("delete from result where id = " + won).update();
 
+		assertThat(db.sql("select count(*) from ducat_award where competitor_id = " + member)
+				.query(Long.class).single())
+				.as("the delete emptied competitor_id or took the badge: only result_id may be emptied")
+				.isEqualTo(2L);
+
 		assertThat(db.sql("select tier || ' ' || won_on || ' ' || coalesce(result_id::text, 'none') from ducat_award"
 				+ " where threshold = 1000").query(String.class).list())
 				.as("the badge did not stay standing with its tier and its day and an empty pointer")
@@ -437,6 +443,39 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 		assertThat(db.sql("select result_id from ducat_award where threshold = 125").query(Long.class).single())
 				.as("the delete reached a badge that another result won")
 				.isEqualTo(left);
+
+		db.sql("delete from competitor where id = " + member).update();
+
+		assertThat(db.sql("select count(*) from ducat_award").query(Long.class).single())
+				.as("deleting the member did not take his badges with him (the cascade of V15)")
+				.isZero();
+	}
+
+	/**
+	 * A BADGE CANNOT POINT AT THE RESULT OF ANOTHER MEMBER, and deleting its owner still deletes it.
+	 *
+	 * <p>V91's key is (result_id, competitor_id) onto (id, competitor_id). Member B's badge naming member
+	 * A's result is refused by {@code ducat_award_result_fk}; the same badge with its own member's result
+	 * goes in.
+	 */
+	@Test
+	void aBadgeCannotNameAResultOfSomebodyElse() {
+		long a = member("Prvi", "Vlasnik", A_TOWN_IN_SERBIA + ", null, null");
+		long b = member("Drugi", "Vlasnik", A_TOWN_IN_SERBIA + ", null, null");
+		long raceId = race(event("dukat-vlasnik-2027", A_TOWN_IN_SERBIA + ", null, null"), "Vlasnik trka", "10.00");
+		result(a, raceId, "10.00");
+		long aResult = db.sql("select id from result where competitor_id = " + a).query(Long.class).single();
+		String award = "insert into ducat_award (competitor_id, ducat_id, kind, threshold, reached, period, season,"
+				+ " month, tier, won_on, result_id) select %d, id, 'totalKm', 1000, 1000, 'season', 2027, null, 2,"
+				+ " date '2027-04-03', " + aResult + " from ducat where code = 'duk-sezonski-km'";
+
+		assertThat(db.sql(award.formatted(a)).update())
+				.as("a badge naming its own member's result was refused")
+				.isOne();
+		assertThatThrownBy(() -> db.sql(award.formatted(b)).update())
+				.as("a badge of one member named the result of another")
+				.isInstanceOf(DataIntegrityViolationException.class)
+				.hasMessageContaining("ducat_award_result_fk");
 	}
 
 	/**

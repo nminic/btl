@@ -48,6 +48,8 @@ class DucatAwardCarriedOverTest extends DatabaseTest {
 	/** The table as it stood before V91: the three columns gone, and what hangs on them with them. */
 	private void ducatAwardBeforeV91() {
 		jdbc.execute("alter table ducat_award drop column tier, drop column won_on, drop column result_id cascade");
+		/* And the key V91 adds on `result` purely as the target of the one that went with result_id. */
+		jdbc.execute("alter table result drop constraint result_competitor_unique");
 		assertThat(columnsOfDucatAward())
 				.as("the fixture left part of what V91 adds in place, so the migration below would fail on"
 						+ " the fixture and not on itself")

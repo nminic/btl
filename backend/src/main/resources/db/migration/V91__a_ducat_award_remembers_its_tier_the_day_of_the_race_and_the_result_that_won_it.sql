@@ -16,7 +16,7 @@
  * odluči drugačije." It serves the order of the badges and is shown nowhere. It is NOT `awarded_at`,
  * which is the moment the row was written and says nothing about the race.
  *
- * `result_id` - the result that won it, with ON DELETE SET NULL and an index. Owner, PDL: "Dukat se
+ * `result_id` - the result that won it, with ON DELETE SET NULL (result_id) and an index. Owner, PDL: "Dukat se
  * oduzima kad se njegov rezultat obriše ili ispravi ispod uslova, osim mesečnog i sezonskog dukata
  * zamrznute sezone, jer zamrznuta tabela taj rezultat i dalje pokazuje." Why SET NULL and not the other
  * two: CASCADE would delete the badge of a frozen season along with the result, and that one has to
@@ -24,6 +24,15 @@
  * are taken away when a result goes is not decided here - the row is left standing with an empty pointer
  * and the reconciliation of step two decides - because the database cannot tell a frozen season from an
  * open one.
+ *
+ * THE POINTER NAMES ITS OWNER TOO, as V22's `membership_payment_fk` does for a receipt: the key is
+ * (result_id, competitor_id) onto `result (id, competitor_id)`, so an award of member B cannot point at
+ * a result of member A. `result_competitor_unique` exists only as the target of that key, for the reason
+ * V22 gives for `payment_competitor_season_unique`; a NULL result_id satisfies the key (MATCH SIMPLE),
+ * which is the emptied pointer. `on delete set null (result_id)` empties ONLY the pointer: a plain
+ * SET NULL would try to null `competitor_id` as well, which is NOT NULL, and the delete of a result
+ * would fail. `won_on` stays a snapshot and is not tied to `result.race_date`: it has to outlive the
+ * result. (ADL 08.11.2026, "Pokazivač dodele dukata na rezultat vezuje i vlasnika".)
  *
  * ROWS ALREADY STANDING: `tier` and `won_on` are NOT NULL and a row written before this file has no true
  * value for either - the race day cannot be read off `awarded_at`, and a tier invented from today's
@@ -40,6 +49,9 @@ begin
 end
 $$;
 
+alter table result
+    add constraint result_competitor_unique unique (id, competitor_id);
+
 alter table ducat_award
     add column tier      smallint not null,
     add column won_on    date     not null,
@@ -47,6 +59,7 @@ alter table ducat_award
 
 alter table ducat_award
     add constraint ducat_award_tier_in_range check (tier between 1 and 5),
-    add constraint ducat_award_result_fk foreign key (result_id) references result (id) on delete set null;
+    add constraint ducat_award_result_fk foreign key (result_id, competitor_id)
+        references result (id, competitor_id) on delete set null (result_id);
 
 create index ducat_award_result_idx on ducat_award (result_id);
