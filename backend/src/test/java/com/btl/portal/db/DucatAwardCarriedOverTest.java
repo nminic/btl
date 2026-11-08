@@ -117,6 +117,7 @@ class DucatAwardCarriedOverTest extends DatabaseTest {
 		assertThatThrownBy(() -> jdbc.execute(migration))
 				.as("the migration went through over a row it has no true tier and no race day for")
 				.isInstanceOf(DataAccessException.class)
+				.rootCause()
 				.hasMessageContaining("V91: ducat_award already holds rows")
 				.hasMessageContaining("no true tier and no race day")
 				.hasMessageNotContaining("contains null values");
