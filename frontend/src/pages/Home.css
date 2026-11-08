@@ -274,12 +274,6 @@
   text-decoration: none;
 }
 
-.extract__series {
-  color: var(--text-muted);
-  font-size: 0.82rem;
-  font-weight: 400;
-}
-
 /* The seasonal slot that stood at the foot of the right column was removed on
    04.08.2026 (owner), and its styles with it. */
 

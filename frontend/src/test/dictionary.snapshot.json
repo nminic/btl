@@ -290,11 +290,6 @@
     "onCourse": "Na stazi",
     "points": "BTL poeni",
     "readySetGo": "Priprema, pozor, SAD!",
-    "moreRuns": {
-      "one": "i još {count} termin",
-      "few": "i još {count} termina",
-      "other": "i još {count} termina"
-    },
     "seeCalendar": "Ceo kalendar",
     "topMen": "Top 10 muškarci",
     "topWomen": "Top 10 žene",

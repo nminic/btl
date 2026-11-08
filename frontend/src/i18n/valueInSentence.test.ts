@@ -395,7 +395,6 @@ describe('a sentence with a value put into it', () => {
       'event.written',
       'form.pasteCut',
       'form.suggested',
-      'home.moreRuns',
       'home.place',
       /* The heading of the counters on the front page: „Sezona {season}.". The year is a
          figure after a noun in the nominative, so it has no case to be wrong in. It was

@@ -290,11 +290,6 @@
     "onCourse": "On course",
     "points": "BTL points",
     "readySetGo": "Ready, steady, GO!",
-    "moreRuns": {
-      "one": "and {count} more date",
-      "few": "and {count} more dates",
-      "other": "and {count} more dates"
-    },
     "seeCalendar": "The whole calendar",
     "topMen": "Top 10 men",
     "topWomen": "Top 10 women",
