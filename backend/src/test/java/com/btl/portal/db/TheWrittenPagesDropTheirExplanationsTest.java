@@ -359,13 +359,13 @@ class TheWrittenPagesDropTheirExplanationsTest extends DatabaseTest {
 					"dukate, što je matematika",
 					"The portal calculates points, placing, and ducats automatically, under the league's rules.",
 					"ducats, which is arithmetic"),
-			/* V77 wrote 29.10.2026 here and V89 (owner, 07.11.2026) moved the policy on to 07.11.2026, so the day that STANDS
-			   is V89's; that V77 itself writes 29.10.2026 over the text it found is held by
+			/* V77 wrote 29.10.2026 here, V89 (owner, 07.11.2026) moved the policy on to 07.11.2026 and V90 (owner,
+			   08.11.2026) to 08.11.2026, so the day that STANDS is V90's; that V77 itself writes 29.10.2026 over the text it found is held by
 			   TheWrittenPagesDropTheirExplanationsCarriedOverTest, which undoes V89 first. */
 			new Change("POL-19", POLICY, 7,
-					"Poslednja izmena: 07.11.2026.",
+					"Poslednja izmena: 08.11.2026.",
 					"izmena: 24.10.2026.",
-					"Last amended: 07.11.2026.",
+					"Last amended: 08.11.2026.",
 					"amended: 24.10.2026.")
 	);
 

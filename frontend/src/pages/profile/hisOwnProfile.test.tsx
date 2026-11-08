@@ -427,11 +427,16 @@ describe('a member whose fee stands, on his own page', () => {
       renderAt('/sr/moj-profil', 'competitor', '000007')
 
       expect(await screen.findByRole('heading', { level: 1, name: /Strahinja Vukićević/ })).toBeVisible()
-      /* TWO, and the second is the name of his card „Podaci" (06.11.2026): it is „Dovrši profil" while he has
-         no words about himself, and whether he has words waiting is on `GET /api/me` alone
-         (`profile/finishTheProfile.ts`). It is asked AFTER the page is drawn, from the head, so the road the
-         page took is still told by the count: the road through his own record asks once more, before. */
-      await waitFor(() => expect(timesTheServerWasAskedWhoIAm(asked)).toBe(2))
+      /* ONCE, the shell's own question. The road through his own record would ask once more. The name of
+         the entry „Moji podaci" in the menu is asked of `GET /api/me` too, but only once the menu is opened
+         (`profile/finishTheProfile.ts`), and nothing here opens it; his own profile no longer offers the card
+         „Podaci" (owner, 07.11.2026), so its head asks nothing. Waited for and then held, so a question that
+         came late is still counted. */
+      await waitFor(() => expect(timesTheServerWasAskedWhoIAm(asked)).toBe(1))
+      await act(async () => {
+        await new Promise((settled) => setTimeout(settled, 50))
+      })
+      expect(timesTheServerWasAskedWhoIAm(asked)).toBe(1)
     } finally {
       stop()
     }

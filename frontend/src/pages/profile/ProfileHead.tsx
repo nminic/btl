@@ -11,7 +11,6 @@ import type { Competitor, RacingPair, Team } from '../../data/types'
 import { Sentence } from '../../i18n/Sentence'
 import { useI18n } from '../../i18n/useI18n'
 import { useProfileLink } from './useProfileLink'
-import { useHisProfileIsFinished } from './finishTheProfile'
 import { THE_DATA, useWhoReadsTheData } from './whoReadsTheData'
 
 /**
@@ -228,41 +227,18 @@ function RacingPartner({
  */
 export function ProfileParts({ competitor }: { competitor: Competitor }) {
   const { t } = useI18n()
-  /* AND THE CARD „PODACI", AFTER THE TWO, offered only to whoever may open it (owner, 22.10.2026, PDL
-     „Profil dobija karticu „Podaci", posle „Pregled" i „Priznanja i nagrade", koju vidi samo sam član i
-     administracija"; the two are „Rezultati" and „Priznanja" since 06.11.2026). Asked of the one home the card asks too (`whoReadsTheData.ts`). */
+  /* AND THE CARD „PODACI", AFTER THE TWO, offered only to the administration (owner, 22.10.2026, PDL
+     „Profil dobija karticu „Podaci", posle „Pregled" i „Priznanja i nagrade""; the two are „Rezultati" and
+     „Priznanja" since 06.11.2026, and since 07.11.2026 the member himself reaches his data from the menu).
+     Asked of the one home the card asks too (`whoReadsTheData.ts`). */
   const reader = useWhoReadsTheData(competitor.memberNumber)
 
-  if (reader === 'his') {
-    /* KEYED BY HIM, so a second member signed in during the same visit is not named by the first man's
-       answer (`finishTheProfile.ts`). */
-    return <HisParts key={competitor.memberNumber} competitor={competitor} />
-  }
-
-  return <TheParts competitor={competitor} data={reader === null ? null : t('profile.parts.data')} />
+  /* NOT TO HIM ON HIS OWN (owner, 07.11.2026, PDL „Član svojim podacima pristupa iz glavnog menija”: „na
+     svom profilu član vidi samo „Rezultati” i „Priznanja”"): his data are on „Moji podaci", reached from
+     the menu behind his picture. */
+  return <TheParts competitor={competitor} data={reader === 'administration' ? t('profile.parts.data') : null} />
 }
 
-/**
- * THE PARTS OF HIS OWN PROFILE, read by himself: the card „Podaci" is „Dovrši profil" while he has no
- * picture or no words about himself, the ones that wait counted as his (owner, 06.11.2026, PDL „Boksovi
- * „Profilna slika" i „Tekst o sebi" prelaze sa Podešavanja": „Želim da mu se dugme Podaci zove Dovrši
- * profil dok ne namesti i sliku i tekst"). Its own component, so `GET /api/me/photo` and `GET /api/me` are
- * asked only where the reader is the member whose profile this is, and never by the administration reading
- * somebody else's: those routes answer about the reader, not about the profile.
- *
- * <p>Until the server has said, the card keeps the name it has everywhere else, „Podaci": a name that asks
- * him to finish what he may already have finished is the one to avoid saying by mistake.
- */
-function HisParts({ competitor }: { competitor: Competitor }) {
-  const { t } = useI18n()
-  const finished = useHisProfileIsFinished(competitor.memberNumber)
-
-  return (
-    <TheParts competitor={competitor} data={t(finished === false ? 'profile.parts.finish' : 'profile.parts.data')} />
-  )
-}
-
-/** The row of the parts, with the card „Podaci" under the name it is handed, or without it where `data` is null. */
 function TheParts({ competitor, data }: { competitor: Competitor; data: string | null }) {
   const { locale, t } = useI18n()
   /* Handed the whole record rather than a number, since 15.08.2026: the

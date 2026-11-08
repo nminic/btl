@@ -286,10 +286,12 @@ describe('after the press', () => {
     expect(screen.queryByText(/^Tvoj članski broj je/)).not.toBeInTheDocument()
     /* AND THE WAY TO HIS PICTURE AND HIS WORDS, beside the sentence (owner, 06.11.2026, PDL „Boksovi
        „Profilna slika" i „Tekst o sebi" prelaze sa Podešavanja": „Veza ka slici i opisu uz rečenicu
-       „Članstvo za sezonu ... je aktivirano." na Mojoj članarini ostaje"), to the bottom of his card. */
+       „Članstvo za sezonu ... je aktivirano." na Mojoj članarini ostaje"), to the boxes on „Moji podaci" since
+       07.11.2026 (PDL „Član svojim podacima pristupa iz glavnog menija”: „Veza uz „Članstvo za sezonu ... je
+       aktivirano.” vodi na „Moji podaci”"). */
     expect(screen.getByRole('link', { name: 'Dodaj profilnu sliku i tekst o sebi' })).toHaveAttribute(
       'href',
-      `/sr/takmicar/${LAPSED}/podaci#slika`,
+      '/sr/moji-podaci#slika',
     )
   }, SLOW)
 
@@ -513,10 +515,10 @@ describe('somebody who has not paid', () => {
 
     expect(await screen.findByText('Članstvo za sezonu 2027 je aktivirano.')).toBeVisible()
     expect(screen.getByText('Tvoj članski broj je 000077.')).toBeVisible()
-    /* The card of the number the route gave him, and not of whatever the session draws next. */
+    /* His page, which carries no number: it is his whoever the session says he is next. */
     expect(screen.getByRole('link', { name: 'Dodaj profilnu sliku i tekst o sebi' })).toHaveAttribute(
       'href',
-      '/sr/takmicar/000077/podaci#slika',
+      '/sr/moji-podaci#slika',
     )
 
     /* AND THE PAGE MOVES ON, which nothing here said (PENDING, test): the session is read again once the

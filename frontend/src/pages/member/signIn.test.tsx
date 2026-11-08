@@ -1,4 +1,4 @@
-import { act, screen, waitFor } from '@testing-library/react'
+import { act, configure, getConfig, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { at, must } from '../../test/at'
 import { renderAt } from '../../test/render'
@@ -6,6 +6,12 @@ import { answeredWith, did, forgetEveryCookie, serverThat, type Asked } from '..
 import { setupUser } from '../../test/user'
 import { useRole } from '../../roles/useRole'
 import { useSession } from '../../session/useSession'
+import { SLOW } from '../../test/slow'
+import { cameFrom } from './backAfterSignIn'
+
+/* Every wait of this file is given half of the time a case has, so a wait that never succeeds ends the case with the
+   assertion's own words and not with the case's clock (`btl/CLAUDE.md`, section 25). */
+configure({ asyncUtilTimeout: SLOW / 2 })
 
 /**
  * SIGNING IN AGAINST A SERVER THAT ANSWERS, READ THE WAY A MEMBER MEETS IT.
@@ -347,6 +353,62 @@ describe('where a sign in that went through lands', () => {
     expect(await screen.findByRole('alert')).toBeVisible()
     expect(router.state.location.pathname).toBe('/sr/prijava')
   })
+})
+
+/**
+ * BACK TO THE SCREEN THAT ASKED FOR A SIGN IN (owner, 07.11.2026, PDL „Prijava vraća čitaoca na adresu sa koje
+ * je došao”): „ali samo na adrese portala (bez preusmerenja na tuđe sajtove)", and „Povratak posle prijave važi za
+ * strane koje kažu „Za ovo treba prijava”; dugme „Prijava” u zaglavlju i dalje vodi na „Moj profil”.”
+ *
+ * <p><b>THE AXES</b>: the way to the sign in page from a screen that says „Za ovo treba prijava", from the
+ * header, and with a state carrying another host; the address with its query and its part after `#`. What the
+ * sign in page trusts of an address is `backAfterSignIn.test.ts`'s.
+ */
+describe('where a sign in sends the reader back to', () => {
+  it('ends a wait that never succeeds in an assertion and not in its own clock', () => {
+    /* The floor under the `configure` at the head of the file, asked of the number that decides. */
+    expect(getConfig().asyncUtilTimeout).toBeLessThan(SLOW)
+  })
+
+  it('is the screen that asked for it, with its query and the part after #', async () => {
+    aServerWhere({ role: 'competitor', account: 7, member: { memberNumber: '000007' } })
+    const user = setupUser()
+    const { router } = openSignIn('/sr/moji-podaci?x=1#slika')
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Za ovo treba prijava' })).toBeVisible()
+    await user.click(screen.getByRole('link', { name: 'Prijava' }))
+    await signIn()
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Moji podaci' })).toBeVisible()
+    expect(router.state.location.pathname).toBe('/sr/moji-podaci')
+    expect(router.state.location.search).toBe('?x=1')
+    expect(router.state.location.hash).toBe('#slika')
+  }, SLOW)
+
+  it('is his profile from the button in the header, as it always was', async () => {
+    aServerWhere({ role: 'competitor', account: 7 })
+    const user = setupUser()
+    const { router } = openSignIn('/sr/kalendar')
+
+    await user.click(await screen.findByRole('link', { name: 'Prijavi se' }))
+    await signIn()
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Ovaj deo je za takmičare' })).toBeVisible()
+    expect(router.state.location.pathname).toBe('/sr/moj-profil')
+  }, SLOW)
+
+  it('is his profile where what was carried names another host', async () => {
+    aServerWhere({ role: 'competitor', account: 7 })
+    const { router } = openSignIn()
+
+    await act(async () => {
+      await router.navigate('/sr/prijava', { state: cameFrom('//zlo.example/sr/moji-podaci') })
+    })
+    await signIn()
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Ovaj deo je za takmičare' })).toBeVisible()
+    expect(router.state.location.pathname).toBe('/sr/moj-profil')
+  }, SLOW)
 })
 
 describe('the header, which is the one thing that differs for a signed in member', () => {
