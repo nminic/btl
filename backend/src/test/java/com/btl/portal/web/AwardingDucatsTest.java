@@ -392,6 +392,10 @@ class AwardingDucatsTest {
 					assertThat(one.threshold()).isEqualByComparingTo("3");
 					assertThat(one.tier()).as("the run is one tier higher from three").isEqualTo(4);
 				});
+		assertThat(db.sql("select threshold::int || ':' || tier from ducat_award where competitor_id = ? order by threshold")
+				.param(id(ANA)).query(String.class).list())
+				.as("the value the row keeps is the value of its own threshold, as the column says it")
+				.containsExactly("2:3", "3:4");
 	}
 
 	@Test
