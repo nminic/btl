@@ -290,6 +290,45 @@ describe('the name of the entry „Moji podaci" in the menu', () => {
   }, SLOW)
 })
 
+describe('the name of the entry, when a second member signs in during the visit', () => {
+  /* WHOSE ANSWER NAMES THE ENTRY IS THE MEMBER'S WHO IS SIGNED IN NOW, and the case above cannot tell that apart:
+     there the second member is named „Moji podaci" both by his own answer and by the empty start an entry has
+     before any answer arrives. Here the two sources part. The first member has been answered and the entry reads
+     „Dopuni podatke"; the second member's pictures cannot be read, so his own answer names nothing and only the
+     empty start is left, which reads „Moji podaci". An entry still holding the first man's answer, because it was
+     asked about the number of the first reader or kept its state across the change of reader, reads „Dopuni
+     podatke" (review of PR 703, V1: the source of the number replaced by a constant, and the key without the
+     member, both survived the case above). */
+  it('is not named by what was answered about the member signed in before him', async () => {
+    const user = setupUser()
+    const asking = { who: HIS }
+
+    aServerHolding('none', { now: 'standing' })
+
+    const { asked, stop } = serverThat((path, init) => {
+      if (path !== '/api/me/photo' || init?.method !== undefined) {
+        return null
+      }
+
+      return asking.who === HIS ? json({ waiting: null, standing: null }) : new Response(null, { status: 500 })
+    })
+
+    stops.push(stop)
+    renderAt('/sr/kalendar', 'competitor', HIS, undefined, null, <SignsInSomebodyElse asking={asking} />)
+
+    await openTheMenu(user)
+    await bothAnswered(asked)
+    await waitFor(() => expect(theEntry()).toHaveTextContent(new RegExp(`^${sr.nav.completeData}$`)))
+    await shutTheMenu(user)
+
+    await user.click(screen.getByRole('button', { name: 'sign in somebody else' }))
+    await openTheMenu(user)
+    await bothAnswered(asked, 2)
+
+    expect(theEntry()).toHaveTextContent(new RegExp(`^${sr.nav.myData}$`))
+  }, SLOW)
+})
+
 describe('the name of the entry, when the server cannot say', () => {
   it('stays „Moji podaci" where his pictures cannot be read, even though he has nothing', async () => {
     const user = setupUser()
