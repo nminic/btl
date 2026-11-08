@@ -14,6 +14,8 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.scheduling.config.CronTask;
 import org.springframework.scheduling.config.ScheduledTask;
@@ -142,9 +144,21 @@ class DucatsAreReconciledAtNightTest {
 			assertThat(said.getLevel()).isEqualTo(Level.WARN);
 			assertThat(said.getFormattedMessage()).contains("member " + failing + " ")
 					.contains("tried again tonight")
-					.contains("the pass broke here")
+					.contains("ducat_award_result_fk")
 					.doesNotContain("last pass");
 		});
+	}
+
+	/**
+	 * THE PASS CALLS THE SERVICE WITH NO TRANSACTION OF ITS OWN AROUND THE LOOP: a call nested in a transaction
+	 * that holds the member's row waits for it for ever (REQUIRES_NEW, and PostgreSQL does not see it as a
+	 * deadlock). Measured at the call site.
+	 */
+	@Test
+	void theServiceIsCalledOutsideAnyTransactionForEveryMember() {
+		aPassThatFailsFor(-1).atNight();
+
+		assertThat(inATransaction).hasSize(3).containsOnly(false);
 	}
 
 	@Test
@@ -245,12 +259,16 @@ class DucatsAreReconciledAtNightTest {
 	}
 
 	/** The real reconciliation for every member but one, who throws as a database that has gone away would. */
+	private final java.util.List<Boolean> inATransaction = new java.util.concurrent.CopyOnWriteArrayList<>();
+
 	private DucatsAreReconciledAtNight aPassThatFailsFor(long member) {
 		return new DucatsAreReconciledAtNight(db, new AwardingDucats(db, THE_NIGHT_OF_THE_PASS, transactions) {
 			@Override
 			List<Won> forMember(long competitorId) {
+				inATransaction.add(TransactionSynchronizationManager.isActualTransactionActive());
+
 				if (competitorId == member) {
-					throw new IllegalStateException("the pass broke here");
+					throw new DataIntegrityViolationException("violates foreign key constraint ducat_award_result_fk");
 				}
 
 				return super.forMember(competitorId);
