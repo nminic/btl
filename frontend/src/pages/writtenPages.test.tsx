@@ -2953,12 +2953,14 @@ describe('what the written pages say the fee buys', () => {
        profile, the picture and the text about oneself are changed on the page Moji podaci
        (V89; owner, 07.11.2026, who made the rule general: the date moves whenever the
        words of a legal text change, to the day the change reaches QA); the terms keep
-       29.10.2026 and the rulebook 30.10.2026. It moved on to 08.11.2026 with „Moji podaci"
-       said where it said the card Podaci (V90; owner, 08.11.2026). Written per
+       29.10.2026. It moved on to 08.11.2026 with „Moji podaci"
+       said where it said the card Podaci (V90; owner, 08.11.2026). The rulebook moved on to
+       09.11.2026 with the sentence that says a ducat stays for as long as the results that
+       won it stand (V92; owner, 08.11.2026), by the same rule. Written per
        document and not as one day for all three, so a date moved on one of them,
        or left behind on one, is a failure that names the document. */
     const SIGNED_OFF = {
-      pravilnik: '30.10.2026',
+      pravilnik: '09.11.2026',
       'uslovi-koriscenja': '29.10.2026',
       'politika-privatnosti': '08.11.2026',
     } as const

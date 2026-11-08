@@ -66,6 +66,20 @@ class TheWrittenPagesKeepTheDucatsAndLoseTheMapTest extends DatabaseTest {
 	static final Pattern A_MAP_IN_ENGLISH = Pattern.compile("map of countries visited|countries visited",
 			Pattern.CASE_INSENSITIVE);
 
+	/**
+	 * What STANDS now for an edit: V92 (owner, 08.11.2026) replaced the sentence V78 wrote in section 18 with the owner's
+	 * sentence of that day, so the ducat edit stands as V92's text; that V78 itself writes its own sentence over the text
+	 * it found is held by TheWrittenPagesKeepTheDucatsAndLoseTheMapCarriedOverTest, which undoes V92 first.
+	 */
+	private static String standsNow(Change change, boolean serbian) {
+		if (change.id().equals("DUK-01")) {
+			return serbian ? TheWrittenPagesSayThatADucatStaysWhileItsResultsStandTest.THE_SENTENCE_IN_SERBIAN
+					: TheWrittenPagesSayThatADucatStaysWhileItsResultsStandTest.THE_SENTENCE_IN_ENGLISH;
+		}
+
+		return serbian ? change.standsInSerbian() : change.standsInEnglish();
+	}
+
 	private String bodyOf(String slug, int position, String language) {
 		return language.equals("sr")
 				? db.sql("select s.body from static_page_section s join static_page p on p.id = s.page_id"
@@ -83,7 +97,7 @@ class TheWrittenPagesKeepTheDucatsAndLoseTheMapTest extends DatabaseTest {
 
 		for (Change change : CHANGES) {
 			boolean serbian = language.equals("sr");
-			String stands = serbian ? change.standsInSerbian() : change.standsInEnglish();
+			String stands = standsNow(change, serbian);
 			String gone = serbian ? change.goneFromSerbian() : change.goneFromEnglish();
 			String body = bodyOf(change.slug(), change.position(), language);
 
@@ -124,17 +138,17 @@ class TheWrittenPagesKeepTheDucatsAndLoseTheMapTest extends DatabaseTest {
 	/**
 	 * THE DUCAT SENTENCE STANDS ONCE AND THE PARAGRAPHS AROUND IT ARE WHERE THEY WERE, in Serbian and in English: the one
 	 * before it and the one after it are the owner's and V77's, and a replace that took a neighbour with it would pass the
-	 * table above.
+	 * table above. The sentence in the middle is V92's now (see {@link #standsNow}).
 	 */
 	@Test
 	void theDucatSentenceStandsBetweenTheParagraphsItStoodBetween() {
 		assertThat(bodyOf(RULEBOOK, 18, "sr"))
 				.contains("Jedni se osvajaju svakog meseca, drugi jednom u sezoni, a treći samo jednom.\n\n"
-						+ "Osvojeni dukati ostaju u trajnom vlasništvu profila, osim u slučaju brisanja istog.\n\n"
+						+ TheWrittenPagesSayThatADucatStaysWhileItsResultsStandTest.THE_SENTENCE_IN_SERBIAN + "\n\n"
 						+ "Dukati su bronzani, srebrni i zlatni, po rastućoj težini.\n\n[[gallery]]");
 		assertThat(bodyOf(RULEBOOK, 18, "en"))
 				.contains("Some are won every month, others once a season, and others only once.\n\n"
-						+ "Won ducats remain in the permanent ownership of the profile, except in the case of its deletion.\n\n"
+						+ TheWrittenPagesSayThatADucatStaysWhileItsResultsStandTest.THE_SENTENCE_IN_ENGLISH + "\n\n"
 						+ "Ducats are bronze, silver, and gold, in order of increasing difficulty.\n\n[[gallery]]");
 	}
 
@@ -176,17 +190,20 @@ class TheWrittenPagesKeepTheDucatsAndLoseTheMapTest extends DatabaseTest {
 				.as("an English section still mentions a map of countries visited, which does not exist").isEmpty();
 	}
 
-	/** THE NEW SENTENCE STANDS IN THE RULEBOOK AND NOWHERE ELSE: a third home for it would be said twice. */
+	/**
+	 * THE SENTENCE V78 WROTE STANDS NOWHERE ANY MORE, V92 (owner, 08.11.2026) having replaced it, and the sentence that
+	 * stands in its place is held to its single home by TheWrittenPagesSayThatADucatStaysWhileItsResultsStandTest.
+	 */
 	@Test
-	void theDucatSentenceStandsInTheRulebookAndNowhereElse() {
+	void theSentenceV78WroteStandsNowhereAnyMore() {
 		List<TheWrittenPagesDropTheirExplanationsTest.Row> rows = TheWrittenPagesDropTheirExplanationsTest
 				.theThreePages(db);
 
 		assertThat(TheWrittenPagesDropTheirExplanationsTest.whereItMatches(rows, "sr",
 				Pattern.compile(Pattern.quote(CHANGES.get(0).standsInSerbian()))))
-				.containsExactly(RULEBOOK + " #18");
+				.as("a Serbian section still holds the sentence V78 wrote about the ducats").isEmpty();
 		assertThat(TheWrittenPagesDropTheirExplanationsTest.whereItMatches(rows, "en",
 				Pattern.compile(Pattern.quote(CHANGES.get(0).standsInEnglish()))))
-				.containsExactly(RULEBOOK + " #18");
+				.as("an English section still holds the sentence V78 wrote about the ducats").isEmpty();
 	}
 }

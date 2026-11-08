@@ -257,11 +257,11 @@ class TheWrittenPagesNameZohoAsAProcessorTest extends DatabaseTest {
 	private void theSignOffOfThePolicyHasMovedOnAndNoOtherDocumentMovedWithIt(String language) {
 		/* V73 moved the policy's on to 24.10.2026 and V76 the rulebook's to 27.10.2026 (PDL, "Datum Poslednja izmena se
 		   pomera"); V77 (owner, 29.10.2026) moved all three to 29.10.2026, and V80 (owner, 30.10.2026) moved the rulebook
-		   on to 30.10.2026, and V89 (owner, 07.11.2026) the policy's to 07.11.2026 and V90 (owner, 08.11.2026) on to 08.11.2026, so each of the earlier days stands
-		   nowhere now, 29.10.2026 stands on the terms alone, 30.10.2026 on the rulebook alone and 08.11.2026 on the policy
-		   alone. */
+		   on to 30.10.2026, and V89 (owner, 07.11.2026) the policy's to 07.11.2026 and V90 (owner, 08.11.2026) on to 08.11.2026,
+		   and V92 (owner, 08.11.2026) the rulebook's again to 09.11.2026, so each of the earlier days stands nowhere now,
+		   29.10.2026 stands on the terms alone, 08.11.2026 on the policy alone and 09.11.2026 on the rulebook alone. */
 		String today = language.equals("sr") ? "Poslednja izmena: 29.10.2026." : "Last amended: 29.10.2026.";
-		String rulebookToday = language.equals("sr") ? "Poslednja izmena: 30.10.2026." : "Last amended: 30.10.2026.";
+		String rulebookToday = language.equals("sr") ? "Poslednja izmena: 09.11.2026." : "Last amended: 09.11.2026.";
 
 		String policyToday = language.equals("sr") ? "Poslednja izmena: 08.11.2026." : "Last amended: 08.11.2026.";
 
@@ -272,7 +272,7 @@ class TheWrittenPagesNameZohoAsAProcessorTest extends DatabaseTest {
 				.as("the %s sign-off of 08.11.2026 must stand on the policy alone, V90 having moved it", language)
 				.containsExactly(THE_POLICY_SIGN_OFF);
 		assertThat(placesWhichCarry(language, rulebookToday))
-				.as("the %s sign-off of 30.10.2026 must stand on the rulebook alone, V80 having moved it", language)
+				.as("the %s sign-off of 09.11.2026 must stand on the rulebook alone, V92 having moved it", language)
 				.containsExactly(new Place("pravilnik", 19));
 		for (String gone : List.of(signOffNow(language),
 				language.equals("sr") ? "Poslednja izmena: 27.10.2026." : "Last amended: 27.10.2026.")) {

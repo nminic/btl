@@ -260,8 +260,9 @@ class TheWrittenPagesSayEachThingInOnePlaceTest extends DatabaseTest {
 	 * V71 signed all three off on 22.10.2026, V73 moved the policy's on to 24.10.2026, V76 the rulebook's on to
 	 * 27.10.2026 (PDL, "Datum Poslednja izmena se pomera": the text of the document changed and not the others'), and V77
 	 * (owner, 29.10.2026) changed the text of all three and so moved all three to 29.10.2026; V80 moved the rulebook on
-	 * to 30.10.2026 and V89 (owner, 07.11.2026) the policy to 07.11.2026. So none of the earlier days stands anywhere
-	 * now: 29.10.2026 stands once, on the terms, 30.10.2026 on the rulebook and 07.11.2026 on the policy. What V71
+	 * to 30.10.2026, V89 (owner, 07.11.2026) the policy to 07.11.2026 and V92 (owner, 08.11.2026) the rulebook on to
+	 * 09.11.2026. So none of the earlier days stands anywhere now: 29.10.2026 stands once, on the terms, 07.11.2026 on
+	 * the policy and 09.11.2026 on the rulebook. What V71
 	 * itself did is held by the cases below, which put the pages back to what V71 found.
 	 */
 	@Test
@@ -278,10 +279,14 @@ class TheWrittenPagesSayEachThingInOnePlaceTest extends DatabaseTest {
 			assertThat(placesWhichCarry(signOff[0], signOff[1].replace("29.10.2026", "08.11.2026")))
 					.as("%s: the policy alone is signed off on 08.11.2026", signOff[0])
 					.containsExactly(new Place(POLICY, 7));
-			/* V80 (owner, 30.10.2026) moved the rulebook on from the day V77 gave it. */
-			assertThat(placesWhichCarry(signOff[0], signOff[1].replace("29.10.2026", "30.10.2026")))
-					.as("%s: the rulebook alone is signed off on 30.10.2026", signOff[0])
+			/* V80 (owner, 30.10.2026) moved the rulebook on from the day V77 gave it, and V92 (owner, 08.11.2026) on from
+			   the day V80 gave it, so 30.10.2026 stands nowhere. */
+			assertThat(placesWhichCarry(signOff[0], signOff[1].replace("29.10.2026", "09.11.2026")))
+					.as("%s: the rulebook alone is signed off on 09.11.2026", signOff[0])
 					.containsExactly(new Place(RULEBOOK, 19));
+			assertThat(placesWhichCarry(signOff[0], signOff[1].replace("29.10.2026", "30.10.2026")))
+					.as("%s: 30.10.2026 stands nowhere, V92 having moved the rulebook on", signOff[0])
+					.isEmpty();
 
 			for (int earlier = 2; earlier < signOff.length; earlier++) {
 				assertThat(placesWhichCarry(signOff[0], signOff[earlier]))
@@ -348,8 +353,10 @@ class TheWrittenPagesSayEachThingInOnePlaceTest extends DatabaseTest {
 		jdbc.execute(migrationSql("89"));
 		/* And V90 over that, because the policy's sections 2, 3, 6 and 7 the portal serves carry it (08.11.2026). */
 		jdbc.execute(migrationSql("90"));
+		/* And V92 over that, because the rulebook's section 18 and its sign-off the portal serves carry it (09.11.2026). */
+		jdbc.execute(migrationSql("92"));
 
-		assertThat(everyText()).as("V71, V73, V76, V77, V78, V80, V89 and V90 over the text V71 found do not give the text the portal serves")
+		assertThat(everyText()).as("V71, V73, V76, V77, V78, V80, V89, V90 and V92 over the text V71 found do not give the text the portal serves")
 				.isEqualTo(finished);
 	}
 

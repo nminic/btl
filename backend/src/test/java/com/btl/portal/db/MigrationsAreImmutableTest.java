@@ -771,7 +771,17 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   90 and no other: main stood at V89 on 08.11.2026 (c898e39d).
 
 			   Pinned LAST, when the file was final, off this very assertion. */
-			new Applied("90", "V90__the_privacy_policy_says_moji_podaci_where_it_said_the_card_podaci_and_links_it.sql", 491027654));
+			new Applied("90", "V90__the_privacy_policy_says_moji_podaci_where_it_said_the_card_podaci_and_links_it.sql", 491027654),
+
+			/* V92. The rulebook says that a ducat stays for as long as the results that won it stand, and its sign-off
+			   moves to 09.11.2026 (owner, 08.11.2026, PDL "Pravilnik, odeljak 18, dobija rečenicu" and „Datum Poslednja
+			   izmena na pravnom tekstu pomera se uvek kad se reči tog teksta promene“): one edit and one sign-off, in both
+			   languages, each stopping the migration unless its old text stands exactly once.
+
+			   92 and no other: main stood at V90 on 08.11.2026 (1eea9c16) and V91 was taken by an open pull request.
+
+			   Pinned LAST, when the file was final, off this very assertion. */
+			new Applied("92", "V92__the_rulebook_says_a_ducat_stays_while_the_results_that_won_it_stand.sql", -448772516));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {
