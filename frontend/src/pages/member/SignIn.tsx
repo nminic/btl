@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router'
+import { Link, useLocation, useNavigate } from 'react-router'
 import { AskedLabel } from '../../forms/AskedLabel'
 import { useI18n } from '../../i18n/useI18n'
 import { ServerSaid } from '../account/ServerSaid'
@@ -7,6 +7,7 @@ import type { Answer } from '../account/askTheServer'
 import { useRole } from '../../roles/useRole'
 import { signInWith, whoTheServerSaysIAm } from '../../session/theServer'
 import { useSession } from '../../session/useSession'
+import { backAfterSignIn } from './backAfterSignIn'
 import './Member.css'
 
 /**
@@ -58,6 +59,7 @@ import './Member.css'
 export function SignIn() {
   const { locale, t } = useI18n()
   const navigate = useNavigate()
+  const { state } = useLocation()
   const { theServerSignedMeIn } = useSession()
   const { become } = useRole()
   const [email, setEmail] = useState('')
@@ -129,7 +131,10 @@ export function SignIn() {
        day, writing `memberNumber: who.membershipBasis` compiles clean, because
        `MembershipBasis | null` goes into `string | null` without a word. */
     theServerSignedMeIn(who)
-    navigate(`/${locale}/moj-profil`)
+    /* BACK TO THE SCREEN THAT ASKED FOR A SIGN IN, where one did and it is an address of this portal, and
+       to his profile otherwise, as always (owner, 07.11.2026, PDL „Prijava vraća čitaoca na adresu sa
+       koje je došao”; `backAfterSignIn.ts`). */
+    navigate(backAfterSignIn(state, window.location.origin) ?? `/${locale}/moj-profil`)
   }
 
   return (

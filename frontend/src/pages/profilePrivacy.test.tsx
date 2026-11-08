@@ -1159,15 +1159,13 @@ describe('a hidden profile is reachable from nowhere, not even to a member whose
   const WHAT_HE_MEETS_INSTEAD = new Map([
     ['/sr/kalendar/fruskogorski-maraton-2010/ocena', 'Ovaj događaj ocenjuju oni koji su ga istrčali'],
     ['/sr/moj-profil', 'Vojislav Antonijević'],
-    /* „Moji podaci" is for somebody who has not paid and for nobody else (PDL 22.10.2026): a member whose
-       fee stands is sent to the card „Podaci" of his own profile. The harness of this walk leaves 000032
-       off the public list while its answer to `GET /api/me` does not say his fee has lapsed (measured
-       24.10.2026: the address ends at `/sr`), so the card he is sent to has no row to draw and turns him
-       away to the front page, like the card of 000021. A member whose fee really has lapsed is sent to
-       the page he renews on (`myData.test.tsx`). */
-    ['/sr/moji-podaci', 'Balkanska trkačka liga'],
-    /* The card „Podaci" of 000021 (PDL 22.10.2026), which only she and the administration open: he is
-       neither, so he is sent to the front page like any other reader the card turns away. */
+    /* „Moji podaci" is every member's page since 07.11.2026 (PDL „Član svojim podacima pristupa iz glavnog
+       menija”) but his whose fee has lapsed, whom the address sends to the page he renews on (owner,
+       07.11.2026: „adresa ga šalje na „Moja članarina”, kao do sada"). Measured 08.11.2026: the walk ends
+       there, headed „Moja članarina", and walks that page. */
+    ['/sr/moji-podaci', 'Moja članarina'],
+    /* The card „Podaci" of 000021 (PDL 22.10.2026), which only the administration opens: he is not that,
+       so he is sent to the front page like any other reader the card turns away. */
     ['/sr/takmicar/000021/podaci', 'Balkanska trkačka liga'],
   ])
 

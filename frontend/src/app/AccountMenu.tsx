@@ -9,7 +9,8 @@ import { useSession } from '../session/useSession'
 import { Dropdown } from './Dropdown'
 import { initialsOf, monogramFor } from './monogram'
 import { Portrait } from '../components/Portrait'
-import { accountMenuFor } from './routes'
+import { useHisProfileIsFinished } from '../pages/profile/finishTheProfile'
+import { accountMenuFor, type MenuReader, type RouteDef } from './routes'
 
 /* The picture, and behind it everything that belongs to one person: the member
  * area, settings, and signing out. The cog that used to sit beside it is gone;
@@ -68,7 +69,10 @@ export function AccountMenu({ signedIn }: { signedIn: SignedIn }) {
  * the way out, so a read that fails costs him a name and nothing he can do.
  *
  * <p>The entries are his two (`accountMenuFor`), „Moji podaci" above „Moja članarina", and the sign
- * out button (owner, 22.10.2026: „Odjava ostaje dostupna").
+ * out button (owner, 22.10.2026: „Odjava ostaje dostupna"). „Moji podaci" is never „Dopuni podatke" to
+ * him: he may not set a picture or words about himself until he has paid (PDL 10.10.2026, „Ne sme ništa
+ * što ga čini vidljivim [...]: sliku, biografiju"), so the name would ask him for what his page does not
+ * let him do.
  */
 function MenuOfSomebodyWhoHasNotPaid({ account }: { account: number }) {
   const { t } = useI18n()
@@ -86,7 +90,7 @@ function MenuOfSomebodyWhoHasNotPaid({ account }: { account: number }) {
         </span>
       }
     >
-      {(close) => <Entries who={name} unpaid close={close} />}
+      {(close) => <Entries who={name} reader="neverPaid" standing={null} opens={0} close={close} />}
     </Dropdown>
   )
 }
@@ -169,7 +173,15 @@ function MenuOfAMemberOrAnAccount({ signedIn }: { signedIn: Exclude<SignedIn, { 
         )
       }
     >
-      {(close) => <Entries who={who} unpaid={false} close={close} />}
+      {(close, opens) => (
+        <Entries
+          who={who}
+          reader={signedIn.as === 'member' && !signedIn.feeStands ? 'lapsed' : 'anybodyElse'}
+          standing={signedIn.as === 'member' ? signedIn.memberNumber : null}
+          opens={opens}
+          close={close}
+        />
+      )}
     </Dropdown>
   )
 }
@@ -177,16 +189,24 @@ function MenuOfAMemberOrAnAccount({ signedIn }: { signedIn: Exclude<SignedIn, { 
 /**
  * What stands in the panel behind the picture: who it is, the entries that are his, and the way out.
  *
- * <p>One list for the two kinds of reader (`accountMenuFor`) and one sign out, so the two menus
+ * <p>One list for the three kinds of reader (`accountMenuFor`) and one sign out, so the two menus
  * cannot sign out in two ways.
+ *
+ * <p>`standing` is the member number of a member, and nobody else's: he is the one reader an entry may be
+ * named for by what his profile lacks (`RouteDef.unfinishedLabelKey`). A member whose fee has lapsed is
+ * drawn no such entry (`accountMenuFor`), so it is asked only for a member whose fee stands.
  */
 function Entries({
   who,
-  unpaid,
+  reader,
+  standing,
+  opens,
   close,
 }: {
   who: string | undefined
-  unpaid: boolean
+  reader: MenuReader
+  standing: string | null
+  opens: number
   close: () => void
 }) {
   const { locale, t } = useI18n()
@@ -199,16 +219,29 @@ function Entries({
       {/* Everything but what has a shorter way in of its own (routes.ts).
           Filtered there rather than dropped here, because that same list is
           what the router is built from. */}
-      {accountMenuFor(unpaid).map((route) => (
-        <Link
-          key={route.path}
-          className="account__link"
-          to={`/${locale}/${route.path}`}
-          onClick={close}
-        >
-          {t(route.labelKey)}
-        </Link>
-      ))}
+      {accountMenuFor(reader).map((route) =>
+        route.unfinishedLabelKey !== undefined && standing !== null ? (
+          /* KEYED BY HIM, so a second member signed in during the same visit is not named by the first
+             man's answer. */
+          <NamedByHisProfile
+            key={`${route.path}-${standing}`}
+            route={route}
+            unfinishedLabelKey={route.unfinishedLabelKey}
+            memberNumber={standing}
+            opens={opens}
+            close={close}
+          />
+        ) : (
+          <Link
+            key={route.path}
+            className="account__link"
+            to={`/${locale}/${route.path}`}
+            onClick={close}
+          >
+            {t(route.labelKey)}
+          </Link>
+        ),
+      )}
       <button
         type="button"
         className="account__link account__link--button"
@@ -238,5 +271,37 @@ function Entries({
         {t('myProfile.signOut')}
       </button>
     </>
+  )
+}
+
+/**
+ * AN ENTRY NAMED BY WHAT HIS PROFILE LACKS: „Dopuni podatke" while he has not both a picture and words
+ * about himself, and its own name once he has (owner, 07.11.2026, PDL „Član svojim podacima pristupa iz
+ * glavnog menija”). Its own name too while that is not known or the server could not say, so a fault
+ * never asks a member to complete what he has completed (`profile/finishTheProfile.ts`).
+ *
+ * <p>Asked when the menu is drawn, again each time it is opened (`opens`), and again when a box on his
+ * page says it has sent something.
+ */
+function NamedByHisProfile({
+  route,
+  unfinishedLabelKey,
+  memberNumber,
+  opens,
+  close,
+}: {
+  route: RouteDef
+  unfinishedLabelKey: string
+  memberNumber: string
+  opens: number
+  close: () => void
+}) {
+  const { locale, t } = useI18n()
+  const finished = useHisProfileIsFinished(memberNumber, opens)
+
+  return (
+    <Link className="account__link" to={`/${locale}/${route.path}`} onClick={close}>
+      {t(finished === false ? unfinishedLabelKey : route.labelKey)}
+    </Link>
   )
 }

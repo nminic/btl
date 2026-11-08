@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, useState } from 'react'
 import { Link } from 'react-router'
 import { addressOf } from '../../app/head'
+import { MY_DATA_ADDRESS } from '../../app/routes'
 import { useToday } from '../../clock/useClock'
 import { useSession } from '../../session/useSession'
 import { whoTheServerSaysIAm } from '../../session/theServer'
@@ -898,18 +899,16 @@ export function Membership() {
                         {/* AND THE WAY TO THE PICTURE AND THE WORDS ABOUT HIMSELF, beside the sentence
                             that he is in (owner, 06.11.2026, PDL „Boksovi „Profilna slika" i „Tekst o
                             sebi" prelaze sa Podešavanja": „Veza ka slici i opisu uz rečenicu „Članstvo za
-                            sezonu ... je aktivirano." na Mojoj članarini ostaje"). To the bottom of his card
-                            „Podaci", by the number alone: the card moves him to the profile's one address
-                            and keeps the `#` (`CompetitorData.tsx`). The words are the assistant's. */}
-                        {(lettingIn.outcome.newNumber ?? memberNumber) !== null && (
-                          <p className="member__note">
-                            <Link
-                              to={`/${locale}/takmicar/${lettingIn.outcome.newNumber ?? memberNumber}/podaci#${THE_PICTURE_AND_THE_WORDS}`}
-                            >
-                              {t('membership.letInBoxes')}
-                            </Link>
-                          </p>
-                        )}
+                            sezonu ... je aktivirano." na Mojoj članarini ostaje"). To the boxes on „Moji
+                            podaci" since 07.11.2026 (owner, PDL „Član svojim podacima pristupa iz glavnog
+                            menija”: „Veza uz „Članstvo za sezonu ... je aktivirano.” vodi na „Moji
+                            podaci”"), at `#slika`, which is where the boxes stand on that page. No number in
+                            it: the page is his whoever he is. The words are the assistant's. */}
+                        <p className="member__note">
+                          <Link to={`/${locale}/${MY_DATA_ADDRESS}#${THE_PICTURE_AND_THE_WORDS}`}>
+                            {t('membership.letInBoxes')}
+                          </Link>
+                        </p>
                       </>
                     ) : (
                       <ServerSaid answer={lettingIn.outcome.answer} refusals={WHEN_LETTING_MYSELF_IN} />

@@ -392,9 +392,11 @@ describe('my profile', () => {
     await screen.findByRole('table', { name: 'Rezultati' })
 
     const menu = within(await openAccount(user))
-    const links = menu.getAllByRole('link').map((one) => one.textContent?.trim())
+    /* By where each leads, because the name of „Moji podaci" (second, owner 07.11.2026) is his profile's to
+       say: „Dopuni podatke" while it lacks a picture or words (`profile/finishTheProfile.test.tsx`). */
+    const links = menu.getAllByRole('link').map((one) => one.getAttribute('href'))
 
-    expect(links).toEqual(['Moj profil', 'Moji rezultati', 'Moja članarina', 'Podešavanja'])
+    expect(links).toEqual(['/sr/moj-profil', '/sr/moji-podaci', '/sr/moji-rezultati', '/sr/moja-clanarina', '/sr/podesavanja'])
     expect(menu.getByRole('button', { name: 'Odjavi se' })).toBeVisible()
   })
 

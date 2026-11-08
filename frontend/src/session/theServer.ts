@@ -582,8 +582,8 @@ export async function whatTheServerSaysOfMyWaitingText(): Promise<string | null>
  * WHETHER HE HAS WORDS ABOUT HIMSELF, THE ONES THAT STAND OR THE ONES THAT WAIT, or nothing when the
  * record cannot be believed.
  *
- * <p>Asked by the name of the card „Podaci", which is „Dovrši profil" while he has no picture or no
- * text (owner, 06.11.2026, PDL „Boksovi „Profilna slika" i „Tekst o sebi" prelaze sa Podešavanja"),
+ * <p>Asked by the name of the entry „Moji podaci" in the menu, which is „Dopuni podatke" while he has no
+ * picture or no text (owner, 07.11.2026, PDL „Član svojim podacima pristupa iz glavnog menija”),
  * and words that wait count as words he has („poslato a neodobreno se računa kao namešteno"). So it
  * reads `bio` and `bioWaiting` off the same record and answers the one question, rather than handing
  * two halves to a caller who could read one of them.

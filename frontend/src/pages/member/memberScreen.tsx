@@ -1,10 +1,7 @@
 import type { ReactElement } from 'react'
-import { Navigate } from 'react-router'
 import { Loader } from '../../components/Loader'
-import { useI18n } from '../../i18n/useI18n'
 import { useServerIsStillBeingAsked } from '../../session/useServerIsStillBeingAsked'
 import { useSession } from '../../session/useSession'
-import { THE_DATA } from '../profile/whoReadsTheData'
 import { NotRacing } from './NotRacing'
 import { SentToTheFee } from './SentToTheFee'
 import { SignedOut } from './SignedOut'
@@ -63,8 +60,8 @@ import { SignedOut } from './SignedOut'
  * who has registered and has not paid; and an account with no record. Two screens are drawn
  * for the third of them instead of telling him, and say so by asking the hooks beside this one:
  * „Moja clanarina", where he pays and chooses his category ({@link useScreenForTheUnpaidToo}), and
- * „Moji podaci", where he changes his data until he is approved ({@link useScreenForTheUnpaidOnly},
- * PDL 22.10.2026). The rest ask {@link useMemberScreen} or {@link useScreenForEveryAccount} and
+ * „Moji podaci", where he changes his data ({@link useScreenOfHisData}, PDL 22.10.2026 and
+ * 07.11.2026). The rest ask {@link useMemberScreen} or {@link useScreenForEveryAccount} and
  * he is SENT to the page he pays on, by {@link SentToTheFee}, without being told that they exist.
  *
  * <p><b>HE WAS TOLD „Ovaj deo se otvara kad članarina bude evidentirana" UNTIL 23.10.2026, and the
@@ -239,50 +236,44 @@ export function useScreenForTheUnpaidToo(): ScreenForTheUnpaidToo {
 }
 
 /**
- * The same question for the one screen that is drawn to somebody who has not paid and to nobody
- * else: „Moji podaci" (PDL 22.10.2026, „Neka ima u navigaciji stranu Moji Podaci dok nije
+ * The same question for „Moji podaci", the page a member changes his data, his picture and his words about
+ * himself on, and somebody who has not paid his data (owner, 07.11.2026, PDL „Član svojim podacima
+ * pristupa iz glavnog menija”; and 22.10.2026, „Neka ima u navigaciji stranu Moji Podaci dok nije
  * odobren").
  *
- * <p>`account` is the key the screen asks the server for his data under, as in
- * {@link ScreenForTheUnpaidToo}. For everybody else `instead` is what to draw, and it is never a
- * page: the screen goes away with the approval and the data are changed elsewhere. [IZVEDENO, moje,
- * the owner said where the entry goes and not what the address answers] A member whose fee stands is
- * sent to the card „Podaci" of his own profile, where his data are; a member whose fee has lapsed is
- * sent to the page he renews on, which is all that is open to him, as it is to somebody who has not
- * paid; and the rest are told what every screen of the member area tells them.
+ * <p>Three answers draw the page: a member whose fee stands, by his number; somebody who has not paid, by
+ * the key the screen asks the server for his data under, as in {@link ScreenForTheUnpaidToo}; and an
+ * account with no record, which is told what every screen of the member area tells it. A member whose fee
+ * has lapsed is sent to the page he renews on (owner, 07.11.2026: „Član kome je istekla članarina nema
+ * stavku „Moji podaci” u meniju, a adresa ga šalje na „Moja članarina”, kao do sada (pravilo od
+ * 19.09.2026).”), and nobody signed in is told he has to be.
  */
-export type ScreenForTheUnpaidOnly =
-  | { account: number; instead: null }
-  | { account: null; instead: ReactElement }
+export type ScreenOfHisData =
+  | { memberNumber: string; account: null; instead: null }
+  | { memberNumber: null; account: number; instead: null }
+  | { memberNumber: null; account: null; instead: ReactElement }
 
 /**
- * THE QUESTION ASKED BY THE ONE SCREEN THAT IS FOR SOMEBODY WHO HAS NOT PAID AND FOR NOBODY ELSE.
+ * THE QUESTION ASKED BY „MOJI PODACI".
  *
- * <p>{@link useScreenForTheUnpaidToo} with the three answers that are not his turned into what to
- * draw. Not a second place that decides who has paid: it asks that hook and names neither
- * `NotRacing` nor `SignedOut`, which `oneQuestion.test.tsx` requires of every module but this one.
+ * <p>{@link useScreenForTheUnpaidToo} with the answers that do not draw the page turned into what to draw.
+ * Not a second place that decides who has paid: it asks that hook and names neither `NotRacing` nor
+ * `SignedOut`, which `oneQuestion.test.tsx` requires of every module but this one.
  */
-export function useScreenForTheUnpaidOnly(): ScreenForTheUnpaidOnly {
+export function useScreenOfHisData(): ScreenOfHisData {
   const who = useScreenForTheUnpaidToo()
-  const { locale } = useI18n()
 
   if (who.standing === 'neverPaid') {
-    return { account: who.account, instead: null }
+    return { memberNumber: null, account: who.account, instead: null }
   }
 
   if (who.standing === null) {
-    return { account: null, instead: who.instead }
+    return { memberNumber: null, account: null, instead: who.instead }
   }
 
-  return {
-    account: null,
-    instead:
-      who.standing === 'standing' ? (
-        <Navigate to={`/${locale}/takmicar/${who.memberNumber}${THE_DATA}`} replace />
-      ) : (
-        <SentToTheFee />
-      ),
-  }
+  return who.standing === 'standing'
+    ? { memberNumber: who.memberNumber, account: null, instead: null }
+    : { memberNumber: null, account: null, instead: <SentToTheFee /> }
 }
 
 /**

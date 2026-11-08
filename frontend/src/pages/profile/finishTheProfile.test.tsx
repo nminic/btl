@@ -6,6 +6,7 @@ import { moderatorWith, renderAt } from '../../test/render'
 import { serverThat, type Asked } from '../../test/serverAnswers'
 import { SLOW } from '../../test/slow'
 import { setupUser } from '../../test/user'
+import { useSession } from '../../session/useSession'
 import { useTellTheHeadABoxWasSent } from './finishTheProfile'
 import { OVER_THE_MEMBERS } from './whoReadsTheData'
 
@@ -14,16 +15,17 @@ import { OVER_THE_MEMBERS } from './whoReadsTheData'
 configure({ asyncUtilTimeout: SLOW / 2 })
 
 /**
- * THE NAME OF THE CARD „PODACI", AND WHERE THE PICTURE AND THE WORDS ABOUT HIMSELF STAND.
+ * THE NAME OF THE ENTRY „MOJI PODACI" IN THE MENU, AND WHERE THE PICTURE AND THE WORDS ABOUT HIMSELF STAND.
  *
- * <p>Owner, 06.11.2026 (PDL „Boksovi „Profilna slika" i „Tekst o sebi" prelaze sa Podešavanja"): „Želim da
- * mu se dugme Podaci zove Dovrši profil dok ne namesti i sliku i tekst. Bez dodatnih podsetnika", and,
- * chosen with the recommendation, „poslato a neodobreno se računa kao namešteno", „vraćena slika ili tekst
- * vraćaju ime „Dovrši profil"".
+ * <p>Owner, 07.11.2026 (PDL „Član svojim podacima pristupa iz glavnog menija”): „Stavka menija se zove „Dopuni
+ * podatke” (vlasnikove reči) dok član nema i sliku i tekst o sebi, a posle toga „Moji podaci”; poslato a
+ * neodobreno se računa kao namešteno, kao do sada", and „na svom profilu član vidi samo „Rezultati” i
+ * „Priznanja”. Administracija i dalje vidi karticu „Podaci” na strani takmičara."
  *
  * <p><b>THE AXES, each with both of its states</b>: the picture none, waiting, standing; the words none,
  * waiting, standing (a picture or words handed back are none on the server, which is what the first state
- * is); the reader the member himself or the administration; the address with `#slika` or without.
+ * is); the menu opened or not, and opened again after the server changed; one member in the visit or two;
+ * the reader the member himself or the administration; the address with `#slika` or without.
  */
 
 const HIS = '000007'
@@ -89,61 +91,153 @@ function aServerHolding(picture: Held, words: { now: Held }): Asked[] {
   return asked
 }
 
-/** The link to the card in the row of the parts, whichever of its two names it carries. */
-async function theCardTab(): Promise<HTMLElement> {
-  const parts = await screen.findByRole('navigation', { name: sr.profile.parts.label })
+/** Signs in another member in the same visit, the way the answer to `GET /api/me` does. */
+function SignsInSomebodyElse({ asking }: { asking: { who: string } }) {
+  const { theServerSignedMeIn } = useSession()
 
-  return must(
-    within(parts).queryByRole('link', {
-      name: new RegExp(`^(${sr.profile.parts.data}|${sr.profile.parts.finish})$`),
-    }),
-    'the tab of the card',
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        asking.who = '000002'
+        theServerSignedMeIn({
+          account: 2,
+          memberNumber: '000002',
+          country: null,
+          firstSeason: null,
+          teamId: null,
+          membershipBasis: null,
+          membershipSeason: null,
+          referralCode: null,
+          referredCount: null,
+          hasARecord: true,
+          feeStands: true,
+        })
+      }}
+    >
+      sign in somebody else
+    </button>
   )
 }
 
-/** Both reads the name is asked from have been answered, and what they answered has been drawn. */
-async function bothAnswered(asked: Asked[]): Promise<void> {
-  await waitFor(() => expect(asked.filter((one) => one.path === '/api/me/photo').length).toBeGreaterThan(0))
+/** The menu behind the picture, opened. */
+async function openTheMenu(user: ReturnType<typeof setupUser>): Promise<void> {
+  const button = await screen.findByRole('button', { name: 'Otvori nalog' })
+
+  if (button.getAttribute('aria-expanded') !== 'true') {
+    await user.click(button)
+  }
+}
+
+/** Shuts the menu again, the way a reader does, by the button that opened it. */
+async function shutTheMenu(user: ReturnType<typeof setupUser>): Promise<void> {
+  const button = await screen.findByRole('button', { name: 'Otvori nalog' })
+
+  if (button.getAttribute('aria-expanded') === 'true') {
+    await user.click(button)
+  }
+}
+
+/** The entry in the menu that leads to „Moji podaci", whichever of its two names it carries. */
+function theEntry(): HTMLElement {
+  return must(
+    within(must(document.getElementById('account-menu'), 'the account menu')).queryByRole('link', {
+      name: new RegExp(`^(${sr.nav.myData}|${sr.nav.completeData})$`),
+      hidden: true,
+    }),
+    'the entry of „Moji podaci"',
+  )
+}
+
+/** His pictures have been asked for at least `times` times, and what was answered has been drawn. */
+async function bothAnswered(asked: Asked[], times = 1): Promise<void> {
+  await waitFor(() =>
+    expect(asked.filter((one) => one.path === '/api/me/photo').length).toBeGreaterThanOrEqual(times),
+  )
   await act(async () => {
     await new Promise((settled) => setTimeout(settled, 50))
   })
 }
 
-describe('the name of his own card', () => {
+describe('the name of the entry „Moji podaci" in the menu', () => {
   it.each([
-    ['nothing at all, or what was handed back', 'none', 'none', sr.profile.parts.finish],
-    ['a picture and words that both wait', 'waiting', 'waiting', sr.profile.parts.data],
-    ['a picture that stands and no words', 'standing', 'none', sr.profile.parts.finish],
-    ['words that stand and no picture', 'none', 'standing', sr.profile.parts.finish],
-    ['a picture that waits and no words', 'waiting', 'none', sr.profile.parts.finish],
-    ['words that wait and no picture', 'none', 'waiting', sr.profile.parts.finish],
-    ['a picture and words that both stand', 'standing', 'standing', sr.profile.parts.data],
+    ['nothing at all, or what was handed back', 'none', 'none', sr.nav.completeData],
+    ['a picture and words that both wait', 'waiting', 'waiting', sr.nav.myData],
+    ['a picture that stands and no words', 'standing', 'none', sr.nav.completeData],
+    ['words that stand and no picture', 'none', 'standing', sr.nav.completeData],
+    ['a picture that waits and no words', 'waiting', 'none', sr.nav.completeData],
+    ['words that wait and no picture', 'none', 'waiting', sr.nav.completeData],
+    ['a picture and words that both stand', 'standing', 'standing', sr.nav.myData],
   ] as const)('is the one it should be for %s', async (_what, picture, words, name) => {
+    const user = setupUser()
     const asked = aServerHolding(picture, { now: words })
 
-    renderAt(`/sr/takmicar/${HIS}/podaci`, 'competitor', HIS)
+    renderAt('/sr/kalendar', 'competitor', HIS)
+    await openTheMenu(user)
     await bothAnswered(asked)
 
-    await waitFor(async () => expect(await theCardTab()).toHaveTextContent(new RegExp(`^${name}$`)))
+    await waitFor(() => expect(theEntry()).toHaveTextContent(new RegExp(`^${name}$`)))
+    expect(theEntry()).toHaveAttribute('href', '/sr/moji-podaci')
   }, SLOW)
 
-  it('is the same on his results, which draw the same head', async () => {
-    const asked = aServerHolding('none', { now: 'standing' })
+  /* NOTHING IS ASKED UNTIL THE MENU IS OPENED: it is drawn on every screen, and a member who never opens it
+     costs the server no request for a name nobody reads. The other half is the case above. */
+  it('asks nothing of his pictures while the menu has not been opened', async () => {
+    const asked = aServerHolding('none', { now: 'none' })
 
-    renderAt(`/sr/takmicar/${HIS}`, 'competitor', HIS)
+    renderAt('/sr/kalendar', 'competitor', HIS)
+    expect(await screen.findByRole('button', { name: 'Otvori nalog' })).toBeVisible()
+    await act(async () => {
+      await new Promise((settled) => setTimeout(settled, 100))
+    })
+
+    expect(asked.filter((one) => one.path === '/api/me/photo')).toHaveLength(0)
+    expect(theEntry()).toHaveTextContent(new RegExp(`^${sr.nav.myData}$`))
+  }, SLOW)
+
+  /* ASKED AGAIN EACH TIME THE MENU IS OPENED, so a picture a moderator handed back in the meantime gives the
+     name back (owner, 06.11.2026, which the decision of 07.11.2026 keeps: „vraćena slika ili tekst vraćaju
+     ime"). */
+  it('turns back to „Dopuni podatke" at the next opening once the server holds less than it did', async () => {
+    const user = setupUser()
+    const picture: { now: Held } = { now: 'standing' }
+
+    aServerHolding('none', { now: 'standing' })
+
+    const { asked, stop } = serverThat((path, init) =>
+      path === '/api/me/photo' && init?.method === undefined
+        ? json({
+            waiting: null,
+            standing: picture.now === 'standing' ? { photo: '/api/photos/def', crop: A_CROP } : null,
+          })
+        : null,
+    )
+
+    stops.push(stop)
+    renderAt('/sr/kalendar', 'competitor', HIS)
+
+    await openTheMenu(user)
     await bothAnswered(asked)
+    await waitFor(() => expect(theEntry()).toHaveTextContent(new RegExp(`^${sr.nav.myData}$`)))
 
-    await waitFor(async () => expect(await theCardTab()).toHaveTextContent(sr.profile.parts.finish))
+    picture.now = 'none'
+    await shutTheMenu(user)
+    await openTheMenu(user)
+    await bothAnswered(asked, 2)
+
+    await waitFor(() => expect(theEntry()).toHaveTextContent(new RegExp(`^${sr.nav.completeData}$`)))
   }, SLOW)
 
-  it('turns to „Podaci" in the same visit once the last thing he lacked has been sent', async () => {
+  it('turns to „Moji podaci" in the same visit once the last thing he lacked has been sent', async () => {
     const user = setupUser()
     const words: { now: Held } = { now: 'none' }
     const asked = aServerHolding('standing', words)
 
-    renderAt(`/sr/takmicar/${HIS}/podaci`, 'competitor', HIS)
+    renderAt('/sr/moji-podaci', 'competitor', HIS)
+    await openTheMenu(user)
     await bothAnswered(asked)
-    await waitFor(async () => expect(await theCardTab()).toHaveTextContent(sr.profile.parts.finish))
+    await waitFor(() => expect(theEntry()).toHaveTextContent(new RegExp(`^${sr.nav.completeData}$`)))
+    await shutTheMenu(user)
 
     const panel = within(await screen.findByRole('region', { name: sr.bio.title }))
     const box = await panel.findByLabelText(/Svojim rečima|Tekst o sebi/)
@@ -152,52 +246,87 @@ describe('the name of his own card', () => {
     await user.type(box, 'Trčim od 2014.')
     await user.click(panel.getByRole('button', { name: sr.bio.send }))
 
-    await waitFor(async () => expect(await theCardTab()).toHaveTextContent(sr.profile.parts.data))
+    /* Without opening the menu again: the box says it has sent, and the menu asks. */
+    await waitFor(() => expect(theEntry()).toHaveTextContent(new RegExp(`^${sr.nav.myData}$`)))
+  }, SLOW)
+
+  /* TWO PEOPLE IN ONE VISIT, a shared laptop at a race: the second is named by his own answer, never by the
+     first man's, even where the first man's arrives after the second has signed in. */
+  it('names the second member who signs in by his own answer, and a late answer of the first changes nothing', async () => {
+    const user = setupUser()
+    let answerTheFirst: (one: Response) => void = () => undefined
+    const late = new Promise<Response>((resolve) => {
+      answerTheFirst = resolve
+    })
+    const asking = { who: HIS }
+
+    aServerHolding('none', { now: 'standing' })
+
+    const { asked, stop } = serverThat((path, init) => {
+      if (path !== '/api/me/photo' || init?.method !== undefined) {
+        return null
+      }
+
+      return asking.who === HIS ? late : json({ waiting: null, standing: { photo: '/api/photos/def', crop: A_CROP } })
+    })
+
+    stops.push(stop)
+    renderAt('/sr/kalendar', 'competitor', HIS, undefined, null, <SignsInSomebodyElse asking={asking} />)
+
+    await openTheMenu(user)
+    await waitFor(() => expect(asked.filter((one) => one.path === '/api/me/photo')).toHaveLength(1))
+
+    await user.click(screen.getByRole('button', { name: 'sign in somebody else' }))
+    await openTheMenu(user)
+    await bothAnswered(asked, 2)
+    await waitFor(() => expect(theEntry()).toHaveTextContent(new RegExp(`^${sr.nav.myData}$`)))
+
+    await act(async () => {
+      answerTheFirst(json({ waiting: null, standing: null }))
+      await new Promise((settled) => setTimeout(settled, 50))
+    })
+
+    expect(theEntry()).toHaveTextContent(new RegExp(`^${sr.nav.myData}$`))
   }, SLOW)
 })
 
-describe('the name of his own card, when the server cannot say', () => {
-  it('stays „Podaci" where his pictures cannot be read, even though he has nothing', async () => {
+describe('the name of the entry, when the server cannot say', () => {
+  it('stays „Moji podaci" where his pictures cannot be read, even though he has nothing', async () => {
+    const user = setupUser()
+
+    aServerHolding('none', { now: 'none' })
+
     const { asked, stop } = serverThat((path, init) =>
       path === '/api/me/photo' && init?.method === undefined ? new Response(null, { status: 500 }) : null,
     )
 
     stops.push(stop)
-    renderAt(`/sr/takmicar/${HIS}/podaci`, 'competitor', HIS)
+    renderAt('/sr/kalendar', 'competitor', HIS)
+    await openTheMenu(user)
     await bothAnswered(asked)
 
-    expect(await theCardTab()).toHaveTextContent(new RegExp(`^${sr.profile.parts.data}$`))
-  }, SLOW)
-
-  it('is not set by an answer that arrives after he has left the page', async () => {
-    let answer: (one: Response) => void = () => undefined
-    const late = new Promise<Response>((resolve) => {
-      answer = resolve
-    })
-    const { asked, stop } = serverThat((path, init) =>
-      path === '/api/me/photo' && init?.method === undefined ? late : null,
-    )
-
-    stops.push(stop)
-
-    const { router } = renderAt(`/sr/takmicar/${HIS}`, 'competitor', HIS)
-
-    await theCardTab()
-    await waitFor(() => expect(asked.filter((one) => one.path === '/api/me/photo').length).toBeGreaterThan(0))
-    await act(async () => {
-      await router.navigate('/sr')
-    })
-    await act(async () => {
-      answer(json({ waiting: null, standing: null }))
-      await new Promise((settled) => setTimeout(settled, 50))
-    })
-
-    expect(screen.queryByRole('navigation', { name: sr.profile.parts.label })).toBeNull()
+    expect(theEntry()).toHaveTextContent(new RegExp(`^${sr.nav.myData}$`))
   }, SLOW)
 })
 
-describe('the name of somebody else’s card, read by the administration', () => {
-  it('is „Podaci" whatever he lacks, and his own routes are not asked about him', async () => {
+describe('his own profile, and the card read by the administration', () => {
+  /* Owner, 07.11.2026: „na svom profilu član vidi samo „Rezultati” i „Priznanja”". */
+  it.each([`/sr/takmicar/${HIS}`, `/sr/takmicar/${HIS}/priznanja`, '/sr/moj-profil'])(
+    'offers him no card „Podaci" at %s',
+    async (where) => {
+      renderAt(where, 'competitor', HIS)
+
+      const parts = await screen.findByRole('navigation', { name: sr.profile.parts.label })
+
+      expect(within(parts).getAllByRole('link').map((one) => one.textContent)).toEqual([
+        sr.profile.parts.overview,
+        sr.profile.parts.awards,
+      ])
+    },
+    SLOW,
+  )
+
+  it('is „Podaci" to the administration whatever he lacks, and his own routes are not asked about him', async () => {
     const asked = aServerHolding('none', { now: 'none' })
 
     renderAt(`/sr/takmicar/${HIS}/podaci`, 'moderator', null, moderatorWith([OVER_THE_MEMBERS]))
@@ -206,12 +335,15 @@ describe('the name of somebody else’s card, read by the administration', () =>
     await act(async () => {
       await new Promise((settled) => setTimeout(settled, 50))
     })
-    expect(await theCardTab()).toHaveTextContent(new RegExp(`^${sr.profile.parts.data}$`))
+
+    const parts = await screen.findByRole('navigation', { name: sr.profile.parts.label })
+
+    expect(within(parts).getByRole('link', { name: sr.profile.parts.data })).toBeVisible()
     expect(asked.filter((one) => one.path === '/api/me/photo')).toHaveLength(0)
   }, SLOW)
 })
 
-describe('the boxes at the bottom of his card', () => {
+describe('the boxes on „Moji podaci"', () => {
   const scrolled = vi.fn()
 
   beforeEach(() => {
@@ -219,14 +351,10 @@ describe('the boxes at the bottom of his card', () => {
     Element.prototype.scrollIntoView = scrolled
   })
 
-  it('stand under the form, and #slika is kept on the way to the profile’s own address and scrolled to', async () => {
-    const { router } = renderAt(`/sr/takmicar/${HIS}/podaci#slika`, 'competitor', HIS)
+  it('stand under the form, and #slika is scrolled to', async () => {
+    renderAt('/sr/moji-podaci#slika', 'competitor', HIS)
 
     const boxes = await screen.findByRole('region', { name: sr.picture.title })
-
-    await waitFor(() => expect(router.state.location.pathname).toMatch(new RegExp(`^/sr/takmicar/${HIS}-.+/podaci$`)))
-    expect(router.state.location.hash).toBe('#slika')
-
     const pair = must(boxes.closest<HTMLElement>('#slika'), 'the place #slika leads to')
 
     await waitFor(() => expect(scrolled.mock.contexts).toContain(pair))
@@ -239,15 +367,27 @@ describe('the boxes at the bottom of his card', () => {
     expect(pair.contains(data)).toBe(false)
   }, SLOW)
 
+  /* THE OLD ADDRESS OF HIS DATA, his card „Podaci" until 07.11.2026, leads to the new one and keeps the part
+     after `#` and the query, so a link written before then still reaches the boxes. */
+  it('are reached from his old card, with the query and #slika kept', async () => {
+    const { router } = renderAt(`/sr/takmicar/${HIS}/podaci?x=1#slika`, 'competitor', HIS)
+
+    await screen.findByRole('region', { name: sr.picture.title })
+    expect(router.state.location.pathname).toBe('/sr/moji-podaci')
+    expect(router.state.location.search).toBe('?x=1')
+    expect(router.state.location.hash).toBe('#slika')
+    await waitFor(() => expect(scrolled).toHaveBeenCalled())
+  }, SLOW)
+
   it('are not scrolled to where the address does not ask for them', async () => {
-    renderAt(`/sr/takmicar/${HIS}/podaci`, 'competitor', HIS)
+    renderAt('/sr/moji-podaci', 'competitor', HIS)
 
     await screen.findByRole('region', { name: sr.picture.title })
     expect(scrolled).not.toHaveBeenCalled()
   }, SLOW)
 
   it('say nothing beside „Izaberi novu sliku", neither the star nor „(neobavezno)"', async () => {
-    renderAt(`/sr/takmicar/${HIS}/podaci`, 'competitor', HIS)
+    renderAt('/sr/moji-podaci', 'competitor', HIS)
 
     const chooser = await screen.findByLabelText(sr.picture.choose)
     const around = must(chooser.closest('.rankings__field'), 'the field of the chooser')

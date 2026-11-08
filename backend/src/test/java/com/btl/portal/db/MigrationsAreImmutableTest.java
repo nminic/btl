@@ -760,7 +760,18 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   89 and no other: main stood at V88 on 07.11.2026 (b70d7dfe) and no open pull request held a migration.
 
 			   Pinned LAST, when the file was final, off this very assertion. */
-			new Applied("89", "V89__the_privacy_policy_says_the_profile_is_edited_on_the_page_moji_podaci.sql", -939250551));
+			new Applied("89", "V89__the_privacy_policy_says_the_profile_is_edited_on_the_page_moji_podaci.sql", -939250551),
+
+			/* V90. The privacy policy says „Moji podaci" where it said the card Podaci (sections 2 and 3), links the sentence of
+			   section 6 to /moji-podaci, and its sign-off moves to 08.11.2026 (owner, 07.11.2026, PDL „Politika privatnosti odmah
+			   dobija rečenicu koja postaje tačna kad stigne meni“, and 08.11.2026, „Uz meni „Moji podaci” u politici se menjaju i dva
+			   mesta sa „karticom Podaci”“): four edits in both languages, each stopping the migration unless its old text stands
+			   exactly once.
+
+			   90 and no other: main stood at V89 on 08.11.2026 (c898e39d).
+
+			   Pinned LAST, when the file was final, off this very assertion. */
+			new Applied("90", "V90__the_privacy_policy_says_moji_podaci_where_it_said_the_card_podaci_and_links_it.sql", 491027654));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {
