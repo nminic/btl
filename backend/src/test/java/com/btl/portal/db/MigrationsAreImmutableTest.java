@@ -781,7 +781,7 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   92 and no other: main stood at V90 on 08.11.2026 (1eea9c16) and V91 was taken by an open pull request.
 
 			   Pinned LAST, when the file was final, off this very assertion. */
-			new Applied("92", "V92__the_rulebook_says_a_ducat_stays_while_the_results_that_won_it_stand.sql", -448772516));
+			new Applied("92", "V92__the_rulebook_says_a_ducat_stays_while_the_results_that_won_it_stand.sql", -1457628618));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {

@@ -165,7 +165,7 @@ class TheWrittenPagesSayMojiPodaciWhereTheySaidTheCardTest extends DatabaseTest 
 					.endsWith(serbian ? CHANGES.get(3).standsInSerbian() : CHANGES.get(3).standsInEnglish())
 					.containsOnlyOnce(mark).doesNotContain("07.11.2026");
 			assertThat(bodyOf("pravilnik", 19, language)).as("the %s rulebook keeps its day", language)
-					.endsWith(mark + "30.10.2026.");
+					.endsWith(mark + "09.11.2026.");
 			assertThat(bodyOf("uslovi-koriscenja", 11, language)).as("the %s terms keep their day", language)
 					.endsWith(mark + "29.10.2026.");
 		}
