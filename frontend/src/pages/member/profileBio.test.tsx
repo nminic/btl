@@ -706,8 +706,8 @@ describe('the words a member wrote about themselves, changed later', () => {
     )
 
     try {
-      const { router } = renderAt(
-        `/sr/takmicar/${withOne.memberNumber}/podaci`,
+      renderAt(
+        '/sr/moji-podaci',
         'competitor',
         withOne.memberNumber,
         undefined,
@@ -722,10 +722,13 @@ describe('the words a member wrote about themselves, changed later', () => {
 
       expect(await (await panelFor()).findByText(sr.bio.waitingNote)).toBeVisible()
 
+      /* ON THE SAME PAGE, since the boxes stand on „Moji podaci" (07.11.2026), which is his whoever signs in:
+         the second man is drawn his own boxes there, and nothing the first typed or sent. */
       await user.click(screen.getByRole('button', { name: 'prijavi drugog' }))
-      /* HIS OWN CARD, since the boxes stand on the card „Podaci" (06.11.2026): the first man's card is
-         nobody's to read for the second, so the panel he is drawn is the one on his own. */
-      await router.navigate(`/sr/takmicar/${somebodyElse.memberNumber}/podaci`)
+
+      await waitFor(async () =>
+        expect((await panelFor()).queryByDisplayValue('Ovo je moj tekst i ničiji drugi.')).not.toBeInTheDocument(),
+      )
 
       const panel = await panelFor()
 
@@ -804,7 +807,7 @@ describe('the words a member wrote about themselves, changed later', () => {
          which both halves of this walk are reachable (`pictureIsOneRow.test.tsx` says the
          same of its own). */
       const { router } = renderAt(
-        `/sr/takmicar/${withOne.memberNumber}/podaci`,
+        '/sr/moji-podaci',
         'superadmin',
         withOne.memberNumber,
         undefined,
@@ -834,7 +837,7 @@ describe('the words a member wrote about themselves, changed later', () => {
 
       expect(counted('competitors')).toBe(listBefore)
 
-      await router.navigate(`/sr/takmicar/${withOne.memberNumber}/podaci`)
+      await router.navigate('/sr/moji-podaci')
       await panelFor()
 
       const listBeforeRemoval = counted('competitors')

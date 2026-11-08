@@ -235,19 +235,19 @@ class TheWrittenPagesSayThatTheCategoryRevealsTheYearOfBirthTest extends Databas
 
 		/* V73 moved the policy's on to 24.10.2026 and V76 the rulebook's to 27.10.2026 (PDL, "Datum Poslednja izmena se
 		   pomera"); V77 (owner, 29.10.2026) moved all three to 29.10.2026, and V80 (owner, 30.10.2026) moved the rulebook
-		   on to 30.10.2026, and V89 (owner, 07.11.2026) the policy's to 07.11.2026, so each of the earlier days stands
-		   nowhere now, 29.10.2026 stands once on the terms, 30.10.2026 once on the rulebook and 07.11.2026 once on the
+		   on to 30.10.2026, and V89 (owner, 07.11.2026) the policy's to 07.11.2026 and V90 (owner, 08.11.2026) on to 08.11.2026, so each of the earlier days stands
+		   nowhere now, 29.10.2026 stands once on the terms, 30.10.2026 once on the rulebook and 08.11.2026 once on the
 		   policy. */
 		String today = language.equals("sr") ? "Poslednja izmena: 29.10.2026." : "Last amended: 29.10.2026.";
 		String rulebookToday = language.equals("sr") ? "Poslednja izmena: 30.10.2026." : "Last amended: 30.10.2026.";
 
-		String policyToday = language.equals("sr") ? "Poslednja izmena: 07.11.2026." : "Last amended: 07.11.2026.";
+		String policyToday = language.equals("sr") ? "Poslednja izmena: 08.11.2026." : "Last amended: 08.11.2026.";
 
 		assertThat(placesWhichCarry(language, today))
 				.as("the %s sign-off of 29.10.2026 must stand on the terms alone, V89 having moved the policy's on", language)
 				.containsExactly(THE_TERMS_SIGN_OFF_NOW);
 		assertThat(placesWhichCarry(language, policyToday))
-				.as("the %s sign-off of 07.11.2026 must stand on the policy alone, V89 having moved it", language)
+				.as("the %s sign-off of 08.11.2026 must stand on the policy alone, V90 having moved it", language)
 				.containsExactly(policySignOff);
 		assertThat(placesWhichCarry(language, rulebookToday))
 				.as("the %s sign-off of 30.10.2026 must stand on the rulebook alone, V80 having moved it", language)

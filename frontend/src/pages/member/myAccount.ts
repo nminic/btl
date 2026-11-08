@@ -134,7 +134,7 @@ export type Typed = Record<Sent, string>
  *
  * <p><b>The town and the shirt size since 23.10.2026</b>, when the panel moved from the screen of
  * the settings to the card „Podaci" of the member's own profile (PDL 22.10.2026, „Profil dobija
- * karticu „Podaci""; „Član sam menja sve osim pola i datuma rođenja", and the father's name stays the
+ * karticu „Podaci""; on „Moji podaci" since 07.11.2026); „Član sam menja sve osim pola i datuma rođenja", and the father's name stays the
  * administration's, „Ime oca i dalje menja samo administracija"). The town is a name and its country,
  * the same two words the registration sends for it (`Registration.tsx`), so {@code PUT /api/me} takes
  * it as a typed {@code city} with its {@code country} and never as a {@code placeId}; the two travel

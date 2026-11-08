@@ -249,8 +249,9 @@ describe('what a screen says in its own voice', () => {
        thinking harder about it, so it is not the list that is held here but the
        whole of what it is a list of.
 
-       Sixty names carry a value written out today (fifty nine from 02.10.2026
-       to 17.10.2026, when `addresses` came), over nineteen hundred and ninety
+       Sixty one names carry a value written out today (sixty until 08.11.2026,
+       when `reader` came, and fifty nine from 02.10.2026 to 17.10.2026, when
+       `addresses` came), over nineteen hundred and ninety
        values (1997 on 02.10.2026, a number that moves with every screen), and
        none of them is one a reader meets. The list was sixty
        names until 02.10.2026: `min`, `max` and `step` were written nowhere but
@@ -332,6 +333,11 @@ describe('what a screen says in its own voice', () => {
       'look',
       'name',
       'r',
+      /* WHICH OF THE THREE READERS A MENU IS DRAWN FOR, 08.11.2026, and it is machinery: a prop of
+         `app/AccountMenu.tsx` that never reaches the document. It carries „neverPaid", which a reader never
+         meets: what he meets is the entries that reader is drawn (`app/routes.ts`, `accountMenuFor`). Same
+         kind of name as `look` above. */
+      'reader',
       'rel',
       'role',
       'rx',

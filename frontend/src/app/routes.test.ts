@@ -121,16 +121,39 @@ describe('ACCOUNT_ROUTES', () => {
      navigaciji stranu Moji Podaci dok nije odobren koja je iznad Moja Članarina", and „Sve opcije koje
      mu nisu dostupne privremeno (dakle sve osim Članarine) ne treba da mu uopšte budu dostupne"). */
   it('draws somebody who has not paid „Moji podaci" above „Moja članarina", and nothing else', () => {
-    expect(accountMenuFor(true).map((route) => route.path)).toEqual(['moji-podaci', 'moja-clanarina'])
+    expect(accountMenuFor('neverPaid').map((route) => route.path)).toEqual(['moji-podaci', 'moja-clanarina'])
   })
 
-  it('draws everybody else the list as it was, without „Moji podaci" and without the inbox', () => {
-    expect(accountMenuFor(false).map((route) => route.path)).toEqual([
+  /* **IN THE ORDER THE OWNER NAMES THEM** (07.11.2026, PDL „Član svojim podacima pristupa iz glavnog
+     menija”: „Moj profil”, „Moji podaci”, „Moji rezultati”, „Moja članarina”), and without the inbox. */
+  it('draws everybody else „Moji podaci" second, under „Moj profil", and never the inbox', () => {
+    expect(accountMenuFor('anybodyElse').map((route) => route.path)).toEqual([
+      'moj-profil',
+      'moji-podaci',
+      'moji-rezultati',
+      'moja-clanarina',
+      'podesavanja',
+    ])
+  })
+
+  /* Owner, 07.11.2026 (PDL, „nema stavku „Moji podaci” u meniju”): „Član kome je istekla članarina nema
+     stavku „Moji podaci” u meniju, a adresa ga šalje na „Moja članarina”". */
+  it('draws a member whose fee has lapsed the same list without „Moji podaci"', () => {
+    expect(accountMenuFor('lapsed').map((route) => route.path)).toEqual([
       'moj-profil',
       'moji-rezultati',
       'moja-clanarina',
       'podesavanja',
     ])
+  })
+
+  it('names „Moji podaci" „Dopuni podatke" while a profile lacks something, and no other entry at all', () => {
+    expect(
+      ACCOUNT_ROUTES.filter((route) => route.unfinishedLabelKey !== undefined).map((route) => [
+        route.path,
+        route.unfinishedLabelKey,
+      ]),
+    ).toEqual([['moji-podaci', 'nav.completeData']])
   })
 
   it('serves „Moji podaci" at an address of its own, whoever the menu draws it to', () => {

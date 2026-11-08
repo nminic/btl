@@ -211,13 +211,13 @@ class TheWrittenPagesSayTheDateOfBirthIsNotShownToOthersTest extends DatabaseTes
 			String today = language.equals("sr") ? "Poslednja izmena: 29.10.2026." : "Last amended: 29.10.2026.";
 			String rulebookToday = language.equals("sr") ? "Poslednja izmena: 30.10.2026." : "Last amended: 30.10.2026.";
 
-			String policyToday = language.equals("sr") ? "Poslednja izmena: 07.11.2026." : "Last amended: 07.11.2026.";
+			String policyToday = language.equals("sr") ? "Poslednja izmena: 08.11.2026." : "Last amended: 08.11.2026.";
 
 			assertThat(placesWhichCarry(language, today))
 					.as("the %s sign-off of 29.10.2026 must stand on the terms alone, V89 having moved the policy's on", language)
 					.containsExactly(new Place("uslovi-koriscenja", 11));
 			assertThat(placesWhichCarry(language, policyToday))
-					.as("the %s sign-off of 07.11.2026 must stand on the policy alone, V89 having moved it", language)
+					.as("the %s sign-off of 08.11.2026 must stand on the policy alone, V90 having moved it", language)
 					.containsExactly(THE_POLICY_SIGN_OFF);
 			assertThat(placesWhichCarry(language, rulebookToday))
 					.as("the %s sign-off of 30.10.2026 must stand on the rulebook alone", language)
@@ -303,6 +303,7 @@ class TheWrittenPagesSayTheDateOfBirthIsNotShownToOthersTest extends DatabaseTes
 		/* V77 (29.10.2026) cut the cell, the heading and the sign-off this file reverts by hand, so the pages are first put
 		   back to how they stood before V77, read out of V77 itself (V80 of 30.10.2026 moved the rulebook's sign-off on
 		   from the day V77 gave it, so it is undone first). */
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "90");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "89");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "80");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "78");
@@ -378,6 +379,7 @@ class TheWrittenPagesSayTheDateOfBirthIsNotShownToOthersTest extends DatabaseTes
 	@Test
 	void v73RunAgainOverTheFinishedTextStopsAndSaysTheWordIsAlreadyThere() {
 		/* The text V73 finished, which is the text before V77 cut parts of it (29.10.2026). */
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "90");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "89");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "80");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "78");
@@ -525,6 +527,11 @@ class TheWrittenPagesSayTheDateOfBirthIsNotShownToOthersTest extends DatabaseTes
 	 */
 	@Test
 	void theCellOfTheDocumentAndTheItemOfTheListStandOnceInTheirOwnSectionsInBothLanguages() {
+		/* V90 (owner, 08.11.2026) put "Moji podaci" in both where V73 wrote the card Podaci, so it is undone first, read
+		   out of V90 itself, and what is held here is the words V73 wrote; what stands now is held by
+		   TheWrittenPagesSayMojiPodaciWhereTheySaidTheCardTest. */
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "90");
+
 		for (String language : List.of("sr", "en")) {
 			/* The cell as V77 left it: its words about the table the number is kept in (owner, 29.10.2026) are struck,
 			   and the words V73 added to it ("na svojoj kartici Podaci; drugima") stand. */
