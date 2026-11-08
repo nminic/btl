@@ -1212,8 +1212,6 @@ export function eventsOnDay(events: BtlEvent[], races: Dated[], date: string): B
 export type SeriesEntry = {
   name: string
   next: BtlEvent
-  /** How many more times the same event runs after this one. */
-  more: number
 }
 
 /**
@@ -1233,21 +1231,16 @@ export function upcomingSeries(events: BtlEvent[], today: string, limit: number)
     .filter((event) => event.date >= today && event.kind === 'race')
     .sort((left, right) => left.date.localeCompare(right.date))
 
-  /* The row a name gets, built as the runs of it are met rather than gathered
-     into a list and read back afterwards. `ahead` is in date order, so the
-     first run of a name is the next one and every run after it only adds to the
-     count: the row that stands for a series is never a row nobody wrote. */
+  /* One row per name, and it is the first run of it: `ahead` is in date order,
+     so that is the next one. The later runs of the same name are not counted
+     and not mentioned (owner, 08.11.2026: „ne zanima korisnika ima li jos neki
+     datum nekad (ako je trka kopirana)"). */
   const byName = new Map<string, SeriesEntry>()
 
   for (const event of ahead) {
-    const open = byName.get(event.name)
-
-    byName.set(
-      event.name,
-      open === undefined
-        ? { name: event.name, next: event, more: 0 }
-        : { ...open, more: open.more + 1 },
-    )
+    if (!byName.has(event.name)) {
+      byName.set(event.name, { name: event.name, next: event })
+    }
   }
 
   return [...byName.values()]
