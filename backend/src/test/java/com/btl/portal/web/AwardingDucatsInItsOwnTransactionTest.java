@@ -30,7 +30,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * for rather than deadlocked with.
  *
  * <p>Committed, not rolled back, because a transaction of its own sees only what is committed and a turn
- * is only a turn between two connections; {@link #everythingThisWroteGoes} takes it all away again.
+ * is only a turn between two connections; {@link #everythingThisWroteGoes} takes it all away again,
+ * the membership included, which a deletion of the member would leave behind (V79).
  */
 @SpringBootTest
 @Import(TestcontainersConfiguration.class)
@@ -49,6 +50,8 @@ class AwardingDucatsInItsOwnTransactionTest {
 
 	private AwardingDucats ducats;
 
+	private long membership;
+
 	@BeforeEach
 	void anaHasRunOneHundredAndTwentyFiveKilometresInFebruary2028() {
 		ducats = new AwardingDucats(db, Clock.fixed(LocalDateTime.of(2028, 3, 15, 12, 0).atZone(SeasonClock.ZONE)
@@ -64,9 +67,10 @@ class AwardingDucatsInItsOwnTransactionTest {
 							+ " '0011223340000961', null, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 							+ " timestamptz '2026-09-01 10:00:00+00')")
 					.param(ANA).update();
-			db.sql("insert into membership (competitor_id, season, basis, decided_by_name, decided_at)"
-							+ " values (?, 2028, 'feeExempt', 'Probni Probic', timestamptz '2026-09-01 10:00:00+00')")
-					.param(ana()).update();
+			membership = db.sql("insert into membership (competitor_id, season, basis, decided_by_name, decided_at)"
+							+ " values (?, 2028, 'feeExempt', 'Probni Probic', timestamptz '2026-09-01 10:00:00+00')"
+							+ " returning id")
+					.param(ana()).query(Long.class).single();
 			race("dukat-sopstvena-prva", "2028-02-03");
 			race("dukat-sopstvena-druga", "2028-02-10");
 			run("dukat-sopstvena-prva", "60");
@@ -76,7 +80,14 @@ class AwardingDucatsInItsOwnTransactionTest {
 
 	@AfterEach
 	void everythingThisWroteGoes() {
+		/* THE MEMBERSHIP FIRST AND BY ITS KEY, because it does not go with the member:
+		   `membership_competitor_fk` is ON DELETE SET NULL since V79 („the money outlives a deleted
+		   member"), so deleting him leaves his row standing with nobody on it, committed, and every
+		   later class that counts memberships counts it. Found by CI on the first push, seven cases
+		   in four classes. By its key and not by member, because the case that deletes him has
+		   already emptied the column. */
 		transactions.executeWithoutResult(any -> {
+			db.sql("delete from membership where id = ?").param(membership).update();
 			db.sql("delete from competitor where member_number = ?").param(ANA).update();
 			db.sql("delete from btl_event where slug like 'dukat-sopstvena-%'").update();
 		});
