@@ -646,7 +646,9 @@ describe('the card Podaci, before the server has said who is reading', () => {
     expect(screen.queryByRole('heading', { level: 2, name: sr.account.personalTitle })).not.toBeInTheDocument()
   }, SLOW)
 
-  it('opens his own card to the member the cookie names, and never sent him to the front page on the way', async () => {
+  /* HIS OWN CARD IS „MOJI PODACI" SINCE 07.11.2026 (PDL „Član svojim podacima pristupa iz glavnog menija”): the
+     old address sends him there, and only once the server has said who he is. */
+  it('sends the member the cookie names from his own card to „Moji podaci", and never to the front page on the way', async () => {
     server = aServerThatHoldsTheAnswerAboutTheCaller(false)
 
     const { router } = renderAt(`${HIM}${THE_DATA}`, 'visitor', null)
@@ -662,8 +664,8 @@ describe('the card Podaci, before the server has said who is reading', () => {
     await server.arrivesAsTheCookieSays()
 
     expect(await screen.findByRole('heading', { level: 2, name: sr.account.personalTitle })).toBeVisible()
-    expect(screen.getByRole('heading', { level: 1, name: /Strahinja Vukićević/ })).toBeVisible()
-    expect(router.state.location.pathname).toMatch(new RegExp(`^/sr/takmicar/${HIS_NUMBER}-.+/podaci$`))
+    expect(screen.getByRole('heading', { level: 1, name: sr.nav.myData })).toBeVisible()
+    expect(router.state.location.pathname).toBe('/sr/moji-podaci')
     expect(waitingOutLoud()).toHaveLength(0)
   }, SLOW)
 

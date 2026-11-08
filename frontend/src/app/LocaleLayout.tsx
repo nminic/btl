@@ -1,6 +1,7 @@
 import { Navigate, useLocation, useParams } from 'react-router'
 import { DEFAULT_LOCALE, isLocale } from '../i18n/config'
 import { I18nProvider } from '../i18n/I18nProvider'
+import { BoxesSentProvider } from '../pages/profile/BoxesSentProvider'
 import { Shell } from './Shell'
 import { ThemeProvider } from './ThemeProvider'
 
@@ -27,7 +28,9 @@ export function LocaleLayout() {
   return (
     <I18nProvider locale={locale}>
       <ThemeProvider>
-        <Shell />
+        <BoxesSentProvider>
+          <Shell />
+        </BoxesSentProvider>
       </ThemeProvider>
     </I18nProvider>
   )

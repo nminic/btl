@@ -207,10 +207,11 @@ function SignInAs({ memberNumber, asking }: { memberNumber: string; asking: { wh
 
 const THE_QUEUE = '/sr/administracija/verifikacija/trkacki-profil'
 
-/** Where the picture is sent from since 06.11.2026, the bottom of his card Podaci. */
-const HIS_CARD = '/sr/takmicar/000007/podaci'
+/** Where the picture is sent from since 07.11.2026, „Moji podaci" (it was the bottom of his card Podaci from
+ *  06.11.2026). */
+const HIS_CARD = '/sr/moji-podaci'
 
-/** Sends a picture from his card Podaci, as a member who may also moderate - which is
+/** Sends a picture from „Moji podaci", as a member who may also moderate - which is
  *  what the owner is, and the one session in which both halves of this are reachable. */
 async function send(user: ReturnType<typeof setupUser>, at = HIS_CARD) {
   const { router } = renderAt(at, 'superadmin', '000007')
@@ -398,11 +399,8 @@ describe('a picture sent for a decision', () => {
     const server = theServer(THE_ROUTE_NAMES_THE_ROW, asking)
 
     try {
-      /* AS A MEMBER, since the picture is sent from the card „Podaci" (06.11.2026): the session this harness
-         signs the second man into keeps the role it was opened with, and a superadmin reading 000002's card
-         is the administration, which is drawn the administration's boxes and not his. Nothing of this case
-         needs the queue. */
-      const { router } = renderAt(HIS_CARD, 'competitor', '000007', undefined, null, (
+      /* AS A MEMBER: nothing of this case needs the queue. */
+      renderAt(HIS_CARD, 'competitor', '000007', undefined, null, (
         <SignInAs memberNumber="000002" asking={asking} />
       ))
 
@@ -417,9 +415,10 @@ describe('a picture sent for a decision', () => {
       await user.click(mine.getByRole('button', { name: 'Pošalji na odobrenje' }))
       await waitFor(() => (expect(screen.getByText(/čeka odobrenje/)).toBeVisible()))
 
+      /* ON THE SAME PAGE, which is his whoever signs in (07.11.2026): the second man is drawn his own boxes,
+         and nothing of what the first sent. */
       await user.click(screen.getByRole('button', { name: 'sign in somebody else' }))
-      /* HIS OWN CARD: the first man's card is nobody's to read for the second (06.11.2026). */
-      await router.navigate('/sr/takmicar/000002/podaci')
+      await waitFor(() => expect(screen.queryByText(/čeka odobrenje/)).toBeNull())
 
       const theirs = await panelFor()
 

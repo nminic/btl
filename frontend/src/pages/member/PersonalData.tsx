@@ -37,7 +37,8 @@ import {
  * (`MeApi.MyOwnRecord`), to him alone, and the public record still carries neither.</li>
  * <li><b>It carries the town and the shirt size since 23.10.2026</b>, when it moved from the screen
  * of the settings to the card „Podaci" of his own profile (PDL 22.10.2026, „Profil dobija karticu
- * „Podaci""; „Član sam menja sve osim pola i datuma rođenja"). The town in the control the
+ * „Podaci""; „Član sam menja sve osim pola i datuma rođenja"), and from there to „Moji podaci" on
+ * 07.11.2026. The town in the control the
  * registration draws it with (`PlaceField`), a name and its country; the size out of the seven the
  * registration offers, read off its definition. A town in another country moves the money he is
  * billed in, which is the server's to do (`ACountryMovesTheMoney`).</li>
@@ -68,9 +69,9 @@ import {
  * he does not change stand where the registration asks them, held (`fixed`), and the sentence that says
  * who changes them stands above the fields and describes each of the four (`fixedSaidBy`).
  *
- * <p><b>One panel for every reader who has one</b>: the card „Podaci" of a member whose fee stands,
- * and the page „Moji podaci" of somebody who has not paid yet, which is the next piece of work (PDL
- * 22.10.2026: „Neka ima u navigaciji stranu Moji Podaci dok nije odobren koja je iznad Moja
+ * <p><b>One panel for every reader who has one</b>, on one page: „Moji podaci", of a member whose fee
+ * stands and of somebody who has not paid yet (PDL 07.11.2026, „Član svojim podacima pristupa iz glavnog
+ * menija”; and 22.10.2026: „Neka ima u navigaciji stranu Moji Podaci dok nije odobren koja je iznad Moja
  * Članarina"). Both send to the same route and are told the same sentences.
  */
 export function PersonalData({ me }: { me: MyData }) {

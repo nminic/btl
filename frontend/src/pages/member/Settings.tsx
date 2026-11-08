@@ -50,7 +50,8 @@ const THEMES: Theme[] = ['dark', 'light']
  * <ul>
  * <li><b>A member whose fee stands</b> is drawn the password, the switch that hides his profile, the
  * theme and the language of his mail. His picture and his words about himself are not here since
- * 06.11.2026: they stand at the bottom of the card „Podaci" of his profile (owner, PDL „Boksovi
+ * 06.11.2026: they stood at the bottom of the card „Podaci" of his profile, and stand on „Moji podaci"
+ * since 07.11.2026 (owner, PDL „Boksovi
  * „Profilna slika" i „Tekst o sebi" prelaze sa Podešavanja": „Podešavanja ostaju podešavanja naloga
  * (lozinka, privatnost, tema, jezik pošte)").</li>
  * <li><b>A member whose fee has lapsed</b> is drawn the theme and one sentence: his data and his
@@ -108,18 +109,19 @@ export function Settings() {
 
       {/* **TWO TALL ROWS OF TWO COLUMNS, since 06.11.2026.** They were three since 23.10.2026 (PDL,
           „Strana Podešavanja u tri visoka reda sa dve kolone"), and the second, the picture beside the
-          words about oneself, moved to the bottom of the card „Podaci" (owner, 06.11.2026, PDL „Boksovi
+          words about oneself, moved to the bottom of the card „Podaci" and from there to „Moji podaci"
+          on 07.11.2026 (owner, 06.11.2026, PDL „Boksovi
           „Profilna slika" i „Tekst o sebi" prelaze sa Podešavanja": „Podešavanja ostaju podešavanja
-          naloga (lozinka, privatnost, tema, jezik pošte)"; `CompetitorData.tsx`). What stays is the
+          naloga (lozinka, privatnost, tema, jezik pošte)"; `MyData.tsx`). What stays is the
           password beside who sees the profile, then the theme beside the language of the mail. On a
           telephone every row is one column, as the UI standard of this repository asks (`CLAUDE.md`),
           from the same `.member__pair`; the two boxes of a row are as tall as each other (`.member__row`,
           `Member.css`).
 
-          **THE PERSONAL DATA ARE NOT ON THIS SCREEN FOR ANYBODY.** A member whose fee stands changes them
-          on the card „Podaci" of his own profile (PDL 22.10.2026, „Profil dobija karticu „Podaci""), and
-          somebody who has not paid yet on the page „Moji podaci" (PDL 22.10.2026, „Neka ima u navigaciji
-          stranu Moji Podaci dok nije odobren"), which draws the same panel (`PersonalData.tsx`).
+          **THE PERSONAL DATA ARE NOT ON THIS SCREEN FOR ANYBODY.** A member whose fee stands and
+          somebody who has not paid yet change them on the page „Moji podaci" (PDL 07.11.2026, „Član
+          svojim podacima pristupa iz glavnog menija”; 22.10.2026, „Neka ima u navigaciji stranu Moji
+          Podaci dok nije odobren"), which draws the panel (`PersonalData.tsx`).
 
           **THE FIRST ROW: THE PASSWORD, AND BESIDE IT WHO SEES THE PROFILE.** The password is drawn to a
           member whose fee stands and to an administration account with no member (PDL, the answers of

@@ -1,6 +1,7 @@
 import { configure, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 import { htmlElement } from '../test/at'
+import { hisPageAsServed } from '../test/hisPage'
 import { aNeverPaidRecord, neverPaidAsServed } from '../test/neverPaid'
 import { renderAt } from '../test/render'
 import { anInvoice, invoiceAsServed, serverThat } from '../test/serverAnswers'
@@ -135,6 +136,8 @@ describe('the panel behind the picture of somebody who has not paid', () => {
     const user = setupUser()
 
     stand(neverPaidAsServed())
+
+    const { asked } = stand(serverThat(() => null))
     renderAt('/sr', 'visitor', null)
 
     const button = await pictureButton()
@@ -151,6 +154,10 @@ describe('the panel behind the picture of somebody who has not paid', () => {
       ['Moja članarina', '/sr/moja-clanarina'],
     ])
     expect(panel.getAllByRole('button').map((one) => one.textContent)).toEqual(['Odjavi se'])
+
+    /* AND NEVER „DOPUNI PODATKE" (derived 07.11.2026 from PDL 10.10.2026: he may not set a picture or words
+       about himself until he has paid), so his pictures are not even asked about. */
+    expect(asked.filter((one) => one.path === '/api/me/photo')).toHaveLength(0)
 
     /* The three he is not drawn, named, so an entry that is left in by the next change fails here and
        not by being counted. */
@@ -347,10 +354,21 @@ describe('the same menu for everybody else', () => {
     expect(button).toHaveTextContent('11')
     await user.click(button)
     expect(within(panelOf(button)).getByText('Nalog 11')).toBeVisible()
-    expect(screen.queryByRole('link', { name: 'Moji podaci' })).not.toBeInTheDocument()
+    /* AND THE WHOLE LIST, „Moji podaci" among it, the way it is drawn the other entries of a member's area
+       that tell an account with no record what every screen of that area tells it (`NotRacing`): derived
+       07.11.2026, the owner's decision of that day names the members and not the accounts. Never
+       „Dopuni podatke": an account has no picture and no words to lack. */
+    expect(
+      within(panelOf(button))
+        .getAllByRole('link')
+        .map((one) => one.textContent),
+    ).toEqual(['Moj profil', 'Moji podaci', 'Moji rezultati', 'Moja članarina', 'Podešavanja'])
   }, SLOW)
 
-  it('draws a member the entries it always had, without „Moji podaci"', async () => {
+  /* „MOJI PODACI" UNDER „MOJ PROFIL", in the order the owner names them (07.11.2026, PDL „Član svojim
+     podacima pristupa iz glavnog menija”). Read by where each leads rather than by its words, because the
+     name of the second is the member's profile's to say (`profile/finishTheProfile.test.tsx`). */
+  it('draws a member the entries it always had, and „Moji podaci" second', async () => {
     const user = setupUser()
 
     renderAt('/sr', 'competitor', '000007')
@@ -362,8 +380,8 @@ describe('the same menu for everybody else', () => {
     expect(
       within(panelOf(button))
         .getAllByRole('link')
-        .map((one) => one.textContent),
-    ).toEqual(['Moj profil', 'Moji rezultati', 'Moja članarina', 'Podešavanja'])
+        .map((one) => one.getAttribute('href')),
+    ).toEqual(['/sr/moj-profil', '/sr/moji-podaci', '/sr/moji-rezultati', '/sr/moja-clanarina', '/sr/podesavanja'])
   }, SLOW)
 })
 
@@ -398,11 +416,35 @@ function ApprovesHim() {
   )
 }
 
+describe('the menu of a member whose fee has lapsed', () => {
+  /* Owner, 07.11.2026 (PDL, „nema stavku „Moji podaci” u meniju”): „Član kome je istekla članarina nema stavku
+     „Moji podaci” u meniju, a adresa ga šalje na „Moja članarina”, kao do sada". */
+  it('holds every entry of a member but „Moji podaci"', async () => {
+    const user = setupUser()
+
+    stand(hisPageAsServed())
+    renderAt('/sr', 'visitor', null)
+
+    const button = await screen.findByRole('button', { name: 'Otvori nalog' })
+
+    await user.click(button)
+
+    await waitFor(() =>
+      expect(
+        within(panelOf(button))
+          .getAllByRole('link')
+          .map((one) => one.getAttribute('href')),
+      ).toEqual(['/sr/moj-profil', '/sr/moji-rezultati', '/sr/moja-clanarina', '/sr/podesavanja']),
+    )
+  }, SLOW)
+})
+
 describe('the menu, when his fee is recorded', () => {
-  /* **„MOJI PODACI" GOES AWAY WITH THE APPROVAL** (PDL 22.10.2026: „posle odobrenja „Moji podaci" nestaje
-     iz navigacije"), in the same render the session changes in. The member he becomes is a row of the
-     generated data, so he is named as one and his circle is a member's. */
-  it('loses „Moji podaci", gains the entries of a member, and is named as a member', async () => {
+  /* **„MOJI PODACI" STAYS WITH THE APPROVAL** since 07.11.2026 (owner, PDL „Član svojim podacima pristupa iz
+     glavnog menija”, which changes „posle odobrenja „Moji podaci" nestaje iz navigacije" of 22.10.2026), and
+     the entries of a member join it in the same render the session changes in. The member he becomes is a
+     row of the generated data, so he is named as one and his circle is a member's. */
+  it('keeps „Moji podaci", gains the entries of a member, and is named as a member', async () => {
     const user = setupUser()
 
     stand(neverPaidAsServed())
@@ -422,8 +464,13 @@ describe('the menu, when his fee is recorded', () => {
     const panel = within(panelOf(after))
 
     expect(await panel.findByText('Ksenija Vasiljević')).toBeVisible()
-    expect(panel.queryByRole('link', { name: 'Moji podaci' })).not.toBeInTheDocument()
-    expect(panel.getByRole('link', { name: 'Moj profil' })).toBeVisible()
+    expect(panel.getAllByRole('link').map((one) => one.getAttribute('href'))).toEqual([
+      '/sr/moj-profil',
+      '/sr/moji-podaci',
+      '/sr/moji-rezultati',
+      '/sr/moja-clanarina',
+      '/sr/podesavanja',
+    ])
     expect(screen.queryByRole('button', { name: 'Otvori moj meni' })).not.toBeInTheDocument()
   }, SLOW)
 })

@@ -1,5 +1,6 @@
 package com.btl.portal.db;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -32,6 +33,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 class TheWrittenPagesSayThatTheProfileIsEditedOnThePageMojiPodaciTest extends DatabaseTest {
 
 	static final String POLICY = "politika-privatnosti";
+
+	/**
+	 * V90 (owner, 08.11.2026) links the sentence V89 wrote and moves the sign-off V89 moved, so every case here reads the
+	 * text with V90 undone, read out of V90 itself: what is held here is what V89 wrote, and what stands now is held by
+	 * {@link TheWrittenPagesSayMojiPodaciWhereTheySaidTheCardTest}.
+	 */
+	@BeforeEach
+	void theTextAsV89LeftIt() {
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "90");
+	}
 
 	/**
 	 * One edit of V89 as the owner decided it. The full new text must stand once in the section, and a piece of the old
