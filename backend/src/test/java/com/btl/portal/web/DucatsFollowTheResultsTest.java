@@ -337,11 +337,14 @@ class DucatsFollowTheResultsTest {
 		long gone = result(ANA, second, "30");
 
 		reconciled(ANA);
+		anAprilHeWasNeverReconciledFor();
 
 		assertThat(http.perform(asking(THE_SUPERADMIN, delete("/api/races/" + second + "/results/" + gone)))
 				.andReturn().getResponse().getStatus()).isEqualTo(204);
 
-		assertThat(ducatsOf(ANA)).isEmpty();
+		assertThat(ducatsOf(ANA))
+				.as("the reconciliation after a deletion writes what he meets and does not hold, in silence")
+				.containsExactly(THE_MONTHLY + " 2027/4");
 		assertThat(ducatMessagesTo(ANA)).isEmpty();
 		assertThat(nobodyElseGotADucat()).isTrue();
 	}
@@ -356,12 +359,15 @@ class DucatsFollowTheResultsTest {
 		long gone = result(ANA, second, "30");
 
 		reconciled(ANA);
+		anAprilHeWasNeverReconciledFor();
 
 		assertThat(http.perform(delete("/api/results/" + gone).with(csrf())
 						.cookie(new Cookie(SessionCookie.NAME, anas.secret())))
 				.andReturn().getResponse().getStatus()).isEqualTo(204);
 
-		assertThat(ducatsOf(ANA)).isEmpty();
+		assertThat(ducatsOf(ANA))
+				.as("the reconciliation after a deletion writes what he meets and does not hold, in silence")
+				.containsExactly(THE_MONTHLY + " 2027/4");
 		assertThat(ducatMessagesTo(ANA)).isEmpty();
 		assertThat(nobodyElseGotADucat()).isTrue();
 	}
@@ -565,6 +571,15 @@ class DucatsFollowTheResultsTest {
 		return ducatsOf(BOJAN).isEmpty() && db.sql("select count(*) from message where subject = ?"
 						+ " and (to_id is null or to_id <> ?)")
 				.params(THE_SUBJECT, id(ANA)).query(Integer.class).single() == 0;
+	}
+
+	/**
+	 * 130 KM IN APRIL, ADDED AFTER HIS LAST RECONCILIATION: the reconciliation that follows a deletion
+	 * writes that ducat, so a door that is meant to stay silent is seen to stay silent over a ducat it
+	 * WROTE, and not only over one it took away (which is never announced by construction).
+	 */
+	private void anAprilHeWasNeverReconciledFor() {
+		result(ANA, race("dukat-okidac-april", "Aprilska trka", LocalDate.of(2027, 4, 11)), "130");
 	}
 
 	private void reconciled(String number) {
