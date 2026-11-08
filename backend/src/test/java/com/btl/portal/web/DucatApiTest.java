@@ -331,10 +331,10 @@ class DucatApiTest {
 				+ " 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00')").update();
 
 		assertThat(db.sql("insert into ducat_award (competitor_id, ducat_id, kind, threshold, reached,"
-						+ " period, season, month) values"
+						+ " period, season, month, tier, won_on) values"
 						+ " ((select id from competitor where member_number = '000777'),"
 						+ " (select id from ducat where code = 'duk-sezonski-km'), 'totalKm', 1000,"
-						+ " 1777.77, 'season', 2027, null)").update())
+						+ " 1777.77, 'season', 2027, null, 2, date '2027-04-10')").update())
 				.as("nobody holds a ducat in this fixture, so the answer below could not name anybody")
 				.isOne();
 

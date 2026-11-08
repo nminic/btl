@@ -1,6 +1,7 @@
 package com.btl.portal.db;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import java.util.List;
 
@@ -404,6 +405,80 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 	}
 
 	/**
+	 * A RESULT THAT GOES TAKES NOTHING ELSE WITH IT FROM A BADGE: the badge stays and its pointer is empty.
+	 *
+	 * <p>V91's {@code ducat_award_result_fk}. The result is deleted for real here, and both halves are
+	 * read afterwards: the award is still there with its tier and its day, and only {@code result_id} is
+	 * null. CASCADE would leave no award; RESTRICT would refuse the delete; and a second result that
+	 * won nothing is left standing to show the delete did not reach it.
+	 */
+	@Test
+	void aBadgeStaysWhenTheResultThatWonItGoes() {
+		long member = member("Dukat", "Pobednik", A_TOWN_IN_SERBIA + ", null, null");
+		long race = race(event("dukat-rezultat-2027", A_TOWN_IN_SERBIA + ", null, null"), "Dukat trka", "10.00");
+		long other = race(event("dukat-drugi-2027", A_TOWN_IN_SERBIA + ", null, null"), "Druga trka", "5.00");
+		result(member, race, "10.00");
+		result(member, other, "5.00");
+		long won = db.sql("select id from result where race_id = " + race).query(Long.class).single();
+		long left = db.sql("select id from result where race_id = " + other).query(Long.class).single();
+
+		db.sql("insert into ducat_award (competitor_id, ducat_id, kind, threshold, reached, period, season, month,"
+				+ " tier, won_on, result_id) select " + member + ", id, 'totalKm', 1000, 1000, 'season', 2027, null,"
+				+ " 2, date '2027-04-03', " + won + " from ducat where code = 'duk-sezonski-km'").update();
+		db.sql("insert into ducat_award (competitor_id, ducat_id, kind, threshold, reached, period, season, month,"
+				+ " tier, won_on, result_id) select " + member + ", id, 'totalKm', 125, 125, 'month', 2027, 4,"
+				+ " 1, date '2027-04-03', " + left + " from ducat where code = 'duk-mesecni-km'").update();
+
+		db.sql("delete from result where id = " + won).update();
+
+		assertThat(db.sql("select count(*) from ducat_award where competitor_id = " + member)
+				.query(Long.class).single())
+				.as("the delete emptied competitor_id or took the badge: only result_id may be emptied")
+				.isEqualTo(2L);
+
+		assertThat(db.sql("select tier || ' ' || won_on || ' ' || coalesce(result_id::text, 'none') from ducat_award"
+				+ " where threshold = 1000").query(String.class).list())
+				.as("the badge did not stay standing with its tier and its day and an empty pointer")
+				.containsExactly("2 2027-04-03 none");
+		assertThat(db.sql("select result_id from ducat_award where threshold = 125").query(Long.class).single())
+				.as("the delete reached a badge that another result won")
+				.isEqualTo(left);
+
+		db.sql("delete from competitor where id = " + member).update();
+
+		assertThat(db.sql("select count(*) from ducat_award").query(Long.class).single())
+				.as("deleting the member did not take his badges with him (the cascade of V15)")
+				.isZero();
+	}
+
+	/**
+	 * A BADGE CANNOT POINT AT THE RESULT OF ANOTHER MEMBER, and deleting its owner still deletes it.
+	 *
+	 * <p>V91's key is (result_id, competitor_id) onto (id, competitor_id). Member B's badge naming member
+	 * A's result is refused by {@code ducat_award_result_fk}; the same badge with its own member's result
+	 * goes in.
+	 */
+	@Test
+	void aBadgeCannotNameAResultOfSomebodyElse() {
+		long a = member("Prvi", "Vlasnik", A_TOWN_IN_SERBIA + ", null, null");
+		long b = member("Drugi", "Vlasnik", A_TOWN_IN_SERBIA + ", null, null");
+		long raceId = race(event("dukat-vlasnik-2027", A_TOWN_IN_SERBIA + ", null, null"), "Vlasnik trka", "10.00");
+		result(a, raceId, "10.00");
+		long aResult = db.sql("select id from result where competitor_id = " + a).query(Long.class).single();
+		String award = "insert into ducat_award (competitor_id, ducat_id, kind, threshold, reached, period, season,"
+				+ " month, tier, won_on, result_id) select %d, id, 'totalKm', 1000, 1000, 'season', 2027, null, 2,"
+				+ " date '2027-04-03', " + aResult + " from ducat where code = 'duk-sezonski-km'";
+
+		assertThat(db.sql(award.formatted(a)).update())
+				.as("a badge naming its own member's result was refused")
+				.isOne();
+		assertThatThrownBy(() -> db.sql(award.formatted(b)).update())
+				.as("a badge of one member named the result of another")
+				.isInstanceOf(DataIntegrityViolationException.class)
+				.hasMessageContaining("ducat_award_result_fk");
+	}
+
+	/**
 	 * Every rule in the schema about what a deletion takes with it is named here.
 	 *
 	 * This is the second half of O1 held as a measurement, and it is over the
@@ -524,6 +599,12 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 				"ducat_award.ducat_award_competitor_fk cascade",
 				"ducat_award.ducat_award_ducat_fk restrict",
 				"ducat_award.ducat_award_kind_fk restrict",
+				/* V91. The result that won the badge. SET NULL: CASCADE would take the badge of a frozen
+				   season with the result, and that one stays (PDL: "Dukat se oduzima kad se njegov rezultat
+				   obriše ili ispravi ispod uslova, osim mesečnog i sezonskog dukata zamrznute sezone");
+				   RESTRICT would stop a result being deleted, which happens in several places. Which
+				   badges are taken away is decided by the reconciliation, not by the database. */
+				"ducat_award.ducat_award_result_fk set null",
 				"email_verification_token.email_verification_token_account_fk cascade",
 				// the comment outlives its author and keeps his name as text
 				"event_comment.event_comment_competitor_fk set null",
