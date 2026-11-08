@@ -29,8 +29,15 @@ export function cameFrom(address: string): { [BACK]: string } {
  * reading of an address: the one question is what a browser would open, and `//zlo.example`, `/\zlo` and
  * a tab or a newline in the middle are each read by the parser as another host, which a pattern written
  * for the first of them misses for the rest. So the address must start with one slash, be read against
- * the portal's own origin, and come out ON that origin. What is handed back is the path, the query and the
- * part after `#` the parser read, never the whole address, so nothing of a host travels on.
+ * the portal's own origin, and come out ON that origin.
+ *
+ * <p><b>And what is handed back is asked the same question again</b>, because it is not the text that was
+ * read. It is the path, the query and the part after `#` the parser made of it, never the whole address, so
+ * nothing of a host is copied over; but the parser has by then also resolved the dotted segments, and
+ * `/.//zlo.example` is read on the portal and comes out as the path `//zlo.example`, which the router hands
+ * to the browser as another host (security review of PR 703). So the path handed back is refused where it
+ * begins with two slashes (the shape) and where it does not stay on the portal when it is read again (the
+ * property). Each refuses every such input on its own; the two stand together on purpose.
  */
 export function backAfterSignIn(state: unknown, origin: string): string | null {
   const said: unknown = state === null ? undefined : Reflect.get(Object(state), BACK)
@@ -52,7 +59,9 @@ export function backAfterSignIn(state: unknown, origin: string): string | null {
     return null
   }
 
-  return `${read.pathname}${read.search}${read.hash}`
+  const back = `${read.pathname}${read.search}${read.hash}`
+
+  return back.startsWith('//') || new URL(back, origin).origin !== origin ? null : back
 }
 
 /** The sign in page in any language, where going back would only draw the form again. */

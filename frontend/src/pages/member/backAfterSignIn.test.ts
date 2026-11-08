@@ -21,6 +21,9 @@ describe('an address of the portal', () => {
     ['/en/poruke/12', '/en/poruke/12'],
     /* Read as the browser reads it, so what goes back is the path it would open. */
     ['/sr/kalendar/../moji-podaci', '/sr/moji-podaci'],
+    /* A dotted segment in the middle of an address of the portal is sorted out and the address kept: it stays on
+       the portal however it is read, so refusing it would take the way back from nobody who means harm. */
+    ['/sr/./moji-podaci', '/sr/moji-podaci'],
   ])('sends him back to %s', (said, back) => {
     expect(backAfterSignIn(cameFrom(said), ORIGIN)).toBe(back)
   })
@@ -44,6 +47,32 @@ describe('an address that is not one of the portal', () => {
     'moji-podaci',
     '',
   ])('sends him nowhere back from %j', (said) => {
+    expect(backAfterSignIn(cameFrom(said), ORIGIN)).toBeNull()
+  })
+})
+
+/**
+ * AN ADDRESS READ ON THE PORTAL THAT COMES OUT AS ANOTHER HOST once its dotted segments are sorted out: the parser
+ * reads each of these on the portal's own origin, and the path it makes of them begins with two slashes, which a
+ * browser opens as `zlo.example` (security review of PR 703, the eleven it measured). The path handed back is
+ * asked again, by its shape and by where it leads (`backAfterSignIn.ts`).
+ */
+describe('an address of the portal that comes out as another host', () => {
+  it.each([
+    '/.//zlo.example',
+    '/..//zlo.example',
+    '/%2e//zlo.example',
+    '/%2E%2E//zlo.example',
+    '/.\\/zlo.example',
+    '/./\\zlo.example',
+    '/.\\\\zlo.example',
+    '/\t./\t/zlo.example',
+    '/.\t//zlo.example',
+    '/sr/a/../../..//zlo.example',
+    '/sr/moji-podaci/../.././/zlo.example/x',
+  ])('sends him nowhere back from %j', (said) => {
+    /* Read on the portal, as the first question asks, so the refusal below is the second question's. */
+    expect(new URL(said, ORIGIN).origin).toBe(ORIGIN)
     expect(backAfterSignIn(cameFrom(said), ORIGIN)).toBeNull()
   })
 })
