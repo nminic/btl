@@ -130,6 +130,10 @@ class DucatsFollowTheResultsTest {
 		superadmin = account(THE_SUPERADMIN, "superadmin", null);
 		anas = account(ANAS_ADDRESS, "competitor", ANA);
 
+		/* AN EVENT WITH NO RACE FIRST, so no event shares its key with a race of this fixture, and a door that
+		   asked for a race by the event's key, or the other way round, finds nobody. */
+		event("dukat-okidac-bez-trke", "Bez trke", LocalDate.of(2027, 5, 1));
+
 		/* BOJAN MEETS THE DUCAT OF MAY AND HOLDS NONE: whoever reconciles him by mistake writes it. */
 		long bojans = race("dukat-okidac-bojan", "Bojanova trka", LocalDate.of(2027, 5, 9));
 
@@ -422,7 +426,9 @@ class DucatsFollowTheResultsTest {
 	void anEventMovedIntoAnotherMonthMovesTheDucatsOfEveryoneWhoRanAtItInSilence() throws Exception {
 		long race = race("dukat-okidac-prva", "Majska trka", LocalDate.of(2027, 5, 20));
 
-		result(VERA, race, "130");
+		/* VERA RAN THE OTHER RACE OF THE SAME EVENT, so a door that asked one race instead of the event
+		   reaches one of the two and not both. */
+		result(VERA, aSecondRaceOn(eventOf(race), "Majska polovina", LocalDate.of(2027, 5, 20)), "130");
 		result(ANA, race, "130");
 		reconciled(VERA);
 		reconciled(ANA);
@@ -436,7 +442,8 @@ class DucatsFollowTheResultsTest {
 
 		assertThat(moved.getStatus()).as(moved.getContentAsString()).isEqualTo(200);
 
-		assertThat(db.sql("select race_date from result where race_id = ? order by id").param(race)
+		assertThat(db.sql("select r.race_date from result r join race on race.id = r.race_id"
+						+ " where race.event_id = ? order by r.id").param(eventOf(race))
 				.query(LocalDate.class).list())
 				.as("the runs did not move with the event's races")
 				.containsExactly(LocalDate.of(2027, 6, 3), LocalDate.of(2027, 6, 3));
@@ -450,7 +457,9 @@ class DucatsFollowTheResultsTest {
 	void anEventDeletedTakesTheDucatsOfEveryoneWhoRanAtItInSilence() throws Exception {
 		long race = race("dukat-okidac-prva", "Majska trka", LocalDate.of(2027, 5, 20));
 
-		result(VERA, race, "130");
+		/* VERA RAN THE OTHER RACE OF THE SAME EVENT, so a door that asked one race instead of the event
+		   reaches one of the two and not both. */
+		result(VERA, aSecondRaceOn(eventOf(race), "Majska polovina", LocalDate.of(2027, 5, 20)), "130");
 		result(ANA, race, "130");
 		reconciled(VERA);
 		reconciled(ANA);
@@ -646,6 +655,13 @@ class DucatsFollowTheResultsTest {
 		return db.sql("insert into race (event_id, name, renamed, date, kind, limit_seconds, distance_km,"
 						+ " ascent_m, descent_m) values (?, ?, false, ?, 'free', 0, 0, 0, 0) returning id")
 				.params(event(slug, "Dogadjaj " + slug, day), name, day).query(Long.class).single();
+	}
+
+	/** Another free race on an event that already has one, the day it is run on given. */
+	private long aSecondRaceOn(long event, String name, LocalDate day) {
+		return db.sql("insert into race (event_id, name, renamed, date, kind, limit_seconds, distance_km,"
+						+ " ascent_m, descent_m) values (?, ?, false, ?, 'free', 0, 0, 0, 0) returning id")
+				.params(event, name, day).query(Long.class).single();
 	}
 
 	private long result(String number, long race, String km) {
