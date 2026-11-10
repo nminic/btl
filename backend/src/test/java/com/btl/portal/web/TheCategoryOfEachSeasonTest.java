@@ -83,7 +83,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 class TheCategoryOfEachSeasonTest {
 
 	/** 20 November 2027 at noon: 2027 runs, 2028 is on sale. */
-	private static final Instant IN_THE_WINDOW = Instant.parse("2027-11-20T11:00:00Z");
+	private static final Instant IN_THE_WINDOW = Instant.parse("2027-11-30T11:00:00Z");
 
 	/** The last second of 2027 in Belgrade, and the first of 2028. */
 	private static final Instant THE_LAST_SECOND_OF_2027 = Instant.parse("2027-12-31T22:59:59Z");
@@ -94,14 +94,14 @@ class TheCategoryOfEachSeasonTest {
 	private static final Instant IN_FEBRUARY_2028 = Instant.parse("2028-02-15T11:00:00Z");
 
 	/** The day before 2028 goes on sale (11 November): the running season is the only one there is. */
-	private static final Instant THE_DAY_BEFORE_THE_WINDOW = Instant.parse("2027-11-10T11:00:00Z");
+	private static final Instant THE_DAY_BEFORE_THE_WINDOW = Instant.parse("2027-11-20T11:00:00Z");
 
 	private static final Instant ACTIVATED_IN_TIME = Instant.parse("2026-10-20T10:00:00Z");
 
 	/** After 31 March 2027, so 2027 held from that day has no right to rank (PDL, 28.10.2026). */
 	private static final Instant ACTIVATED_LATE = Instant.parse("2027-04-02T10:00:00Z");
 
-	private static final Instant SOLD_IN_NOVEMBER = Instant.parse("2027-11-15T10:00:00Z");
+	private static final Instant SOLD_IN_NOVEMBER = Instant.parse("2027-11-25T10:00:00Z");
 
 	private static final String BOTH = "000201";
 

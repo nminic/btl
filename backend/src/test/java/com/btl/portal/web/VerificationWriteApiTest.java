@@ -1814,7 +1814,7 @@ class VerificationWriteApiTest {
 	 */
 	@Test
 	void aFounderWhoHasNotPaidTheSeasonOnSaleIsRefusedInTheOwnersWordsAndTheItemStays() throws Exception {
-		clock.moveTo(Instant.parse("2027-11-20T09:00:00Z"));
+		clock.moveTo(Instant.parse("2027-11-30T09:00:00Z"));
 
 		db.sql("delete from membership where competitor_id = ? and season = 2028")
 				.param(memberId(BOJAN)).update();

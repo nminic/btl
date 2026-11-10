@@ -131,6 +131,7 @@ final class TheWrittenPagesBeforeV71 {
 	}
 
 	static void putBack(JdbcClient db, String v71) {
+		undoBodyEdits(db, "93");
 		undoBodyEdits(db, "90");
 		undoBodyEdits(db, "89");
 		undoBodyEdits(db, "80");

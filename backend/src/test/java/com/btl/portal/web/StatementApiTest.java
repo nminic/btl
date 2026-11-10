@@ -61,7 +61,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 @Transactional
 class StatementApiTest {
 
-	private static final Instant NOW = Instant.parse("2027-11-16T09:00:00Z");
+	private static final Instant NOW = Instant.parse("2027-11-26T09:00:00Z");
 
 	private static final int SEASON = 2028;
 

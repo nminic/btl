@@ -75,10 +75,10 @@ class TheBasisOfTheSeasonOnSaleTest {
 	private static final Instant IN_THE_WINDOW = Instant.parse("2027-11-22T10:00:00Z");
 
 	/** The last day 2027 is on sale, in the league's own time. */
-	private static final Instant THE_LAST_DAY_BEFORE_IT = Instant.parse("2027-11-10T12:00:00Z");
+	private static final Instant THE_LAST_DAY_BEFORE_IT = Instant.parse("2027-11-20T12:00:00Z");
 
 	/** And the first day 2028 is. */
-	private static final Instant THE_FIRST_DAY_OF_IT = Instant.parse("2027-11-11T12:00:00Z");
+	private static final Instant THE_FIRST_DAY_OF_IT = Instant.parse("2027-11-21T12:00:00Z");
 
 	/** Before the league has a season: the calendar says 2026 and both readings answer 2027. */
 	private static final Instant BEFORE_THE_LEAGUE = Instant.parse("2026-10-18T10:00:00Z");

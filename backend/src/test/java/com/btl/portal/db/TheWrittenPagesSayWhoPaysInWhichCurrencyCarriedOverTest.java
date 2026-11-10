@@ -86,6 +86,7 @@ class TheWrittenPagesSayWhoPaysInWhichCurrencyCarriedOverTest extends DatabaseTe
 
 	/** The pages as they stood before V80, and the proof that this is so: a piece of every old text stands again. */
 	private void theTextAsItStoodBeforeV80() {
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "93");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "80");
 
 		for (TheWrittenPagesSayWhoPaysInWhichCurrencyTest.Change change : TheWrittenPagesSayWhoPaysInWhichCurrencyTest.CHANGES) {

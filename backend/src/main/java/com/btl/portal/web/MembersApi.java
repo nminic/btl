@@ -148,7 +148,7 @@ class MembersApi {
 	@RightIsNeeded(CompetitorApi.OVER_THE_MEMBERS)
 	List<Member> members() {
 		/* The clock is read ONCE for the whole answer, as `CompetitorApi` reads it: the band for the
-		   season it is worked out for, and the basis for the season on sale, which from 11 November
+		   season it is worked out for, and the basis for the season on sale, which from 21 November
 		   is the next one. */
 		ZonedDateTime now = ZonedDateTime.now(clock);
 		int sold = SeasonClock.seasonBeingPaidFor(now);
@@ -210,7 +210,7 @@ class MembersApi {
 		return rows.stream().map(one -> {
 			Currency his = monies.get(one.id());
 
-			/* THE SEASON ON SALE AND NOT THE SEASON HIS CARD SPEAKS OF: from 11 November the two are different years, and the junior price
+			/* THE SEASON ON SALE AND NOT THE SEASON HIS CARD SPEAKS OF: from 21 November the two are different years, and the junior price
 			   follows the season paid for (`MembershipPrice.on`). */
 			MembershipPrice.Price price = MembershipPrice.on(priceList, today, one.birthYear(), sold, his);
 

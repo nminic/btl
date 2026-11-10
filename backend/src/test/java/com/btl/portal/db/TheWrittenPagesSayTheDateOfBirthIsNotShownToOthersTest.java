@@ -303,6 +303,7 @@ class TheWrittenPagesSayTheDateOfBirthIsNotShownToOthersTest extends DatabaseTes
 		/* V77 (29.10.2026) cut the cell, the heading and the sign-off this file reverts by hand, so the pages are first put
 		   back to how they stood before V77, read out of V77 itself (V80 of 30.10.2026 moved the rulebook's sign-off on
 		   from the day V77 gave it, so it is undone first). */
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "93");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "90");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "89");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "80");
@@ -379,6 +380,7 @@ class TheWrittenPagesSayTheDateOfBirthIsNotShownToOthersTest extends DatabaseTes
 	@Test
 	void v73RunAgainOverTheFinishedTextStopsAndSaysTheWordIsAlreadyThere() {
 		/* The text V73 finished, which is the text before V77 cut parts of it (29.10.2026). */
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "93");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "90");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "89");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "80");

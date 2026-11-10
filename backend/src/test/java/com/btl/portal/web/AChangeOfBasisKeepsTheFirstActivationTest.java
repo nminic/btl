@@ -351,12 +351,12 @@ class AChangeOfBasisKeepsTheFirstActivationTest {
 	 */
 	@Test
 	void inTheWindowOnlyTheSeasonChangedCarries() throws Exception {
-		Instant november12 = Instant.parse("2027-11-12T10:00:00Z");
+		Instant november12 = Instant.parse("2027-11-22T10:00:00Z");
 		long both = member("000309");
 		HeldOn.season(db, both, 2027, "payment", MARCH_20);
 		HeldOn.season(db, both, 2028, "payment", november12);
 
-		changed("000309", TO_AN_EXEMPTION, Instant.parse("2027-11-20T10:00:00Z"));
+		changed("000309", TO_AN_EXEMPTION, Instant.parse("2027-11-30T10:00:00Z"));
 
 		assertThat(basis(both, 2028)).isEqualTo("feeExempt");
 		assertThat(activated(both, 2028)).isEqualTo(november12);

@@ -144,7 +144,7 @@ class MemberPaymentApi {
 
 		/* THE SEASON IS READ HERE, ONCE, and it is the one the booking writes, the beginners' category is
 		   asked about and the message names, so none of the three can be about another year across
-		   midnight of 11 November. */
+		   midnight of 21 November. */
 		int season = SeasonClock.seasonBeingPaidFor(ZonedDateTime.now(clock));
 		ABeginnersCategoryAMembershipMoves.Before before = category.before(member.get(), season);
 
