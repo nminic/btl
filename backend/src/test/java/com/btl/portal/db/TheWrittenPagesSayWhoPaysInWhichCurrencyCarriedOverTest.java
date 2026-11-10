@@ -90,6 +90,7 @@ class TheWrittenPagesSayWhoPaysInWhichCurrencyCarriedOverTest extends DatabaseTe
 	 * itself, and what is put back below is then the text V80 itself left.
 	 */
 	private void theTextAsItStoodBeforeV80() {
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "94");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "93");
 		theTextV80FinishedIsUndone();
 	}
@@ -140,6 +141,7 @@ class TheWrittenPagesSayWhoPaysInWhichCurrencyCarriedOverTest extends DatabaseTe
 		Map<String, String> servedNow = everyText();
 
 		/* The portal serves V93 on top of V80; what V80 is held to is the text V80 itself left. */
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "94");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "93");
 
 		Map<String, String> finished = everyText();
@@ -172,6 +174,7 @@ class TheWrittenPagesSayWhoPaysInWhichCurrencyCarriedOverTest extends DatabaseTe
 	@Test
 	void v80RunAgainOverTheFinishedTextStopsAndListsEveryEdit() {
 		/* The text V80 finished: V93 moved its sign-off on, and over that text V80 would not find its new sign-off. */
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "94");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "93");
 
 		PSQLException error = v80Refused();

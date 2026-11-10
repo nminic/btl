@@ -152,6 +152,7 @@ class TheCycleOf21NovemberCarriedOverTest extends DatabaseTest {
 
 	@Test
 	void theRulebookMovesOverTheTextThatWasAlreadyThere() {
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "94");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "93");
 
 		assertThat(bodiesNaming("static_page_section", "Prelazni rok za timove je od 11. novembra do 31. decembra."))
