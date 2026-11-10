@@ -410,6 +410,10 @@ describe('back on Uplate after a correction through the pencil', () => {
     await act(async () => {
       await router.navigate(-1)
     })
+
+    /* THE LIST IS DRAWN, AND ONLY THEN COUNTED: a list kept from before is drawn at once with one read
+       behind it, so this fails on the count and not on a wait for a name that never comes. */
+    await screen.findByRole('table', { name: sr.verification.payments })
   }
 
   it('reads the list again for somebody with no number, with his new name and his new money', async () => {
@@ -420,9 +424,10 @@ describe('back on Uplate after a correction through the pencil', () => {
 
     await correctedThroughThePencil('Petar Marko', router)
 
+    expect(listReads(asked)).toBe(2)
+
     const pera = await rowOf('Pera Marko')
 
-    expect(listReads(asked)).toBe(2)
     expect(pera.querySelector('.activate__mark')?.textContent).toBe('RSD')
     expect(pera.querySelector('label.activate__balance')?.textContent).toBe('12,75 RSD')
     expect(within(pera).getByRole('textbox', { name: 'Uplaćeno (RSD)' })).toBeInTheDocument()
@@ -438,9 +443,10 @@ describe('back on Uplate after a correction through the pencil', () => {
 
     await correctedThroughThePencil('Jovana Ilić', router)
 
+    expect(listReads(asked)).toBe(2)
+
     const pera = await rowOf('Pera Ilić')
 
-    expect(listReads(asked)).toBe(2)
     expect(pera.querySelector('.activate__mark')?.textContent).toBe('EUR')
     expect(pera.querySelector('label.activate__balance')?.textContent).toBe('6.000 EUR')
     expect(screen.queryByText('Jovana Ilić')).toBeNull()
