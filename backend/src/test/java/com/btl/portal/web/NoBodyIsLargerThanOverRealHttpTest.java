@@ -94,6 +94,7 @@ class NoBodyIsLargerThanOverRealHttpTest {
 	private static final String A_MEMBER = "b205-limit-clan@primer.rs";
 	private static final String MODERATOR_WITH_NO_MEMBER = "b205-limit-moderator@primer.rs";
 	private static final String SUPERADMIN = "b205-limit-superadmin@primer.rs";
+	private static final String UNNUMBERED = "b324-limit-bez-broja@primer.rs";
 
 	private static final String THE_MEMBERS_NUMBER = "990202";
 
@@ -119,6 +120,13 @@ class NoBodyIsLargerThanOverRealHttpTest {
 
 	/** The queue row the decision on the verification queue is asked about. */
 	private long waitingItem;
+
+	/**
+	 * Somebody who registered and has no member number, whom the superadmin may correct at the address
+	 * by his key (owner, 10.11.2026, `MemberDataApi#readUnnumbered`): that door, too, looks at a row
+	 * before it reads a byte.
+	 */
+	private long theUnnumbered;
 
 	/**
 	 * THREE KINDS OF CALLER, AND THE FOURTH IS NOBODY.
@@ -151,6 +159,17 @@ class NoBodyIsLargerThanOverRealHttpTest {
 		account(MODERATOR_WITH_NO_MEMBER, "moderator");
 		account(SUPERADMIN, "superadmin");
 
+		theUnnumbered = db.sql("insert into competitor (first_name, last_name, gender, birth_date,"
+						+ " place_id, first_season, referral_code, bio, profile_hidden, birthday_shown, father_name,"
+						+ " address, shirt_size, health_statement_at)"
+						+ " values ('Bezbroja', 'Probic', 'F', date '1990-01-01',"
+						+ " (select id from place where rank = 1), 2027, '00b324b324b324aa', '',"
+						+ " false, 'none', 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00')"
+						+ " returning id")
+				.query(Long.class).single();
+		account(UNNUMBERED, "competitor");
+		db.sql("update account set competitor_id = ? where email = ?").params(theUnnumbered, UNNUMBERED).update();
+
 		/* ONE ITEM STANDING IN THE PROFILES TAB, ABOUT NOBODY IN THE RECORD: V9 makes `competitor_id`
 		   nullable on purpose, and that road needs no competitor of its own to clean up. */
 		waitingItem = db.sql("insert into verification (queue, competitor_id, subject, body)"
@@ -168,6 +187,8 @@ class NoBodyIsLargerThanOverRealHttpTest {
 		}
 
 		db.sql("delete from competitor where member_number = ?").param(THE_MEMBERS_NUMBER).update();
+		db.sql("delete from message where to_id = ?").param(theUnnumbered).update();
+		db.sql("delete from competitor where id = ?").param(theUnnumbered).update();
 	}
 
 	private void account(String email, String role) {
@@ -340,10 +361,13 @@ class NoBodyIsLargerThanOverRealHttpTest {
 		 * answers 404 to a key nobody has before it has read a byte, to everybody, the superadmin too.
 		 * The administration's correction of a member's data does the same with a number nobody has
 		 * (22.10.2026), so it is given the one member there is, whom the superadmin may correct. And so does
-		 * the administration's change of his words about himself (06.11.2026, `MemberPictureAndWordsApi`).
+		 * the administration's change of his words about himself (06.11.2026, `MemberPictureAndWordsApi`),
+		 * and the same correction by the key of somebody who has no member number (10.11.2026), which is
+		 * given the one such registrant there is.
 		 */
-		String address(long theItemWaiting) {
+		String address(long theItemWaiting, long theUnnumbered) {
 			String key = pattern.startsWith("/api/verification/{id}/") ? Long.toString(theItemWaiting)
+					: pattern.equals(MemberDataApi.UNNUMBERED) ? Long.toString(theUnnumbered)
 					: pattern.equals("/api/members/{memberNumber}/data")
 							|| pattern.equals("/api/members/{memberNumber}/bio") ? THE_MEMBERS_NUMBER
 					: A_NUMBER_WITH_NO_ROW;
@@ -487,7 +511,7 @@ class NoBodyIsLargerThanOverRealHttpTest {
 		byte[] tooLong = anObjectOf(OVER);
 
 		for (Route route : routes()) {
-			String address = route.address(waitingItem);
+			String address = route.address(waitingItem, theUnnumbered);
 			String twin = twinOf(address);
 			boolean someoneRead = false;
 			boolean byHand = TheBodyOf.type(handlerOf(route)).isEmpty();

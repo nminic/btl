@@ -211,6 +211,10 @@
     "competitorData": {
       "title": "Podaci takmičara",
       "description": "Podaci jednog člana Balkanske trkačke lige, koje vidi samo administracija."
+    },
+    "unnumberedMemberData": {
+      "title": "Podaci člana bez članskog broja",
+      "description": "Podaci člana koji još nema članski broj, koje vidi samo administracija."
     }
   },
   "shell": {
