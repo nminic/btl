@@ -246,7 +246,7 @@ describe('the statement box', () => {
 
     await user.upload(await screen.findByLabelText('Izaberi PDF izvoda'), A_PDF())
 
-    expect(await screen.findByText(/portal ne ume da pročita njegov odgovor/)).toBeVisible()
+    expect(await screen.findByText(/Izvod je primljen/)).toBeVisible()
   })
 
   /**

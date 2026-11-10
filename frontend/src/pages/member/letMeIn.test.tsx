@@ -218,12 +218,12 @@ describe('the button, where the balance covers the fee', () => {
 
     expect(
       screen.getByText(
-        'Tvoj balans iz programa preporuke pokriva članarinu za sezonu 2027. Ono što preostane ostaje na balansu za sledeću sezonu.',
+        'Tvoj balans iz programa preporuke pokriva članarinu za sezonu 2027.',
       ),
     ).toBeVisible()
     expect(screen.queryByRole('heading', { name: 'Uplatnica' })).not.toBeInTheDocument()
     expect(screen.queryByRole('img', { name: /QR/ })).not.toBeInTheDocument()
-    expect(screen.queryByText(/^Podatke za uplatu vidiš u nastavku/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/^Podaci za uplatu su u nastavku/)).not.toBeInTheDocument()
   }, SLOW)
 
   it('is drawn abroad as at home, because the balance is no way of sending money', async () => {
@@ -240,7 +240,7 @@ describe('the button, where the balance covers the fee', () => {
 
     expect(await theButton()).toBeVisible()
     expect(await screen.findByRole('heading', { name: 'Uplatnica' })).toBeVisible()
-    expect(screen.getByText('Balans pokriva 600 RSD, pa uplaćuješ 4.200 RSD.')).toBeVisible()
+    expect(screen.getByText('Balans pokriva 600 RSD, a za uplatu ostaje 4.200 RSD.')).toBeVisible()
   }, SLOW)
 })
 
@@ -277,7 +277,7 @@ describe('after the press', () => {
     /* The page asked again and draws what it was told, which is the basis of the season and its year. */
     expect(asksAboutMe(asked)).toBeGreaterThan(before)
     expect(await screen.findByText('Članarina za sezonu 2027 je plaćena iz balansa.')).toBeVisible()
-    expect(screen.getByText('Članarina za 2027 je već plaćena, pa nema šta da uplatiš.')).toBeVisible()
+    expect(screen.getByText('Članarina za sezonu 2027 je plaćena.')).toBeVisible()
     expect(screen.queryByRole('button', { name: 'Aktiviraj članstvo' })).not.toBeInTheDocument()
     /* His book is read again: he kept his number, so nothing about whose book it is moved. */
     expect(await screen.findByText('300 RSD')).toBeVisible()
@@ -401,7 +401,7 @@ describe('when the server refuses', () => {
     const alert = await screen.findByRole('alert')
 
     expect(alert).toHaveTextContent('Članstvo za ovu sezonu je već aktivirano.')
-    expect(await screen.findByText('Članarina za 2027 je već plaćena, pa nema šta da uplatiš.')).toBeVisible()
+    expect(await screen.findByText('Članarina za sezonu 2027 je plaćena.')).toBeVisible()
     await waitFor(() => {
       expect(must(document.activeElement, 'the focus').contains(alert)).toBe(true)
     })
@@ -419,8 +419,8 @@ describe('when the server refuses', () => {
 
     await user.click(await theButton())
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('Za ovu sezonu nemaš članarinu za plaćanje.')
-    expect(await screen.findByText('Oslobođen si plaćanja članarine, pa nema šta da uplatiš.')).toBeVisible()
+    expect(await screen.findByRole('alert')).toHaveTextContent('Članarina za ovu sezonu je izmirena.')
+    expect(await screen.findByText('Članarina za sezonu 2027 je izmirena.')).toBeVisible()
   }, SLOW)
 
   /* THE BALANCE NO LONGER REACHES THE FEE, so what he owes is read again and the slip for the rest is
@@ -438,7 +438,7 @@ describe('when the server refuses', () => {
     await user.click(await theButton())
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Balans više ne pokriva celu članarinu, pa su ispod podaci za uplatu ostatka.',
+      'Balans ne pokriva celu članarinu. Podaci za uplatu ostatka su ispod.',
     )
     const slip = must(
       (await screen.findByRole('heading', { level: 3, name: 'Uplatnica' })).closest<HTMLElement>('.pay__slip'),
@@ -506,10 +506,10 @@ describe('somebody who has not paid', () => {
 
     expect(
       await screen.findByText(
-        'Članarina ti još nije evidentirana, pa još nemaš članski broj. Dobijaš ga kad aktiviraš članstvo iz balansa.',
+        'Članski broj dobijaš kad aktiviraš članstvo iz balansa.',
       ),
     ).toBeVisible()
-    expect(screen.queryByText(/kad moderator evidentira tvoju uplatu\.$/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Članski broj dobijaš kad tvoja uplata bude evidentirana\.$/)).not.toBeInTheDocument()
 
     await user.click(await theButton())
 
@@ -527,7 +527,7 @@ describe('somebody who has not paid', () => {
        who has not paid (`app/unpaidMenu.test.tsx`), and so are the pages of a profile. Skipping that read only for him left the sentence, the button and the short menu
        standing, and all 20 cases of this file green. */
     expect(
-      screen.queryByText(/Dobijaš ga kad aktiviraš članstvo iz balansa\./),
+      screen.queryByText(/Članski broj dobijaš kad aktiviraš članstvo iz balansa\./),
       'the sentence that promised a number is still on the page',
     ).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Aktiviraj članstvo' })).not.toBeInTheDocument()
@@ -548,7 +548,7 @@ describe('somebody who has not paid', () => {
     expect(asked.some((one) => one.path === '/api/me/membership')).toBe(true)
     expect(
       screen.getByText(
-        'Članarina ti još nije evidentirana, pa još nemaš članski broj. Dobijaš ga kad moderator evidentira tvoju uplatu.',
+        'Članski broj dobijaš kad tvoja uplata bude evidentirana.',
       ),
     ).toBeVisible()
     expect(screen.queryByRole('button', { name: 'Aktiviraj članstvo' })).not.toBeInTheDocument()

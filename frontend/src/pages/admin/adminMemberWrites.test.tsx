@@ -352,7 +352,7 @@ describe('the members screen', () => {
       const alert = await within(row).findByRole('alert')
 
       expect(alert).toHaveTextContent(
-        'Nalog ovog člana administrira portal, pa se član ne može obrisati odavde.',
+        'Ovaj nalog je administrator portala i ne briše se odavde.',
       )
       /* AND NOT THE WRAPPER `ServerSaid` reaches for when the map does not know the reason -
          the one phrase a mapped answer never carries, in either locale. Without this, the
@@ -598,8 +598,8 @@ describe('the members screen', () => {
    * „it did not work" sentence would lose.
    */
   it.each([
-    [401, 'Server je odgovorio brojem 401'],
-    [404, 'Server je odgovorio brojem 404'],
+    [401, 'greška 401'],
+    [404, 'greška 404'],
   ])('says what the server answered when it was %s, with the number in it', async (status, said) => {
     const server = serving(() => answeredWith(status))
     const user = setupUser()
@@ -762,7 +762,7 @@ describe('the members screen', () => {
     answer(answeredWith(404))
 
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
-    expect(await within(row).findByRole('alert')).toHaveTextContent('Server je odgovorio brojem 404')
+    expect(await within(row).findByRole('alert')).toHaveTextContent('greška 404')
     expect(cross).toHaveFocus()
     expect(screen.queryByText('Član je obrisan.')).toBeNull()
 

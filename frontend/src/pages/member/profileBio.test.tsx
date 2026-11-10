@@ -250,7 +250,7 @@ describe('the words a member wrote about themselves, changed later', () => {
       expect(await box()).toHaveValue(withOne.bio)
       expect(panel.getByText(sr.bio.standing)).toBeVisible()
 
-      const send = panel.getByRole('button', { name: 'Pošalji na odobrenje' })
+      const send = panel.getByRole('button', { name: 'Pošalji' })
 
       expect(send).toHaveAttribute('aria-disabled', 'true')
       expect(send).not.toBeDisabled()
@@ -261,7 +261,7 @@ describe('the words a member wrote about themselves, changed later', () => {
          the handler as well as in the attribute. */
       await user.click(send)
 
-      expect((await panelFor()).getByRole('button', { name: 'Pošalji na odobrenje' })).toBeVisible()
+      expect((await panelFor()).getByRole('button', { name: 'Pošalji' })).toBeVisible()
       /* And nothing left the browser over a press the screen itself refused. */
       expect(writes(asked)).toEqual([])
     } finally {
@@ -333,7 +333,7 @@ describe('the words a member wrote about themselves, changed later', () => {
     expect(await box()).toHaveValue('')
     /* Told off and silent about it (PDL P11, owner, 18.10.2026: "Napiši nešto da bi mogao da
        pošalješ." is gone). */
-    expect(panel.getByRole('button', { name: 'Pošalji na odobrenje' })).not.toHaveAttribute(
+    expect(panel.getByRole('button', { name: 'Pošalji' })).not.toHaveAttribute(
       'aria-describedby',
     )
     /* And the sentence above the box says there is nothing yet, rather than
@@ -403,7 +403,7 @@ describe('the words a member wrote about themselves, changed later', () => {
       await panelFor()
       await user.clear(await box())
       await user.type(await box(), 'Trčim od 2015, najviše po Fruškoj gori.')
-      await user.click((await panelFor()).getByRole('button', { name: 'Pošalji na odobrenje' }))
+      await user.click((await panelFor()).getByRole('button', { name: 'Pošalji' }))
 
       await waitFor(() => {
         expect(writes(asked)).toHaveLength(1)
@@ -437,7 +437,7 @@ describe('the words a member wrote about themselves, changed later', () => {
 
       await panelFor()
       await user.type(await box(), 'Prvi put pišem nešto o sebi.')
-      await user.click((await panelFor()).getByRole('button', { name: 'Pošalji na odobrenje' }))
+      await user.click((await panelFor()).getByRole('button', { name: 'Pošalji' }))
 
       const panel = await panelFor()
 
@@ -469,7 +469,7 @@ describe('the words a member wrote about themselves, changed later', () => {
 
       await panelFor()
       await user.clear(await box())
-      await user.click((await panelFor()).getByRole('button', { name: 'Pošalji na odobrenje' }))
+      await user.click((await panelFor()).getByRole('button', { name: 'Pošalji' }))
 
       const told = await screen.findByText(sr.account.saved)
 
@@ -514,7 +514,7 @@ describe('the words a member wrote about themselves, changed later', () => {
 
       await panelFor()
       await user.type(await box(), 'Nešto o sebi, prvi put.')
-      await user.click((await panelFor()).getByRole('button', { name: 'Pošalji na odobrenje' }))
+      await user.click((await panelFor()).getByRole('button', { name: 'Pošalji' }))
 
       const panel = await panelFor()
 
@@ -547,7 +547,7 @@ describe('the words a member wrote about themselves, changed later', () => {
       expect(await box()).toHaveValue('Stariji tekst koji čeka odluku.')
 
       await user.clear(await box())
-      await user.click((await panelFor()).getByRole('button', { name: 'Pošalji na odobrenje' }))
+      await user.click((await panelFor()).getByRole('button', { name: 'Pošalji' }))
 
       const panel = await panelFor()
 
@@ -578,7 +578,7 @@ describe('the words a member wrote about themselves, changed later', () => {
       await panelFor()
       await user.clear(await box())
       await user.type(await box(), 'Predugačak pokušaj.')
-      await user.click((await panelFor()).getByRole('button', { name: 'Pošalji na odobrenje' }))
+      await user.click((await panelFor()).getByRole('button', { name: 'Pošalji' }))
 
       expect(await screen.findByText(sr.account.textIsTooLong)).toBeVisible()
 
@@ -618,7 +618,7 @@ describe('the words a member wrote about themselves, changed later', () => {
       await user.clear(await box())
       await user.type(await box(), 'Nešto novo o sebi.')
 
-      const send = (await panelFor()).getByRole('button', { name: 'Pošalji na odobrenje' })
+      const send = (await panelFor()).getByRole('button', { name: 'Pošalji' })
 
       await user.click(send)
       await user.click(send)
@@ -658,7 +658,7 @@ describe('the words a member wrote about themselves, changed later', () => {
       await panelFor()
       await user.clear(await box())
       await user.type(await box(), 'Nešto sasvim drugo o sebi.')
-      await user.click((await panelFor()).getByRole('button', { name: 'Pošalji na odobrenje' }))
+      await user.click((await panelFor()).getByRole('button', { name: 'Pošalji' }))
 
       const panel = await panelFor()
       const told = await panel.findByText(sr.bio.waitingNote)
@@ -669,14 +669,14 @@ describe('the words a member wrote about themselves, changed later', () => {
       expect(told).toHaveFocus()
       expect(panel.getByText(sr.bio.waitingCorrect)).toBeVisible()
       expect(await box()).toHaveValue('Nešto sasvim drugo o sebi.')
-      expect(panel.getByRole('button', { name: 'Pošalji na odobrenje' })).toHaveAttribute(
+      expect(panel.getByRole('button', { name: 'Pošalji' })).toHaveAttribute(
         'aria-disabled',
         'true',
       )
 
       /* Corrected before anybody decides: a second write, and it is the second text that waits. */
       await user.type(await box(), ' I još nešto.')
-      await user.click(panel.getByRole('button', { name: 'Pošalji na odobrenje' }))
+      await user.click(panel.getByRole('button', { name: 'Pošalji' }))
 
       await waitFor(() => {
         expect(writes(server.asked)).toHaveLength(2)
@@ -718,7 +718,7 @@ describe('the words a member wrote about themselves, changed later', () => {
       await panelFor()
       await user.clear(await box())
       await user.type(await box(), 'Ovo je moj tekst i ničiji drugi.')
-      await user.click((await panelFor()).getByRole('button', { name: 'Pošalji na odobrenje' }))
+      await user.click((await panelFor()).getByRole('button', { name: 'Pošalji' }))
 
       expect(await (await panelFor()).findByText(sr.bio.waitingNote)).toBeVisible()
 
@@ -734,7 +734,7 @@ describe('the words a member wrote about themselves, changed later', () => {
 
       expect(panel.queryByText(sr.bio.waitingNote)).not.toBeInTheDocument()
       expect(panel.queryByDisplayValue('Ovo je moj tekst i ničiji drugi.')).not.toBeInTheDocument()
-      expect(panel.getByRole('button', { name: 'Pošalji na odobrenje' })).toBeVisible()
+      expect(panel.getByRole('button', { name: 'Pošalji' })).toBeVisible()
     } finally {
       server.stop()
     }
@@ -764,13 +764,13 @@ describe('the words a member wrote about themselves, changed later', () => {
       )
       await measurePicture()
       await picture.findByLabelText('Veličina isečka')
-      await user.click(picture.getByRole('button', { name: 'Pošalji na odobrenje' }))
+      await user.click(picture.getByRole('button', { name: 'Pošalji' }))
 
       await waitFor(() => {
         expect(picture.getByText(sr.picture.waitingNote)).toBeVisible()
       })
 
-      expect((await panelFor()).getByRole('button', { name: 'Pošalji na odobrenje' })).toBeVisible()
+      expect((await panelFor()).getByRole('button', { name: 'Pošalji' })).toBeVisible()
     } finally {
       stop()
     }
@@ -822,7 +822,7 @@ describe('the words a member wrote about themselves, changed later', () => {
 
       await user.clear(await box())
       await user.type(await box(), 'Nova rečenica o sebi.')
-      await user.click((await panelFor()).getByRole('button', { name: 'Pošalji na odobrenje' }))
+      await user.click((await panelFor()).getByRole('button', { name: 'Pošalji' }))
       await (await panelFor()).findByText(sr.bio.waitingNote)
 
       /* Read by walking to the queue, because dropping a name is only half of it: what the
@@ -843,7 +843,7 @@ describe('the words a member wrote about themselves, changed later', () => {
       const listBeforeRemoval = counted('competitors')
 
       await user.clear(await box())
-      await user.click((await panelFor()).getByRole('button', { name: 'Pošalji na odobrenje' }))
+      await user.click((await panelFor()).getByRole('button', { name: 'Pošalji' }))
       await (await panelFor()).findByText(sr.account.saved)
 
       await router.navigate('/sr/takmicari')
@@ -1110,7 +1110,7 @@ describe('the box a member writes about themselves in', () => {
     await user.paste('x'.repeat(400))
 
     const said =
-      'Nalepljeni tekst je bio 40 znakova duži nego što staje, pa taj višak nije primljen.'
+      'Nalepljeni tekst je skraćen za 40 znakova.'
 
     /* On the screen once and to a reader once: the visible sentence is hidden from the
        reader, and the region that was there all along says it. */
@@ -1152,7 +1152,7 @@ describe('the box a member writes about themselves in', () => {
     fireEvent.paste(field, { clipboardData: { getData: () => 'y'.repeat(380) } })
 
     expect(panel.getByRole('status')).toHaveTextContent(
-      'Nalepljeni tekst je bio 20 znakova duži nego što staje, pa taj višak nije primljen.',
+      'Nalepljeni tekst je skraćen za 20 znakova.',
     )
   }, SLOW)
 

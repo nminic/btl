@@ -889,8 +889,7 @@ class PairWriteApi {
 	 * @param who the one who sent the invitation, by the name his profile carries
 	 */
 	static String theInvitationBodyReads(String who) {
-		return who + " te poziva u trkački par. Par nastaje tek kad ti potvrdiš, i važi za sezonu"
-				+ " koja počinje posle 31. decembra.";
+		return who + " te poziva u trkački par za narednu sezonu.";
 	}
 
 	/**
@@ -908,7 +907,8 @@ class PairWriteApi {
 	 * @param season the season the new pair holds for, off the row rather than off the clock
 	 */
 	static String theSupersededPairReads(String who, int season) {
-		return who + " je od sezone " + season + " u drugom trkačkom paru, pa je vaš raskinut.";
+		return "Vaš trkački par za sezonu " + season + " je raskinut. " + who
+				+ " je od te sezone u drugom paru.";
 	}
 
 	/**

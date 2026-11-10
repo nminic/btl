@@ -177,7 +177,7 @@ async function theRestOfANewRun(user: ReturnType<typeof setupUser>): Promise<voi
   await user.type(screen.getByLabelText('Minuti'), '45')
   await user.type(screen.getByLabelText('Sekunde'), '0')
   await user.type(screen.getByLabelText(/Link/), 'https://primer.rs/seoska')
-  await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
+  await user.click(screen.getByRole('button', { name: 'Pošalji rezultat' }))
 }
 
 /** Opens the form and chooses an event out of the box „Događaj”, which is what a member does first. */
@@ -247,7 +247,7 @@ describe('a race chosen from the list', () => {
       await user.type(screen.getByLabelText('Minuti'), '50')
       await user.type(screen.getByLabelText('Sekunde'), '0')
       await user.type(screen.getByLabelText(/Link/), 'https://primer.rs/r')
-      await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
+      await user.click(screen.getByRole('button', { name: 'Pošalji rezultat' }))
 
       await screen.findByRole('heading', { name: 'Rezultat je poslat' }, SOON)
 
@@ -291,7 +291,7 @@ describe('a race chosen from the list', () => {
       await user.type(screen.getByLabelText('Minuti'), '52')
       await user.type(screen.getByLabelText('Sekunde'), '10')
       await user.type(screen.getByLabelText(/Link/), 'https://primer.rs/r')
-      await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
+      await user.click(screen.getByRole('button', { name: 'Pošalji rezultat' }))
 
       await screen.findByRole('heading', { name: 'Rezultat je poslat' }, SOON)
 
@@ -944,7 +944,7 @@ describe('the event a result is run at, which the form asks first', () => {
       await user.type(screen.getByLabelText('Minuti'), '45')
       await user.type(screen.getByLabelText('Sekunde'), '0')
       await user.type(screen.getByLabelText(/Link/), 'https://primer.rs/seoska')
-      await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
+      await user.click(screen.getByRole('button', { name: 'Pošalji rezultat' }))
 
       await screen.findByRole('heading', { name: 'Rezultat je poslat' }, SOON)
 
@@ -1048,7 +1048,7 @@ describe('the event a result is run at, which the form asks first', () => {
       await user.type(screen.getByLabelText('Minuti'), '45')
       await user.type(screen.getByLabelText('Sekunde'), '0')
       await user.type(screen.getByLabelText(/Link/), 'https://primer.rs/gradska')
-      await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
+      await user.click(screen.getByRole('button', { name: 'Pošalji rezultat' }))
 
       await screen.findByRole('heading', { name: 'Rezultat je poslat' }, SOON)
 
@@ -1072,7 +1072,7 @@ describe('the event a result is run at, which the form asks first', () => {
       renderAt(NEW, 'competitor', ME, undefined, TODAY)
       await user.type(await screen.findByLabelText(/^Događaj/), 'Stara trka')
       await user.type(screen.getByLabelText(/Datum trke/), '01082026')
-      await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
+      await user.click(screen.getByRole('button', { name: 'Pošalji rezultat' }))
 
       expect(await screen.findByText('Datum mora da bude u tekućoj sezoni.', undefined, SOON)).toBeVisible()
       expect(route.sent()).toEqual([])
@@ -1107,7 +1107,7 @@ describe('the event a result is run at, which the form asks first', () => {
       await user.type(screen.getByLabelText('Minuti'), '45')
       await user.type(screen.getByLabelText('Sekunde'), '0')
       await user.type(screen.getByLabelText(/Link/), 'https://primer.rs/seoska')
-      await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
+      await user.click(screen.getByRole('button', { name: 'Pošalji rezultat' }))
 
       expect(
         await screen.findByText(/Rezultat nije poslat: preko portala se prijavljuju samo trke tekuće sezone/, undefined, SOON),
@@ -1231,7 +1231,7 @@ describe('a message about a field the form has stopped asking for', () => {
     renderAt(NEW, 'competitor', ME, undefined, TODAY)
 
     await user.type(await screen.findByLabelText(/^Naziv trke/), 'Probna trka')
-    await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
+    await user.click(screen.getByRole('button', { name: 'Pošalji rezultat' }))
 
     /* The link is obligatory as the form is written, so it is refused. */
     const underLink = () =>
@@ -1250,7 +1250,7 @@ describe('a message about a field the form has stopped asking for', () => {
     ).toBeNull()
 
     /* And the other way: the comment is what the picture makes obligatory. */
-    await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
+    await user.click(screen.getByRole('button', { name: 'Pošalji rezultat' }))
 
     const underComment = () =>
       within(
@@ -1288,7 +1288,7 @@ describe('a message about a field the form has stopped asking for', () => {
     renderAt(NEW, 'competitor', ME, undefined, TODAY)
 
     await user.type(await screen.findByLabelText(/^Naziv trke/), 'Probna trka')
-    await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
+    await user.click(screen.getByRole('button', { name: 'Pošalji rezultat' }))
 
     const underLink = () =>
       within(htmlElement(must(screen.getByLabelText(/^Link/).closest('.field'), 'the link field')))
@@ -1337,7 +1337,7 @@ describe('an error that is not about a field being obligatory', () => {
 
     await user.type(await screen.findByLabelText(/^Naziv trke/), 'Probna trka')
     await user.type(screen.getByLabelText(/^Link/), 'trka.rs/rezultati')
-    await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
+    await user.click(screen.getByRole('button', { name: 'Pošalji rezultat' }))
 
     expect(screen.getByText('Vrednost nije u očekivanom obliku.')).toBeVisible()
     expect(screen.getByLabelText(/^Link/)).toHaveAttribute('aria-required', 'true')

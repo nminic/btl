@@ -321,7 +321,7 @@ describe('the word, on the page he pays on from abroad', () => {
 
     expect(await screen.findByRole('heading', { level: 4, name: 'PayPal' })).toBeVisible()
     expect(await screen.findByText('PayPal adresa')).toBeVisible()
-    expect(screen.getByText(/^PayPal adresa je poslovna, na Sportsko udruženje BTL\./)).toBeVisible()
+    expect(screen.getByText(/^PayPal adresa glasi na Sportsko udruženje BTL\./)).toBeVisible()
 
     for (const words of everyWordOnTheScreen()) {
       expect(words).not.toMatch(/nalog/i)

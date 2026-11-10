@@ -136,7 +136,7 @@ describe('somebody who has never paid, outside the window', () => {
       )
 
       expect(screen.getByText('Uplata je otvorena.')).toBeVisible()
-      expect(await screen.findByText(/Prepoznaje se po imenu/)).toBeVisible()
+      expect(await screen.findByText(/Prepoznajemo je po imenu uplatioca/)).toBeVisible()
       expect(screen.queryByText(SHUT)).not.toBeInTheDocument()
     },
     SLOW,
@@ -171,7 +171,7 @@ describe('a member whose fee has lapsed, outside the window', () => {
           reference: `${season}000050`,
         }),
       )
-      expect(screen.getByText(/Ne registruješ se ponovo/)).toBeVisible()
+      expect(screen.getByText(/Obnova je otvorena/)).toBeVisible()
       expect(screen.queryByText(SHUT)).not.toBeInTheDocument()
     },
     SLOW,
@@ -327,7 +327,7 @@ describe('whoever owes nothing for the running season is told what he was told',
       expect(await screen.findByText(SHUT)).toBeVisible()
       expect(screen.getByText(stated)).toBeVisible()
       expect(screen.getByRole('heading', { level: 2, name: 'Obnova članarine za 2028.' })).toBeVisible()
-      expect(screen.queryByText(/je već plaćena/)).not.toBeInTheDocument()
+      expect(screen.queryByText(/je plaćena/)).not.toBeInTheDocument()
       expect(screen.queryByRole('heading', { level: 3, name: 'Uplatnica' })).not.toBeInTheDocument()
     },
     SLOW,
@@ -346,9 +346,14 @@ describe('whoever owes nothing for the running season is told what he was told',
   ])('a member holding the running season whose fee does not stand, on %s, is told it is paid for %i', async (today, season) => {
     openHisPage({ ...LAPSED, membershipBasis: 'payment', membershipSeason: season }, today)
 
-    expect(
-      await screen.findByText(`Članarina za ${season} je već plaćena, pa nema šta da uplatiš.`),
-    ).toBeVisible()
+    /* Twice since 10.11.2026: the state line (`membership.paidFor`) and the line where the renewal would
+       be (`membership.alreadyPaid`) are both „Članarina za sezonu {season} je plaćena." in the owner's
+       words. Held as two, so that a third copy or a lost one fails here. */
+    const told = await screen.findAllByText(`Članarina za sezonu ${season} je plaćena.`)
+
+    expect(told).toHaveLength(2)
+    expect(told[0]).toBeVisible()
+    expect(told[1]).toBeVisible()
     expect(screen.queryByText(SHUT)).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { level: 3, name: 'Uplatnica' })).not.toBeInTheDocument()
   }, SLOW)
@@ -361,7 +366,7 @@ describe('whoever owes nothing for the running season is told what he was told',
        comes with the season it is the basis of, as the server answers it. */
     openHisPage({ ...record, membershipBasis: 'feeExempt', membershipSeason: 2027 }, '2027-05-03')
 
-    expect(await screen.findByText('Oslobođen si plaćanja članarine, pa nema šta da uplatiš.')).toBeVisible()
+    expect(await screen.findByText('Članarina za sezonu 2027 je izmirena.')).toBeVisible()
     expect(screen.queryByRole('heading', { level: 3, name: 'Uplatnica' })).not.toBeInTheDocument()
     expect(screen.queryByText(NO_RANKING)).not.toBeInTheDocument()
   }, SLOW)
@@ -438,8 +443,17 @@ describe('the notes about a price follow what he owes for the season on sale, an
   ])('a member who holds the season on sale, 2028, on a %s, is told so, quoted no price and told the fee', async (basis, stated) => {
     openHisPage({ ...STANDING, membershipBasis: basis, membershipSeason: 2028 }, '2027-11-22')
 
-    expect(await screen.findByText(stated)).toBeVisible()
-    expect(screen.getByText('Članarina za 2028 je već plaćena, pa nema šta da uplatiš.')).toBeVisible()
+    if (basis === 'payment') {
+      /* The state line and the renewal's line read the same words since 10.11.2026, so there are two. */
+      const both = await screen.findAllByText(stated)
+
+      expect(both).toHaveLength(2)
+      expect(both[0]).toBeVisible()
+      expect(both[1]).toBeVisible()
+    } else {
+      expect(await screen.findByText(stated)).toBeVisible()
+      expect(screen.getByText('Članarina za sezonu 2028 je plaćena.')).toBeVisible()
+    }
     theFeeAndNoPrice()
   }, SLOW)
 
@@ -473,7 +487,7 @@ describe('the notes about a price follow what he owes for the season on sale, an
   ])('a member freed of the fee for the season on sale, %s, is quoted no price and reads the fee all the same', async (_label, season, today) => {
     openHisPage({ ...STANDING, membershipBasis: 'feeExempt', membershipSeason: season }, today)
 
-    expect(await screen.findByText('Oslobođen si plaćanja članarine, pa nema šta da uplatiš.')).toBeVisible()
+    expect(await screen.findByText(`Članarina za sezonu ${season} je izmirena.`)).toBeVisible()
     theFeeAndNoPrice()
   }, SLOW)
 

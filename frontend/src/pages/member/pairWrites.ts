@@ -274,7 +274,7 @@ export function theBreakingGoesTo(pair: number): string {
  * <p><b>So the screen has no refusals map to hand {@code ServerSaid}, and the empty one it does
  * hand is honest rather than lazy.</b> What it hands in beside it is a table of what that one
  * number means (`profile/RacingPairLine.tsx`, `WHAT_THE_NUMBER_SAYS_WHEN_BREAKING_A_PAIR`). Until
- * 02.10.2026 a 404 read as `server.wrong` - „Server je odgovorio brojem 404 ... Pokusaj ponovo za
+ * 02.10.2026 a 404 read as `server.wrong` - „Ništa nije sačuvano (greška 404). Pokušaj ponovo za
  * koji minut" - which is advice none of the four callers the 404 stands for can use (PENDING
  * stavka 316). The sentence it says now, `pair.breakRefused.notHeld`, says the same thing for all
  * four and does not promise that a second try will work; <b>its words are a proposal of the author

@@ -1076,7 +1076,7 @@ class TeamJoiningWriteApiTest {
 		}
 
 		String missed = "Poziv u tim je ostao bez odgovora | Probni Probić" + ME
-				+ " je u međuvremenu " + word + " u tim \"Sava Runners\", pa vaš poziv više ne stoji.";
+				+ " je u međuvremenu " + word + " u tim \"Sava Runners\".";
 
 		assertThat(inboxOf(OUTSIDER)).as("the team whose invitation is now dead")
 				.containsExactly(missed);
@@ -2055,8 +2055,7 @@ class TeamJoiningWriteApiTest {
 		assertThat(TeamJoiningWriteApi.theInvitationBodyReads(team))
 				.isEqualTo("Tim \"Sava Runners\" te poziva da od naredne sezone trčiš za njih.");
 		assertThat(TeamJoiningWriteApi.theMissedInvitationReads("Petar Petrović", "M", team))
-				.isEqualTo("Petar Petrović je u međuvremenu ušao u tim \"Sava Runners\","
-						+ " pa vaš poziv više ne stoji.");
+				.isEqualTo("Petar Petrović je u međuvremenu ušao u tim \"Sava Runners\".");
 	}
 
 	private static String filled(JsonNode teams, String key, String team, String name) {

@@ -538,14 +538,14 @@ describe('the price list', () => {
     expect(open).toHaveAttribute('aria-disabled', 'false')
     expect(open).toHaveAccessibleDescription(/Iznos koji sada upišeš važi za sezonu 2029/)
     expect(open).toHaveAccessibleDescription(
-      /Portal pamti jedan iznos i ne pamti prethodne, pa isti upis menja i iznos koji od tog trenutka stoji/,
+      /Podešava se do 21\. novembra/,
     )
     /* And here there is a running season to name, which is the half that makes
        this a warning rather than a note: 2028 began the day before and its amount
        was settled by 15 October 2027. */
     expect(open).toHaveAccessibleDescription(runningSeasonSentence())
     expect(open).toHaveAccessibleDescription(/Sezona 2028 je već u toku/)
-    expect(open).toHaveAccessibleDescription(/zaključan 21. novembra prethodne godine, a ovaj upis ga ipak menja/)
+    expect(open).toHaveAccessibleDescription(/a ovaj upis menja i njen iznos/)
   })
 
   it('has one live region on the price list, not two', async () => {
@@ -605,7 +605,7 @@ describe('the price list', () => {
     const note = screen.getByText(/taksu za obradu plaćanja/)
 
     expect(within(feeTable).getByText(String(PROCESSING_FEE_EUR))).toBeVisible()
-    expect(note).toHaveTextContent('nije članarina')
+    expect(note).toHaveTextContent('Uplata u evrima na izvodu je veća za taksu za obradu plaćanja.')
     /* And no row of the MAIN list has the fee added into it: a cell of exactly "3" is a
        cell no price list would ever have, so looking for one proved nothing.
        What could go wrong is a price with the fee added, and that is what is
@@ -1748,7 +1748,7 @@ describe('the five queues read from the file', () => {
 
       expect(confirm).toHaveAttribute('aria-disabled', 'true')
       expect(confirm).not.toBeDisabled()
-      expect(confirm).toHaveAccessibleDescription('Upiši razlog da bi mogao da pošalješ.')
+      expect(confirm).toHaveAccessibleDescription('Upiši razlog.')
 
       /* Pressed with nothing written, on the box five queues share. Reachable
          means pressable, so the refusal has to live in the handler too: without
@@ -2282,9 +2282,10 @@ describe('the five queues read from the file', () => {
        this loop reading the first twice, so the words that withhold a message
        could have been rewritten into words that promise one and nothing would
        have said so. Measured: they were, and all 1940 tests passed. */
-    expect(sr.review.reasonPlaceholder).toContain('Član dobija tvoj razlog u poruci')
-    expect(sr.review.reasonKeptPlaceholder).toContain('Poruka ne ide')
+    expect(sr.review.reasonPlaceholder).toContain('Razlog koji upišeš stiže članu u poruci')
+    expect(sr.review.reasonKeptPlaceholder).toBe('Upiši razlog odbijanja.')
     expect(sr.review.reasonKeptPlaceholder).not.toContain('Član dobija tvoj razlog')
+    expect(sr.review.reasonKeptPlaceholder).not.toContain('stiže članu')
     /* And neither of them says the member may send another. Until 16.08.2026
        they could not: a biography was written once, at joining. The panel in
        Podešavanja changes that (PR94), and these words are still not the place
@@ -2471,7 +2472,7 @@ describe('the five queues read from the file', () => {
 
       expect(screen.queryByRole('button', { name: 'Odbij' })).not.toBeInTheDocument()
       expect(
-        screen.getByText(/nema člana kome bi odgovor stigao/),
+        screen.getByText(/nema člana kome bi stigao odgovor/),
       ).toBeVisible()
       // Approving is still a decision the moderator can take; nothing is sent.
       expect(screen.getByRole('button', { name: 'Odobri' })).toBeVisible()

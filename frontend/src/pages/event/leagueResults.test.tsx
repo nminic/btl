@@ -377,7 +377,7 @@ describe('the entry of several members', () => {
     )
 
     const rows = screen.getAllByRole('group', { name: /\. red$/ })
-    const said = 'Član nema članstvo za sezonu ove trke, pa mu liga ne unosi rezultat.'
+    const said = 'Član nema aktivno članstvo za sezonu ove trke.'
 
     expect(within(must(rows[1], 'the second row')).getByText(said)).toBeVisible()
     expect(within(must(rows[0], 'the first row')).queryByText(said)).toBeNull()
@@ -635,7 +635,7 @@ describe('what the server said about a row, when a row is taken away', () => {
     await user.type(box('Sati', 2), '5')
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
 
-    const said = 'Član nema članstvo za sezonu ove trke, pa mu liga ne unosi rezultat.'
+    const said = 'Član nema aktivno članstvo za sezonu ove trke.'
 
     expect(await screen.findByText(said)).toBeVisible()
     expect(screen.getAllByLabelText('Sati')[1]).toHaveAttribute('aria-invalid', 'true')
@@ -787,7 +787,7 @@ describe('a press the screen refuses itself', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Ništa nije sačuvano.')
     expect(
       within(must(screen.getAllByRole('group', { name: /\. red$/ })[1], 'the second row')).getByText(
-        'Član nema članstvo za sezonu ove trke, pa mu liga ne unosi rezultat.',
+        'Član nema aktivno članstvo za sezonu ove trke.',
       ),
     ).toBeVisible()
     expect(screen.getByRole('button', { name: 'Sačuvaj' })).toHaveFocus()

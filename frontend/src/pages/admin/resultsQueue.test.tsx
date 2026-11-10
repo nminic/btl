@@ -646,13 +646,13 @@ describe('a decision on one run', () => {
  * which is its own answer, and no answer at all, for one row and for the sweep.
  */
 describe('every answer a decision can get that is not the route taking it', () => {
-  const THE_NUMBER = (status: number) => `Server je odgovorio brojem ${String(status)} i ništa nije promenjeno.`
+  const THE_NUMBER = (status: number) => `Ništa nije sačuvano (greška ${String(status)}).`
 
   const ANSWERS: [string, () => Response | Promise<Response>, string | RegExp][] = [
     ['401', () => answeredWith(401), THE_NUMBER(401)],
     ['404', () => answeredWith(404), THE_NUMBER(404)],
     ['500', () => answeredWith(500), THE_NUMBER(500)],
-    ['403, which is its own answer', () => answeredWith(403), /nije uspeo da dokaže serveru/],
+    ['403, which is its own answer', () => answeredWith(403), /Zahtev nije prošao/],
     [
       'no answer at all',
       () => {

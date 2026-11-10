@@ -288,7 +288,7 @@ describe('recording a payment on a member’s row', () => {
     await recordInTheSheet(user, await paymentSheet(user, row), '4200')
 
     expect(
-      await within(row).findByText('Ovaj član već ima članstvo za ovu sezonu, pa nije upisano ponovo.'),
+      await within(row).findByText('Ovaj član već ima članstvo za ovu sezonu.'),
     ).toBeInTheDocument()
     expect(reads(server.asked, '/api/members')).toBe(1)
 
@@ -443,7 +443,7 @@ describe('recording a payment on a member’s row', () => {
     }
 
     await recordInTheSheet(user, await paymentSheet(user, row), '4200')
-    await within(row).findByText('Ovaj član već ima članstvo za ovu sezonu, pa nije upisano ponovo.')
+    await within(row).findByText('Ovaj član već ima članstvo za ovu sezonu.')
 
     for (const name of names) {
       expect(arrivedResource(name), `${name} was dropped though nothing was written`).toBeDefined()

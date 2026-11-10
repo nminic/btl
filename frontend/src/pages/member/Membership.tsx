@@ -924,7 +924,7 @@ export function Membership() {
                   members in the data are freed of the fee, so that was very nearly the
                   only thing this screen ever showed. */}
               {feeExempt ? (
-                <p className="member__note">{t('membership.feeExemptNoRenewal')}</p>
+                <p className="member__note">{t('membership.feeExemptNoRenewal', { season: payingSeason })}</p>
               ) : held && payable ? (
                 /* HE HOLDS THE SEASON ON SALE ALREADY, on a payment or on his balance, so there
                    is nothing to pay for it and no slip, no QR code and no reference are drawn

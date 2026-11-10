@@ -136,7 +136,7 @@ describe('the choice to hide a profile from visitors', () => {
 
       expect(
         (await panelFor()).getByText(
-          'Ime ostaje u tabelama i na rang listama, jer bi bez toga zajedničko rangiranje izgubilo smisao. Skriva se samo tvoja profilna strana, i to samo od posetilaca koji nisu prijavljeni i od prijavljenih naloga bez aktivne članarine.',
+          'Ime ostaje u tabelama i na rang listama. Profilna strana se skriva od neprijavljenih posetilaca i od naloga bez aktivne članarine.',
         ),
       ).toBeVisible()
     } finally {
@@ -257,7 +257,7 @@ describe('the choice to hide a profile from visitors', () => {
 
       const panel = await panelFor()
 
-      expect(await panel.findByText(/Server je odgovorio brojem 500/)).toBeVisible()
+      expect(await panel.findByText(/greška 500/)).toBeVisible()
       expect(await theBox()).not.toBeChecked()
     } finally {
       stop()
@@ -285,7 +285,7 @@ describe('the choice to hide a profile from visitors', () => {
 
       const panel = await panelFor()
 
-      expect(await panel.findByText(/Server je odgovorio brojem 200/)).toBeVisible()
+      expect(await panel.findByText(/greška 200/)).toBeVisible()
       expect(await theBox()).not.toBeChecked()
       expect(panel.queryByText(sr.account.saved)).not.toBeInTheDocument()
     } finally {

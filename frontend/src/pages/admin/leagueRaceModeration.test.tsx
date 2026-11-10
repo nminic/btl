@@ -487,7 +487,7 @@ describe('which races count towards a competition', () => {
     await user.click(screen.getByRole('button', { name: 'Dodaj u ligu' }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Sezona ove lige je zamrznuta, pa se trka više ne dodaje. Izbacivanje i dalje radi.',
+      'Sezona ove lige je zamrznuta. Trke se mogu samo izbaciti.',
     )
     /* And nothing was counted, so the list and the server do not disagree about a race that
        never went in.

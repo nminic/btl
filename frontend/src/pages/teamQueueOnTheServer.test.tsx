@@ -712,7 +712,7 @@ describe('what the team presses', () => {
       await sentList()
       await user.click(takeItBack())
 
-      /* `server.wrong` is „Server je odgovorio brojem {status}...", which is what an empty 404
+      /* `server.wrong` is „Ništa nije sačuvano (greška {status})...", which is what an empty 404
          can honestly be turned into: `TeamJoiningWriteApi.takeBack` answers 204 or an empty 404
          and names nothing, so there is no sentence of its own to draw. */
       expect(

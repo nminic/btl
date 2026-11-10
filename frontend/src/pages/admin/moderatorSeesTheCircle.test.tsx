@@ -103,7 +103,7 @@ const openQueue = () => renderAt(`/sr/${QUEUE.profiles.path}`, 'superadmin')
 
 /** The sentence the lit circle says out loud, which is the one way a reader finds the frame
  *  without a class: the frame is the element that holds it. */
-const FRAMED = /Ostatak je zatamnjen/
+const FRAMED = /Na profilu se vidi deo slike u krugu/
 
 type Card = ReturnType<typeof within>
 
@@ -214,7 +214,7 @@ describe('the circle on a card the moderator is deciding about', () => {
       expect(shadeOf(cardOf('Neda Nedić'))).toBeVisible()
       expect(shadeOf(cardOf('Neda Nedić'))).toHaveAttribute('aria-hidden', 'true')
       expect(cardOf('Neda Nedić').getByText(FRAMED)).toHaveTextContent(
-        'Deo slike u krugu je ono što će se videti. Ostatak je zatamnjen, ali se i dalje nazire.',
+        'Na profilu se vidi deo slike u krugu.',
       )
     } finally {
       stop()
@@ -338,7 +338,7 @@ describe('the circle on a card the moderator is deciding about', () => {
       thePictureFails(cardOf('Neda Nedić'))
 
       expect(cardOf('Neda Nedić').queryByText(FRAMED)).not.toBeInTheDocument()
-      expect(cardOf('Neda Nedić').getByText(/^Slika nije dostupna/)).toBeVisible()
+      expect(cardOf('Neda Nedić').getByText(/^Slika se ne može učitati/)).toBeVisible()
     } finally {
       stop()
     }

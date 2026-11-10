@@ -141,7 +141,7 @@ function writes(): { path: string; method: string; body: Record<string, unknown>
 
 /** The runs the list of what was sent draws, in the order it draws them. */
 async function sentRows(): Promise<HTMLElement[]> {
-  return within(await screen.findByRole('region', { name: /^Poslato na proveru/ }, SOON)).queryAllByRole(
+  return within(await screen.findByRole('region', { name: /^Poslato/ }, SOON)).queryAllByRole(
     'listitem',
   )
 }
@@ -171,7 +171,7 @@ describe('a run of one’s own that is still waiting', () => {
     const row = within(must(waiting, 'the run that waits'))
 
     expect(row.getByText('Probna trka')).toBeVisible()
-    expect(row.getByText('Čeka proveru')).toBeVisible()
+    expect(row.getByText('Na čekanju')).toBeVisible()
     expect(row.queryByRole('link')).toBeNull()
     expect(row.queryByRole('button')).toBeNull()
     expect(
@@ -216,8 +216,8 @@ describe('a run of one’s own that is still waiting', () => {
 
     const rows = await sentRows()
 
-    expect(screen.getAllByText(/Račun nije konačan/)).toHaveLength(1)
-    expect(within(must(rows[1], 'the run that waits')).getByText(/Račun nije konačan/)).toBeVisible()
+    expect(screen.getAllByText(/Bodovi su konačni kad liga potvrdi rezultat/)).toHaveLength(1)
+    expect(within(must(rows[1], 'the run that waits')).getByText(/Bodovi su konačni kad liga potvrdi rezultat/)).toBeVisible()
   }, SLOW)
 })
 
@@ -401,14 +401,14 @@ describe('a run a moderator sent back', () => {
     await user.type(screen.getByLabelText(/^Link/), 'https://primer.rs/ispravno')
     await user.click(screen.getByRole('button', { name: /^Pošalji/ }))
 
-    expect(await screen.findByText('Rezultat je ponovo poslat na proveru.', undefined, SOON)).toBeVisible()
+    expect(await screen.findByText('Rezultat je ponovo poslat.', undefined, SOON)).toBeVisible()
 
     await user.click(screen.getByRole('link', { name: 'Moji rezultati' }))
 
     const rows = await sentRows()
 
     expect(rows).toHaveLength(2)
-    expect(within(must(rows[0], 'the run sent again')).getByText('Čeka proveru')).toBeVisible()
+    expect(within(must(rows[0], 'the run sent again')).getByText('Na čekanju')).toBeVisible()
     expect(within(must(rows[1], 'the run sent back')).getByText('Odbijeno')).toBeVisible()
     expect(
       within(must(rows[1], 'the run sent back')).getByText('Na stranici rezultata nema tvog imena.'),
@@ -475,14 +475,14 @@ describe('a run a moderator sent back', () => {
     await user.type(screen.getByLabelText(/^Link/), 'https://primer.rs/nov-dokaz')
     await user.click(screen.getByRole('button', { name: /^Pošalji/ }))
 
-    expect(await screen.findByText('Rezultat je ponovo poslat na proveru.', undefined, SOON)).toBeVisible()
+    expect(await screen.findByText('Rezultat je ponovo poslat.', undefined, SOON)).toBeVisible()
 
     await user.click(screen.getByRole('link', { name: 'Moji rezultati' }))
 
     const rows = await sentRows()
 
     expect(rows).toHaveLength(2)
-    expect(within(must(rows[0], 'the correction sent again')).getByText('Čeka proveru')).toBeVisible()
+    expect(within(must(rows[0], 'the correction sent again')).getByText('Na čekanju')).toBeVisible()
     expect(within(must(rows[1], 'the correction sent back')).getByText('Odbijeno')).toBeVisible()
     expect(
       within(must(rows[1], 'the correction sent back')).queryByRole('link', {
@@ -792,7 +792,7 @@ describe('a result that has been counted', () => {
 
     await user.type(screen.getByLabelText(/^Link/), 'https://primer.rs/rezultati')
     await user.click(screen.getByRole('button', { name: /^Pošalji/ }))
-    await screen.findByText('Rezultat je ponovo poslat na proveru.')
+    await screen.findByText('Rezultat je ponovo poslat.')
 
     const sent = must(writes()[0], 'the correction')
 
@@ -934,7 +934,7 @@ describe('a result that has been counted', () => {
 
     await user.type(screen.getByLabelText(/^Link/), 'https://primer.rs/rezultati')
     await user.click(screen.getByRole('button', { name: /^Pošalji/ }))
-    await screen.findByText('Rezultat je ponovo poslat na proveru.')
+    await screen.findByText('Rezultat je ponovo poslat.')
 
     const sent = must(writes()[0], 'the correction')
 
@@ -964,7 +964,7 @@ describe('a result that has been counted', () => {
     await user.type(screen.getByLabelText(/^Link/), 'https://primer.rs/rezultati')
     await user.click(screen.getByRole('button', { name: /^Pošalji/ }))
 
-    expect(await screen.findByText('Rezultat je ponovo poslat na proveru.')).toBeVisible()
+    expect(await screen.findByText('Rezultat je ponovo poslat.')).toBeVisible()
   })
 
   it('leaves the standing exactly as it was while the correction waits', async () => {
@@ -993,7 +993,7 @@ describe('a result that has been counted', () => {
     await screen.findByText(/Menjaš rezultat koji je već uračunat/)
     await user.type(screen.getByLabelText(/^Link/), 'https://primer.rs/rezultati')
     await user.click(screen.getByRole('button', { name: /^Pošalji/ }))
-    await screen.findByText('Rezultat je ponovo poslat na proveru.')
+    await screen.findByText('Rezultat je ponovo poslat.')
 
     /* Walked back rather than rendered again, so the standing is the one this
        visit holds after the correction went in. */
@@ -1280,7 +1280,7 @@ describe('a result that has been counted', () => {
       await user.type(screen.getByLabelText(/^Link/), 'https://primer.rs/rezultati')
       await user.click(screen.getByRole('button', { name: /^Pošalji/ }))
 
-      expect(await screen.findByText('Rezultat je ponovo poslat na proveru.')).toBeVisible()
+      expect(await screen.findByText('Rezultat je ponovo poslat.')).toBeVisible()
 
       const sent = must(writes()[0], 'the correction')
 

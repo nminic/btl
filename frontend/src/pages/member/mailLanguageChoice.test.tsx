@@ -505,7 +505,7 @@ describe('when the server will not take the choice', () => {
 
     await user.click(await radio('English'))
 
-    expect(await (await panel()).findByText(/Server je odgovorio brojem 500/)).toBeVisible()
+    expect(await (await panel()).findByText(/greška 500/)).toBeVisible()
     expect(isChosen(await radio('Srpski'))).toBe(true)
   }, SLOW)
 
@@ -533,7 +533,7 @@ describe('when the server will not take the choice', () => {
 
     const mine = await panel()
 
-    expect(await mine.findByText(/Server je odgovorio brojem 200/)).toBeVisible()
+    expect(await mine.findByText(/greška 200/)).toBeVisible()
     expect(isChosen(await radio('Srpski'))).toBe(true)
     expect(mine.queryByText(sr.account.saved)).not.toBeInTheDocument()
   }, SLOW)
@@ -546,7 +546,7 @@ describe('when the server will not take the choice', () => {
 
     await user.click(await radio('English'))
 
-    expect(await (await panel()).findByText(/Server je odgovorio brojem 200/)).toBeVisible()
+    expect(await (await panel()).findByText(/greška 200/)).toBeVisible()
     expect(isChosen(await radio('Srpski'))).toBe(true)
     expect(isChosen(await radio('English'))).toBe(false)
   }, SLOW)

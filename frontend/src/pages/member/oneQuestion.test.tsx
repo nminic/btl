@@ -572,7 +572,7 @@ describe('what a signed in account with no competitor record is told', () => {
     ).toBeVisible()
     expect(
       screen.getByText(
-        'Prijavljen si, ali uz ovaj nalog ne stoji takmičarski zapis, pa ovde nema šta da se prikaže.',
+        'Ovaj nalog nema takmičarski profil.',
       ),
     ).toBeVisible()
     /* The way onward is the front page and not the sign in: whoever reads this is signed

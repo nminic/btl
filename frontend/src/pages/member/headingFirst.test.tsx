@@ -32,7 +32,7 @@ const DAY = '2026-10-15'
  * say: that what explains a form stands between the heading and the first field.
  */
 const SCREENS = [
-  ['/sr/novi-tim', 'Predlog tima', /Tim postoji tek kad ga odobri/],
+  ['/sr/novi-tim', 'Predlog tima', /Tim se pojavljuje na portalu kad predlog bude prihvaćen/],
   /* **No note since 17.10.2026**, so it is `null` here, as on the third row: the owner deleted the
      sentence at the top of the form for a result away from the calendar. That nothing stands
      between its heading and its first box is `pages/member/newResult.test.tsx`'s to say. */
@@ -56,7 +56,7 @@ const SCREENS = [
   [
     '/sr/tim/dunavski-trkaci/izmena',
     'Izmena tima',
-    /Izmena ponovo prolazi verifikaciju/,
+    /Izmena se vidi na portalu kad bude prihvaćena/,
     '000001',
   ],
 ] as const

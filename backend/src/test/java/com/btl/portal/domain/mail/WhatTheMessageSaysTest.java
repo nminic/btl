@@ -80,7 +80,7 @@ class WhatTheMessageSaysTest {
 	void theInvitationOfAMemberSaysWhatHappensAfterAWeekInTheOwnersSentence() {
 		assertThat(WhatTheMessageSays.about(Message.INVITED_AS_A_MEMBER, PORTAL, TOKEN).body())
 				.contains("Link važi sedam dana i može da se upotrebi jednom. Ako ga za to vreme ne otvorite,"
-						+ " vaš upis se briše, osim ako je članarina već evidentirana; tada nam se javite na"
+						+ " vaš upis se briše, osim ako je članarina već evidentirana; u tom slučaju pišite na"
 						+ " info@balkanskatrkackaliga.net i poslaćemo vam novi.")
 				.doesNotContain("Zaboravljena lozinka");
 	}
@@ -93,14 +93,13 @@ class WhatTheMessageSaysTest {
 				TOKEN).body()).isEqualTo(String.join("\n",
 				"Dobrodošli u Balkansku trkačku ligu.",
 				"",
-				"Da bismo znali da je ova adresa zaista vaša, otvorite ovaj link:",
+				"Adresu potvrđujete otvaranjem ovog linka:",
 				linkOf(Message.CONFIRM_THE_ADDRESS, MailLanguage.SERBIAN),
 				"",
-				"Link važi sedam dana. Ako ga za to vreme ne otvorite, vašu nedovršenu prijavu brišemo, a ova"
-						+ " adresa ostaje slobodna, pa se možete registrovati ponovo kad god poželite.",
+				"Link važi sedam dana. Posle toga se nepotvrđena prijava briše, a sa ove adrese možete da se"
+						+ " registrujete ponovo.",
 				"",
-				"Ako se niste registrovali kod nas, ovu poruku slobodno zanemarite i za sedam dana neće"
-						+ " ostati ni traga od nje.",
+				"Ako se niste registrovali kod nas, zanemarite ovu poruku.",
 				"",
 				tail));
 
@@ -113,7 +112,7 @@ class WhatTheMessageSaysTest {
 				"",
 				"Link važi 1 sat i može da se upotrebi jednom.",
 				"",
-				"Ako niste inicirali promenu lozinke, ovu poruku slobodno zanemarite.",
+				"Ako niste tražili novu lozinku, zanemarite ovu poruku.",
 				"",
 				tail));
 
@@ -124,8 +123,7 @@ class WhatTheMessageSaysTest {
 				"Nalog još nema lozinku. Otvorite ovaj link i postavite je sami:",
 				linkOf(Message.INVITED_AS_A_MODERATOR, MailLanguage.SERBIAN),
 				"",
-				"Link važi 1 sat i može da se upotrebi jednom. Dok ga ne upotrebite, na nalog ne može da"
-						+ " se prijavi niko, pa ni vi.",
+				"Link važi 1 sat i može da se upotrebi jednom.",
 				"",
 				"Ako link istekne, zatražite novi sa strane za prijavu.",
 				"",
@@ -139,10 +137,8 @@ class WhatTheMessageSaysTest {
 				linkOf(Message.INVITED_AS_A_MEMBER, MailLanguage.SERBIAN),
 				"",
 				"Link važi sedam dana i može da se upotrebi jednom. Ako ga za to vreme ne otvorite, vaš upis"
-						+ " se briše, osim ako je članarina već evidentirana; tada nam se javite na"
+						+ " se briše, osim ako je članarina već evidentirana; u tom slučaju pišite na"
 						+ " info@balkanskatrkackaliga.net i poslaćemo vam novi.",
-				"",
-				"Dok ga ne upotrebite, na nalog ne može da se prijavi niko, pa ni vi.",
 				"",
 				tail));
 

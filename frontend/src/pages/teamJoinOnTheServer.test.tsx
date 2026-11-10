@@ -377,9 +377,9 @@ describe('„Prijavi se u tim", sent to the server', () => {
      woman (Ivona) and the man is `000008`: a screen that kept one sentence for everybody fails one
      of the two, and neither is the other's word. */
   it.each([
-    ['a woman', ASKER, sr.teams.applyRefused.aQuestionAlreadyStandsFemale, /je poslala\./],
-    ['a man', '000008', sr.teams.applyRefused.aQuestionAlreadyStands, /je poslao\./],
-  ])('says in the word of the sex of the reader that the application was sent: %s', async (_who, member, words, verb) => {
+    ['a woman', ASKER, sr.teams.applyRefused.aQuestionAlreadyStandsFemale, /Možeš da je povučeš na strani tog tima/],
+    ['a man', '000008', sr.teams.applyRefused.aQuestionAlreadyStands, /Možeš da je povučeš na strani tog tima/],
+  ])('says that the application already waits, in the same words for a man and a woman since 10.11.2026: %s', async (_who, member, words, verb) => {
     const server = aServerForTheAsker({ post: () => refused('aQuestionAlreadyStands', 409) })
     const user = setupUser()
 

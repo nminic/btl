@@ -804,9 +804,25 @@ describe("the woman's words for what a member did", () => {
     ).toEqual(['heIsAlreadyInATeam'])
   })
 
+  /* **THREE PAIRS THAT NO LONGER CHOOSE A WORD BY GENDER, since 10.11.2026.** The owner's words for
+     them name no verb with a gender: „Već si u timu {team}." and „Već si u timu." (the invitation that
+     is now stale) and „Već imaš prijavu koja čeka odgovor tima. Možeš da je povučeš na strani tog
+     tima." (the application that already waits). The keys stay, and the screens still pick the
+     woman's, so a gendered word may come back for either without touching a screen; what is held is
+     that the two of a pair read the same today, and that neither carries a word with a gender in it
+     or the „/la" of PDL P18, 18.10.2026. */
   it.each([
     ['teams.inviteOvertaken', 'teams.inviteOvertakenFemale'],
     ['teams.inviteOvertakenUnnamed', 'teams.inviteOvertakenUnnamedFemale'],
+    ['teams.applyRefused.aQuestionAlreadyStands', 'teams.applyRefused.aQuestionAlreadyStandsFemale'],
+  ])('reads the same in %s and %s, with no word that has a gender and no „/la"', (man, woman) => {
+    expect(read(sr, woman)).toBe(read(sr, man))
+    expect(read(sr, man)).not.toMatch(/\b(ušao|ušla|poslao|poslala)\b/)
+    expect(read(sr, man)).not.toEqual(expect.stringContaining('/la'))
+    expect(read(en, woman)).toBe(read(en, man))
+  })
+
+  it.each([
     ['teams.inviteRefused.heIsAlreadyInATeam', 'teams.inviteRefused.heIsAlreadyInATeamFemale'],
   ])('says „ušao" in %s and „ušla" in %s, and „ušao/la" in neither', (man, woman) => {
     expect(read(sr, man)).toEqual(expect.stringContaining('ušao u tim'))
@@ -861,12 +877,6 @@ describe("the woman's words for what the reader did", () => {
 
   it.each([
     ['teams.inviteAccepted', 'teams.inviteAcceptedFemale', 'Prihvatio si', 'Prihvatila si'],
-    [
-      'teams.applyRefused.aQuestionAlreadyStands',
-      'teams.applyRefused.aQuestionAlreadyStandsFemale',
-      'je poslao.',
-      'je poslala.',
-    ],
   ])('says it in %s as a man and in %s as a woman, with no „/la"', (man, woman, his, hers) => {
     expect(read(sr, man)).toEqual(expect.stringContaining(his))
     expect(read(sr, woman)).toEqual(expect.stringContaining(hers))

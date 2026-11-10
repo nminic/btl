@@ -294,7 +294,7 @@ describe('a deletion that is out with the server', () => {
         expect(ask).toHaveFocus()
       })
       expect(sending()).toHaveLength(0)
-      expect(await screen.findByText(new RegExp(`Server je odgovorio brojem ${String(refusal)}`))).toBeInTheDocument()
+      expect(await screen.findByText(new RegExp(`greška ${String(refusal)}`))).toBeInTheDocument()
 
       server.stop()
     }, SLOW)
