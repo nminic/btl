@@ -296,7 +296,7 @@ describe('„Moja članarina", to somebody who has registered and has not paid',
   it('is told when payment opens, before the first sale, as everybody is', async () => {
     openHisPage({}, BEFORE_THE_FIRST_SALE)
 
-    expect(await screen.findByText('Obnova se otvara 11. novembra i traje do 31. decembra.')).toBeVisible()
+    expect(await screen.findByText('Obnova se otvara 21. novembra i traje do 31. decembra.')).toBeVisible()
     expect(screen.queryByRole('heading', { level: 3, name: 'Uplatnica' })).not.toBeInTheDocument()
     expect(screen.queryByRole('img', { name: /QR/ })).not.toBeInTheDocument()
   }, SLOW)

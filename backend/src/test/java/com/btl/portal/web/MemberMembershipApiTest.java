@@ -74,7 +74,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 class MemberMembershipApiTest {
 
 	/** 2028 on sale while 2027 is run: 35 EUR plus the fee of 3. */
-	private static final Instant AFTER_THE_FIFTEENTH = Instant.parse("2027-11-16T09:00:00Z");
+	private static final Instant AFTER_THE_FIFTEENTH = Instant.parse("2027-11-26T09:00:00Z");
 
 	/** 2027 on sale and run. */
 	private static final Instant BEFORE_THE_FIFTEENTH = Instant.parse("2027-09-10T09:00:00Z");
@@ -541,7 +541,7 @@ class MemberMembershipApiTest {
 	 */
 	@Test
 	void aSeasonCancelledInTheWindowOf2027LeavesHisTeamAndPairAlone() throws Exception {
-		clock.moveTo(Instant.parse("2027-11-16T09:00:00Z"));
+		clock.moveTo(Instant.parse("2027-11-26T09:00:00Z"));
 		aTeamAndAPair(2027, 2028);
 
 		assertThat(cancelled("000005", "payment", OVER_THE_MEMBERS).getStatus()).isEqualTo(200);
@@ -557,7 +557,7 @@ class MemberMembershipApiTest {
 	 */
 	@Test
 	void aSeasonCancelledInTheWindowOf2028IsNotTheSeasonBeingRun() throws Exception {
-		clock.moveTo(Instant.parse("2028-11-16T09:00:00Z"));
+		clock.moveTo(Instant.parse("2028-11-26T09:00:00Z"));
 		theJobFroze(2027);
 		aTeamAndAPair(2028, 2028, 2029);
 

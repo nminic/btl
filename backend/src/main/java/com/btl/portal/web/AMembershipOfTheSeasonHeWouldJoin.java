@@ -32,7 +32,7 @@ import java.time.ZonedDateTime;
  * {@code BookingAPayment#theSeasonIsAlreadyHeld} asks of the same table, for the same reason.
  *
  * <p><b>IT IS NOT „IS HE ACTIVE" ({@link AMemberIsActive}), AND TODAY THE TWO GIVE THE SAME
- * ANSWER.</b> Until 11 November 2027 the only season on sale is 2027 and being active is exactly
+ * ANSWER.</b> Until 21 November 2027 the only season on sale is 2027 and being active is exactly
  * „holds a row of 2027", so no case written on today's clock can tell them apart. They come apart
  * in the window, where a member who holds only the season being run is active and does not hold
  * the season he would join, and every case of this feature moves the clock into the window of 2027

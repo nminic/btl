@@ -462,7 +462,7 @@ describe('membership', () => {
       /^Članarina za sezonu 2028 je plaćena\.$/, /^Članarina za 2028 je već plaćena, pa nema šta da uplatiš\.$/],
     ['let into 2028 on his balance', '2027-11-25', 'balance', 2028,
       /^Članarina za sezonu 2028 je plaćena iz balansa\.$/, /^Članarina za 2028 je već plaćena/],
-    ['freed of 2027, on the last day it is sold', '2027-11-10', 'feeExempt', 2027,
+    ['freed of 2027, on the last day it is sold', '2027-11-20', 'feeExempt', 2027,
       /Oslobođen si plaćanja članarine za sezonu 2027, odlukom/, /Oslobođen si plaćanja članarine, pa nema/],
     ['freed of 2027 before the league has a season', '2026-11-01', 'feeExempt', 2027,
       /Oslobođen si plaćanja članarine za sezonu 2027, odlukom/, /Oslobođen si plaćanja članarine, pa nema/],
@@ -980,7 +980,7 @@ describe('membership', () => {
     /* It used to run out at the end of 2027, and this screen carried a line
        saying membership was not on sale yet for the day it did. The four
        periods repeat now (owner, 30.07.2026), so that day never comes. */
-    renderMembershipOn('2031-11-15')
+    renderMembershipOn('2031-11-25')
 
     expect(await screen.findByRole('heading', { name: 'Uplatnica' })).toBeVisible()
     expect(screen.getAllByText(/35 EUR, a iz Srbije 4\.200 RSD/).length).toBeGreaterThan(0)
@@ -1256,7 +1256,7 @@ describe('membership', () => {
       expect(early.rsd, 'the bundled figure has to differ, or this measures nothing').not.toBe(5280)
 
       owing(anInvoice(2028, 'RSD'))
-      renderAt('/sr/moja-clanarina', 'competitor', '000032', undefined, '2027-11-15')
+      renderAt('/sr/moja-clanarina', 'competitor', '000032', undefined, '2027-11-25')
 
       const payload = readQr(await screen.findByRole('img', { name: /QR/ }))
 
@@ -2601,7 +2601,7 @@ describe('the transfer window and renewal', () => {
   it('shuts both outside the window, and says when they open', async () => {
     renderMembership('2026-07-29')
 
-    expect(await screen.findByText(/Obnova se otvara 11. novembra/)).toBeVisible()
+    expect(await screen.findByText(/Obnova se otvara 21. novembra/)).toBeVisible()
     expect(screen.getByText(/Prelazni rok je zatvoren/)).toBeVisible()
     expect(screen.queryByText(/U tim ulaziš prijavom/)).not.toBeInTheDocument()
   })
@@ -2680,7 +2680,7 @@ describe('screens that depend on the date', () => {
     renderAt('/sr/moja-clanarina', 'competitor', '000032', undefined, '2026-09-20')
 
     expect(
-      await screen.findByText('Članarina se još ne prodaje. Naplata kreće 11. novembra.'),
+      await screen.findByText('Članarina se još ne prodaje. Naplata kreće 21. novembra.'),
     ).toBeVisible()
 
     /* Day first, because the switch is the portal's own date control since
@@ -2693,7 +2693,7 @@ describe('screens that depend on the date', () => {
       await screen.findByText('Danas članarina košta 35 EUR, a iz Srbije 4.200 RSD.'),
     ).toBeVisible()
     expect(
-      screen.queryByText('Članarina se još ne prodaje. Naplata kreće 11. novembra.'),
+      screen.queryByText('Članarina se još ne prodaje. Naplata kreće 21. novembra.'),
     ).not.toBeInTheDocument()
   }, SEVERAL_SCREENS)
 })

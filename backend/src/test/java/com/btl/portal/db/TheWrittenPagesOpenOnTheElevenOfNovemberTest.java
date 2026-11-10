@@ -31,6 +31,10 @@ import static org.assertj.core.api.Assertions.assertThat;
  * preporuci treba da funkcionise, ali nigde se ne pominje na sajtu ni jedan datum oko ovoga pre 11.11." The first
  * year opens on 15 October in the clock and nowhere in the text.
  *
+ * <p><b>AND FROM 10.11.2026 NO PAGE NAMES 11 NOVEMBER EITHER</b> (owner, PDL „Ciklus od 21. novembra (10.11.2026)"):
+ * the cycle opens on 21 November every year, V92 moves the table and V93 the sentence of Article 49, and the
+ * cases below that read the day out of the table hold the two together.
+ *
  * <p><b>And the phrases that must be GONE have a floor of their own</b>, which the day cannot give them:
  * {@link #everyPhraseThisExpectsToBeGoneWasReallyThere} runs them against the migrations that WROTE that text,
  * read out of the files Flyway resolved. Those files are immutable (ADL A2), so a phrase that matches nothing
@@ -51,7 +55,9 @@ class TheWrittenPagesOpenOnTheElevenOfNovemberTest extends DatabaseTest {
 			"Ko se učlani tokom sezone",
 			"Iz tima se izlazi u istom prozoru",
 			"Van tog prozora izlazak nije moguć",
-			"Sve promene moraju biti završene do 31. decembra");
+			"Sve promene moraju biti završene do 31. decembra",
+			/* The day the cycle opened from 27.10.2026 until the owner moved it on 10.11.2026 (V93). */
+			"od 11. novembra");
 
 	private static final List<String> GONE_IN_ENGLISH = List.of(
 			"from 1 October",
@@ -63,7 +69,8 @@ class TheWrittenPagesOpenOnTheElevenOfNovemberTest extends DatabaseTest {
 			"Anyone who joins during the season",
 			"A member leaves a team in the same window",
 			"Outside that window leaving is not possible",
-			"All changes must be completed by 31 December");
+			"All changes must be completed by 31 December",
+			"from 11 November");
 
 	private static final String[] MONTHS_IN_SERBIAN = {"januara", "februara", "marta", "aprila", "maja", "juna",
 			"jula", "avgusta", "septembra", "oktobra", "novembra", "decembra"};
@@ -206,9 +213,9 @@ class TheWrittenPagesOpenOnTheElevenOfNovemberTest extends DatabaseTest {
 	@Test
 	void everyPhraseThisExpectsToBeGoneWasReallyThere() {
 		String serbian = migrationSql("24") + migrationSql("46") + migrationSql("49") + migrationSql("57")
-				+ migrationSql("71");
+				+ migrationSql("71") + migrationSql("76");
 		String english = migrationSql("43") + migrationSql("46") + migrationSql("49") + migrationSql("57")
-				+ migrationSql("71");
+				+ migrationSql("71") + migrationSql("76");
 
 		for (String gone : GONE_IN_SERBIAN) {
 			assertThat(serbian)

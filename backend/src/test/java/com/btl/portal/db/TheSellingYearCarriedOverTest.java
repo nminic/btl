@@ -128,15 +128,15 @@ class TheSellingYearCarriedOverTest extends DatabaseTest {
 	 */
 	@Test
 	void thePagesMoveOverTheTextThatWasAlreadyThere() {
-		/* V76 (27.10.2026) rewrote the sentences V49 moved, and the pages say "od 11. novembra"
-		   and "from 11 November" today, so those are what the fixture turns back into the old
+		/* V76 (27.10.2026) rewrote the sentences V49 moved and V93 (10.11.2026) moved the day on, and the pages say "od 21. novembra"
+		   and "from 21 November" today, so those are what the fixture turns back into the old
 		   day. The second replacement of each pair finds nothing any more and is kept because
 		   it is the other half of the sentence V49 changed. */
 		jdbc.execute("update static_page_section set body = replace(replace(body,"
-				+ " 'od 11. novembra', 'od 1. oktobra'),"
+				+ " 'od 21. novembra', 'od 1. oktobra'),"
 				+ " 'do 14. oktobra tekuća', 'do 30. septembra tekuća')");
 		jdbc.execute("update static_page_section_translation set body = replace(replace(body,"
-				+ " 'from 11 November', 'from 1 October'),"
+				+ " 'from 21 November', 'from 1 October'),"
 				+ " 'to 14 October the current one is', 'to 30 September the current one is')");
 
 		assertThat(bodiesNaming("static_page_section", "od 1. oktobra"))

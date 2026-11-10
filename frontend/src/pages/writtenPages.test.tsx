@@ -2954,11 +2954,13 @@ describe('what the written pages say the fee buys', () => {
        (V89; owner, 07.11.2026, who made the rule general: the date moves whenever the
        words of a legal text change, to the day the change reaches QA); the terms keep
        29.10.2026 and the rulebook 30.10.2026. It moved on to 08.11.2026 with „Moji podaci"
-       said where it said the card Podaci (V90; owner, 08.11.2026). Written per
+       said where it said the card Podaci (V90; owner, 08.11.2026). The rulebook moved on to
+       10.11.2026 with the transfer window for teams that opens on 21 November (V93; owner,
+       10.11.2026, the day it is expected on QA). Written per
        document and not as one day for all three, so a date moved on one of them,
        or left behind on one, is a failure that names the document. */
     const SIGNED_OFF = {
-      pravilnik: '30.10.2026',
+      pravilnik: '10.11.2026',
       'uslovi-koriscenja': '29.10.2026',
       'politika-privatnosti': '08.11.2026',
     } as const

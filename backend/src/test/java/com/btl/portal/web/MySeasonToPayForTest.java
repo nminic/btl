@@ -60,7 +60,7 @@ class MySeasonToPayForTest {
 	private static final String HOLDS_ONLY_THE_NEXT = "000300";
 
 	/** Inside the window of 2027: the season on sale is 2028 and the one being run is 2027. */
-	private static final Instant INSIDE_THE_WINDOW = Instant.parse("2027-11-20T09:00:00Z");
+	private static final Instant INSIDE_THE_WINDOW = Instant.parse("2027-11-30T09:00:00Z");
 
 	/** Outside it: September, where the season on sale is the one being run. */
 	private static final Instant OUTSIDE_THE_WINDOW = Instant.parse("2027-09-20T09:00:00Z");

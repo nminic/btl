@@ -779,7 +779,22 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   other: main stood at V90 on 08.11.2026 (1eea9c16).
 
 			   Pinned LAST, when the file was final, off this very assertion. */
-			new Applied("91", "V91__a_ducat_award_remembers_its_tier_the_day_of_the_race_and_the_result_that_won_it.sql", -1262018098));
+			new Applied("91", "V91__a_ducat_award_remembers_its_tier_the_day_of_the_race_and_the_result_that_won_it.sql", -1262018098),
+
+			/* V92. The selling year opens on 21 November every year (owner, 10.11.2026, PDL „Ciklus od 21. novembra
+			   (10.11.2026)“): the days and the names of the rows early, regular and season, and nothing else. 92 because
+			   main stood at V91 on 10.11.2026 (47bb2d28); pull request 707 also names a V92, and whichever is merged
+			   second renumbers.
+
+			   Pinned LAST, when the file was final, off this very assertion. */
+			new Applied("92", "V92__the_selling_year_opens_on_the_twenty_first_of_november.sql", -336720837),
+
+			/* V93. The rulebook says the transfer window for teams opens on 21 November (Article 49), and its sign-off
+			   moves to 10.11.2026 (the same entry of the PDL): two edits in both languages, each stopping the migration
+			   unless its old text stands exactly once.
+
+			   Pinned LAST, when the file was final, off this very assertion. */
+			new Applied("93", "V93__the_rulebook_says_the_transfer_window_opens_on_the_twenty_first_of_november.sql", 1000337619));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {
