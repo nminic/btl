@@ -9,15 +9,15 @@
 
      "Pehari se uručuju na ceremoniji spojenoj sa BTL dezorijentiringom."
 
-   and it becomes, in the assistant's proposal put to the owner before the merge,
+   and it becomes, in the assistant's proposal as the owner approved it with one change ("po preporuci, Pehari i nagrade"),
 
-     "Pehari se uručuju na novogodišnjoj koktel sednici Udruženja."
+     "Pehari i nagrade se uručuju na novogodišnjoj koktel sednici Udruženja."
 
    The English is the same change to the translation, in the tone of the rest of the article:
-   "Trophies are presented at the Association's New Year cocktail session."
+   "Trophies and prizes are presented at the Association's New Year cocktail session."
 
    THE MEDALS ARE LEFT OUT ON PURPOSE. Article 57 says the finisher's medal is sent by post ("Poštanske troškove slanja majice i
-   medalje snosi član."), so the sentence names the trophies only and the words about medals are the owner's to decide.
+   medalje snosi član."), so the sentence names the trophies and the prizes and not the medals.
 
    WHAT THE PAGES DO NOT SAY. No other text of the pages says where the trophies are presented: the terms of use lost their
    section on awards in V77 and name the ceremony nowhere, and Article 57 says how a trophy is collected, not where it is
@@ -60,11 +60,11 @@ begin
 
             ('TRO-01 Article 56', 'pravilnik', 14, 'sr',
              $old$Pehari se uručuju na ceremoniji spojenoj sa BTL dezorijentiringom.$old$,
-             $new$Pehari se uručuju na novogodišnjoj koktel sednici Udruženja.$new$),
+             $new$Pehari i nagrade se uručuju na novogodišnjoj koktel sednici Udruženja.$new$),
 
             ('TRO-01 Article 56', 'pravilnik', 14, 'en',
              $old$Trophies are presented at a ceremony joined with the BTL dezorijentiring.$old$,
-             $new$Trophies are presented at the Association's New Year cocktail session.$new$)
+             $new$Trophies and prizes are presented at the Association's New Year cocktail session.$new$)
 
         ) as edits (label, slug, section_position, in_language, old_text, new_text)
     loop

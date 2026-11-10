@@ -801,7 +801,7 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   migration unless its old text stands exactly once. The sign-off is not touched, V93 gave it the day.
 
 			   Pinned LAST, when the file was final, off this very assertion. */
-			new Applied("94", "V94__the_rulebook_presents_the_trophies_at_the_new_year_cocktail_session.sql", 118128942));
+			new Applied("94", "V94__the_rulebook_presents_the_trophies_at_the_new_year_cocktail_session.sql", -670754178));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {

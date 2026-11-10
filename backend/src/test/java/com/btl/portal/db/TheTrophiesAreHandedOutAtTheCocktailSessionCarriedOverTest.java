@@ -31,9 +31,9 @@ class TheTrophiesAreHandedOutAtTheCocktailSessionCarriedOverTest extends Databas
 	JdbcTemplate jdbc;
 
 	private static final String OLD_SR = "Pehari se uručuju na ceremoniji spojenoj sa BTL dezorijentiringom.";
-	private static final String NEW_SR = "Pehari se uručuju na novogodišnjoj koktel sednici Udruženja.";
+	private static final String NEW_SR = "Pehari i nagrade se uručuju na novogodišnjoj koktel sednici Udruženja.";
 	private static final String OLD_EN = "Trophies are presented at a ceremony joined with the BTL dezorijentiring.";
-	private static final String NEW_EN = "Trophies are presented at the Association's New Year cocktail session.";
+	private static final String NEW_EN = "Trophies and prizes are presented at the Association's New Year cocktail session.";
 	private static final String NEIGHBOUR_SR = "Digitalne nagrade i diplome dodeljuju se automatski, u trenutku"
 			+ " zamrzavanja tabela, svima istovremeno i bez obzira na to gde ko živi.";
 
