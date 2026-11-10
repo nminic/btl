@@ -15,18 +15,21 @@ import {
 } from './season'
 
 describe('the yearly window', () => {
-  it('opens on the eleventh of November and shuts with the year', () => {
+  it('opens on the twenty-first of November and shuts with the year', () => {
     expect(inYearlyWindow('2027-10-15')).toBe(false)
     /* THE DAYS THAT CHANGED SIDES when the owner moved the window on 27.10.2026: from 15
        October to 10 November 2027 it used to be open and is shut. */
     expect(inYearlyWindow('2027-10-31')).toBe(false)
     expect(inYearlyWindow('2027-11-01')).toBe(false)
-    expect(inYearlyWindow('2027-11-10')).toBe(false)
-    expect(inYearlyWindow('2027-11-11')).toBe(true)
+    /* AND THE DAYS THAT CHANGED SIDES ON 10.11.2026 (PDL, „Ciklus od 21. novembra"): from 11 to 20
+       November 2027 the window used to be open and is shut. */
+    expect(inYearlyWindow('2027-11-11')).toBe(false)
+    expect(inYearlyWindow('2027-11-20')).toBe(false)
+    expect(inYearlyWindow('2027-11-21')).toBe(true)
     expect(inYearlyWindow('2027-12-31')).toBe(true)
     expect(inYearlyWindow('2028-01-01')).toBe(false)
-    expect(inYearlyWindow('2028-11-10')).toBe(false)
-    expect(inYearlyWindow('2028-11-11')).toBe(true)
+    expect(inYearlyWindow('2028-11-20')).toBe(false)
+    expect(inYearlyWindow('2028-11-21')).toBe(true)
   })
 
   it('opens the first year, 2026, on the day of the first sale and in no other year', () => {
@@ -39,18 +42,23 @@ describe('the yearly window', () => {
     expect(inYearlyWindow('2026-11-01')).toBe(true)
     expect(inYearlyWindow('2026-11-10')).toBe(true)
     expect(inYearlyWindow('2026-11-11')).toBe(true)
+    /* Owner, 10.11.2026: „Ove godine ostaje otvoreno kako je sada." */
+    expect(inYearlyWindow('2026-11-20')).toBe(true)
     expect(inYearlyWindow('2026-12-31')).toBe(true)
     expect(inYearlyWindow('2027-01-01')).toBe(false)
   })
 
   it('reads the price list on the day the cycle opens during the first sale, and on its own day otherwise', () => {
     expect(dayThePriceListIsReadOn('2026-10-14')).toBe('10-14')
-    expect(dayThePriceListIsReadOn('2026-10-15')).toBe('11-11')
-    expect(dayThePriceListIsReadOn('2026-11-10')).toBe('11-11')
-    expect(dayThePriceListIsReadOn('2026-11-11')).toBe('11-11')
+    expect(dayThePriceListIsReadOn('2026-10-15')).toBe('11-21')
+    expect(dayThePriceListIsReadOn('2026-11-10')).toBe('11-21')
+    expect(dayThePriceListIsReadOn('2026-11-11')).toBe('11-21')
+    /* The eve of 21 November 2026 is still read as the day the cycle opens (owner, 10.11.2026). */
+    expect(dayThePriceListIsReadOn('2026-11-20')).toBe('11-21')
+    expect(dayThePriceListIsReadOn('2026-11-21')).toBe('11-21')
     expect(dayThePriceListIsReadOn('2026-11-25')).toBe('11-25')
     expect(dayThePriceListIsReadOn('2027-10-20')).toBe('10-20')
-    expect(dayThePriceListIsReadOn('2027-11-10')).toBe('11-10')
+    expect(dayThePriceListIsReadOn('2027-11-20')).toBe('11-20')
   })
 
   /**
@@ -164,8 +172,9 @@ describe('the yearly window', () => {
     expect(referralMayBeSet('2026-12-31')).toBe(false)
     expect(referralMayBeSet('2027-01-01')).toBe(true)
     expect(referralMayBeSet('2027-10-15')).toBe(true)
-    expect(referralMayBeSet('2027-11-10')).toBe(true)
-    expect(referralMayBeSet('2027-11-11')).toBe(false)
+    expect(referralMayBeSet('2027-11-11')).toBe(true)
+    expect(referralMayBeSet('2027-11-20')).toBe(true)
+    expect(referralMayBeSet('2027-11-21')).toBe(false)
   })
 
   it('has no season running until the first one begins', () => {
@@ -222,11 +231,12 @@ describe('the table of the season that has not begun', () => {
     /* PDL, owner, 18.10.2026: „2028 ce tek od [11.11] moci da se izabere". The days either side of both
        ends, so a window one day early or one day late cannot pass. */
     expect(nextSeasonOnOffer('2027-03-01')).toBeNull()
-    expect(nextSeasonOnOffer('2027-11-10')).toBeNull()
-    expect(nextSeasonOnOffer('2027-11-11')).toBe(2028)
+    expect(nextSeasonOnOffer('2027-11-11')).toBeNull()
+    expect(nextSeasonOnOffer('2027-11-20')).toBeNull()
+    expect(nextSeasonOnOffer('2027-11-21')).toBe(2028)
     expect(nextSeasonOnOffer('2027-12-31')).toBe(2028)
     expect(nextSeasonOnOffer('2028-01-01')).toBeNull()
-    expect(nextSeasonOnOffer('2028-11-11')).toBe(2029)
+    expect(nextSeasonOnOffer('2028-11-21')).toBe(2029)
   })
 
   it('is nothing at all in 2026, whatever the day, because the season shown is already the next one', () => {
@@ -236,11 +246,12 @@ describe('the table of the season that has not begun', () => {
     expect(nextSeasonOnOffer('2026-10-15')).toBeNull()
     expect(nextSeasonOnOffer('2026-11-10')).toBeNull()
     expect(nextSeasonOnOffer('2026-11-11')).toBeNull()
+    expect(nextSeasonOnOffer('2026-11-21')).toBeNull()
     expect(nextSeasonOnOffer('2026-12-31')).toBeNull()
   })
 
   it('is always later than the season shown when it is anything', () => {
-    for (const day of ['2027-11-11', '2028-12-01', '2031-11-30']) {
+    for (const day of ['2027-11-21', '2028-12-01', '2031-11-30']) {
       expect(nextSeasonOnOffer(day)).toBe(seasonShown(day) + 1)
     }
   })

@@ -323,8 +323,8 @@ describe('the price list', () => {
 
     const table = await screen.findByRole('table', { name: 'Cenovnik' })
 
-    expect(within(table).getByText('11.11. - 20.11.')).toBeVisible()
-    expect(within(table).getByText('1.4. - 10.11.')).toBeVisible()
+    expect(within(table).getByText('21.11. - 30.11.')).toBeVisible()
+    expect(within(table).getByText('1.4. - 20.11.')).toBeVisible()
     // The junior price is the one row with no period at all.
     expect(within(table).getByText('Svaka uplata')).toBeVisible()
     // The in-season price buys a profile but no place in the standing.
@@ -472,7 +472,7 @@ describe('the price list', () => {
     /* Said in full, so the second half of the sentence is held too: read from the
        dictionary on both sides, a test tells you the same string equals itself
        and a wrong date inside it passes. */
-    expect(open).toHaveAccessibleDescription(/Obnova te sezone je otvorena od 11. novembra/)
+    expect(open).toHaveAccessibleDescription(/Obnova te sezone je otvorena od 21. novembra/)
 
     await user.click(open)
 
@@ -545,7 +545,7 @@ describe('the price list', () => {
        was settled by 15 October 2027. */
     expect(open).toHaveAccessibleDescription(runningSeasonSentence())
     expect(open).toHaveAccessibleDescription(/Sezona 2028 je već u toku/)
-    expect(open).toHaveAccessibleDescription(/zaključan 11. novembra prethodne godine, a ovaj upis ga ipak menja/)
+    expect(open).toHaveAccessibleDescription(/zaključan 21. novembra prethodne godine, a ovaj upis ga ipak menja/)
   })
 
   it('has one live region on the price list, not two', async () => {
@@ -663,7 +663,7 @@ describe('the price list', () => {
          pre-filled it from the row being changed: this case only clears and retypes the
          euro field, so the name on the wire is the row's own, „11. do 20. novembra". */
       expect(JSON.parse(String(sent.init?.body))).toEqual({
-        label: '11. do 20. novembra',
+        label: '21. do 30. novembra',
         eur: 33,
         rsd: 4200,
       })
@@ -685,7 +685,7 @@ describe('the price list', () => {
     renderAt('/sr/administracija/cenovnik', 'superadmin')
 
     await screen.findByRole('table', { name: 'Cenovnik' })
-    await user.click(screen.getByRole('button', { name: 'Otvori: 11. do 20. novembra' }))
+    await user.click(screen.getByRole('button', { name: 'Otvori: 21. do 30. novembra' }))
 
     const eur = screen.getByLabelText(/Iznos u evrima/)
 
@@ -709,7 +709,7 @@ describe('the price list', () => {
       renderAt('/sr/administracija/cenovnik', 'superadmin')
 
       await screen.findByRole('table', { name: 'Cenovnik' })
-      await user.click(screen.getByRole('button', { name: 'Otvori: 11. do 20. novembra' }))
+      await user.click(screen.getByRole('button', { name: 'Otvori: 21. do 30. novembra' }))
 
     /* Three fields and no more. The window is the year itself and is not
        something an administrator types (owner, 30.07.2026); it used to ask for a
@@ -734,7 +734,7 @@ describe('the price list', () => {
       const table = within(await screen.findByRole('table', { name: 'Cenovnik' }))
       expect(table.getByText('33')).toBeVisible()
       // And the period it belongs to is where it was.
-      expect(table.getByText('11.11. - 20.11.')).toBeVisible()
+      expect(table.getByText('21.11. - 30.11.')).toBeVisible()
     } finally {
       stop()
     }
@@ -785,7 +785,7 @@ describe('the price list', () => {
       await user.type(eur, '7')
       await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
 
-      expect(await screen.findByRole('alert')).toHaveTextContent(/od 11. novembra utvrđen/)
+      expect(await screen.findByRole('alert')).toHaveTextContent(/od 21. novembra utvrđen/)
     } finally {
       stop()
     }
@@ -916,7 +916,7 @@ describe('the price list', () => {
       renderAt('/sr/administracija/cenovnik', 'superadmin')
 
       await screen.findByRole('table', { name: 'Cenovnik' })
-      await user.click(screen.getByRole('button', { name: 'Otvori: 11. do 20. novembra' }))
+      await user.click(screen.getByRole('button', { name: 'Otvori: 21. do 30. novembra' }))
 
       const field = screen.getByLabelText(box)
 
