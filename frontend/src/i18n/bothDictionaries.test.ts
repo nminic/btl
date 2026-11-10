@@ -132,14 +132,6 @@ function gaps(text: string): string[] {
   return [...text.matchAll(/\{\w+\}/g)].map((one) => one[0]).sort()
 }
 
-/** The two sentences whose gaps differ between the languages on purpose, in the shape the case
- *  below reports a difference in, until the English round the owner's entry of 10.11.2026
- *  announces. */
-const OWED_UNTIL_THE_ENGLISH_ROUND = [
-  'membership.firstSeasonOpen: sr [] en [{points}]',
-  'membership.feeExemptNoRenewal: sr [{season}] en []',
-]
-
 /** The categories a language can ask a plural for, which is what tells a group of
  *  plural forms from an ordinary group of names. Unicode's list, and the only one
  *  `Intl.PluralRules` ever answers with. */
@@ -326,34 +318,7 @@ if (english === null) {
         return here === across ? [] : [`${name}: sr [${here}] en [${across}]`]
       })
 
-      /* **TWO GAPS ARE OWED, BY NAME AND BY SHAPE, UNTIL THE ENGLISH ROUND.** The owner's words of
-         10.11.2026 (PDL, „Ton ekrana bez objašnjavanja posledica") gave the Serbian
-         `membership.feeExemptNoRenewal` the season it names and took `{points}` out of
-         `membership.firstSeasonOpen`; the English was not reviewed and goes into a round of its own
-         (the same entry), so it still says the old shape. An extra value in a sentence is harmless
-         (`translate` ignores a value no placeholder asks for) and a missing one prints a hole, which
-         is why the Serbian side is the one that changed. The list is compared as it stands, in
-         both directions: a third difference fails here, and so does one of these two the day the
-         English catches up, so the allowance cannot outlive its reason. */
-      expect(differing).toEqual(OWED_UNTIL_THE_ENGLISH_ROUND)
-    })
-
-    it('keeps the English whole where the screen gives it a value only the Serbian sentence asks for', () => {
-      /* The screen hands `membership.feeExemptNoRenewal` the season it names, since 10.11.2026 the
-         Serbian sentence says it and the English one, which the owner did not review, does not.
-         An extra value is ignored by `translate` and a missing one prints a hole: this is the
-         first half of that, measured, so that the English reader is not shown the braces. And the
-         other half, for `membership.firstSeasonOpen`, whose English still asks for `{points}` that
-         the Serbian sentence no longer does: the screen still passes it. */
-      expect(translate(book, 'en', 'membership.feeExemptNoRenewal', { season: 2027 })).toBe(
-        'You are exempt from paying the fee, so there is nothing to pay.',
-      )
-      expect(translate(book, 'en', 'membership.firstSeasonOpen', { points: 12 })).toContain(
-        'with 12 points or more',
-      )
-      expect(translate(sr, 'sr', 'membership.firstSeasonOpen', { points: 12 })).toBe(
-        'Početnička kategorija ti je još uvek dostupna.',
-      )
+      expect(differing).toEqual([])
     })
 
     it('answers for one, two and five, in both languages', () => {

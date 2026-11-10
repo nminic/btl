@@ -581,7 +581,7 @@ class ResultsByTheLeagueApiTest {
 		MimeMessage letter = theOneLetterTo(BOJANS_ADDRESS);
 
 		assertThat(letter.getSubject()).isEqualTo("A result has been entered for you");
-		assertThat(letter.getContent().toString()).contains("Season 2027 is frozen");
+		assertThat(letter.getContent().toString()).contains("The table of the frozen season 2027 stays the same");
 		assertThat(subjectsTo(BOJAN)).containsExactly("A result has been entered for you");
 		assertThat(envelope()).containsExactlyInAnyOrder(BOJANS_ADDRESS, theLeague);
 	}
@@ -842,8 +842,8 @@ class ResultsByTheLeagueApiTest {
 
 		assertThat(subjectsTo(BOJAN)).containsExactly("A result has been entered for you");
 		assertThat(bodiesTo(BOJAN).get(0)).startsWith("The league has entered a result for you:")
-			.contains("Season 2027 is frozen, so the result stays in your history, and the table,"
-				+ " rankings and awards of that season do not change.");
+			.contains("The result is entered in your history. The table of the frozen season 2027 stays"
+				+ " the same.");
 		assertThat(SMTP.waitForIncomingEmail(5000, 3)).isTrue();
 		assertThat(envelope()).containsExactlyInAnyOrder(ANAS_ADDRESS, DRAGANS_ADDRESS, BOJANS_ADDRESS,
 			theLeague);

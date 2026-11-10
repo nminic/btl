@@ -4,8 +4,10 @@
    WHOSE DECISION, AND WHERE IT IS WRITTEN. PDL, "Ton ekrana bez objašnjavanja posledica (10.11.2026)", the entry "[ODLUKE
    10.11.2026, vlasnik, rečenicu po rečenicu]": of 216 proposals the owner accepted 199 as they were put and wrote his own words
    for 17, and refused none; his words, sentence by sentence, are primeri/ton/odluke-vlasnika.json, field "tekst". Eight of the 216
-   are sentences of the written pages. The same entry says that the English was not reviewed and goes into a round of its own, so
-   no English sentence is touched here.
+   are sentences of the written pages. The English follows the new Serbian by meaning (owner, 11.11.2026: "Mora i engleski da se
+   sredi za nove srpske fraze."): where the Serbian no longer explains a consequence or names the internal process, the English
+   does not either, in the same short and plain tone, and where a Serbian sentence goes out the English one goes out with it.
+   The English edits are listed with the Serbian ones below, each one right after its Serbian pair.
 
    THE EIGHT SENTENCES (position is the section's place on its page). Each is replaced by the owner's words, letter for letter.
 
@@ -38,7 +40,7 @@
    words change. Three pages change here, so three sign-offs move to 11.11.2026, in both languages: the policy's "Poslednja
    izmena: 08.11.2026." (V90) and "Last amended: 08.11.2026."; the terms' "Poslednja izmena: 29.10.2026." (V77) and "Last
    amended: 29.10.2026."; the rulebook's "Poslednja izmena: 10.11.2026." (V93) and "Last amended: 10.11.2026." Only the day
-   moves in English, and not one of its sentences. The president's word carries no sign-off. 11.11.2026 is the day this was
+   moves in English as well, together with the English sentences listed above. The president's word carries no sign-off. 11.11.2026 is the day this was
    written and the day it is expected on QA; if the file reaches QA on a later day, the date is moved before the merge, in this
    file and in every place that holds it, which ADL A2 allows because the file has not been applied anywhere.
 
@@ -50,8 +52,8 @@
 
    WHAT IT DOES NOT TOUCH: no schema, no constraint, no key, no index, no row added or removed; the body of ten section texts in
    Serbian (the policy's sections 3, 4 and 7, the terms' sections 4 and 11, the rulebook's sections 9, 13, 14 and 19, and the
-   president's section 1) and the body of three in English (the three sign-offs), and in them only the sentences and the dates
-   named above: fourteen edits, eight of words and six of dates.
+   president's section 1) and the body of the same sections in English, and in them only the sentences and the dates named
+   above: twenty-two edits, sixteen of words (eight in each language) and six of dates.
 
    WHY A NEW FILE AND NOT AN EDIT OF V24 OR V26: ADL A2. They have been applied, their checksums are in flyway_schema_history,
    and MigrationsAreImmutableTest holds Flyway to them.
@@ -78,25 +80,49 @@ begin
              $old$Postavlja se tek kad temu sami izaberete, ostaje u vašem pregledaču i nikada ne stiže do nas: ne šalje se ni sa jednim zahtevom, pa ga naš server ne vidi. Čita ga samo sama strana, u vašem pregledaču, da bi znala u kojoj temi da se iscrta.$old$,
              $new$Postavlja se tek kad temu sami izaberete.$new$),
 
+            ('TON-01 privacy 4, the theme', 'politika-privatnosti', 4, 'en',
+             $old$It is set only once you choose a theme yourself, stays in your browser, and never reaches us: it is not sent with any request, so our server never sees it. Only the page itself reads it, in your browser, to know which theme to render in.$old$,
+             $new$It is set only once you choose a theme yourself.$new$),
+
             ('TON-02 privacy 4, no other storage', 'politika-privatnosti', 4, 'sr',
              $old$Drugog skladišta nema. Nema analitike, ni naše ni tuđe, pa nema ni trake za pristanak.$old$,
              $new$Drugog skladišta, niti analitike, nema.$new$),
+
+            ('TON-02 privacy 4, no other storage', 'politika-privatnosti', 4, 'en',
+             $old$There is no other storage. There is no analytics, ours or anyone else's, so there is no consent banner either.$old$,
+             $new$There is no other storage, nor analytics.$new$),
 
             ('TON-03 privacy 3, the essence', 'politika-privatnosti', 3, 'sr',
              $old$To je suština usluge koju vam pružamo i na to pristajete učlanjenjem.$old$,
              $new$Na to pristajete učlanjenjem.$new$),
 
+            ('TON-03 privacy 3, the essence', 'politika-privatnosti', 3, 'en',
+             $old$That is the substance of the service we provide you, and you agree to it by joining.$old$,
+             $new$You agree to it by joining.$new$),
+
             ('TON-04 terms 4, step 1', 'uslovi-koriscenja', 4, 'sr',
              $old$1. Popunite formu. Uz svako polje koje ima pravilo stoji objašnjenje tog pravila.$old$,
              $new$1. Popunite formu.$new$),
+
+            ('TON-04 terms 4, step 1', 'uslovi-koriscenja', 4, 'en',
+             $old$1. Fill in the form. Every field that has a rule carries an explanation of that rule.$old$,
+             $new$1. Fill in the form.$new$),
 
             ('TON-05 rulebook, Article 33', 'pravilnik', 9, 'sr',
              $old$Dužinu, uspon i spust upisujete sami, jer portal ne učitava zapis staze sa sata.$old$,
              $new$Dužinu, uspon i spust upisujete sami.$new$),
 
+            ('TON-05 rulebook, Article 33', 'pravilnik', 9, 'en',
+             $old$You enter the length, ascent, and descent yourself, because the portal does not read a course recording from a watch.$old$,
+             $new$You enter the length, ascent, and descent yourself.$new$),
+
             ('TON-06 rulebook, Article 51', 'pravilnik', 13, 'sr',
              $old$prati se ukupna kilometraža i ukupno vreme. Posebnog prikaza za višestruke polumaratone i maratone nema.$old$,
              $new$prati se ukupna kilometraža i ukupno vreme.$new$),
+
+            ('TON-06 rulebook, Article 51', 'pravilnik', 13, 'en',
+             $old$total distance and total time are tracked. There is no special display for multiple half marathons or marathons.$old$,
+             $new$total distance and total time are tracked.$new$),
 
             ('TON-07 rulebook, Article 57', 'pravilnik', 14, 'sr',
              $old$Poštanske troškove slanja majice i medalje snosi član.
@@ -104,9 +130,19 @@ begin
 Ličnu predaju uvek možete dogovoriti, i kasnije.$old$,
              $new$Poštanske troškove slanja majice i medalje snosi član.$new$),
 
+            ('TON-07 rulebook, Article 57', 'pravilnik', 14, 'en',
+             $old$Postal costs for sending the T-shirt and the medal are borne by the member.
+
+You can always arrange an in-person handover, even later.$old$,
+             $new$Postal costs for sending the T-shirt and the medal are borne by the member.$new$),
+
             ('TON-08 the president''s word', 'rec-predsednika', 1, 'sr',
              $old$za dodatne informacije nas slobodno kontaktirajte na zvaničnu adresu$old$,
              $new$za dodatne informacije pišite nam na$new$),
+
+            ('TON-08 the president''s word', 'rec-predsednika', 1, 'en',
+             $old$for any further information feel free to contact us at our official address$old$,
+             $new$for any further information write to us at$new$),
 
             ('TON-09 sign-off, privacy', 'politika-privatnosti', 7, 'sr',
              $old$Poslednja izmena: 08.11.2026.$old$,

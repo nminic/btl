@@ -146,15 +146,13 @@ class WhatTheMessageSaysTest {
 				TOKEN).body()).isEqualTo(String.join("\n",
 				"Welcome to BTL.",
 				"",
-				"So that we know this address really is yours, open this link:",
+				"You confirm the address by opening this link:",
 				linkOf(Message.CONFIRM_THE_ADDRESS, MailLanguage.ENGLISH),
 				"",
-				"The link is valid for seven days. If you do not open it in that time, we delete your"
-						+ " unfinished registration and this address stays free, so you can register again"
-						+ " whenever you like.",
+				"The link is valid for seven days. After that the unconfirmed registration is deleted, and you"
+						+ " can register again from this address.",
 				"",
-				"If you did not register with us, you can safely ignore this message, and in seven days"
-						+ " there will be no trace of it left.",
+				"If you did not register with us, ignore this message.",
 				"",
 				tail));
 
@@ -167,7 +165,7 @@ class WhatTheMessageSaysTest {
 				"",
 				"The link is valid for 1 hour and can be used once.",
 				"",
-				"If you did not request a password change, you can safely ignore this message.",
+				"If you did not ask for a new password, ignore this message.",
 				"",
 				tail));
 	}

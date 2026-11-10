@@ -4173,7 +4173,7 @@ class VerificationWriteApiTest {
 		assertThat(arrived[0].getAllRecipients()[0].toString())
 				.as("the letter went to whoever decided instead of whoever ran")
 				.isEqualTo(A_COMPETITOR);
-		assertThat(arrived[0].getSubject()).contains("odobren");
+		assertThat(arrived[0].getSubject()).contains("verifikovan");
 
 		int afterTheApproval = arrived.length;
 
@@ -4267,7 +4267,7 @@ class VerificationWriteApiTest {
 
 		MimeMessage toTheEnglish = theOneLetterTo(A_COMPETITOR);
 
-		assertThat(toTheEnglish.getSubject()).isEqualTo("Your result has been approved");
+		assertThat(toTheEnglish.getSubject()).isEqualTo("Your result has been verified");
 		assertThat(toTheEnglish.getContent().toString()).contains(" points").contains("ascent ")
 				.doesNotContain("uspon");
 	}
@@ -4318,10 +4318,10 @@ class VerificationWriteApiTest {
 
 		MimeMessage toTheEnglish = theOneLetterTo(A_COMPETITOR);
 
-		assertThat(toTheEnglish.getSubject()).isEqualTo("A result has been approved for you");
-		assertThat(toTheEnglish.getContent().toString()).startsWith("A moderator has approved a result for you:")
-			.contains("Season 2027 is frozen, so the result stays in your history, and the table,"
-				+ " rankings and awards of that season do not change.");
+		assertThat(toTheEnglish.getSubject()).isEqualTo("A result has been verified for you");
+		assertThat(toTheEnglish.getContent().toString()).startsWith("A result has been verified for you:")
+			.contains("The result is entered in your history. The table of the frozen season 2027 stays"
+				+ " the same.");
 	}
 
 	/**

@@ -203,6 +203,8 @@ class TheWrittenPagesSayTheDateOfBirthIsNotShownToOthersTest extends DatabaseTes
 	 */
 	@Test
 	void thePolicyIsSignedOffOnTheTwentyNinthAndNoEarlierDayStandsAnywhereAnyMore() {
+		/* The text as V94 left it: V95 (owner, 11.11.2026) moved the sign-offs of all three pages and took sentences out of them, which is held by TheWrittenPagesStateTheFactCarriedOverTest. */
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "95");
 		/* V77 (owner, 29.10.2026) moved all three documents to 29.10.2026: the 24.10.2026 V73 gave the policy, the
 		   27.10.2026 V76 gave the rulebook and the 22.10.2026 the terms keep stand nowhere now. V80 (owner, 30.10.2026)
 		   moved the rulebook on to 30.10.2026 and V93 (owner, 10.11.2026) on to 10.11.2026. What V73 itself does to the date is held by the cases that put the text
@@ -536,6 +538,8 @@ class TheWrittenPagesSayTheDateOfBirthIsNotShownToOthersTest extends DatabaseTes
 		/* V90 (owner, 08.11.2026) put "Moji podaci" in both where V73 wrote the card Podaci, so it is undone first, read
 		   out of V90 itself, and what is held here is the words V73 wrote; what stands now is held by
 		   TheWrittenPagesSayMojiPodaciWhereTheySaidTheCardTest. */
+		/* The text as V94 left it: V95 (owner, 11.11.2026) moved the sign-offs of all three pages and took sentences out of them, which is held by TheWrittenPagesStateTheFactCarriedOverTest. */
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "95");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "90");
 
 		for (String language : List.of("sr", "en")) {

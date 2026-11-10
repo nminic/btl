@@ -801,7 +801,15 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   migration unless its old text stands exactly once. The sign-off is not touched, V93 gave it the day.
 
 			   Pinned LAST, when the file was final, off this very assertion. */
-			new Applied("94", "V94__the_rulebook_presents_the_trophies_at_the_new_year_cocktail_session.sql", -670754178));
+			new Applied("94", "V94__the_rulebook_presents_the_trophies_at_the_new_year_cocktail_session.sql", -670754178),
+
+			/* V95. The owner's rewrite of the portal's words (PDL, "Ton ekrana bez objašnjavanja posledica", 10.11.2026), the
+			   part that lives in the written pages: eight sentences of the policy, the terms, the rulebook and the president's
+			   word, and the sign-offs of the policy, the terms and the rulebook, in both languages: twenty-two edits, each
+			   stopping the migration unless its old text stands exactly once and its new text does not stand already.
+
+			   Pinned LAST, when the file was final, off this very assertion. */
+			new Applied("95", "V95__the_written_pages_state_the_fact_and_not_its_consequences.sql", -1536741561));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {

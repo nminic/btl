@@ -369,10 +369,9 @@ describe('the members screen', () => {
    * <p>In Serbian the mapped sentence and the fallback's echo of the raw reason share every
    * word, which is what let `refusals={{}}` hide behind the case above. In English the
    * dictionary's `admin.memberDeleteRefused.theAccountAdministers` is a sentence of its own
-   * - "This member's account administers the portal, so the member cannot be deleted from
-   * here." - while the fallback still quotes the reason exactly as the route sent it,
-   * UNTRANSLATED: "The server refused the request with the reason Nalog ovog člana
-   * administrira portal…, which this screen does not recognise." The two share almost no
+   * - "This account is an administrator of the portal and is not deleted from here." - while
+   * the fallback still quotes the reason exactly as the route sent it, UNTRANSLATED: "The
+   * request was not accepted (Nalog ovog člana administrira portal…)." The two share almost no
    * words at all, so this case would have caught `refusals={{}}` on the FIRST assertion
    * alone; the second is kept for the same reason the Serbian case keeps it.
    */
@@ -397,10 +396,9 @@ describe('the members screen', () => {
       const alert = await within(row).findByRole('alert')
 
       expect(alert).toHaveTextContent(
-        "This member's account administers the portal, so the member cannot be deleted "
-          + 'from here.',
+        'This account is an administrator of the portal and is not deleted from here.',
       )
-      expect(alert).not.toHaveTextContent('does not recognise')
+      expect(alert).not.toHaveTextContent('was not accepted')
 
       server.stop()
     }, SLOW)

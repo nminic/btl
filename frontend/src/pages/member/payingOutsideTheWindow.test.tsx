@@ -327,7 +327,9 @@ describe('whoever owes nothing for the running season is told what he was told',
       expect(await screen.findByText(SHUT)).toBeVisible()
       expect(screen.getByText(stated)).toBeVisible()
       expect(screen.getByRole('heading', { level: 2, name: 'Obnova članarine za 2028.' })).toBeVisible()
-      expect(screen.queryByText(/je plaćena/)).not.toBeInTheDocument()
+      /* The renewal's own line (`membership.alreadyPaid`) is not drawn here: since 10.11.2026 it reads the same as
+         the state line, so what is held is that the words stand once and not twice. */
+      expect(screen.queryAllByText(/je plaćena\.$/)).toHaveLength(basis === 'payment' ? 1 : 0)
       expect(screen.queryByRole('heading', { level: 3, name: 'Uplatnica' })).not.toBeInTheDocument()
     },
     SLOW,

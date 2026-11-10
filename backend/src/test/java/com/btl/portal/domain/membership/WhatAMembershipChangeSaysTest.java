@@ -139,7 +139,8 @@ class WhatAMembershipChangeSaysTest {
 		for (boolean open : new boolean[] {false, true}) {
 			String body = WhatAMembershipChangeSays.beginnersCategoryMoved(open, 2031, 2035).body();
 
-			assertThat(body).contains("članstvo za sezonu 2031,").contains("za sezonu 2035.")
+			assertThat(body).contains(open ? "članstvo za sezonu 2031 poništeno" : "u sezoni 2031 prešli")
+					.contains("za sezonu 2035")
 					.doesNotContain("sezonu 2032").doesNotContain("sezonu 2036").doesNotContain("2,03");
 		}
 	}

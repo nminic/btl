@@ -286,10 +286,7 @@ class WhatANoticeSaysTest {
 				.isEqualTo(String.join("\n",
 						"The password of your BTL account was changed on 24 September 2026 at 16:35.",
 						"",
-						"That change signed out every other device you were signed in on, and on each"
-								+ " of them you will have to sign in again, with the new password.",
-						"",
-						"If it was you, there is nothing more you need to do.",
+						"You have been signed out of all other devices.",
 						"",
 						"If it was not, somebody else knows your old password. Ask for a new password on"
 								+ " the sign-in page at once and write to us at"

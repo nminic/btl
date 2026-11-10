@@ -22,8 +22,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  *
  * <p><b>What the owner decided (PDL, "Ton ekrana bez objašnjavanja posledica", 10.11.2026):</b> eight sentences of the
  * policy, the terms, the rulebook and the president's word say the fact and not its consequence, in the owner's own
- * words, letter for letter; the English was not reviewed and goes into a round of its own, so not one English sentence
- * moves; the sign-offs of the three pages whose words change (the policy, the terms and the rulebook) move to the
+ * words, letter for letter; the English follows the new Serbian by meaning (owner, 11.11.2026), so an English sentence
+ * moves only where a Serbian one does; the sign-offs of the three pages whose words change (the policy, the terms and the rulebook) move to the
  * day, in both languages, and the president's word has none.
  *
  * <p><b>What the whole-text case holds, and why it is the guard the English needed.</b> A case that asks "is the new
@@ -80,6 +80,36 @@ class TheWrittenPagesStateTheFactCarriedOverTest extends DatabaseTest {
 			new Replacement("rec-predsednika", 1, "sr",
 					"za dodatne informacije nas slobodno kontaktirajte na zvaničnu adresu",
 					"za dodatne informacije pišite nam na"),
+			new Replacement("politika-privatnosti", 4, "en",
+					"It is set only once you choose a theme yourself, stays in your browser, and never reaches us: it is not"
+							+ " sent with any request, so our server never sees it. Only the page itself reads it, in your"
+							+ " browser, to know which theme to render in.",
+					"It is set only once you choose a theme yourself."),
+			new Replacement("politika-privatnosti", 4, "en",
+					"There is no other storage. There is no analytics, ours or anyone else's, so there is no consent banner"
+							+ " either.",
+					"There is no other storage, nor analytics."),
+			new Replacement("politika-privatnosti", 3, "en",
+					"That is the substance of the service we provide you, and you agree to it by joining.",
+					"You agree to it by joining."),
+			new Replacement("uslovi-koriscenja", 4, "en",
+					"1. Fill in the form. Every field that has a rule carries an explanation of that rule.",
+					"1. Fill in the form."),
+			new Replacement("pravilnik", 9, "en",
+					"You enter the length, ascent, and descent yourself, because the portal does not read a course"
+							+ " recording from a watch.",
+					"You enter the length, ascent, and descent yourself."),
+			new Replacement("pravilnik", 13, "en",
+					"total distance and total time are tracked. There is no special display for multiple half marathons or"
+							+ " marathons.",
+					"total distance and total time are tracked."),
+			new Replacement("pravilnik", 14, "en",
+					"Postal costs for sending the T-shirt and the medal are borne by the member.\n\nYou can always arrange an"
+							+ " in-person handover, even later.",
+					"Postal costs for sending the T-shirt and the medal are borne by the member."),
+			new Replacement("rec-predsednika", 1, "en",
+					"for any further information feel free to contact us at our official address",
+					"for any further information write to us at"),
 			new Replacement("politika-privatnosti", 7, "sr",
 					"Poslednja izmena: 08.11.2026.", "Poslednja izmena: 11.11.2026."),
 			new Replacement("politika-privatnosti", 7, "en",
@@ -151,7 +181,7 @@ class TheWrittenPagesStateTheFactCarriedOverTest extends DatabaseTest {
 	}
 
 	@Test
-	void everyPageIsLeftExactlyAsTheFourteenReplacementsLeaveItInBothLanguages() {
+	void everyPageIsLeftExactlyAsTheTwentyTwoReplacementsLeaveItInBothLanguages() {
 		Map<String, String> before = everyBodyByPlace();
 		Map<String, String> expected = whatTheMigrationMustLeave(before);
 
@@ -182,8 +212,15 @@ class TheWrittenPagesStateTheFactCarriedOverTest extends DatabaseTest {
 		for (Replacement one : EVERY_REPLACEMENT) {
 			assertThat(everyBodyByPlace().get(place(one)))
 					.as("the fixture did not put the old text back at %s", place(one))
-					.containsOnlyOnce(one.before())
-					.doesNotContain(one.after());
+					.containsOnlyOnce(one.before());
+
+			if (!one.before().contains(one.after())) {
+				/* A removal keeps the words next to the sentence, which are in both texts, so only a
+				   replacement can be asked to be absent before the migration. */
+				assertThat(everyBodyByPlace().get(place(one)))
+						.as("the new text already stands at %s", place(one))
+						.doesNotContain(one.after());
+			}
 		}
 
 		theMigration();
@@ -201,7 +238,7 @@ class TheWrittenPagesStateTheFactCarriedOverTest extends DatabaseTest {
 	}
 
 	@Test
-	void theEnglishSentencesDoNotMoveAndOnlyTheThreeEnglishSignOffsDo() {
+	void theEnglishMovesWhereTheSerbianDoesAndNowhereElse() {
 		Map<String, String> before = everyBodyByPlace();
 
 		theMigration();
@@ -216,8 +253,11 @@ class TheWrittenPagesStateTheFactCarriedOverTest extends DatabaseTest {
 		}
 
 		assertThat(movedInEnglish)
-				.as("an English text moved that is not a sign-off: the English goes into a round of its own")
-				.containsExactlyInAnyOrder("politika-privatnosti#7#en", "uslovi-koriscenja#11#en", "pravilnik#19#en");
+				.as("the English follows the Serbian by meaning (owner, 11.11.2026), section by section, and moves nowhere"
+						+ " else")
+				.containsExactlyInAnyOrder("politika-privatnosti#3#en", "politika-privatnosti#4#en",
+						"politika-privatnosti#7#en", "uslovi-koriscenja#4#en", "uslovi-koriscenja#11#en",
+						"pravilnik#9#en", "pravilnik#13#en", "pravilnik#14#en", "pravilnik#19#en", "rec-predsednika#1#en");
 	}
 
 	@Test
@@ -240,6 +280,13 @@ class TheWrittenPagesStateTheFactCarriedOverTest extends DatabaseTest {
 
 		assertThat(after.get("rec-predsednika#1#sr")).as("the president's word carries no sign-off")
 				.doesNotContain("Poslednja izmena");
+
+		for (String earlier : List.of("08.11.2026", "29.10.2026", "10.11.2026")) {
+			assertThat(everyBody())
+					.as("the day %s still stands as a sign-off somewhere", earlier)
+					.doesNotContain("Poslednja izmena: " + earlier)
+					.doesNotContain("Last amended: " + earlier);
+		}
 	}
 
 	@Test
@@ -252,7 +299,7 @@ class TheWrittenPagesStateTheFactCarriedOverTest extends DatabaseTest {
 		jdbc.execute("savepoint before_the_refusal");
 		assertThatThrownBy(this::theMigration)
 				.hasMessageContaining("the written pages were not edited")
-				.hasMessageContaining("1 of 14 edits");
+				.hasMessageContaining("1 of 22 edits");
 		jdbc.execute("rollback to savepoint before_the_refusal");
 
 		assertThat(everyBody()).as("a refused migration changed a page").isEqualTo(changed);
@@ -277,7 +324,7 @@ class TheWrittenPagesStateTheFactCarriedOverTest extends DatabaseTest {
 
 	@Test
 	void anEnglishSectionThatAlreadyHoldsTheNewSignOffStopsTheMigrationAndChangesNothing() {
-		jdbc.execute("update static_page_section_translation t set body = t.body || E'\\n\\nLast amended: 10.11.2026.'"
+		jdbc.execute("update static_page_section_translation t set body = t.body || E'\\n\\nLast amended: 11.11.2026.'"
 				+ " from static_page_section s, static_page p where s.id = t.section_id and p.id = s.page_id"
 				+ " and p.slug = 'uslovi-koriscenja' and s.position = 11 and t.language = 'en'");
 		String before = everyBody();

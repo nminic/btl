@@ -159,9 +159,7 @@ class WhatAResultChangeSaysTest {
 							run,
 							"",
 							serbian ? "Bodovi su konačni kad rezultat bude potvrđen."
-									: "The points were worked out by the public formula of the league and"
-									+ " are shown here as a calculation. The result gets its real points"
-									+ " and its change of standing only once a moderator approves it.",
+									: "Points are final once the result is confirmed.",
 							"",
 							"Balkanska trkačka liga"));
 
@@ -178,8 +176,7 @@ class WhatAResultChangeSaysTest {
 							other,
 							"",
 							serbian ? "Izmena se vidi u poretku kad bude potvrđena."
-									: "The old result stays in the standings while the change waits, and is"
-									+ " replaced only once a moderator approves it.",
+									: "The change shows in the standings once it is confirmed.",
 							"",
 							"Balkanska trkačka liga"));
 
@@ -187,26 +184,13 @@ class WhatAResultChangeSaysTest {
 					.as("the message about an approval, in %s", in)
 					.isEqualTo(serbian
 							? lines("Vaš rezultat je verifikovan:", "", run, "", "Balkanska trkačka liga")
-							: lines("A moderator has approved your result:",
-									"",
-									run,
-									"",
-									"From now on the result counts in your profile, the rankings and the"
-									+ " season table.",
-									"",
-									"Balkanska trkačka liga"));
+							: lines("Your result has been verified:", "", run, "", "Balkanska trkačka liga"));
 
 			assertThat(WhatAResultChangeSays.deleted(A_RUN, in).body())
 					.as("the message about a deletion, in %s", in)
 					.isEqualTo(serbian
 							? lines("Sa portala je obrisan vaš rezultat:", "", run, "", "Balkanska trkačka liga")
-							: lines("Your result has been deleted from the portal:",
-									"",
-									run,
-									"",
-									"It was removed at once, and from this moment it counts in no table.",
-									"",
-									"Balkanska trkačka liga"));
+							: lines("Your result has been deleted from the portal:", "", run, "", "Balkanska trkačka liga"));
 		}
 	}
 
@@ -239,9 +223,8 @@ class WhatAResultChangeSaysTest {
 							"",
 							serbian ? "Trka je održana pre prve zvanične sezone lige (2027). Rezultat je upisan"
 									+ " u vašu istoriju."
-									: "The race was run before the first official season of the league (2027),"
-									+ " so the result stays in your history and counts in no season table, Top"
-									+ " list or award.",
+									: "The race was run before the first official season of the league (2027)."
+									+ " The result is entered in your history.",
 							"",
 							"Balkanska trkačka liga"));
 
@@ -284,8 +267,8 @@ class WhatAResultChangeSaysTest {
 			boolean serbian = in == MailLanguage.SERBIAN;
 			String sentence = serbian
 					? "Rezultat je upisan u vašu istoriju. Tabela zamrznute sezone 2027 ostaje ista."
-					: "Season 2027 is frozen, so the result stays in your history, and the table,"
-					+ " rankings and awards of that season do not change.";
+					: "The result is entered in your history. The table of the frozen season 2027 stays"
+					+ " the same.";
 
 			Said entered = WhatAResultChangeSays.enteredInAFrozenSeason(A_RUN, in);
 
@@ -300,12 +283,12 @@ class WhatAResultChangeSaysTest {
 			Said approved = WhatAResultChangeSays.approvedInAFrozenSeason(A_RUN, in);
 
 			assertThat(approved.subject()).isEqualTo(serbian ? "Verifikovan vam je rezultat"
-					: "A result has been approved for you");
+					: "A result has been verified for you");
 			assertThat(approved.body())
 					.as("the message about a run approved in a frozen season, in %s", in)
 					.isEqualTo(lines(
 							serbian ? "Verifikovan vam je rezultat:"
-									: "A moderator has approved a result for you:",
+									: "A result has been verified for you:",
 							"", run, "", sentence, "", "Balkanska trkačka liga"));
 		}
 	}
@@ -319,7 +302,7 @@ class WhatAResultChangeSaysTest {
 		assertThat(WhatAResultChangeSays.enteredInAFrozenSeason(ofTheNextYear, MailLanguage.SERBIAN)
 				.body()).contains("Tabela zamrznute sezone 2028 ostaje ista").doesNotContain("2027").doesNotContain("2.028");
 		assertThat(WhatAResultChangeSays.approvedInAFrozenSeason(ofTheNextYear, MailLanguage.ENGLISH)
-				.body()).contains("Season 2028 is frozen").doesNotContain("2027");
+				.body()).contains("The table of the frozen season 2028 stays the same").doesNotContain("2027");
 	}
 
 	/**
