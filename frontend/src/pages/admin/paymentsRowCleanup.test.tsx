@@ -1,4 +1,4 @@
-import { configure, screen, waitFor, within } from '@testing-library/react'
+import { act, configure, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 import { clearResourceCache } from '../../data/client'
 import type { MembershipDue, Outstanding } from '../../data/types'
@@ -320,5 +320,129 @@ describe('the form it opens for somebody with no number', () => {
     }
 
     expect(asked.some((one) => one.path.startsWith('/api/members/'))).toBe(false)
+  }, SLOW)
+})
+
+/**
+ * BACK ON UPLATE AFTER A CORRECTION, THE ROW IS READ AGAIN (review of PR 712, VISOK 1). The list is kept for
+ * the whole visit (`data/client.ts`), so a save through the pencil that does not drop it leaves the row
+ * with the old name and, after a change of country, the old money in both places the owner named.
+ *
+ * <p><b>The server is the only source of the new row</b>: the name and the currency of the second list are
+ * what the server answers once the save has reached it, and the form never sends a currency. So the row can
+ * only show them by asking again, and a second `GET /api/payments` is counted, not assumed. The other row
+ * stays as it was, so a list read again cannot pass for one rebuilt by the screen.
+ */
+describe('back on Uplate after a correction through the pencil', () => {
+  /**
+   * A server of the list and of one member's data at `address`: once that member is saved, the list names
+   * him `Pera` and bills him in the other money, as a corrected name and a corrected country would.
+   */
+  function servingACorrection(competitorId: number, address: string, before: 'RSD' | 'EUR'): Asked[] {
+    clearResourceCache()
+
+    let saved = false
+    const after = before === 'EUR' ? 'RSD' : 'EUR'
+    const { asked, stop } = serverThat((path, init) => {
+      if (path === '/api/payments' && (init?.method ?? 'GET') === 'GET') {
+        const accounts = ACCOUNTS.map((one) =>
+          one.competitorId !== competitorId || !saved
+            ? one
+            : { ...one, firstName: 'Pera', currency: after, expected: after === 'EUR' ? 43 : 4800 },
+        )
+
+        return json({ season: 2031, accounts })
+      }
+
+      if (path === address) {
+        if (init?.method === 'PUT') {
+          saved = true
+        }
+
+        const one = ACCOUNTS.find((row) => row.competitorId === competitorId)
+
+        return json({
+          memberNumber: one?.memberNumber === '' ? null : one?.memberNumber,
+          firstName: saved ? 'Pera' : one?.firstName,
+          lastName: one?.lastName,
+          fatherName: 'Jovan',
+          gender: 'M',
+          birthDate: '1990-05-15',
+          idNumber: 'AB123',
+          email: 'clan@primer.rs',
+          emailConfirmed: false,
+          address: 'Ulica 1',
+          phone: '060111222',
+          placeId: null,
+          city: 'Beograd',
+          country: 'RS',
+          shirtSize: 'M',
+          bio: null,
+          photo: null,
+          crop: null,
+        })
+      }
+
+      return null
+    })
+
+    stops.push(stop)
+
+    return asked
+  }
+
+  const listReads = (asked: Asked[]) =>
+    asked.filter((one) => one.path === '/api/payments' && (one.init?.method ?? 'GET') === 'GET').length
+
+  async function correctedThroughThePencil(name: string, router: { navigate: (to: number) => Promise<void> }) {
+    const user = setupUser()
+
+    await user.click(await screen.findByRole('link', { name: `Izmeni podatke: ${name}` }))
+
+    const box = await screen.findByRole('textbox', { name: /^Ime(?! oca)/ })
+
+    await user.clear(box)
+    await user.type(box, 'Pera')
+    await user.click(screen.getByRole('button', { name: sr.account.save }))
+
+    expect(await screen.findByText(sr.account.saved)).toBeVisible()
+
+    await act(async () => {
+      await router.navigate(-1)
+    })
+  }
+
+  it('reads the list again for somebody with no number, with his new name and his new money', async () => {
+    const asked = servingACorrection(58, '/api/members/unnumbered/58/data', 'EUR')
+    const { router } = renderAt(ADDRESS, 'superadmin')
+
+    expect(within(await rowOf('Petar Marko')).getByRole('textbox', { name: 'Uplaćeno (EUR)' })).toBeInTheDocument()
+
+    await correctedThroughThePencil('Petar Marko', router)
+
+    const pera = await rowOf('Pera Marko')
+
+    expect(listReads(asked)).toBe(2)
+    expect(pera.querySelector('.activate__mark')?.textContent).toBe('RSD')
+    expect(pera.querySelector('label.activate__balance')?.textContent).toBe('12,75 RSD')
+    expect(within(pera).getByRole('textbox', { name: 'Uplaćeno (RSD)' })).toBeInTheDocument()
+    expect(screen.queryByText('Petar Marko')).toBeNull()
+    expect((await rowOf('Ana Ilić')).querySelector('.activate__mark')?.textContent).toBe('RSD')
+  }, SLOW)
+
+  it('reads the list again for a member with a number, opened at his card', async () => {
+    const asked = servingACorrection(23, '/api/members/000031/data', 'RSD')
+    const { router } = renderAt(ADDRESS, 'superadmin')
+
+    expect(within(await rowOf('Jovana Ilić')).getByRole('textbox', { name: 'Uplaćeno (RSD)' })).toBeInTheDocument()
+
+    await correctedThroughThePencil('Jovana Ilić', router)
+
+    const pera = await rowOf('Pera Ilić')
+
+    expect(listReads(asked)).toBe(2)
+    expect(pera.querySelector('.activate__mark')?.textContent).toBe('EUR')
+    expect(pera.querySelector('label.activate__balance')?.textContent).toBe('6.000 EUR')
+    expect(screen.queryByText('Jovana Ilić')).toBeNull()
   }, SLOW)
 })

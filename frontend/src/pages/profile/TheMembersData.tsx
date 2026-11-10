@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Resource } from '../../components/Resource'
+import { clearResourceCache } from '../../data/client'
 import { FormRenderer } from '../../forms/FormRenderer'
 import { valuesFor } from '../../forms/records'
 import { useI18n } from '../../i18n/useI18n'
@@ -122,6 +123,15 @@ function TheForm({ address, opened }: { address: string; opened: MembersData }) 
 
     const answered = await askTheServer(address, changed, 'PUT')
     const now = answered.got === 'done' ? membersDataIn(answered.body) : null
+
+    /* WHAT THE SERVER HOLDS IS NOW WHAT WAS SAVED, and the list of Uplate is no longer true: it carries
+       his name and, worked out from his country, the money of his row, and the pencil there is how this
+       form is reached (owner, 10.11.2026). Kept for the whole visit (`data/client.ts`), so dropped here,
+       the shape `TheMembersPictureAndWords.tsx` keeps for `competitors`. On any save the server did,
+       including one whose answer this portal cannot read: the row was written all the same. */
+    if (answered.got === 'done') {
+      clearResourceCache('payments')
+    }
 
     /* AN ANSWER THAT SAYS DONE BUT CANNOT BE READ is the number of a reply this portal does not know,
        and not a save to be claimed: what stands is then unknown, so nothing is moved. */
