@@ -80,7 +80,7 @@ final class TheWrittenPagesBeforeV71 {
 
 	/**
 	 * A MIGRATION AFTER V71 UNDONE, so that what is put back is the text V71 left, whatever the later ones have written
-	 * since: V73 (24.10.2026), V76 (27.10.2026), V77 and V78 (both 29.10.2026), V80 (30.10.2026), V89 (07.11.2026), V90 (08.11.2026), V93 (10.11.2026), the latest first.
+	 * since: V73 (24.10.2026), V76 (27.10.2026), V77 and V78 (both 29.10.2026), V80 (30.10.2026), V89 (07.11.2026), V90 (08.11.2026), V93 and V94 (both 10.11.2026), the latest first.
 	 *
 	 * <p>Every guard that calls {@link #putBack(JdbcClient, String)} puts the pages back to how they stood before an older
 	 * migration and runs it again, and each of them is written against the text V71 left. V73 added the word "drugima"
@@ -131,6 +131,7 @@ final class TheWrittenPagesBeforeV71 {
 	}
 
 	static void putBack(JdbcClient db, String v71) {
+		undoBodyEdits(db, "94");
 		undoBodyEdits(db, "93");
 		undoBodyEdits(db, "90");
 		undoBodyEdits(db, "89");

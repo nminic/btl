@@ -794,7 +794,14 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   unless its old text stands exactly once.
 
 			   Pinned LAST, when the file was final, off this very assertion. */
-			new Applied("93", "V93__the_rulebook_says_the_transfer_window_opens_on_the_twenty_first_of_november.sql", 1000337619));
+			new Applied("93", "V93__the_rulebook_says_the_transfer_window_opens_on_the_twenty_first_of_november.sql", 1000337619),
+
+			/* V94. The rulebook's Article 56 says the trophies are presented at the Association's New Year cocktail session
+			   (the PDL entry on the A6 flyer, 10.11.2026): one sentence in both languages, each edit stopping the
+			   migration unless its old text stands exactly once. The sign-off is not touched, V93 gave it the day.
+
+			   Pinned LAST, when the file was final, off this very assertion. */
+			new Applied("94", "V94__the_rulebook_presents_the_trophies_at_the_new_year_cocktail_session.sql", -670754178));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {

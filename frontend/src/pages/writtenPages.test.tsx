@@ -1568,9 +1568,12 @@ describe('the rulebook', () => {
 
     /* Three and not five since 22.10.2026: the rulebook's article on liability and the
        terms' section on awards, which repeated what the rulebook says elsewhere, went
-       with the owner's simplification of the three documents. */
+       with the owner's simplification of the three documents. Two and not three since
+       10.11.2026: Article 56 no longer joins the presentation of the trophies to the
+       competition, it names the Association's New Year cocktail session (owner,
+       10.11.2026, the PDL entry on the A6 flyer). */
     expect(mentions.length, 'the prose has stopped naming the competition').toBeGreaterThanOrEqual(
-      3,
+      2,
     )
     expect(
       mentions.filter((one) => !one.endsWith('BTL ')),
