@@ -37,7 +37,10 @@ import '../member/Member.css'
 import './Activation.css'
 import './Verification.css'
 import { SYMBOL } from '../../app/actionSymbol'
-import { ActionButton } from '../../components/ActionButton'
+import { ActionButton, ActionLink } from '../../components/ActionButton'
+import { OVER_THE_MEMBERS, THE_DATA } from '../profile/whoReadsTheData'
+import { useMay } from './rights'
+import { unnumberedDataPath } from '../../app/routes'
 
 /** Where the search box is, so its label points at it. */
 const SEARCH_ID = 'payments-search'
@@ -500,6 +503,8 @@ function Row({
   fromTheLine?: StatementLine | null
 }) {
   const { locale, t } = useI18n()
+  const may = useMay()
+  const mayCorrect = may(OVER_THE_MEMBERS)
   /* EMPTY, OR WHAT ARRIVED ON THE LINE THE ROW WAS OPENED FROM: „sa već upisanim iznosom sa stavke". */
   /* IN WHOLE DINARS, ROUNDED DOWN, which is the owner's of 26.10.2026: „Stavka izvoda sa parama (npr.
      4.200,50) knjiži se kroz „Potvrdi" zaokruženo nadole na cele dinare (4.200); pare se ne prate." */
@@ -652,15 +657,12 @@ function Row({
             is the ordinary state of somebody who has registered and never paid. */}
         <span className="table__member-number">{one.memberNumber}</span>
       </td>
-      {/* THE TOWN, AND ITS REASON IS NEW RATHER THAN INHERITED, which is written here because
-          the old one is still readable two files away: `VerificationApi` says a town is drawn
-          „because how a member pays follows the country they live in". That fell with the
-          owner's decision of 27.09.2026 - „Novac je legao, mogu da ga aktiviram" - so nothing
-          about money is read off a town any more. It stays to tell two people of one name
-          apart: nothing stops two sharing a first and last name, most of this list holds no
-          member number to separate them, and a moderator booking the wrong row books one man's
-          money to another. */}
-      <td>{one.city}</td>
+      {/* NO TOWN, by the owner's own words of 10.11.2026 (PDL, „Ekran Uplate: izmena podataka pre
+          knjiženja i čišćenje reda"): „Obriši kolonu Mesto iz tabele". It stood here to tell two
+          people of one name apart, and that reason is the owner's to weigh, not this row's: the
+          pencil beside „Aktiviraj" now opens the man's data, where the town is. The server still
+          serves it, because the list a bank statement offers names a man with his town
+          (`Statement` above). */}
 
       {/* „Ocekivan iznos: IZNOS", the first thing on the owner's list. The currency is his
           country's and is never chosen. */}
@@ -678,8 +680,14 @@ function Row({
             has not been told, on a screen where the other five rows may be in the other one. The
             mark stays as well, `aria-hidden`, because it is the same fact drawn for the eye where
             the eye is looking (WCAG 2.2 AA, 3.3.2). */}
+        {/* AND THE LABEL IS NO LONGER SEEN, by the owner's words of 10.11.2026: „Obriši [...]
+            besmislenu labelu Uplaćeno (RSD) iz svakog reda". The column's own heading says
+            „Uplaćeno" once, over every row. The field keeps its name all the same (ADL A7, WCAG 2.2
+            AA 4.1.2), derived on 10.11.2026 and written in the same PDL entry: a reader who cannot see
+            the heading over the column is told what the field is and in which money, which is why
+            the label is hidden rather than taken out. */}
         <div className="rankings__field">
-          <label htmlFor={amountId}>
+          <label htmlFor={amountId} className="visually-hidden">
             {t('verification.paidIn', { currency: one.currency })}
           </label>
           <span className="activate__amount">
@@ -734,9 +742,16 @@ function Row({
             id={balanceId}
             type="checkbox"
             checked={including}
+            /* THE BOX KEEPS THE WHOLE SENTENCE AS ITS NAME (ADL A7, the same derivation as the field
+               above), and the amount that is seen beside it is part of that name, so a reader who
+               says what he sees finds it (WCAG 2.2 AA 2.5.3). On the box itself rather than in the
+               label, so the label holds nothing but what is seen. */
+            aria-label={t('verification.includeBalance', { amount: inHisCurrency(one.balance) })}
             onChange={(event) => setIncluding(event.target.checked)}
           />
-          <span>{t('verification.includeBalance', { amount: inHisCurrency(one.balance) })}</span>
+          {/* THE AMOUNT ALONE IS SEEN, by the owner's words of 10.11.2026: „reči "uključi balans" [ne]
+              nego samo da piše koliki je balans i da ima checkbox pored". */}
+          <span>{inHisCurrency(one.balance)}</span>
         </label>
       </td>
 
@@ -747,55 +762,82 @@ function Row({
           `position: fixed`, so where it sits in the markup decides nothing about where it is
           drawn. */}
       <td>
-        <ActionButton
-          symbol={SYMBOL.check}
-          word={t('verification.activate')}
-          className="button"
-          /* DISABLED FOR THE ONE CASE THAT SENDS NOTHING, which since 28.09.2026 is no longer
-             four of the owner's seven but the eighth that is not his: a field that cannot be read
-             (`activation.ts#Press`, `'nothing'`). It carries a sentence of its own beside the
-             field, so the row says why.
+        <span className="activate__actions">
+          {/* THE PENCIL, BEFORE THE TICK: owner, 10.11.2026, „Dodaj ikonicu olovkice kao na redu
+              članova, na poziciji pre štikle na kraju", and, chosen with the recommendation, it opens
+              „istu formu kao na redu člana". So it is the `ActionLink` of the members' row, with its
+              symbol, its word and its name, and it leads where that one leads for a member it has a
+              number for (`MemberRow.tsx`, by the number alone, `CompetitorData.tsx` sends him on to his
+              profile's address where there is one). Somebody with no number has no such address, and
+              is led to the same form by his key (`UnnumberedMemberData.tsx`).
 
-             `'nothing'` is also what a currency the portal cannot name a way to pay for gives,
-             and THAT one says nothing at all. It is named as a boundary on `Press` rather than
-             guarded: `Currency` holds two and `paymentQr.test.ts` reads that enum, so a third
-             cannot arrive without somebody deciding how it is paid.
+              DRAWN ONLY FOR WHOEVER MAY CORRECT THE DATA, which the owner chose to be the same people
+              as today: „admin i moderator sa pravom nad članovima". A moderator holding only the
+              payments works on this screen and is shown no pencil, rather than a link to a page that
+              would turn him away (ADL A8: he is not to learn that the action is there). */}
+          {mayCorrect ? (
+            <ActionLink
+              symbol={SYMBOL.pencil}
+              word={t('admin.editMember')}
+              name={t('admin.editMemberNamed', { name: `${one.firstName} ${one.lastName}` })}
+              className="entity-open"
+              to={
+                one.memberNumber === ''
+                  ? unnumberedDataPath(locale, one.competitorId)
+                  : `/${locale}/takmicar/${one.memberNumber}${THE_DATA}`
+              }
+            />
+          ) : null}
+          <ActionButton
+            symbol={SYMBOL.check}
+            word={t('verification.activate')}
+            className="button"
+            /* DISABLED FOR THE ONE CASE THAT SENDS NOTHING, which since 28.09.2026 is no longer
+               four of the owner's seven but the eighth that is not his: a field that cannot be read
+               (`activation.ts#Press`, `'nothing'`). It carries a sentence of its own beside the
+               field, so the row says why.
 
-             Asked ONCE, above, and both the disabling and the press read the one answer. Asked
-             again inside the press it would be a branch nothing can reach - the button is
-             disabled in exactly the case that would make it false - and the 100 per cent
-             threshold is what found that, which is the one tool that sees such a branch. */
-          disabled={press.press === 'nothing'}
-          /* TOLD OFF WHILE ITS OWN REQUEST IS OUT, NOT SWITCHED OFF: `activating` never changes
-             `press`, so the native `disabled` above stays reserved for the one case that can send
-             nothing at all (`activation.ts#Press`, `'nothing'`) and this is the second,
-             independent reason the row can give (`PendingQueue.tsx`'s own „Odobri" keeps the same
-             two apart). */
-          aria-disabled={activating ? true : undefined}
-          onClick={() => {
-            /* THE SAME REF `activate` SETS, CHECKED HERE SO A PRESS ON THIS BUTTON WHILE THE
-               ROW'S OWN REQUEST IS OUT CANNOT REOPEN THE QUESTION IT IS STILL ANSWERING (VISOK
-               1, review of PR 411). `aria-disabled` does not stop a click by itself - a stray
-               press some other way must still find nothing to do. */
-            if (outstanding.current) {
-              return
-            }
+               `'nothing'` is also what a currency the portal cannot name a way to pay for gives,
+               and THAT one says nothing at all. It is named as a boundary on `Press` rather than
+               guarded: `Currency` holds two and `paymentQr.test.ts` reads that enum, so a third
+               cannot arrive without somebody deciding how it is paid.
 
-            /* THREE OF HIS SEVEN GO STRAIGHT THROUGH AND FOUR ASK FIRST, which is his table read
-               literally: cases 1, 2 and 7 say „aktivacija prolazi" with no question in the cell,
-               and the rest name a prompt. Which of the two this row is, and the body either way,
-               was decided above rather than read off the field again here. */
-            if (sendsAtOnce !== null) {
-              void activate(sendsAtOnce)
+               Asked ONCE, above, and both the disabling and the press read the one answer. Asked
+               again inside the press it would be a branch nothing can reach - the button is
+               disabled in exactly the case that would make it false - and the 100 per cent
+               threshold is what found that, which is the one tool that sees such a branch. */
+            disabled={press.press === 'nothing'}
+            /* TOLD OFF WHILE ITS OWN REQUEST IS OUT, NOT SWITCHED OFF: `activating` never changes
+               `press`, so the native `disabled` above stays reserved for the one case that can send
+               nothing at all (`activation.ts#Press`, `'nothing'`) and this is the second,
+               independent reason the row can give (`PendingQueue.tsx`'s own „Odobri" keeps the same
+               two apart). */
+            aria-disabled={activating ? true : undefined}
+            onClick={() => {
+              /* THE SAME REF `activate` SETS, CHECKED HERE SO A PRESS ON THIS BUTTON WHILE THE
+                 ROW'S OWN REQUEST IS OUT CANNOT REOPEN THE QUESTION IT IS STILL ANSWERING (VISOK
+                 1, review of PR 411). `aria-disabled` does not stop a click by itself - a stray
+                 press some other way must still find nothing to do. */
+              if (outstanding.current) {
+                return
+              }
 
-              return
-            }
+              /* THREE OF HIS SEVEN GO STRAIGHT THROUGH AND FOUR ASK FIRST, which is his table read
+                 literally: cases 1, 2 and 7 say „aktivacija prolazi" with no question in the cell,
+                 and the rest name a prompt. Which of the two this row is, and the body either way,
+                 was decided above rather than read off the field again here. */
+              if (sendsAtOnce !== null) {
+                void activate(sendsAtOnce)
 
-            /* And `question` is null for the one case the button above is disabled for, so a press
-               arriving some other way closes a sheet that was not open and does nothing else. */
-            setAsking(question)
-          }}
-        />
+                return
+              }
+
+              /* And `question` is null for the one case the button above is disabled for, so a press
+                 arriving some other way closes a sheet that was not open and does nothing else. */
+              setAsking(question)
+            }}
+          />
+        </span>
 
         {/* A LIVE REGION ALWAYS ON THE PAGE, with only its content changing. The shape is
             `Statement` above and the reason it gives: a region added to the page together with
@@ -1217,7 +1259,6 @@ function TheList({
                     <thead>
                       <tr>
                         <th scope="col">{t('competitors.columns.member')}</th>
-                        <th scope="col">{t('competitors.columns.city')}</th>
                         <th scope="col">{t('verification.expected')}</th>
                         <th scope="col">{t('verification.paid')}</th>
                         <th scope="col">{t('verification.balanceColumn')}</th>

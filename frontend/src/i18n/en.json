@@ -211,6 +211,10 @@
     "competitorData": {
       "title": "A competitor's details",
       "description": "The details of one BTL member, which only the administration sees."
+    },
+    "unnumberedMemberData": {
+      "title": "Details of a member with no member number",
+      "description": "The details of a member who has no member number yet, seen only by the administration."
     }
   },
   "shell": {

@@ -108,3 +108,13 @@
  * `.table-scroll`, so a wrapped label never pushes anything off the page. A query would have been
  * one more width the portal changes shape at, bought for a line break.
  */
+
+/* THE PENCIL AND THE TICK SIDE BY SIDE, the pencil first (owner, 10.11.2026: „na poziciji pre štikle
+   na kraju"). The gap is the one the row of the members keeps between its squares (`AdminMembers.css`,
+   `.members-actions`), and the two never wrap apart, so the pencil stays where the owner put it. */
+.activate__actions {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: var(--space-2);
+}

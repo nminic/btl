@@ -15,9 +15,18 @@ import {
   type MembersData,
 } from './memberData'
 
-/** Where a member's data are read and corrected by the administration (PR 633). */
-function addressOfTheData(memberNumber: string | undefined): string {
+/** Where a member's data are read and corrected by the administration (PR 633), by his number. */
+export function addressOfTheData(memberNumber: string | undefined): string {
   return `/api/members/${memberNumber}/data`
+}
+
+/**
+ * And where they are for somebody who registered and has no member number yet, by the key the screen
+ * Uplate lists him under (owner, 10.11.2026, PDL „Ekran Uplate: izmena podataka pre knjiženja";
+ * `MemberDataApi.readUnnumbered`). He has no number, so the address above cannot name him.
+ */
+export function addressOfTheUnnumbered(competitorId: number | string): string {
+  return `/api/members/unnumbered/${competitorId}/data`
 }
 
 /**
@@ -25,11 +34,11 @@ function addressOfTheData(memberNumber: string | undefined): string {
  * read that could not be made, an answer other than 200 (the door answers 404 to anybody without the
  * right, ADL A8), or a body this portal does not know.
  */
-async function whatTheServerSaysOf(memberNumber: string | undefined): Promise<MembersData | null> {
+async function whatTheServerSaysOf(address: string): Promise<MembersData | null> {
   let answer: Response
 
   try {
-    answer = await fetch(addressOfTheData(memberNumber))
+    answer = await fetch(address)
   } catch {
     return null
   }
@@ -58,19 +67,23 @@ async function whatTheServerSaysOf(memberNumber: string | undefined): Promise<Me
  * <p><b>The address of post is held where the server would refuse it</b>, which is where it is confirmed
  * (PDL, M7: „adresu pošte administracija menja samo dok nije potvrđena"); a member with no account has
  * no box for it at all (`theMembersForm`).
+ *
+ * <p><b>The address is handed in whole</b> ({@link addressOfTheData} or {@link addressOfTheUnnumbered}),
+ * and the save goes to the address the form was READ from, never to one rebuilt out of the answer: a
+ * member with no number has an empty number in it, and an address rebuilt from that would name nobody.
  */
-export function TheMembersData({ memberNumber }: { memberNumber: string | undefined }) {
-  const read = useCallback(() => whatTheServerSaysOf(memberNumber), [memberNumber])
-  const state = useHeldRead(read, String(memberNumber), "A member's data could not be read")
+export function TheMembersData({ address }: { address: string }) {
+  const read = useCallback(() => whatTheServerSaysOf(address), [address])
+  const state = useHeldRead(read, address, "A member's data could not be read")
 
   return (
     <Resource state={state} inline>
-      {(data) => <TheForm key={data.memberNumber} opened={data} />}
+      {(data) => <TheForm key={address} address={address} opened={data} />}
     </Resource>
   )
 }
 
-function TheForm({ opened }: { opened: MembersData }) {
+function TheForm({ address, opened }: { address: string; opened: MembersData }) {
   const { t } = useI18n()
   /* WHAT THE SERVER HOLDS, moved by the server's own answer to a save and by nothing else: the route
      answers with the member as he now stands (`MemberDataWriteApi`), which is what the next save is
@@ -107,7 +120,7 @@ function TheForm({ opened }: { opened: MembersData }) {
     out.current = true
     setAsking(true)
 
-    const answered = await askTheServer(addressOfTheData(standing.memberNumber), changed, 'PUT')
+    const answered = await askTheServer(address, changed, 'PUT')
     const now = answered.got === 'done' ? membersDataIn(answered.body) : null
 
     /* AN ANSWER THAT SAYS DONE BUT CANNOT BE READ is the number of a reply this portal does not know,

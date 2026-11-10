@@ -1,5 +1,5 @@
 import { act, cleanup, screen, within } from '@testing-library/react'
-import { EXTRA_ADDRESSES, ROUTES } from '../app/routes'
+import { EXTRA_ADDRESSES, ROUTES, UNNUMBERED_DATA_ADDRESS } from '../app/routes'
 import { DEFAULT_LOCALE } from '../i18n/config'
 import { QUEUES } from './admin/queues'
 import type { Role } from '../roles/context'
@@ -263,6 +263,11 @@ const FRONT = `/${DEFAULT_LOCALE}`
  *  without a sound (review, 06.09.2026). */
 const QUEUE_PATTERN = 'administracija/verifikacija/:queue'
 
+/** And the one administration address with a key in it (owner, 10.11.2026), opened into the key of a
+ *  registrant `test/mock/payments.json` serves with no member number. Compared whole, as the queue's is. */
+const UNNUMBERED_PATTERN = UNNUMBERED_DATA_ADDRESS
+const AN_UNNUMBERED_KEY = '58'
+
 describe('what administration and the member forms offer', () => {
   it('has a row for every administration address the route table has', () => {
     const every = [...ROUTES, ...EXTRA_ADDRESSES]
@@ -272,6 +277,9 @@ describe('what administration and the member forms offer', () => {
          never been opened by anything. */
       .flatMap((path) =>
         path === QUEUE_PATTERN ? QUEUES.map((queue) => queue.path) : [path],
+      )
+      .map((path) =>
+        path === UNNUMBERED_PATTERN ? path.replace(':competitorId', AN_UNNUMBERED_KEY) : path,
       )
 
     const missing = every.filter(
@@ -290,8 +298,9 @@ describe('what administration and the member forms offer', () => {
        A count is a weak floor and it is written down as one: it cannot say a row is right, only
        that one went missing. Changing this number is a decision, not a formality: nineteen since
        19.10.2026, with the moderator's own screen „Unos rezultata za događaj” (PDL P9), which the route
-       table asks for. */
-    expect(BEHIND).toHaveLength(19)
+       table asks for, and twenty since 10.11.2026, with the data of somebody who has no member number
+       (the pencil on Uplate), which it asks for too. */
+    expect(BEHIND).toHaveLength(20)
   })
 
   it.each(BEHIND)('offers no way of its own up a level on %s', async (
