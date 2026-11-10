@@ -235,8 +235,26 @@ class MemberDataWriteApi {
 			@AuthenticationPrincipal WhoIsAsking.Member asking, HttpServletRequest request,
 			HttpServletResponse response) throws IOException {
 
-		Optional<Long> member = db.sql("select id from competitor where member_number = ?")
-				.param(memberNumber).query(Long.class).optional();
+		return correct(data.numbered(memberNumber), asking, request, response);
+	}
+
+	/**
+	 * THE SAME CORRECTION OF SOMEBODY WHO REGISTERED AND HAS NO MEMBER NUMBER, from the screen Uplate
+	 * (owner, 10.11.2026; {@link MemberDataApi#readUnnumbered} says whom the key names and why). Every
+	 * rule of this class holds for him unchanged, the moderator's own record included: a moderator who
+	 * races and has not paid is on that list too, and is answered 404 about himself here as above.
+	 */
+	@PutMapping(path = MemberDataApi.UNNUMBERED, consumes = MediaType.APPLICATION_JSON_VALUE)
+	@RightIsNeeded(CompetitorApi.OVER_THE_MEMBERS)
+	ResponseEntity<?> correctUnnumbered(@PathVariable String competitorId,
+			@AuthenticationPrincipal WhoIsAsking.Member asking, HttpServletRequest request,
+			HttpServletResponse response) throws IOException {
+
+		return correct(data.unnumbered(competitorId), asking, request, response);
+	}
+
+	private ResponseEntity<?> correct(Optional<Long> member, WhoIsAsking.Member asking,
+			HttpServletRequest request, HttpServletResponse response) throws IOException {
 
 		if (member.isEmpty() || hisOwnAndHeIsNotTheSuperadmin(member.get(), asking)) {
 			response.sendError(HttpStatus.NOT_FOUND.value());
