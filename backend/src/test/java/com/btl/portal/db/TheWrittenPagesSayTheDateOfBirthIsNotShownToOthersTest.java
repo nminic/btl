@@ -205,11 +205,11 @@ class TheWrittenPagesSayTheDateOfBirthIsNotShownToOthersTest extends DatabaseTes
 	void thePolicyIsSignedOffOnTheTwentyNinthAndNoEarlierDayStandsAnywhereAnyMore() {
 		/* V77 (owner, 29.10.2026) moved all three documents to 29.10.2026: the 24.10.2026 V73 gave the policy, the
 		   27.10.2026 V76 gave the rulebook and the 22.10.2026 the terms keep stand nowhere now. V80 (owner, 30.10.2026)
-		   moved the rulebook on to 30.10.2026. What V73 itself does to the date is held by the cases that put the text
+		   moved the rulebook on to 30.10.2026 and V93 (owner, 10.11.2026) on to 10.11.2026. What V73 itself does to the date is held by the cases that put the text
 		   back to before V73 and run it. */
 		for (String language : List.of("sr", "en")) {
 			String today = language.equals("sr") ? "Poslednja izmena: 29.10.2026." : "Last amended: 29.10.2026.";
-			String rulebookToday = language.equals("sr") ? "Poslednja izmena: 30.10.2026." : "Last amended: 30.10.2026.";
+			String rulebookToday = language.equals("sr") ? "Poslednja izmena: 10.11.2026." : "Last amended: 10.11.2026.";
 
 			String policyToday = language.equals("sr") ? "Poslednja izmena: 08.11.2026." : "Last amended: 08.11.2026.";
 
@@ -220,7 +220,7 @@ class TheWrittenPagesSayTheDateOfBirthIsNotShownToOthersTest extends DatabaseTes
 					.as("the %s sign-off of 08.11.2026 must stand on the policy alone, V90 having moved it", language)
 					.containsExactly(THE_POLICY_SIGN_OFF);
 			assertThat(placesWhichCarry(language, rulebookToday))
-					.as("the %s sign-off of 30.10.2026 must stand on the rulebook alone", language)
+					.as("the %s sign-off of 10.11.2026 must stand on the rulebook alone, V93 having moved it", language)
 					.containsExactly(new Place("pravilnik", 19));
 			assertThat(bodyOf(language, THE_POLICY_SIGN_OFF)).containsOnlyOnce(policyToday);
 

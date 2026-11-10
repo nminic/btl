@@ -136,13 +136,13 @@ public class MembershipPriceTest {
 	 */
 	@Test
 	void theFeeIsOnEuroPaymentsAndNeverOnDinarOnes() {
-		assertThat(MembershipPrice.on(ROWS, in2027("11-15"), 1990, 2027, Currency.EUR).fee())
+		assertThat(MembershipPrice.on(ROWS, in2027("11-25"), 1990, 2027, Currency.EUR).fee())
 				.isEqualByComparingTo("3");
-		assertThat(MembershipPrice.on(ROWS, in2027("11-15"), 1990, 2027, Currency.RSD).fee())
+		assertThat(MembershipPrice.on(ROWS, in2027("11-25"), 1990, 2027, Currency.RSD).fee())
 				.as("a dinar payment was charged a fee that covers an intermediary it does not use")
 				.isEqualByComparingTo("0");
 
-		assertThat(MembershipPrice.on(ROWS, in2027("11-15"), 1990, 2027, Currency.EUR).amount())
+		assertThat(MembershipPrice.on(ROWS, in2027("11-25"), 1990, 2027, Currency.EUR).amount())
 				.as("the fee was added into the membership instead of standing beside it")
 				.isEqualByComparingTo("35");
 	}
@@ -156,7 +156,7 @@ public class MembershipPriceTest {
 	 */
 	@Test
 	void theJuniorPriceIsTheSameWheneverItIsPaid() {
-		assertThat(MembershipPrice.on(ROWS, in2027("11-15"), 2015, 2027, Currency.EUR).amount())
+		assertThat(MembershipPrice.on(ROWS, in2027("11-25"), 2015, 2027, Currency.EUR).amount())
 				.isEqualByComparingTo("20");
 		assertThat(MembershipPrice.on(ROWS, in2027("12-31"), 2015, 2027, Currency.EUR).amount())
 				.isEqualByComparingTo("20");
@@ -175,7 +175,7 @@ public class MembershipPriceTest {
 	 */
 	@Test
 	void aJuniorWhoPaysInMayIsNoMoreRankedThanAnybodyElseWhoDoes() {
-		assertThat(MembershipPrice.on(ROWS, in2027("11-15"), 2015, 2027, Currency.EUR).ranking())
+		assertThat(MembershipPrice.on(ROWS, in2027("11-25"), 2015, 2027, Currency.EUR).ranking())
 				.as("a junior who paid in the window was refused a place")
 				.isTrue();
 
@@ -227,7 +227,7 @@ public class MembershipPriceTest {
 				.filter(row -> !MembershipPrice.PROCESSING.equals(row.key()))
 				.toList();
 
-		assertThatThrownBy(() -> MembershipPrice.on(withoutTheFee, in2027("11-15"), 1990, 2027, Currency.EUR))
+		assertThatThrownBy(() -> MembershipPrice.on(withoutTheFee, in2027("11-25"), 1990, 2027, Currency.EUR))
 				.isInstanceOf(IllegalStateException.class)
 				.hasMessageContaining(MembershipPrice.PROCESSING);
 	}
