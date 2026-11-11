@@ -277,7 +277,7 @@ class WhatANoticeSaysTest {
 						"",
 						"Odjavljeni ste sa svih ostalih uređaja.",
 						"",
-						"Ako niste, neko drugi zna vašu staru lozinku. Odmah zatražite novu lozinku sa"
+						"Ako ovo niste uradili vi, neko drugi zna vašu staru lozinku. Odmah zatražite novu lozinku sa"
 								+ " strane za prijavu i javite nam se na info@balkanskatrkackaliga.net.",
 						""));
 
@@ -288,7 +288,7 @@ class WhatANoticeSaysTest {
 						"",
 						"You have been signed out of all other devices.",
 						"",
-						"If it was not, somebody else knows your old password. Ask for a new password on"
+						"If this was not you, somebody else knows your old password. Ask for a new password on"
 								+ " the sign-in page at once and write to us at"
 								+ " info@balkanskatrkackaliga.net.",
 						""));
