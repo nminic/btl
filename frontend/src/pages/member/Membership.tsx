@@ -938,9 +938,13 @@ export function Membership() {
                    when renewal opens (PDL P8, 16.10.2026: the member whose fee stands and the freed one „ostaju
                    kako su bili"). Where nothing would be offered anyway, the shut panel's
                    sentence below stays. */
-                <p className="member__note">
-                  {t('membership.alreadyPaid', { season: payingSeason })}
-                </p>
+                /* NOT DRAWN TWICE (owner, 11.11.2026): where the state line above already says `membership.paidFor`,
+                   which reads the same, the renewal panel draws nothing. */
+                heldOn === 'payment' ? null : (
+                  <p className="member__note">
+                    {t('membership.alreadyPaid', { season: payingSeason })}
+                  </p>
+                )
               ) : payable ? (
                 <>
                   <p className="member__note">

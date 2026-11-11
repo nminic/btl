@@ -363,10 +363,10 @@ describe('the read is asked only where a slip is about to be drawn, because it w
     renderAt('/sr/moja-clanarina', 'competitor', IN_SERBIA, undefined, today)
 
     if (member.membershipBasis === 'payment') {
-      /* The state line and the renewal's line read the same words since 10.11.2026, so there are two. */
+      /* The state line and the renewal's line read the same words since 10.11.2026, so the renewal panel draws nothing of its own and there is one. */
       const both = await screen.findAllByText(said)
 
-      expect(both).toHaveLength(2)
+      expect(both).toHaveLength(1)
     } else {
       expect(await screen.findByText(said)).toBeVisible()
     }

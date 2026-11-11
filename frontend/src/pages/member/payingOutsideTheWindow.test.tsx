@@ -348,14 +348,13 @@ describe('whoever owes nothing for the running season is told what he was told',
   ])('a member holding the running season whose fee does not stand, on %s, is told it is paid for %i', async (today, season) => {
     openHisPage({ ...LAPSED, membershipBasis: 'payment', membershipSeason: season }, today)
 
-    /* Twice since 10.11.2026: the state line (`membership.paidFor`) and the line where the renewal would
+    /* Once (owner, 11.11.2026, the two lines read the same so the renewal panel draws none): the state line (`membership.paidFor`) and the line where the renewal would
        be (`membership.alreadyPaid`) are both „Članarina za sezonu {season} je plaćena." in the owner's
-       words. Held as two, so that a third copy or a lost one fails here. */
+       words. Held as one, so that a second copy or a lost one fails here. */
     const told = await screen.findAllByText(`Članarina za sezonu ${season} je plaćena.`)
 
-    expect(told).toHaveLength(2)
+    expect(told).toHaveLength(1)
     expect(told[0]).toBeVisible()
-    expect(told[1]).toBeVisible()
     expect(screen.queryByText(SHUT)).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { level: 3, name: 'Uplatnica' })).not.toBeInTheDocument()
   }, SLOW)
@@ -446,12 +445,11 @@ describe('the notes about a price follow what he owes for the season on sale, an
     openHisPage({ ...STANDING, membershipBasis: basis, membershipSeason: 2028 }, '2027-11-22')
 
     if (basis === 'payment') {
-      /* The state line and the renewal's line read the same words since 10.11.2026, so there are two. */
+      /* The state line and the renewal's line read the same words since 10.11.2026, so the renewal panel draws nothing of its own and there is one. */
       const both = await screen.findAllByText(stated)
 
-      expect(both).toHaveLength(2)
+      expect(both).toHaveLength(1)
       expect(both[0]).toBeVisible()
-      expect(both[1]).toBeVisible()
     } else {
       expect(await screen.findByText(stated)).toBeVisible()
       expect(screen.getByText('Članarina za sezonu 2028 je plaćena.')).toBeVisible()

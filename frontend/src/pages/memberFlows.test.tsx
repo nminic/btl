@@ -476,15 +476,14 @@ describe('membership', () => {
         /* Half the case's clock, so a wait that never ends fails on its own assertion and not on
            the clock of the case (`btl/CLAUDE.md`, section 25). */
         if (String(inTheState) === String(inTheRenewal)) {
-          /* A member who holds the season on a payment reads the same words twice since 10.11.2026
+          /* A member who holds the season on a payment reads the sentence once (owner, 11.11.2026: the renewal panel does not repeat the state line)
              (owner: `membership.paidFor` and `membership.alreadyPaid` both say „Članarina za sezonu
-             {season} je plaćena."): once in the state, once where the renewal would be. Held as two
+             {season} je plaćena."): in the state, and none where the renewal would be. Held as one
              and not as "at least one", so a third copy or a lost one fails here. */
           const both = await screen.findAllByText(inTheState, {}, { timeout: SLOW / 2 })
 
-          expect(both).toHaveLength(2)
+          expect(both).toHaveLength(1)
           expect(both[0]).toBeVisible()
-          expect(both[1]).toBeVisible()
         } else {
           expect(await screen.findByText(inTheState, {}, { timeout: SLOW / 2 })).toBeVisible()
           expect(screen.getByText(inTheRenewal)).toBeVisible()
