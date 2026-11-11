@@ -260,7 +260,7 @@ describe('the page, to everybody who is not somebody who has not paid', () => {
 
     const words = within(await screen.findByRole('region', { name: 'Tekst o sebi' }))
 
-    expect(await words.findByRole('button', { name: 'Pošalji na odobrenje' })).toBeVisible()
+    expect(await words.findByRole('button', { name: 'Pošalji' })).toBeVisible()
     /* Read off every box's own value, because the words run over two paragraphs and a matcher of display values
        folds their blank line away, which is how this case once let the first man's words through. */
     expect(

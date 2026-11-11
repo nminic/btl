@@ -1025,7 +1025,7 @@ describe('a value longer than the limit that was later put on its field', () => 
        box is ten characters over its limit, so an unclamped room is minus five,
        and the three characters brought would be reported as eight lost. Held on
        the figure, because the sentence is the same either way. */
-    expect(screen.getByRole('status')).toHaveTextContent(/Nalepljeni tekst je bio 3 znaka/)
+    expect(screen.getByRole('status')).toHaveTextContent(/Nalepljeni tekst je skraćen za 3 znaka/)
   })
 
   it('keeps the message through a paste that fits only in part', async () => {
@@ -1045,7 +1045,7 @@ describe('a value longer than the limit that was later put on its field', () => 
     fireEvent.paste(box, { clipboardData: { getData: () => 'yyyyy' } })
     fireEvent.change(box, { target: { value: `${'x'.repeat(7)}yyy` } })
 
-    expect(screen.getByRole('status')).toHaveTextContent(/Nalepljeni tekst je bio 2 znaka/)
+    expect(screen.getByRole('status')).toHaveTextContent(/Nalepljeni tekst je skraćen za 2 znaka/)
   })
 
   it('clears the message on the next keystroke after a refused paste', async () => {
@@ -1066,7 +1066,7 @@ describe('a value longer than the limit that was later put on its field', () => 
     box.setSelectionRange(10, 10)
     fireEvent.paste(box, { clipboardData: { getData: () => 'yyy' } })
 
-    expect(screen.getByRole('status')).toHaveTextContent(/Nalepljeni tekst je bio 3 znaka/)
+    expect(screen.getByRole('status')).toHaveTextContent(/Nalepljeni tekst je skraćen za 3 znaka/)
 
     /* The writer's own next change, which is the first thing that happens after
        a refused paste. */

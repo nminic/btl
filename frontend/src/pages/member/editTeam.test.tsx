@@ -270,7 +270,7 @@ describe('the form a team is changed on', () => {
     await user.type(screen.getByLabelText(/Naziv tima/), 'Vardarski krug')
     await user.click(screen.getByRole('button', { name: 'Pošalji izmenu' }))
 
-    expect(await screen.findByText(/već postoji u ligi/)).toBeVisible()
+    expect(await screen.findByText(/Tim sa ovim nazivom već postoji/)).toBeVisible()
     expect(screen.queryByRole('heading', { name: 'Izmena je poslata' })).toBeNull()
   })
 
@@ -349,7 +349,7 @@ describe('a change waiting on the queue of teams', () => {
     const heading = await screen.findByRole('heading', { name: 'Dunavski trkači' })
     const card = within(must(heading.closest('li'), 'the card the heading stands in'))
 
-    expect(card.queryByText(/već postoji u ligi/)).toBeNull()
+    expect(card.queryByText(/Tim sa ovim nazivom već postoji/)).toBeNull()
     expect(card.getByRole('button', { name: 'Odobri' })).not.toHaveAttribute(
       'aria-disabled',
       'true',

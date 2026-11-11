@@ -494,7 +494,7 @@ describe('a member who is asked by more than one team', () => {
     /* **The right to answer is worked out when the message is drawn, not remembered on it.**
        Three teams may ask the same person on the same day and none of them knows about the
        others, so „already answered" cannot be a flag on any one of them (PDL, 06.09.2026). */
-    expect(await screen.findByText(/U međuvremenu si ušao u tim "Dunavski trkači"/)).toBeVisible()
+    expect(await screen.findByText(/Već si u timu Dunavski trkači/)).toBeVisible()
     expect(screen.queryByRole('button', { name: 'Prihvati' })).toBeNull()
   }, SEVERAL_SCREENS)
 
@@ -541,7 +541,7 @@ describe('a member who is asked by more than one team', () => {
 
     await user.click(must(after[1], 'the invitation Dunavski trkači sent, which nobody answered'))
 
-    expect(await screen.findByText(/U međuvremenu si ušla u tim "Vardarski krug"/)).toBeVisible()
+    expect(await screen.findByText(/Već si u timu Vardarski krug/)).toBeVisible()
     expect(screen.queryByText(/ušao/)).toBeNull()
   }, SEVERAL_SCREENS)
 

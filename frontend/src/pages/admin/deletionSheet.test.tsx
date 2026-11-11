@@ -391,7 +391,7 @@ describe.each(SCREENS)('the sheet that asks before $name delete a row', (one) =>
 
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
 
-    expect(await within(row).findByRole('alert')).toHaveTextContent('Server je odgovorio brojem 404')
+    expect(await within(row).findByRole('alert')).toHaveTextContent('greška 404')
     expect(second).toBeInTheDocument()
     expect(second).toHaveFocus()
     expect(screen.queryByText(one.gone)).toBeNull()
@@ -457,7 +457,7 @@ describe.each(SCREENS)('the sheet that asks before $name delete a row', (one) =>
       await user.click(rows.second)
       await sayYes(user, one.asks)
       await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
-      expect(await within(rows.row).findByRole('alert')).toHaveTextContent('Server je odgovorio brojem 404')
+      expect(await within(rows.row).findByRole('alert')).toHaveTextContent('greška 404')
 
       return { server, user, ...rows }
     }
@@ -470,7 +470,7 @@ describe.each(SCREENS)('the sheet that asks before $name delete a row', (one) =>
 
       expect(screen.queryByRole('dialog')).toBeNull()
       expect(within(row).queryByRole('alert')).toBeNull()
-      expect(screen.queryByText(/Server je odgovorio brojem 404/)).toBeNull()
+      expect(screen.queryByText(/greška 404/)).toBeNull()
       /* AND NOTHING WAS DELETED OR ASKED AGAIN BY PUTTING IT AWAY. */
       expect(deletions(server.asked)).toHaveLength(1)
 
@@ -484,7 +484,7 @@ describe.each(SCREENS)('the sheet that asks before $name delete a row', (one) =>
       await user.click(within(await theSheet(one.asks)).getByRole('button', { name: 'Odustani' }))
 
       expect(screen.queryByRole('dialog')).toBeNull()
-      expect(within(row).getByRole('alert')).toHaveTextContent('Server je odgovorio brojem 404')
+      expect(within(row).getByRole('alert')).toHaveTextContent('greška 404')
 
       server.stop()
     }, SLOW)
@@ -497,7 +497,7 @@ describe.each(SCREENS)('the sheet that asks before $name delete a row', (one) =>
       await user.click(second)
       await theSheet(one.asks)
 
-      expect(within(row).getByRole('alert')).toHaveTextContent('Server je odgovorio brojem 404')
+      expect(within(row).getByRole('alert')).toHaveTextContent('greška 404')
 
       server.stop()
     }, SLOW)

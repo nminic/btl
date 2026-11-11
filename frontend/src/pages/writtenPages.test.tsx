@@ -231,7 +231,7 @@ describe('the written pages', () => {
 
     expect(await screen.findByRole('heading', { level: 1, name: title })).toBeVisible()
     expect(screen.getAllByRole('heading', { level: 2 }).length).toBeGreaterThan(1)
-    expect(screen.queryByText(/Ovaj ekran dolazi u sledećoj fazi/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Ovaj ekran je u izradi/)).not.toBeInTheDocument()
   })
 
   it('says in the terms where a result is submitted and checked', async () => {
@@ -905,11 +905,11 @@ describe('the privacy policy', () => {
       expect(policy, named).not.toContain(named)
     }
 
-    /* And it says why there is no bar, rather than leaving a reader to notice
-       that a paragraph went missing: consent is asked for what is not necessary,
-       and the portal sets nothing of the sort. */
-    expect(policy).toContain('nema ni trake za pristanak')
-    expect(policy).toContain('Nema analitike')
+    /* And it says there is no other store and no analytics. Until 10.11.2026 it also said why
+       there was no bar („Nema analitike, ni naše ni tuđe, pa nema ni trake za pristanak.");
+       the owner's words since are „Drugog skladišta, niti analitike, nema." and give no reason,
+       so the case holds the two facts and no longer holds the explanation. */
+    expect(policy).toContain('Drugog skladišta, niti analitike, nema.')
   })
 
   it('promises no way to withdraw a consent it never asks for', () => {
@@ -2420,10 +2420,11 @@ describe('how a written page is set', () => {
       )
     }
 
-    /* And the two things the reader is owed about it: that it never reaches the
-       association, and why no consent is asked for it. */
+    /* And what the reader is owed about it: where it is kept, and why no consent is asked
+       for it. It was owed a third thing until 10.11.2026, that it never reaches the
+       association („pa ga naš server ne vidi"); the owner's words for that sentence are
+       „Postavlja se tek kad temu sami izaberete." and the page no longer says it. */
     expect(policy).toContain('lokalnom skladištu')
-    expect(policy).toContain('naš server ne vidi')
     expect(policy).toMatch(/pristanak se ne traži|Za njega se pristanak ne traži/)
     /* The claim the document used to make, and must not make again while any
        store is there. */
@@ -2481,9 +2482,14 @@ describe('how a written page is set', () => {
     ]
 
     expect(offersTrack(lines)).toEqual([])
-    /* And the sweep reached the one line that is allowed to mention it, so the
-       trigger is live rather than merely quiet. */
-    expect(lines.filter(([, line]) => OFFERED.test(line)).length).toBeGreaterThan(0)
+    /* Until 10.11.2026 the sweep also had to reach the one line that was allowed to mention a
+       track file, in order to prove the trigger live rather than merely quiet. The owner's
+       words for Article 33 are „Dužinu, uspon i spust upisujete sami." and no page or
+       dictionary line names one any more, so the trigger is proven live by the cases of
+       `the guard over the written pages` below, and what is held here is that the sweep
+       still reaches the article that used to carry the refusal. */
+    expect(lines.some(([where, line]) => where === 'pravilnik' && line.includes('Dužinu, uspon i spust upisujete sami.')))
+      .toBe(true)
   })
 
   it('carries no telephone number anywhere', () => {
@@ -2963,9 +2969,9 @@ describe('what the written pages say the fee buys', () => {
        document and not as one day for all three, so a date moved on one of them,
        or left behind on one, is a failure that names the document. */
     const SIGNED_OFF = {
-      pravilnik: '10.11.2026',
-      'uslovi-koriscenja': '29.10.2026',
-      'politika-privatnosti': '08.11.2026',
+      pravilnik: '11.11.2026',
+      'uslovi-koriscenja': '11.11.2026',
+      'politika-privatnosti': '11.11.2026',
     } as const
 
     for (const slug of ['pravilnik', 'uslovi-koriscenja', 'politika-privatnosti'] as const) {

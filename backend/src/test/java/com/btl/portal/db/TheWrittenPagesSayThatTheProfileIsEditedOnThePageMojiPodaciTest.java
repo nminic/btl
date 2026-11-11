@@ -41,6 +41,8 @@ class TheWrittenPagesSayThatTheProfileIsEditedOnThePageMojiPodaciTest extends Da
 	 */
 	@BeforeEach
 	void theTextAsV89LeftIt() {
+		/* The text as V94 left it: V95 (owner, 11.11.2026) moved the sign-offs of all three pages and took sentences out of them, which is held by TheWrittenPagesStateTheFactCarriedOverTest. */
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "95");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "90");
 	}
 

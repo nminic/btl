@@ -279,7 +279,7 @@ describe('rating an event', () => {
     expect(send).toHaveAttribute('aria-disabled', 'true')
 
     await user.click(send)
-    expect(screen.queryByText('Ocena je poslata na odobrenje.')).toBeNull()
+    expect(screen.queryByText('Ocena je poslata, a komentar će se uskoro pojaviti.')).toBeNull()
 
     /* Two of the three is still not a rating. The average divides by three
        whatever is given, so a mark left out is published as a nought and the
@@ -335,7 +335,7 @@ describe('rating an event', () => {
     expect(box).toHaveValue('x'.repeat(limit))
     /* Twice on purpose: the line under the box for whoever can see it, and the
        live region for whoever cannot (forms/LongBox.tsx). */
-    expect(screen.getAllByText(/^Nalepljeni tekst je bio 12 znak/)).toHaveLength(2)
+    expect(screen.getAllByText(/^Nalepljeni tekst je skraćen za 12 znak/)).toHaveLength(2)
     expect(screen.getByText(new RegExp(`^Dosta je, granica je ${limit} znak`))).toBeVisible()
   })
 
@@ -351,7 +351,7 @@ describe('rating an event', () => {
     await rateAll(user, 5)
     await user.click(screen.getByRole('button', { name: 'Pošalji' }))
 
-    expect(await screen.findByText('Ocena je poslata na odobrenje.')).toBeVisible()
+    expect(await screen.findByText('Ocena je poslata, a komentar će se uskoro pojaviti.')).toBeVisible()
   })
 
   it('takes a rating from a member the list of members has not caught up with', async () => {
@@ -444,7 +444,7 @@ describe('rating an event', () => {
 
     expect(await screen.findByRole('radiogroup', { name: 'Organizacija' })).toBeVisible()
     expect(screen.queryByText('Ocena je objavljena.')).toBeNull()
-    expect(screen.queryByText('Ocena je poslata na odobrenje.')).toBeNull()
+    expect(screen.queryByText('Ocena je poslata, a komentar će se uskoro pojaviti.')).toBeNull()
   })
 
   it('says why it will not send yet, rather than leaving a dead button', async () => {
@@ -458,14 +458,14 @@ describe('rating an event', () => {
 
     const send = await screen.findByRole('button', { name: 'Pošalji' })
 
-    expect(screen.getByText('Dajte sve tri ocene da biste mogli da pošaljete.')).toBeVisible()
-    expect(send).toHaveAccessibleDescription('Dajte sve tri ocene da biste mogli da pošaljete.')
+    expect(screen.getByText('Daj sve tri ocene.')).toBeVisible()
+    expect(send).toHaveAccessibleDescription('Daj sve tri ocene.')
 
     await rateAll(user, 4)
 
     /* And gone once there is nothing left to wait for. */
     expect(
-      screen.queryByText('Dajte sve tri ocene da biste mogli da pošaljete.'),
+      screen.queryByText('Daj sve tri ocene.'),
     ).not.toBeInTheDocument()
   })
 
@@ -503,7 +503,7 @@ describe('rating an event', () => {
     await user.type(screen.getByLabelText(/^Komentar/), 'Sve tri ocene su pet.')
     await rateAll(user, 5)
     await user.click(screen.getByRole('button', { name: 'Pošalji' }))
-    await screen.findByText('Ocena je poslata na odobrenje.')
+    await screen.findByText('Ocena je poslata, a komentar će se uskoro pojaviti.')
 
     /* The queue the shell loaded before the form was opened, read again with nothing
        asking for a fresh page: dropping it is `RateEvent.tsx`'s own job. */
@@ -541,7 +541,7 @@ describe('rating an event', () => {
     await user.type(screen.getByLabelText(/^Komentar/), 'Ima reči, pa ide moderatoru.')
     await rateAll(user, 5)
     await user.click(screen.getByRole('button', { name: 'Pošalji' }))
-    await screen.findByText('Ocena je poslata na odobrenje.')
+    await screen.findByText('Ocena je poslata, a komentar će se uskoro pojaviti.')
 
     /* The answer held before the press is gone. Not „nothing is held": the header counter is
        mounted all the while and reads the queue again once it is dropped (PENDING 29561), so what
@@ -580,7 +580,7 @@ describe('rating an event', () => {
     await user.click(screen.getByRole('button', { name: 'Pošalji' }))
 
     expect(await screen.findByText('Ocena je objavljena.')).toBeVisible()
-    expect(screen.queryByText('Ocena je poslata na odobrenje.')).toBeNull()
+    expect(screen.queryByText('Ocena je poslata, a komentar će se uskoro pojaviti.')).toBeNull()
     expect(arrivedResource('comments')).toBeUndefined()
     /* Not „nothing is held": the header counter reads the queue again once it is dropped (PENDING
        29561), so what is held is a new answer and never the one from before the press. */
@@ -610,8 +610,8 @@ describe('rating an event', () => {
        first two, and the third is a body that says nothing, which is promised nothing. */
     const crossed = [
       { typed: 'Ima reči.', answered: { id: 1, waiting: false }, said: 'Ocena je objavljena.' },
-      { typed: '', answered: { id: 1, waiting: true }, said: 'Ocena je poslata na odobrenje.' },
-      { typed: '', answered: { id: 1 }, said: 'Ocena je poslata na odobrenje.' },
+      { typed: '', answered: { id: 1, waiting: true }, said: 'Ocena je poslata, a komentar će se uskoro pojaviti.' },
+      { typed: '', answered: { id: 1 }, said: 'Ocena je poslata, a komentar će se uskoro pojaviti.' },
     ]
 
     for (const one of crossed) {
@@ -692,7 +692,7 @@ describe('rating an event', () => {
         await screen.findByText('Rezultat i ocena se unose tek kad se trka istrči.'),
       ).toBeVisible()
       /* Nothing moved: the three marks and the words are still on the screen. */
-      expect(screen.queryByText('Ocena je poslata na odobrenje.')).toBeNull()
+      expect(screen.queryByText('Ocena je poslata, a komentar će se uskoro pojaviti.')).toBeNull()
       expect(screen.getByLabelText(/^Komentar/)).toHaveValue('Nešto što ostaje u kutiji.')
     } finally {
       server.stop()
@@ -730,7 +730,7 @@ async function underEvent(body: string): Promise<boolean> {
   await waitFor(() => {
     expect(
       screen.queryByRole('list', { name: 'Komentari' }) !== null ||
-        screen.queryByText('Za ovaj događaj još nema odobrenih komentara.') !== null,
+        screen.queryByText('Za ovaj događaj još nema komentara.') !== null,
     ).toBe(true)
   })
 
@@ -1166,7 +1166,7 @@ describe('a comment a moderator lets out', () => {
     await user.type(screen.getByLabelText(/^Komentar/), 'Prva trka u sezoni i dobro postavljena.')
     await rateAll(user, 4)
     await user.click(screen.getByRole('button', { name: 'Pošalji' }))
-    await screen.findByText('Ocena je poslata na odobrenje.')
+    await screen.findByText('Ocena je poslata, a komentar će se uskoro pojaviti.')
 
     /* The moderator half of this same superadmin, with the queue held from before the
        rating - see `startFromTheQueue`. */
@@ -1670,7 +1670,7 @@ describe('what an event nobody has run yet offers', () => {
     await screen.findByRole('heading', { level: 1, name: AHEAD_EMPTY_NAME })
 
     expect(screen.queryByRole('heading', { name: 'Komentari' })).toBeNull()
-    expect(screen.queryByText('Za ovaj događaj još nema odobrenih komentara.')).toBeNull()
+    expect(screen.queryByText('Za ovaj događaj još nema komentara.')).toBeNull()
   })
 
   it('keeps the comments of an event that has been moved onto a later date', async () => {
@@ -1712,7 +1712,7 @@ describe('what an event nobody has run yet offers', () => {
 
     expect(await screen.findByRole('heading', { name: 'Komentari' })).toBeVisible()
     expect(
-      await screen.findByText('Za ovaj događaj još nema odobrenih komentara.'),
+      await screen.findByText('Za ovaj događaj još nema komentara.'),
     ).toBeVisible()
   })
 
@@ -2166,7 +2166,7 @@ describe('the comments under an event', () => {
   it('says so where nobody has commented yet', async () => {
     renderAt('/sr/kalendar/jadovnicki-ultramaraton-2026', 'competitor', ME)
 
-    expect(await screen.findByText('Za ovaj događaj još nema odobrenih komentara.')).toBeVisible()
+    expect(await screen.findByText('Za ovaj događaj još nema komentara.')).toBeVisible()
   })
 
   it('works the overall out of the three, rather than reading a fourth', () => {

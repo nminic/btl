@@ -173,7 +173,7 @@ describe('asking for the message', () => {
        the guard is what stops it - the shape every button on the portal has. */
     expect(press).toHaveAttribute('aria-disabled', 'true')
     expect(press).toHaveAccessibleDescription(
-      'Upiši adresu elektronske pošte da bi mogao da zatražiš vezu.',
+      'Upiši adresu elektronske pošte.',
     )
 
     await user.click(press)
@@ -284,7 +284,7 @@ describe('what the screen says about the answer', () => {
     renderAt(AT)
     await ask()
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(/odgovorio brojem 500/)
+    expect(await screen.findByRole('alert')).toHaveTextContent(/greška 500/)
 
     /* The form is still standing and still holds what was typed. Emptied, the reader
        would have to type the address again over an answer that says „try again in a few
@@ -301,8 +301,8 @@ describe('what the screen says about the answer', () => {
        `refusals.test.ts` reads the other routes' by - so `ServerSaid` is handed an
        empty map and these three sentences are the whole of what there is to say. */
     const answers: [name: string, made: () => Response, said: RegExp][] = [
-      ['a token the server did not recognise', () => answeredWith(403), /nije uspeo da dokaže/],
-      ['a number nothing else explains', () => answeredWith(500), /odgovorio brojem 500/],
+      ['a token the server did not recognise', () => answeredWith(403), /Zahtev nije prošao/],
+      ['a number nothing else explains', () => answeredWith(500), /greška 500/],
     ]
 
     for (const [, made, said] of answers) {

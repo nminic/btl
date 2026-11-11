@@ -230,6 +230,8 @@ class TheWrittenPagesSayThatTheCategoryRevealsTheYearOfBirthTest extends Databas
 	 * before V58 and runs it.
 	 */
 	private void theSignOffsStandAsTheyDoNow(String language) {
+		/* The text as V94 left it: V95 (owner, 11.11.2026) moved the sign-offs of all three pages and took sentences out of them, which is held by TheWrittenPagesStateTheFactCarriedOverTest. */
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "95");
 		Place rulebookSignOff = new Place(RULEBOOK, 19);
 		Place policySignOff = new Place(POLICY, 7);
 

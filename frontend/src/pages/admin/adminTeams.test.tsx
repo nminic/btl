@@ -259,15 +259,15 @@ describe('a team taken away from the administration', () => {
       const said = await within(row).findByRole('alert')
 
       expect(said).toHaveTextContent(
-        'Prelazni rok je zatvoren. Otvara se 21. novembra i traje do 31. decembra. '
-          + 'Tim se do tada ne briše, ni iz administracije.',
+        'Tim se briše samo u prelaznom roku, od 21. novembra do 31. decembra.',
       )
 
       /* AND IT IS NOT THE SENTENCE THE MEMBERSHIP PAGE DRAWS FOR THE SAME REASON, which is
          the whole point of `theWindowIsShut` living in two dictionaries under two keys
-         (`admin/teamWrites.ts`). That one ends „ostaješ tamo gde jesi", which is about the
+         (`admin/teamWrites.ts`). That one begins „Prelazni rok je zatvoren." (it ended „ostaješ tamo gde jesi" until
+         10.11.2026), which is about the
          reader's own team and says nothing a moderator can act on. */
-      expect(said).not.toHaveTextContent('ostaješ tamo gde jesi')
+      expect(said).not.toHaveTextContent('Prelazni rok je zatvoren.')
 
       /* AND THE ROW IS STILL THERE, because nothing happened. */
       expect(within(screen.getByRole('table', { name: 'Timovi' })).getByText(ITS_NAME))
@@ -320,7 +320,7 @@ describe('a team taken away from the administration', () => {
       const said = await within(row).findByRole('alert')
 
       expect(said).toHaveTextContent(
-        'Server je odgovorio brojem 404 i ništa nije promenjeno. Pokušaj ponovo za koji minut.',
+        'Ništa nije sačuvano (greška 404). Pokušaj ponovo za koji minut.',
       )
 
       /* AND IT DOES NOT REACH FOR THE WINDOW'S SENTENCE, which is the one refusal this

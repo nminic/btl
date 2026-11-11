@@ -319,7 +319,7 @@ class MemberPaymentApiTest {
 		assertThat(db.sql("select coalesce(from_id::text, '-') || ' | ' || from_name || ' | ' || body"
 						+ " from message").query(String.class).single())
 				.isEqualTo("- | Balkanska trkačka liga | Za sezonu 2028 evidentirana je vaša uplata članarine.\n"
-						+ "\nZa sezonu 2028 ste član lige, a osnov vašeg članstva je uplata.\n"
+						+ "\nZa sezonu 2028 ste član lige.\n"
 						+ "\nBalkanska trkačka liga");
 
 		verifyNoInteractions(postman);

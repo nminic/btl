@@ -79,18 +79,18 @@ class WhatTheWelcomeSaysTest {
 	}
 
 	@Test
-	void dAndFAreTheOwnersWordsDashAndAll() {
+	void dAndFAreTheOwnersWordsAndPromiseNothingMore() {
 		Said d = WhatTheWelcomeSays.about(Letter.FREED_OF_THE_FEE, MailLanguage.SERBIAN, 2027, PORTAL);
 		Said f = WhatTheWelcomeSays.about(Letter.PAID, MailLanguage.SERBIAN, 2027, PORTAL);
 
 		assertThat(d.subject()).isEqualTo("Član ste lige za 2027. godinu");
 		assertThat(d.body()).isEqualTo(String.join("\n", HELLO, "",
-				"Za 2027. godinu oslobođeni ste plaćanja članarine - sve funkcionalnosti su vam dostupne.",
+				"Članarina za 2027. godinu je izmirena.",
 				"", TAIL));
 
 		assertThat(f.subject()).isEqualTo("Član ste lige za 2027. godinu");
 		assertThat(f.body()).isEqualTo(String.join("\n", HELLO, "",
-				"Vaša članarina za 2027. godinu je plaćena - sve funkcionalnosti su vam dostupne.", "", TAIL));
+				"Vaša članarina za 2027. godinu je plaćena.", "", TAIL));
 	}
 
 	@Test
@@ -100,9 +100,8 @@ class WhatTheWelcomeSaysTest {
 
 		assertThat(e.subject()).isEqualTo("Članarina za 2028. godinu je izmirena");
 		assertThat(e.body()).isEqualTo(String.join("\n", HELLO, "",
-				"Članarinu za 2028. godinu pokrio je vaš balans iz programa preporuke. Ono što je na balansu"
-						+ " preostalo čeka sledeću sezonu, a stanje uvek vidite na strani Moja članarina:"
-						+ " https://balkanskatrkackaliga.net/moja-clanarina",
+				"Članarinu za 2028. godinu pokrio je vaš balans iz programa preporuke. Stanje balansa je na"
+						+ " strani Moja članarina: https://balkanskatrkackaliga.net/moja-clanarina",
 				"", TAIL));
 
 		assertThat(g.subject()).isEqualTo("Balans pokriva članarinu za 2027. godinu");
@@ -120,17 +119,16 @@ class WhatTheWelcomeSaysTest {
 
 		assertThat(b.subject()).isEqualTo("Uplatnica za članarinu za 2027. godinu");
 		assertThat(b.body()).isEqualTo(String.join("\n", HELLO, "",
-				"Da biste postali član lige za 2027. godinu, ostalo je još samo da uplatite članarinu."
-						+ " Najlakše je da u aplikaciji svoje banke skenirate QR kod iz priloga, pa se svi"
-						+ " podaci popune sami. Ako vam je draže da ih unesete ručno, evo ih:",
+				"Članarinu za 2027. godinu možete da uplatite skeniranjem QR koda iz priloga u aplikaciji"
+						+ " svoje banke, ili ručno, sa ovim podacima:",
 				"",
 				"Primalac: Sportsko udruženje BTL, Bulevar Arsenija Čarnojevića 77, 11070 Novi Beograd",
 				"Račun: 105-0000000003284-71",
 				"Iznos: 3.600,00 RSD",
 				"Svrha uplate: Članarina za 2027. godinu",
 				"",
-				"Pošto još nemate članski broj, uplata nema poziv na broj. Prepoznaćemo je po vašem imenu,"
-						+ " a čim stigne, moderator je potvrđuje i dobijate članski broj.",
+				"Uplata nema poziv na broj, jer članski broj još nemate. Članski broj dobijate kad uplata"
+						+ " bude evidentirana.",
 				"",
 				"Iste podatke uvek možete naći i na strani Moja članarina:"
 						+ " https://balkanskatrkackaliga.net/moja-clanarina",
@@ -144,17 +142,15 @@ class WhatTheWelcomeSaysTest {
 
 		assertThat(c.subject()).isEqualTo("Podaci za uplatu članarine za 2027. godinu");
 		assertThat(c.body()).isEqualTo(String.join("\n", HELLO, "",
-				"Da biste postali član lige za 2027. godinu, ostalo je još samo da uplatite članarinu"
-						+ " preko PayPal-a:",
+				"Članarinu za 2027. godinu uplaćujete preko PayPal-a:",
 				"",
 				"PayPal adresa: info@balkanskatrkackaliga.net",
 				"Iznos (sa uračunatom taksom): 32,00 EUR",
 				"",
-				"PayPal adresa je poslovna, na Sportsko udruženje BTL. Taksa nije članarina nego trošak"
-						+ " obrade plaćanja kod PayPal-a. Kursna razlika i naknada vaše banke ostaju na vama.",
+				"PayPal adresa je poslovna, na Sportsko udruženje BTL. Kursnu razliku i naknadu banke plaća"
+						+ " uplatilac.",
 				"",
-				"Pošto još nemate članski broj, prepoznaćemo uplatu po vašem imenu, a čim stigne,"
-						+ " moderator je potvrđuje i dobijate članski broj.",
+				"Uplatu ćemo prepoznati po vašem imenu. Članski broj dobijate kad uplata bude evidentirana.",
 				"",
 				"Iste podatke uvek možete naći i na strani Moja članarina:"
 						+ " https://balkanskatrkackaliga.net/moja-clanarina",

@@ -267,6 +267,8 @@ class TheWrittenPagesSayEachThingInOnePlaceTest extends DatabaseTest {
 	 */
 	@Test
 	void allThreeAreSignedOffOnTheTwentyNinthInBothLanguagesAndNoEarlierDayStands() {
+		/* The text as V94 left it: V95 (owner, 11.11.2026) moved the sign-offs of all three pages and took sentences out of them, which is held by TheWrittenPagesStateTheFactCarriedOverTest. */
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "95");
 		for (String[] signOff : new String[][] {
 				{ "sr", "Poslednja izmena: 29.10.2026.", "Poslednja izmena: 22.10.2026.", "Poslednja izmena: 24.10.2026.",
 						"Poslednja izmena: 27.10.2026." },
@@ -357,8 +359,10 @@ class TheWrittenPagesSayEachThingInOnePlaceTest extends DatabaseTest {
 		jdbc.execute(migrationSql("93"));
 		/* And V94 over that, because the rulebook's Article 56 the portal serves carries it (10.11.2026). */
 		jdbc.execute(migrationSql("94"));
+		/* And V95 over that, because the sentences and the three sign-offs the portal serves carry it (11.11.2026). */
+		jdbc.execute(migrationSql("95"));
 
-		assertThat(everyText()).as("V71, V73, V76, V77, V78, V80, V89, V90, V93 and V94 over the text V71 found do not give the text the portal serves")
+		assertThat(everyText()).as("V71, V73, V76, V77, V78, V80, V89, V90, V93, V94 and V95 over the text V71 found do not give the text the portal serves")
 				.isEqualTo(finished);
 	}
 

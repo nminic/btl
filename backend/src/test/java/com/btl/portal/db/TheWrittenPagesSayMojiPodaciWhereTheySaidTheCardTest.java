@@ -82,6 +82,8 @@ class TheWrittenPagesSayMojiPodaciWhereTheySaidTheCardTest extends DatabaseTest 
 	}
 
 	private void everyEditHolds(String language) {
+		/* The text as V94 left it: V95 (owner, 11.11.2026) moved the sign-offs of all three pages and took sentences out of them, which is held by TheWrittenPagesStateTheFactCarriedOverTest. */
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "95");
 		assertThat(CHANGES).as("the table of edits is empty, so this case measures nothing").hasSize(4);
 
 		for (Change change : CHANGES) {
@@ -157,6 +159,8 @@ class TheWrittenPagesSayMojiPodaciWhereTheySaidTheCardTest extends DatabaseTest 
 	 */
 	@Test
 	void thePolicyIsSignedOffOnTheEighthOfNovemberAndTheOtherTwoKeepTheirDays() {
+		/* The text as V94 left it: V95 (owner, 11.11.2026) moved the sign-offs of all three pages and took sentences out of them, which is held by TheWrittenPagesStateTheFactCarriedOverTest. */
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "95");
 		for (String language : List.of("sr", "en")) {
 			boolean serbian = language.equals("sr");
 			String mark = serbian ? "Poslednja izmena: " : "Last amended: ";

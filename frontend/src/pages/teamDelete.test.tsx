@@ -492,15 +492,14 @@ describe('a team its administrator takes down', () => {
         const said = await screen.findByRole('alert')
 
         expect(said).toHaveTextContent(
-          'Prelazni rok je zatvoren. Otvara se 21. novembra i traje do 31. decembra. '
-            + 'Tim se do tada ne briše, ni iz administracije.',
+          'Tim se briše samo u prelaznom roku, od 21. novembra do 31. decembra.',
         )
 
         /* AND IT IS NOT THE SENTENCE THE MEMBERSHIP PAGE DRAWS FOR THE SAME WORD, which is
-           the whole point of `theWindowIsShut` living under two keys. That one ends „ostaješ
-           tamo gde jesi", which is about the reader's own membership and says nothing about
-           a team that is not going anywhere. */
-        expect(said).not.toHaveTextContent('ostaješ tamo gde jesi')
+           the whole point of `theWindowIsShut` living under two keys. That one begins „Prelazni
+           rok je zatvoren." (it ended „ostaješ tamo gde jesi" until 10.11.2026), which is about the
+           reader's own membership and says nothing about a team that is not going anywhere. */
+        expect(said).not.toHaveTextContent('Prelazni rok je zatvoren.')
 
         /* AND THE READER IS STILL ON THE TEAM'S PAGE. A screen that navigated anyway would
            carry him to the list of teams and leave the sentence behind with the screen. */
@@ -734,7 +733,7 @@ describe('a refusal of the deletion of a team', () => {
     await user.click(await screen.findByRole('button', { name: `Obriši: ${ITS_NAME}` }))
     await sayYes(user, 'Obriši tim?')
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('Prelazni rok je zatvoren.')
+    expect(await screen.findByRole('alert')).toHaveTextContent('Tim se briše samo u prelaznom roku, od 21. novembra do 31. decembra.')
 
     server.stop()
   }, SLOW)
@@ -828,7 +827,7 @@ describe('a refusal of the deletion of a team', () => {
 
       letItAnswer()
 
-      expect(await screen.findByRole('alert')).toHaveTextContent('Prelazni rok je zatvoren.')
+      expect(await screen.findByRole('alert')).toHaveTextContent('Tim se briše samo u prelaznom roku, od 21. novembra do 31. decembra.')
 
       server.stop()
     }, SLOW)
@@ -880,7 +879,7 @@ describe('a refusal of the deletion of a team', () => {
 
     letItAnswer()
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('Prelazni rok je zatvoren.')
+    expect(await screen.findByRole('alert')).toHaveTextContent('Tim se briše samo u prelaznom roku, od 21. novembra do 31. decembra.')
 
     server.stop()
   }, SLOW)
@@ -889,7 +888,7 @@ describe('a refusal of the deletion of a team', () => {
     const user = setupUser()
     const { server } = await refusedOnce(user)
 
-    expect(screen.getByRole('alert')).toHaveTextContent('Prelazni rok je zatvoren.')
+    expect(screen.getByRole('alert')).toHaveTextContent('Tim se briše samo u prelaznom roku, od 21. novembra do 31. decembra.')
     /* THE QUESTION HAS CLOSED, and the focus is on the button the sentence stands beside. */
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: `Obriši: ${ITS_NAME}` })).toHaveFocus()

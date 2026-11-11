@@ -1595,7 +1595,7 @@ describe('activating a membership from the payments screen', () => {
          instead of as the sentence it did not find. Two seconds is room for the answer to be
          drawn and still leaves the case most of its clock for the lines above. */
       const said = await within(await rowOf('Petar Marko')).findByText(
-        /Iznos uplate mora da bude ceo broj/,
+        /Iznos se unosi kao ceo broj/,
         undefined,
         { timeout: 2_000 },
       )

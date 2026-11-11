@@ -66,7 +66,7 @@ describe('opening the screen', () => {
     renderAt('/sr/nova-lozinka')
 
     expect(
-      await screen.findByText(/Ova adresa ne nosi vezu iz poruke, pa nema šta da se postavi/),
+      await screen.findByText(/Otvori vezu iz poruke koju ti je portal poslao/),
     ).toBeVisible()
     /* No form, because there is nothing to spend: a password typed here would be a
        password sent to a route that could only refuse it. */
@@ -255,12 +255,12 @@ describe('what the screen says about each answer', () => {
     [
       'a password that has leaked',
       () => refused('thePasswordHasLeaked'),
-      /već našla u javno objavljenim provalama/,
+      /pojavila u javno objavljenim provalama/,
     ],
     [
       'a reason this screen does not know',
       () => refused('nestoNovo'),
-      /odbio zahtev uz razlog nestoNovo/,
+      /Zahtev nije prihvaćen \(nestoNovo\)/,
     ],
     [
       'a reason that names something every object already has',
@@ -271,14 +271,14 @@ describe('what the screen says about each answer', () => {
          should have been told what the server said. Asked with `Object.hasOwn`, which
          is the shape `refusals.test.ts` already uses, it is a reason like any other. */
       () => refused('constructor'),
-      /odbio zahtev uz razlog constructor/,
+      /Zahtev nije prihvaćen \(constructor\)/,
     ],
     [
       'a request nobody proved came from the portal',
       () => answeredWith(403),
-      /nije uspeo da dokaže serveru/,
+      /Zahtev nije prošao/,
     ],
-    ['anything else, by its number', () => answeredWith(503), /odgovorio brojem 503/],
+    ['anything else, by its number', () => answeredWith(503), /greška 503/],
     [
       'a server it could not reach',
       () => {

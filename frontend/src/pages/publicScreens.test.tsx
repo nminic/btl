@@ -1688,7 +1688,7 @@ describe('TopBoards', () => {
 
     const none = board('Najbolji trkački parovi')
 
-    expect(none.getByText(/nijedan trkački par nema zajedničku trku/)).toBeVisible()
+    expect(none.getByText(/nijedan trkački par još nema zajedničku trku/)).toBeVisible()
     expect(none.queryByRole('table')).not.toBeInTheDocument()
   }, SLOW)
 
@@ -1841,7 +1841,7 @@ describe('TopBoards', () => {
        of them: a season in which everybody ran and nobody bettered their total
        is just as empty, and a sentence naming only the first tells that season
        that nobody ran (PDL P12, 30.07.2026). */
-    expect(progress.getByText(/trčao i prethodne sezone i popravio njen zbir/)).toBeVisible()
+    expect(progress.getByText(/niko nije popravio zbir bodova iz prethodne sezone/)).toBeVisible()
     expect(progress.queryAllByRole('listitem')).toHaveLength(0)
   })
 
@@ -3310,7 +3310,7 @@ Pored glavnog takmičenja postoje i Lige, zasebna takmičenja sa sopstvenim spis
 
 ### Član 51. BTL Round 'n' Around
 
-Ultramaraton u obliku slobodne trke: prati se ukupna kilometraža i ukupno vreme. Posebnog prikaza za višestruke polumaratone i maratone nema.
+Ultramaraton u obliku slobodne trke: prati se ukupna kilometraža i ukupno vreme.
 
 Trka može trajati nekoliko minuta ili nekoliko dana, a broj BTL bodova koji se na njoj skupi nije ničim ograničen.
 

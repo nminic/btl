@@ -309,7 +309,7 @@ describe('a category chosen on „Moja članarina"', () => {
       const before = listsAsked(server.asked)
 
       await choose(user, 'U početničkoj kategoriji')
-      expect(await screen.findByText(/Izbor nije sačuvan, jer je rok istekao/, {}, { timeout: SLOW / 2 })).toHaveAttribute(
+      expect(await screen.findByText(/Rok za izbor kategorije je istekao/, {}, { timeout: SLOW / 2 })).toHaveAttribute(
         'role',
         'status',
       )

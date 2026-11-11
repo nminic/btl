@@ -39,6 +39,7 @@ class TheTrophiesAreHandedOutAtTheCocktailSessionCarriedOverTest extends Databas
 
 	@BeforeEach
 	void theSentenceAsV24AndV43LeftIt() {
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "95");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "94");
 	}
 

@@ -293,7 +293,7 @@ describe('the text of a competition', () => {
     await user.tab()
 
     expect(await within(rules).findByRole('alert')).toHaveTextContent(
-      'Sezona ove lige je zamrznuta, pa se liga više ne menja. Brisanje i dalje radi.',
+      'Sezona ove lige je zamrznuta. Liga se može samo obrisati.',
     )
     expect(within(rules).getByRole('textbox', { name: 'Propozicije' })).toHaveTextContent(
       'Boduju se samo trke sa spiska.',

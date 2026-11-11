@@ -292,7 +292,7 @@ describe('a proposal a member sends', () => {
     await fill(user, 'Trkači Morave')
 
     expect(await screen.findByRole('heading', { name: 'Predlog je poslat' })).toBeVisible()
-    expect(screen.getByText(/"Trkači Morave" čeka odluku moderatora/)).toBeVisible()
+    expect(screen.getByText(/"Trkači Morave" se pojavljuje na portalu kad predlog bude prihvaćen/)).toBeVisible()
   })
 
   it("drops the moderator's queue once the server has taken the proposal, so the next reading asks again", async () => {
@@ -1366,7 +1366,7 @@ describe('a name a team in the league already answers to', () => {
     /* Including the sentence that says why this counts as the same name. Told
        only that a team of that name exists, a member goes looking for it on the
        list of teams and does not find the name they typed. */
-    expect(screen.getByText(/ne računaju kao razlika/)).toBeVisible()
+    expect(screen.getByText(/Tim sa ovim nazivom već postoji/)).toBeVisible()
     expect(screen.queryByRole('heading', { name: 'Predlog je poslat' })).toBeNull()
   })
 
@@ -1381,7 +1381,7 @@ describe('a name a team in the league already answers to', () => {
     await typeATownTheCodebookKnows(user, 'Novi Sad', 'RS')
     await user.click(screen.getByRole('button', { name: 'Pošalji predlog' }))
 
-    expect(screen.getByText(/ćirilica i latinica su isto pismo/)).toBeVisible()
+    expect(screen.getByText(/Izaberi drugi naziv/)).toBeVisible()
     expect(screen.queryByRole('heading', { name: 'Predlog je poslat' })).toBeNull()
   })
 })
@@ -1398,7 +1398,7 @@ describe('a name that makes no address at all', () => {
     await typeATownTheCodebookKnows(user, 'Niš', 'RS')
     await user.click(screen.getByRole('button', { name: 'Pošalji predlog' }))
 
-    expect(screen.getByText(/ne može napraviti adresa strane tima/)).toBeVisible()
+    expect(screen.getByText(/Naziv tima mora da ima bar jedno slovo ili cifru/)).toBeVisible()
     expect(screen.queryByRole('heading', { name: 'Predlog je poslat' })).toBeNull()
   })
 })
@@ -2023,7 +2023,7 @@ describe('what a moderator may do before accepting a proposal', () => {
     await typeATownTheCodebookKnows(user, 'Zaječar', 'RS')
     await user.click(screen.getByRole('button', { name: 'Pošalji predlog' }))
 
-    expect(screen.getByText(/već postoji u ligi/)).toBeVisible()
+    expect(screen.getByText(/Tim sa ovim nazivom već postoji/)).toBeVisible()
     expect(screen.queryByRole('heading', { name: 'Predlog je poslat' })).toBeNull()
   })
 

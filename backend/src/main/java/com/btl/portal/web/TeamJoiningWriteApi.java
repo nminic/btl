@@ -1195,7 +1195,7 @@ class TeamJoiningWriteApi {
 	 */
 	static String theMissedInvitationReads(String name, String gender, String team) {
 		return name + " je u međuvremenu " + ("M".equals(gender) ? "ušao" : "ušla")
-				+ " u tim \"" + team + "\", pa vaš poziv više ne stoji.";
+				+ " u tim \"" + team + "\".";
 	}
 
 	/**

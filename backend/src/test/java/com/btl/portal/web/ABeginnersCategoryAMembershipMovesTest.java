@@ -107,13 +107,11 @@ class ABeginnersCategoryAMembershipMovesTest {
 
 	private static final String REOPENED = "Početnička kategorija vam je ponovo otvorena";
 
-	private static final String CLOSED_2027 = "Upisano vam je članstvo za sezonu 2027, pa se vaši odobreni"
-			+ " rezultati iz te sezone računaju u zvaničnu sezonu. Time ste prešli prag od 12 bodova, pa vam"
-			+ " je početnička kategorija zatvorena za sezonu 2028.\n\nBalkanska trkačka liga";
+	private static final String CLOSED_2027 = "Početnička kategorija vam je zatvorena za sezonu 2028,"
+			+ " jer ste u sezoni 2027 prešli prag od 12 bodova.\n\nBalkanska trkačka liga";
 
-	private static final String REOPENED_2027 = "Poništeno vam je članstvo za sezonu 2027, pa se vaši"
-			+ " rezultati iz te sezone više ne računaju u zvaničnu sezonu. Time ste pali ispod praga od 12"
-			+ " bodova, pa vam je početnička kategorija ponovo otvorena za sezonu 2028.\n\nBalkanska trkačka liga";
+	private static final String REOPENED_2027 = "Početnička kategorija vam je ponovo otvorena za sezonu"
+			+ " 2028, jer je članstvo za sezonu 2027 poništeno.\n\nBalkanska trkačka liga";
 
 	private static final String A_TOWN_ABROAD = "(select id from place where rank = 1)";
 
@@ -314,9 +312,8 @@ class ABeginnersCategoryAMembershipMovesTest {
 		assertThat(written(Road.FREE_OF_THE_FEE, CLOSED_BEFORE).getStatus()).isEqualTo(201);
 
 		assertThat(linesTo(CLOSED_BY_2028)).containsExactly(CLOSED + "|"
-				+ "Upisano vam je članstvo za sezonu 2028, pa se vaši odobreni rezultati iz te sezone računaju"
-				+ " u zvaničnu sezonu. Time ste prešli prag od 12 bodova, pa vam je početnička kategorija"
-				+ " zatvorena za sezonu 2029.\n\nBalkanska trkačka liga");
+				+ "Početnička kategorija vam je zatvorena za sezonu 2029, jer ste u sezoni 2028 prešli prag od"
+				+ " 12 bodova.\n\nBalkanska trkačka liga");
 		assertThat(linesTo(CLOSED_BEFORE)).isEmpty();
 	}
 
