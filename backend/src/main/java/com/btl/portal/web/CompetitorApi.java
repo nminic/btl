@@ -637,7 +637,7 @@ class CompetitorApi {
 		CategoryOfASeason.Book book = categoriesOfSeasons.everybody();
 
 		/* AND THE SEASON ON SALE, WHICH IS THE ONE THE BASIS IS ANSWERED FOR, off the same reading
-		   of the clock. Not the season of the card: from 11 November to 31 December the two are a year
+		   of the clock. Not the season of the card: from 21 November to 31 December the two are a year
 		   apart, and the owner's decision of 18.10.2026 is about exactly that stretch. */
 		int sold = SeasonClock.seasonBeingPaidFor(now);
 

@@ -126,10 +126,12 @@ describe('what membership costs on a day', () => {
        same under the old list and the new one. */
     expect(on('2027-10-15')).toEqual(['season'])
     expect(on('2027-11-01')).toEqual(['season'])
-    expect(on('2027-11-10')).toEqual(['season'])
-    expect(on('2027-11-11')).toEqual(['early'])
-    expect(on('2027-11-20')).toEqual(['early'])
-    expect(on('2027-11-21')).toEqual(['regular'])
+    /* And the days that changed sides on 10.11.2026: 11 to 20 November was the early band. */
+    expect(on('2027-11-11')).toEqual(['season'])
+    expect(on('2027-11-20')).toEqual(['season'])
+    expect(on('2027-11-21')).toEqual(['early'])
+    expect(on('2027-11-30')).toEqual(['early'])
+    expect(on('2027-12-01')).toEqual(['regular'])
     expect(on('2027-12-31')).toEqual(['regular'])
   })
 
@@ -143,7 +145,9 @@ describe('what membership costs on a day', () => {
     expect(on('2026-10-15')).toEqual(['early'])
     expect(on('2026-11-01')).toEqual(['early'])
     expect(on('2026-11-10')).toEqual(['early'])
-    expect(on('2026-11-21')).toEqual(['regular'])
+    expect(on('2026-11-20')).toEqual(['early'])
+    expect(on('2026-11-30')).toEqual(['early'])
+    expect(on('2026-12-01')).toEqual(['regular'])
     expect(on('2027-11-01')).toEqual(['season'])
   })
 
@@ -156,14 +160,14 @@ describe('what membership costs on a day', () => {
     const backwards = pricedInBoth([...ROWS].reverse())
 
     expect(inForceOn(backwards, '2027-02-15').map((one) => one.key)).toEqual(['late'])
-    expect(inForceOn(backwards, '2027-11-12').map((one) => one.key)).toEqual(['early'])
+    expect(inForceOn(backwards, '2027-11-22').map((one) => one.key)).toEqual(['early'])
   })
 
   it('answers nothing where the list holds no period at all', () => {
     /* Which the constant could never do - it was four rows a test held to tiling the year -
        and an answer can. A screen with no price to quote says nothing rather than quoting a
        figure nobody sent. */
-    expect(inForceOn(pricedInBoth(ROWS.filter((one) => one.kind !== A_PERIOD)), '2027-11-12')).toEqual(
+    expect(inForceOn(pricedInBoth(ROWS.filter((one) => one.kind !== A_PERIOD)), '2027-11-22')).toEqual(
       [],
     )
   })
@@ -177,14 +181,14 @@ describe('what membership costs on a day', () => {
     const broken = pricedInBoth([...ROWS, like('early', { key: 'no-window', from: null })])
 
     expect(inForceOn(broken, '2027-02-15').map((one) => one.key)).toEqual(['late'])
-    expect(inForceOn(broken, '2027-11-12').map((one) => one.key)).toEqual(['early'])
+    expect(inForceOn(broken, '2027-11-22').map((one) => one.key)).toEqual(['early'])
   })
 })
 
 describe('the window a row is sold in', () => {
   it('is the two days of the year, as a day is read', () => {
-    expect(windowOf(like('early', {}))).toBe('11.11. - 20.11.')
-    expect(windowOf(like('regular', {}))).toBe('21.11. - 31.12.')
+    expect(windowOf(like('early', {}))).toBe('21.11. - 30.11.')
+    expect(windowOf(like('regular', {}))).toBe('1.12. - 31.12.')
   })
 
   it('is nothing at all where the row has no window', () => {

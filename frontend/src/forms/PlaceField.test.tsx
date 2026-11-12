@@ -365,7 +365,7 @@ describe('the town on a form', () => {
        once as the name and once as the description.
 
        Since 23.08.2026 there is no sentence at all (owner: „Ne ispisuje se poruka
-       Mesto je iz šifarnika, pa državu nosi sa sobom."), because it was drawn
+       Država se određuje prema izabranom mestu."), because it was drawn
        under the box and pushed the country out of line with the town beside it.
        What is left in its place is the rule on the town itself, which says the
        country comes with a town out of the codebook. */
@@ -383,7 +383,7 @@ describe('the town on a form', () => {
     expect(country, 'the sentence is back, and with it the box moves').toHaveAccessibleDescription(
       '',
     )
-    expect(screen.queryByText(/Mesto je iz šifarnika/)).toBeNull()
+    expect(screen.queryByText(/Država se određuje prema izabranom mestu/)).toBeNull()
   })
 
   it('will not let the country of a town it recognises be changed', async () => {

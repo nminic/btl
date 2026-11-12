@@ -856,7 +856,7 @@ describe('cancelling a season or changing its basis on a member’s row', () => 
     renderAt('/sr/administracija/clanovi', 'superadmin')
 
     const refusedPayment = sr.verification.activationRefused.theMembershipIsAlreadyHeld
-    const refusedDeletion = /Server je odgovorio brojem 404/
+    const refusedDeletion = /greška 404/
     const older = await rowOf(AN_OLDER_SEASON)
     const balance = await rowOf(ON_THE_BALANCE)
 

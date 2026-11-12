@@ -45,7 +45,7 @@ describe('the way back from a confirmation', () => {
 
     await user.click(screen.getByRole('button', { name: 'Pošalji' }))
 
-    expect(await screen.findByText('Ocena je poslata na odobrenje.')).toBeVisible()
+    expect(await screen.findByText('Ocena je poslata, a komentar će se uskoro pojaviti.')).toBeVisible()
 
     await router.navigate(-1)
 
@@ -120,7 +120,7 @@ describe('the way back from a confirmation', () => {
     await user.type(screen.getByLabelText(/Minuti/), '52')
     await user.type(screen.getByLabelText(/Sekunde/), '10')
     await user.type(screen.getByLabelText(/Link ka zvaničnim/), 'https://primer.rs/rezultati')
-    await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
+    await user.click(screen.getByRole('button', { name: 'Pošalji rezultat' }))
 
     expect(await screen.findByRole('heading', { name: 'Rezultat je poslat' })).toBeVisible()
 

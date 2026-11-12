@@ -1,5 +1,6 @@
+import { UNNUMBERED_DATA_ADDRESS } from '../../app/routes'
 import { isStaff, type Role } from '../../roles/context'
-import { ENTITY_FORMS, type EntityDef } from './entityForms'
+import { ENTITY_FORMS, MEMBERS, type EntityDef } from './entityForms'
 import { QUEUE, QUEUES, type Queue } from './queues'
 import { entityRight, queueRight, type Right } from './rights'
 
@@ -84,6 +85,9 @@ export const NEEDS: Record<string, Need> = {
   ...Object.fromEntries(QUEUES.map((queue) => [queue.path, needForQueue(queue)])),
   /* „Unos rezultata za događaj” asks what the queue of results asks (`ResultsByTheLeagueApi`). */
   'administracija/unos-rezultata': needForQueue(QUEUE.results),
+  /* The data of somebody with no member number ask what the data of a member ask: „Podatke člana bez
+     članskog broja menjaju isti kao danas: admin i moderator sa pravom nad članovima" (owner, 10.11.2026). */
+  [UNNUMBERED_DATA_ADDRESS]: needForEntity(MEMBERS),
 }
 
 /** What an address asks for, or nothing where it asks for nothing: every screen

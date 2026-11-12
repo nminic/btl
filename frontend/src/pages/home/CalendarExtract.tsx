@@ -66,12 +66,6 @@ export function CalendarExtract({
                 </time>
                 <span className="extract__name">
                   <Link to={`/${locale}/kalendar/${entry.next.slug}`}>{entry.name}</Link>
-                  {entry.more > 0 && (
-                    <span className="extract__series">
-                      {' '}
-                      {t('home.moreRuns', { count: entry.more })}
-                    </span>
-                  )}
                 </span>
                 <span className="extract__lengths">
                   {lengths.map((one) => (

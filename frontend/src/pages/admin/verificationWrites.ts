@@ -29,10 +29,9 @@ import type { RaceKind } from '../../data/types'
  *
  * <p><b>Which is also why `pages/account/ServerSaid.tsx` is NOT reused for this route,
  * and why that file is not touched.</b> Handed a reason its map does not know, it draws
- * `server.refused`, „Server je odbio zahtev uz razlog {reason}, koji ovaj ekran ne
- * prepoznaje." That sentence is true of a route that answers codes and says the opposite
- * of the truth here: this screen recognises the reason perfectly, because the reason is
- * the answer. Widening that component was weighed and refused - twelve files read it,
+ * `server.refused`, „Zahtev nije prihvaćen ({reason})." That sentence prints a code,
+ * which suits a route that answers codes and says nothing useful here: this screen
+ * recognises the reason perfectly, because the reason is the answer. Widening that component was weighed and refused - twelve files read it,
  * `admin/EntityEditor.tsx` among them, so a prop added for this one route is a change
  * every admin screen carries. The four sentences are not copied either: they live in
  * `sr.json` under `server.*` and the line that draws them reads those same keys

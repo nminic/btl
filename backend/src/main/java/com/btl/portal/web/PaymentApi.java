@@ -602,7 +602,7 @@ class PaymentApi {
 
 			/* THE SEASON IS READ HERE, ONCE, and handed to the booking, because the beginners' category
 			   is asked about the same season before the booking and after it: two readings of the clock
-			   would part across midnight of 11 November. Still the clock's and never the request's
+			   would part across midnight of 21 November. Still the clock's and never the request's
 			   (see the note on `Confirm`). */
 			int season = SeasonClock.seasonBeingPaidFor(ZonedDateTime.now(clock));
 			ABeginnersCategoryAMembershipMoves.Before before = category.before(typed.competitorId(), season);

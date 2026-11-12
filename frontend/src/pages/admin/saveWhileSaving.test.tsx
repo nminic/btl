@@ -496,7 +496,7 @@ describe('what is not held', () => {
       open: async (user) => {
         renderAt('/sr/administracija/cenovnik', 'superadmin')
         await screen.findByRole('table', { name: 'Cenovnik' })
-        await user.click(screen.getByRole('button', { name: 'Otvori: 11. do 20. novembra' }))
+        await user.click(screen.getByRole('button', { name: 'Otvori: 21. do 30. novembra' }))
 
         const eur = screen.getByLabelText(/Iznos u evrima/)
 

@@ -102,8 +102,8 @@ describe('the slip, in Serbia', () => {
     /* Never the period's own price, which a screen reading the price list would draw. */
     expect(within(slip).queryByText('4.800 RSD')).not.toBeInTheDocument()
     /* The owner's sentence, 25.10.2026, with the answer's two figures. */
-    expect(screen.getByText('Balans pokriva 700 RSD, pa uplaćuješ 4.100 RSD.')).toBeVisible()
-    expect(screen.getByText(/^Podatke za uplatu vidiš u nastavku/)).toBeVisible()
+    expect(screen.getByText('Balans pokriva 700 RSD, a za uplatu ostaje 4.100 RSD.')).toBeVisible()
+    expect(screen.getByText(/^Podaci za uplatu su u nastavku/)).toBeVisible()
   }, SLOW)
 
   it('names what the promise of the season takes off, and not what the book holds today', async () => {
@@ -114,7 +114,7 @@ describe('the slip, in Serbia', () => {
     openHisPage(IN_SERBIA, anInvoice(2027, 'RSD', { toTransfer: 4200, fromTheBalance: 600, balance: 1200 }))
 
     expect(within(await theSlip()).getByText('4.200 RSD')).toBeVisible()
-    expect(screen.getByText('Balans pokriva 600 RSD, pa uplaćuješ 4.200 RSD.')).toBeVisible()
+    expect(screen.getByText('Balans pokriva 600 RSD, a za uplatu ostaje 4.200 RSD.')).toBeVisible()
     expect(screen.queryByText(/1\.200 RSD, pa/)).not.toBeInTheDocument()
   }, SLOW)
 
@@ -133,11 +133,11 @@ describe('PayPal, abroad', () => {
     expect(await screen.findByText('36,50')).toBeVisible()
     /* Never the price list's period plus its fee (40 + 3). */
     expect(screen.queryByText('43,00')).not.toBeInTheDocument()
-    expect(screen.getByText('Balans pokriva 6,50 EUR, pa uplaćuješ 33,50 EUR.')).toBeVisible()
+    expect(screen.getByText('Balans pokriva 6,50 EUR, a za uplatu ostaje 33,50 EUR.')).toBeVisible()
     expect(screen.queryByRole('img', { name: /QR/ })).not.toBeInTheDocument()
     /* The other side of the cases where nothing is sent: an amount to send draws the part whole. */
     expect(screen.getByRole('heading', { level: 4, name: 'PayPal' })).toBeVisible()
-    expect(screen.getByText(/^PayPal adresa je poslovna/)).toBeVisible()
+    expect(screen.getByText(/^PayPal adresa glasi na/)).toBeVisible()
   }, SLOW)
 
   it('adds the fee the answer names and not the price list\'s', async () => {
@@ -168,11 +168,11 @@ describe('nothing to send', () => {
     expect(screen.queryByRole('heading', { level: 3, name: 'Uplatnica' })).not.toBeInTheDocument()
     expect(screen.queryByRole('img', { name: /QR/ })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Kopiraj iznos za uplatu' })).not.toBeInTheDocument()
-    expect(screen.queryByText(/^Podatke za uplatu vidiš u nastavku/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/^Podaci za uplatu su u nastavku/)).not.toBeInTheDocument()
     expect(screen.queryByText(/^Balans pokriva/)).not.toBeInTheDocument()
     expect(screen.queryByText(/^Iznos za uplatu nije stigao/)).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'PayPal' })).not.toBeInTheDocument()
-    expect(screen.queryByText(/^PayPal adresa je poslovna/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/^PayPal adresa glasi na/)).not.toBeInTheDocument()
   }, SLOW)
 })
 
@@ -183,7 +183,7 @@ describe('in Serbia, with a part of the fee on the balance', () => {
 
     expect(within(await theSlip()).getByText('3.700 RSD')).toBeVisible()
     expect(screen.queryByRole('heading', { name: 'PayPal' })).not.toBeInTheDocument()
-    expect(screen.queryByText(/^PayPal adresa je poslovna/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/^PayPal adresa glasi na/)).not.toBeInTheDocument()
   }, SLOW)
 })
 
@@ -212,7 +212,7 @@ describe('an answer this panel cannot draw from', () => {
     expect(screen.queryByRole('heading', { name: 'PayPal' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Kopiraj iznos za uplatu' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Aktiviraj članstvo' })).not.toBeInTheDocument()
-    expect(screen.queryByText(/^Podatke za uplatu vidiš u nastavku/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/^Podaci za uplatu su u nastavku/)).not.toBeInTheDocument()
   }, SLOW)
 
   it.each([
@@ -255,7 +255,7 @@ describe('a read that did not answer', () => {
     ).toBeVisible()
     expect(screen.getByRole('button', { name: 'Pokušaj ponovo' })).toBeVisible()
     expect(screen.queryByRole('heading', { level: 3, name: 'Uplatnica' })).not.toBeInTheDocument()
-    expect(screen.queryByText(/^Podatke za uplatu vidiš u nastavku/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/^Podaci za uplatu su u nastavku/)).not.toBeInTheDocument()
   }, SLOW)
 
   it('draws the slip once the asking again is answered, and puts the keyboard on it', async () => {
@@ -354,15 +354,22 @@ describe('the read is asked only where a slip is about to be drawn, because it w
   }
 
   it.each([
-    ['who holds the season on sale', { membershipBasis: 'payment', membershipSeason: 2027 }, IN_THE_WINDOW, /^Članarina za 2027 je već plaćena/],
-    ['freed of the season on sale', { membershipBasis: 'feeExempt', membershipSeason: 2027 }, IN_THE_WINDOW, /^Oslobođen si plaćanja članarine, pa nema/],
+    ['who holds the season on sale', { membershipBasis: 'payment', membershipSeason: 2027 }, IN_THE_WINDOW, /^Članarina za sezonu 2027 je plaćena/],
+    ['freed of the season on sale', { membershipBasis: 'feeExempt', membershipSeason: 2027 }, IN_THE_WINDOW, /^Članarina za sezonu 2027 je izmirena/],
   ])('is not asked for a member %s', async (_what, member, today, said) => {
     const route = stand(invoiceAsServed(anInvoice(2027, 'RSD')))
     meSays(member)
 
     renderAt('/sr/moja-clanarina', 'competitor', IN_SERBIA, undefined, today)
 
-    expect(await screen.findByText(said)).toBeVisible()
+    if (member.membershipBasis === 'payment') {
+      /* The state line and the renewal's line read the same words since 10.11.2026, so the renewal panel draws nothing of its own and there is one. */
+      const both = await screen.findAllByText(said)
+
+      expect(both).toHaveLength(1)
+    } else {
+      expect(await screen.findByText(said)).toBeVisible()
+    }
     /* The balance under the referral programme is asked off the same mount, so once it has been
        asked the page has had every chance to ask the other. */
     await waitFor(() => expect(route.asked.some((one) => one.path === '/api/me/balance')).toBe(true))
@@ -372,7 +379,7 @@ describe('the read is asked only where a slip is about to be drawn, because it w
   it('is not asked while the renewal is shut', async () => {
     const route = openHisPage(IN_SERBIA, anInvoice(2027, 'RSD'), '2026-07-30')
 
-    expect(await screen.findByText('Obnova se otvara 11. novembra i traje do 31. decembra.')).toBeVisible()
+    expect(await screen.findByText('Obnova se otvara 21. novembra i traje do 31. decembra.')).toBeVisible()
     await waitFor(() => expect(route.asked.some((one) => one.path === '/api/me/balance')).toBe(true))
     expect(readsOf(route.asked)).toBe(0)
   }, SLOW)

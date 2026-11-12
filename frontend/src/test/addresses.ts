@@ -211,6 +211,9 @@ export const BEHIND: [string, Role, string | null, string][] = [
   ['/sr/administracija/moderatori', 'superadmin', ADMIN, 'Moderatori'],
   /* The moderator's own screen, „Unos rezultata za događaj” (PDL P9, 19.10.2026). */
   ['/sr/administracija/unos-rezultata', 'superadmin', ADMIN, 'Unos rezultata za događaj'],
+  /* The data of somebody with no member number, from the pencil on Uplate (owner, 10.11.2026), at the
+     key `test/mock/payments.json` serves for Petar Marko, who has none. */
+  ['/sr/administracija/podaci-clana/58', 'superadmin', ADMIN, 'Podaci'],
   /* A member with no team, inside the window, so the form is really drawn. */
   ['/sr/novi-tim', 'competitor', '000002', 'Predlog tima'],
   /* And the one who administers this team, likewise. */

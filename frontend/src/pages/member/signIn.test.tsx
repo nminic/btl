@@ -258,7 +258,7 @@ describe('what the form sends', () => {
 
     await user.click(screen.getByRole('button', { name: 'Prijavi se' }))
 
-    expect(screen.getByText('Upiši adresu i lozinku da bi mogao da se prijaviš.')).toBeVisible()
+    expect(screen.getByText('Upiši adresu i lozinku.')).toBeVisible()
     expect(sentTo('/api/sign-in')).toEqual([])
     /* Told off, not switched off: the button keeps its place in the tab order and
        carries the reason with it, as everywhere else on the portal. */
@@ -533,7 +533,7 @@ describe('when the server says no', () => {
     await signIn()
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Prijava je prošla, ali portal nije uspeo da sazna ko si.',
+      'Prijava nije završena.',
     )
     expect(screen.getByTestId('role')).toHaveTextContent('visitor')
     expect(screen.getByTestId('signed-in')).toHaveTextContent('nikom')
@@ -559,7 +559,7 @@ describe('when the server says no', () => {
     await signIn()
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Portal nije uspeo da dokaže serveru da zahtev dolazi sa ove strane',
+      'Zahtev nije prošao',
     )
   })
 

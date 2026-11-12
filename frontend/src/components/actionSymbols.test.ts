@@ -88,7 +88,7 @@ const SYMBOL_OF = new Map<string, { symbol: ActionSymbol; word: string }>([
   ['admin.sendNewInvitation', { symbol: SYMBOL.envelope, word: 'Pošalji novu pozivnicu' }],
   /* And what its box says where it cannot act (owner, 25.10.2026), on the same envelope. */
   ['admin.invitationNotNeeded', { symbol: SYMBOL.envelope, word: 'Član je već postavio lozinku.' }],
-  ['admin.invitationNoAccount', { symbol: SYMBOL.envelope, word: 'Član nema nalog na portalu, pa pozivnica nema kome da ode.' }],
+  ['admin.invitationNoAccount', { symbol: SYMBOL.envelope, word: 'Član nema nalog na portalu.' }],
   ['event.copy', { symbol: SYMBOL.copy, word: 'Kopiranje' }],
   ['event.edit', { symbol: SYMBOL.pencil, word: 'Izmena' }],
   /* The pencil on a member's row (PDL 22.10.2026), which leads to the card „Podaci" of his profile. */

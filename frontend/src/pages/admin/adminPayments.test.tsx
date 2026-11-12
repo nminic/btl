@@ -147,16 +147,17 @@ describe('the payments screen', () => {
     expect(screen.queryByText('Srbija')).toBeNull()
     expect(screen.queryByText(/^RS$/)).toBeNull()
 
-    /* AND THE TOWN IS THERE, which is the other half and is what keeps the line above from
-       passing by drawing nothing at all. It tells two people of one name apart, which two of
-       these four are. */
+    /* AND WHAT IS DRAWN IN THE SECOND CELL IS THE AMOUNT EXPECTED, which is the other half and is
+       what keeps the lines above from passing by drawing nothing at all. It used to be the town,
+       until the owner took the column away on 10.11.2026 („Obriši kolonu Mesto iz tabele"); the
+       town is served still and drawn nowhere on the row (`paymentsRowCleanup.test.tsx`). */
     const row = (await screen.findAllByRole('row')).slice(1)
 
     expect(row.map((one) => within(one).getAllByRole('cell')[1]?.textContent)).toEqual([
-      'Novi Sad',
-      'Beograd',
-      'Niš',
-      'Niš',
+      '4.800 RSD',
+      '4.800 RSD',
+      '43 EUR',
+      '4.800 RSD',
     ])
 
     server.stop()

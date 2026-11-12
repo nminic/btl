@@ -92,13 +92,13 @@ function dinars(amount: number | null): string {
 
 const NO_RANKING = 'Članarina plaćena sada ne daje pravo rangiranja.'
 
-const SHUT = 'Obnova se otvara 11. novembra i traje do 31. decembra.'
+const SHUT = 'Obnova se otvara 21. novembra i traje do 31. decembra.'
 
 /** Every day outside the window on which something is on sale, with the season a payment buys on it. */
 const OUTSIDE: [string, number][] = [
   ['2027-01-01', 2027],
   ['2027-05-03', 2027],
-  ['2027-11-10', 2027],
+  ['2027-11-20', 2027],
   ['2028-01-01', 2028],
 ]
 
@@ -136,7 +136,7 @@ describe('somebody who has never paid, outside the window', () => {
       )
 
       expect(screen.getByText('Uplata je otvorena.')).toBeVisible()
-      expect(await screen.findByText(/Prepoznaje se po imenu/)).toBeVisible()
+      expect(await screen.findByText(/Prepoznajemo je po imenu uplatioca/)).toBeVisible()
       expect(screen.queryByText(SHUT)).not.toBeInTheDocument()
     },
     SLOW,
@@ -171,7 +171,7 @@ describe('a member whose fee has lapsed, outside the window', () => {
           reference: `${season}000050`,
         }),
       )
-      expect(screen.getByText(/Ne registruješ se ponovo/)).toBeVisible()
+      expect(screen.getByText(/Obnova je otvorena/)).toBeVisible()
       expect(screen.queryByText(SHUT)).not.toBeInTheDocument()
     },
     SLOW,
@@ -242,13 +242,13 @@ describe('a member whose fee has lapsed, outside the window', () => {
 
 describe('the edges of the window, from both sides', () => {
   /* **EACH ROW IS A DAY, THE SEASON ITS PAYMENT BUYS, THE ROW OF THE PRICE LIST IT FALLS IN AND WHETHER
-     THE SENTENCE ABOUT RANKING STANDS.** 10 November and 11 November are the last day outside and the
+     THE SENTENCE ABOUT RANKING STANDS.** 20 November and 21 November are the last day outside and the
      first inside; 31 December and 1 January the last inside and the first outside. A window wrong by
      a day is wrong on exactly one of the four, and the sentence about ranking is the part of the panel
      that follows the date in both directions. */
   it.each([
-    ['2027-11-10', 2027, 'season', true],
-    ['2027-11-11', 2028, 'early', false],
+    ['2027-11-20', 2027, 'season', true],
+    ['2027-11-21', 2028, 'early', false],
     ['2027-12-31', 2028, 'regular', false],
     ['2028-01-01', 2028, 'late', false],
     ['2028-04-01', 2028, 'season', true],
@@ -279,7 +279,7 @@ describe('the edges of the window, from both sides', () => {
   }, SLOW)
 
   it('and a renewal still opens the same way inside it for a member whose fee stands', async () => {
-    openHisPage(STANDING, '2027-11-11')
+    openHisPage(STANDING, '2027-11-21')
 
     expect(await screen.findByRole('heading', { level: 3, name: 'Uplatnica' })).toBeVisible()
     expect(screen.getByRole('heading', { level: 2, name: 'Obnova članarine za 2028.' })).toBeVisible()
@@ -318,7 +318,7 @@ describe('whoever owes nothing for the running season is told what he was told',
   it.each([
     ['2027-05-03', 'payment', 'Članarina za sezonu 2027 je plaćena.'],
     ['2027-05-03', 'balance', 'Članarina za sezonu 2027 je plaćena iz balansa.'],
-    ['2027-11-10', 'payment', 'Članarina za sezonu 2027 je plaćena.'],
+    ['2027-11-20', 'payment', 'Članarina za sezonu 2027 je plaćena.'],
   ])(
     'a member whose fee stands and who holds the running season, on %s on a %s, is still told when renewal opens',
     async (today, basis, stated) => {
@@ -327,7 +327,9 @@ describe('whoever owes nothing for the running season is told what he was told',
       expect(await screen.findByText(SHUT)).toBeVisible()
       expect(screen.getByText(stated)).toBeVisible()
       expect(screen.getByRole('heading', { level: 2, name: 'Obnova članarine za 2028.' })).toBeVisible()
-      expect(screen.queryByText(/je već plaćena/)).not.toBeInTheDocument()
+      /* The renewal's own line (`membership.alreadyPaid`) is not drawn here: since 10.11.2026 it reads the same as
+         the state line, so what is held is that the words stand once and not twice. */
+      expect(screen.queryAllByText(/je plaćena\.$/)).toHaveLength(basis === 'payment' ? 1 : 0)
       expect(screen.queryByRole('heading', { level: 3, name: 'Uplatnica' })).not.toBeInTheDocument()
     },
     SLOW,
@@ -341,14 +343,18 @@ describe('whoever owes nothing for the running season is told what he was told',
      what is claimed is which season the sentence names when it does. */
   it.each([
     ['2027-05-03', 2027],
-    ['2027-11-10', 2027],
+    ['2027-11-20', 2027],
     ['2028-01-01', 2028],
   ])('a member holding the running season whose fee does not stand, on %s, is told it is paid for %i', async (today, season) => {
     openHisPage({ ...LAPSED, membershipBasis: 'payment', membershipSeason: season }, today)
 
-    expect(
-      await screen.findByText(`Članarina za ${season} je već plaćena, pa nema šta da uplatiš.`),
-    ).toBeVisible()
+    /* Once (owner, 11.11.2026, the two lines read the same so the renewal panel draws none): the state line (`membership.paidFor`) and the line where the renewal would
+       be (`membership.alreadyPaid`) are both „Članarina za sezonu {season} je plaćena." in the owner's
+       words. Held as one, so that a second copy or a lost one fails here. */
+    const told = await screen.findAllByText(`Članarina za sezonu ${season} je plaćena.`)
+
+    expect(told).toHaveLength(1)
+    expect(told[0]).toBeVisible()
     expect(screen.queryByText(SHUT)).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { level: 3, name: 'Uplatnica' })).not.toBeInTheDocument()
   }, SLOW)
@@ -361,7 +367,7 @@ describe('whoever owes nothing for the running season is told what he was told',
        comes with the season it is the basis of, as the server answers it. */
     openHisPage({ ...record, membershipBasis: 'feeExempt', membershipSeason: 2027 }, '2027-05-03')
 
-    expect(await screen.findByText('Oslobođen si plaćanja članarine, pa nema šta da uplatiš.')).toBeVisible()
+    expect(await screen.findByText('Članarina za sezonu 2027 je izmirena.')).toBeVisible()
     expect(screen.queryByRole('heading', { level: 3, name: 'Uplatnica' })).not.toBeInTheDocument()
     expect(screen.queryByText(NO_RANKING)).not.toBeInTheDocument()
   }, SLOW)
@@ -405,7 +411,7 @@ describe('the sentence about ranking follows the row and not the date', () => {
 
   it('is drawn inside the window when the served row does not carry it', async () => {
     servedWith((row) => (row.key === 'early' ? { ...row, ranking: false } : row))
-    openHisPage(LAPSED, '2027-11-12')
+    openHisPage(LAPSED, '2027-11-22')
 
     expect(await screen.findByRole('heading', { level: 3, name: 'Uplatnica' })).toBeVisible()
     expect(screen.getAllByText(NO_RANKING)).toHaveLength(1)
@@ -436,10 +442,18 @@ describe('the notes about a price follow what he owes for the season on sale, an
     ['payment', 'Članarina za sezonu 2028 je plaćena.'],
     ['balance', 'Članarina za sezonu 2028 je plaćena iz balansa.'],
   ])('a member who holds the season on sale, 2028, on a %s, is told so, quoted no price and told the fee', async (basis, stated) => {
-    openHisPage({ ...STANDING, membershipBasis: basis, membershipSeason: 2028 }, '2027-11-12')
+    openHisPage({ ...STANDING, membershipBasis: basis, membershipSeason: 2028 }, '2027-11-22')
 
-    expect(await screen.findByText(stated)).toBeVisible()
-    expect(screen.getByText('Članarina za 2028 je već plaćena, pa nema šta da uplatiš.')).toBeVisible()
+    if (basis === 'payment') {
+      /* The state line and the renewal's line read the same words since 10.11.2026, so the renewal panel draws nothing of its own and there is one. */
+      const both = await screen.findAllByText(stated)
+
+      expect(both).toHaveLength(1)
+      expect(both[0]).toBeVisible()
+    } else {
+      expect(await screen.findByText(stated)).toBeVisible()
+      expect(screen.getByText('Članarina za sezonu 2028 je plaćena.')).toBeVisible()
+    }
     theFeeAndNoPrice()
   }, SLOW)
 
@@ -459,7 +473,7 @@ describe('the notes about a price follow what he owes for the season on sale, an
   ])('a member who holds only the RUNNING season, 2027, on 12 November 2027, is still quoted the price of 2028, on a %s', async (basis, season) => {
     /* Holds a season, and not the one on sale: nothing is said of 2027 here (the running season is
        not touched after 14 October), and the one thing he can still be asked for is the next. */
-    openHisPage({ ...STANDING, membershipBasis: basis, membershipSeason: season }, '2027-11-12')
+    openHisPage({ ...STANDING, membershipBasis: basis, membershipSeason: season }, '2027-11-22')
 
     expect(await screen.findByText(PRICE)).toBeVisible()
     expect(screen.getByText(JUNIOR)).toBeVisible()
@@ -468,17 +482,17 @@ describe('the notes about a price follow what he owes for the season on sale, an
   }, SLOW)
 
   it.each([
-    ['2028 on 12 November 2027', 2028, '2027-11-12'],
+    ['2028 on 22 November 2027', 2028, '2027-11-22'],
     ['2027 on 3 May 2027', 2027, '2027-05-03'],
   ])('a member freed of the fee for the season on sale, %s, is quoted no price and reads the fee all the same', async (_label, season, today) => {
     openHisPage({ ...STANDING, membershipBasis: 'feeExempt', membershipSeason: season }, today)
 
-    expect(await screen.findByText('Oslobođen si plaćanja članarine, pa nema šta da uplatiš.')).toBeVisible()
+    expect(await screen.findByText(`Članarina za sezonu ${season} je izmirena.`)).toBeVisible()
     theFeeAndNoPrice()
   }, SLOW)
 
   it('somebody who holds nothing is quoted all three, so the notes are still drawn where a price is owed', async () => {
-    openHisPage(LAPSED, '2027-11-12')
+    openHisPage(LAPSED, '2027-11-22')
 
     expect(await screen.findByText(PRICE)).toBeVisible()
     expect(screen.getByText(JUNIOR)).toBeVisible()

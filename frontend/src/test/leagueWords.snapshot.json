@@ -25,7 +25,7 @@
     },
     "notFound": {
       "title": "Ove strane nema",
-      "description": "Adresa ne postoji ili je strana uklonjena. Naslovna strana vodi do svega ostalog."
+      "description": "Adresa ne postoji ili je strana uklonjena."
     },
     "rulebook": {
       "title": "BTL pravilnik",
@@ -67,7 +67,7 @@
     },
     "myResults": {
       "title": "Moji trkački rezultati",
-      "description": "Prijavljeni rezultati, faza provere u kojoj se nalaze i bodovi koje su doneli."
+      "description": "Prijavljeni rezultati i bodovi koje su doneli."
     },
     "myData": {
       "title": "Moji BTL podaci",
@@ -155,11 +155,11 @@
     },
     "editTeam": {
       "title": "Izmena tima",
-      "description": "Naziv, mesto i država tima, za izmenu koja ide na proveru."
+      "description": "Naziv, mesto i država tima."
     },
     "newResult": {
       "title": "Novi rezultat sa trke",
-      "description": "Vreme, dužina, uspon i dokaz sa trke, za rezultat koji ide na proveru."
+      "description": "Vreme, dužina, uspon i dokaz sa trke."
     },
     "verificationQueue": {
       "title": "Red čekanja (administracija)",
@@ -204,7 +204,7 @@
     },
     "proposeTeam": {
       "title": "Predlog tima",
-      "description": "Predloži tim Balkanskoj trkačkoj ligi. Moderator odlučuje o svakom predlogu pre nego što tim uđe u ligu."
+      "description": "Predloži tim Balkanskoj trkačkoj ligi."
     },
     "leagueResults": {
       "title": "Unos rezultata",
@@ -216,15 +216,19 @@
     },
     "reportResult": {
       "title": "Prijava rezultata",
-      "description": "Prijavi svoj rezultat sa trke Balkanske trkačke lige. Moderator proverava svaku prijavu pre nego što uđe u tabelu."
+      "description": "Prijavi svoj rezultat sa trke Balkanske trkačke lige."
     },
     "rateEvent": {
       "title": "Ocena događaja",
-      "description": "Oceni organizaciju, vrednost za novac i ambijent. Ocene bez komentara se objavljuju odmah, a komentar kad ga moderator odobri."
+      "description": "Oceni organizaciju, vrednost za novac i ambijent događaja."
     },
     "competitorData": {
       "title": "Podaci takmičara",
       "description": "Podaci jednog člana Balkanske trkačke lige, koje vidi samo administracija."
+    },
+    "unnumberedMemberData": {
+      "title": "Podaci člana bez članskog broja",
+      "description": "Podaci člana koji još nema članski broj, koje vidi samo administracija."
     }
   },
   "pager": {

@@ -779,7 +779,37 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   other: main stood at V90 on 08.11.2026 (1eea9c16).
 
 			   Pinned LAST, when the file was final, off this very assertion. */
-			new Applied("91", "V91__a_ducat_award_remembers_its_tier_the_day_of_the_race_and_the_result_that_won_it.sql", -1262018098));
+			new Applied("91", "V91__a_ducat_award_remembers_its_tier_the_day_of_the_race_and_the_result_that_won_it.sql", -1262018098),
+
+			/* V92. The selling year opens on 21 November every year (owner, 10.11.2026, PDL „Ciklus od 21. novembra
+			   (10.11.2026)“): the days and the names of the rows early, regular and season, and nothing else. 92 because
+			   main stood at V91 on 10.11.2026 (47bb2d28); pull request 707 also names a V92, and whichever is merged
+			   second renumbers.
+
+			   Pinned LAST, when the file was final, off this very assertion. */
+			new Applied("92", "V92__the_selling_year_opens_on_the_twenty_first_of_november.sql", -336720837),
+
+			/* V93. The rulebook says the transfer window for teams opens on 21 November (Article 49), and its sign-off
+			   moves to 10.11.2026 (the same entry of the PDL): two edits in both languages, each stopping the migration
+			   unless its old text stands exactly once.
+
+			   Pinned LAST, when the file was final, off this very assertion. */
+			new Applied("93", "V93__the_rulebook_says_the_transfer_window_opens_on_the_twenty_first_of_november.sql", 1000337619),
+
+			/* V94. The rulebook's Article 56 says the trophies are presented at the Association's New Year cocktail session
+			   (the PDL entry on the A6 flyer, 10.11.2026): one sentence in both languages, each edit stopping the
+			   migration unless its old text stands exactly once. The sign-off is not touched, V93 gave it the day.
+
+			   Pinned LAST, when the file was final, off this very assertion. */
+			new Applied("94", "V94__the_rulebook_presents_the_trophies_at_the_new_year_cocktail_session.sql", -670754178),
+
+			/* V95. The owner's rewrite of the portal's words (PDL, "Ton ekrana bez objašnjavanja posledica", 10.11.2026), the
+			   part that lives in the written pages: eight sentences of the policy, the terms, the rulebook and the president's
+			   word, and the sign-offs of the policy, the terms and the rulebook, in both languages: twenty-two edits, each
+			   stopping the migration unless its old text stands exactly once and its new text does not stand already.
+
+			   Pinned LAST, when the file was final, off this very assertion. */
+			new Applied("95", "V95__the_written_pages_state_the_fact_and_not_its_consequences.sql", -1536741561));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {

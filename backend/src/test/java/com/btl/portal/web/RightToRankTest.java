@@ -130,7 +130,7 @@ class RightToRankTest {
 
 		long nine = member("000209");
 		HeldOn.season(db, nine, 2027, "payment", Instant.parse("2027-06-01T10:00:00Z"));
-		HeldOn.season(db, nine, 2028, "payment", Instant.parse("2027-11-20T10:00:00Z"));
+		HeldOn.season(db, nine, 2028, "payment", Instant.parse("2027-11-30T10:00:00Z"));
 
 		member("000210");
 
@@ -251,7 +251,7 @@ class RightToRankTest {
 	 */
 	@Test
 	void inTheWindowEachSeasonIsAskedAboutItself() throws Exception {
-		clock.moveTo(Instant.parse("2027-11-20T10:00:00Z"));
+		clock.moveTo(Instant.parse("2027-11-30T10:00:00Z"));
 
 		assertThat(standsIn(2027)).containsEntry("000209", false).containsEntry("000208", true);
 		assertThat(standsIn(2028)).containsEntry("000209", true);

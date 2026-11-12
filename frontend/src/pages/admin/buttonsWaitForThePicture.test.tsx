@@ -50,7 +50,7 @@ const THE_PICTURE_WAS_CHANGED = 'Slika je promenjena, pogledaj je ponovo.'
 const SOMEBODY_ANSWERED_IT_ALREADY = 'O stavci je već odlučeno.'
 
 const THE_PICTURE_IS_NOT_AVAILABLE =
-  'Slika nije dostupna: fajl se ne može učitati, pa se ovaj red ne može odobriti dok se slika ne vidi. Odbijanje i dalje radi.'
+  'Slika se ne može učitati, pa se ne može ni odobriti. Odbijanje radi.'
 
 const RATING = { organisation: 0, value: 0, ambience: 0 }
 

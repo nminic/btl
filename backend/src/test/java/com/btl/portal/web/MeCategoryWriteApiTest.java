@@ -73,7 +73,7 @@ class MeCategoryWriteApiTest {
 
 	private static final String NOTHING_IS_THERE = "/api/zzzzzzzzzz";
 
-	private static final Instant IN_OCTOBER_2028 = Instant.parse("2028-11-11T12:00:00Z");
+	private static final Instant IN_OCTOBER_2028 = Instant.parse("2028-11-21T12:00:00Z");
 
 	/**
 	 * WHERE THE CONTEXT'S CLOCK STANDS WHEN IT STARTS, which is before every freeze: {@code ASeasonFreezes}

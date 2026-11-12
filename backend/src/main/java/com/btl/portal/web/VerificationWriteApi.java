@@ -493,8 +493,8 @@ class VerificationWriteApi {
 	 * he typed when they already belong to such an event (PDL P9, 19.10.2026: „Isti naziv ne pravi
 	 * drugi događaj"). 409 for the reason the head of this class gives.
 	 */
-	private static final String THE_EVENT_HOLDS_NO_RACES = "Taj događaj nije trka, pa se na njemu"
-			+ " ne može upisati trka. Izaberi drugi događaj ili upiši nov naziv.";
+	private static final String THE_EVENT_HOLDS_NO_RACES = "Taj događaj nije trka."
+			+ " Izaberi drugi događaj ili upiši nov naziv.";
 
 	/**
 	 * THE RACE WOULD MOVE ITS EVENT TO AN ADDRESS ANOTHER EVENT HOLDS.
@@ -574,7 +574,7 @@ class VerificationWriteApi {
 	 * because the moderator can see the row and what he asked for cannot happen now.
 	 */
 	private static final String THE_RACE_HAS_NOT_BEEN_RUN_YET =
-			"Trka još nije održana, pa rezultat ne može da se odobri.";
+			"Trka još nije održana.";
 
 	/**
 	 * FIGURES OF THE MODERATOR'S OWN, SENT WHERE NOTHING COUNTS THEM: beside a refusal, or on a
@@ -2395,12 +2395,10 @@ class VerificationWriteApi {
 	 */
 	private void tellHimHisCategoryMoved(long member, int season, Run counted) {
 		tell(member, "Početnička kategorija vam je zatvorena",
-				"Odobren vam je rezultat sa trke " + counted.raceName() + " od "
-						+ WhatAResultChangeSays.asADay(counted.day()) + ", koji nosi "
-						+ WhatAResultChangeSays.pointsInWords(counted.points()) + " bodova."
-						+ " Time ste u zvaničnoj sezoni prešli prag od "
-						+ Category.FIRST_SEASON_POINTS + " bodova, pa vam je početnička"
-						+ " kategorija zatvorena za sezonu " + season + ".");
+				"Početnička kategorija vam je zatvorena za sezonu " + season
+						+ ", jer ste rezultatom sa trke " + counted.raceName() + " od "
+						+ WhatAResultChangeSays.asADay(counted.day()) + " prešli prag od "
+						+ Category.FIRST_SEASON_POINTS + " bodova.");
 	}
 
 	/**

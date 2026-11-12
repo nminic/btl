@@ -230,16 +230,18 @@ class TheWrittenPagesSayThatTheCategoryRevealsTheYearOfBirthTest extends Databas
 	 * before V58 and runs it.
 	 */
 	private void theSignOffsStandAsTheyDoNow(String language) {
+		/* The text as V94 left it: V95 (owner, 11.11.2026) moved the sign-offs of all three pages and took sentences out of them, which is held by TheWrittenPagesStateTheFactCarriedOverTest. */
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "95");
 		Place rulebookSignOff = new Place(RULEBOOK, 19);
 		Place policySignOff = new Place(POLICY, 7);
 
 		/* V73 moved the policy's on to 24.10.2026 and V76 the rulebook's to 27.10.2026 (PDL, "Datum Poslednja izmena se
 		   pomera"); V77 (owner, 29.10.2026) moved all three to 29.10.2026, and V80 (owner, 30.10.2026) moved the rulebook
-		   on to 30.10.2026, and V89 (owner, 07.11.2026) the policy's to 07.11.2026 and V90 (owner, 08.11.2026) on to 08.11.2026, so each of the earlier days stands
-		   nowhere now, 29.10.2026 stands once on the terms, 30.10.2026 once on the rulebook and 08.11.2026 once on the
-		   policy. */
+		   on to 30.10.2026, and V89 (owner, 07.11.2026) the policy's to 07.11.2026 and V90 (owner, 08.11.2026) on to 08.11.2026,
+		   and V93 (owner, 10.11.2026) the rulebook's again to 10.11.2026, so each of the earlier days stands nowhere now,
+		   29.10.2026 stands on the terms alone, 08.11.2026 on the policy alone and 10.11.2026 on the rulebook alone. */
 		String today = language.equals("sr") ? "Poslednja izmena: 29.10.2026." : "Last amended: 29.10.2026.";
-		String rulebookToday = language.equals("sr") ? "Poslednja izmena: 30.10.2026." : "Last amended: 30.10.2026.";
+		String rulebookToday = language.equals("sr") ? "Poslednja izmena: 10.11.2026." : "Last amended: 10.11.2026.";
 
 		String policyToday = language.equals("sr") ? "Poslednja izmena: 08.11.2026." : "Last amended: 08.11.2026.";
 
@@ -250,7 +252,7 @@ class TheWrittenPagesSayThatTheCategoryRevealsTheYearOfBirthTest extends Databas
 				.as("the %s sign-off of 08.11.2026 must stand on the policy alone, V90 having moved it", language)
 				.containsExactly(policySignOff);
 		assertThat(placesWhichCarry(language, rulebookToday))
-				.as("the %s sign-off of 30.10.2026 must stand on the rulebook alone, V80 having moved it", language)
+				.as("the %s sign-off of 10.11.2026 must stand on the rulebook alone, V93 having moved it", language)
 				.containsExactly(rulebookSignOff);
 		for (String gone : List.of(policySignOffNow(language),
 				language.equals("sr") ? "Poslednja izmena: 27.10.2026." : "Last amended: 27.10.2026.",
@@ -273,7 +275,7 @@ class TheWrittenPagesSayThatTheCategoryRevealsTheYearOfBirthTest extends Databas
 				.containsOnlyOnce(today)
 				.doesNotContain(policySignOffNow(language));
 		assertThat(bodyOf(language, rulebookSignOff))
-				.as("%s #%s %s: signed off once, on the day of V80", rulebookSignOff.slug(), rulebookSignOff.position(),
+				.as("%s #%s %s: signed off once, on the day of V93", rulebookSignOff.slug(), rulebookSignOff.position(),
 						language)
 				.containsOnlyOnce(rulebookToday)
 				.doesNotContain(today)

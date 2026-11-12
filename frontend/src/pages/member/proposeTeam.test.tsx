@@ -60,7 +60,7 @@ afterEach(() => {
 const DAY = '2026-10-15'
 
 /** A day inside the transfer window of the first season: the page of a team opens on 2027 and a team founded now begins in 2028. */
-const A_WINDOW_DAY_OF_THE_FIRST_SEASON = '2027-11-11'
+const A_WINDOW_DAY_OF_THE_FIRST_SEASON = '2027-11-21'
 
 describe('the way to propose a team', () => {
   it('is offered to a member who is in no team, on the standing of the teams', async () => {
@@ -161,7 +161,7 @@ describe('the way to propose a team', () => {
     await screen.findByRole('table', { name: 'Timovi' })
 
     expect(screen.queryByRole('link', { name: 'Predloži tim' })).toBeNull()
-    expect(screen.getByText(/od 11. novembra do 31. decembra/)).toBeVisible()
+    expect(screen.getByText(/od 21. novembra do 31. decembra/)).toBeVisible()
 
     await router.navigate('/sr/novi-tim')
 
@@ -181,7 +181,7 @@ describe('the way to propose a team', () => {
 
     await screen.findByRole('table', { name: 'Timovi' })
 
-    expect(screen.queryByText(/od 11. novembra do 31. decembra/)).toBeNull()
+    expect(screen.queryByText(/od 21. novembra do 31. decembra/)).toBeNull()
     expect(screen.queryByRole('link', { name: 'Predloži tim' })).toBeNull()
   })
 
@@ -197,7 +197,7 @@ describe('the way to propose a team', () => {
        that has not begun and the one the standing opens on are both 2027 (owner,
        16.10.2026, `seasonShown`), so on `DAY` the two halves of this case could not be
        told apart. */
-    renderAt('/sr/timovi', 'competitor', '000002', undefined, '2027-11-11')
+    renderAt('/sr/timovi', 'competitor', '000002', undefined, '2027-11-21')
 
     await screen.findByRole('table', { name: 'Timovi' })
 
@@ -292,7 +292,7 @@ describe('a proposal a member sends', () => {
     await fill(user, 'Trkači Morave')
 
     expect(await screen.findByRole('heading', { name: 'Predlog je poslat' })).toBeVisible()
-    expect(screen.getByText(/"Trkači Morave" čeka odluku moderatora/)).toBeVisible()
+    expect(screen.getByText(/"Trkači Morave" se pojavljuje na portalu kad predlog bude prihvaćen/)).toBeVisible()
   })
 
   it("drops the moderator's queue once the server has taken the proposal, so the next reading asks again", async () => {
@@ -1366,7 +1366,7 @@ describe('a name a team in the league already answers to', () => {
     /* Including the sentence that says why this counts as the same name. Told
        only that a team of that name exists, a member goes looking for it on the
        list of teams and does not find the name they typed. */
-    expect(screen.getByText(/ne računaju kao razlika/)).toBeVisible()
+    expect(screen.getByText(/Tim sa ovim nazivom već postoji/)).toBeVisible()
     expect(screen.queryByRole('heading', { name: 'Predlog je poslat' })).toBeNull()
   })
 
@@ -1381,7 +1381,7 @@ describe('a name a team in the league already answers to', () => {
     await typeATownTheCodebookKnows(user, 'Novi Sad', 'RS')
     await user.click(screen.getByRole('button', { name: 'Pošalji predlog' }))
 
-    expect(screen.getByText(/ćirilica i latinica su isto pismo/)).toBeVisible()
+    expect(screen.getByText(/Izaberi drugi naziv/)).toBeVisible()
     expect(screen.queryByRole('heading', { name: 'Predlog je poslat' })).toBeNull()
   })
 })
@@ -1398,7 +1398,7 @@ describe('a name that makes no address at all', () => {
     await typeATownTheCodebookKnows(user, 'Niš', 'RS')
     await user.click(screen.getByRole('button', { name: 'Pošalji predlog' }))
 
-    expect(screen.getByText(/ne može napraviti adresa strane tima/)).toBeVisible()
+    expect(screen.getByText(/Naziv tima mora da ima bar jedno slovo ili cifru/)).toBeVisible()
     expect(screen.queryByRole('heading', { name: 'Predlog je poslat' })).toBeNull()
   })
 })
@@ -2023,7 +2023,7 @@ describe('what a moderator may do before accepting a proposal', () => {
     await typeATownTheCodebookKnows(user, 'Zaječar', 'RS')
     await user.click(screen.getByRole('button', { name: 'Pošalji predlog' }))
 
-    expect(screen.getByText(/već postoji u ligi/)).toBeVisible()
+    expect(screen.getByText(/Tim sa ovim nazivom već postoji/)).toBeVisible()
     expect(screen.queryByRole('heading', { name: 'Predlog je poslat' })).toBeNull()
   })
 

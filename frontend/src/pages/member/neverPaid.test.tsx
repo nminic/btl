@@ -144,7 +144,7 @@ describe('„Moja članarina", to somebody who has registered and has not paid',
 
     expect(
       await screen.findByText(
-        'Članarina ti još nije evidentirana, pa još nemaš članski broj. Dobijaš ga kad moderator evidentira tvoju uplatu.',
+        'Članski broj dobijaš kad tvoja uplata bude evidentirana.',
       ),
     ).toBeVisible()
     /* „Član od {season}. sezone." is said of somebody who is one, and it is the sentence this
@@ -161,15 +161,15 @@ describe('„Moja članarina", to somebody who has registered and has not paid',
     expect(screen.getByText('Uplata je otvorena.')).toBeVisible()
     expect(
       await screen.findByText(
-        'Podatke za uplatu vidiš u nastavku. Čim uplata stigne, moderator je potvrđuje i dobijaš članski broj.',
+        'Podaci za uplatu su u nastavku. Članski broj dobijaš kad uplata bude evidentirana.',
       ),
     ).toBeVisible()
 
     /* What a renewal says and he is not doing: he registers once and has no number, profile or
        history to keep, and his membership starts rather than being extended. */
     expect(screen.queryByRole('heading', { name: /^Obnova članarine/ })).not.toBeInTheDocument()
-    expect(screen.queryByText(/Ne registruješ se ponovo/)).not.toBeInTheDocument()
-    expect(screen.queryByText(/tvoje članstvo se produžava/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Obnova je otvorena/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Članstvo se produžava kad uplata bude evidentirana/)).not.toBeInTheDocument()
   }, SLOW)
 
   it('draws the slip without a reference, in writing and in the code', async () => {
@@ -207,11 +207,11 @@ describe('„Moja članarina", to somebody who has registered and has not paid',
 
     expect(
       await screen.findByText(
-        'Pošto još nemaš članski broj, uplata nema poziv na broj. Prepoznaje se po imenu, a moderator je potvrđuje ručno.',
+        'Uplata za sada nema poziv na broj. Prepoznajemo je po imenu uplatioca.',
       ),
     ).toBeVisible()
     expect(
-      screen.getAllByText(/Prepoznaje se po imenu/),
+      screen.getAllByText(/Prepoznajemo je po imenu uplatioca/),
       'the sentence stands once for the whole panel and not once per way of paying',
     ).toHaveLength(1)
   }, SLOW)
@@ -255,7 +255,7 @@ describe('„Moja članarina", to somebody who has registered and has not paid',
     /* No code at all abroad (PDL P8, 31.07.2026), and the same sentence about how the payment is
        known, because he lacks the number for this way of paying as well. */
     expect(screen.queryByRole('img', { name: /QR/ })).not.toBeInTheDocument()
-    expect(screen.getByText(/Prepoznaje se po imenu/)).toBeVisible()
+    expect(screen.getByText(/Prepoznajemo je po imenu uplatioca/)).toBeVisible()
   }, SLOW)
 
   it('is not offered a team, because he may not have one yet', async () => {
@@ -296,7 +296,7 @@ describe('„Moja članarina", to somebody who has registered and has not paid',
   it('is told when payment opens, before the first sale, as everybody is', async () => {
     openHisPage({}, BEFORE_THE_FIRST_SALE)
 
-    expect(await screen.findByText('Obnova se otvara 11. novembra i traje do 31. decembra.')).toBeVisible()
+    expect(await screen.findByText('Obnova se otvara 21. novembra i traje do 31. decembra.')).toBeVisible()
     expect(screen.queryByRole('heading', { level: 3, name: 'Uplatnica' })).not.toBeInTheDocument()
     expect(screen.queryByRole('img', { name: /QR/ })).not.toBeInTheDocument()
   }, SLOW)
@@ -322,8 +322,8 @@ describe('„Moja članarina", to somebody who has registered and has not paid',
     /* And the read has been answered, so the absence is not a read still out. */
     await waitFor(() => expect(screen.getByText('Uplata je otvorena.')).toBeVisible())
 
-    expect(screen.queryByText(/Podatke za uplatu vidiš u nastavku/)).not.toBeInTheDocument()
-    expect(screen.queryByText(/Prepoznaje se po imenu/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Podaci za uplatu su u nastavku/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Prepoznajemo je po imenu uplatioca/)).not.toBeInTheDocument()
     expect(screen.queryByRole('img', { name: /QR/ })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Kopiraj iznos za uplatu' })).not.toBeInTheDocument()
   }, SLOW)
@@ -365,13 +365,13 @@ describe('a member who HAS a number, on the same page', () => {
     expect(
       await screen.findByRole('heading', { level: 2, name: 'Obnova članarine za 2027.' }),
     ).toBeVisible()
-    expect(screen.getByText(/Ne registruješ se ponovo/)).toBeVisible()
-    expect(await screen.findByText(/tvoje članstvo se produžava/)).toBeVisible()
+    expect(screen.getByText(/Obnova je otvorena/)).toBeVisible()
+    expect(await screen.findByText(/Članstvo se produžava kad uplata bude evidentirana/)).toBeVisible()
     expect(screen.getByText('Član od 2016. sezone.')).toBeVisible()
 
     expect(screen.queryByRole('heading', { name: /^Uplata članarine/ })).not.toBeInTheDocument()
-    expect(screen.queryByText(/Prepoznaje se po imenu/)).not.toBeInTheDocument()
-    expect(screen.queryByText(/Članarina ti još nije evidentirana/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Prepoznajemo je po imenu uplatioca/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Članski broj dobijaš kad tvoja uplata bude evidentirana/)).not.toBeInTheDocument()
   }, SLOW)
 
   it('is drawn the panel about a team', async () => {

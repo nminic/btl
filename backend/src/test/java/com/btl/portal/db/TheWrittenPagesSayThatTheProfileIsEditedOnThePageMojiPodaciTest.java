@@ -28,7 +28,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  *
  * <p><b>The sign-off is held here too</b> (owner, 07.11.2026: the date moves whenever the words of a legal text change, to
  * the day the change reaches QA). The policy carries 07.11.2026 once, as its last line, in both languages, and the
- * rulebook and the terms of use keep the days they had (30.10.2026 and 29.10.2026), because their words did not change.
+ * rulebook and the terms of use keep the days they had (10.11.2026 of V93, and 29.10.2026), because their words did not change.
  */
 class TheWrittenPagesSayThatTheProfileIsEditedOnThePageMojiPodaciTest extends DatabaseTest {
 
@@ -41,6 +41,8 @@ class TheWrittenPagesSayThatTheProfileIsEditedOnThePageMojiPodaciTest extends Da
 	 */
 	@BeforeEach
 	void theTextAsV89LeftIt() {
+		/* The text as V94 left it: V95 (owner, 11.11.2026) moved the sign-offs of all three pages and took sentences out of them, which is held by TheWrittenPagesStateTheFactCarriedOverTest. */
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "95");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "90");
 	}
 
@@ -169,7 +171,7 @@ class TheWrittenPagesSayThatTheProfileIsEditedOnThePageMojiPodaciTest extends Da
 					.endsWith(serbian ? CHANGES.get(1).standsInSerbian() : CHANGES.get(1).standsInEnglish())
 					.containsOnlyOnce(mark).doesNotContain("29.10.2026");
 			assertThat(bodyOf("pravilnik", 19, language)).as("the %s rulebook keeps its day", language)
-					.endsWith(mark + "30.10.2026.");
+					.endsWith(mark + "10.11.2026.");
 			assertThat(bodyOf("uslovi-koriscenja", 11, language)).as("the %s terms keep their day", language)
 					.endsWith(mark + "29.10.2026.");
 		}

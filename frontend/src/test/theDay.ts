@@ -62,14 +62,15 @@ export const THE_DAY_THE_SUITE_IS_READ_AS = '2026-09-30'
  * And the other day, which is on the far side of everything the first one is
  * near.
  *
- * 1 November 2027 is inside the yearly window rather than before it, so renewal
+ * 22 November 2027 (12 November until the window moved to 21 November on 10.11.2026) is
+ * inside the yearly window rather than before it, so renewal
  * and transfers are open and the referral amount is settled; it is a season the
  * league actually runs rather than the year before the first one (`FIRST_SEASON`);
  * it is the „regular" price period rather than the base one; and it is a
  * different YEAR, which is what catches a case that asks the machine for the year
  * itself rather than asking the portal what day it is.
  */
-export const THE_OTHER_DAY_THE_SUITE_IS_READ_AS = '2027-11-12'
+export const THE_OTHER_DAY_THE_SUITE_IS_READ_AS = '2027-11-22'
 
 /**
  * Which of the two this pass is being read as.
