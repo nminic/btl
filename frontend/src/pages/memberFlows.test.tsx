@@ -392,9 +392,11 @@ describe('my profile', () => {
     await screen.findByRole('table', { name: 'Rezultati' })
 
     const menu = within(await openAccount(user))
-    const links = menu.getAllByRole('link').map((one) => one.textContent?.trim())
+    /* By where each leads, because the name of „Moji podaci" (second, owner 07.11.2026) is his profile's to
+       say: „Dopuni podatke" while it lacks a picture or words (`profile/finishTheProfile.test.tsx`). */
+    const links = menu.getAllByRole('link').map((one) => one.getAttribute('href'))
 
-    expect(links).toEqual(['Moj profil', 'Moji rezultati', 'Moja članarina', 'Podešavanja'])
+    expect(links).toEqual(['/sr/moj-profil', '/sr/moji-podaci', '/sr/moji-rezultati', '/sr/moja-clanarina', '/sr/podesavanja'])
     expect(menu.getByRole('button', { name: 'Odjavi se' })).toBeVisible()
   })
 
@@ -455,15 +457,15 @@ describe('membership', () => {
 
   it.each([
     ['freed of 2028, in the window', '2027-11-25', 'feeExempt', 2028,
-      /Oslobođen si plaćanja članarine za sezonu 2028, odlukom/, /Oslobođen si plaćanja članarine, pa nema/],
+      /Oslobođen si plaćanja članarine za sezonu 2028, odlukom/, /Članarina za sezonu 2028 je izmirena/],
     ['paid for 2028, in the window', '2027-11-25', 'payment', 2028,
-      /^Članarina za sezonu 2028 je plaćena\.$/, /^Članarina za 2028 je već plaćena, pa nema šta da uplatiš\.$/],
+      /^Članarina za sezonu 2028 je plaćena\.$/, /^Članarina za sezonu 2028 je plaćena\.$/],
     ['let into 2028 on his balance', '2027-11-25', 'balance', 2028,
-      /^Članarina za sezonu 2028 je plaćena iz balansa\.$/, /^Članarina za 2028 je već plaćena/],
-    ['freed of 2027, on the last day it is sold', '2027-11-10', 'feeExempt', 2027,
-      /Oslobođen si plaćanja članarine za sezonu 2027, odlukom/, /Oslobođen si plaćanja članarine, pa nema/],
+      /^Članarina za sezonu 2028 je plaćena iz balansa\.$/, /^Članarina za sezonu 2028 je plaćena\.$/],
+    ['freed of 2027, on the last day it is sold', '2027-11-20', 'feeExempt', 2027,
+      /Oslobođen si plaćanja članarine za sezonu 2027, odlukom/, /Članarina za sezonu 2027 je izmirena/],
     ['freed of 2027 before the league has a season', '2026-11-01', 'feeExempt', 2027,
-      /Oslobođen si plaćanja članarine za sezonu 2027, odlukom/, /Oslobođen si plaćanja članarine, pa nema/],
+      /Oslobođen si plaćanja članarine za sezonu 2027, odlukom/, /Članarina za sezonu 2027 je izmirena/],
   ])('names the basis of the season on sale for a member %s, and sells it to him no more',
     async (_who, today, basis, season, inTheState, inTheRenewal) => {
       const { stop } = meSays({ membershipBasis: basis, membershipSeason: season })
@@ -473,8 +475,19 @@ describe('membership', () => {
 
         /* Half the case's clock, so a wait that never ends fails on its own assertion and not on
            the clock of the case (`btl/CLAUDE.md`, section 25). */
-        expect(await screen.findByText(inTheState, {}, { timeout: SLOW / 2 })).toBeVisible()
-        expect(screen.getByText(inTheRenewal)).toBeVisible()
+        if (String(inTheState) === String(inTheRenewal)) {
+          /* A member who holds the season on a payment reads the sentence once (owner, 11.11.2026: the renewal panel does not repeat the state line)
+             (owner: `membership.paidFor` and `membership.alreadyPaid` both say „Članarina za sezonu
+             {season} je plaćena."): in the state, and none where the renewal would be. Held as one
+             and not as "at least one", so a third copy or a lost one fails here. */
+          const both = await screen.findAllByText(inTheState, {}, { timeout: SLOW / 2 })
+
+          expect(both).toHaveLength(1)
+          expect(both[0]).toBeVisible()
+        } else {
+          expect(await screen.findByText(inTheState, {}, { timeout: SLOW / 2 })).toBeVisible()
+          expect(screen.getByText(inTheRenewal)).toBeVisible()
+        }
         expect(screen.queryByRole('heading', { name: 'Uplatnica' })).not.toBeInTheDocument()
         expect(screen.queryByRole('img', { name: /QR/ })).not.toBeInTheDocument()
       } finally {
@@ -494,7 +507,7 @@ describe('membership', () => {
 
       expect(await screen.findByRole('heading', { name: 'Uplatnica' }, { timeout: SLOW / 2 })).toBeVisible()
       expect(screen.queryByText(/Oslobođen si plaćanja/)).not.toBeInTheDocument()
-      expect(screen.queryByText(/je već plaćena/)).not.toBeInTheDocument()
+      expect(screen.queryByText(/je plaćena/)).not.toBeInTheDocument()
     } finally {
       stop()
     }
@@ -595,7 +608,7 @@ describe('membership', () => {
     expect(
       await screen.findByText(/Oslobođen si plaćanja članarine za sezonu 2027, odlukom/),
     ).toBeVisible()
-    expect(screen.getByText(/Oslobođen si plaćanja članarine, pa nema/)).toBeVisible()
+    expect(screen.getByText(/Članarina za sezonu 2027 je izmirena/)).toBeVisible()
 
     expect(screen.queryByRole('heading', { name: 'Uplatnica' })).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Uplati sada' })).not.toBeInTheDocument()
@@ -668,7 +681,7 @@ describe('membership', () => {
     renderFor('000010')
 
     expect(await screen.findByRole('heading', { name: 'Moja članarina' })).toBeVisible()
-    expect(await screen.findByText(/Podatke za uplatu vidiš u nastavku/)).toBeVisible()
+    expect(await screen.findByText(/Podaci za uplatu su u nastavku/)).toBeVisible()
 
     expect(screen.queryByRole('heading', { name: 'Uplatnica' })).not.toBeInTheDocument()
     expect(screen.queryByText('Poziv na broj')).not.toBeInTheDocument()
@@ -729,7 +742,7 @@ describe('membership', () => {
 
       expect(await screen.findByRole('heading', { name: 'Uplatnica' })).toBeVisible()
       expect(screen.getByText('3.700 RSD')).toBeVisible()
-      expect(screen.getByText(/Podatke za uplatu vidiš u nastavku/)).toBeVisible()
+      expect(screen.getByText(/Podaci za uplatu su u nastavku/)).toBeVisible()
       expect(screen.queryByText(/Danas članarina košta/)).not.toBeInTheDocument()
       /* The category choice does not depend on a price and stays. */
       expect(
@@ -761,7 +774,7 @@ describe('membership', () => {
       renderFor('000010')
 
       expect(await screen.findByText('36,50')).toBeVisible()
-      expect(screen.getByText(/Podatke za uplatu vidiš u nastavku/)).toBeVisible()
+      expect(screen.getByText(/Podaci za uplatu su u nastavku/)).toBeVisible()
       expect(screen.getByText(paymentReference(2027, '000010'))).toBeVisible()
     } finally {
       stop()
@@ -959,17 +972,19 @@ describe('membership', () => {
   it('says what a payment carries besides the fee, to everybody', async () => {
     /* The owner asked for the fee to be something anybody can look up, not
        something only whoever pays it is told (04.08.2026). What differs is who
-       pays it, and one sentence says both halves: the euro payment carries it,
-       the dinar payment does not. */
+       pays it, and the sentence says the euro half: the euro payment carries it
+       and its exchange difference and the bank's fee are the payer's. It said the
+       dinar half as well („Uplata u dinarima nema ni taksu ni kursnu razliku")
+       until the owner's words of 10.11.2026, which are held here as absent. */
     for (const member of ['000010', '000031']) {
       renderFor(member)
 
       const costs = await screen.findByText(/taksa za obradu plaćanja/)
 
       expect(costs).toHaveTextContent(`${PROCESSING_FEE_EUR} EUR`)
-      expect(costs).toHaveTextContent('nije članarina')
-      expect(costs).toHaveTextContent('Uplata u dinarima nema ni taksu ni kursnu razliku')
-      expect(costs).toHaveTextContent('kursna razlika i naknada tvoje banke ostaju na tebi')
+      expect(costs).toHaveTextContent('Kursnu razliku i naknadu banke plaća uplatilac.')
+      expect(costs).not.toHaveTextContent('Uplata u dinarima')
+      expect(costs).not.toHaveTextContent('ostaju na tebi')
       cleanup()
     }
   })
@@ -978,7 +993,7 @@ describe('membership', () => {
     /* It used to run out at the end of 2027, and this screen carried a line
        saying membership was not on sale yet for the day it did. The four
        periods repeat now (owner, 30.07.2026), so that day never comes. */
-    renderMembershipOn('2031-11-15')
+    renderMembershipOn('2031-11-25')
 
     expect(await screen.findByRole('heading', { name: 'Uplatnica' })).toBeVisible()
     expect(screen.getAllByText(/35 EUR, a iz Srbije 4\.200 RSD/).length).toBeGreaterThan(0)
@@ -1036,7 +1051,7 @@ describe('membership', () => {
       expect(await theLinkDrawn()).toMatch(/\/sr\/registracija\/7f07b38ff7ee7543$/)
       expect(screen.queryByText(/registracija\/000001/)).not.toBeInTheDocument()
       expect(screen.queryByText(/preporuka=/)).not.toBeInTheDocument()
-      expect(screen.getByText(/donosi ti 600 RSD na balans/)).toBeVisible()
+      expect(screen.getByText(/dobijaš 600 RSD na balans/)).toBeVisible()
       /* And the balance is the BOOK's, 600, in dinars because the server keeps it in dinars.
          This member brought five and four of them are active, which counted at the price of a
          referral would be 2.400, the figure this line drew until 22.10.2026; the case that
@@ -1048,7 +1063,7 @@ describe('membership', () => {
       expect(await screen.findByText('600 RSD')).toBeVisible()
       /* And when it lands, which is the half that keeps anybody from being paid
          for an account that was opened and left. */
-      expect(screen.getByText(/kad članarina bude aktivirana/)).toBeVisible()
+      expect(screen.getByText(/kad mu članarina bude aktivirana/)).toBeVisible()
       expect(screen.getByText('na balansu')).toBeVisible()
     } finally {
       book.stop()
@@ -1189,8 +1204,8 @@ describe('membership', () => {
 
       renderAt('/sr/moja-clanarina', 'competitor', '000001', undefined, '2027-06-01')
 
-      expect(await screen.findByText(/donosi ti 840 RSD na balans/)).toBeVisible()
-      expect(screen.queryByText(/donosi ti 600 RSD na balans/)).not.toBeInTheDocument()
+      expect(await screen.findByText(/dobijaš 840 RSD na balans/)).toBeVisible()
+      expect(screen.queryByText(/dobijaš 600 RSD na balans/)).not.toBeInTheDocument()
     } finally {
       stop()
     }
@@ -1209,8 +1224,8 @@ describe('membership', () => {
     try {
       renderAt('/sr/moja-clanarina', 'competitor', '000007', undefined, '2027-06-01')
 
-      expect(await screen.findByText(/donosi ti 5,50 EUR na balans/)).toBeVisible()
-      expect(screen.queryByText(/donosi ti 6 EUR na balans/)).not.toBeInTheDocument()
+      expect(await screen.findByText(/dobijaš 5,50 EUR na balans/)).toBeVisible()
+      expect(screen.queryByText(/dobijaš 6 EUR na balans/)).not.toBeInTheDocument()
     } finally {
       stop()
     }
@@ -1254,7 +1269,7 @@ describe('membership', () => {
       expect(early.rsd, 'the bundled figure has to differ, or this measures nothing').not.toBe(5280)
 
       owing(anInvoice(2028, 'RSD'))
-      renderAt('/sr/moja-clanarina', 'competitor', '000032', undefined, '2027-11-15')
+      renderAt('/sr/moja-clanarina', 'competitor', '000032', undefined, '2027-11-25')
 
       const payload = readQr(await screen.findByRole('img', { name: /QR/ }))
 
@@ -1283,7 +1298,7 @@ describe('membership', () => {
     try {
       renderAt('/sr/moja-clanarina', 'competitor', '000007')
 
-      expect(await screen.findByText(/donosi ti 5 EUR na balans/)).toBeVisible()
+      expect(await screen.findByText(/dobijaš 5 EUR na balans/)).toBeVisible()
       /* The balance is the book's, and 000007 has brought nobody in: the reward is in the
          book all the same (the incident of 22.10.2026 was exactly a book of 600 beside a head
          count of nought). */
@@ -1333,7 +1348,7 @@ describe('membership', () => {
          button since 26.09.2026 (PDL.md:1659). */
       expect(screen.getByRole('heading', { name: 'Obnova članarine za 2027.' })).toBeVisible()
       expect(
-        await screen.findByText(/Podatke za uplatu vidiš u nastavku/),
+        await screen.findByText(/Podaci za uplatu su u nastavku/),
       ).toBeVisible()
 
       /* **His first season**, which is 2016 in the seed and is on no row the answer to the
@@ -1431,7 +1446,7 @@ describe('membership', () => {
         expect(await screen.findByRole('heading', { name: 'Moja članarina' })).toBeVisible()
         /* The payment data has been drawn in either case, so the slip's absence below is the
            country's and not a read still out. */
-        expect(await screen.findByText(/Podatke za uplatu vidiš u nastavku/)).toBeVisible()
+        expect(await screen.findByText(/Podaci za uplatu su u nastavku/)).toBeVisible()
 
         expect(screen.getByText(drawn.season)).toBeVisible()
         expect(screen.getByText(drawn.team)).toBeVisible()
@@ -1529,7 +1544,7 @@ describe('membership', () => {
          where the box now also stands. Asserted so the case cannot pass by drawing the box
          for somebody who turned out to be a payer after all. */
       expect(
-        screen.getByText('Oslobođen si plaćanja članarine, pa nema šta da uplatiš.'),
+        screen.getByText('Članarina za sezonu 2027 je izmirena.'),
       ).toBeVisible()
     } finally {
       category.stop()
@@ -1693,7 +1708,7 @@ describe('membership', () => {
          `findByRole('status')` did before this case waited for words. „Some live region
          CONTAINS the sentence" rather than „the sentence IS the live region", so the words
          wrapped in a span inside the `<p role="status">` are still accepted. */
-      const said = await screen.findByText(/rok istekao 1\. januara/i)
+      const said = await screen.findByText(/istekao 1\. januara/i)
 
       expect(
         screen.getAllByRole('status').some((region) => region.contains(said)),
@@ -1833,7 +1848,7 @@ describe('membership', () => {
       expect(
         await screen.findByRole('heading', { name: 'Tvoji podaci o članstvu nisu stigli' }),
       ).toBeVisible()
-      expect(screen.getByText(/Portal ne može da pročita tvoj članski zapis/)).toBeVisible()
+      expect(screen.getByText(/Podaci o članstvu se trenutno ne mogu učitati/)).toBeVisible()
 
       /* **And nothing of the renewal**, which is the half that says this is a refusal and
          not a screen missing one sentence. */
@@ -2117,7 +2132,7 @@ function aServerThatKeepsWhatIsSent(): {
 describe('a result from entry to decision', () => {
   /** The member's own list of what he has sent. */
   async function theMembersList() {
-    return within(await screen.findByRole('region', { name: /^Poslato na proveru/ }))
+    return within(await screen.findByRole('region', { name: /^Poslato/ }))
   }
 
   async function enterResult(user: ReturnType<typeof setupUser>) {
@@ -2141,7 +2156,7 @@ describe('a result from entry to decision', () => {
        stayed green: the field went in on both entry paths, sat on the record, and
        was read by nobody at all. */
     await user.upload(screen.getByLabelText(/Slika kao dokaz/), new File(['sat'], 'sat.jpg', { type: 'image/jpeg' }))
-    await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
+    await user.click(screen.getByRole('button', { name: 'Pošalji rezultat' }))
   }
 
   it('refuses a result with no link to official results', async () => {
@@ -2149,7 +2164,7 @@ describe('a result from entry to decision', () => {
     renderAt('/sr/rezultat/novi', 'competitor', '000007', undefined, '2027-08-23')
 
     await user.type(await screen.findByLabelText(/^Događaj/), 'Probna trka')
-    await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
+    await user.click(screen.getByRole('button', { name: 'Pošalji rezultat' }))
 
     expect(screen.getByRole('alert')).toBeVisible()
     expect(screen.getAllByText('Ovo polje je obavezno.').length).toBeGreaterThan(0)
@@ -2171,15 +2186,15 @@ describe('a result from entry to decision', () => {
          poena.", 21,1 km with 540 up and 540 down in 1:52:10 by the formula in the
          rulebook), and the owner took that off every entry form that day. */
       expect(await screen.findByRole('heading', { name: 'Rezultat je poslat' })).toBeVisible()
-      expect(screen.getByText(/Moderator je proverava/)).toBeVisible()
+      expect(screen.getByText(/Rezultat ulazi u rang liste i na tvoj profil kad bude potvrđen/)).toBeVisible()
 
       await user.click(screen.getByRole('link', { name: 'Moji rezultati' }))
 
       /* It lands among the things sent in, and says it is waiting: read off the server since R2
          of the results flows, so it is there only because the list was asked for again after
          the write went through. */
-      expect(await screen.findByRole('heading', { name: /Poslato na proveru/ })).toBeVisible()
-      expect(screen.getByText('Čeka proveru')).toBeVisible()
+      expect(await screen.findByRole('heading', { name: /Poslato/ })).toBeVisible()
+      expect(screen.getByText('Na čekanju')).toBeVisible()
       expect(screen.getByText('Probna trka')).toBeVisible()
 
       /* THE WALK WENT ON TO THE QUEUE UNTIL R1 OF THE RESULTS FLOWS: a moderator approved the
@@ -2225,7 +2240,7 @@ describe('a result from entry to decision', () => {
     await user.type(screen.getByLabelText('Sekunde'), '2')
     await user.type(screen.getByLabelText(/Link/), 'https://primer.rs/r')
     await user.type(screen.getByLabelText(/Komentar/), 'Sat mi je stao na petom kilometru.')
-    await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
+    await user.click(screen.getByRole('button', { name: 'Pošalji rezultat' }))
 
     try {
       expect(await screen.findByRole('heading', { name: 'Rezultat je poslat' })).toBeVisible()
@@ -2263,14 +2278,14 @@ describe('a result from entry to decision', () => {
     await user.type(screen.getByLabelText('Minuti'), '52')
     await user.type(screen.getByLabelText('Sekunde'), '10')
     await user.type(screen.getByLabelText(/Link/), 'https://primer.rs/r')
-    await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
+    await user.click(screen.getByRole('button', { name: 'Pošalji rezultat' }))
 
     /* The confirmation really is on screen, so the two refusals below are asked of a
        screen that has something on it rather than of a form that never moved. */
     expect(await screen.findByRole('heading', { name: 'Rezultat je poslat' })).toBeVisible()
-    expect(screen.getByText(/Moderator je proverava/)).toBeVisible()
+    expect(screen.getByText(/Rezultat ulazi u rang liste i na tvoj profil kad bude potvrđen/)).toBeVisible()
     expect(screen.queryByText(/BTL poena/)).toBeNull()
-    expect(screen.queryByText(/Račun nije konačan/)).toBeNull()
+    expect(screen.queryByText(/Bodovi su konačni kad liga potvrdi rezultat/)).toBeNull()
   }, SEVERAL_SCREENS)
 
   it('refuses a result run in no time at all', async () => {
@@ -2288,7 +2303,7 @@ describe('a result from entry to decision', () => {
     await user.type(screen.getByLabelText('Minuti'), '0')
     await user.type(screen.getByLabelText('Sekunde'), '0')
     await user.type(screen.getByLabelText(/Link/), 'https://primer.rs/r')
-    await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
+    await user.click(screen.getByRole('button', { name: 'Pošalji rezultat' }))
 
     /* **Refused since 31.08.2026** (owner: „Ne sme da se popuni 0:0:0!"). It used
        to go through and be worth nothing: the confirmation said „0,00 BTL poena"
@@ -2310,7 +2325,7 @@ describe('a result from entry to decision', () => {
 
     /* And one of the three above nought is enough to send it. */
     await user.type(screen.getByLabelText('Minuti'), '45')
-    await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
+    await user.click(screen.getByRole('button', { name: 'Pošalji rezultat' }))
     expect(await screen.findByRole('heading', { name: 'Rezultat je poslat' })).toBeVisible()
   }, SEVERAL_SCREENS)
 
@@ -2368,7 +2383,7 @@ describe('a result from entry to decision', () => {
       await user.type(screen.getByLabelText('Minuti'), '44')
       await user.type(screen.getByLabelText('Sekunde'), '2')
       await user.type(screen.getByLabelText(/Link/), 'https://primer.rs/druga')
-      await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
+      await user.click(screen.getByRole('button', { name: 'Pošalji rezultat' }))
       await screen.findByRole('heading', { name: 'Rezultat je poslat' })
 
       /* The moderator sends the first back, on the server (`aServerThatKeepsWhatIsSent` says
@@ -2409,9 +2424,9 @@ describe('a result from entry to decision', () => {
 
       await user.clear(link)
       await user.type(link, 'https://primer.rs/ispravno')
-      await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
+      await user.click(screen.getByRole('button', { name: 'Pošalji rezultat' }))
 
-      expect(await screen.findByText('Rezultat je ponovo poslat na proveru.')).toBeVisible()
+      expect(await screen.findByText('Rezultat je ponovo poslat.')).toBeVisible()
 
       await user.click(screen.getByRole('link', { name: 'Moji rezultati' }))
 
@@ -2420,7 +2435,7 @@ describe('a result from entry to decision', () => {
       const again = await theMembersList()
 
       expect(again.getAllByRole('listitem')).toHaveLength(3)
-      expect(again.getAllByText('Čeka proveru')).toHaveLength(2)
+      expect(again.getAllByText('Na čekanju')).toHaveLength(2)
       expect(again.getAllByText('Odbijeno')).toHaveLength(1)
       expect(again.getByText(/Link ne otvara rezultate\./)).toBeVisible()
       expect(again.getByText('Druga trka')).toBeVisible()
@@ -2556,7 +2571,7 @@ describe('the transfer window and renewal', () => {
         await screen.findByRole('radio', { name: 'U početničkoj kategoriji' }),
       ).toBeEnabled()
       expect(
-        screen.getByText(/nijednu zvaničnu sezonu nisi završio sa 12 i više bodova/),
+        screen.getByText(/Početnička kategorija ti je još uvek dostupna/),
       ).toBeVisible()
       expect(
         screen.queryByText(/jer si zvaničnu sezonu završio sa 12 i više bodova/),
@@ -2579,7 +2594,7 @@ describe('the transfer window and renewal', () => {
         screen.getByText(/jer si zvaničnu sezonu završio sa 12 i više bodova/),
       ).toBeVisible()
       expect(
-        screen.queryByText(/nijednu zvaničnu sezonu nisi završio sa 12 i više bodova/),
+        screen.queryByText(/Početnička kategorija ti je još uvek dostupna/),
       ).not.toBeInTheDocument()
 
       /* **WHAT HE ACTUALLY RUNS IN, AND NOT WHAT HE TICKED** (PDL P7, owner, 18.10.2026: „strana
@@ -2599,7 +2614,7 @@ describe('the transfer window and renewal', () => {
   it('shuts both outside the window, and says when they open', async () => {
     renderMembership('2026-07-29')
 
-    expect(await screen.findByText(/Obnova se otvara 11. novembra/)).toBeVisible()
+    expect(await screen.findByText(/Obnova se otvara 21. novembra/)).toBeVisible()
     expect(screen.getByText(/Prelazni rok je zatvoren/)).toBeVisible()
     expect(screen.queryByText(/U tim ulaziš prijavom/)).not.toBeInTheDocument()
   })
@@ -2635,7 +2650,7 @@ describe('the transfer window and renewal', () => {
         screen.getByRole('radio', { name: 'U svojoj starosnoj kategoriji' }),
       ).not.toBeChecked()
       expect(
-        screen.getByText(/nijednu zvaničnu sezonu nisi završio sa 12 i više bodova/),
+        screen.getByText(/Početnička kategorija ti je još uvek dostupna/),
       ).toBeVisible()
     } finally {
       category.stop()
@@ -2678,7 +2693,7 @@ describe('screens that depend on the date', () => {
     renderAt('/sr/moja-clanarina', 'competitor', '000032', undefined, '2026-09-20')
 
     expect(
-      await screen.findByText('Članarina se još ne prodaje. Naplata kreće 11. novembra.'),
+      await screen.findByText('Članarina se još ne prodaje. Naplata kreće 21. novembra.'),
     ).toBeVisible()
 
     /* Day first, because the switch is the portal's own date control since
@@ -2691,7 +2706,7 @@ describe('screens that depend on the date', () => {
       await screen.findByText('Danas članarina košta 35 EUR, a iz Srbije 4.200 RSD.'),
     ).toBeVisible()
     expect(
-      screen.queryByText('Članarina se još ne prodaje. Naplata kreće 11. novembra.'),
+      screen.queryByText('Članarina se još ne prodaje. Naplata kreće 21. novembra.'),
     ).not.toBeInTheDocument()
   }, SEVERAL_SCREENS)
 })
@@ -2711,7 +2726,7 @@ describe('an empty inbox and an empty result list', () => {
       renderAt('/sr/moji-rezultati', 'competitor', '000031')
 
       // 000031 has never raced, so nothing is counted and nothing is waiting.
-      expect(await screen.findByText('Nijedan rezultat još nije poslat na proveru.')).toBeVisible()
+      expect(await screen.findByText('Još nisi poslao nijedan rezultat.')).toBeVisible()
       expect(screen.getByText('Na ovom profilu još nema nijednog rezultata.')).toBeVisible()
     } finally {
       server.stop()

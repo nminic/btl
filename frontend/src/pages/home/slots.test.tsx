@@ -110,25 +110,38 @@ describe('CalendarExtract', () => {
     )
   })
 
-  it('takes one row for a series and says how many more times it runs', () => {
+  /* Owner, 08.11.2026 (PDL, „oznaka „i još N termina” se briše zauvek"): „Ne zelim da se ovde
+     ispisuje ikad ista slicno, dakle ne zanima korisnika ima li jos neki datum nekad (ako je trka
+     kopirana)." A name that runs more than once still takes one row, with its next date, and the
+     row says nothing about the rest. The claim is on the whole text of the row, not on one word
+     being absent: „+1", „još" and „again" are all as good as „termin" at saying it. */
+  it('takes one row for a name that runs again, and the row is its date and its name and nothing else', () => {
     renderWidget(
       <CalendarExtract
         events={[
           event(5, 'BTL sreda', '2026-12-02'),
           event(6, 'BTL sreda', '2026-12-09'),
           event(7, 'BTL sreda', '2026-12-16'),
+          event(8, 'Na tragu bizona', '2026-11-29'),
+          event(9, 'Na tragu bizona', '2027-11-28'),
           event(4, 'Fruškogorski maraton', '2026-12-05'),
         ]}
-        races={races}
+        races={[]}
         today="2026-11-01"
       />,
     )
 
     const rows = screen.getAllByRole('listitem')
-    expect(rows).toHaveLength(2)
-    expect(rows[0]).toHaveTextContent('i još 2 termina')
-    // A one-off says nothing about repeats.
-    expect(rows[1]).not.toHaveTextContent('i još')
+    expect(rows).toHaveLength(3)
+    expect(rows.map((row) => row.textContent)).toEqual([
+      '29.11.Na tragu bizona',
+      '02.12.BTL sreda',
+      '05.12.Fruškogorski maraton',
+    ])
+    expect(screen.getByRole('link', { name: 'Na tragu bizona' })).toHaveAttribute(
+      'href',
+      '/sr/kalendar/dogadjaj-8',
+    )
   })
 
   /* One dot per length actually run there, never one per race, and the names

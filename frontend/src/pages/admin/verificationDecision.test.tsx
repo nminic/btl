@@ -364,7 +364,7 @@ describe('a decision on a queue served by the pending screen', () => {
       const alert = await screen.findByRole('alert')
 
       expect(alert).toHaveTextContent('server.nothing')
-      expect(alert).not.toHaveTextContent(/Portal nije uspeo/)
+      expect(alert).not.toHaveTextContent(/Zahtev nije prošao/)
     } finally {
       server.stop()
     }
@@ -401,7 +401,7 @@ describe('a decision on a queue served by the pending screen', () => {
         await user.click(first.getByRole('button', { name: 'Odobri' }))
 
         expect(await screen.findByRole('alert')).toHaveTextContent(
-          `Server je odgovorio brojem ${String(status)} i ništa nije promenjeno.`,
+          `Ništa nije sačuvano (greška ${String(status)}).`,
         )
         expect(within(await cardsIn()).getAllByRole('listitem')).toHaveLength(before)
         expect(decidedIn().queryAllByRole('listitem')).toEqual([])
@@ -473,7 +473,7 @@ describe('a decision on a queue served by the pending screen', () => {
 
       await user.click(first.getByRole('button', { name: 'Odobri' }))
 
-      expect(await screen.findByRole('alert')).toHaveTextContent(/nije uspeo da dokaže serveru/)
+      expect(await screen.findByRole('alert')).toHaveTextContent(/Zahtev nije prošao/)
       expect(decidedIn().queryAllByRole('listitem')).toEqual([])
     } finally {
       server.stop()

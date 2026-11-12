@@ -3,7 +3,6 @@ import { join } from 'node:path'
 import { configure, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 import sr from '../../i18n/sr.json'
-import { must } from '../../test/at'
 import { moderatorWith, renderAt } from '../../test/render'
 import { membersAsServed, refused, serverThat, type Asked } from '../../test/serverAnswers'
 import { SLOW } from '../../test/slow'
@@ -109,11 +108,7 @@ const corrections = (asked: Asked[]) =>
 async function theDataTab(): Promise<HTMLElement | null> {
   const parts = await screen.findByRole('navigation', { name: sr.profile.parts.label })
 
-  /* UNDER EITHER OF ITS TWO NAMES: „Dovrši profil" while the member himself has no picture or no words about
-     himself (PDL 06.11.2026), „Podaci" otherwise. Which of the two is `finishTheProfile.test.tsx`'s. */
-  return within(parts).queryByRole('link', {
-    name: new RegExp(`^(${sr.profile.parts.data}|${sr.profile.parts.finish})$`),
-  })
+  return within(parts).queryByRole('link', { name: sr.profile.parts.data })
 }
 
 async function sentHome(router: { state: { location: { pathname: string } } }): Promise<void> {
@@ -121,16 +116,31 @@ async function sentHome(router: { state: { location: { pathname: string } } }): 
 }
 
 describe('who is offered the tab, and who the card turns away', () => {
-  it('offers a member his own card and opens it at his profile’s own address', async () => {
+  /* HIS OWN DATA ARE ON „MOJI PODACI" SINCE 07.11.2026 (PDL „Član svojim podacima pristupa iz glavnog menija”:
+     „na svom profilu član vidi samo „Rezultati” i „Priznanja”"): his profile offers no card, and the address of
+     his card takes him to his page and not home. */
+  it('does not offer a member his own card, and the address of it takes him to „Moji podaci"', async () => {
+    renderAt(`/sr/takmicar/${HIS}`, 'competitor', HIS)
+
+    expect(await theDataTab()).toBeNull()
+
     const { router } = renderAt(`/sr/takmicar/${HIS}/podaci`, 'competitor', HIS)
 
     expect(await screen.findByRole('heading', { level: 2, name: sr.account.personalTitle })).toBeVisible()
-    await waitFor(() => expect(router.state.location.pathname).toMatch(new RegExp(`^/sr/takmicar/${HIS}-.+/podaci$`)))
+    expect(router.state.location.pathname).toBe('/sr/moji-podaci')
+  }, SLOW)
 
-    const tab = must(await theDataTab(), 'the tab of his own card')
+  /* AND A MODERATOR WHO RACES, ON HIS OWN PROFILE, IS THE MEMBER AND NOT THE ADMINISTRATION: it is his own
+     profile, and the administration's route refuses a moderator his own record (PDL, M7). */
+  it('does not offer a moderator who races the card on his own profile, though he holds the right', async () => {
+    const own = renderAt(`/sr/takmicar/${HIS}`, 'moderator', HIS, moderatorWith([OVER_THE_MEMBERS]))
 
-    expect(tab).toHaveAttribute('aria-current', 'page')
-    expect(tab.getAttribute('href')).toBe(router.state.location.pathname)
+    expect(await theDataTab()).toBeNull()
+    own.unmount()
+
+    renderAt(`/sr/takmicar/${SOMEBODY}`, 'moderator', HIS, moderatorWith([OVER_THE_MEMBERS]))
+
+    expect(await theDataTab()).not.toBeNull()
   }, SLOW)
 
   it('does not offer a member the card of somebody else, and the address of it sends him home', async () => {
@@ -153,10 +163,12 @@ describe('who is offered the tab, and who the card turns away', () => {
     await sentHome(router)
   }, SLOW)
 
-  it('sends a member whose fee has lapsed home from his own card, which his route answers 404', async () => {
+  /* To „Moji podaci", which sends him on to the page he renews on (owner, 07.11.2026: „adresa ga šalje na „Moja
+     članarina”, kao do sada"). */
+  it('sends a member whose fee has lapsed from his own card to the page he renews on', async () => {
     const { router } = renderAt(`/sr/takmicar/${LAPSED}/podaci`, 'competitor', LAPSED)
 
-    await sentHome(router)
+    await waitFor(() => expect(router.state.location.pathname).toBe('/sr/moja-clanarina'))
   }, SLOW)
 
   it('does not offer a moderator without the right over the members the card, and its address sends him home', async () => {
@@ -348,12 +360,12 @@ describe('the card the administration opens', () => {
   }, SLOW)
 })
 
-describe('his own card', () => {
+describe('his own data, on „Moji podaci"', () => {
   /* THE LIST IS A CACHE OF THE VISIT AND THE ANSWER ABOUT HIM IS THE SERVER'S, so for the length of a
      visit they can disagree: his fee stands and the list read earlier does not carry him (his fee was
-     recorded since). His card is then drawn under the head of his own record (`HisOwnRecord`), as his
-     profile is, and not refused for a row the list does not have yet. */
-  it('is drawn under the head of his own record when the list read earlier does not carry him', async () => {
+     recorded since). His boxes are then drawn off his own record (`HisOwnRecord`), as his profile is, and
+     not refused for a row the list does not have yet. */
+  it('draws his boxes off his own record when the list read earlier does not carry him', async () => {
     const { stop } = serverThat((path) => {
       if (path !== '/api/competitors') {
         return null
@@ -367,10 +379,12 @@ describe('his own card', () => {
     })
 
     stops.push(stop)
-    renderAt(`/sr/takmicar/${HIS}/podaci`, 'competitor', HIS)
+    renderAt('/sr/moji-podaci', 'competitor', HIS)
 
     expect(await screen.findByRole('heading', { level: 2, name: sr.account.personalTitle })).toBeVisible()
-    expect(screen.getByRole('heading', { level: 1, name: /Strahinja Vukićević/ })).toBeVisible()
+    expect(screen.getByRole('heading', { level: 1, name: sr.nav.myData })).toBeVisible()
+    expect(await screen.findByRole('region', { name: sr.picture.title })).toBeVisible()
+    expect(screen.getByRole('region', { name: sr.bio.title })).toBeVisible()
   }, SLOW)
 
   it('sends a new town together with its country, and a new size alone', async () => {
@@ -380,7 +394,7 @@ describe('his own card', () => {
     )
 
     stops.push(stop)
-    renderAt(`/sr/takmicar/${HIS}/podaci`, 'competitor', HIS)
+    renderAt('/sr/moji-podaci', 'competitor', HIS)
 
     const size = await screen.findByRole('combobox', { name: new RegExp(sr.registration.shirtSize) })
 

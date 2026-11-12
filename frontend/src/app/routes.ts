@@ -28,16 +28,35 @@ export type RouteDef = Address & {
    */
   notInMenu?: boolean
   /**
-   * Whom the entry in the menu behind the account picture is drawn to, when that is not "every
-   * account": `unpaid` is somebody who registered and has not paid and NOBODY ELSE, `unpaidToo` is
-   * everybody and him as well. Left out, the entry is drawn to every account except him.
+   * Drawn in the menu behind the account picture to somebody who registered and has not paid as
+   * well. Left out, the entry is drawn to every account except him.
    *
    * An entry of his is also an address the router serves, so the list stays one list: it is what
    * the router is built from and `accountMenuFor` is the one place that says who sees which of
    * them (PDL 22.10.2026, „Član koji još nije platio: bez reči nalog, samo Članarina").
    */
-  menuFor?: 'unpaid' | 'unpaidToo'
+  unpaidToo?: true
+  /**
+   * NOT drawn in that menu to a member whose fee has lapsed. Owner, 07.11.2026 (PDL, „nema stavku
+   * „Moji podaci” u meniju”): „Član kome je istekla članarina nema stavku „Moji podaci” u meniju, a
+   * adresa ga šalje na „Moja članarina”, kao do sada (pravilo od 19.09.2026).”
+   */
+  notToTheLapsed?: true
+  /**
+   * The name the entry carries for a member whose profile has not both a picture and words about
+   * himself yet, instead of `labelKey` (owner, 07.11.2026, PDL „Član svojim podacima pristupa iz
+   * glavnog menija”: „Stavka menija se zove „Dopuni podatke” [...] dok član nema i sliku i tekst o
+   * sebi, a posle toga „Moji podaci”").
+   */
+  unfinishedLabelKey?: string
 }
+
+/**
+ * The three readers the menu behind the account picture tells apart: somebody who registered and has
+ * not paid, a member whose fee has lapsed, and everybody else (a member whose fee stands, and an
+ * account of the administration that races for nobody).
+ */
+export type MenuReader = 'neverPaid' | 'lapsed' | 'anybodyElse'
 
 /* One entry in the top navigation: one word, one screen. Order here is the order
  * on screen.
@@ -82,20 +101,47 @@ export const NAV: NavSection[] = [
  * first thing a rename leaves behind. */
 export const MEMBERSHIP_ADDRESS = 'moja-clanarina'
 
-/* WHERE SOMEBODY WHO HAS NOT PAID CHANGES HIS DATA, until the fee is recorded. After that the data
- * are on the card „Podaci" of his profile. */
+/* WHERE A MEMBER CHANGES HIS DATA, HIS PICTURE AND HIS WORDS ABOUT HIMSELF, and where somebody who
+ * has not paid changes his data (owner, 07.11.2026, PDL „Član svojim podacima pristupa iz glavnog
+ * menija”: „Takmicari vide samo u glavnom meniju i tu pristupaju, a administratori vide na stranici
+ * takmicara i tu pristupaju”). */
 export const MY_DATA_ADDRESS = 'moji-podaci'
 
+/**
+ * Where the pencil on the screen Uplate leads for somebody who registered and has no member number yet
+ * (owner, 10.11.2026): the form of his data by the key the screen lists him under
+ * (`pages/admin/UnnumberedMemberData.tsx`). It has the door of the screen of the members (`needs.ts`),
+ * and stands outside `clanovi/`, because the section's own link to that screen would read as a way up
+ * a level from it (`pages/publicData.test.tsx`).
+ */
+export const UNNUMBERED_DATA_ADDRESS = 'administracija/podaci-clana/:competitorId'
+
+/** That address for one registrant, with the language. */
+export function unnumberedDataPath(locale: string, competitorId: number): string {
+  return `/${locale}/${UNNUMBERED_DATA_ADDRESS.replace(':competitorId', String(competitorId))}`
+}
+
 /* The member area. It hangs off the picture and the cog in the header, not off
- * the navigation, because it belongs to one person rather than to the league. */
+ * the navigation, because it belongs to one person rather than to the league.
+ *
+ * IN THE ORDER THE OWNER NAMES THEM (07.11.2026: „Moj profil”, „Moji podaci”, „Moji rezultati”,
+ * „Moja članarina”), which keeps „Moji podaci" above „Moja članarina" for somebody who has not paid
+ * (owner, 22.10.2026: „Neka ima u navigaciji stranu Moji Podaci dok nije odobren koja je iznad Moja
+ * Članarina."). */
 export const ACCOUNT_ROUTES: RouteDef[] = [
-  /* HIS, UNTIL HE IS APPROVED, and above the page he pays on (owner, 22.10.2026: „Neka ima u
-     navigaciji stranu Moji Podaci dok nije odobren koja je iznad Moja Članarina."). Nobody else is
-     drawn it: the member whose fee stands changes his data on the card „Podaci" of his profile. */
-  { path: MY_DATA_ADDRESS, labelKey: 'nav.myData', seoKey: 'myData', menuFor: 'unpaid' },
   { path: 'moj-profil', labelKey: 'nav.myProfile', seoKey: 'myProfile' },
+  /* Drawn to every reader but a member whose fee has lapsed, and named „Dopuni podatke" to a member
+     whose profile lacks the picture or the words (`AccountMenu.tsx` asks which). */
+  {
+    path: MY_DATA_ADDRESS,
+    labelKey: 'nav.myData',
+    seoKey: 'myData',
+    unpaidToo: true,
+    notToTheLapsed: true,
+    unfinishedLabelKey: 'nav.completeData',
+  },
   { path: 'moji-rezultati', labelKey: 'nav.myResults', seoKey: 'myResults' },
-  { path: MEMBERSHIP_ADDRESS, labelKey: 'nav.membership', seoKey: 'membership', menuFor: 'unpaidToo' },
+  { path: MEMBERSHIP_ADDRESS, labelKey: 'nav.membership', seoKey: 'membership', unpaidToo: true },
   /* Not drawn in the menu behind the picture (owner, 23.08.2026): the envelope
      in the header opens the inbox and „Sve poruke" stands at the foot of it,
      which is one press fewer than the menu. It stays in this list because the
@@ -119,15 +165,16 @@ export const ACCOUNT_ROUTES: RouteDef[] = [
  *
  * Somebody who registered and has not paid is drawn two of them, „Moji podaci" and then „Moja
  * članarina", and nothing else (owner, 22.10.2026: „Sve opcije koje mu nisu dostupne privremeno
- * (dakle sve osim Članarine) ne treba da mu uopšte budu dostupne"). Everybody else is drawn the
- * list as it was, without „Moji podaci" and without the entries that have a shorter way in of their
- * own. The sign out button is not in this list for either of them and stays for both.
+ * (dakle sve osim Članarine) ne treba da mu uopšte budu dostupne"). A member whose fee has lapsed is
+ * drawn the list without „Moji podaci" (owner, 07.11.2026). Everybody else is drawn the whole list,
+ * without the entries that have a shorter way in of their own. The sign out button is not in this
+ * list for any of them and stays for all.
  */
-export function accountMenuFor(unpaid: boolean): RouteDef[] {
+export function accountMenuFor(reader: MenuReader): RouteDef[] {
   return ACCOUNT_ROUTES.filter((route) =>
-    unpaid
-      ? route.menuFor !== undefined
-      : route.notInMenu !== true && route.menuFor !== 'unpaid',
+    reader === 'neverPaid'
+      ? route.unpaidToo === true
+      : route.notInMenu !== true && !(reader === 'lapsed' && route.notToTheLapsed === true),
   )
 }
 
@@ -216,6 +263,8 @@ export const EXTRA_ADDRESSES: Address[] = [
   { path: 'takmicar/:memberNumber', seoKey: 'competitor' },
   { path: 'takmicar/:memberNumber/priznanja', seoKey: 'competitorAwards' },
   { path: 'takmicar/:memberNumber/podaci', seoKey: 'competitorData' },
+  /* The same form for somebody with no number. Words of its own, because no two addresses share a name. */
+  { path: UNNUMBERED_DATA_ADDRESS, seoKey: 'unnumberedMemberData' },
   /* Before the event, because the static segment has to win: /kalendar/dan/... is
      a day and never a race whose address happens to begin with "dan". */
   { path: 'kalendar/dan/:date', seoKey: 'calendarDay' },

@@ -1557,7 +1557,7 @@ describe('the races of an event', () => {
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
 
     expect((await screen.findByRole('alert')).textContent ?? '').toContain(
-      'Događaj je sačuvan, ali portal ne može da ga prikaže u ovom spisku.',
+      'Događaj je sačuvan. Osveži stranu.',
     )
     expect(screen.queryByRole('status', { name: 'Sačuvano' })).toBeNull()
   }, SLOW)

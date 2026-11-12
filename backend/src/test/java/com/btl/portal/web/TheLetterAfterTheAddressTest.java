@@ -85,7 +85,7 @@ class TheLetterAfterTheAddressTest {
 	private static final int ON_SALE = 2027;
 
 	/** The day of the year the price list is asked about, as V4 writes its periods. */
-	private static final String THE_DAY = "11-11";
+	private static final String THE_DAY = "11-21";
 
 	private static final String NEW_PASSWORD = "trcim.kroz.sumu.2027";
 
@@ -378,7 +378,7 @@ class TheLetterAfterTheAddressTest {
 		Opened letter = opened(theOnlyLetterTo("oslobodjen@primer.rs"));
 
 		assertThat(letter.subject()).isEqualTo("Član ste lige za 2027. godinu");
-		assertThat(letter.text()).contains("oslobođeni ste plaćanja članarine");
+		assertThat(letter.text()).contains("Članarina za 2027. godinu je izmirena");
 		assertThat(letter.file()).isNull();
 	}
 
@@ -403,7 +403,7 @@ class TheLetterAfterTheAddressTest {
 		assertThat(letter.text())
 				.contains("pokrio je vaš balans iz programa preporuke")
 				.contains("https://probni-portal.primer.rs/moja-clanarina")
-				.doesNotContain("oslobođeni")
+				.doesNotContain("je izmirena")
 				.doesNotContain("je plaćena");
 		assertThat(letter.file()).isNull();
 	}
@@ -426,7 +426,7 @@ class TheLetterAfterTheAddressTest {
 		assertThat(letter.subject()).isEqualTo("Član ste lige za 2027. godinu");
 		assertThat(letter.text())
 				.contains("članarina za 2027. godinu je plaćena")
-				.doesNotContain("oslobođeni")
+				.doesNotContain("je izmirena")
 				.doesNotContain("balans");
 		assertThat(letter.file()).isNull();
 	}

@@ -167,7 +167,7 @@ class TeamJoiningWriteApiTest {
 	 * <p>See the class note: in 2026 every method that answers „which season" returns 2027 and
 	 * an assertion about the season would be satisfied by a constant.
 	 */
-	private static final Instant INSIDE_THE_WINDOW = Instant.parse("2027-11-11T09:00:00Z");
+	private static final Instant INSIDE_THE_WINDOW = Instant.parse("2027-11-21T09:00:00Z");
 
 	/** And a day outside it, when three of the five acts must still work. */
 	private static final Instant OUTSIDE_THE_WINDOW = Instant.parse("2027-06-15T09:00:00Z");
@@ -186,7 +186,7 @@ class TeamJoiningWriteApiTest {
 	 * nothing: both sides of the old midnight are now a fortnight inside the shut half of the
 	 * year, where the two zones agree and the case would have passed whatever zone was read.
 	 */
-	private static final Instant THE_NIGHT_THE_WINDOW_OPENS = Instant.parse("2027-11-10T23:30:00Z");
+	private static final Instant THE_NIGHT_THE_WINDOW_OPENS = Instant.parse("2027-11-20T23:30:00Z");
 
 	/** What the standing members of this fixture joined in: a season already being run. */
 	private static final int A_SEASON_ALREADY_RUNNING = 2027;
@@ -1076,7 +1076,7 @@ class TeamJoiningWriteApiTest {
 		}
 
 		String missed = "Poziv u tim je ostao bez odgovora | Probni Probić" + ME
-				+ " je u međuvremenu " + word + " u tim \"Sava Runners\", pa vaš poziv više ne stoji.";
+				+ " je u međuvremenu " + word + " u tim \"Sava Runners\".";
 
 		assertThat(inboxOf(OUTSIDER)).as("the team whose invitation is now dead")
 				.containsExactly(missed);
@@ -2055,8 +2055,7 @@ class TeamJoiningWriteApiTest {
 		assertThat(TeamJoiningWriteApi.theInvitationBodyReads(team))
 				.isEqualTo("Tim \"Sava Runners\" te poziva da od naredne sezone trčiš za njih.");
 		assertThat(TeamJoiningWriteApi.theMissedInvitationReads("Petar Petrović", "M", team))
-				.isEqualTo("Petar Petrović je u međuvremenu ušao u tim \"Sava Runners\","
-						+ " pa vaš poziv više ne stoji.");
+				.isEqualTo("Petar Petrović je u međuvremenu ušao u tim \"Sava Runners\".");
 	}
 
 	private static String filled(JsonNode teams, String key, String team, String name) {

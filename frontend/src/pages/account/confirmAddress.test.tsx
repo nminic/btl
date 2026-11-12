@@ -166,7 +166,7 @@ describe('arriving without one', () => {
     renderAt('/sr/potvrda-adrese')
 
     expect(
-      await screen.findByText(/Ova adresa ne nosi vezu iz poruke, pa nema šta da se potvrdi/),
+      await screen.findByText(/Otvori vezu iz poruke koju ti je portal poslao/),
     ).toBeVisible()
     /* The shell asks `GET /api/me` above every screen since 20.09.2026
        (app/Shell.tsx, session/useTheServersSession.ts). That is the portal asking who
@@ -196,14 +196,14 @@ describe('what the screen says about each answer', () => {
     [
       'a reason this screen does not know',
       () => refused('nestoNovo'),
-      /odbio zahtev uz razlog nestoNovo/,
+      /Zahtev nije prihvaćen \(nestoNovo\)/,
     ],
     [
       'a request nobody proved came from the portal',
       () => answeredWith(403),
-      /nije uspeo da dokaže serveru/,
+      /Zahtev nije prošao/,
     ],
-    ['anything else, by its number', () => answeredWith(500), /odgovorio brojem 500/],
+    ['anything else, by its number', () => answeredWith(500), /greška 500/],
     [
       'a server it could not reach',
       () => {

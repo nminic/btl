@@ -1633,7 +1633,7 @@ describe('a registration the server refuses', () => {
 
     await fillAndSend(user)
 
-    expect(await screen.findByText(/već član lige/)).toBeVisible()
+    expect(await screen.findByText(/Ova adresa je već registrovana/)).toBeVisible()
     /* AND NOTHING MOVED. The confirmation is not drawn, the form is still here, and it
        still holds what was typed into it: the whole of this change is that the screen
        waits for an answer before it throws the form away. */
@@ -1655,7 +1655,7 @@ describe('a registration the server refuses', () => {
 
     await fillAndSend(user)
 
-    expect(await screen.findByText(/javno objavljenim provalama/)).toBeVisible()
+    expect(await screen.findByText(/Ova lozinka je na crnoj listi/)).toBeVisible()
     expect(screen.queryByRole('heading', { name: 'Prijava je zabeležena' })).toBeNull()
   }, SLOW)
 
@@ -1667,7 +1667,7 @@ describe('a registration the server refuses', () => {
 
     await fillAndSend(user)
 
-    expect(await screen.findByText(/Server nije prihvatio prijavu/)).toBeVisible()
+    expect(await screen.findByText(/Prijava nije poslata/)).toBeVisible()
   }, SLOW)
 
   it('reads a refusal it has no sentence for out loud, code and all', async () => {
@@ -1779,7 +1779,7 @@ describe('a registration the server refuses', () => {
     await user.type(screen.getByLabelText(/Datum rođenja/), '12041985')
     await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
 
-    expect(await screen.findByText(/već član lige/)).toBeVisible()
+    expect(await screen.findByText(/Ova adresa je već registrovana/)).toBeVisible()
 
     const holding: { answer: ((response: Response) => void) | null } = { answer: null }
 
@@ -1793,7 +1793,7 @@ describe('a registration the server refuses', () => {
     await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
 
     expect(screen.getByText('Šaljemo prijavu...')).toBeVisible()
-    expect(screen.queryByText(/već član lige/)).toBeNull()
+    expect(screen.queryByText(/Ova adresa je već registrovana/)).toBeNull()
 
     must(holding.answer, 'the answer the server was holding')(did())
 
@@ -1810,7 +1810,7 @@ describe('a registration the server refuses', () => {
     renderForm()
 
     await fillAndSend(user)
-    expect(await screen.findByText(/Server nije prihvatio prijavu/)).toBeVisible()
+    expect(await screen.findByText(/Prijava nije poslata/)).toBeVisible()
 
     registrationAnswered(() => did())
     await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))

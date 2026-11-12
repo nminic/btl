@@ -222,7 +222,7 @@ describe('the picture on a card the moderator is deciding about', () => {
          `sr.json`'s `verification.pictureUnavailable`. */
       expect(
         cardOf('Neda Nedić').getByText(
-          'Slika nije dostupna: fajl se ne može učitati, pa se ovaj red ne može odobriti dok se slika ne vidi. Odbijanje i dalje radi.',
+          'Slika se ne može učitati, pa se ne može ni odobriti. Odbijanje radi.',
         ),
       ).toBeVisible()
       /* Told off, not switched off, the same shape every other reason this button
@@ -234,7 +234,7 @@ describe('the picture on a card the moderator is deciding about', () => {
       expect(approve).toHaveAttribute('aria-disabled', 'true')
       expect(approve).not.toBeDisabled()
       expect(approve).toHaveAccessibleDescription(
-        'Slika nije dostupna: fajl se ne može učitati, pa se ovaj red ne može odobriti dok se slika ne vidi. Odbijanje i dalje radi.',
+        'Slika se ne može učitati, pa se ne može ni odobriti. Odbijanje radi.',
       )
       /* The card itself, and the row's own fields on it, are untouched: a picture
          that cannot be shown is not a reason to lose the rest of the row. */

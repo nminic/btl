@@ -49,8 +49,8 @@ export type PriceRow = {
    * The day of the year the period opens and the day it closes, both mm-dd.
    *
    * A day of the year rather than a date, because the list repeats (owner,
-   * 30.07.2026): membership for 2027 is sold until 10 November 2027, and on the
-   * eleventh the same four periods open again for 2028, and so on every year.
+   * 30.07.2026): membership for 2027 is sold until 20 November 2027, and on the
+   * twenty-first the same four periods open again for 2028, and so on every year.
    * Written as dates the list would have been four rows that expire, and the
    * portal would quietly stop having a price on a morning nobody was watching.
    */
@@ -90,7 +90,7 @@ export const SEASON = FIRST_SEASON
 export const REGISTRATION_OPENS = FIRST_SALE
 
 /**
- * From 1 April to 10 November: the season already running, sold without the right
+ * From 1 April to 20 November: the season already running, sold without the right
  * to be ranked.
  *
  * Named, because it is the one period that is not ranked. It closes before the end of
@@ -98,7 +98,9 @@ export const REGISTRATION_OPENS = FIRST_SALE
  * opens, what is on sale is the next season, so a member paying then is not paying
  * late for this year, they are paying early for the next.
  *
- * **It runs from 1 April to 10 November since 27.10.2026** (PDL, „Novi godišnji ciklus
+ * **It runs from 1 April to 20 November since 10.11.2026** (PDL, „Ciklus od 21. novembra
+ * (10.11.2026)": the end of the period without the right to be ranked is 20.11.), and it ran to
+ * 10 November from 27.10.2026 (PDL, „Novi godišnji ciklus
  * od 11. novembra"): „Nakon toga ce biti 40 eur (4800) od 1.4. do 10.11 - period kad kao
  * i sad mogu da se prijave ljudi bez rangiranja." From 1 January to 31 March the running
  * season is sold too, but WITH the right to be ranked, at the `late` row.
@@ -114,18 +116,18 @@ export const REGISTRATION_OPENS = FIRST_SALE
 const IN_SEASON: PriceRow = {
   key: 'season',
   from: '04-01',
-  to: '11-10',
+  to: '11-20',
   eur: 40,
   rsd: 4800,
   ranking: false,
 }
 
 /* In the order a member reads them, which is the order the selling year runs
- * in: it opens on 11 November, the third of the four is the one that follows
+ * in: it opens on 21 November (owner, 10.11.2026), the third of the four is the one that follows
  * the new year, and the last is the season already running, without ranking. */
 export const PRICES: PriceRow[] = [
-  { key: 'early', from: '11-11', to: '11-20', eur: 35, rsd: 4200, ranking: true },
-  { key: 'regular', from: '11-21', to: '12-31', eur: 40, rsd: 4800, ranking: true },
+  { key: 'early', from: '11-21', to: '11-30', eur: 35, rsd: 4200, ranking: true },
+  { key: 'regular', from: '12-01', to: '12-31', eur: 40, rsd: 4800, ranking: true },
   { key: 'late', from: '01-01', to: '03-31', eur: 50, rsd: 6000, ranking: true },
   IN_SEASON,
 ]
@@ -285,7 +287,7 @@ export function registrationOpen(today: string): boolean {
  * renewed are the same thing from November to December and different for the nine
  * months before it: in August 2027 somebody joining is joining 2027, but the
  * renewal that opens in mid November is for 2028, and the screen read "Obnova
- * članarine za 2027" directly above "renewal opens on 11 November".
+ * članarine za 2027" directly above "renewal opens on 21 November".
  *
  * A transfer is the same question with the same answer: asked for now, it takes
  * effect at the start of the next season and never during a running one
@@ -302,12 +304,12 @@ export function seasonBeingRenewed(today: string): number {
 /**
  * The season a payment made on this day buys.
  *
- * Inside the renewal window (11 November to 31 December, and in 2026 from 15 October) it is the next season, which is
+ * Inside the renewal window (21 November to 31 December, and in 2026 from 15 October) it is the next season, which is
  * `seasonBeingRenewed`; outside it, it is the season that is running, because the owner
- * confirmed on 16.10.2026 that a member who pays between 1 January and 10 November pays at
+ * confirmed on 16.10.2026 that a member who pays between 1 January and 20 November pays at
  * once, for the current year (PDL, the price list, item U1; the rows are „1. januara do
- * 31. marta" with the right to be ranked and „1. aprila do 10. novembra" without it, since
- * 27.10.2026). Never before the first season the league runs, for the reason
+ * 31. marta" with the right to be ranked and „1. aprila do 20. novembra" without it, since
+ * 10.11.2026). Never before the first season the league runs, for the reason
  * `seasonBeingRenewed` gives.
  *
  * **This is the screen's copy of `SeasonClock.seasonBeingPaidFor` on the server**, which is

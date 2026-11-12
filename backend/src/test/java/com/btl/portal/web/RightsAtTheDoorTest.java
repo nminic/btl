@@ -1275,7 +1275,10 @@ class RightsAtTheDoorTest {
 	 * door was measured on 07.11.2026 by taking the door off the route: {@code StatementApiTest} fails
 	 * (25 cases, 1 failing, a moderator without the tick is no longer told the address is not there) and
 	 * so does {@code MemberDataWriteApiTest} (37 cases, 1 failing). {@code MemberInvitationApi#send} was
-	 * not measured here.
+	 * not measured here. {@code MemberDataWriteApi#correctUnnumbered} (10.11.2026, the same correction by
+	 * the key of somebody with no member number) has the shape of {@code correct} for the same reason, and
+	 * its door is measured by {@code UnnumberedMemberDataTest}, where the right over the payments alone is
+	 * answered 404.
 	 *
 	 * <p><b>Derived from the dispatcher and from the types the handlers declare</b>, so it has no
 	 * list.
@@ -1320,6 +1323,8 @@ class RightsAtTheDoorTest {
 						"StatementApi#take is a write with no required body and no typed variable",
 						"MemberDataWriteApi#correct is not the handler the dispatcher gives the request the sweeps send",
 						"MemberDataWriteApi#correct is a write with no required body and no typed variable",
+						"MemberDataWriteApi#correctUnnumbered is not the handler the dispatcher gives the request the sweeps send",
+						"MemberDataWriteApi#correctUnnumbered is a write with no required body and no typed variable",
 						"MemberPictureAndWordsApi#setThePicture is not the handler the dispatcher gives the request the sweeps send",
 						"MemberPictureAndWordsApi#setThePicture is a write with no required body and no typed variable",
 						"MemberPictureAndWordsApi#setTheWords is not the handler the dispatcher gives the request the sweeps send",

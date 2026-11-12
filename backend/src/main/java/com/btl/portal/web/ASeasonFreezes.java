@@ -105,10 +105,44 @@ class ASeasonFreezes {
 		for (int season = SeasonClock.FIRST_SEASON; SeasonClock.isFrozen(season, now); season++) {
 			int frozen = season;
 
+			if (frozenAlready(frozen)) {
+				continue;
+			}
+
 			if (Boolean.TRUE.equals(inOneTransaction.execute(writing -> freeze(frozen, now)))) {
 				LOG.info("season {} is frozen: its points and every table of it are written down", frozen);
 			}
 		}
+	}
+
+	/**
+	 * WHETHER THE SEASON HAS ITS ROW ALREADY, ASKED WITHOUT ANY LOCK AND OUTSIDE THE TRANSACTION OF THE FREEZE,
+	 * so that an hourly run after 1 January 2028 costs the roads nothing for the seasons that are done.
+	 *
+	 * <p><b>Why the question is not free to ask inside.</b> This is a plain statement of its own, in no
+	 * transaction. Asked inside the REPEATABLE READ one it would be the first SELECT, and the snapshot would be
+	 * fixed before the lock below is taken, which is what {@link #freeze(int, ZonedDateTime)} says it must not
+	 * be.
+	 *
+	 * <p><b>What it saves, measured 08.11.2026</b> (PENDING, review of PR 701, „cena brave"). The lock below is
+	 * {@code SHARE ROW EXCLUSIVE}, and it was taken for every season that had frozen, every hour, before
+	 * {@code on conflict do nothing} could say there was nothing to do. While a road holds {@code SHARE}
+	 * ({@link ASeasonBegins#holdTheFreezeStill}) that request waits, and every {@code SHARE} that arrives
+	 * after it queues behind it: the reviewer measured 3227 ms for a road behind a job that had nothing to
+	 * write, against 339 ms without the job. A season that has its row needs no lock, because the row is the
+	 * only thing the lock protects and nothing deletes it.
+	 *
+	 * <p><b>The answer can be out of date by the time the lock is held, and that is safe.</b> „No row" read
+	 * here may be false a moment later, when another run froze the season in between. The statement that
+	 * writes the row is {@code on conflict do nothing}, taken after the lock, and it is the second question:
+	 * it answers 0 and the run writes nothing (see {@link #freeze(int, ZonedDateTime)}). „Row" read here is
+	 * never out of date, since a row of {@code season_frozen} is never removed outside a test.
+	 */
+	private boolean frozenAlready(int season) {
+		return Boolean.TRUE.equals(db.sql("select exists(select 1 from season_frozen where season = ?)")
+				.param(season)
+				.query(Boolean.class)
+				.single());
 	}
 
 	/**
@@ -126,6 +160,9 @@ class ASeasonFreezes {
 		   hold the snapshot that does not. */
 		db.sql("lock table season_frozen in share row exclusive mode").update();
 
+		/* THE SECOND QUESTION: the row may have been written between {@link #frozenAlready} and the lock, by a
+		   run of another process or by a case that holds the lock, and the lock was waited for. Nothing is
+		   written then, and no second snapshot: that is the „trajno" of the decision. */
 		int taken = db.sql("insert into season_frozen (season, frozen_at) values (?, ?) on conflict do nothing")
 				.params(season, Timestamp.from(now.toInstant()))
 				.update();

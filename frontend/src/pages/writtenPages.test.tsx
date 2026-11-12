@@ -24,6 +24,7 @@ import { translate } from '../i18n/translate'
 import { SessionProvider } from '../session/SessionProvider'
 import { RESOURCE_NAMES } from '../data/client'
 import { renderAt } from '../test/render'
+import { setupUser } from '../test/user'
 import { must } from '../test/at'
 import { sources, WHOLE_PORTAL } from '../test/sources'
 import { PageSectionBody } from '../components/PageSectionBody'
@@ -230,7 +231,7 @@ describe('the written pages', () => {
 
     expect(await screen.findByRole('heading', { level: 1, name: title })).toBeVisible()
     expect(screen.getAllByRole('heading', { level: 2 }).length).toBeGreaterThan(1)
-    expect(screen.queryByText(/Ovaj ekran dolazi u sledećoj fazi/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Ovaj ekran je u izradi/)).not.toBeInTheDocument()
   })
 
   it('says in the terms where a result is submitted and checked', async () => {
@@ -904,11 +905,11 @@ describe('the privacy policy', () => {
       expect(policy, named).not.toContain(named)
     }
 
-    /* And it says why there is no bar, rather than leaving a reader to notice
-       that a paragraph went missing: consent is asked for what is not necessary,
-       and the portal sets nothing of the sort. */
-    expect(policy).toContain('nema ni trake za pristanak')
-    expect(policy).toContain('Nema analitike')
+    /* And it says there is no other store and no analytics. Until 10.11.2026 it also said why
+       there was no bar („Nema analitike, ni naše ni tuđe, pa nema ni trake za pristanak.");
+       the owner's words since are „Drugog skladišta, niti analitike, nema." and give no reason,
+       so the case holds the two facts and no longer holds the explanation. */
+    expect(policy).toContain('Drugog skladišta, niti analitike, nema.')
   })
 
   it('promises no way to withdraw a consent it never asks for', () => {
@@ -1090,6 +1091,32 @@ describe('the privacy policy', () => {
     const page = await screen.findByRole('article')
     expect(within(page).getByRole('heading', { name: /javno, a šta nikada nije/ })).toBeVisible()
     expect(within(page).getByRole('heading', { name: /Maloletni članovi/ })).toBeVisible()
+  })
+
+  /* THE LINK THE OWNER DECIDED FOR WHEN THE MENU ARRIVES (07.11.2026, PDL „Politika privatnosti odmah dobija
+     rečenicu koja postaje tačna kad stigne meni”: „Veza na „Moji podaci” stiže uz meni, kao izmena koja ne menja reči
+     ni datum."), drawn as a link of the portal with the language put in front, once, in the sentence of the rights. */
+  it('links „Moji podaci" in the sentence of the rights to the page, in the language it is read in', async () => {
+    const user = setupUser()
+    const { router } = renderAt('/sr/politika-privatnosti')
+
+    const page = await screen.findByRole('article')
+    const links = within(page).getAllByRole('link', { name: 'Moji podaci' })
+
+    expect(links).toHaveLength(1)
+
+    const link = must(links[0], 'the link of the rights')
+
+    expect(link).toHaveAttribute('href', '/sr/moji-podaci')
+    expect(link.closest('p')?.textContent).toBe(
+      'Polja profila, sliku i tekst o sebi menjate i brišete na strani Moji podaci. Saglasnost za kolačiće se ne' +
+        ' povlači jer se ne daje (sekcija 4). Kopiju podataka pripremamo ručno, u CSV ili JSON obliku, kad to tražite.',
+    )
+
+    /* And it is followed: a visitor is asked to sign in, and the screen that asks him carries the way back. */
+    await user.click(link)
+    expect(await screen.findByRole('heading', { level: 1, name: 'Za ovo treba prijava' })).toBeVisible()
+    expect(router.state.location.pathname).toBe('/sr/moji-podaci')
   })
 
   it('keeps what the register of members needs as long as it keeps the rest of a profile', () => {
@@ -1541,9 +1568,12 @@ describe('the rulebook', () => {
 
     /* Three and not five since 22.10.2026: the rulebook's article on liability and the
        terms' section on awards, which repeated what the rulebook says elsewhere, went
-       with the owner's simplification of the three documents. */
+       with the owner's simplification of the three documents. Two and not three since
+       10.11.2026: Article 56 no longer joins the presentation of the trophies to the
+       competition, it names the Association's New Year cocktail session (owner,
+       10.11.2026, the PDL entry on the A6 flyer). */
     expect(mentions.length, 'the prose has stopped naming the competition').toBeGreaterThanOrEqual(
-      3,
+      2,
     )
     expect(
       mentions.filter((one) => !one.endsWith('BTL ')),
@@ -2390,10 +2420,11 @@ describe('how a written page is set', () => {
       )
     }
 
-    /* And the two things the reader is owed about it: that it never reaches the
-       association, and why no consent is asked for it. */
+    /* And what the reader is owed about it: where it is kept, and why no consent is asked
+       for it. It was owed a third thing until 10.11.2026, that it never reaches the
+       association („pa ga naš server ne vidi"); the owner's words for that sentence are
+       „Postavlja se tek kad temu sami izaberete." and the page no longer says it. */
     expect(policy).toContain('lokalnom skladištu')
-    expect(policy).toContain('naš server ne vidi')
     expect(policy).toMatch(/pristanak se ne traži|Za njega se pristanak ne traži/)
     /* The claim the document used to make, and must not make again while any
        store is there. */
@@ -2451,9 +2482,14 @@ describe('how a written page is set', () => {
     ]
 
     expect(offersTrack(lines)).toEqual([])
-    /* And the sweep reached the one line that is allowed to mention it, so the
-       trigger is live rather than merely quiet. */
-    expect(lines.filter(([, line]) => OFFERED.test(line)).length).toBeGreaterThan(0)
+    /* Until 10.11.2026 the sweep also had to reach the one line that was allowed to mention a
+       track file, in order to prove the trigger live rather than merely quiet. The owner's
+       words for Article 33 are „Dužinu, uspon i spust upisujete sami." and no page or
+       dictionary line names one any more, so the trigger is proven live by the cases of
+       `the guard over the written pages` below, and what is held here is that the sweep
+       still reaches the article that used to carry the refusal. */
+    expect(lines.some(([where, line]) => where === 'pravilnik' && line.includes('Dužinu, uspon i spust upisujete sami.')))
+      .toBe(true)
   })
 
   it('carries no telephone number anywhere', () => {
@@ -2926,13 +2962,16 @@ describe('what the written pages say the fee buys', () => {
        profile, the picture and the text about oneself are changed on the page Moji podaci
        (V89; owner, 07.11.2026, who made the rule general: the date moves whenever the
        words of a legal text change, to the day the change reaches QA); the terms keep
-       29.10.2026 and the rulebook 30.10.2026. Written per
+       29.10.2026 and the rulebook 30.10.2026. It moved on to 08.11.2026 with „Moji podaci"
+       said where it said the card Podaci (V90; owner, 08.11.2026). The rulebook moved on to
+       10.11.2026 with the transfer window for teams that opens on 21 November (V93; owner,
+       10.11.2026, the day it is expected on QA). Written per
        document and not as one day for all three, so a date moved on one of them,
        or left behind on one, is a failure that names the document. */
     const SIGNED_OFF = {
-      pravilnik: '30.10.2026',
-      'uslovi-koriscenja': '29.10.2026',
-      'politika-privatnosti': '07.11.2026',
+      pravilnik: '11.11.2026',
+      'uslovi-koriscenja': '11.11.2026',
+      'politika-privatnosti': '11.11.2026',
     } as const
 
     for (const slug of ['pravilnik', 'uslovi-koriscenja', 'politika-privatnosti'] as const) {

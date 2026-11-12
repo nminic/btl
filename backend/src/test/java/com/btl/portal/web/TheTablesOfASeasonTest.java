@@ -203,8 +203,8 @@ class TheTablesOfASeasonTest {
 
 	@Test
 	void theListOfProgressReadsTheSeasonBeforeAtItsFreezeAndNotAsItStandsLater() {
-		memberOf("000301", 2028, "2027-11-20 10:00:00+00");
-		memberOf("000302", 2028, "2027-11-20 10:00:00+00");
+		memberOf("000301", 2028, "2027-11-30 10:00:00+00");
+		memberOf("000302", 2028, "2027-11-30 10:00:00+00");
 		event("Leto", "2028-07-07");
 		race("Leto", "Letnji krug", 10, "2028-07-07");
 
@@ -271,7 +271,7 @@ class TheTablesOfASeasonTest {
 		inTeam("000303", "tim-b", 2028, null);
 		race("Jesen", "Maraton", 42.2, "2027-10-10");
 		run("000301", "Maraton", 60.00);
-		memberOf("000302", 2028, "2027-11-20 10:00:00+00");
+		memberOf("000302", 2028, "2027-11-30 10:00:00+00");
 		event("Leto", "2028-07-07");
 		race("Leto", "Letnji maraton", 42.2, "2028-07-07");
 

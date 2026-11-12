@@ -11,7 +11,7 @@
     },
     "notFound": {
       "title": "Ove strane nema",
-      "description": "Adresa ne postoji ili je strana uklonjena. Naslovna strana vodi do svega ostalog."
+      "description": "Adresa ne postoji ili je strana uklonjena."
     },
     "rulebook": {
       "title": "BTL pravilnik",
@@ -53,11 +53,11 @@
     },
     "myResults": {
       "title": "Moji trkački rezultati",
-      "description": "Prijavljeni rezultati, faza provere u kojoj se nalaze i bodovi koje su doneli."
+      "description": "Prijavljeni rezultati i bodovi koje su doneli."
     },
     "myData": {
       "title": "Moji BTL podaci",
-      "description": "Ime, adresa, telefon, mesto i veličina majice, dok članarina još nije evidentirana."
+      "description": "Ime, adresa, telefon, mesto, veličina majice, profilna slika i tekst o sebi."
     },
     "membership": {
       "title": "Moja BTL članarina",
@@ -141,11 +141,11 @@
     },
     "editTeam": {
       "title": "Izmena tima",
-      "description": "Naziv, mesto i država tima, za izmenu koja ide na proveru."
+      "description": "Naziv, mesto i država tima."
     },
     "newResult": {
       "title": "Novi rezultat sa trke",
-      "description": "Vreme, dužina, uspon i dokaz sa trke, za rezultat koji ide na proveru."
+      "description": "Vreme, dužina, uspon i dokaz sa trke."
     },
     "verificationQueue": {
       "title": "Red čekanja (administracija)",
@@ -190,7 +190,7 @@
     },
     "proposeTeam": {
       "title": "Predlog tima",
-      "description": "Predloži tim Balkanskoj trkačkoj ligi. Moderator odlučuje o svakom predlogu pre nego što tim uđe u ligu."
+      "description": "Predloži tim Balkanskoj trkačkoj ligi."
     },
     "leagueResults": {
       "title": "Unos rezultata",
@@ -202,15 +202,19 @@
     },
     "reportResult": {
       "title": "Prijava rezultata",
-      "description": "Prijavi svoj rezultat sa trke Balkanske trkačke lige. Moderator proverava svaku prijavu pre nego što uđe u tabelu."
+      "description": "Prijavi svoj rezultat sa trke Balkanske trkačke lige."
     },
     "rateEvent": {
       "title": "Ocena događaja",
-      "description": "Oceni organizaciju, vrednost za novac i ambijent. Ocene bez komentara se objavljuju odmah, a komentar kad ga moderator odobri."
+      "description": "Oceni organizaciju, vrednost za novac i ambijent događaja."
     },
     "competitorData": {
       "title": "Podaci takmičara",
-      "description": "Podaci jednog člana Balkanske trkačke lige, koje vide samo on i administracija."
+      "description": "Podaci jednog člana Balkanske trkačke lige, koje vidi samo administracija."
+    },
+    "unnumberedMemberData": {
+      "title": "Podaci člana bez članskog broja",
+      "description": "Podaci člana koji još nema članski broj, koje vidi samo administracija."
     }
   },
   "shell": {
@@ -259,6 +263,7 @@
     "forgottenPassword": "Zaboravljena lozinka",
     "myProfile": "Moj profil",
     "myData": "Moji podaci",
+    "completeData": "Dopuni podatke",
     "myResults": "Moji rezultati",
     "membership": "Moja članarina",
     "messages": "Poruke",
@@ -278,7 +283,7 @@
   },
   "placeholder": {
     "title": "{name}",
-    "text": "Ovaj ekran dolazi u sledećoj fazi. Struktura i navigacija su već tu, pa se tok može proveriti."
+    "text": "Ovaj ekran je u izradi."
   },
   "home": {
     "results": "Prijavljenih rezultata",
@@ -289,11 +294,6 @@
     "onCourse": "Na stazi",
     "points": "BTL poeni",
     "readySetGo": "Priprema, pozor, SAD!",
-    "moreRuns": {
-      "one": "i još {count} termin",
-      "few": "i još {count} termina",
-      "other": "i još {count} termina"
-    },
     "seeCalendar": "Ceo kalendar",
     "topMen": "Top 10 muškarci",
     "topWomen": "Top 10 žene",
@@ -354,7 +354,7 @@
       "integer": "Unesi ceo broj.",
       "date": "Unesi datum u obliku dd/mm/gggg.",
       "matches": "Ne poklapa se sa prethodnim poljem.",
-      "taken": "Ova vrednost je već zauzeta. Svaki zapis mora imati svoju.",
+      "taken": "Ova vrednost je već zauzeta.",
       "countryMissing": "Izaberi državu uz mesto."
     },
     "choose": "Izaberi",
@@ -362,15 +362,15 @@
     "restOfWorld": "Ostatak sveta",
     "openCalendar": "Otvori kalendar",
     "pasteCut": {
-      "one": "Nalepljeni tekst je bio {count} znak duži nego što staje, pa taj višak nije primljen.",
-      "few": "Nalepljeni tekst je bio {count} znaka duži nego što staje, pa taj višak nije primljen.",
-      "other": "Nalepljeni tekst je bio {count} znakova duži nego što staje, pa taj višak nije primljen."
+      "one": "Nalepljeni tekst je skraćen za {count} znak.",
+      "few": "Nalepljeni tekst je skraćen za {count} znaka.",
+      "other": "Nalepljeni tekst je skraćen za {count} znakova."
     },
     "places": "Ponuđena mesta",
     "yes": "Da",
     "no": "Ne",
     "close": "Zatvori",
-    "countryFromPlace": "Mesto je iz šifarnika, pa državu nosi sa sobom.",
+    "countryFromPlace": "Država se određuje prema izabranom mestu.",
     "explain": "Objašnjenje",
     "country": "Država",
     "explainMark": "i",
@@ -428,13 +428,13 @@
     "healthStatement": "Potvrđujem da poznajem {link} i da mi zdravstveno stanje dozvoljava bavljenje rekreativnim sportom.",
     "doneTitle": "Prijava je zabeležena",
     "resend": "Pošalji potvrdu ponovo",
-    "resent": "Ako ova adresa još čeka potvrdu, šaljemo novu poruku. Ako ne stigne za nekoliko minuta, javi nam se na info@balkanskatrkackaliga.net.",
+    "resent": "Ako ova adresa još čeka potvrdu, šaljemo novu poruku. Ako ne stigne za nekoliko minuta, piši na info@balkanskatrkackaliga.net.",
     "resending": "Tražimo da se potvrda pošalje ponovo...",
     "doneText": "Na {email} šaljemo poruku za potvrdu. Otvori je i potvrdi adresu, jer se nalog aktivira tek tada. Ako ne stigne za nekoliko minuta, pogledaj i neželjenu poštu, pa nam se javi na info@balkanskatrkackaliga.net.",
     "sending": "Šaljemo prijavu...",
-    "formIsNotComplete": "Server nije prihvatio prijavu, jer neki odgovor nije potpun ili ga ne prepoznaje. Proveri odgovore, posebno mesto i državu, pa pošalji ponovo.",
-    "passwordHasLeaked": "Ova lozinka se već našla u javno objavljenim provalama, pa je portal ne prima. Izaberi drugu.",
-    "addressIsTaken": "Ta adresa elektronske pošte je već član lige. Prijavi se postojećom lozinkom ili se registruj sa druge adrese.",
+    "formIsNotComplete": "Prijava nije poslata. Proveri odgovore, posebno mesto i državu, pa pošalji ponovo.",
+    "passwordHasLeaked": "Ova lozinka je na crnoj listi. Izaberi drugu.",
+    "addressIsTaken": "Ova adresa je već registrovana. Prijavi se svojom lozinkom ili koristi drugu adresu.",
     "password": "Lozinka",
     "passwordRepeat": "Ponovi lozinku",
     "parentConsent": "Kucani potpis roditelja ili staratelja",
@@ -449,7 +449,7 @@
     "mother": "Majka",
     "father": "Otac",
     "guardian": "Staratelj",
-    "doneReferral": "Prijava je zabeležena kao preporuka. Član koji te je pozvao dobija zaslugu kad tvoja članarina bude aktivirana.",
+    "doneReferral": "Prijava je zabeležena kao preporuka.",
     "fatherName": "Ime oca",
     "fatherNameHint": "Potrebno za pristup udruženju po zakonu.",
     "idNumber": "Broj ličnog dokumenta",
@@ -520,12 +520,12 @@
     "invite": "Pozovi u trkački par",
     "asked": "Poziv u trkački par je poslat i čeka odgovor.",
     "inviteSubject": "Poziv u trkački par",
-    "inviteBody": "{who} te poziva u trkački par. Par nastaje tek kad ti potvrdiš, i važi za sezonu koja počinje posle 31. decembra.",
+    "inviteBody": "{who} te poziva u trkački par za narednu sezonu.",
     "accept": "Prihvati",
     "refuse": "Odbij",
     "inviteClosed": "Ovaj poziv više nije otvoren.",
     "brokenSubject": "Trkački par je raskinut",
-    "brokenBody": "{who} je od sezone {season} u drugom trkačkom paru, pa je vaš raskinut.",
+    "brokenBody": "Vaš trkački par za sezonu {season} je raskinut. {who} je od te sezone u drugom paru.",
     "sent": "Poslat poziv: {who}.",
     "received": "Primljen poziv: {who}.",
     "endedBody": "{who} je raskinuo vaš trkački par za sezonu {season}.",
@@ -534,17 +534,17 @@
     "breakUp": "Raskini trkački par",
     "forSeason": "Za sezonu {season}.",
     "answerRefused": {
-      "theFormIsNotComplete": "Odgovor nije poslat do kraja, pa trkački par nije napravljen. Osveži stranicu i pokušaj ponovo.",
-      "thePairWouldNotBeMixed": "Trkački par mora da ima jednog muškarca i jednu ženu, pa ovaj par nije napravljen."
+      "theFormIsNotComplete": "Trkački par nije napravljen. Osveži stranicu i pokušaj ponovo.",
+      "thePairWouldNotBeMixed": "Trkački par čine jedan muškarac i jedna žena."
     },
     "breakRefused": {
-      "notHeld": "Ovaj trkački par ne može da se raskine odavde: već je raskinut ili je prestao da važi. Ponovni pokušaj ne pomaže. Osveži stranicu da vidiš kako stvari stoje."
+      "notHeld": "Ovaj trkački par je već raskinut ili više ne važi."
     },
     "inviteRefused": {
-      "theFormIsNotComplete": "Zahtev nije poslat do kraja, pa poziv u trkački par nije poslat. Osveži stranicu i pokušaj ponovo.",
-      "thePairWouldNotBeMixed": "Trkački par mora da ima jednog muškarca i jednu ženu, pa poziv nije poslat.",
-      "aPairAlreadyHolds": "Jedno od vas dvoje već ima trkački par za sezonu koja se formira, pa poziv nije poslat.",
-      "notThere": "Poziv ne može da se pošalje odavde. Ponovni pokušaj ne pomaže. Osveži stranicu da vidiš kako stvari stoje."
+      "theFormIsNotComplete": "Poziv nije poslat. Osveži stranicu i pokušaj ponovo.",
+      "thePairWouldNotBeMixed": "Trkački par čine jedan muškarac i jedna žena.",
+      "aPairAlreadyHolds": "Jedno od vas dvoje već ima trkački par za narednu sezonu.",
+      "notThere": "Poziv nije poslat. Osveži stranicu."
     }
   },
   "topBoards": {
@@ -557,14 +557,14 @@
       "ultra": "Najviše ultramaratona"
     },
     "pairs": "Najbolji trkački parovi",
-    "pairsNone": "U ovoj sezoni nijedan trkački par nema zajedničku trku. Par se pravi obostranom potvrdom, najkasnije do 31. decembra, da bi važio u narednoj sezoni, a na ovu listu ulazi kad njih dvoje istrče istu trku.",
+    "pairsNone": "U ovoj sezoni nijedan trkački par još nema zajedničku trku.",
     "sharedRaces": {
       "one": "{count} zajednička trka",
       "few": "{count} zajedničke trke",
       "other": "{count} zajedničkih trka"
     },
     "progress": "Najbolji napredak",
-    "progressEmpty": "Na ovoj listi je onaj ko je trčao i prethodne sezone i popravio njen zbir bodova, jer se meri prirast u odnosu na nju. U ovoj sezoni nema nijednog takvog.",
+    "progressEmpty": "U ovoj sezoni još niko nije popravio zbir bodova iz prethodne sezone.",
     "bestRaces": "Najbolji pojedinačni rezultati",
     "kilometers": "Najviše kilometara",
     "onCourse": "Najduže na stazi",
@@ -616,7 +616,7 @@
     "place": "Mesto",
     "addComment": "Dodaj komentar",
     "commentTitle": "Ocena i komentar",
-    "commentIntro": "Ocene bez komentara se objavljuju odmah, a komentar kad ga moderator odobri.",
+    "commentIntro": "Ocena se vidi odmah, a komentar se pojavljuje naknadno.",
     "rating": {
       "organisation": "Organizacija",
       "value": "Vrednost za novac",
@@ -626,14 +626,14 @@
       "unrated": "Bez ocene"
     },
     "commentText": "Komentar",
-    "commentNeedsMarks": "Dajte sve tri ocene da biste mogli da pošaljete.",
+    "commentNeedsMarks": "Daj sve tri ocene.",
     "commentSend": "Pošalji",
     "commentSending": "Šalje se",
     "commentCancel": "Odustani",
-    "commentSent": "Ocena je poslata na odobrenje.",
+    "commentSent": "Ocena je poslata, a komentar će se uskoro pojaviti.",
     "commentPublished": "Ocena je objavljena.",
     "comments": "Komentari",
-    "noComments": "Za ovaj događaj još nema odobrenih komentara.",
+    "noComments": "Za ovaj događaj još nema komentara.",
     "organiserPage": "Strana organizatora",
     "races": "Trke",
     "competitor": "Takmičar",
@@ -677,20 +677,20 @@
     },
     "fromEdition": "Izdanje {year}.",
     "notRanIt": "Ovaj događaj ocenjuju oni koji su ga istrčali",
-    "notRanItWhy": "Ocena je iskustvo sa trke, ne mišljenje o njoj, pa se daje uz upisan rezultat na ovom događaju. Unesi rezultat sa reda te trke; kad ga moderator odobri, ocena se otvara.",
+    "notRanItWhy": "Ocenu daju članovi koji imaju rezultat sa ovog događaja. Rezultat unosiš sa reda te trke.",
     "going": "Ko ide",
     "goingOn": "Idem na ovaj događaj",
     "goingNobody": "Još se niko nije prijavio.",
-    "goingRunAlready": "Ovaj događaj je već održan, pa se najava dolaska više ne prima.",
+    "goingRunAlready": "Ovaj događaj je već održan.",
     "writeTo": "Piši članu {name}",
     "writeSubject": "Dogovor za {event}",
     "writeSend": "Pošalji poruku",
     "written": "Poruka je poslata članu {name}, u Poruke na portalu.",
     "someMember": "Član lige",
     "commentsForMembers": "Komentare vide članovi sa važećom članarinom.",
-    "writeNeedsWords": "Napiši poruku da bi mogao da je pošalješ.",
-    "writeFormIncomplete": "Server nije prihvatio poruku, jer mu nije stigla cela. Osveži stranu i pokušaj ponovo.",
-    "writeMemberUnknown": "Portal ne poznaje tog člana, pa poruka nije poslata."
+    "writeNeedsWords": "Napiši poruku.",
+    "writeFormIncomplete": "Poruka nije poslata. Osveži stranu i pokušaj ponovo.",
+    "writeMemberUnknown": "Ovog člana više nema na portalu."
   },
   "category": {
     "rookieMale": "Početnici",
@@ -805,8 +805,7 @@
       "label": "Delovi profila",
       "overview": "Rezultati",
       "awards": "Priznanja",
-      "data": "Podaci",
-      "finish": "Dovrši profil"
+      "data": "Podaci"
     },
     "moreDucats": "Učitaj još dukata",
     "showingDucats": "Prikazano {shown} od {total}",
@@ -847,19 +846,19 @@
     "proposeSubmit": "Pošalji predlog",
     "proposeSending": "Šalje se",
     "proposeNote": "Zašto ovaj tim",
-    "proposeNote2": "Tim postoji tek kad ga odobri moderator. Do tada nije vidljiv nigde na portalu.",
+    "proposeNote2": "Tim se pojavljuje na portalu kad predlog bude prihvaćen.",
     "proposeBody": "{city}, {country}. {note}",
     "proposeDoneTitle": "Predlog je poslat",
-    "proposeDone": "Tim \"{name}\" čeka odluku moderatora. Dok čeka, nije vidljiv nigde na portalu.",
-    "proposeShut": "Tim se osniva u prelaznom roku, od 11. novembra do 31. decembra.",
+    "proposeDone": "Tim \"{name}\" se pojavljuje na portalu kad predlog bude prihvaćen.",
+    "proposeShut": "Tim se osniva u prelaznom roku, od 21. novembra do 31. decembra.",
     "edit": "Izmeni",
     "editTitle": "Izmena tima",
     "editSubmit": "Pošalji izmenu",
-    "editNote": "Izmena ponovo prolazi verifikaciju. Dok čeka odluku moderatora, na portalu stoje postojeći podaci tima.",
+    "editNote": "Izmena se vidi na portalu kad bude prihvaćena.",
     "editDoneTitle": "Izmena je poslata",
-    "editDone": "Izmena tima \"{name}\" čeka odluku moderatora. Dok čeka, na portalu stoje postojeći podaci.",
-    "proposeTaken": "Tim pod ovim nazivom već postoji u ligi. Velika slova, kvačice i znaci interpunkcije se ne računaju kao razlika, a ćirilica i latinica su isto pismo. Izaberi drugi naziv.",
-    "proposeNoAddress": "Od ovog naziva se ne može napraviti adresa strane tima. Dodaj bar jedno slovo naše abecede ili ćirilice, ili cifru.",
+    "editDone": "Izmena tima \"{name}\" je poslata i vidi se na portalu kad bude prihvaćena.",
+    "proposeTaken": "Tim sa ovim nazivom već postoji. Izaberi drugi naziv.",
+    "proposeNoAddress": "Naziv tima mora da ima bar jedno slovo ili cifru.",
     "proposeFormIncomplete": "Naziv, mesto i država moraju biti popunjeni.",
     "proposeCountryUnknown": "Izabrana država nije prepoznata.",
     "proposeLinkNotShaped": "Uneta veza nije ispravna.",
@@ -876,45 +875,45 @@
     "joinWaiting": "Prijave koje čekaju",
     "joinWhenPaid": "U tim za sezonu {season} ulaziš kad platiš članarinu za tu sezonu. Uplatu ćeš naći na strani Moja članarina.",
     "decideRefused": {
-      "theFormIsNotComplete": "Odgovor nije poslat do kraja, pa prijava nije odgovorena. Osveži stranicu i pokušaj ponovo.",
-      "theWindowIsShut": "Prelazni rok se u međuvremenu zatvorio, pa član nije primljen u tim. Prijava i dalje čeka: rok se otvara 11. novembra i traje do 31. decembra."
+      "theFormIsNotComplete": "Odgovor nije poslat. Osveži stranicu i pokušaj ponovo.",
+      "theWindowIsShut": "Prelazni rok je zatvoren. Prijava čeka sledeći rok, od 21. novembra do 31. decembra."
     },
     "applyRefused": {
-      "aQuestionAlreadyStands": "Već imaš prijavu koja čeka odgovor tima, pa nova nije poslata. Prijavu povlačiš na strani tima kome si je poslao.",
-      "aQuestionAlreadyStandsFemale": "Već imaš prijavu koja čeka odgovor tima, pa nova nije poslata. Prijavu povlačiš na strani tima kome si je poslala."
+      "aQuestionAlreadyStands": "Već imaš prijavu koja čeka odgovor tima. Možeš da je povučeš na strani tog tima.",
+      "aQuestionAlreadyStandsFemale": "Već imaš prijavu koja čeka odgovor tima. Možeš da je povučeš na strani tog tima."
     },
     "invite": "Pozovi u tim",
     "invited": "Poziv u tim \"{team}\" je poslat.",
     "inviteRefused": {
-      "theFormIsNotComplete": "Zahtev nije poslat do kraja, pa poziv nije poslat. Osveži stranicu i pokušaj ponovo.",
-      "theWindowIsShut": "Prelazni rok se u međuvremenu zatvorio, pa poziv nije poslat. Rok se otvara 11. novembra i traje do 31. decembra.",
-      "heIsAlreadyInATeam": "Član je u međuvremenu ušao u tim, pa poziv nije poslat.",
-      "heIsAlreadyInATeamFemale": "Članica je u međuvremenu ušla u tim, pa poziv nije poslat."
+      "theFormIsNotComplete": "Poziv nije poslat. Osveži stranicu i pokušaj ponovo.",
+      "theWindowIsShut": "Prelazni rok je zatvoren. Sledeći je od 21. novembra do 31. decembra.",
+      "heIsAlreadyInATeam": "Član je u međuvremenu ušao u tim.",
+      "heIsAlreadyInATeamFemale": "Članica je u međuvremenu ušla u tim."
     },
     "inviteSubject": "Poziv u tim \"{team}\"",
     "inviteBody": "Tim \"{team}\" te poziva da od naredne sezone trčiš za njih.",
     "inviteAccept": "Prihvati",
     "inviteRefuse": "Odbij",
     "inviteSent": "Poslati pozivi",
-    "applicationsUnreadable": "Spisak prijava se ne može učitati, pa se ne zna da li neko čeka odgovor tima.",
-    "invitationsUnreadable": "Spisak poslatih poziva se ne može učitati, pa se ne zna koji pozivi još čekaju.",
+    "applicationsUnreadable": "Spisak prijava se trenutno ne može učitati.",
+    "invitationsUnreadable": "Spisak poslatih poziva se trenutno ne može učitati.",
     "inviteWithdraw": "Povuci poziv",
     "inviteWithdrawNamed": "Povuci poziv: {name}",
     "inviteLapsed": "Član kome je članarina istekla",
     "inviteAccepted": "Prihvatio si ovaj poziv i od naredne sezone trčiš za tim \"{team}\".",
     "inviteAcceptedFemale": "Prihvatila si ovaj poziv i od naredne sezone trčiš za tim \"{team}\".",
-    "inviteOvertaken": "U međuvremenu si ušao u tim \"{team}\", pa ovaj poziv više ne stoji.",
-    "inviteOvertakenFemale": "U međuvremenu si ušla u tim \"{team}\", pa ovaj poziv više ne stoji.",
-    "inviteOvertakenUnnamed": "U međuvremenu si ušao u tim, pa ovaj poziv više ne možeš da prihvatiš.",
-    "inviteOvertakenUnnamedFemale": "U međuvremenu si ušla u tim, pa ovaj poziv više ne možeš da prihvatiš.",
+    "inviteOvertaken": "Već si u timu {team}.",
+    "inviteOvertakenFemale": "Već si u timu {team}.",
+    "inviteOvertakenUnnamed": "Već si u timu.",
+    "inviteOvertakenUnnamedFemale": "Već si u timu.",
     "inviteClosed": "Ovaj poziv više ne stoji.",
     "inviteGone": "Tim koji te je pozvao više ne postoji.",
-    "inviteWaits": "Poziv čeka: u tim se ulazi samo u prelaznom roku, od 11. novembra do 31. decembra.",
+    "inviteWaits": "Poziv čeka prelazni rok, od 21. novembra do 31. decembra.",
     "inviteMissedSubject": "Poziv u tim je ostao bez odgovora",
-    "inviteMissedBody": "{name} je u međuvremenu ušao u tim \"{team}\", pa vaš poziv više ne stoji.",
-    "inviteMissedBodyFemale": "{name} je u međuvremenu ušla u tim \"{team}\", pa vaš poziv više ne stoji.",
+    "inviteMissedBody": "{name} je u međuvremenu ušao u tim \"{team}\".",
+    "inviteMissedBodyFemale": "{name} je u međuvremenu ušla u tim \"{team}\".",
     "answerRefused": {
-      "theFormIsNotComplete": "Odgovor nije poslat do kraja, pa poziv nije odgovoren. Osveži stranicu i pokušaj ponovo."
+      "theFormIsNotComplete": "Odgovor nije poslat. Osveži stranicu i pokušaj ponovo."
     }
   },
   "leagues": {
@@ -938,10 +937,10 @@
   },
   "pricing": {
     "rows": {
-      "early": "11. do 20. novembra",
-      "regular": "21. novembra do 31. decembra",
+      "early": "21. do 30. novembra",
+      "regular": "1. do 31. decembra",
       "late": "1. januara do 31. marta",
-      "season": "1. aprila do 10. novembra",
+      "season": "1. aprila do 20. novembra",
       "junior": "Uzrast do 14 godina",
       "referral": "Preporuka novog člana"
     },
@@ -967,10 +966,10 @@
     "needed": "Za ovo treba prijava",
     "neededText": "Ovaj deo portala vide samo članovi.",
     "noRecord": "Ovaj deo je za takmičare",
-    "noRecordText": "Prijavljen si, ali uz ovaj nalog ne stoji takmičarski zapis, pa ovde nema šta da se prikaže.",
-    "needsBoth": "Upiši adresu i lozinku da bi mogao da se prijaviš.",
+    "noRecordText": "Ovaj nalog nema takmičarski profil.",
+    "needsBoth": "Upiši adresu i lozinku.",
     "refused": "Prijava nije uspela. Adresa ili lozinka nisu tačne, ili je nalog privremeno zaključan zbog previše neuspelih pokušaja.",
-    "noWho": "Prijava je prošla, ali portal nije uspeo da sazna ko si. Osveži stranu, pa ako se ponovi, javi nam.",
+    "noWho": "Prijava nije završena. Osveži stranu i pokušaj ponovo, a ako se ponovi, piši na info@balkanskatrkackaliga.net.",
     "forgotten": "Zaboravljena lozinka"
   },
   "newPassword": {
@@ -978,14 +977,14 @@
     "intro": "Upiši novu lozinku za svoj nalog i ponovi je.",
     "password": "Nova lozinka",
     "passwordRepeat": "Ponovi novu lozinku",
-    "passwordHint": "Najmanje {count} znakova. Drugih uslova nema, ali lozinka ne sme da bude jedna od onih koje su se već našle u javno objavljenim provalama.",
+    "passwordHint": "Najmanje {count} znakova. Lozinka ne sme da bude iz javno objavljenih provala podataka.",
     "submit": "Postavi lozinku",
     "sending": "Šalje se",
     "done": "Lozinka je postavljena. Sada možeš da se prijaviš.",
-    "noToken": "Ova adresa ne nosi vezu iz poruke, pa nema šta da se postavi. Otvori vezu iz poruke koju ti je portal poslao.",
+    "noToken": "Otvori vezu iz poruke koju ti je portal poslao.",
     "linkIsNotValid": "Veza je istekla ili je već iskorišćena. Zatraži novu sa strane za prijavu.",
     "formIsNotComplete": "Obe lozinke moraju da budu popunjene, iste i duge najmanje {count} znakova.",
-    "passwordHasLeaked": "Ova lozinka se već našla u javno objavljenim provalama, pa je portal ne prima. Izaberi drugu."
+    "passwordHasLeaked": "Ova lozinka se pojavila u javno objavljenim provalama podataka. Izaberi drugu."
   },
   "forgottenPassword": {
     "title": "Zaboravljena lozinka",
@@ -993,24 +992,24 @@
     "email": "Adresa elektronske pošte",
     "submit": "Pošalji vezu",
     "sending": "Šalje se",
-    "needsAddress": "Upiši adresu elektronske pošte da bi mogao da zatražiš vezu.",
+    "needsAddress": "Upiši adresu elektronske pošte.",
     "done": "Ako na toj adresi postoji nalog, šaljemo poruku sa vezom. Pogledaj sanduče, pa i neželjenu poštu ako je nema. Ako ne stigne za nekoliko minuta, javi nam se na info@balkanskatrkackaliga.net."
   },
   "confirmAddress": {
     "title": "Potvrda adrese",
     "working": "Potvrđujemo adresu, samo trenutak.",
     "done": "Adresa je potvrđena. Sada možeš da se prijaviš.",
-    "noToken": "Ova adresa ne nosi vezu iz poruke, pa nema šta da se potvrdi. Otvori vezu iz poruke koju ti je portal poslao.",
+    "noToken": "Otvori vezu iz poruke koju ti je portal poslao.",
     "linkIsNotValid": "Veza je istekla ili je već iskorišćena. Zatraži novu sa strane za prijavu."
   },
   "server": {
     "signIn": "Prijava",
-    "refused": "Server je odbio zahtev uz razlog {reason}, koji ovaj ekran ne prepoznaje.",
-    "rejected": "Portal nije uspeo da dokaže serveru da zahtev dolazi sa ove strane. Osveži stranu i pokušaj ponovo.",
+    "refused": "Zahtev nije prihvaćen ({reason}).",
+    "rejected": "Zahtev nije prošao. Osveži stranu i pokušaj ponovo.",
     "locked": "Pregledač je zaboravio pristupnu šifru za probni period. Otvori portal u novoj kartici i ukucaj je tamo, pa se vrati ovde i pošalji ponovo; ono što si upisao je i dalje tu.",
     "lockedOpen": "Otvori u novoj kartici",
-    "wrong": "Server je odgovorio brojem {status} i ništa nije promenjeno. Pokušaj ponovo za koji minut.",
-    "malformed": "Portal je poslao podatak u obliku koji server ne razume. Ništa nije promenjeno. Ovo je greška portala, javi nam.",
+    "wrong": "Ništa nije sačuvano (greška {status}). Pokušaj ponovo za koji minut.",
+    "malformed": "Ništa nije sačuvano. Greška je na našoj strani; piši nam na info@balkanskatrkackaliga.net.",
     "nothing": "Portal nije uspeo da dođe do servera. Proveri vezu i pokušaj ponovo."
   },
   "myProfile": {
@@ -1019,25 +1018,25 @@
   "myResults": {
     "title": "Moji rezultati",
     "add": "Unesi rezultat",
-    "sentIn": "Poslato na proveru",
+    "sentIn": "Poslato",
     "sendAgain": "Ispravi i pošalji ponovo",
     "sendAgainNamed": "Ispravi i pošalji ponovo: {name}",
     "change": "Izmeni",
     "changeNamed": "Izmeni rezultat: {name}",
     "own": "Moje",
     "distance": "Dist.",
-    "noneSent": "Nijedan rezultat još nije poslat na proveru.",
+    "noneSent": "Još nisi poslao nijedan rezultat.",
     "counted": "Uračunato"
   },
   "newResult": {
     "title": "Unos rezultata",
-    "submit": "Pošalji na proveru",
+    "submit": "Pošalji rezultat",
     "again": "Ispravljaš rezultat koji je odbijen. Razlog je bio: {reason}",
-    "fixingCounted": "Menjaš rezultat koji je već uračunat. Dok se izmena ne odobri, u poretku ostaje stari rezultat, a odbijena izmena ništa ne menja. Uz izmenu mora da ide nov dokaz.",
+    "fixingCounted": "Menjaš rezultat koji je već uračunat. Dok izmena ne bude potvrđena, u poretku ostaje stari rezultat. Uz izmenu priloži nov dokaz.",
     "needsProof": "Uz izmenu uračunatog rezultata mora da ide link ka zvaničnim rezultatima ili slika kao dokaz.",
     "needsTime": "Vreme mora da bude uneto. Sati, minuti i sekunde ne mogu svi biti nula.",
-    "pointsNotFinal": "Račun nije konačan. Liga ga potvrđuje pri verifikaciji, i broj se može promeniti.",
-    "againDone": "Rezultat je ponovo poslat na proveru.",
+    "pointsNotFinal": "Bodovi su konačni kad liga potvrdi rezultat.",
+    "againDone": "Rezultat je ponovo poslat.",
     "eventName": "Događaj",
     "eventHint": "Izaberi događaj iz kalendara ili upiši naziv novog. Novi događaj i trka ulaze u kalendar kad liga potvrdi rezultat.",
     "raceOfTheEventHint": "Izaberi trku ovog događaja ili upiši novu.",
@@ -1057,7 +1056,7 @@
     "linkHint": "Obavezno, osim ukoliko prilažete slike rezultata / aplikacije kao dokaz.",
     "photo": "Slika kao dokaz",
     "doneTitle": "Rezultat je poslat",
-    "doneWaiting": "Moderator je proverava. Kad je potvrdi, ulazi u rang liste i u tvoj profil.",
+    "doneWaiting": "Rezultat ulazi u rang liste i na tvoj profil kad bude potvrđen.",
     "toMine": "Moji rezultati",
     "another": "Unesi još jedan",
     "photoHint": "Snimak sa sata, diploma ili nešto treće. Komentar postaje obavezan, a link ka rezultatima neobavezan.",
@@ -1088,7 +1087,7 @@
     }
   },
   "status": {
-    "pending": "Čeka proveru",
+    "pending": "Na čekanju",
     "rejected": "Odbijeno"
   },
   "messages": {
@@ -1103,14 +1102,14 @@
   "membership": {
     "title": "Moja članarina",
     "noRecordTitle": "Tvoji podaci o članstvu nisu stigli",
-    "noRecord": "Portal ne može da pročita tvoj članski zapis, pa obnova članarine sada nije moguća. Osveži stranicu i pokušaj ponovo.",
+    "noRecord": "Podaci o članstvu se trenutno ne mogu učitati. Osveži stranicu i pokušaj ponovo.",
     "status": "Stanje",
     "active": "Član od {season}. sezone.",
     "feeExempt": "Oslobođen si plaćanja članarine za sezonu {season}, odlukom Upravnog odbora.",
-    "notYetSold": "Članarina se još ne prodaje. Naplata kreće 11. novembra.",
+    "notYetSold": "Članarina se još ne prodaje. Naplata kreće 21. novembra.",
     "junior": "Ko u sezoni ima bar jedan dan 14 godina ili manje plaća {eur} EUR, a iz Srbije {rsd} RSD, bez obzira na datum uplate.",
     "paypal": "PayPal",
-    "paypalNote": "PayPal adresa je poslovna, na Sportsko udruženje BTL. PayPal se ne nudi članovima iz Srbije, jer plaćanje njime između rezidenata Srbije nije dozvoljeno.",
+    "paypalNote": "PayPal adresa glasi na Sportsko udruženje BTL.",
     "paypalAddressLabel": "PayPal adresa",
     "paypalAmountLabel": "Iznos (sa uračunatom taksom)",
     "paypalNoteLabel": "Napomena",
@@ -1125,24 +1124,24 @@
     "paypalNoteCopyFailed": "Kopiranje nije uspelo. Kopiraj napomenu ručno.",
     "ipsQrLabel": "IPS QR kod za uplatnicu",
     "renewal": "Obnova članarine za {season}.",
-    "renewalOpen": "Obnova je otvorena. Ne registruješ se ponovo: članski broj, profil i istorija ostaju tvoji.",
-    "renewalShut": "Obnova se otvara 11. novembra i traje do 31. decembra.",
+    "renewalOpen": "Obnova je otvorena.",
+    "renewalShut": "Obnova se otvara 21. novembra i traje do 31. decembra.",
     "chooseCategory": "U kojoj kategoriji se takmičiš {season}.",
     "ageBand": "U svojoj starosnoj kategoriji",
     "firstSeasonBand": "U početničkoj kategoriji",
-    "firstSeasonOpen": "Početnička kategorija ti je još otvorena, jer nijednu zvaničnu sezonu nisi završio sa {points} i više bodova.",
-    "firstSeasonClosed": "Početnička kategorija ti je zatvorena, jer si zvaničnu sezonu završio sa {points} i više bodova. Izlazak iz nje je nepovratan.",
-    "choiceRefused": "Izbor nije sačuvan, jer je rok istekao 1. januara u 10.00. Kategorija ostaje onakva kakva je bila.",
+    "firstSeasonOpen": "Početnička kategorija ti je još uvek dostupna.",
+    "firstSeasonClosed": "Početnička kategorija ti je nedostupna, jer si zvaničnu sezonu završio sa {points} i više bodova.",
+    "choiceRefused": "Rok za izbor kategorije je istekao 1. januara u 10.00.",
     "categoryYouRunIn": "U sezoni {season} takmičiš se u kategoriji: {category}",
-    "renew": "Podatke za uplatu vidiš u nastavku. Čim uplata stigne, moderator je potvrđuje i tvoje članstvo se produžava.",
+    "renew": "Podaci za uplatu su u nastavku. Članstvo se produžava kad uplata bude evidentirana.",
     "transferWindow": "Prelazni rok",
     "noTeam": "Trenutno nisi ni u jednom timu.",
     "inTeam": "Trenutno si u timu {team}.",
     "transferOpen": "Prelazni rok je otvoren do 31. decembra u 23.59. Promena stupa na snagu 1. januara {season}.",
-    "transferShut": "Prelazni rok je zatvoren. Otvara se 11. novembra i traje do 31. decembra. Ako se do tada ništa ne dogovori, ostaješ tamo gde jesi.",
+    "transferShut": "Prelazni rok je zatvoren. Otvara se 21. novembra i traje do 31. decembra.",
     "askToJoin": "U tim ulaziš prijavom na strani tima ili prihvatanjem poziva koji ti stigne u sanduče.",
     "leaveTeam": "Izađi iz tima",
-    "leaveTeamAsk": "Sigurno izlaziš iz tima {team}? Nazad se vraćaš samo ako tim prihvati tvoju prijavu ili te ponovo pozove.",
+    "leaveTeamAsk": "Sigurno želiš da napustiš tim {team}?",
     "leaveTeamSure": "Potvrdi izlazak",
     "leaveTeamKeep": "Odustani",
     "payNow": "Uplatnica",
@@ -1152,36 +1151,36 @@
     "reference": "Poziv na broj",
     "purposeLabel": "Svrha uplate",
     "priceNow": "Danas članarina košta {eur} EUR, a iz Srbije {rsd} RSD.",
-    "costs": "Uz uplatu u evrima ide i taksa za obradu plaćanja od {fee} EUR, koja nije članarina nego trošak obrade kod platnog posrednika, a kursna razlika i naknada tvoje banke ostaju na tebi. Uplata u dinarima nema ni taksu ni kursnu razliku.",
+    "costs": "Uz uplatu u evrima ide i taksa za obradu plaćanja od {fee} EUR. Kursnu razliku i naknadu banke plaća uplatilac.",
     "referral": "Program preporuke",
-    "referralNote": "Svako ko se učlani preko tvog linka i aktivira članarinu donosi ti {amount} na balans. Ne u trenutku prijave nego kad članarina bude aktivirana.",
+    "referralNote": "Za svakog ko se učlani preko tvog linka dobijaš {amount} na balans, kad mu članarina bude aktivirana.",
     "copyReferralLink": "Kopiraj link za preporuku",
     "linkCopied": "Link je kopiran.",
     "copyFailed": "Kopiranje nije uspelo. Kopiraj link ručno.",
     "balance": "na balansu",
-    "balanceNote": "Balansom se plaćaju buduće članarine. Ne isplaćuje se u novcu i ne prenosi se drugom članu.",
-    "feeExemptNoRenewal": "Oslobođen si plaćanja članarine, pa nema šta da uplatiš.",
+    "balanceNote": "Balansom se plaćaju buduće članarine. Ne isplaćuje se u novcu i ne prenosi se na drugog člana.",
+    "feeExemptNoRenewal": "Članarina za sezonu {season} je izmirena.",
     "amountLabel": "Iznos",
-    "fromTheBalance": "Balans pokriva {fromTheBalance}, pa uplaćuješ {toTransfer}.",
+    "fromTheBalance": "Balans pokriva {fromTheBalance}, a za uplatu ostaje {toTransfer}.",
     "amountNotArrived": "Iznos za uplatu nije stigao. Osveži stranicu i pokušaj ponovo.",
-    "notPaidYet": "Članarina ti još nije evidentirana, pa još nemaš članski broj. Dobijaš ga kad moderator evidentira tvoju uplatu.",
+    "notPaidYet": "Članski broj dobijaš kad tvoja uplata bude evidentirana.",
     "firstPayment": "Uplata članarine za {season}.",
     "firstPaymentOpen": "Uplata je otvorena.",
-    "firstRenew": "Podatke za uplatu vidiš u nastavku. Čim uplata stigne, moderator je potvrđuje i dobijaš članski broj.",
-    "recognisedByName": "Pošto još nemaš članski broj, uplata nema poziv na broj. Prepoznaje se po imenu, a moderator je potvrđuje ručno.",
+    "firstRenew": "Podaci za uplatu su u nastavku. Članski broj dobijaš kad uplata bude evidentirana.",
+    "recognisedByName": "Uplata za sada nema poziv na broj. Prepoznajemo je po imenu uplatioca.",
     "noRanking": "Članarina plaćena sada ne daje pravo rangiranja.",
     "paidFor": "Članarina za sezonu {season} je plaćena.",
     "paidFromBalance": "Članarina za sezonu {season} je plaćena iz balansa.",
-    "coveredByTheBalance": "Tvoj balans iz programa preporuke pokriva članarinu za sezonu {season}. Ono što preostane ostaje na balansu za sledeću sezonu.",
+    "coveredByTheBalance": "Tvoj balans iz programa preporuke pokriva članarinu za sezonu {season}.",
     "letMeIn": "Aktiviraj članstvo",
     "letIn": "Članstvo za sezonu {season} je aktivirano.",
     "letInNumber": "Tvoj članski broj je {number}.",
     "letInBoxes": "Dodaj profilnu sliku i tekst o sebi",
     "letInAlready": "Članstvo za ovu sezonu je već aktivirano.",
-    "letInNothingToPay": "Za ovu sezonu nemaš članarinu za plaćanje.",
-    "letInNotEnough": "Balans više ne pokriva celu članarinu, pa su ispod podaci za uplatu ostatka.",
-    "notPaidYetCovered": "Članarina ti još nije evidentirana, pa još nemaš članski broj. Dobijaš ga kad aktiviraš članstvo iz balansa.",
-    "alreadyPaid": "Članarina za {season} je već plaćena, pa nema šta da uplatiš."
+    "letInNothingToPay": "Članarina za ovu sezonu je izmirena.",
+    "letInNotEnough": "Balans ne pokriva celu članarinu. Podaci za uplatu ostatka su ispod.",
+    "notPaidYetCovered": "Članski broj dobijaš kad aktiviraš članstvo iz balansa.",
+    "alreadyPaid": "Članarina za sezonu {season} je plaćena."
   },
   "review": {
     "title": "Red za proveru rezultata",
@@ -1200,11 +1199,11 @@
     "amendTitle": "Ispravka pre odluke",
     "amendSave": "Odobri sa ispravkom",
     "amendCancel": "Odustani",
-    "amendNote": "Upisuješ mere takmičara umesto onih koje je prijavio i odobravaš rezultat sa njima. Mere koje trka zadaje ne menjaju se ovde nego na samoj trci, gde ispravka stiže svima koji su je istrčali.",
+    "amendNote": "Odobravaš rezultat sa dimenzijama trke koje ovde upišeš.",
     "sendBackNamed": "Odbijanje: {name}",
     "reason": "Razlog odbijanja",
-    "reasonPlaceholder": "Bez razloga se ne odbija. Član dobija tvoj razlog u poruci.",
-    "reasonKeptPlaceholder": "Bez razloga se ne odbija. Poruka ne ide, jer nema kome.",
+    "reasonPlaceholder": "Razlog koji upišeš stiže članu u poruci.",
+    "reasonKeptPlaceholder": "Upiši razlog odbijanja.",
     "instructionPlaceholder": "Napiši tačno šta na slici treba promeniti da bi bila prihvaćena.",
     "unusableLink": "Član je poslao adresu koju portal ne otvara.",
     "sentOn": "Poslato",
@@ -1224,8 +1223,8 @@
       "choose": "Izaberi PDF izvoda",
       "taking": "Čitam izvod {name}…",
       "taken": "Izvod broj {number} od {dated} je učitan. Uplate proknjižene same od sebe: {booked}. Uplate koje čekaju tvoju potvrdu: {waiting}. Uplate koje su već bile evidentirane: {already}.",
-      "notUnderstood": "Server je primio izvod, ali portal ne ume da pročita njegov odgovor. Osveži stranu da vidiš šta je proknjiženo.",
-      "wrongKind": "Izvod mora biti PDF. Ovaj fajl nije, pa nije primljen.",
+      "notUnderstood": "Izvod je primljen. Osveži stranu da vidiš proknjižene stavke.",
+      "wrongKind": "Izvod mora biti PDF.",
       "bookedLine": "Proknjiženo samo od sebe: {whose}, {amount}",
       "alreadyLine": "Već evidentirano: {whose}, sezona {season}",
       "candidate": "{whose} ({number}), {city}",
@@ -1266,12 +1265,12 @@
       },
       "refused": {
         "theStatementIsMissing": "Izvod nije stigao do servera. Izaberi PDF izvoda ponovo.",
-        "theStatementIsTooLarge": "Izvod je veći od 2 MB, pa nije primljen.",
-        "theFileIsNotAStatement": "Ovo nije izvod AIK banke koji portal ume da pročita, pa ništa nije proknjiženo.",
+        "theStatementIsTooLarge": "Izvod je veći od 2 MB.",
+        "theFileIsNotAStatement": "Ovo nije izvod AIK banke.",
         "theStatementIsOfAnotherAccount": "Ovo je izvod drugog računa. Portal čita samo izvod računa 105-0000000003284-71."
       }
     },
-    "reasonNeeded": "Upiši razlog da bi mogao da pošalješ."
+    "reasonNeeded": "Upiši razlog."
   },
   "admin": {
     "title": "Administracija",
@@ -1348,7 +1347,7 @@
       "openNamed": "Otvori: {name}",
       "back": "Nazad na spisak",
       "saved": "Sačuvano",
-      "savedNote": "Ovo je zapamćeno. Proveri vrednosti; ako nešto nije kako treba, vrati se na spisak i otvori zapis ponovo.",
+      "savedNote": "Sačuvano.",
       "new": {
         "members": "Novi član",
         "events": "Novi događaj",
@@ -1425,18 +1424,18 @@
       "ageBand4054": "40 do 54",
       "ageBand55": "55 i stariji"
     },
-    "pricingFixed": "Periodi su stalni i ponavljaju se svake godine, pa se redovi ne dodaju i ne brišu. Menjaju se cene i nazivi perioda.",
+    "pricingFixed": "Periodi se ponavljaju svake godine. Ovde se menjaju cene i nazivi perioda.",
     "period": "Period u godini",
     "everyPayment": "Svaka uplata",
     "processingFeeHeading": "Taksa za obradu",
-    "processingFee": "Uplata u evrima na izvodu je veća za taksu za obradu plaćanja. Taksa nije članarina i ne broji se u nju.",
-    "raceTaken": "Ovaj događaj već ima trku te dužine tog dana. Dve trke koje se ni po čemu ne razlikuju niko ne može da razazna.",
+    "processingFee": "Uplata u evrima na izvodu je veća za taksu za obradu plaćanja.",
+    "raceTaken": "Ovaj događaj već ima trku te dužine tog dana.",
     "referral": "Preporuka",
     "corrected": "Ispravljeno",
-    "referralNote": "Iznos koji leže na balans preporučiocu kad se novom članu aktivira članarina. Cenovnik je izvor tog iznosa: članska strana i uslovi korišćenja govore o njemu. Podešava se do 11. novembra, za sezonu koja tada počinje da se obnavlja; od tog dana stoji.",
-    "referralSettled": "Iznos preporuke za sezonu {season} se više ne menja. Obnova te sezone je otvorena od 11. novembra, a iznos se podešava do tog dana.",
-    "referralOpen": "Iznos koji sada upišeš važi za sezonu {season}, jer se podešava do 11. novembra. Portal pamti jedan iznos i ne pamti prethodne, pa isti upis menja i iznos koji od tog trenutka stoji. Iznos po sezonama dolazi sa bazom.",
-    "referralRunning": "Sezona {season} je već u toku. Njen iznos je zaključan 11. novembra prethodne godine, a ovaj upis ga ipak menja, jer portal drži jedan iznos.",
+    "referralNote": "Iznos koji se upisuje na balans preporučiocu kad se novom članu aktivira članarina. Podešava se do 21. novembra, za sezonu koja tada ide u prodaju.",
+    "referralSettled": "Iznos preporuke za sezonu {season} se više ne menja. Obnova te sezone je otvorena od 21. novembra, a iznos se podešava do tog dana.",
+    "referralOpen": "Iznos koji sada upišeš važi za sezonu {season}. Podešava se do 21. novembra.",
+    "referralRunning": "Sezona {season} je već u toku, a ovaj upis menja i njen iznos.",
     "leagueRaces": "Trke u ligi",
     "leagueRacesOf": "Trke u ligi {name}",
     "chooseEvent": "Događaj",
@@ -1450,7 +1449,7 @@
     "leagueRaceAdded": "Trka je dodata u ligu.",
     "leagueRaceDropped": "Trka je izbačena iz lige.",
     "leagueRefused": {
-      "theSeasonIsFrozen": "Sezona ove lige je zamrznuta, pa se trka više ne dodaje. Izbacivanje i dalje radi.",
+      "theSeasonIsFrozen": "Sezona ove lige je zamrznuta. Trke se mogu samo izbaciti.",
       "theRaceIsNotOfTheLeaguesSeason": "Ta trka nije iz sezone ove lige.",
       "theEventHoldsNoRaces": "Taj događaj još nema nijednu trku.",
       "theRaceIsNotKnown": "Portal ne poznaje tu trku.",
@@ -1463,7 +1462,7 @@
       "theAddressIsNotShaped": "Adresa sme da ima samo mala slova i cifre, sa po jednom crticom između njih. Ne sme da počne ni da se završi crticom.",
       "theAddressIsTaken": "Na toj adresi već stoji jedna liga.",
       "theSeasonIsNotThisOneOrTheNext": "Liga se pravi samo za tekuću ili narednu sezonu.",
-      "theSeasonIsFrozen": "Sezona ove lige je zamrznuta, pa se liga više ne menja. Brisanje i dalje radi.",
+      "theSeasonIsFrozen": "Sezona ove lige je zamrznuta. Liga se može samo obrisati.",
       "theSeasonCannotMoveWhileRacesCount": "Sezona se ne može pomeriti dok liga broji makar jednu trku. Prvo izbaci trke, pa promeni sezonu."
     },
     "eventSaveRefused": {
@@ -1472,7 +1471,7 @@
       "theTownIsNotSaidOnce": "Mesto se kaže na jedan način: ili se bira iz šifarnika, ili se upisuje rukom uz državu.",
       "theTownIsNotKnown": "Portal ne poznaje to mesto.",
       "theCountryIsNotKnown": "Portal ne poznaje tu državu.",
-      "theCountryBelongsToATypedTown": "Mesto iz šifarnika već nosi svoju državu, pa se država uz njega ne bira.",
+      "theCountryBelongsToATypedTown": "Uz mesto iz šifarnika država se ne bira.",
       "aTypedTownNamesItsCountry": "Uz mesto upisano rukom mora da se izabere i država.",
       "theLinkIsNotShaped": "Link mora da počne sa http:// ili https:// i ne sme da sadrži razmak.",
       "theAddressIsTaken": "Na toj adresi već stoji jedan događaj. Promeni naziv ili datum.",
@@ -1482,7 +1481,7 @@
     "raceSaveRefused": {
       "theFormIsNotComplete": "Redu trke nedostaje naziv ili događaj kome pripada.",
       "theEventIsNotKnown": "Portal ne poznaje događaj kome ova trka pripada.",
-      "theEventHoldsNoRaces": "Taj događaj nije trka, pa ne može da nosi trke.",
+      "theEventHoldsNoRaces": "Taj događaj nije trka.",
       "theRaceCannotChangeEvents": "Trka ne može da pređe u drugi događaj.",
       "theKindIsNotKnown": "Portal ne poznaje tu vrstu trke.",
       "theLimitBelongsToATimedRace": "Vremensko ograničenje se upisuje samo uz trku koja se trči na vreme.",
@@ -1493,11 +1492,11 @@
       "theAddressIsTaken": "Na toj adresi već stoji jedna trka.",
       "theDateWouldMoveAResultToAnotherYear": "Datum ne može da pređe u drugu godinu dok je na trci upisan rezultat.",
       "theKindCannotChangeOnceRunsAreCounted": "Vrsta trke ne može da se promeni dok na trci stoji odobren rezultat.",
-      "anEventStillAheadWouldMoveIntoTheYearJustEnded": "Događaj tek predstoji, a dan ove trke je u prošloj godini, pa bi se događaj pomerio u prošlu godinu i izgubio najave dolaska. Izaberi dan trke u godini događaja."
+      "anEventStillAheadWouldMoveIntoTheYearJustEnded": "Dan trke mora da bude u godini događaja."
     },
     "eventGone": "Događaj je obrisan, sa svojim trkama i rezultatima.",
     "eventDeleteAsk": "Obriši događaj?",
-    "eventSavedUnseen": "Događaj je sačuvan, ali portal ne može da ga prikaže u ovom spisku. Osveži stranu.",
+    "eventSavedUnseen": "Događaj je sačuvan. Osveži stranu.",
     "eventSavedRacesRefused": "Događaj je sačuvan. Trke koje nisu sačuvane označene su ispod tabele; ispravi ih pa pritisni Sačuvaj. Šalju se samo trke.",
     "eventSavedRacesKept": "Događaj je sačuvan. Trke koje nisu obrisane navedene su ispod polja događaja; pritisni Sačuvaj da se brisanje pokuša ponovo. Šalju se samo trke.",
     "eventDeleteTakes": "Ovim brišeš i {races} i {results}.",
@@ -1515,7 +1514,7 @@
     "eventDeleteCountUnknown": "Ovim brišeš i {races}, a broj rezultata koji odlaze još nije poznat.",
     "leagueGone": "Liga je obrisana.",
     "leagueDeleteAsk": "Obriši ligu?",
-    "leagueSavedUnseen": "Liga je sačuvana, ali portal ne može da je prikaže u ovom spisku. Osveži stranu.",
+    "leagueSavedUnseen": "Liga je sačuvana. Osveži stranu.",
     "leagueTextSaved": "Izmena je sačuvana.",
     "priceSaved": "Cena je sačuvana.",
     "priceRefused": {
@@ -1526,7 +1525,7 @@
       "theAmountIsMoreThanARowMayCost": "Cena je veća od najveće dozvoljene: 1.000 EUR i 200.000 RSD.",
       "theFeeHasNoDinarPrice": "Taksa za obradu plaćanja nema dinarsku cenu, jer se u dinarima ne plaća posredniku.",
       "theRowIsFreeInOneCurrencyOnly": "Red cenovnika je ili besplatan u obe valute, ili ima iznos u obe. Nula samo u jednoj se ne prihvata.",
-      "theReferralIsSettled": "Iznos za preporuku je od 11. novembra utvrđen za sezonu koja se obnavlja i menja se samo za narednu."
+      "theReferralIsSettled": "Iznos za preporuku je od 21. novembra utvrđen za sezonu koja se obnavlja i menja se samo za narednu."
     },
     "moderatorSaveRefused": {
       "theFormIsNotComplete": "Nedostaje ime, prezime ili adresa elektronske pošte.",
@@ -1537,17 +1536,17 @@
     "moderatorGone": "Moderator je obrisan.",
     "moderatorDeleteAsk": "Obriši moderatora?",
     "moderatorDeleteNote": "Nalog ostaje, skidaju se samo prava moderatora.",
-    "moderatorSavedUnseen": "Moderator je sačuvan, ali portal ne može da ga prikaže u ovom spisku. Osveži stranu.",
+    "moderatorSavedUnseen": "Moderator je sačuvan. Osveži stranu.",
     "moderatorRightsSavedUnseen": "Pravo je sačuvano, ali portal ne može da prikaže novo stanje. Osveži stranu.",
     "teamDeleteRefused": {
-      "theWindowIsShut": "Prelazni rok je zatvoren. Otvara se 11. novembra i traje do 31. decembra. Tim se do tada ne briše, ni iz administracije."
+      "theWindowIsShut": "Tim se briše samo u prelaznom roku, od 21. novembra do 31. decembra."
     },
     "teamGone": "Tim je obrisan.",
     "teamDeleteAsk": "Obriši tim?",
     "memberDeleteRefused": {
       "theAccountMustBeDecided": "Portal nije prosledio odluku o nalogu. Osveži stranu pa pokušaj ponovo.",
-      "anonymisingIsNotWrittenYet": "Anonimizacija naloga još nije napisana. Član se za sada može samo obrisati.",
-      "theAccountAdministers": "Nalog ovog člana administrira portal, pa se član ne može obrisati odavde."
+      "anonymisingIsNotWrittenYet": "Anonimizacija naloga još ne postoji. Član može samo da se obriše.",
+      "theAccountAdministers": "Ovaj nalog je administrator portala i ne briše se odavde."
     },
     "memberGone": "Član je obrisan.",
     "memberDeleteAsk": "Obriši člana?",
@@ -1557,8 +1556,8 @@
     "invitationSent": "Nova pozivnica je poslata na {email}. Prethodni link više ne važi.",
     "invitationSentSomewhere": "Nova pozivnica je poslata. Prethodni link više ne važi.",
     "invitationNotNeeded": "Član je već postavio lozinku.",
-    "invitationNoAccount": "Član nema nalog na portalu, pa pozivnica nema kome da ode.",
-    "invitationNotSent": "Pošta trenutno ne prima poruke, pa pozivnica nije poslata. Pokušaj ponovo za koji minut.",
+    "invitationNoAccount": "Član nema nalog na portalu.",
+    "invitationNotSent": "Pozivnica nije poslata. Pokušaj ponovo za koji minut.",
     "cancelMembership": "Storniraj",
     "changeToExemption": "Promeni osnov u oslobođenje",
     "withoutTheRightToRank": "bez prava rangiranja",
@@ -1573,9 +1572,9 @@
     "exemptionGranted": "Oslobođenje je upisano.",
     "basisChanged": "Osnov članstva je promenjen.",
     "membershipRefused": {
-      "theFormIsNotComplete": "Zahtev nije poslat do kraja, pa ništa nije urađeno. Osveži stranicu i pokušaj ponovo.",
+      "theFormIsNotComplete": "Zahtev nije uspeo. Osveži stranicu i pokušaj ponovo.",
       "theBasisIsNotKnown": "Portal ne poznaje osnov članstva koji je poslat, pa ništa nije urađeno. Osveži stranicu i pokušaj ponovo.",
-      "thisChangeIsNotOffered": "Ova promena osnova se na redu člana ne nudi, pa ništa nije urađeno. Aktivacija iz balansa se prvo stornira, pa se upisuje nova.",
+      "thisChangeIsNotOffered": "Aktivacija iz balansa se prvo stornira, pa se upisuje nova.",
       "theBasisHasChanged": "Osnov za ovu sezonu se u međuvremenu promenio, pa ništa nije urađeno. Osveži stranicu."
     },
     "editMember": "Izmeni podatke",
@@ -1622,7 +1621,7 @@
     "appearance": "Izgled",
     "privacy": "Privatnost",
     "hideProfile": "Sakrij moj profil od svakoga ko nije aktivan član ni administracija",
-    "hideProfileNote": "Ime ostaje u tabelama i na rang listama, jer bi bez toga zajedničko rangiranje izgubilo smisao. Skriva se samo tvoja profilna strana, i to samo od posetilaca koji nisu prijavljeni i od prijavljenih naloga bez aktivne članarine.",
+    "hideProfileNote": "Ime ostaje u tabelama i na rang listama. Profilna strana se skriva od neprijavljenih posetilaca i od naloga bez aktivne članarine.",
     "opensWhenTheFeeIsRenewed": "Podaci i lozinka otvaraju se kad tvoja članarina bude obnovljena. Obnovi je ovde: {renewal}.",
     "themeLabel": "Tema",
     "themeDark": "Tamna",
@@ -1633,8 +1632,8 @@
   },
   "rights": {
     "title": "Prava moderatora",
-    "intro": "Red je moderator, kolona je pravo. Kućica se pamti čim se pritisne, nema dugmeta za čuvanje. Prava su u dve grupe zato što su to dve različite radnje: uređivanje menja zapis, a odlučivanje pušta ili vraća tuđi rad.",
-    "superadminNote": "Superadmina nema u ovoj tabeli. On sme sve, uvek, pa nema šta da mu se dodeli ni oduzme.",
+    "intro": "Red je moderator, kolona je pravo. Kućica se pamti čim se pritisne.",
+    "superadminNote": "Superadmin ima sva prava i ne stoji u ovoj tabeli.",
     "moderator": "Moderator",
     "given": "Prava",
     "none": "Bez ijednog prava",
@@ -1686,10 +1685,10 @@
   },
   "verification": {
     "waitingForMembers": "Odluka čeka spisak članova, da bi se znalo da li podnosilac već ima tim.",
-    "membersFailed": "Odluka nije moguća: spisak članova se ne može učitati, a bez njega se ne zna da li podnosilac već ima tim.",
-    "teamMemberHasTeam": "Podnosilac je već u timu, pa ovaj predlog ne može da se odobri. Član sme da bude samo u jednom timu.",
-    "teamGone": "Tim na koji se ova izmena odnosi je u međuvremenu obrisan, pa nema šta da se izmeni. Odbij izmenu uz objašnjenje.",
-    "teamNotYours": "Ovu izmenu je poslao član koji više ne administrira taj tim, pa ne može da se odobri. Odbij izmenu uz objašnjenje.",
+    "membersFailed": "Spisak članova se ne može učitati, pa odluka nije moguća. Osveži stranu.",
+    "teamMemberHasTeam": "Podnosilac je već u timu, pa se predlog ne može odobriti.",
+    "teamGone": "Tim je u međuvremenu obrisan. Odbij izmenu uz objašnjenje.",
+    "teamNotYours": "Ovu izmenu je poslao član koji više ne vodi taj tim. Odbij izmenu uz objašnjenje.",
     "openCard": "Prikaži",
     "openCardNamed": "Prikaži: {name}",
     "foldCard": "Sakrij",
@@ -1713,7 +1712,7 @@
     "teamChange": "Izmena postojećeg tima",
     "teamChangeOf": "Izmena tima \"{name}\"",
     "teamChangeAccepted": "Izmena tima \"{name}\" je prihvaćena",
-    "teamChangeAcceptedBody": "Podaci tima \"{name}\" su izmenjeni. Moderator sme da ispravi ono što ste poslali pre nego što prihvati, pa pogledajte stranu tima.",
+    "teamChangeAcceptedBody": "Podaci tima \"{name}\" su izmenjeni.",
     "sentBy": "Poslao {who}, član {memberNumber}",
     "sentByAnonymous": "Prijavio posetilac bez naloga",
     "paymentsSeason": "Nisu članovi za sezonu {season}",
@@ -1746,11 +1745,11 @@
       "theFormIsNotComplete": "Aktivacija nije poslata do kraja, pa članstvo nije upisano. Osveži stranicu i pokušaj ponovo.",
       "theGroundIsNotKnown": "Osnov aktivacije nije prepoznat, pa članstvo nije upisano. Osveži stranicu i pokušaj ponovo.",
       "nothingWouldComeOffTheBalance": "Sa balansa ovog člana ne može da se skine ništa, pa članstvo nije upisano.",
-      "theMembershipIsAlreadyHeld": "Ovaj član već ima članstvo za ovu sezonu, pa nije upisano ponovo.",
+      "theMembershipIsAlreadyHeld": "Ovaj član već ima članstvo za ovu sezonu.",
       "theCompetitorDoesNotExist": "Ovog člana više nema, pa članstvo nije upisano. Osveži stranicu.",
-      "theFeeIsAlreadyRecorded": "Članarina ovog člana je već proknjižena, pa oslobođenje nije upisano.",
+      "theFeeIsAlreadyRecorded": "Članarina ovog člana je već proknjižena.",
       "theAmountIsNotMoney": "Iznos uplate mora da bude veći od nule, pa uplata nije proknjižena i članstvo nije upisano.",
-      "theAmountIsNotWhole": "Iznos uplate mora da bude ceo broj, bez tačaka i zareza, pa uplata nije proknjižena i članstvo nije upisano. Unesi iznos ponovo.",
+      "theAmountIsNotWhole": "Iznos se unosi kao ceo broj, bez tačaka i zareza.",
       "theAmountIsNotKeptExactly": "Iznos je veći nego što portal može da zapiše, pa uplata nije proknjižena i članstvo nije upisano. Proveri iznos i unesi ga ponovo.",
       "theMethodIsNotKnown": "Način plaćanja nije prepoznat, pa uplata nije proknjižena i članstvo nije upisano. Osveži stranicu i pokušaj ponovo.",
       "theReferenceIsNotShaped": "Poziv na broj nije ispravnog oblika, pa uplata nije proknjižena i članstvo nije upisano.",
@@ -1782,13 +1781,13 @@
     "deleteNotePlaceholder": "Zašto je sklonjen, za moderatore. Sme da ostane prazno.",
     "confirmDelete": "Obriši komentar",
     "pictureAlt": "Slika koju je poslao {who}, sa uokvirenim delom koji će se videti",
-    "pictureUnavailable": "Slika nije dostupna: fajl se ne može učitati, pa se ovaj red ne može odobriti dok se slika ne vidi. Odbijanje i dalje radi.",
+    "pictureUnavailable": "Slika se ne može učitati, pa se ne može ni odobriti. Odbijanje radi.",
     "resultReturned": "Rezultat je vraćen",
     "teamReturned": "Predlog tima je vraćen",
     "teamChangeReturned": "Izmena tima je vraćena",
     "bioReturned": "Tekst o sebi je vraćen",
     "photoReturned": "Profilna slika je vraćena",
-    "noRecipient": "Ova stavka nema člana kome bi odgovor stigao, pa se sa ovog reda ne odbija. Odobri je ili prijavi grešku; poruka bez primaoca išla bi celoj ligi.",
+    "noRecipient": "Ova stavka nema člana kome bi stigao odgovor, pa se ne može odbiti. Odobri je ili prijavi grešku.",
     "approveAllDone": {
       "one": "Rešena je {count} stavka.",
       "few": "Rešene su {count} stavke.",
@@ -1799,7 +1798,7 @@
     "teamTaken": "Tim pod ovim nazivom, ili pod nazivom koji daje istu adresu, već postoji u ligi. Ispravi naziv ili odbij predlog.",
     "teamNoAddress": "Od ovog naziva se ne može napraviti adresa strane tima. Ispravi naziv tako da ima bar jedno slovo naše abecede ili ćirilice, ili cifru, ili odbij predlog.",
     "teamIncomplete": "Naziv, mesto i država moraju biti popunjeni da bi tim mogao da nastane.",
-    "teamNoMember": "Ovaj predlog nema člana koji ga je poslao, pa nema ko da bude organizator tima ni ko da dobije odgovor."
+    "teamNoMember": "Ovaj predlog nema člana koji ga je poslao."
   },
   "rulebook": {
     "onThisPage": "Na ovoj strani",
@@ -1822,7 +1821,7 @@
   "report": {
     "title": "Prijava rezultata",
     "submit": "Pošalji rezultat",
-    "noRaces": "Ovaj događaj još nema nijednu trku, pa nema šta da se prijavi.",
+    "noRaces": "Ovaj događaj još nema nijednu trku.",
     "noRace": "Rezultat se unosi sa reda trke, na strani događaja."
   },
   "pager": {
@@ -1834,8 +1833,8 @@
   },
   "crop": {
     "choosing": "Isecanje slike",
-    "framed": "Deo slike u krugu je ono što će se videti. Ostatak je zatamnjen, ali se i dalje nazire.",
-    "tooSmall": "Slika je premala. Najkraća strana mora da ima bar {least} piksela, da bi krug ostao oštar svuda gde se prikazuje.",
+    "framed": "Na profilu se vidi deo slike u krugu.",
+    "tooSmall": "Slika je premala. Najkraća strana mora da ima bar {least} piksela.",
     "unreadable": "Ova slika se ne može otvoriti. Izaberi drugu, na primer u JPG ili PNG obliku.",
     "x": "Pomeri levo i desno",
     "y": "Pomeri gore i dole",
@@ -1844,29 +1843,29 @@
   },
   "bio": {
     "title": "Tekst o sebi",
-    "standing": "Ovo sada stoji na tvom profilu. Izmena ide moderatoru na odobrenje, a dok čeka, na profilu ostaje stari tekst.",
-    "none": "Još nisi napisao ništa o sebi. Kad pošalješ, moderator pregleda tekst pre nego što se pojavi na profilu.",
-    "send": "Pošalji na odobrenje",
-    "waitingNote": "Tvoj tekst čeka odobrenje. Ako ga moderator vrati, u poruci piše šta treba da izmeniš.",
-    "waitingCorrect": "Možeš da ga ispraviš pre odluke. Novo slanje zamenjuje tekst koji čeka, a moderator vidi samo poslednji."
+    "standing": "Ovo je tekst na tvom profilu. Izmena se pojavljuje kad bude prihvaćena.",
+    "none": "Još nisi napisao ništa o sebi. Tekst se pojavljuje na profilu kad bude prihvaćen.",
+    "send": "Pošalji",
+    "waitingNote": "Tvoj tekst još nije na profilu. Ako treba nešto da izmeniš, stići će ti poruka.",
+    "waitingCorrect": "Dok tekst ne bude na profilu, možeš da ga ispraviš."
   },
   "picture": {
     "title": "Profilna slika",
-    "none": "Portal još nema fotografije, pa u krugu pored tvog imena stoje tvoji inicijali. Pošalji sliku i moderator će je pregledati.",
-    "waitingNote": "Tvoja slika čeka odobrenje. Ako je moderator vrati, u poruci piše šta treba da izmeniš.",
+    "none": "Još nemaš profilnu sliku.",
+    "waitingNote": "Tvoja slika još nije na profilu. Ako treba nešto da izmeniš, stići će ti poruka.",
     "choose": "Izaberi novu sliku",
-    "send": "Pošalji na odobrenje",
+    "send": "Pošalji",
     "standingNote": "Ovo je slika koja je sada na tvom profilu.",
-    "standingMove": "Pomeri krug da izabereš drugi deo slike ili izaberi novu sliku, pa je pošalji na odobrenje. Slika na profilu ostaje ista dok moderator ne odobri novu.",
-    "waitingMove": "Možeš da pomeriš krug ili da izabereš drugu sliku. Novo slanje zamenjuje ovu koja čeka, a moderator vidi samo poslednju.",
+    "standingMove": "Pomeri krug da izabereš drugi deo slike ili izaberi novu sliku, pa je pošalji. Nova slika se pojavljuje na profilu kad bude prihvaćena.",
+    "waitingMove": "Dok slika ne bude na profilu, možeš da pomeriš krug ili da izabereš drugu.",
     "currentAlt": "Tvoja slika, sa uokvirenim delom koji će se videti",
     "chosenAlt": "Slika koju si izabrao, sa uokvirenim delom koji će se videti",
-    "sentAlt": "Slika koju si poslao na odobrenje, sa uokvirenim delom koji će se videti",
+    "sentAlt": "Slika koju si poslao, sa uokvirenim delom koji će se videti",
     "sending": "Slika se šalje...",
     "sendRefused": {
       "theFormIsNotComplete": "Slika nije stigla do servera. Izaberi je ponovo i pošalji.",
       "thePictureIsTooBig": "Slika je prevelika za portal. Izaberi manju ili je smanji pre slanja.",
-      "thisIsNotAPicture": "Ovaj fajl nije slika, kako se god zove. Pošalji fotografiju, na primer u JPG ili PNG obliku.",
+      "thisIsNotAPicture": "Ovaj fajl nije slika. Pošalji fotografiju, na primer u JPG ili PNG obliku.",
       "theCropIsNotACircle": "Isečak nije ispravan. Namesti krug ponovo i pošalji."
     }
   },
@@ -1886,12 +1885,12 @@
     "save": "Sačuvaj",
     "saved": "Sačuvano.",
     "heldNote": "Pol, datum rođenja, ime oca i broj ličnog dokumenta menja administracija na tvoj zahtev.",
-    "nothingToSave": "Server nije našao nijednu izmenu u zahtevu. Osveži stranu i pokušaj ponovo.",
+    "nothingToSave": "Nema izmena za čuvanje.",
     "fieldIsBlank": "Jedno od obaveznih polja je ostalo prazno. Popuni ga pa sačuvaj ponovo.",
     "fieldIsTooLong": "Jedno polje je duže nego što portal prima. Skrati ga pa sačuvaj ponovo.",
-    "notYoursToChange": "Pol i datum rođenja menja samo administracija, pa server tu izmenu ne prima.",
+    "notYoursToChange": "Pol i datum rođenja menja administracija, na tvoj zahtev.",
     "townNotSaidOnce": "Mesto mora da bude zadato tačno jednom: ili iz šifarnika, ili kao upisano ime zajedno sa državom.",
-    "townNotKnown": "Server ne prepoznaje zadato mesto ni državu. Izaberi mesto iz šifarnika.",
+    "townNotKnown": "Ovo mesto ne prepoznajemo. Izaberi mesto iz šifarnika.",
     "textIsTooLong": "Tekst o sebi je duži nego što portal prima. Skrati ga pa pošalji ponovo.",
     "passwordTitle": "Lozinka",
     "oldPassword": "Trenutna lozinka",
@@ -1899,11 +1898,11 @@
     "repeatPassword": "Ponovi novu lozinku",
     "passwordSignsOthersOut": "Kad promeniš lozinku, bićeš odjavljen sa svih ostalih uređaja. Ovaj ostaje prijavljen.",
     "passwordSubmit": "Promeni lozinku",
-    "passwordFillFirst": "Popuni sva tri polja da bi mogao da promeniš lozinku.",
+    "passwordFillFirst": "Popuni sva tri polja.",
     "passwordDone": "Lozinka je promenjena. Ostali uređaji su odjavljeni.",
     "passwordFormIsNotComplete": "Sva tri polja moraju da budu popunjena, a dve nove iste i duge najmanje {count} znakova.",
     "oldPasswordIsWrong": "Trenutna lozinka nije tačna. Pokušaj ponovo.",
-    "passwordHasLeaked": "Ova lozinka se već našla u javno objavljenim provalama, pa je portal ne prima. Izaberi drugu."
+    "passwordHasLeaked": "Ova lozinka se pojavila u javno objavljenim provalama podataka. Izaberi drugu."
   },
   "leagueResults": {
     "title": "Unos rezultata: {race}",
@@ -1930,7 +1929,7 @@
       "theMemberIsNamedTwice": "Isti član je unet u više redova.",
       "heHasAResultOnThisRace": "Član već ima rezultat na ovoj trci. Izmeni ga olovkom u tabeli rezultata.",
       "hisSubmissionWaits": "Član već ima prijavu koja čeka za ovu trku. Prvo je odobri ili odbij u redu za proveru.",
-      "heHoldsNoMembershipOfTheRunningSeason": "Član nema članstvo za sezonu ove trke, pa mu liga ne unosi rezultat.",
+      "heHoldsNoMembershipOfTheRunningSeason": "Član nema aktivno članstvo za sezonu ove trke.",
       "theFormIsNotComplete": "Nedostaje vreme ili mera, ili je upisana vrednost izvan dozvoljene.",
       "theGroupIsEmpty": "Dodaj bar jednog člana.",
       "theGroupIsTooBig": "Previše redova za jedno čuvanje. Podeli ih na dva čuvanja.",
@@ -1939,17 +1938,17 @@
       "theTownIsMissing": "Upiši mesto novog događaja.",
       "theEventWouldMoveOntoAnother": "Trka bi pomerila događaj u godinu u kojoj događaj sa istim nazivom već postoji. Izaberi taj događaj.",
       "theDayIsNotInTheEventsYear": "Dan trke nije u godini izabranog događaja.",
-      "anEventStillAheadWouldMoveIntoTheYearJustEnded": "Događaj tek predstoji, a trka je iz prošle godine, pa bi se događaj pomerio u prošlu godinu i izgubio najave dolaska. Izaberi događaj iz prošle godine ili upiši nov."
+      "anEventStillAheadWouldMoveIntoTheYearJustEnded": "Trka je iz prošle godine. Izaberi događaj iz prošle godine ili upiši nov."
     }
   },
   "memberData": {
-    "nothingChanged": "Nijedan podatak nije izmenjen, pa nema šta da se sačuva.",
+    "nothingChanged": "Nijedan podatak nije izmenjen.",
     "formNotComplete": "Neko polje nije popunjeno onako kako ga forma traži. Proveri ga pa sačuvaj ponovo.",
     "notTakenHere": "Server ne prima jedno od poslatih polja. Osveži stranu pa sačuvaj ponovo.",
-    "aPairHoldsTheGender": "Član je bio u trkačkom paru, a par uvek čine jedan muškarac i jedna žena, pa mu se pol ne menja.",
+    "aPairHoldsTheGender": "Članu koji je bio u trkačkom paru pol se ne menja.",
     "aMinorNeedsAConsent": "Sa ovim datumom rođenja član bi bio mlađi od 16 godina, a za njega nema saglasnosti roditelja, pa se datum ne upisuje.",
     "theAddressIsConfirmed": "Član je već potvrdio ovu adresu elektronske pošte, pa je može promeniti samo on.",
-    "thereIsNoAccount": "Član nema nalog na portalu, pa nema ni adresu elektronske pošte koja bi se ispravila.",
+    "thereIsNoAccount": "Član nema nalog na portalu, ni adresu elektronske pošte.",
     "theAddressIsTaken": "Ovu adresu elektronske pošte već koristi drugi nalog.",
     "theAddressIsTheSuperadmins": "Ova adresa pripada administraciji portala i ne može biti adresa člana."
   },

@@ -542,7 +542,7 @@ class MeApi {
 		/* AND THE SEASON ON SALE, WHICH IS THE ONE HIS BASIS IS ANSWERED FOR, off the same reading
 		   of the clock and from the same home `MembershipInvoice` asks, so the panel „Stanje" and
 		   the panel for renewal name the same season. It is not the season of his card: that one is the
-		   season the band is worked out for, and from 11 November to 31 December the two are a year
+		   season the band is worked out for, and from 21 November to 31 December the two are a year
 		   apart. */
 		int sold = SeasonClock.seasonBeingPaidFor(now);
 

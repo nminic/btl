@@ -489,13 +489,13 @@ describe('the seasons the table offers', () => {
   const raced = [result('000001', '2027-05-02', 1)]
 
   it('is what the boards offer, with 2028 first, from the eleventh of November 2027', () => {
-    expect(seasonsOfTheTable(raced, '2027-11-11')).toEqual([2028, 2027])
+    expect(seasonsOfTheTable(raced, '2027-11-21')).toEqual([2028, 2027])
     expect(seasonsOfTheTable(raced, '2027-12-31')).toEqual([2028, 2027])
-    expect(seasonsOnOffer(raced, '2027-11-11')).toEqual([2027])
+    expect(seasonsOnOffer(raced, '2027-11-21')).toEqual([2027])
   })
 
   it('is the list of the boards before that, and after the year is over', () => {
-    expect(seasonsOfTheTable(raced, '2027-11-10')).toEqual(seasonsOnOffer(raced, '2027-11-10'))
+    expect(seasonsOfTheTable(raced, '2027-11-20')).toEqual(seasonsOnOffer(raced, '2027-11-20'))
     expect(seasonsOfTheTable(raced, '2028-01-01')).toEqual(seasonsOnOffer(raced, '2028-01-01'))
     expect(seasonsOfTheTable(raced, '2028-01-01')).toEqual([2028, 2027])
   })
@@ -508,7 +508,7 @@ describe('the seasons the table offers', () => {
   })
 
   it('lists a season once when the results already hold it', () => {
-    expect(seasonsOfTheTable([...raced, result('000001', '2028-01-05', 1)], '2027-11-11')).toEqual([
+    expect(seasonsOfTheTable([...raced, result('000001', '2028-01-05', 1)], '2027-11-21')).toEqual([
       2028,
       2027,
     ])

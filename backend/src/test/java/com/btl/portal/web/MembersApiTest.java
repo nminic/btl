@@ -62,7 +62,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 class MembersApiTest {
 
 	/** 2028 is on sale (SeasonClock, from 15 October) and 2027 is still being run. */
-	private static final Instant AFTER_THE_FIFTEENTH = Instant.parse("2027-11-16T10:00:00Z");
+	private static final Instant AFTER_THE_FIFTEENTH = Instant.parse("2027-11-26T10:00:00Z");
 
 	/** 2027 is on sale and being run. */
 	private static final Instant BEFORE_THE_FIFTEENTH = Instant.parse("2027-10-10T10:00:00Z");
@@ -322,7 +322,7 @@ class MembersApiTest {
 	void eachSeasonOnTheRowSaysWhetherItCarriesTheRightToRank() throws Exception {
 		long late = member("000013", "Lazar", "Hadzic", "M", false, "11aa22bb33cc44d7");
 		HeldOn.season(db, late, 2027, "feeExempt", Instant.parse("2027-05-01T10:00:00Z"));
-		HeldOn.season(db, late, 2028, "feeExempt", Instant.parse("2027-11-20T10:00:00Z"));
+		HeldOn.season(db, late, 2028, "feeExempt", Instant.parse("2027-11-30T10:00:00Z"));
 
 		Map<String, List<String>> ranked = new LinkedHashMap<>();
 

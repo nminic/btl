@@ -607,7 +607,7 @@ describe('a competition made, changed and taken away', () => {
     await user.click(await screen.findByRole('button', { name: 'Sačuvaj' }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Sezona ove lige je zamrznuta, pa se liga više ne menja. Brisanje i dalje radi.',
+      'Sezona ove lige je zamrznuta. Liga se može samo obrisati.',
     )
 
     server.stop()

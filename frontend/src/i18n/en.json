@@ -11,7 +11,7 @@
     },
     "notFound": {
       "title": "No such page",
-      "description": "The address does not exist or the page has been removed. The home page leads to everything else."
+      "description": "The address does not exist or the page has been removed."
     },
     "rulebook": {
       "title": "The BTL rulebook",
@@ -53,11 +53,11 @@
     },
     "myResults": {
       "title": "My racing results",
-      "description": "The results reported, the stage of checking each is at, and the points they brought."
+      "description": "The results reported and the points they brought."
     },
     "myData": {
       "title": "My BTL details",
-      "description": "Your name, address, telephone, town and shirt size, until your fee has been recorded."
+      "description": "Your name, address, telephone, town, shirt size, profile picture and the text about yourself."
     },
     "membership": {
       "title": "My BTL membership fee",
@@ -141,11 +141,11 @@
     },
     "editTeam": {
       "title": "Changing a team",
-      "description": "The name, the town and the country of a team, for a change that goes to be checked."
+      "description": "The name, the town and the country of a team."
     },
     "newResult": {
       "title": "A new race result",
-      "description": "The time, the length, the ascent and the proof from a race, for a result that goes to be checked."
+      "description": "The time, the length, the ascent and the proof from a race."
     },
     "verificationQueue": {
       "title": "A queue (administration)",
@@ -190,7 +190,7 @@
     },
     "proposeTeam": {
       "title": "Proposing a team",
-      "description": "Propose a team to BTL. A moderator decides on every proposal before the team enters the League."
+      "description": "Propose a team to BTL."
     },
     "leagueResults": {
       "title": "Entering results",
@@ -202,15 +202,19 @@
     },
     "reportResult": {
       "title": "Reporting a result",
-      "description": "Report your result from a BTL race. A moderator checks every report before it enters the table."
+      "description": "Report your result from a BTL race."
     },
     "rateEvent": {
       "title": "Rating an event",
-      "description": "Rate the organisation, the value for money and the atmosphere. Ratings without a comment are published at once, and a comment once a moderator approves it."
+      "description": "Rate the organisation, the value for money and the atmosphere of the event."
     },
     "competitorData": {
       "title": "A competitor's details",
-      "description": "The details of one BTL member, which only he and the administration see."
+      "description": "The details of one BTL member, which only the administration sees."
+    },
+    "unnumberedMemberData": {
+      "title": "Details of a member with no member number",
+      "description": "The details of a member who has no member number yet, seen only by the administration."
     }
   },
   "shell": {
@@ -259,6 +263,7 @@
     "forgottenPassword": "A forgotten password",
     "myProfile": "My profile",
     "myData": "My details",
+    "completeData": "Complete your details",
     "myResults": "My results",
     "membership": "My fee",
     "messages": "Messages",
@@ -278,7 +283,7 @@
   },
   "placeholder": {
     "title": "{name}",
-    "text": "This screen comes in the next phase. The structure and the navigation are already here, so the flow can be checked."
+    "text": "This screen is under construction."
   },
   "home": {
     "results": "Results reported",
@@ -289,11 +294,6 @@
     "onCourse": "On course",
     "points": "BTL points",
     "readySetGo": "Ready, steady, GO!",
-    "moreRuns": {
-      "one": "and {count} more date",
-      "few": "and {count} more dates",
-      "other": "and {count} more dates"
-    },
     "seeCalendar": "The whole calendar",
     "topMen": "Top 10 men",
     "topWomen": "Top 10 women",
@@ -354,7 +354,7 @@
       "integer": "Enter a whole number.",
       "date": "Enter a date as dd/mm/yyyy.",
       "matches": "Does not match the field above.",
-      "taken": "This value is already taken. Every record must have its own.",
+      "taken": "This value is already taken.",
       "countryMissing": "Choose a country for the town."
     },
     "choose": "Choose",
@@ -362,15 +362,15 @@
     "restOfWorld": "Rest of the world",
     "openCalendar": "Open the calendar",
     "pasteCut": {
-      "one": "The pasted text was {count} character longer than fits, so that surplus was not taken.",
-      "few": "The pasted text was {count} characters longer than fits, so that surplus was not taken.",
-      "other": "The pasted text was {count} characters longer than fits, so that surplus was not taken."
+      "one": "The pasted text was shortened by {count} character.",
+      "few": "The pasted text was shortened by {count} characters.",
+      "other": "The pasted text was shortened by {count} characters."
     },
     "places": "Suggested towns",
     "yes": "Yes",
     "no": "No",
     "close": "Close",
-    "countryFromPlace": "The town comes from the codebook, so it brings its country with it.",
+    "countryFromPlace": "The country is set by the town you choose.",
     "explain": "Explanation",
     "country": "Country",
     "explainMark": "i",
@@ -432,9 +432,9 @@
     "resending": "Asking for the confirmation to be sent again...",
     "doneText": "We are sending a message to {email} to confirm the address. Open it and confirm the address, because the account is activated only then. If it does not arrive within a few minutes, look in the junk mail as well, then write to us at info@balkanskatrkackaliga.net.",
     "sending": "Sending the application...",
-    "formIsNotComplete": "The server did not accept the application, because an answer is incomplete or unrecognised. Check the answers, the town and the country above all, then send again.",
-    "passwordHasLeaked": "This password has already appeared in publicly published breaches, so the portal does not take it. Choose another.",
-    "addressIsTaken": "That email address is already a member of the League. Sign in with the existing password, or register from another address.",
+    "formIsNotComplete": "The application was not sent. Check the answers, the town and the country above all, then send again.",
+    "passwordHasLeaked": "This password is on the blacklist. Choose another.",
+    "addressIsTaken": "This address is already registered. Sign in with your password or use another address.",
     "password": "Password",
     "passwordRepeat": "Repeat the password",
     "parentConsent": "Typed signature of a parent or guardian",
@@ -449,7 +449,7 @@
     "mother": "Mother",
     "father": "Father",
     "guardian": "Guardian",
-    "doneReferral": "The application is recorded as a referral. The member who invited you is credited once your fee is activated.",
+    "doneReferral": "The application is recorded as a referral.",
     "fatherName": "Father's name",
     "fatherNameHint": "Needed to join the association under the law.",
     "idNumber": "Identity document number",
@@ -520,12 +520,12 @@
     "invite": "Invite into a racing pair",
     "asked": "The invitation into a racing pair has been sent and is waiting for an answer.",
     "inviteSubject": "An invitation into a racing pair",
-    "inviteBody": "{who} invites you into a racing pair. The pair comes into being only once you confirm, and it holds for the season beginning after 31 December.",
+    "inviteBody": "{who} invites you into a racing pair for the next season.",
     "accept": "Accept",
     "refuse": "Decline",
     "inviteClosed": "This invitation is no longer open.",
     "brokenSubject": "The racing pair has been broken up",
-    "brokenBody": "{who} is in another racing pair from season {season}, so yours has been broken up.",
+    "brokenBody": "Your racing pair for season {season} has been broken up. {who} is in another pair from that season.",
     "sent": "Invitation sent: {who}.",
     "received": "Invitation received: {who}.",
     "endedBody": "{who} has broken up your racing pair for season {season}.",
@@ -534,17 +534,17 @@
     "breakUp": "Break up the racing pair",
     "forSeason": "For season {season}.",
     "answerRefused": {
-      "theFormIsNotComplete": "The answer did not reach the server in full, so no racing pair was made. Refresh the page and try again.",
-      "thePairWouldNotBeMixed": "A racing pair must have one man and one woman, so this pair was not made."
+      "theFormIsNotComplete": "The racing pair was not made. Refresh the page and try again.",
+      "thePairWouldNotBeMixed": "A racing pair is one man and one woman."
     },
     "breakRefused": {
-      "notHeld": "This racing pair cannot be ended from here: it has already ended or has stopped holding. Trying again does not help. Reload the page to see how things stand."
+      "notHeld": "This racing pair has already ended or no longer holds."
     },
     "inviteRefused": {
-      "theFormIsNotComplete": "The request did not reach the server in full, so the invitation into a racing pair was not sent. Refresh the page and try again.",
-      "thePairWouldNotBeMixed": "A racing pair must have one man and one woman, so the invitation was not sent.",
-      "aPairAlreadyHolds": "One of you already has a racing pair for the season being formed, so the invitation was not sent.",
-      "notThere": "The invitation cannot be sent from here. Trying again does not help. Reload the page to see how things stand."
+      "theFormIsNotComplete": "The invitation was not sent. Refresh the page and try again.",
+      "thePairWouldNotBeMixed": "A racing pair is one man and one woman.",
+      "aPairAlreadyHolds": "One of you already has a racing pair for the next season.",
+      "notThere": "The invitation was not sent. Refresh the page."
     }
   },
   "topBoards": {
@@ -557,14 +557,14 @@
       "ultra": "Most ultramarathons"
     },
     "pairs": "Best racing pairs",
-    "pairsNone": "No racing pair has a race in common this season. A pair is made by confirmation on both sides, by 31 December at the latest, to hold in the season that follows, and it reaches this board once the two of them run the same race.",
+    "pairsNone": "No racing pair has a race in common yet this season.",
     "sharedRaces": {
       "one": "{count} race in common",
       "few": "{count} races in common",
       "other": "{count} races in common"
     },
     "progress": "Best progress",
-    "progressEmpty": "On this board is whoever ran the season before as well and bettered its total, because what is measured is the gain against it. There is nobody like that this season.",
+    "progressEmpty": "Nobody has improved on the previous season's total yet this season.",
     "bestRaces": "Best single results",
     "kilometers": "Most kilometres",
     "onCourse": "Longest on course",
@@ -616,7 +616,7 @@
     "place": "Town",
     "addComment": "Add a comment",
     "commentTitle": "Rating and comment",
-    "commentIntro": "Ratings without a comment are published at once, and a comment once a moderator approves it.",
+    "commentIntro": "A rating shows at once, and a comment appears later.",
     "rating": {
       "organisation": "Organisation",
       "value": "Value for money",
@@ -626,14 +626,14 @@
       "unrated": "Not rated"
     },
     "commentText": "Comment",
-    "commentNeedsMarks": "Give all three ratings so that you can send.",
+    "commentNeedsMarks": "Give all three ratings.",
     "commentSend": "Send",
     "commentSending": "Sending",
     "commentCancel": "Cancel",
-    "commentSent": "The rating has been sent for approval.",
+    "commentSent": "The rating has been sent, and the comment will appear shortly.",
     "commentPublished": "The rating has been published.",
     "comments": "Comments",
-    "noComments": "There is no approved comment for this event yet.",
+    "noComments": "There are no comments for this event yet.",
     "organiserPage": "The organiser's page",
     "races": "Races",
     "competitor": "Competitor",
@@ -677,20 +677,20 @@
     },
     "fromEdition": "The {year} edition.",
     "notRanIt": "This event is rated by those who ran it",
-    "notRanItWhy": "A rating is the experience of a race rather than an opinion of it, so it is given alongside a result entered at this event. Enter a result from the row of that race; once a moderator approves it, the rating opens.",
+    "notRanItWhy": "A rating is given by members who have a result from this event. You enter a result from the row of that race.",
     "going": "Who is going",
     "goingOn": "I am going to this event",
     "goingNobody": "Nobody has said so yet.",
-    "goingRunAlready": "This event has already taken place, so coming to it can no longer be announced.",
+    "goingRunAlready": "This event has already taken place.",
     "writeTo": "Write to {name}",
     "writeSubject": "Arrangements for {event}",
     "writeSend": "Send the message",
     "written": "The message has been sent to {name}, into Messages on the portal.",
     "someMember": "A League member",
     "commentsForMembers": "Comments are seen by members whose fee is current.",
-    "writeNeedsWords": "Write a message so that you can send it.",
-    "writeFormIncomplete": "The server did not accept the message, because it did not reach it whole. Refresh the page and try again.",
-    "writeMemberUnknown": "The portal does not know that member, so the message was not sent."
+    "writeNeedsWords": "Write a message.",
+    "writeFormIncomplete": "The message was not sent. Refresh the page and try again.",
+    "writeMemberUnknown": "This member is no longer on the portal."
   },
   "category": {
     "rookieMale": "Rookies",
@@ -805,8 +805,7 @@
       "label": "Parts of the profile",
       "overview": "Results",
       "awards": "Awards",
-      "data": "Details",
-      "finish": "Finish your profile"
+      "data": "Details"
     },
     "moreDucats": "Load more ducats",
     "showingDucats": "Showing {shown} of {total}",
@@ -847,19 +846,19 @@
     "proposeSubmit": "Send the proposal",
     "proposeSending": "Sending",
     "proposeNote": "Why this team",
-    "proposeNote2": "The team exists only once a moderator approves it. Until then it is not visible anywhere on the portal.",
+    "proposeNote2": "The team appears on the portal once the proposal is accepted.",
     "proposeBody": "{city}, {country}. {note}",
     "proposeDoneTitle": "The proposal has been sent",
-    "proposeDone": "The team \"{name}\" is waiting for a moderator's decision. While it waits, it is not visible anywhere on the portal.",
-    "proposeShut": "A team is founded during the transfer window, from 11 November to 31 December.",
+    "proposeDone": "The team \"{name}\" appears on the portal once the proposal is accepted.",
+    "proposeShut": "A team is founded during the transfer window, from 21 November to 31 December.",
     "edit": "Change",
     "editTitle": "Changing the team",
     "editSubmit": "Send the change",
-    "editNote": "The change goes through verification again. While it waits for a moderator's decision, the team's existing details stand on the portal.",
+    "editNote": "The change shows on the portal once it is accepted.",
     "editDoneTitle": "The change has been sent",
-    "editDone": "The change to the team \"{name}\" is waiting for a moderator's decision. While it waits, the existing details stand on the portal.",
-    "proposeTaken": "A team under this name already exists in the League. Capital letters, diacritics and punctuation do not count as a difference, and Cyrillic and Latin are the same script. Choose another name.",
-    "proposeNoAddress": "No page address can be made from this name. Add at least one letter of our alphabet or of Cyrillic, or a digit.",
+    "editDone": "The change to the team \"{name}\" is sent and shows on the portal once it is accepted.",
+    "proposeTaken": "A team with this name already exists. Choose another name.",
+    "proposeNoAddress": "The team name needs at least one letter or digit.",
     "proposeFormIncomplete": "The name, the town and the country must all be filled in.",
     "proposeCountryUnknown": "The country chosen is not recognised.",
     "proposeLinkNotShaped": "The link given is not valid.",
@@ -876,45 +875,45 @@
     "joinWaiting": "Applications waiting",
     "joinWhenPaid": "You join a team for the {season} season when you have paid the fee for that season. You will find the payment on the My fee page.",
     "decideRefused": {
-      "theFormIsNotComplete": "The answer did not reach the server in full, so the application has not been answered. Refresh the page and try again.",
-      "theWindowIsShut": "The transfer window has closed in the meantime, so he has not been taken into the team. The application still waits: the window opens on 11 November and runs to 31 December."
+      "theFormIsNotComplete": "The answer was not sent. Refresh the page and try again.",
+      "theWindowIsShut": "The transfer window is closed. The application waits for the next one, from 21 November to 31 December."
     },
     "applyRefused": {
-      "aQuestionAlreadyStands": "You already have an application waiting for a team's answer, so a new one was not sent. You withdraw it on the page of the team you sent it to.",
-      "aQuestionAlreadyStandsFemale": "You already have an application waiting for a team's answer, so a new one was not sent. You withdraw it on the page of the team you sent it to."
+      "aQuestionAlreadyStands": "You already have an application waiting for a team's answer. You can withdraw it on that team's page.",
+      "aQuestionAlreadyStandsFemale": "You already have an application waiting for a team's answer. You can withdraw it on that team's page."
     },
     "invite": "Invite into the team",
     "invited": "The invitation into the team \"{team}\" has been sent.",
     "inviteRefused": {
-      "theFormIsNotComplete": "The request did not reach the server in full, so the invitation was not sent. Refresh the page and try again.",
-      "theWindowIsShut": "The transfer window has closed in the meantime, so the invitation was not sent. The window opens on 11 November and runs to 31 December.",
-      "heIsAlreadyInATeam": "The member has joined a team in the meantime, so the invitation was not sent.",
-      "heIsAlreadyInATeamFemale": "The member has joined a team in the meantime, so the invitation was not sent."
+      "theFormIsNotComplete": "The invitation was not sent. Refresh the page and try again.",
+      "theWindowIsShut": "The transfer window is closed. The next one runs from 21 November to 31 December.",
+      "heIsAlreadyInATeam": "The member has joined a team in the meantime.",
+      "heIsAlreadyInATeamFemale": "The member has joined a team in the meantime."
     },
     "inviteSubject": "An invitation into the team \"{team}\"",
     "inviteBody": "The team \"{team}\" invites you to run for them from the next season.",
     "inviteAccept": "Accept",
     "inviteRefuse": "Decline",
     "inviteSent": "Invitations sent",
-    "applicationsUnreadable": "The list of applications cannot be loaded, so it is not known whether anybody is waiting for the team's answer.",
-    "invitationsUnreadable": "The list of invitations sent cannot be loaded, so it is not known which invitations are still waiting.",
+    "applicationsUnreadable": "The list of applications cannot be loaded right now.",
+    "invitationsUnreadable": "The list of invitations sent cannot be loaded right now.",
     "inviteWithdraw": "Withdraw the invitation",
     "inviteWithdrawNamed": "Withdraw the invitation: {name}",
     "inviteLapsed": "A member whose fee has lapsed",
     "inviteAccepted": "You have accepted this invitation and from the next season you run for the team \"{team}\".",
     "inviteAcceptedFemale": "You have accepted this invitation and from the next season you run for the team \"{team}\".",
-    "inviteOvertaken": "You have joined the team \"{team}\" in the meantime, so this invitation no longer stands.",
-    "inviteOvertakenFemale": "You have joined the team \"{team}\" in the meantime, so this invitation no longer stands.",
-    "inviteOvertakenUnnamed": "You have joined a team in the meantime, so you can no longer accept this invitation.",
-    "inviteOvertakenUnnamedFemale": "You have joined a team in the meantime, so you can no longer accept this invitation.",
+    "inviteOvertaken": "You are already in the team {team}.",
+    "inviteOvertakenFemale": "You are already in the team {team}.",
+    "inviteOvertakenUnnamed": "You are already in a team.",
+    "inviteOvertakenUnnamedFemale": "You are already in a team.",
     "inviteClosed": "This invitation no longer stands.",
     "inviteGone": "The team that invited you no longer exists.",
-    "inviteWaits": "The invitation waits: a team is joined during the transfer window only, from 11 November to 31 December.",
+    "inviteWaits": "The invitation waits for the transfer window, from 21 November to 31 December.",
     "inviteMissedSubject": "An invitation into the team went unanswered",
-    "inviteMissedBody": "{name} has joined the team \"{team}\" in the meantime, so your invitation no longer stands.",
-    "inviteMissedBodyFemale": "{name} has joined the team \"{team}\" in the meantime, so your invitation no longer stands.",
+    "inviteMissedBody": "{name} has joined the team \"{team}\" in the meantime.",
+    "inviteMissedBodyFemale": "{name} has joined the team \"{team}\" in the meantime.",
     "answerRefused": {
-      "theFormIsNotComplete": "The answer did not reach the server in full, so the invitation was not answered. Refresh the page and try again."
+      "theFormIsNotComplete": "The answer was not sent. Refresh the page and try again."
     }
   },
   "leagues": {
@@ -938,10 +937,10 @@
   },
   "pricing": {
     "rows": {
-      "early": "11 to 20 November",
-      "regular": "21 November to 31 December",
+      "early": "21 to 30 November",
+      "regular": "1 to 31 December",
       "late": "1 January to 31 March",
-      "season": "1 April to 10 November",
+      "season": "1 April to 20 November",
       "junior": "Aged fourteen and under",
       "referral": "Referral of a new member"
     },
@@ -967,10 +966,10 @@
     "needed": "This needs a sign-in",
     "neededText": "This part of the portal is seen by members only.",
     "noRecord": "This part is for competitors",
-    "noRecordText": "You are signed in, but there is no competitor record on this account, so there is nothing to show here.",
-    "needsBoth": "Enter an address and a password so that you can sign in.",
+    "noRecordText": "This account has no competitor profile.",
+    "needsBoth": "Enter an address and a password.",
     "refused": "The sign-in did not succeed. The address or the password is wrong, or the account is locked for a while after too many failed attempts.",
-    "noWho": "The sign-in went through, but the portal did not manage to learn who you are. Refresh the page, and if it happens again, let us know.",
+    "noWho": "Sign-in did not finish. Refresh the page and try again, and if it happens again, write to info@balkanskatrkackaliga.net.",
     "forgotten": "A forgotten password"
   },
   "newPassword": {
@@ -978,14 +977,14 @@
     "intro": "Enter a new password for your account and repeat it.",
     "password": "New password",
     "passwordRepeat": "Repeat the new password",
-    "passwordHint": "At least {count} characters. There is no other condition, but the password must not be one that has already appeared in publicly published breaches.",
+    "passwordHint": "At least {count} characters. The password must not be one from publicly published data breaches.",
     "submit": "Set the password",
     "sending": "Sending",
     "done": "The password is set. You can sign in now.",
-    "noToken": "This address carries no link from a message, so there is nothing to set. Open the link in the message the portal sent you.",
+    "noToken": "Open the link in the message the portal sent you.",
     "linkIsNotValid": "The link has expired or has already been used. Ask for a new one from the sign-in page.",
     "formIsNotComplete": "Both passwords must be filled in, the same, and at least {count} characters long.",
-    "passwordHasLeaked": "This password has already appeared in publicly published breaches, so the portal does not take it. Choose another."
+    "passwordHasLeaked": "This password has appeared in publicly published data breaches. Choose another."
   },
   "forgottenPassword": {
     "title": "A forgotten password",
@@ -993,24 +992,24 @@
     "email": "Email address",
     "submit": "Send the link",
     "sending": "Sending",
-    "needsAddress": "Enter an email address so that you can ask for the link.",
+    "needsAddress": "Enter an email address.",
     "done": "If there is an account at that address, we are sending the message with the link. Look in your mailbox, and in the junk mail if it is not there. If it does not arrive within a few minutes, write to us at info@balkanskatrkackaliga.net."
   },
   "confirmAddress": {
     "title": "Address confirmation",
     "working": "We are confirming the address, just a moment.",
     "done": "The address is confirmed. You can sign in now.",
-    "noToken": "This address carries no link from a message, so there is nothing to confirm. Open the link in the message the portal sent you.",
+    "noToken": "Open the link in the message the portal sent you.",
     "linkIsNotValid": "The link has expired or has already been used. Ask for a new one from the sign-in page."
   },
   "server": {
     "signIn": "Sign-in",
-    "refused": "The server refused the request with the reason {reason}, which this screen does not recognise.",
-    "rejected": "The portal did not manage to prove to the server that the request comes from this page. Refresh the page and try again.",
+    "refused": "The request was not accepted ({reason}).",
+    "rejected": "The request did not go through. Refresh the page and try again.",
     "locked": "The browser has forgotten the access password for the trial period. Open the portal in a new tab and type it there, then come back here and send again; what you have entered is still here.",
     "lockedOpen": "Open in a new tab",
-    "wrong": "The server answered with the number {status} and nothing was changed. Try again in a few minutes.",
-    "malformed": "The portal sent data in a form the server cannot read. Nothing was changed. This is a fault of the portal, please tell us.",
+    "wrong": "Nothing was saved (error {status}). Try again in a few minutes.",
+    "malformed": "Nothing was saved. The fault is on our side; write to us at info@balkanskatrkackaliga.net.",
     "nothing": "The portal did not manage to reach the server. Check the connection and try again."
   },
   "myProfile": {
@@ -1019,25 +1018,25 @@
   "myResults": {
     "title": "My results",
     "add": "Enter a result",
-    "sentIn": "Sent to be checked",
+    "sentIn": "Sent",
     "sendAgain": "Correct and send again",
     "sendAgainNamed": "Correct and send again: {name}",
     "change": "Change",
     "changeNamed": "Change the result: {name}",
     "own": "Mine",
     "distance": "Dist.",
-    "noneSent": "No result has been sent to be checked yet.",
+    "noneSent": "You have not sent any result yet.",
     "counted": "Counted"
   },
   "newResult": {
     "title": "Entering a result",
-    "submit": "Send to be checked",
+    "submit": "Send result",
     "again": "You are correcting a result that was refused. The reason was: {reason}",
-    "fixingCounted": "You are changing a result that is already counted. Until the change is approved, the old result stays in the standing, and a refused change alters nothing. New proof has to go with the change.",
+    "fixingCounted": "You are changing a result that is already counted. Until the change is confirmed, the old result stays in the standings. Attach new proof with the change.",
     "needsProof": "A change to a counted result must carry a link to the official results or a picture as proof.",
     "needsTime": "A time must be entered. Hours, minutes and seconds cannot all be zero.",
-    "pointsNotFinal": "The reckoning is not final. The League confirms it at verification, and the number can change.",
-    "againDone": "The result has been sent to be checked again.",
+    "pointsNotFinal": "Points are final once the League confirms the result.",
+    "againDone": "The result has been sent again.",
     "eventName": "Event",
     "eventHint": "Choose an event from the calendar or type the name of a new one. A new event and race enter the calendar when the league confirms the result.",
     "raceOfTheEventHint": "Choose a race of this event or type a new one.",
@@ -1057,7 +1056,7 @@
     "linkHint": "Required, unless you attach pictures of the results or of an app as proof.",
     "photo": "A picture as proof",
     "doneTitle": "The result has been sent",
-    "doneWaiting": "A moderator is checking it. Once it is confirmed, it enters the boards and your profile.",
+    "doneWaiting": "The result enters the boards and your profile once it is confirmed.",
     "toMine": "My results",
     "another": "Enter another one",
     "photoHint": "A shot from a watch, a certificate or something else. A comment becomes required, and the link to the results becomes optional.",
@@ -1088,7 +1087,7 @@
     }
   },
   "status": {
-    "pending": "Waiting to be checked",
+    "pending": "Pending",
     "rejected": "Refused"
   },
   "messages": {
@@ -1103,14 +1102,14 @@
   "membership": {
     "title": "My fee",
     "noRecordTitle": "Your membership data has not arrived",
-    "noRecord": "The portal cannot read your membership record, so renewing the fee is not possible right now. Refresh the page and try again.",
+    "noRecord": "Membership details cannot be loaded right now. Refresh the page and try again.",
     "status": "State",
     "active": "A member since the {season} season.",
     "feeExempt": "You are exempt from paying the fee for season {season}, by a decision of the Board.",
-    "notYetSold": "The fee is not on sale yet. Collection starts on 11 November.",
+    "notYetSold": "The fee is not on sale yet. Collection starts on 21 November.",
     "junior": "Anybody who is fourteen or younger on at least one day of the season pays {eur} EUR, and {rsd} RSD from Serbia, whatever the date of payment.",
     "paypal": "PayPal",
-    "paypalNote": "The PayPal address is a business one, in the name of the BTL sports association. PayPal is not offered to members from Serbia, because paying with it between residents of Serbia is not allowed.",
+    "paypalNote": "The PayPal address is in the name of the BTL sports association.",
     "paypalAddressLabel": "PayPal address",
     "paypalAmountLabel": "Amount (fee included)",
     "paypalNoteLabel": "Note",
@@ -1125,24 +1124,24 @@
     "paypalNoteCopyFailed": "Copying failed. Copy the note by hand.",
     "ipsQrLabel": "The IPS QR code for the payment slip",
     "renewal": "Renewing the fee for {season}.",
-    "renewalOpen": "Renewal is open. You do not register again: the member number, the profile and the history stay yours.",
-    "renewalShut": "Renewal opens on 11 November and lasts until 31 December.",
+    "renewalOpen": "Renewal is open.",
+    "renewalShut": "Renewal opens on 21 November and lasts until 31 December.",
     "chooseCategory": "Which category you compete in for {season}.",
     "ageBand": "In my age category",
     "firstSeasonBand": "In the rookie category",
-    "firstSeasonOpen": "The rookie category is still open to you, because you have not finished any official season with {points} points or more.",
-    "firstSeasonClosed": "The rookie category is closed to you, because you finished an official season with {points} points or more. Leaving it cannot be undone.",
-    "choiceRefused": "Your choice was not saved, because the deadline passed at 10.00 on 1 January. Your category stays as it was.",
+    "firstSeasonOpen": "The rookie category is still available to you.",
+    "firstSeasonClosed": "The rookie category is unavailable to you, because you finished an official season with {points} points or more.",
+    "choiceRefused": "The deadline for choosing a category passed at 10.00 on 1 January.",
     "categoryYouRunIn": "In the {season} season you compete in the category: {category}",
-    "renew": "The payment details are below. As soon as the payment arrives, the moderator confirms it and your membership renews.",
+    "renew": "The payment details are below. Your membership renews once the payment is recorded.",
     "transferWindow": "Transfer window",
     "noTeam": "You are not in any team at the moment.",
     "inTeam": "You are in the team {team} at the moment.",
     "transferOpen": "The transfer window is open until 31 December at 23.59. The change takes effect on 1 January {season}.",
-    "transferShut": "The transfer window is closed. It opens on 11 November and lasts until 31 December. If nothing is agreed by then, you stay where you are.",
+    "transferShut": "The transfer window is closed. It opens on 21 November and runs until 31 December.",
     "askToJoin": "You join a team by applying on the team's page or by accepting an invitation that reaches your inbox.",
     "leaveTeam": "Leave the team",
-    "leaveTeamAsk": "Are you sure you want to leave {team}? You come back only if the team accepts your application or invites you again.",
+    "leaveTeamAsk": "Are you sure you want to leave {team}?",
     "leaveTeamSure": "Confirm leaving",
     "leaveTeamKeep": "Cancel",
     "payNow": "Payment slip",
@@ -1152,36 +1151,36 @@
     "reference": "Reference number",
     "purposeLabel": "Purpose of payment",
     "priceNow": "Today the fee costs {eur} EUR, and {rsd} RSD from Serbia.",
-    "costs": "A payment in euros also carries a payment processing charge of {fee} EUR, which is not part of the fee but the cost of processing at the payment intermediary, and the exchange difference and your bank's charge remain yours. A payment in dinars carries neither a charge nor an exchange difference.",
+    "costs": "A payment in euros also carries a payment processing charge of {fee} EUR. The payer covers the exchange difference and the bank's charge.",
     "referral": "The referral programme",
-    "referralNote": "Everybody who joins through your link and activates a fee brings you {amount} onto your balance. Not at the moment of the application but once the fee is activated.",
+    "referralNote": "For everyone who joins through your link you get {amount} on your balance, once their fee is activated.",
     "copyReferralLink": "Copy the referral link",
     "linkCopied": "Link copied.",
     "copyFailed": "Copying failed. Copy the link by hand.",
     "balance": "on the balance",
     "balanceNote": "The balance pays for future fees. It is not paid out in money and is not transferred to another member.",
-    "feeExemptNoRenewal": "You are exempt from paying the fee, so there is nothing to pay.",
+    "feeExemptNoRenewal": "The fee for season {season} is settled.",
     "amountLabel": "Amount",
-    "fromTheBalance": "Your balance covers {fromTheBalance}, so you pay {toTransfer}.",
+    "fromTheBalance": "Your balance covers {fromTheBalance}, and {toTransfer} is left to pay.",
     "amountNotArrived": "The amount to pay did not arrive. Refresh the page and try again.",
-    "notPaidYet": "Your fee has not been recorded yet, so you do not have a member number yet. You get one when a moderator records your payment.",
+    "notPaidYet": "You get your member number once your payment is recorded.",
     "firstPayment": "Paying the fee for {season}.",
     "firstPaymentOpen": "Paying is open.",
-    "firstRenew": "The payment details are below. As soon as the payment arrives, the moderator confirms it and you get your member number.",
-    "recognisedByName": "As you do not have a member number yet, the payment has no reference number. It is recognised by your name, and a moderator confirms it by hand.",
+    "firstRenew": "The payment details are below. You get your member number once the payment is recorded.",
+    "recognisedByName": "For now the payment has no reference number. We recognise it by the payer's name.",
     "noRanking": "A fee paid now does not give you the right to be ranked.",
     "paidFor": "The fee for season {season} is paid.",
     "paidFromBalance": "The fee for season {season} is paid from your balance.",
-    "coveredByTheBalance": "Your balance from the referral programme covers the fee for season {season}. Whatever is left stays on your balance for the next season.",
+    "coveredByTheBalance": "Your balance from the referral programme covers the fee for season {season}.",
     "letMeIn": "Activate membership",
     "letIn": "Your membership for season {season} is activated.",
     "letInNumber": "Your member number is {number}.",
     "letInBoxes": "Add your profile picture and a few words about yourself",
     "letInAlready": "Your membership for this season is already activated.",
-    "letInNothingToPay": "There is no fee for you to pay for this season.",
-    "letInNotEnough": "Your balance no longer covers the whole fee, so the payment details for the rest are below.",
-    "notPaidYetCovered": "Your fee has not been recorded yet, so you do not have a member number yet. You get one when you activate your membership from your balance.",
-    "alreadyPaid": "The fee for {season} is already paid, so there is nothing to pay."
+    "letInNothingToPay": "The fee for this season is settled.",
+    "letInNotEnough": "Your balance does not cover the whole fee. The details for paying the rest are below.",
+    "notPaidYetCovered": "You get your member number once you activate your membership from your balance.",
+    "alreadyPaid": "The fee for season {season} is paid."
   },
   "review": {
     "title": "The queue for checking results",
@@ -1200,11 +1199,11 @@
     "amendTitle": "Correction before deciding",
     "amendSave": "Approve with the correction",
     "amendCancel": "Cancel",
-    "amendNote": "You set the competitor's figures in place of the ones he reported and approve the result with them. The figures the race fixes are not changed here but on the race itself, where the correction reaches everybody who ran it.",
+    "amendNote": "You approve the result with the race dimensions you enter here.",
     "sendBackNamed": "Refusing: {name}",
     "reason": "Reason for refusing",
-    "reasonPlaceholder": "Nothing is refused without a reason. The member receives your reason in a message.",
-    "reasonKeptPlaceholder": "Nothing is refused without a reason. No message goes out, because there is nobody to send it to.",
+    "reasonPlaceholder": "The reason you enter reaches the member in a message.",
+    "reasonKeptPlaceholder": "Enter the reason for refusing.",
     "instructionPlaceholder": "Write exactly what has to change in the picture for it to be accepted.",
     "unusableLink": "The member sent an address the portal does not open.",
     "sentOn": "Sent",
@@ -1224,8 +1223,8 @@
       "choose": "Choose a statement PDF",
       "taking": "Reading the statement {name}…",
       "taken": "Statement number {number} of {dated} has been taken. Payments booked by themselves: {booked}. Payments waiting for your confirmation: {waiting}. Payments that had already been recorded: {already}.",
-      "notUnderstood": "The server took the statement, but the portal cannot read its answer. Reload the page to see what was booked.",
-      "wrongKind": "A statement must be a PDF. This file is not, so it was not taken.",
+      "notUnderstood": "The statement is received. Refresh the page to see the booked items.",
+      "wrongKind": "A statement must be a PDF.",
       "bookedLine": "Booked by itself: {whose}, {amount}",
       "alreadyLine": "Already recorded: {whose}, season {season}",
       "candidate": "{whose} ({number}), {city}",
@@ -1266,12 +1265,12 @@
       },
       "refused": {
         "theStatementIsMissing": "The statement did not reach the server. Choose the statement PDF again.",
-        "theStatementIsTooLarge": "The statement is larger than 2 MB, so it was not taken.",
-        "theFileIsNotAStatement": "This is not an AIK banka statement the portal can read, so nothing was booked.",
+        "theStatementIsTooLarge": "The statement is larger than 2 MB.",
+        "theFileIsNotAStatement": "This is not an AIK banka statement.",
         "theStatementIsOfAnotherAccount": "This is a statement of another account. The portal reads only statements of account 105-0000000003284-71."
       }
     },
-    "reasonNeeded": "Enter a reason so that you can send."
+    "reasonNeeded": "Enter a reason."
   },
   "admin": {
     "title": "Administration",
@@ -1348,7 +1347,7 @@
       "openNamed": "Open: {name}",
       "back": "Back to the list",
       "saved": "Saved",
-      "savedNote": "This has been kept. Check the values; if something is not right, go back to the list and open the record again.",
+      "savedNote": "Saved.",
       "new": {
         "members": "A new member",
         "events": "A new event",
@@ -1425,18 +1424,18 @@
       "ageBand4054": "40 to 54",
       "ageBand55": "55 and over"
     },
-    "pricingFixed": "The periods are fixed and repeat every year, so rows are neither added nor deleted. What changes is the prices and the names of the periods.",
+    "pricingFixed": "The periods repeat every year. Here the prices and the names of the periods are changed.",
     "period": "Period in the year",
     "everyPayment": "Every payment",
     "processingFeeHeading": "Payment processing charge",
-    "processingFee": "A payment in euros is larger on the statement by the payment processing charge. The charge is not part of the fee and is not counted into it.",
-    "raceTaken": "This event already has a race of that length on that day. Nobody can tell apart two races that differ in nothing at all.",
+    "processingFee": "A payment in euros is larger on the statement by the payment processing charge.",
+    "raceTaken": "This event already has a race of that length on that day.",
     "referral": "Referral",
     "corrected": "Corrected",
-    "referralNote": "The amount put onto the referrer's balance once a new member's fee is activated. The price list is the source of that amount: the members' page and the terms of use speak of it. It is set up to 11 November, for the season that then begins to be renewed; from that day it stands.",
-    "referralSettled": "The referral amount for season {season} does not change any more. The renewal of that season has been open since 11 November, and the amount is set up to that day.",
-    "referralOpen": "The amount you enter now holds for season {season}, because it is set up to 11 November. The portal remembers one amount and does not remember the earlier ones, so the same entry also changes the amount that stands from this moment on. An amount per season comes with the database.",
-    "referralRunning": "Season {season} is already under way. Its amount was locked on 11 November of the year before, and this entry changes it all the same, because the portal holds one amount.",
+    "referralNote": "The amount put onto the referrer's balance once a new member's fee is activated. It is set up to 21 November, for the season that then goes on sale.",
+    "referralSettled": "The referral amount for season {season} does not change any more. The renewal of that season has been open since 21 November, and the amount is set up to that day.",
+    "referralOpen": "The amount you enter now holds for season {season}. It is set up to 21 November.",
+    "referralRunning": "Season {season} is already under way, and this entry changes its amount too.",
     "leagueRaces": "Competition races",
     "leagueRacesOf": "Competition races, {name}",
     "chooseEvent": "Event",
@@ -1450,7 +1449,7 @@
     "leagueRaceAdded": "The race has been added to the competition.",
     "leagueRaceDropped": "The race has been dropped from the competition.",
     "leagueRefused": {
-      "theSeasonIsFrozen": "The season of this competition is frozen, so a race is no longer added. Dropping still works.",
+      "theSeasonIsFrozen": "The season of this competition is frozen. Races can only be dropped.",
       "theRaceIsNotOfTheLeaguesSeason": "That race is not from the season of this competition.",
       "theEventHoldsNoRaces": "That event has no race yet.",
       "theRaceIsNotKnown": "The portal does not know that race.",
@@ -1463,7 +1462,7 @@
       "theAddressIsNotShaped": "An address may have only lower-case letters and digits, with a single hyphen between them. It must neither begin nor end with a hyphen.",
       "theAddressIsTaken": "There is already a competition at that address.",
       "theSeasonIsNotThisOneOrTheNext": "A competition is made for the current or the next season only.",
-      "theSeasonIsFrozen": "The season of this competition is frozen, so the competition is no longer changed. Deleting still works.",
+      "theSeasonIsFrozen": "The season of this competition is frozen. The competition can only be deleted.",
       "theSeasonCannotMoveWhileRacesCount": "The season cannot be moved while the competition counts even one race. Drop the races first, then change the season."
     },
     "eventSaveRefused": {
@@ -1472,7 +1471,7 @@
       "theTownIsNotSaidOnce": "A town is given one way: either chosen from the codebook, or typed by hand with the country beside it.",
       "theTownIsNotKnown": "The portal does not know that town.",
       "theCountryIsNotKnown": "The portal does not know that country.",
-      "theCountryBelongsToATypedTown": "A town from the codebook already carries its country, so no country is chosen beside it.",
+      "theCountryBelongsToATypedTown": "A country is not chosen beside a town from the codebook.",
       "aTypedTownNamesItsCountry": "A town typed by hand has to name its country.",
       "theLinkIsNotShaped": "A link has to begin with http:// or https:// and may not contain a space.",
       "theAddressIsTaken": "There is already an event at that address. Change the name or the date.",
@@ -1482,7 +1481,7 @@
     "raceSaveRefused": {
       "theFormIsNotComplete": "The race row is missing a name or the event it belongs to.",
       "theEventIsNotKnown": "The portal does not know the event this race belongs to.",
-      "theEventHoldsNoRaces": "That event is not a race, so it cannot hold races.",
+      "theEventHoldsNoRaces": "That event is not a race.",
       "theRaceCannotChangeEvents": "A race cannot move to another event.",
       "theKindIsNotKnown": "The portal does not know that kind of race.",
       "theLimitBelongsToATimedRace": "A time limit is set only on a race run against one.",
@@ -1493,11 +1492,11 @@
       "theAddressIsTaken": "There is already a race at that address.",
       "theDateWouldMoveAResultToAnotherYear": "The date cannot cross into another year while a result stands at this race.",
       "theKindCannotChangeOnceRunsAreCounted": "The kind of a race cannot change while an approved result stands at it.",
-      "anEventStillAheadWouldMoveIntoTheYearJustEnded": "The event is still ahead and the day of this race is in the year that has just ended, so the event would move back into that year and lose its announced arrivals. Choose a day of the event's year."
+      "anEventStillAheadWouldMoveIntoTheYearJustEnded": "The day of the race has to be in the year of the event."
     },
     "eventGone": "The event has been deleted, with its races and its results.",
     "eventDeleteAsk": "Delete the event?",
-    "eventSavedUnseen": "The event was saved, but the portal cannot show it in this list. Reload the page.",
+    "eventSavedUnseen": "The event was saved. Refresh the page.",
     "eventSavedRacesRefused": "The event is saved. The races that were not saved are listed under the table; correct them and press Save. Only the races are sent.",
     "eventSavedRacesKept": "The event is saved. The races that were not deleted are listed under the fields of the event; press Save to try deleting them again. Only the races are sent.",
     "eventDeleteTakes": "This deletes {races} and {results} as well.",
@@ -1518,9 +1517,9 @@
     "teamGone": "The team has been deleted.",
     "teamDeleteAsk": "Delete the team?",
     "teamDeleteRefused": {
-      "theWindowIsShut": "The transfer window is closed. It opens on 11 November and lasts until 31 December. Until then a team is not deleted, not even from the administration."
+      "theWindowIsShut": "A team is deleted only in the transfer window, from 21 November to 31 December."
     },
-    "leagueSavedUnseen": "The competition has been saved, but the portal cannot show it in this list. Refresh the page.",
+    "leagueSavedUnseen": "The competition was saved. Refresh the page.",
     "leagueTextSaved": "The change has been saved.",
     "priceSaved": "The price has been saved.",
     "priceRefused": {
@@ -1531,7 +1530,7 @@
       "theAmountIsMoreThanARowMayCost": "The price is larger than the largest allowed: 1,000 EUR and 200,000 RSD.",
       "theFeeHasNoDinarPrice": "The payment processing charge has no dinar price, because it is not paid to the intermediary in dinars.",
       "theRowIsFreeInOneCurrencyOnly": "A price list row is either free in both currencies or has an amount in both. Nought in one alone is not accepted.",
-      "theReferralIsSettled": "The referral amount has been fixed since 11 November for the season being renewed, and changes only for the next season."
+      "theReferralIsSettled": "The referral amount has been fixed since 21 November for the season being renewed, and changes only for the next season."
     },
     "moderatorSaveRefused": {
       "theFormIsNotComplete": "A first name, a last name or an email address is missing.",
@@ -1542,12 +1541,12 @@
     "moderatorGone": "The moderator has been deleted.",
     "moderatorDeleteAsk": "Delete the moderator?",
     "moderatorDeleteNote": "The account stays; only the moderator rights are taken away.",
-    "moderatorSavedUnseen": "The moderator has been saved, but the portal cannot show them in this list. Refresh the page.",
+    "moderatorSavedUnseen": "The moderator was saved. Refresh the page.",
     "moderatorRightsSavedUnseen": "The right has been saved, but the portal cannot show the new state. Refresh the page.",
     "memberDeleteRefused": {
       "theAccountMustBeDecided": "The portal did not pass on the decision about the account. Refresh the page and try again.",
-      "anonymisingIsNotWrittenYet": "Anonymising an account has not been written yet. For now a member can only be deleted.",
-      "theAccountAdministers": "This member's account administers the portal, so the member cannot be deleted from here."
+      "anonymisingIsNotWrittenYet": "Anonymising an account does not exist yet. A member can only be deleted.",
+      "theAccountAdministers": "This account is an administrator of the portal and is not deleted from here."
     },
     "memberGone": "The member has been deleted.",
     "memberDeleteAsk": "Delete the member?",
@@ -1557,8 +1556,8 @@
     "invitationSent": "A new invitation has been sent to {email}. The earlier link no longer works.",
     "invitationSentSomewhere": "A new invitation has been sent. The earlier link no longer works.",
     "invitationNotNeeded": "The member has already set a password.",
-    "invitationNoAccount": "The member has no account on the portal, so there is nobody for an invitation to reach.",
-    "invitationNotSent": "The mail is not accepting messages at the moment, so the invitation was not sent. Try again in a minute or two.",
+    "invitationNoAccount": "The member has no account on the portal.",
+    "invitationNotSent": "The invitation was not sent. Try again in a few minutes.",
     "cancelMembership": "Cancel",
     "changeToExemption": "Change the basis to an exemption",
     "withoutTheRightToRank": "without the right to rank",
@@ -1573,9 +1572,9 @@
     "exemptionGranted": "The exemption has been recorded.",
     "basisChanged": "The basis of the membership has been changed.",
     "membershipRefused": {
-      "theFormIsNotComplete": "The request did not arrive whole, so nothing was done. Refresh the page and try again.",
+      "theFormIsNotComplete": "The request failed. Refresh the page and try again.",
       "theBasisIsNotKnown": "The portal does not know the basis of membership that was sent, so nothing was done. Refresh the page and try again.",
-      "thisChangeIsNotOffered": "This change of basis is not offered on a member's row, so nothing was done. An activation from the balance is cancelled first, and a new one is recorded after.",
+      "thisChangeIsNotOffered": "An activation from the balance is cancelled first, and a new one is recorded after.",
       "theBasisHasChanged": "The basis for this season has changed in the meantime, so nothing was done. Refresh the page."
     },
     "editMember": "Edit the details",
@@ -1622,7 +1621,7 @@
     "appearance": "Appearance",
     "privacy": "Privacy",
     "hideProfile": "Hide my profile from anyone who is neither an active member nor the administration",
-    "hideProfileNote": "The name stays in the tables and on the boards, because without it ranking everybody together would lose its point. What is hidden is only your profile page, and only from visitors who are not signed in and from signed-in accounts without an active membership.",
+    "hideProfileNote": "The name stays in the tables and on the boards. The profile page is hidden from visitors who are not signed in and from accounts without an active membership.",
     "opensWhenTheFeeIsRenewed": "Your data and your password open once your fee has been renewed. Renew it here: {renewal}.",
     "themeLabel": "Theme",
     "themeDark": "Dark",
@@ -1633,8 +1632,8 @@
   },
   "rights": {
     "title": "Moderators' rights",
-    "intro": "A row is a moderator, a column is a right. A box is remembered the moment it is pressed, there is no button to save. The rights are in two groups because they are two different actions: editing changes a record, while deciding lets somebody else's work through or sends it back.",
-    "superadminNote": "The Superadmin is not in this table. He may do everything, always, so there is nothing to grant him or take from him.",
+    "intro": "A row is a moderator, a column is a right. A box is remembered the moment it is pressed.",
+    "superadminNote": "The Superadmin has all rights and is not in this table.",
     "moderator": "Moderator",
     "given": "Rights",
     "none": "Without a single right",
@@ -1686,10 +1685,10 @@
   },
   "verification": {
     "waitingForMembers": "The decision is waiting for the list of members, so that it is known whether the applicant already has a team.",
-    "membersFailed": "A decision is not possible: the list of members cannot be loaded, and without it there is no telling whether the applicant already has a team.",
-    "teamMemberHasTeam": "The applicant is already in a team, so this proposal cannot be approved. A member may be in one team only.",
-    "teamGone": "The team this change applies to has been deleted in the meantime, so there is nothing to change. Refuse the change with an explanation.",
-    "teamNotYours": "This change was sent by a member who no longer administers that team, so it cannot be approved. Refuse the change with an explanation.",
+    "membersFailed": "The list of members cannot be loaded, so a decision is not possible. Refresh the page.",
+    "teamMemberHasTeam": "The applicant is already in a team, so the proposal cannot be approved.",
+    "teamGone": "The team is deleted in the meantime. Refuse the change with an explanation.",
+    "teamNotYours": "This change was sent by a member who no longer leads that team. Refuse the change with an explanation.",
     "openCard": "Show",
     "openCardNamed": "Show: {name}",
     "foldCard": "Hide",
@@ -1713,7 +1712,7 @@
     "teamChange": "A change to an existing team",
     "teamChangeOf": "A change to the team \"{name}\"",
     "teamChangeAccepted": "The change to the team \"{name}\" has been accepted",
-    "teamChangeAcceptedBody": "The details of the team \"{name}\" have been changed. A moderator may correct what you sent before accepting it, so have a look at the team's page.",
+    "teamChangeAcceptedBody": "The details of the team \"{name}\" have been changed.",
     "sentBy": "Sent by {who}, member {memberNumber}",
     "sentByAnonymous": "Reported by a visitor without an account",
     "paymentsSeason": "Not members for the {season} season",
@@ -1746,11 +1745,11 @@
       "theFormIsNotComplete": "The activation was not sent in full, so no membership was recorded. Refresh the page and try again.",
       "theGroundIsNotKnown": "The ground for the activation was not recognised, so no membership was recorded. Refresh the page and try again.",
       "nothingWouldComeOffTheBalance": "Nothing can be taken off this member's balance, so no membership was recorded.",
-      "theMembershipIsAlreadyHeld": "This member already holds a membership for this season, so nothing was recorded again.",
+      "theMembershipIsAlreadyHeld": "This member already holds a membership for this season.",
       "theCompetitorDoesNotExist": "This member is no longer there, so no membership was recorded. Refresh the page.",
-      "theFeeIsAlreadyRecorded": "This member's fee has already been recorded, so no exemption was granted.",
+      "theFeeIsAlreadyRecorded": "This member's fee has already been recorded.",
       "theAmountIsNotMoney": "The amount paid has to be more than nought, so no payment was booked and no membership was recorded.",
-      "theAmountIsNotWhole": "The amount paid has to be a whole number, with no dots or commas, so no payment was booked and no membership was recorded. Type the amount again.",
+      "theAmountIsNotWhole": "The amount is entered as a whole number, with no dots or commas.",
       "theAmountIsNotKeptExactly": "The amount is larger than the portal can record, so no payment was booked and no membership was recorded. Check the amount and type it again.",
       "theMethodIsNotKnown": "The way the money arrived was not recognised, so no payment was booked and no membership was recorded. Refresh the page and try again.",
       "theReferenceIsNotShaped": "The payment reference is not of the right shape, so no payment was booked and no membership was recorded.",
@@ -1782,13 +1781,13 @@
     "deleteNotePlaceholder": "Why it was taken down, for the moderators. It may stay empty.",
     "confirmDelete": "Delete the comment",
     "pictureAlt": "The picture sent by {who}, with the part that will be seen framed",
-    "pictureUnavailable": "The picture is not available: the file cannot be loaded, so this item cannot be approved until the picture can be seen. Rejecting it still works.",
+    "pictureUnavailable": "The picture cannot be loaded, so it cannot be approved either. Refusing works.",
     "resultReturned": "The result has been sent back",
     "teamReturned": "The team proposal has been sent back",
     "teamChangeReturned": "The change to the team has been sent back",
     "bioReturned": "The text about yourself has been sent back",
     "photoReturned": "The profile picture has been sent back",
-    "noRecipient": "This item has no member for an answer to reach, so it is not refused from this queue. Approve it or report the fault; a message without a recipient would go to the whole League.",
+    "noRecipient": "This item has no member to receive an answer, so it cannot be refused. Approve it or report the fault.",
     "approveAllDone": {
       "one": "{count} item has been settled.",
       "few": "{count} items have been settled.",
@@ -1799,7 +1798,7 @@
     "teamTaken": "A team under this name, or under a name that gives the same address, already exists in the League. Correct the name or refuse the proposal.",
     "teamNoAddress": "No page address can be made from this name. Correct the name so that it has at least one letter of our alphabet or of Cyrillic, or a digit, or refuse the proposal.",
     "teamIncomplete": "The name, the town and the country must all be filled in for the team to come into being.",
-    "teamNoMember": "This proposal has no member who sent it, so there is nobody to be the organiser of the team and nobody to receive an answer."
+    "teamNoMember": "This proposal has no member who sent it."
   },
   "rulebook": {
     "onThisPage": "On this page",
@@ -1822,7 +1821,7 @@
   "report": {
     "title": "Reporting a result",
     "submit": "Send the result",
-    "noRaces": "This event has no race yet, so there is nothing to report.",
+    "noRaces": "This event has no race yet.",
     "noRace": "A result is entered from the row of a race, on the event's page."
   },
   "pager": {
@@ -1834,8 +1833,8 @@
   },
   "crop": {
     "choosing": "Cropping the picture",
-    "framed": "The part of the picture inside the circle is what will be seen. The rest is darkened, but still shows through.",
-    "tooSmall": "The picture is too small. Its shortest side has to be at least {least} pixels, so that the circle stays sharp everywhere it is shown.",
+    "framed": "The part of the picture inside the circle is what is seen on the profile.",
+    "tooSmall": "The picture is too small. Its shortest side has to be at least {least} pixels.",
     "unreadable": "This picture cannot be opened. Choose another one, in JPG or PNG form for instance.",
     "x": "Move left and right",
     "y": "Move up and down",
@@ -1844,29 +1843,29 @@
   },
   "bio": {
     "title": "About yourself",
-    "standing": "This is what stands on your profile now. A change goes to a moderator for approval, and while it waits, the old text stays on the profile.",
-    "none": "You have not written anything about yourself yet. Once you send it, a moderator looks the text over before it appears on the profile.",
-    "send": "Send for approval",
-    "waitingNote": "Your text is waiting for approval. If a moderator sends it back, the message says what you have to change.",
-    "waitingCorrect": "You can correct it before it is decided. Sending again replaces the text that is waiting, and the moderator sees only the last."
+    "standing": "This is the text on your profile. A change appears once it is accepted.",
+    "none": "You have not written anything about yourself yet. The text appears on the profile once it is accepted.",
+    "send": "Send",
+    "waitingNote": "Your text is not on the profile yet. If something needs to change, you will get a message.",
+    "waitingCorrect": "Until the text is on the profile, you can correct it."
   },
   "picture": {
     "title": "Profile picture",
-    "none": "The portal has no photograph yet, so the circle beside your name holds your initials. Send a picture and a moderator will look it over.",
-    "waitingNote": "Your picture is waiting for approval. If a moderator sends it back, the message says what you have to change.",
+    "none": "You have no profile picture yet.",
+    "waitingNote": "Your picture is not on the profile yet. If something needs to change, you will get a message.",
     "choose": "Choose a new picture",
-    "send": "Send for approval",
+    "send": "Send",
     "standingNote": "This is the picture that is on your profile now.",
-    "standingMove": "Move the circle to choose another part of the picture, or choose a new picture, then send it for approval. The picture on your profile stays the same until a moderator approves the new one.",
-    "waitingMove": "You can move the circle or choose another picture. Sending again replaces this one, which is waiting, and the moderator sees only the last.",
+    "standingMove": "Move the circle to choose another part of the picture, or choose a new picture, then send it. The new picture appears on the profile once it is accepted.",
+    "waitingMove": "Until the picture is on the profile, you can move the circle or choose another one.",
     "currentAlt": "Your picture, with the part that will be seen framed",
     "chosenAlt": "The picture you chose, with the part that will be seen framed",
-    "sentAlt": "The picture you sent for approval, with the part that will be seen framed",
+    "sentAlt": "The picture you sent, with the part that will be seen framed",
     "sending": "The picture is being sent...",
     "sendRefused": {
       "theFormIsNotComplete": "The picture did not reach the server. Choose it again and send it.",
       "thePictureIsTooBig": "The picture is too big for the portal. Choose a smaller one, or reduce it before sending.",
-      "thisIsNotAPicture": "This file is not a picture, whatever it is called. Send a photograph, in JPG or PNG form for instance.",
+      "thisIsNotAPicture": "This file is not a picture. Send a photograph, in JPG or PNG form for instance.",
       "theCropIsNotACircle": "The crop is not right. Set the circle again and send it."
     }
   },
@@ -1886,12 +1885,12 @@
     "save": "Save",
     "saved": "Saved.",
     "heldNote": "The administration changes the gender, the date of birth, the father's name and the number of the document on your request.",
-    "nothingToSave": "The server found no change at all in the request. Refresh the page and try again.",
+    "nothingToSave": "There are no changes to save.",
     "fieldIsBlank": "One of the required fields was left empty. Fill it in and save again.",
     "fieldIsTooLong": "One field is longer than the portal takes. Shorten it and save again.",
-    "notYoursToChange": "Gender and the date of birth are changed by the administration only, so the server does not take that change.",
+    "notYoursToChange": "Gender and date of birth are changed by the administration, at your request.",
     "townNotSaidOnce": "A town has to be given exactly once: either from the codebook, or as a name entered together with a country.",
-    "townNotKnown": "The server does not recognise the town or the country given. Choose a town from the codebook.",
+    "townNotKnown": "We do not recognise this town. Choose a town from the codebook.",
     "textIsTooLong": "The text about yourself is longer than the portal takes. Shorten it and send again.",
     "passwordTitle": "Password",
     "oldPassword": "The current password",
@@ -1899,11 +1898,11 @@
     "repeatPassword": "Repeat the new password",
     "passwordSignsOthersOut": "When you change the password, you will be signed out on every other device. This one stays signed in.",
     "passwordSubmit": "Change the password",
-    "passwordFillFirst": "Fill in all three fields so that you can change the password.",
+    "passwordFillFirst": "Fill in all three fields.",
     "passwordDone": "The password has been changed. The other devices have been signed out.",
     "passwordFormIsNotComplete": "All three fields must be filled in, and the two new ones the same and at least {count} characters long.",
     "oldPasswordIsWrong": "The current password is not right. Try again.",
-    "passwordHasLeaked": "This password has already appeared in publicly published breaches, so the portal does not take it. Choose another."
+    "passwordHasLeaked": "This password has appeared in publicly published data breaches. Choose another."
   },
   "leagueResults": {
     "title": "Entering results: {race}",
@@ -1930,7 +1929,7 @@
       "theMemberIsNamedTwice": "The same member is entered on more than one row.",
       "heHasAResultOnThisRace": "The member already has a result on this race. Change it with the pencil in the table of results.",
       "hisSubmissionWaits": "The member already has a report waiting for this race. Approve or refuse it in the review queue first.",
-      "heHoldsNoMembershipOfTheRunningSeason": "The member holds no membership of the season of this race, so the league does not enter a result for him.",
+      "heHoldsNoMembershipOfTheRunningSeason": "The member has no active membership for the season of this race.",
       "theFormIsNotComplete": "A time or a measure is missing, or a value is outside what is allowed.",
       "theGroupIsEmpty": "Add at least one member.",
       "theGroupIsTooBig": "Too many rows for one save. Split them into two saves.",
@@ -1939,17 +1938,17 @@
       "theTownIsMissing": "Enter the place of the new event.",
       "theEventWouldMoveOntoAnother": "The race would move the event into a year in which an event with the same name already exists. Choose that event.",
       "theDayIsNotInTheEventsYear": "The day of the race is not in the year of the chosen event.",
-      "anEventStillAheadWouldMoveIntoTheYearJustEnded": "The event is still ahead and the race is of the year that has just ended, so the event would move back into that year and lose its announced arrivals. Choose an event of that year or enter a new one."
+      "anEventStillAheadWouldMoveIntoTheYearJustEnded": "The race is from last year. Choose an event from last year or enter a new one."
     }
   },
   "memberData": {
-    "nothingChanged": "No detail was changed, so there is nothing to save.",
+    "nothingChanged": "No detail was changed.",
     "formNotComplete": "A field is not filled in the way the form asks. Check it and save again.",
     "notTakenHere": "The server does not take one of the fields that were sent. Refresh the page and save again.",
-    "aPairHoldsTheGender": "The member was in a racing pair, and a pair is always one man and one woman, so the gender is not changed.",
+    "aPairHoldsTheGender": "The gender of a member who was in a racing pair is not changed.",
     "aMinorNeedsAConsent": "With this date of birth the member would be younger than 16, and there is no consent of a parent for him, so the date is not written.",
     "theAddressIsConfirmed": "The member has already confirmed this email address, so only he can change it.",
-    "thereIsNoAccount": "The member has no account on the portal, so there is no email address to correct.",
+    "thereIsNoAccount": "The member has no account on the portal, and no email address.",
     "theAddressIsTaken": "Another account already uses this email address.",
     "theAddressIsTheSuperadmins": "This address belongs to the portal's administration and cannot be a member's."
   },

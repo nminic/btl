@@ -29,7 +29,7 @@ import java.time.ZonedDateTime;
  *
  * <p><b>WHERE THE WISH IS STORED, AND WHICH SEASON IT IS READ FOR.</b> Since V81 the wish is a row per
  * member and season ({@code category_wish}), and the season here is the one being chosen,
- * {@link SeasonClock#seasonBeingPaidFor}: from 11 November that is next year, so a member who holds
+ * {@link SeasonClock#seasonBeingPaidFor}: from 21 November that is next year, so a member who holds
  * the running season and ticks the box for the next one changes the next one alone, and the running
  * season keeps the category it began with (PDL P7, „Nema promene kategorije tokom godine"). Where no
  * row of that season exists yet the box opens on the last one before it (PDL, owner, 30.10.2026,

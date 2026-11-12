@@ -206,13 +206,13 @@ class TheWrittenPagesDropTheirExplanationsTest extends DatabaseTest {
 					"pravilnika, da se isto pitanje ne bi rešavalo dvaput različito.",
 					"is written into the next version of the Rulebook.",
 					"Rulebook, so that the same question is not resolved differently twice."),
-			/* V77 wrote 29.10.2026 here and V80 (owner, 30.10.2026) moved the rulebook on to 30.10.2026, so the day that
-			   STANDS is V80's; that V77 itself writes 29.10.2026 over the text it found is held by
-			   TheWrittenPagesDropTheirExplanationsCarriedOverTest, which undoes V80 first. */
+			/* V77 wrote 29.10.2026 here, V80 (owner, 30.10.2026) moved the rulebook on to 30.10.2026 and V93 (owner,
+			   10.11.2026) to 10.11.2026, so the day that STANDS is V93's; that V77 itself writes 29.10.2026 over the text
+			   it found is held by TheWrittenPagesDropTheirExplanationsCarriedOverTest, which undoes V93 and V80 first. */
 			new Change("PRAV-30", RULEBOOK, 19,
-					"Poslednja izmena: 30.10.2026.",
+					"Poslednja izmena: 10.11.2026.",
 					"izmena: 27.10.2026.",
-					"Last amended: 30.10.2026.",
+					"Last amended: 10.11.2026.",
 					"amended: 27.10.2026."),
 			new Change("USL-01", TERMS, 2,
 					"a profil se ne prikazuje.",
@@ -359,13 +359,13 @@ class TheWrittenPagesDropTheirExplanationsTest extends DatabaseTest {
 					"dukate, što je matematika",
 					"The portal calculates points, placing, and ducats automatically, under the league's rules.",
 					"ducats, which is arithmetic"),
-			/* V77 wrote 29.10.2026 here and V89 (owner, 07.11.2026) moved the policy on to 07.11.2026, so the day that STANDS
-			   is V89's; that V77 itself writes 29.10.2026 over the text it found is held by
+			/* V77 wrote 29.10.2026 here, V89 (owner, 07.11.2026) moved the policy on to 07.11.2026 and V90 (owner,
+			   08.11.2026) to 08.11.2026, so the day that STANDS is V90's; that V77 itself writes 29.10.2026 over the text it found is held by
 			   TheWrittenPagesDropTheirExplanationsCarriedOverTest, which undoes V89 first. */
 			new Change("POL-19", POLICY, 7,
-					"Poslednja izmena: 07.11.2026.",
+					"Poslednja izmena: 08.11.2026.",
 					"izmena: 24.10.2026.",
-					"Last amended: 07.11.2026.",
+					"Last amended: 08.11.2026.",
 					"amended: 24.10.2026.")
 	);
 
@@ -455,6 +455,8 @@ class TheWrittenPagesDropTheirExplanationsTest extends DatabaseTest {
 	}
 
 	private void everyEditHolds(String language) {
+		/* The text as V94 left it: V95 (owner, 11.11.2026) moved the sign-offs of all three pages and took sentences out of them, which is held by TheWrittenPagesStateTheFactCarriedOverTest. */
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "95");
 		assertThat(CHANGES).as("the table of edits is empty, so this case measures nothing").hasSize(61);
 
 		for (Change change : CHANGES) {

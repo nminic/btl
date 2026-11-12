@@ -113,7 +113,7 @@ class BookingAPayment {
 	 * season and books a payment in its place, and the two must be about one season. The two payment
 	 * doors ({@link PaymentApi}, {@link MemberPaymentApi}) ask whether the beginners' category was open
 	 * before the booking and after it ({@link ABeginnersCategoryAMembershipMoves}). Two readings of the
-	 * clock would part across midnight of 11 November. Until that day this class also had an overload
+	 * clock would part across midnight of 21 November. Until that day this class also had an overload
 	 * that read the clock itself, for the two payment doors; it went when they stopped needing it.
 	 */
 	Booked book(PaymentApi.Confirm typed, String reference, WhoIsAsking.Member asking, int season) {

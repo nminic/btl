@@ -115,7 +115,7 @@ describe('the choice of category, when the write does not go through', () => {
       const { box } = await pressed()
 
       expect(await within(box).findByRole('alert')).toHaveTextContent(
-        'Server je odgovorio brojem 401 i ništa nije promenjeno. Pokušaj ponovo za koji minut.',
+        'Ništa nije sačuvano (greška 401). Pokušaj ponovo za koji minut.',
       )
       expect(screen.queryByText(SENTENCE)).not.toBeInTheDocument()
       expect(within(box).queryByRole('link', { name: OPEN })).not.toBeInTheDocument()
@@ -131,7 +131,7 @@ describe('the choice of category, when the write does not go through', () => {
       const { box } = await pressed()
 
       expect(await within(box).findByRole('alert')).toHaveTextContent(
-        'Server je odgovorio brojem 503 i ništa nije promenjeno.',
+        'Ništa nije sačuvano (greška 503).',
       )
     } finally {
       server.stop()
@@ -158,7 +158,7 @@ describe('the choice of category, when the write does not go through', () => {
     try {
       const { box } = await pressed()
 
-      expect(await within(box).findByText(/Izbor nije sačuvan, jer je rok istekao/)).toHaveAttribute('role', 'status')
+      expect(await within(box).findByText(/Rok za izbor kategorije je istekao/)).toHaveAttribute('role', 'status')
       expect(within(box).queryByRole('alert')).not.toBeInTheDocument()
     } finally {
       server.stop()

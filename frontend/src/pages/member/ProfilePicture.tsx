@@ -356,8 +356,9 @@ function ThePicture({ me, pictures }: { me: Competitor; pictures: MyPictures }) 
   return (
     <>
       {there === null ? (
-        /* „Portal još nema fotografije, pa u krugu pored tvog imena stoje tvoji inicijali" - a sentence
-           about THIS MEMBER and not about the portal, so it is asked of what the server says he has. */
+        /* „Još nemaš profilnu sliku." (owner, 10.11.2026; it was „Portal još nema fotografije, pa u krugu
+           pored tvog imena stoje tvoji inicijali") - a sentence about THIS MEMBER, so it is asked of what the
+           server says he has. */
         <p className="member__note">{t('picture.none')}</p>
       ) : (
         <>

@@ -42,6 +42,7 @@ import { AdminPages } from '../pages/admin/AdminPages'
 import { AdminPricing } from '../pages/admin/AdminPricing'
 import { AdminTeams } from '../pages/admin/AdminTeams'
 import { Payments } from '../pages/admin/Payments'
+import { UnnumberedMemberData } from '../pages/admin/UnnumberedMemberData'
 import { PendingQueue } from '../pages/admin/PendingQueue'
 import { QUEUE } from '../pages/admin/queues'
 import { ReviewQueue } from '../pages/admin/ReviewQueue'
@@ -55,7 +56,7 @@ import { MyResults } from '../pages/member/MyResults'
 import { NewResult } from '../pages/member/NewResult'
 import { SignIn } from '../pages/member/SignIn'
 import { LocaleLayout } from './LocaleLayout'
-import { ROUTES, type RouteDef } from './routes'
+import { ROUTES, UNNUMBERED_DATA_ADDRESS, type RouteDef } from './routes'
 
 /* Screens that already exist, which is every address in ROUTES since the ducats
  * arrived. Anything else in ROUTES renders a placeholder, so the navigation can
@@ -150,8 +151,12 @@ const DETAILS: RouteObject[] = [
   { path: 'kalendar/:slug/ocena', element: <RateEvent /> },
   { path: 'takmicar/:memberNumber', element: <CompetitorProfile /> },
   { path: 'takmicar/:memberNumber/priznanja', element: <CompetitorAwards /> },
-  /* The card „Podaci", which only the member himself and the administration open (owner, 22.10.2026). */
+  /* The card „Podaci", which only the administration opens (owner, 22.10.2026 and 07.11.2026); the member
+     himself is sent to „Moji podaci" (`CompetitorData.tsx`). */
   { path: 'takmicar/:memberNumber/podaci', element: <CompetitorData /> },
+  /* The same form for somebody who registered and has no member number, from the pencil on the screen
+     Uplate (owner, 10.11.2026). Behind the door of the screen of the members (`needs.ts`). */
+  { path: UNNUMBERED_DATA_ADDRESS, element: <UnnumberedMemberData /> },
   { path: 'tim/:slug', element: <TeamDetail /> },
   /* Changing a team is the team's own address plus a word, the way reporting a
      result sits under the event it was run at: it is about that team, and the way

@@ -90,12 +90,12 @@ export const PUBLIC: [address: string, asVisitor: string, asMember: string, part
   /* Nought since 17.10.2026: every place he took is in the imported history, and no season before
      2027 is a trophy (PDL P27). The count is still the sign that the part has been worked out. */
   ['/sr/takmicar/000001/priznanja', 'Vladan Đurišić', 'Vladan Đurišić', 'Pehari 0'],
-  /* THE CARD „PODACI" (PDL 22.10.2026), which only the member himself and the administration open: a
-     visitor is sent to the front page, as from every profile he may not read, and the member these walks
-     sign in as (000021) is drawn HIS OWN card, under the head of his profile. No part is named, because a
-     part is asked of both readers and the visitor is drawn the front page; the panel itself is read by
+  /* THE CARD „PODACI" (PDL 22.10.2026), which only the administration opens since 07.11.2026: a visitor is
+     sent to the front page, as from every profile he may not read, and the member these walks sign in as
+     (000021) is sent from HIS OWN card to „Moji podaci", where his data are. No part is named, because a
+     part is asked of both readers and the visitor is drawn the front page; the card itself is read by
      `profile/competitorData.test.tsx`. */
-  ['/sr/takmicar/000021/podaci', 'Balkanska trkačka liga', 'Ksenija Vasiljević'],
+  ['/sr/takmicar/000021/podaci', 'Balkanska trkačka liga', 'Moji podaci'],
   ['/sr/timovi', 'Timovi', 'Timovi'],
   ['/sr/tim/dunavski-trkaci', 'Dunavski trkači', 'Dunavski trkači'],
   /* The front page, to a member, and that is the screen this address answers with
@@ -158,11 +158,9 @@ export const PUBLIC: [address: string, asVisitor: string, asMember: string, part
   ['/sr/nova-lozinka?token=nesto', 'Nova lozinka', 'Nova lozinka'],
   ['/sr/potvrda-adrese?token=nesto', 'Potvrda adrese', 'Potvrda adrese'],
   ['/sr/moj-profil', 'Za ovo treba prijava', 'Ksenija Vasiljević'],
-  /* „Moji podaci" (PDL 22.10.2026) is HIS WHO HAS NOT PAID, and the member these walks sign in as pays:
-     he is sent to the card „Podaci" of his own profile, where his data are, and is drawn his own head
-     there. Drawn as itself to the one reader this walk does not sign in as, in
-     `pages/member/myData.test.tsx`. */
-  ['/sr/moji-podaci', 'Za ovo treba prijava', 'Ksenija Vasiljević'],
+  /* „Moji podaci" (PDL 07.11.2026) is where the member these walks sign in as changes his data, his
+     picture and his words; somebody who has not paid is drawn it in `pages/member/myData.test.tsx`. */
+  ['/sr/moji-podaci', 'Za ovo treba prijava', 'Moji podaci'],
   ['/sr/moji-rezultati', 'Za ovo treba prijava', 'Moji rezultati'],
   ['/sr/moja-clanarina', 'Za ovo treba prijava', 'Moja članarina'],
   ['/sr/podesavanja', 'Za ovo treba prijava', 'Podešavanja'],
@@ -213,6 +211,9 @@ export const BEHIND: [string, Role, string | null, string][] = [
   ['/sr/administracija/moderatori', 'superadmin', ADMIN, 'Moderatori'],
   /* The moderator's own screen, „Unos rezultata za događaj” (PDL P9, 19.10.2026). */
   ['/sr/administracija/unos-rezultata', 'superadmin', ADMIN, 'Unos rezultata za događaj'],
+  /* The data of somebody with no member number, from the pencil on Uplate (owner, 10.11.2026), at the
+     key `test/mock/payments.json` serves for Petar Marko, who has none. */
+  ['/sr/administracija/podaci-clana/58', 'superadmin', ADMIN, 'Podaci'],
   /* A member with no team, inside the window, so the form is really drawn. */
   ['/sr/novi-tim', 'competitor', '000002', 'Predlog tima'],
   /* And the one who administers this team, likewise. */

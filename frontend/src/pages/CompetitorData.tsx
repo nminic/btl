@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { Navigate, useLocation, useParams } from 'react-router'
 import { PageMeta } from '../app/PageMeta'
+import { MY_DATA_ADDRESS } from '../app/routes'
 import { Loader } from '../components/Loader'
 import { Resource } from '../components/Resource'
 import { pairsNow } from '../data/derive'
@@ -13,14 +14,8 @@ import { useServerIsStillBeingAsked } from '../session/useServerIsStillBeingAske
 import { useSession } from '../session/useSession'
 import { MEMBERS, recordsOf } from './admin/entityForms'
 import { useOverlay } from './admin/overlay'
-import { PersonalData } from './member/PersonalData'
-import { ProfileBio } from './member/ProfileBio'
-import { ProfilePicture } from './member/ProfilePicture'
-import { useMyData } from './member/useMyData'
-import { BoxesSentContext, THE_PICTURE_AND_THE_WORDS } from './profile/finishTheProfile'
-import { HisOwnRecord } from './profile/HisOwnRecord'
 import { ProfileTop } from './profile/ProfileHead'
-import { TheMembersData } from './profile/TheMembersData'
+import { addressOfTheData, TheMembersData } from './profile/TheMembersData'
 import { TheirBoxesOffTheirData, TheMembersPictureAndWords } from './profile/TheMembersPictureAndWords'
 import { profileFor } from './profile/visible'
 import { THE_DATA, useWhoReadsTheData } from './profile/whoReadsTheData'
@@ -30,31 +25,32 @@ import './Profile.css'
 import './member/Member.css'
 
 /**
- * THE CARD „PODACI" OF A PROFILE, which only the member himself and the administration see.
+ * THE CARD „PODACI" OF A PROFILE, which only the administration sees.
  *
  * <p>Owner, 22.10.2026 (PDL, „Red člana, kartica Podaci i strana Podešavanja"): „Profil dobija karticu
- * „Podaci", posle „Pregled" i „Priznanja i nagrade", koju vidi samo sam član i administracija", and
- * „Ista strana treba da se otvori ukoliko takmičar ode na sopstveni profil i onda ima novu opciju koju
- * vidi samo on Podaci [...] Dakle tu on može da edituje sve svoje podatke osim šifre." And, chosen
- * between offered outcomes with the recommendation: „Tuđe podatke otvara i menja samo moderator sa
- * pravom nad članovima, i admin."
+ * „Podaci", posle „Pregled" i „Priznanja i nagrade"", and, chosen between offered outcomes with the
+ * recommendation: „Tuđe podatke otvara i menja samo moderator sa pravom nad članovima, i admin." And
+ * 07.11.2026 (PDL, „Član svojim podacima pristupa iz glavnog menija”): „na svom profilu član vidi samo
+ * „Rezultati” i „Priznanja”. Administracija i dalje vidi karticu „Podaci” na strani takmičara." The
+ * owner's own words: „Takmicari vide samo u glavnom meniju i tu pristupaju, a administratori vide na
+ * stranici takmicara i tu pristupaju”.
  *
  * <p><b>Three readers and three answers</b>, asked of one home (`profile/whoReadsTheData.ts`) so the tab
  * the head offers and the card cannot disagree:
  *
  * <ol>
- * <li><b>The member himself, whose fee stands</b>: his own panel (`PersonalData.tsx`), sent to
- * {@code PUT /api/me}. „Član sam menja sve osim pola i datuma rođenja", and the father's name stays the
- * administration's („Ime oca i dalje menja samo administracija", 22.10.2026). A moderator who races
- * reads his own card here too, because the administration's route refuses a moderator his own record
- * (PDL, M7: „moderator ne ispravlja svoj zapis").</li>
+ * <li><b>The member himself</b>, a moderator who races among them: sent to „Moji podaci", where his data
+ * are now, with the query and the part after `#` (`#slika` is how a link reaches the boxes). [IZVEDENO]
+ * The address was his card until 07.11.2026, so a bookmark and a link written before then still lead to
+ * his data and not to the home page. A member whose fee has lapsed is sent there too, and that page sends
+ * him on to the one he renews on (owner, 07.11.2026).</li>
  * <li><b>The administration over the members</b>, a moderator holding `entity:members` or the
- * superadmin: the form of the registration, without the password (`TheMembersData.tsx`).</li>
- * <li><b>Everybody else</b>, and a member whose fee has lapsed reading his own (the server answers his
- * writes 404, PDL P8, 11.10.2026): the home page, the answer the profile gives a reader who may not
- * read it (owner, 06.09.2026), so the address says nothing about whether a card is there (ADL A8).
- * Somebody who registered and has not paid is sent to the page he pays on instead (owner, 22.10.2026;
- * `member/whereARefusedReaderGoes.ts`): his own card opens with the fee, like the rest.</li>
+ * superadmin: the form of the registration, without the password (`TheMembersData.tsx`), and under it
+ * the member's picture and words (PDL 06.11.2026).</li>
+ * <li><b>Everybody else</b>: the home page, the answer the profile gives a reader who may not read it
+ * (owner, 06.09.2026), so the address says nothing about whether a card is there (ADL A8). Somebody who
+ * registered and has not paid is sent to the page he pays on instead (owner, 22.10.2026;
+ * `member/whereARefusedReaderGoes.ts`).</li>
  * </ol>
  *
  * <p><b>The head is the profile's head</b> („Ista strana"), drawn from the public list the profile is
@@ -69,8 +65,8 @@ export function CompetitorData() {
   const asking = useServerIsStillBeingAsked()
   const reader = useWhoReadsTheData(memberNumber)
   const away = useWhereARefusedReaderGoes()
-  const [times, setTimes] = useState(0)
-  const boxesSent = useMemo(() => ({ times, sent: () => setTimes((one) => one + 1) }), [times])
+  const { locale } = useI18n()
+  const { search, hash } = useLocation()
 
   /* UNTIL THE SERVER HAS SAID WHO IS READING, nothing is decided (owner, 10.10.2026, PDL P26): a cold
      load of this address by the member himself would otherwise send him to the home page. */
@@ -82,75 +78,21 @@ export function CompetitorData() {
     return <Navigate to={away} replace />
   }
 
-  /* ONE COUNT FOR THE WHOLE CARD, so the boxes at its bottom and the name in its head are told the same
-     thing (`profile/finishTheProfile.ts`). */
-  return (
-    <BoxesSentContext.Provider value={boxesSent}>
-      <TheCard
-        part={part}
-        memberNumber={memberNumber}
-        panel={reader === 'his' ? <HisOwnData whose={String(memberNumber)} /> : <TheMembersData memberNumber={memberNumber} />}
-        boxes={(competitor) =>
-          reader === 'his' ? <TheTwoBoxes me={competitor} /> : <TheMembersPictureAndWords competitor={competitor} />
-        }
-        /* A member the public list does not carry is the administration's road alone (see `TheCard`), and
-           his boxes are drawn off the administration's own route: owner, 06.11.2026, „Vidi i samu sliku". */
-        alone={reader === 'his' ? null : <TheirBoxesOffTheirData memberNumber={String(memberNumber)} />}
-      />
-    </BoxesSentContext.Provider>
-  )
-}
-
-/** His own panel, drawn from what the server says of him on `GET /api/me` (`useMyData`). */
-function HisOwnData({ whose }: { whose: string }) {
-  const mine = useMyData(whose)
+  if (reader === 'his') {
+    return <Navigate to={`/${locale}/${MY_DATA_ADDRESS}${search}${hash}`} replace />
+  }
 
   return (
-    <Resource state={mine} inline>
-      {(data) => <PersonalData me={data} />}
-    </Resource>
-  )
-}
-
-/**
- * THE PICTURE, AND BESIDE IT THE WORDS ABOUT HIMSELF, at the bottom of his card „Podaci" and under the
- * button of the form (owner, 06.11.2026, PDL „Boksovi „Profilna slika" i „Tekst o sebi" prelaze sa
- * Podešavanja": „prelaze sa Podešavanja na dno kartice „Podaci""; „ponašanje ostaje, menja se strana").
- * They moved as they were, each going for review on its own (owner, 15.08.2026), from the second of the
- * three rows the settings had (`.member__pair member__row`, PDL 22.10.2026).
- *
- * <p><b>Only here, and so only for a member whose fee stands</b>: the card is drawn to him and to nobody
- * else of his own (`whoReadsTheData.ts`), and somebody who has not paid changes his data on „Moji podaci",
- * which draws `PersonalData` and not this (PDL P8, 10.10.2026: „Ne sme ništa što ga čini vidljivim ili ga
- * uključuje u ligu: sliku, biografiju").
- *
- * <p><b>`#slika` leads here</b>, from the sentence the screen of the fee says when the membership is let
- * in (`Membership.tsx`), and the card keeps the part after `#` when it moves the reader to the profile's
- * one address (`TheCard`). Scrolled to once the two are drawn, because the browser looked for the element
- * before the list it is drawn from had arrived.
- *
- * <p><b>Handed the record the head of the card is drawn from</b>, so the head and the boxes are about one
- * record and cannot be about two (`TheCard`).
- */
-function TheTwoBoxes({ me }: { me: Competitor }) {
-  const { hash } = useLocation()
-  const here = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (hash === `#${THE_PICTURE_AND_THE_WORDS}`) {
-      here.current?.scrollIntoView()
-    }
-  }, [hash])
-
-  return (
-    <div ref={here} id={THE_PICTURE_AND_THE_WORDS} className="member__pair member__row">
-      <ProfilePicture me={me} />
-      {/* KEYED BY THE MEMBER, BECAUSE EVERYTHING THAT PANEL HOLDS BELONGS TO ONE PERSON: what he typed,
-          what stands on his profile, what of his is waiting, and what the server last said. One visit can
-          hold two people - a shared laptop at a race - and without this the second reads the first man's
-          words out of the box. */}
-      <ProfileBio key={me.memberNumber} me={me} />
-    </div>
+    <TheCard
+      part={part}
+      memberNumber={memberNumber}
+      panel={<TheMembersData address={addressOfTheData(memberNumber)} />}
+      boxes={(competitor) => <TheMembersPictureAndWords competitor={competitor} />}
+      /* A member the public list does not carry is drawn the card under a heading of its own (see
+         `TheCard`), and his boxes are drawn off the administration's own route: owner, 06.11.2026, „Vidi i
+         samu sliku". */
+      alone={<TheirBoxesOffTheirData memberNumber={String(memberNumber)} />}
+    />
   )
 }
 
@@ -177,7 +119,7 @@ function TheCard({
 }) {
   const { locale, t } = useI18n()
   const { search, hash } = useLocation()
-  const { signedIn, theServerHasAnswered, memberNumber: readerNumber, pairsMade, pairsBroken } = useSession()
+  const { signedIn, theServerHasAnswered, pairsMade, pairsBroken } = useSession()
   const { role } = useRole()
   const overlay = useOverlay()
   const state = combinePair(combinePair(useCompetitors(), useTeams()), usePairs())
@@ -191,7 +133,9 @@ function TheCard({
           memberNumber,
           isActiveMemberOrAdministration(role, signedIn),
           theServerHasAnswered,
-          readerNumber,
+          /* NOBODY'S OWN PAGE: the member himself never reaches the card (`CompetitorData`), so the
+             record is never asked for as his. */
+          null,
         )
 
         const drawn = (competitor: Competitor) => {
@@ -225,10 +169,6 @@ function TheCard({
 
         if (readable.kind === 'shown') {
           return drawn(readable.competitor)
-        }
-
-        if (readable.kind === 'his') {
-          return <HisOwnRecord memberNumber={readable.memberNumber}>{drawn}</HisOwnRecord>
         }
 
         /* NOT ON THE PUBLIC LIST, which for a reader who got this far is the administration opening the

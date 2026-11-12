@@ -318,7 +318,7 @@ describe('the deletion', () => {
     })
 
     expect(screen.queryByRole('alert')).toBeNull()
-    expect(screen.queryByText(/Server je odgovorio brojem 404/)).toBeNull()
+    expect(screen.queryByText(/greška 404/)).toBeNull()
   }, LONGER_THAN_A_MISS)
 
   it('says the own words of the portal beside his rating, which stays, when the request gets no answer at all', async () => {
@@ -338,7 +338,7 @@ describe('the deletion', () => {
   it('says any other answer beside his rating, which stays', async () => {
     const { list } = await deleted(500)
 
-    expect(await screen.findByText(/Server je odgovorio brojem 500/)).toBeInTheDocument()
+    expect(await screen.findByText(/greška 500/)).toBeInTheDocument()
     expect(within(list).getByText(HIS.body)).toBeInTheDocument()
   }, LONGER_THAN_A_MISS)
 })

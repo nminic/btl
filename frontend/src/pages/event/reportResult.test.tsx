@@ -254,7 +254,7 @@ describe('a result reported this way', () => {
 
       expect(earned, 'the formula gave nothing, so the case would pass on anything').not.toBeNull()
       expect(screen.queryByText(/BTL poena/)).toBeNull()
-      expect(screen.getByText(/Moderator je proverava/)).toBeVisible()
+      expect(screen.getByText(/Rezultat ulazi u rang liste i na tvoj profil kad bude potvrđen/)).toBeVisible()
 
       /* And what was sent, which is the half the member never sees, read off the request:
          the race by its id, and the four figures each under its own name, compared as one
@@ -829,9 +829,9 @@ describe('a race, which has a name of its own since 23.08.2026', () => {
        has something on it: without this the two lines below pass over a form that has
        not moved at all. */
     expect(await screen.findByRole('heading', { name: 'Rezultat je poslat' })).toBeVisible()
-    expect(screen.getByText(/Moderator je proverava/)).toBeVisible()
+    expect(screen.getByText(/Rezultat ulazi u rang liste i na tvoj profil kad bude potvrđen/)).toBeVisible()
     expect(screen.queryByText(/BTL poena/)).toBeNull()
-    expect(screen.queryByText(/Račun nije konačan/)).toBeNull()
+    expect(screen.queryByText(/Bodovi su konačni kad liga potvrdi rezultat/)).toBeNull()
   })
 
   it('refuses a result run in no time at all', async () => {

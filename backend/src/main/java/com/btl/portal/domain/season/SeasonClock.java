@@ -132,15 +132,20 @@ public final class SeasonClock {
 	 * The day the transfer window opens, which is the day the price list starts selling a
 	 * season that has not begun.
 	 *
-	 * <p><b>It is 11 November from 27.10.2026 (PDL, „Novi godišnji ciklus od 11. novembra"):</b>
-	 * „Prijave ce pocinjati 11. novembra svake godine i trajati 10 dana po ceni od 35 eur
-	 * (4200)", and the owner chose that everything which opened on 15 October moves with it -
-	 * the transfer window, the sale of the next season, the basis, the list and the deadline for
-	 * the referral amount. The end of the window stays at the end of 31 December. <b>That year,
-	 * 2026, is the one exception, and it is {@link #FIRST_SALE} rather than a clause in this
-	 * day:</b> see there.
+	 * <p><b>It is 21 November from 10.11.2026 (PDL, „Ciklus od 21. novembra (10.11.2026)"):</b>
+	 * „Pomeri period prvog uclanjenja i starta portala zvanicno sa 11.11. na 21.11. Dakle prvi i
+	 * najpovoljniji period traje od 21.11. do 30.11., a onda se drugi skracuje tako da pocne
+	 * 1.12.", every year, and everything that opened on 11 November moves with it - the transfer
+	 * window, the sale of the next season, the basis, the list, the table of the next season and
+	 * the deadline for the referral amount. The end of the window stays at the end of 31 December.
+	 * <b>The year 2026 is still the one exception, and it is {@link #FIRST_SALE} rather than a
+	 * clause in this day:</b> see there.
 	 *
-	 * <p><b>It was 15 October until then, and 1 October until 29.09.2026, when the owner moved it:</b> „Zelim da prvi
+	 * <p><b>It was 11 November from 27.10.2026 until then</b> (PDL, „Novi godišnji ciklus od 11.
+	 * novembra"): „Prijave ce pocinjati 11. novembra svake godine i trajati 10 dana po ceni od 35
+	 * eur (4200)".
+	 *
+	 * <p><b>It was 15 October before that, and 1 October until 29.09.2026, when the owner moved it:</b> „Zelim da prvi
 	 * period postane 15-31. oktobar, drugi 1-30. novembar a ostalo ostaje isto. S tim na umu
 	 * zelim i da se prelazni rok i sve ostalo otvara 15.10. ubuduce, a ne 1.10." Asked
 	 * whether only the OPENING moves, he answered „Tacno", so the window still shuts at the
@@ -157,7 +162,7 @@ public final class SeasonClock {
 	 * by asking the TABLE for the day and this class for the behaviour. A second reader here
 	 * would be a third home for one boundary with nothing holding it to either.
 	 */
-	private static final MonthDay WINDOW_OPENS = MonthDay.of(11, 11);
+	private static final MonthDay WINDOW_OPENS = MonthDay.of(11, 21);
 
 	/**
 	 * THE FIRST DAY ANYTHING IS SOLD, and the one year in which {@link #WINDOW_OPENS} is not the
@@ -170,6 +175,12 @@ public final class SeasonClock {
 	 * opens on {@link #WINDOW_OPENS} ({@link #dayThePriceListIsReadOn}). From the next year the
 	 * general rule is the whole rule.
 	 *
+	 * <p><b>It stands unchanged when the day moved to 21 November (owner, 10.11.2026, PDL „Ciklus od
+	 * 21. novembra (10.11.2026)"):</b> „Ove godine ostaje otvoreno kako je sada", chosen with the
+	 * assistant's recommendation: 2027 is sold at 35 EUR / 4.200 RSD with the right to be ranked
+	 * until 30.11.2026 and at 40 EUR from 1.12.2026, and the window stays open from this day. Both
+	 * follow from this date and {@link #WINDOW_OPENS} alone.
+	 *
 	 * <p><b>A date and not a day of the year, because it happens once</b>, which is the opposite
 	 * of {@link #WINDOW_OPENS}. It is the same fact the front end calls
 	 * {@code REGISTRATION_OPENS}.
@@ -181,7 +192,7 @@ public final class SeasonClock {
 	public static final LocalDate FIRST_SALE = LocalDate.of(2026, 10, 15);
 
 	/**
-	 * The transfer window: 11 November to 31 December, the same window membership is
+	 * The transfer window: 21 November to 31 December, the same window membership is
 	 * renewed in.
 	 *
 	 * <p>Owner, 05.09.2026: a team is founded only inside it, and a change of team
@@ -197,8 +208,8 @@ public final class SeasonClock {
 	 *
 	 * <p><b>Read as a day and no longer as a month, and the day is why.</b> This was
 	 * {@code getMonthValue() >= 10} while the window began with October; from 15 October, and
-	 * now from 11 November, the month is no longer the question, and the days of October and
-	 * of the first third of November are OUTSIDE a window they used to open. That stretch is
+	 * now from 21 November, the month is no longer the question, and the days of October and
+	 * of the first two thirds of November are OUTSIDE a window they used to open. That stretch is
 	 * the only thing that tells the two shapes apart, which is why the cases about it carry
 	 * every file that measures this one.
 	 *
@@ -288,8 +299,8 @@ public final class SeasonClock {
 	 * sentence.
 	 *
 	 * <p><b>THIS PARAGRAPH IS ABOUT 15 OCTOBER 2026 ONLY, and from 27.10.2026 that is the one
-	 * year it is about.</b> The day the amount settles is {@link #FIRST_SALE} in 2026 and 11
-	 * November in every year after it, and on 11 November Belgrade has already left summer
+	 * year it is about.</b> The day the amount settles is {@link #FIRST_SALE} in 2026 and 21
+	 * November in every year after it, and on 21 November Belgrade has already left summer
 	 * time (the last Sunday of October is at the latest the 31st), so midnight there IS
 	 * midnight at +01:00 and the two readings below coincide. What follows was measured for the
 	 * 15 October of the years it was written for and is kept because 2026 still stands on it.
@@ -402,7 +413,8 @@ public final class SeasonClock {
 	 * (V11), so this is the number that goes in that column.
 	 *
 	 * <p><b>The days in that quotation are the ones he said and the window has since moved:
-	 * it was 15.10 to 31.12 from 29.09.2026 and is 11.11 to 31.12 from 27.10.2026 (2026
+	 * it was 15.10 to 31.12 from 29.09.2026, 11.11 to 31.12 from 27.10.2026 and is 21.11 to 31.12
+	 * from 10.11.2026 (2026
 	 * itself opens on 15.10, {@link #FIRST_SALE}).</b> His sentence is kept word for word because it
 	 * is a quotation, and what it decides - that leaving happens in the SAME window as
 	 * joining - is what carried across; the dates in it were how the window read that day.

@@ -255,24 +255,26 @@ class TheWrittenPagesNameZohoAsAProcessorTest extends DatabaseTest {
 	 * V60 and runs it.
 	 */
 	private void theSignOffOfThePolicyHasMovedOnAndNoOtherDocumentMovedWithIt(String language) {
+		/* The text as V94 left it: V95 (owner, 11.11.2026) moved the sign-offs of all three pages and took sentences out of them, which is held by TheWrittenPagesStateTheFactCarriedOverTest. */
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "95");
 		/* V73 moved the policy's on to 24.10.2026 and V76 the rulebook's to 27.10.2026 (PDL, "Datum Poslednja izmena se
 		   pomera"); V77 (owner, 29.10.2026) moved all three to 29.10.2026, and V80 (owner, 30.10.2026) moved the rulebook
-		   on to 30.10.2026, and V89 (owner, 07.11.2026) the policy's to 07.11.2026, so each of the earlier days stands
-		   nowhere now, 29.10.2026 stands on the terms alone, 30.10.2026 on the rulebook alone and 07.11.2026 on the policy
-		   alone. */
+		   on to 30.10.2026, and V89 (owner, 07.11.2026) the policy's to 07.11.2026 and V90 (owner, 08.11.2026) on to 08.11.2026,
+		   and V93 (owner, 10.11.2026) the rulebook's again to 10.11.2026, so each of the earlier days stands nowhere now,
+		   29.10.2026 stands on the terms alone, 08.11.2026 on the policy alone and 10.11.2026 on the rulebook alone. */
 		String today = language.equals("sr") ? "Poslednja izmena: 29.10.2026." : "Last amended: 29.10.2026.";
-		String rulebookToday = language.equals("sr") ? "Poslednja izmena: 30.10.2026." : "Last amended: 30.10.2026.";
+		String rulebookToday = language.equals("sr") ? "Poslednja izmena: 10.11.2026." : "Last amended: 10.11.2026.";
 
-		String policyToday = language.equals("sr") ? "Poslednja izmena: 07.11.2026." : "Last amended: 07.11.2026.";
+		String policyToday = language.equals("sr") ? "Poslednja izmena: 08.11.2026." : "Last amended: 08.11.2026.";
 
 		assertThat(placesWhichCarry(language, today))
 				.as("the %s sign-off of 29.10.2026 must stand on the terms alone, V89 having moved the policy's on", language)
 				.containsExactly(new Place("uslovi-koriscenja", 11));
 		assertThat(placesWhichCarry(language, policyToday))
-				.as("the %s sign-off of 07.11.2026 must stand on the policy alone, V89 having moved it", language)
+				.as("the %s sign-off of 08.11.2026 must stand on the policy alone, V90 having moved it", language)
 				.containsExactly(THE_POLICY_SIGN_OFF);
 		assertThat(placesWhichCarry(language, rulebookToday))
-				.as("the %s sign-off of 30.10.2026 must stand on the rulebook alone, V80 having moved it", language)
+				.as("the %s sign-off of 10.11.2026 must stand on the rulebook alone, V93 having moved it", language)
 				.containsExactly(new Place("pravilnik", 19));
 		for (String gone : List.of(signOffNow(language),
 				language.equals("sr") ? "Poslednja izmena: 27.10.2026." : "Last amended: 27.10.2026.")) {
@@ -281,7 +283,7 @@ class TheWrittenPagesNameZohoAsAProcessorTest extends DatabaseTest {
 					.isEmpty();
 		}
 		assertThat(bodyOf(language, THE_POLICY_SIGN_OFF))
-				.as("the privacy policy must be signed off once, on 07.11.2026, and no longer on the day V60 wrote")
+				.as("the privacy policy must be signed off once, on 08.11.2026, and no longer on the day V60 wrote")
 				.containsOnlyOnce(policyToday)
 				.doesNotContain(language.equals("sr") ? "Poslednja izmena: 24.10.2026." : "Last amended: 24.10.2026.")
 				.doesNotContain(signOffNow(language))
