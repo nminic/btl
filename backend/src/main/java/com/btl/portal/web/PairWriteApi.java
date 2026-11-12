@@ -290,7 +290,7 @@ class PairWriteApi {
 	 * the name of the league. {@link #tell} says where the string is read from and why it is
 	 * not the one {@code VerificationWriteApi} uses.
 	 */
-	static final String THE_LEAGUE = "Balkanska trkačka liga";
+	static final String THE_LEAGUE = com.btl.portal.mail.Postman.THE_LEAGUE;
 
 	/**
 	 * The letter {@code competitor.gender} carries for a man.

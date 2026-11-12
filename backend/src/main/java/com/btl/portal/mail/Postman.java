@@ -3,10 +3,11 @@ package com.btl.portal.mail;
 import com.btl.portal.domain.mail.WhatTheMessageSays.Said;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ByteArrayResource;
-import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Component;
+
+import jakarta.mail.internet.InternetAddress;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -53,6 +54,15 @@ import java.util.Objects;
  */
 @Component
 public class Postman {
+
+	/**
+	 * WHO THE PORTAL IS WHEN IT WRITES TO A MEMBER ITSELF.
+	 *
+	 * <p>PDL P13, 19.09.2026: the sender is the name of the league. It lives here, in the layer that
+	 * puts a sender on a message, and {@code PairWriteApi.THE_LEAGUE} (the inbox's sender, the same
+	 * decision on the other channel) is this constant, so the two cannot name the league differently.
+	 */
+	public static final String THE_LEAGUE = "Balkanska trkačka liga";
 
 	private final JavaMailSender relay;
 
@@ -161,33 +171,43 @@ public class Postman {
 		Objects.requireNonNull(said, "said");
 		Objects.requireNonNull(to, "to");
 
-		SimpleMailMessage message = new SimpleMailMessage();
+		relay.send(message -> {
+			MimeMessageHelper letter = new MimeMessageHelper(message, StandardCharsets.UTF_8.name());
 
-		message.setFrom(from);
-		message.setTo(to);
+			letter.setFrom(theLeagueWritingFrom());
+			letter.setTo(to);
 
-		/* EVERY MESSAGE ASKS THAT A REPLY GO TO THE LEAGUE, with a blind copy or without
-		   one. ADL A4c, 29.07.2026: the address this writes from refuses everything that
-		   comes back, and „Prva odbrana je `Reply-To: info@` na svakoj poruci koju portal
-		   šalje". It is set before the branch below and not inside it: the blind copy goes
-		   to the same address for the messages that are the league's record, and a
-		   `Reply-To` set only there would leave every other message - the confirmation
-		   link, the new password - with a sender that rejects the answer. */
-		message.setReplyTo(league);
+			/* EVERY MESSAGE ASKS THAT A REPLY GO TO THE LEAGUE, with a blind copy or without
+			   one. ADL A4c, 29.07.2026: the address this writes from refuses everything that
+			   comes back, and „Prva odbrana je `Reply-To: info@` na svakoj poruci koju portal
+			   šalje". It is set before the branch below and not inside it: the blind copy goes
+			   to the same address for the messages that are the league's record, and a
+			   `Reply-To` set only there would leave every other message - the confirmation
+			   link, the new password - with a sender that rejects the answer. */
+			letter.setReplyTo(league);
 
-		/* NOT `setBcc(null)`, and that is measured rather than defensive:
-		   `SimpleMailMessage.setBcc(String)` wraps whatever it is given in a one element
-		   array, so a null would travel as an array holding a null, and Spring's own
-		   conversion into a MimeMessage then fails on it. An address that is not there is
-		   said by not setting the field. */
-		if (blindCopy != null) {
-			message.setBcc(blindCopy);
-		}
+			/* An address that is not there is said by not setting the field. */
+			if (blindCopy != null) {
+				letter.setBcc(blindCopy);
+			}
 
-		message.setSubject(said.subject());
-		message.setText(said.body());
+			letter.setSubject(said.subject());
+			letter.setText(said.body());
+		});
+	}
 
-		relay.send(message);
+	/**
+	 * THE NAME OF THE LEAGUE IN FRONT OF THE ADDRESS IT WRITES FROM.
+	 *
+	 * <p>A sender with a bare address and no name is what a mailbox provider sees from a
+	 * stranger's script, and the name is what a member sees in the list of his inbox. PDL P13,
+	 * 19.09.2026: when the portal writes to a member itself, the sender is the name of the
+	 * league. The address is {@code btl.mail.from} untouched; only the name is added, and the
+	 * library encodes it for the header (RFC 2047) because it is given as UTF-8 and not as a
+	 * string already wrapped in angle brackets.
+	 */
+	private InternetAddress theLeagueWritingFrom() throws java.io.UnsupportedEncodingException {
+		return new InternetAddress(from, THE_LEAGUE, StandardCharsets.UTF_8.name());
 	}
 
 	/**
@@ -228,7 +248,7 @@ public class Postman {
 			MimeMessageHelper letter = new MimeMessageHelper(message, true,
 					StandardCharsets.UTF_8.name());
 
-			letter.setFrom(from);
+			letter.setFrom(theLeagueWritingFrom());
 			letter.setTo(to);
 			letter.setReplyTo(league);
 			letter.setSubject(said.subject());
