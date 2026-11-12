@@ -63,8 +63,8 @@ import java.util.concurrent.TimeUnit;
  *
  * <p><b>WHAT GOES AND WHAT STAYS IS THE ADMINISTRATION'S DELETION</b> ({@link
  * CompetitorWriteApi#takeAwayWithoutAWord}): his account, his profile with his document and his
- * father's name, his results (PDL 05.11.2026, „rezultati odlaze sa profilom"), his ducats („Osvojeni
- * dukati ostaju u trajnom vlasništvu profila, osim u slučaju brisanja istog"), his pairs, a team he was
+ * father's name, his results (PDL 05.11.2026, „rezultati odlaze sa profilom"), his ducats (they stay while the results that earned them stand, PDL 08.11.2026, and his
+ * results go with the profile), his pairs, a team he was
  * the last of, his picture; and the money stays without his name (V79). His name in a comment and in a
  * message becomes <Obrisani član> or <Obrisana članica>, as for a deletion he asked for (PDL
  * 05.11.2026). After five years nobody is sent a message, not he beforehand and not a partner of a pair (PDL

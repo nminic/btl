@@ -143,6 +143,13 @@ class AxisConstraintsTest extends DatabaseTest {
 	private static final String GOOD_RESULT_THAT_SCORES_NOTHING = "insert into result (" + RESULT_COLUMNS
 			+ ") values (" + OTHER_COMPETITOR + ", " + PROBE_RACE + ", " + PROBE_RACE_DAY
 			+ ", 5.00, 0, 0, 86400, 0.00)";
+	/* V97: a result brought in by each of the two ways, with its moment, goes in as the history's empty pair does. */
+	private static final String GOOD_RESULT_APPROVED = "insert into result (" + RESULT_COLUMNS + ", brought_at, brought_by)"
+			+ " values (" + OTHER_COMPETITOR + ", " + PROBE_RACE + ", " + PROBE_RACE_DAY + ", 10.00, 120, 120, 3600, 12.34,"
+			+ " timestamptz '2027-05-06 10:00:00+00', 'approval')";
+	private static final String GOOD_RESULT_ENTERED = "insert into result (" + RESULT_COLUMNS + ", brought_at, brought_by)"
+			+ " values (" + OTHER_COMPETITOR + ", " + PROBE_RACE + ", " + PROBE_RACE_DAY + ", 10.00, 120, 120, 3600, 12.34,"
+			+ " timestamptz '2027-05-06 10:00:00+00', 'league')";
 	private static final String GOOD_ATTENDING = "insert into attending (event_id, competitor_id) values ("
 			+ PROBE_EVENT + ", " + OTHER_COMPETITOR + ")";
 	private static final String GOOD_COMMENT = "insert into event_comment (" + COMMENT_COLUMNS + ") values ("
@@ -620,6 +627,21 @@ class AxisConstraintsTest extends DatabaseTest {
 				Violation.of("result_points_not_negative",
 						result(OTHER_COMPETITOR + ", " + PROBE_RACE + ", " + PROBE_RACE_DAY
 								+ ", 10.00, 100, 100, 3600, -0.01")),
+				/* V97: the way a result came in is one of the two words, and its moment and its way are
+				   there together or not at all. Each row breaks only its own rule: the first names a word
+				   with its moment, the second the right word without one. */
+				Violation.of("result_brought_by_known",
+						"insert into result (" + RESULT_COLUMNS + ", brought_at, brought_by) values ("
+								+ OTHER_COMPETITOR + ", " + PROBE_RACE + ", " + PROBE_RACE_DAY
+								+ ", 10.00, 100, 100, 3600, 12.34, timestamptz '2027-05-06 10:00:00+00', 'import')"),
+				Violation.of("result_brought_at_and_by_together",
+						"insert into result (" + RESULT_COLUMNS + ", brought_at, brought_by) values ("
+								+ OTHER_COMPETITOR + ", " + PROBE_RACE + ", " + PROBE_RACE_DAY
+								+ ", 10.00, 100, 100, 3600, 12.34, null, 'approval')"),
+				Violation.of("result_brought_at_and_by_together",
+						"insert into result (" + RESULT_COLUMNS + ", brought_at, brought_by) values ("
+								+ OTHER_COMPETITOR + ", " + PROBE_RACE + ", " + PROBE_RACE_DAY
+								+ ", 10.00, 100, 100, 3600, 12.34, timestamptz '2027-05-06 10:00:00+00', null)"),
 
 				Violation.notNull("result_id_not_null", "id",
 						"insert into result (id, " + RESULT_COLUMNS + ") values (null, " + OTHER_COMPETITOR + ", "
@@ -862,6 +884,7 @@ class AxisConstraintsTest extends DatabaseTest {
 	 */
 	@ParameterizedTest
 	@ValueSource(strings = { GOOD_COMPETITOR, GOOD_EVENT, GOOD_RACE, GOOD_RESULT, GOOD_RESULT_THAT_SCORES_NOTHING,
+			GOOD_RESULT_APPROVED, GOOD_RESULT_ENTERED,
 			GOOD_ATTENDING, GOOD_COMMENT })
 	void aLegitimateRowIsAccepted(String insert) {
 		assertThat(db.sql(insert).update()).isEqualTo(1);

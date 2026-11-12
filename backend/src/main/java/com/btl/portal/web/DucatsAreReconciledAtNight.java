@@ -17,9 +17,13 @@ import java.util.List;
  * pass is a net under the normal road, not the road: it writes what a result entered some other way left
  * unwritten and takes away what a deletion left standing.
  *
- * <p><b>IT SENDS NOTHING.</b> Owner, same day: „Poruka u sanduče ide samo za dukat koji donese rezultat
- * odobren od sada; prolaz kroz istoriju dodeljuje tiho." {@link AwardingDucats#forMember} answers what it
- * wrote and this class drops the answer, so a message is not a thing this class can send.
+ * <p><b>WHAT IT WRITES OF THE HISTORY IS SILENT, AND WHAT IT WRITES OF A RESULT APPROVED SINCE THE START OF
+ * AWARDING IS TOLD.</b> Owner, 12.11.2026: „Kad dukat koji donese rezultat odobren od sada upiše noćni
+ * prolaz (jer je korak posle odobrenja pao), član dobija poruku isto kao da ga je upisao korak posle
+ * odobrenja. Tiho ostaje samo ono što dolazi iz rezultata odobrenih pre početka dodele." Which of the two a
+ * ducat is, and the message, are {@link AwardingDucats#forMember}'s, in the transaction that writes it, so
+ * this class sends nothing of its own and could not tell a ducat differently from the step after an
+ * approval. Until 12.11.2026 this said the pass sent nothing at all, the outcome the owner refused that day.
  *
  * <p><b>IT DOES NOT RUN AT START, and that is the decision, not an omission</b> (a technical one, the
  * author's): the jobs beside it ({@link OldPicturesAreCleaned}, {@code ASeasonFreezes}) try at start, and a
