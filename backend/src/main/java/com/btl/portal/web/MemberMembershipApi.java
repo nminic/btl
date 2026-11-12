@@ -215,7 +215,8 @@ class MemberMembershipApi {
 
 		ResponseEntity<?> answer = inOneTransaction.execute(committing -> cancelling(memberNumber, typed, asking));
 
-		/* AND HIS DUCATS ONCE THE CANCELLATION HAS COMMITTED, in silence. Derived by the coordinator (ADL,
+		/* AND HIS DUCATS ONCE THE CANCELLATION HAS COMMITTED; what it takes away is never told (PDL,
+		   08.11.2026), and what it writes is told by {@link AwardingDucats} by the rule of 12.11.2026. Derived by the coordinator (ADL,
 		   08.11.2026), from „u godini u kojoj nije bio član dobija samo trajne dukate” and „Stornirana uplata:
 		   … član postaje neaktivan za tu sezonu”: „Storno je zato okidač usklađivanja.” After the commit and
 		   never inside it, because this route holds his row `for update` and a reconciliation from inside
@@ -223,7 +224,7 @@ class MemberMembershipApi {
 		   changes nothing; a number nobody holds finds nobody. */
 		if (answer.getStatusCode().is2xxSuccessful()) {
 			db.sql("select id from competitor where member_number = ?").param(memberNumber)
-					.query(Long.class).optional().ifPresent(ducats::quietly);
+					.query(Long.class).optional().ifPresent(ducats::follow);
 		}
 
 		return answer;

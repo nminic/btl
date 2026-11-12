@@ -654,9 +654,10 @@ class RaceWriteApi {
 			return ResponseEntity.ok(new Written(id, beginning, address));
 		});
 
-		/* AND THEIR DUCATS AFTER THE COMMIT, in silence (PDL, 08.11.2026: only an approval or an entry
-		   tells). A refusal above wrote nothing and named nobody. */
-		ducats.quietly(moved);
+		/* AND THEIR DUCATS AFTER THE COMMIT. What is told of it is {@link AwardingDucats}' (PDL, 12.11.2026:
+		   only a ducat a result brought in from the start of awarding carried over). A refusal above wrote
+		   nothing and named nobody. */
+		ducats.follow(moved);
 
 		return answer;
 	}
@@ -900,9 +901,10 @@ class RaceWriteApi {
 			return ResponseEntity.noContent().build();
 		});
 
-		/* AND THEIR DUCATS AFTER THE COMMIT, in silence: the owner, 11.08.2026, „Ne.” to telling anybody,
-		   and 08.11.2026, no message of its own for a ducat taken away. */
-		ducats.quietly(gone);
+		/* AND THEIR DUCATS AFTER THE COMMIT: the owner, 11.08.2026, „Ne.” to telling anybody of the deletion,
+		   and 08.11.2026, no message of its own for a ducat taken away. A ducat this run writes is told by
+		   {@link AwardingDucats} by the rule of 12.11.2026, as the run that should have written it would. */
+		ducats.follow(gone);
 
 		return answer;
 	}

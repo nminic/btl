@@ -30,6 +30,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.math.BigDecimal;
+import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.ZonedDateTime;
@@ -743,7 +744,7 @@ class ResultsByTheLeagueApi {
 				.query(String.class).single();
 
 		return new Done(ResponseEntity.status(HttpStatus.CREATED)
-				.body(new EnteredOn(entered.results(), address)), done.letters(), done.members(), done.told());
+				.body(new EnteredOn(entered.results(), address)), done.letters(), done.members());
 	}
 
 	/**
@@ -902,11 +903,10 @@ class ResultsByTheLeagueApi {
 			written.add(enterOne(judged.whose().get(at), race, judged.counted().get(at), letters));
 		}
 
-		/* WHOSE RESULTS MOVED AND THAT THE LEAGUE ENTERED THEM, carried to the step after the commit: every
-		   row is one member on this one race, so the race and its day are what the message names. */
+		/* WHOSE RESULTS MOVED, carried to the step after the commit. That the league entered them, and when,
+		   each row says for itself (`brought_by`, `brought_at`), which is what the message about a ducat reads. */
 		return new Done(ResponseEntity.status(HttpStatus.CREATED).body(new Entered(written)),
-				letters, judged.whose(), new DucatsFollowTheResults.Told(DucatsFollowTheResults.Brought.ENTERED,
-						race.name(), race.day()));
+				letters, judged.whose());
 	}
 
 	/**
@@ -964,7 +964,7 @@ class ResultsByTheLeagueApi {
 				tellIfTheCategoryMoved(standing.member(), season, wasOpen, Act.CHANGED, after);
 			}
 
-			return new Done(ResponseEntity.noContent().build(), letters, List.of(standing.member()), null);
+			return new Done(ResponseEntity.noContent().build(), letters, List.of(standing.member()));
 		});
 
 		return postAfterwards(done);
@@ -1006,7 +1006,7 @@ class ResultsByTheLeagueApi {
 				tellIfTheCategoryMoved(standing.member(), season, wasOpen, Act.DELETED, before);
 			}
 
-			return new Done(ResponseEntity.noContent().build(), letters, List.of(standing.member()), null);
+			return new Done(ResponseEntity.noContent().build(), letters, List.of(standing.member()));
 		});
 
 		return postAfterwards(done);
@@ -1020,11 +1020,14 @@ class ResultsByTheLeagueApi {
 		boolean wasOpen = asks && beginnersCategoryIsOpenFor(member, season);
 		Run run = runOf(race, figures);
 
+		/* AND WHEN AND BY WHOM IT CAME IN (V97): the moment of this entry and „league”, which is what the
+		   message about a ducat this result carries him over to reads, now or at night (PDL, 12.11.2026). */
 		long written = db.sql("insert into result (competitor_id, race_id, race_date, distance_km,"
-						+ " ascent_m, descent_m, seconds, points) values (?, ?, ?, ?, ?, ?, ?, ?)"
-						+ " returning id")
+						+ " ascent_m, descent_m, seconds, points, brought_at, brought_by)"
+						+ " values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) returning id")
 				.params(member, race.id(), race.day(), run.distanceKm(), run.ascentM(),
-						run.descentM(), run.seconds(), run.points())
+						run.descentM(), run.seconds(), run.points(), Timestamp.from(clock.instant()),
+						AwardingDucats.Brought.LEAGUE.word())
 				.query(Long.class).single();
 
 		Reader reader = readerOf(member);
@@ -1179,7 +1182,7 @@ class ResultsByTheLeagueApi {
 		/* AND THE DUCATS, after the commit and never inside it (ADL 21.09.2026, „dukati i pošta idu posle
 		   nje”): the save holds every member it names `for update`, so a reconciliation from inside would
 		   wait on this very request. */
-		ducats.follow(done.members(), done.told());
+		ducats.follow(done.members());
 
 		return done.answer();
 	}
@@ -1300,19 +1303,16 @@ class ResultsByTheLeagueApi {
 	private record Judged(ResponseEntity<?> refused, List<Long> whose, List<Figures> counted) {
 	}
 
-	/** The answer, and the letters that leave only once it has committed. */
 	/**
-	 * What a save did, for after its commit.
+	 * What a save did, for after its commit: the answer, the letters that leave only once it has committed,
+	 * and whose results moved.
 	 *
 	 * @param members whose results moved, each to be reconciled with his ducats
-	 * @param told    how the message about a ducat won begins, or empty where moving the result tells
-	 *                nothing of the ducats (a change and a deletion, PDL 08.11.2026)
 	 */
-	private record Done(ResponseEntity<?> answer, List<Letter> letters, List<Long> members,
-			DucatsFollowTheResults.Told told) {
+	private record Done(ResponseEntity<?> answer, List<Letter> letters, List<Long> members) {
 
 		static Done only(ResponseEntity<?> answer) {
-			return new Done(answer, List.of(), List.of(), null);
+			return new Done(answer, List.of(), List.of());
 		}
 	}
 

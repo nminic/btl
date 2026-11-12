@@ -40,8 +40,11 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 
 /**
- * EVERY DOOR THAT MOVES A MEMBER'S RESULTS RECONCILES HIS DUCATS AFTER ITS COMMIT, AND ONLY AN APPROVAL OR
- * AN ENTRY BY THE LEAGUE TELLS HIM WHAT IT WON ({@link DucatsFollowTheResults}).
+ * EVERY DOOR THAT MOVES A MEMBER'S RESULTS RECONCILES HIS DUCATS AFTER ITS COMMIT, AND HE IS TOLD OF A DUCAT
+ * IT WRITES EXACTLY WHEN THE RESULT THAT CARRIED HIM OVER WAS BROUGHT IN FROM THE START OF AWARDING
+ * ({@link DucatsFollowTheResults}, {@link AwardingDucats}; PDL, owner, 12.11.2026: „Poruka „Osvojili ste
+ * dukat” nabraja samo dukate iz rezultata odobrenih od početka dodele, i piše se u istoj transakciji sa
+ * dukatom”).
  *
  * <p><b>Committed, not rolled back.</b> The reconciliation runs in a transaction of its own and sees only
  * what is committed, so a case whose request ran inside the case's transaction would reconcile nothing and
@@ -59,13 +62,29 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * none, so a door that reconciled the wrong member, or everybody, writes him one. Vera is written FIRST of
  * the three, so she has the lowest key, and is on the same race as Ana where a door moves more than one
  * member.
- * <li><b>The act:</b> approval (new and correction) and the league's two entries tell; the league's change
- * and deletion, the member's own deletion, a race and an event changed or deleted, and a cancelled season
- * do not.
- * <li><b>What the reconciliation did:</b> wrote a ducat, took one away, or met a row another writer wrote
- * first ({@link #aDucatSomebodyElseWroteFirstIsNotAnnounced}).
- * <li><b>One ducat or several in one act:</b> singular and plural words.
- * <li><b>The period:</b> a month, a season, for ever.
+ * <li><b>When the result that carried him over came in:</b> approved or entered by a door of this context,
+ * whose clock is in June 2027 and so after the start of awarding (told), or written straight into the table
+ * with no moment, which is the history (silent). The boundary itself, a moment just before the start and
+ * one exactly at it, is {@code DucatsAreReconciledAtNightTest}'s.
+ * <li><b>Which result carried him over:</b> the one the act brought in, or another one of his. A ducat of a
+ * month is crossed by the run that reaches its threshold in the order the races were run, so a run approved
+ * now on an EARLIER day than a run of the history leaves the history's run as the one that carried him over
+ * ({@link #anApprovedRunThatIsNotTheOneCarryingHimOverTellsNothingWhenThatOneIsHistory}), and a run approved
+ * now on an earlier day than another run brought in since the start makes the message name THAT run's race,
+ * day and way in ({@link #theMessageNamesTheResultThatCarriedHimOverAndNotTheOneTheActBrought}).
+ * <li><b>The act:</b> approval (new and correction), the league's two entries, the league's change, and the
+ * deletions and moves that can write a ducat another run left unwritten; whether a ducat is told is the same
+ * rule behind every one of them.
+ * <li><b>What the reconciliation did:</b> wrote a ducat, took one away (never told), or met a row another
+ * writer wrote first ({@link #aDucatSomebodyElseWroteFirstIsNotAnnounced}).
+ * <li><b>The message and the ducat are one transaction:</b> a message the database refuses takes the ducat
+ * back with it, and the next run writes both
+ * ({@link #aMessageThatCannotBeWrittenTakesItsDucatBackAndTheNextRunWritesBoth}).
+ * <li><b>One ducat or several:</b> several of one result are one message in the plural; ducats of two
+ * results are a message each.
+ * <li><b>The period:</b> a month, a season, for ever; and a frozen season, which writes and tells only the
+ * ducat that stands for ever.
+ * <li><b>The recipient:</b> Ana, never the whole league and never Bojan ({@link #nobodyElseGotADucat}).
  * </ul>
  */
 @SpringBootTest
@@ -108,6 +127,9 @@ class DucatsFollowTheResultsTest {
 	private SecretToken anas;
 
 	private int issued;
+
+	/** Whether this case froze 2027, so that only then is the freeze taken away again. */
+	private boolean frozeIt;
 
 	@TestConfiguration(proxyBeanMethods = false)
 	static class TheClockTheseCasesUse {
@@ -154,6 +176,12 @@ class DucatsFollowTheResultsTest {
 		db.sql("delete from account where email like '%@okidac.rs'").update();
 		db.sql("delete from competitor where member_number in (?, ?, ?)").params(VERA, ANA, BOJAN).update();
 		db.sql("delete from btl_event where slug like 'dukat-okidac-%'").update();
+
+		/* AND THE FROZEN SEASON, only where this case froze it and nobody before it had. */
+		if (frozeIt) {
+			db.sql("delete from season_frozen where season = 2027").update();
+			frozeIt = false;
+		}
 	}
 
 	/* ===================================================================== the doors that tell */
@@ -247,28 +275,207 @@ class DucatsFollowTheResultsTest {
 	}
 
 	/**
-	 * SEVERAL DUCATS OF ONE ACT ARE ONE MESSAGE, in the plural, each with its period: a month, a season,
-	 * and none for a ducat that stands for ever. Ana's long run of May was never reconciled, so the entry
-	 * writes all five at once (the owner's choice of 08.11.2026, a message for every row it writes).
+	 * WHAT REVIEW OF PR 709 MEASURED, AND THE OWNER REFUSED ON 12.11.2026 („Poruka u sanduče ide samo za dukat
+	 * koji donese rezultat odobren od sada”; refused: „poruka za svaki dukat”). Ana's 130 km of May and her
+	 * climb of 2025 are history and were never reconciled; a run of 5 km in June is approved, and the
+	 * reconciliation after it writes the ducat of May and „Karmanov uspon”. Neither was carried over by a
+	 * result brought in since the start of awarding, so both are written and nothing is told, where the
+	 * reconciliation used to write „…njime ste osvojili dukate "Mesečni kilometri" za maj 2027 i "Karmanov
+	 * uspon"” of a 5 km run.
 	 */
 	@Test
-	void severalDucatsOfOneActAreOneMessageEachWithItsPeriod() throws Exception {
-		long first = race("dukat-okidac-prva", "Prva majska", LocalDate.of(2027, 5, 2));
-		long second = race("dukat-okidac-druga", "Majska trka", LocalDate.of(2027, 5, 20));
+	void ducatsTheHistoryCarriedHimOverAreWrittenInSilenceAfterAnApprovalOfSomethingElse() throws Exception {
+		long may = race("dukat-okidac-prva", "Prva majska", LocalDate.of(2027, 5, 2));
+		long climb = race("dukat-okidac-uspon", "Uspon 2025", LocalDate.of(2025, 8, 9));
+		long june = race("dukat-okidac-jun", "Junska petica", LocalDate.of(2027, 6, 5));
 
+		result(ANA, may, "130");
 		db.sql("insert into result (competitor_id, race_id, race_date, distance_km, ascent_m, descent_m,"
-						+ " seconds, points) values (?, ?, date '2027-05-02', 1000, 100000, 0, 720000, 700)")
-				.params(id(ANA), first).update();
+						+ " seconds, points) values (?, ?, date '2025-08-09', 40, 100000, 0, 36000, 50)")
+				.params(id(ANA), climb).update();
 
-		assertThat(http.perform(asking(THE_SUPERADMIN, post("/api/races/" + second + "/results"))
-						.contentType(MediaType.APPLICATION_JSON).content("{\"rows\":[" + row(ANA, "10") + "]}"))
-				.andReturn().getResponse().getStatus()).isEqualTo(201);
+		long item = waiting(ANA, june, "5", null);
+
+		assertThat(decided(item).getStatus()).isEqualTo(200);
+
+		assertThat(ducatsOf(ANA)).as("the reconciliation after the approval did not write the history's ducats")
+				.containsExactly(THE_MONTHLY + " 2027/5", "duk-uspon always");
+		assertThat(ducatMessagesTo(ANA)).as("a ducat the history carried him over to was announced").isEmpty();
+		assertThat(nobodyElseGotADucat()).isTrue();
+	}
+
+	/**
+	 * SEVERAL DUCATS ONE RESULT CARRIED HIM OVER TO ARE ONE MESSAGE, in the plural, each with its period: a
+	 * month, a season, and none for a ducat that stands for ever. The long run of May was approved since the
+	 * start and its step never ran (written here with its moment, as the approval writes it), so the run that
+	 * follows writes all five at once and tells them in that run's name.
+	 */
+	@Test
+	void severalDucatsOfOneResultAreOneMessageEachWithItsPeriod() {
+		long first = race("dukat-okidac-prva", "Prva majska", LocalDate.of(2027, 5, 2));
+
+		long theLongRun = db.sql("insert into result (competitor_id, race_id, race_date, distance_km, ascent_m,"
+						+ " descent_m, seconds, points) values (?, ?, date '2027-05-02', 1000, 100000, 0, 720000, 700)"
+						+ " returning id")
+				.params(id(ANA), first).query(Long.class).single();
+
+		broughtIn(theLongRun, "approval");
+		reconciled(ANA);
 
 		assertThat(ducatMessagesTo(ANA)).containsExactly("Balkanska trkačka liga | " + THE_SUBJECT + " | "
-				+ "Liga vam je unela rezultat sa trke Majska trka od 20.05.2027, i njime ste osvojili dukate"
+				+ "Odobren vam je rezultat sa trke Prva majska od 02.05.2027, i njime ste osvojili dukate"
 				+ " \"Mesečni kilometri\" za maj 2027, \"Mesečni sati\" za maj 2027, \"Sezonski kilometri\" za"
 				+ " sezonu 2027, \"Sezonski sati\" za sezonu 2027 i \"Karmanov uspon\"."
 				+ " Dukati stoje na vašem profilu.");
+		assertThat(nobodyElseGotADucat()).isTrue();
+	}
+
+	/**
+	 * A FROZEN SEASON WRITES AND TELLS ONLY THE DUCAT THAT STANDS FOR EVER (PDL, 08.11.2026: „Rezultat unet ili
+	 * ispravljen posle zamrzavanja svoje sezone donosi samo trajne dukate”). The same run as above, with 2027
+	 * frozen: the four ducats of May and of the season are neither written nor named, and the climb is both.
+	 * The other direction, a season still open, is every other case here.
+	 */
+	@Test
+	void aFrozenSeasonTellsOnlyTheDucatThatStandsForEver() {
+		long first = race("dukat-okidac-prva", "Prva majska", LocalDate.of(2027, 5, 2));
+
+		long theLongRun = db.sql("insert into result (competitor_id, race_id, race_date, distance_km, ascent_m,"
+						+ " descent_m, seconds, points) values (?, ?, date '2027-05-02', 1000, 100000, 0, 720000, 700)"
+						+ " returning id")
+				.params(id(ANA), first).query(Long.class).single();
+
+		broughtIn(theLongRun, "approval");
+
+		assertThat(db.sql("insert into season_frozen (season, frozen_at) values (2027, ?) on conflict do nothing")
+				.param(Timestamp.from(IN_JUNE)).update()).as("2027 was frozen already by somebody else").isEqualTo(1);
+		frozeIt = true;
+
+		reconciled(ANA);
+
+		assertThat(ducatsOf(ANA)).containsExactly("duk-uspon always");
+		assertThat(ducatMessagesTo(ANA)).containsExactly("Balkanska trkačka liga | " + THE_SUBJECT + " | "
+				+ "Odobren vam je rezultat sa trke Prva majska od 02.05.2027, i njime ste osvojili dukat"
+				+ " \"Karmanov uspon\". Dukat stoji na vašem profilu.");
+	}
+
+	/**
+	 * THE RESULT THAT CARRIED HIM OVER IS THE HISTORY'S, though the act was an approval: Ana's 100 km of the
+	 * history stand on 20 May and the 30 km approved now on 2 May, so in the order the races were run she
+	 * reaches 125 km on the 20th, with the history's run. The ducat is written and nothing is told; a message
+	 * tied to the result the act brought in would tell it.
+	 */
+	@Test
+	void anApprovedRunThatIsNotTheOneCarryingHimOverTellsNothingWhenThatOneIsHistory() throws Exception {
+		long early = race("dukat-okidac-prva", "Prva majska", LocalDate.of(2027, 5, 2));
+		long late = race("dukat-okidac-druga", "Majska trka", LocalDate.of(2027, 5, 20));
+
+		result(ANA, late, "100");
+
+		long item = waiting(ANA, early, "30", null);
+
+		assertThat(decided(item).getStatus()).isEqualTo(200);
+
+		assertThat(ducatsOf(ANA)).containsExactly(THE_MONTHLY + " 2027/5");
+		assertThat(db.sql("select won_on from ducat_award where competitor_id = ?").param(id(ANA))
+				.query(LocalDate.class).single()).as("the history's run is not the one that carried her over")
+				.isEqualTo(LocalDate.of(2027, 5, 20));
+		assertThat(ducatMessagesTo(ANA)).isEmpty();
+	}
+
+	/**
+	 * THE MESSAGE NAMES THE RESULT THAT CARRIED HIM OVER, ITS RACE, ITS DAY AND THE WAY IT CAME IN, AND NOT THE
+	 * ONE THE ACT BROUGHT. The league entered Ana's 100 km of 20 May since the start, and that left her short;
+	 * the run approved now is of 2 May, so the run of the 20th is still the one that reaches 125 km. The
+	 * message is the league's entry of the 20th, not an approval of the 2nd.
+	 */
+	@Test
+	void theMessageNamesTheResultThatCarriedHimOverAndNotTheOneTheActBrought() throws Exception {
+		long early = race("dukat-okidac-prva", "Prva majska", LocalDate.of(2027, 5, 2));
+		long late = race("dukat-okidac-druga", "Majska trka", LocalDate.of(2027, 5, 20));
+
+		broughtIn(result(ANA, late, "100"), "league");
+		reconciled(ANA);
+		assertThat(ducatsOf(ANA)).as("100 km in May is short of the ducat").isEmpty();
+
+		long item = waiting(ANA, early, "30", null);
+
+		assertThat(decided(item).getStatus()).isEqualTo(200);
+
+		assertThat(ducatMessagesTo(ANA)).containsExactly("Balkanska trkačka liga | " + THE_SUBJECT + " | "
+				+ "Liga vam je unela rezultat sa trke Majska trka od 20.05.2027, i njime ste osvojili dukat"
+				+ " \"Mesečni kilometri\" za maj 2027. Dukat stoji na vašem profilu.");
+		assertThat(nobodyElseGotADucat()).isTrue();
+	}
+
+	/**
+	 * A DUCAT OF ANOTHER RESULT BROUGHT IN SINCE THE START IS TOLD TOO, IN ITS OWN MESSAGE (the owner refused
+	 * on 12.11.2026 „poruka samo za dukat kome je baš taj rezultat prešao prag”). The league's entry of
+	 * Ana's 130 km of May was never followed by a reconciliation; she has 100 km of June from the history, and a
+	 * run of 30 km on 12 June is approved. The run after it writes both ducats and tells each in the name of the
+	 * result that carried her over, the May one first because its result has the lower key.
+	 */
+	@Test
+	void ducatsOfTwoResultsBroughtInSinceTheStartAreAMessageEach() throws Exception {
+		long may = race("dukat-okidac-prva", "Prva majska", LocalDate.of(2027, 5, 2));
+		long earlyJune = race("dukat-okidac-jun-prva", "Prva junska", LocalDate.of(2027, 6, 2));
+		long june = race("dukat-okidac-jun", "Junska trka", LocalDate.of(2027, 6, 12));
+
+		broughtIn(result(ANA, may, "130"), "league");
+		result(ANA, earlyJune, "100");
+
+		long item = waiting(ANA, june, "30", null);
+
+		assertThat(decided(item).getStatus()).isEqualTo(200);
+
+		assertThat(ducatsOf(ANA)).containsExactly(THE_MONTHLY + " 2027/5", THE_MONTHLY + " 2027/6");
+		assertThat(ducatMessagesTo(ANA)).containsExactly(
+				"Balkanska trkačka liga | " + THE_SUBJECT + " | Liga vam je unela rezultat sa trke Prva majska od"
+						+ " 02.05.2027, i njime ste osvojili dukat \"Mesečni kilometri\" za maj 2027. Dukat stoji"
+						+ " na vašem profilu.",
+				"Balkanska trkačka liga | " + THE_SUBJECT + " | Odobren vam je rezultat sa trke Junska trka od"
+						+ " 12.06.2027, i njime ste osvojili dukat \"Mesečni kilometri\" za jun 2027. Dukat stoji"
+						+ " na vašem profilu.");
+		assertThat(nobodyElseGotADucat()).isTrue();
+	}
+
+	/**
+	 * THE MESSAGE AND ITS DUCAT ARE ONE TRANSACTION (PDL, 12.11.2026: „i piše se u istoj transakciji sa
+	 * dukatom”). The database refuses the message; the ducat goes back with it, so nothing is left standing
+	 * that the next run would find already written and never tell. Once the refusal is gone, the next run
+	 * writes the ducat and its message together.
+	 */
+	@Test
+	void aMessageThatCannotBeWrittenTakesItsDucatBackAndTheNextRunWritesBoth() {
+		long first = race("dukat-okidac-prva", "Prva majska", LocalDate.of(2027, 5, 2));
+		long second = race("dukat-okidac-druga", "Majska trka", LocalDate.of(2027, 5, 20));
+
+		result(ANA, first, "100");
+		broughtIn(result(ANA, second, "30"), "approval");
+
+		Throwable thrown = null;
+
+		try (AFailureOnlyTheDatabaseCanCause refused = AFailureOnlyTheDatabaseCanCause.on(db, "message", "subject",
+				THE_SUBJECT)) {
+			try {
+				reconciled(ANA);
+			}
+			catch (RuntimeException failed) {
+				thrown = failed;
+			}
+
+			assertThat(refused.wentOffIn(thrown)).as("the message was not refused, so this measures nothing")
+					.isTrue();
+		}
+
+		assertThat(ducatsOf(ANA)).as("the ducat stood without its message").isEmpty();
+		assertThat(ducatMessagesTo(ANA)).isEmpty();
+
+		reconciled(ANA);
+
+		assertThat(ducatsOf(ANA)).containsExactly(THE_MONTHLY + " 2027/5");
+		assertThat(ducatMessagesTo(ANA)).singleElement().asString()
+				.contains("Odobren vam je rezultat sa trke Majska trka od 20.05.2027");
 	}
 
 	/**
@@ -308,11 +515,43 @@ class DucatsFollowTheResultsTest {
 		assertThat(ducatMessagesTo(ANA)).as("a ducat this reconciliation did not write was announced").isEmpty();
 	}
 
-	/* ===================================================================== the doors that do not tell */
+	/* ===================================================================== the doors that move a result */
 
-	/** A CHANGE BY THE LEAGUE THAT CARRIES HIM OVER writes the ducat, and says nothing of it. */
+	/**
+	 * A CHANGE BY THE LEAGUE THAT CARRIES HIM OVER, OF A RESULT THE LEAGUE ENTERED SINCE THE START, writes the
+	 * ducat and tells it: whether a ducat is told is the result's and not the door's (PDL, 12.11.2026, „Tiho
+	 * ostaje samo ono što dolazi iz rezultata odobrenih pre početka dodele”). The change keeps the moment and
+	 * the way the result came in, so the message is the entry's.
+	 */
 	@Test
-	void aChangeByTheLeagueWritesTheDucatInSilence() throws Exception {
+	void aChangeByTheLeagueOfAResultBroughtInSinceTheStartTellsTheDucatItWrites() throws Exception {
+		long first = race("dukat-okidac-prva", "Prva majska", LocalDate.of(2027, 5, 2));
+		long second = race("dukat-okidac-druga", "Majska trka", LocalDate.of(2027, 5, 20));
+
+		result(ANA, first, "100");
+
+		assertThat(http.perform(asking(THE_SUPERADMIN, post("/api/races/" + second + "/results"))
+						.contentType(MediaType.APPLICATION_JSON).content("{\"rows\":[" + row(ANA, "20") + "]}"))
+				.andReturn().getResponse().getStatus()).isEqualTo(201);
+		assertThat(ducatsOf(ANA)).as("120 km in May is short of the ducat").isEmpty();
+
+		long changed = db.sql("select id from result where competitor_id = ? and race_id = ?")
+				.params(id(ANA), second).query(Long.class).single();
+
+		assertThat(http.perform(asking(THE_SUPERADMIN, put("/api/races/" + second + "/results/" + changed))
+						.contentType(MediaType.APPLICATION_JSON).content(figures("30")))
+				.andReturn().getResponse().getStatus()).isEqualTo(204);
+
+		assertThat(ducatsOf(ANA)).containsExactly(THE_MONTHLY + " 2027/5");
+		assertThat(ducatMessagesTo(ANA)).containsExactly("Balkanska trkačka liga | " + THE_SUBJECT + " | "
+				+ "Liga vam je unela rezultat sa trke Majska trka od 20.05.2027, i njime ste osvojili dukat"
+				+ " \"Mesečni kilometri\" za maj 2027. Dukat stoji na vašem profilu.");
+		assertThat(nobodyElseGotADucat()).isTrue();
+	}
+
+	/** A CHANGE BY THE LEAGUE THAT CARRIES HIM OVER, OF A RESULT OF THE HISTORY, writes the ducat in silence. */
+	@Test
+	void aChangeByTheLeagueOfAResultOfTheHistoryWritesTheDucatInSilence() throws Exception {
 		long first = race("dukat-okidac-prva", "Prva majska", LocalDate.of(2027, 5, 2));
 		long second = race("dukat-okidac-druga", "Majska trka", LocalDate.of(2027, 5, 20));
 
@@ -583,9 +822,9 @@ class DucatsFollowTheResultsTest {
 	}
 
 	/**
-	 * 130 KM IN APRIL, ADDED AFTER HIS LAST RECONCILIATION: the reconciliation that follows a deletion
-	 * writes that ducat, so a door that is meant to stay silent is seen to stay silent over a ducat it
-	 * WROTE, and not only over one it took away (which is never announced by construction).
+	 * 130 KM IN APRIL, OF THE HISTORY, ADDED AFTER HIS LAST RECONCILIATION: the reconciliation that follows a
+	 * deletion writes that ducat, so the door is seen to stay silent over a ducat it WROTE of the history, and
+	 * not only over one it took away (which is never announced by construction).
 	 */
 	private void anAprilHeWasNeverReconciledFor() {
 		result(ANA, race("dukat-okidac-april", "Aprilska trka", LocalDate.of(2027, 4, 11)), "130");
@@ -593,6 +832,15 @@ class DucatsFollowTheResultsTest {
 
 	private void reconciled(String number) {
 		ducats.forMember(id(number));
+	}
+
+	/**
+	 * The moment and the way a result came in, as the approval ({@code approval}) or the league's entry
+	 * ({@code league}) writes them: the clock of this context, which is after the start of awarding.
+	 */
+	private void broughtIn(long result, String by) {
+		db.sql("update result set brought_at = ?, brought_by = ? where id = ?")
+				.params(Timestamp.from(IN_JUNE), by, result).update();
 	}
 
 	private long id(String number) {

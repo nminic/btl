@@ -578,9 +578,10 @@ class ResultWriteApi {
 
 		post(asking.account(), him, said);
 
-		/* AND HIS DUCATS AFTER THE COMMIT, in silence: „Kad se dukat oduzme, član ne dobija posebnu
-		   poruku; poruku o brisanju ili ispravci rezultata ionako dobija.” (PDL, 08.11.2026) */
-		ducats.quietly(me);
+		/* AND HIS DUCATS AFTER THE COMMIT: „Kad se dukat oduzme, član ne dobija posebnu poruku; poruku o
+		   brisanju ili ispravci rezultata ionako dobija.” (PDL, 08.11.2026) A ducat this run writes is told by
+		   {@link AwardingDucats} by the rule of 12.11.2026. */
+		ducats.follow(me);
 
 		return ResponseEntity.noContent().build();
 	}
