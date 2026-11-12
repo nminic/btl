@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Optional;
+import java.util.regex.Pattern;
 
 /**
  * EVERYTHING THE REGISTRATION ASKED OF A MEMBER, BAR THE PASSWORD, FOR THE ADMINISTRATION OVER THE
@@ -37,8 +38,10 @@ import java.util.Optional;
  *
  * <p><b>A MEMBER WHOSE FEE HAS LAPSED IS ANSWERED TOO</b>, because the screen of the members shows
  * him under „Neaktivni" and the button stands on his row as on any other. Anybody ever given a
- * number is somebody this route can answer about; a person who registered and was never given one
- * has no address here at all, which is the same boundary {@link MembersApi} draws.
+ * number is somebody this route can answer about. A person who registered and was never given one
+ * is not on {@link MembersApi} at all, and had no address here until 10.11.2026; since then he has
+ * one of his own, {@link #UNNUMBERED}, by the key the screen Uplate lists him under (see
+ * {@link #readUnnumbered}).
  *
  * <p><b>THE ADDRESS OF POST IS THE ACCOUNT'S</b>, with whether it was confirmed beside it, because
  * the administration may correct it only while it is not (PDL, M7, 10.10.2026: „adresu pošte
@@ -82,12 +85,77 @@ class MemberDataApi {
 	@GetMapping("/api/members/{memberNumber}/data")
 	@RightIsNeeded(CompetitorApi.OVER_THE_MEMBERS)
 	ResponseEntity<Data> read(@PathVariable String memberNumber) {
-		return db.sql("select id from competitor where member_number = ?")
-				.param(memberNumber).query(Long.class).optional()
-				.flatMap(this::of)
+		return answered(numbered(memberNumber));
+	}
+
+	/**
+	 * THE SAME DATA OF SOMEBODY WHO REGISTERED AND HAS NO MEMBER NUMBER, by the key the screen Uplate
+	 * already holds for him.
+	 *
+	 * <p>Owner, 10.11.2026 (PDL, „Ekran Uplate: izmena podataka pre knjiženja i čišćenje reda"), asked
+	 * whether the data of somebody newly registered can be edited BEFORE his fee is booked: „Može na
+	 * uplatama. [...] Dodaj ikonicu olovkice kao na redu članova". And, chosen with the recommendation,
+	 * „Podatke člana bez članskog broja menjaju isti kao danas: admin i moderator sa pravom nad
+	 * članovima" - so this is read under {@link CompetitorApi#OVER_THE_MEMBERS} exactly as the address
+	 * above is, and a moderator who holds only the payments is answered 404 (ADL A8) although the screen
+	 * he works on lists the man.
+	 *
+	 * <p><b>WHY THE KEY IS {@code competitor.id}, and why that gives nothing away.</b> Such a man has no
+	 * member number, which is the whole reason he had no address here. The only other thing that names
+	 * him is his address of post, and that is personal data, which never goes into an address (the
+	 * portal's own rule for queries and paths alike). {@code competitor.id} is the key {@link
+	 * PaymentsDueApi} already serves on every row of that screen, because {@code POST /api/payments}
+	 * takes nothing else - so the screen that leads here holds it already, and a reader of this route
+	 * learns no key he did not have.
+	 *
+	 * <p><b>WHOM IT ANSWERS, and both halves are a boundary.</b> Somebody with an ACCOUNT, because the
+	 * list on Uplate is exactly whoever signed himself up and the imported history is not a list of
+	 * people („NIKO SE NE DOVODI U PORTAL DOK SE SAM NE PRIJAVI", owner, 27.09.2026). And somebody with
+	 * NO member number, because a member who has one has his address already, above, and a second one
+	 * would be two homes for one record. A number given while the form is open (his fee is booked in
+	 * between) therefore makes this address answer 404, and the form then says it could not save, which
+	 * is the truth: he is now at the other address.
+	 */
+	@GetMapping(UNNUMBERED)
+	@RightIsNeeded(CompetitorApi.OVER_THE_MEMBERS)
+	ResponseEntity<Data> readUnnumbered(@PathVariable String competitorId) {
+		return answered(unnumbered(competitorId));
+	}
+
+	/** The address of the data of somebody with no member number (see {@link #readUnnumbered}). */
+	static final String UNNUMBERED = "/api/members/unnumbered/{competitorId}/data";
+
+	private ResponseEntity<Data> answered(Optional<Long> member) {
+		return member.flatMap(this::of)
 				.map(ResponseEntity::ok)
 				.orElseGet(() -> ResponseEntity.notFound().build());
 	}
+
+	/** The member holding this number, or nobody. Package-private: {@link MemberDataWriteApi} asks it. */
+	Optional<Long> numbered(String memberNumber) {
+		return db.sql("select id from competitor where member_number = ?")
+				.param(memberNumber).query(Long.class).optional();
+	}
+
+	/**
+	 * The registrant with no member number this key names, or nobody: a key that is not the plain
+	 * decimal spelling of a key ({@code 007}, {@code 7a}, a number past what a key can hold) names
+	 * nobody rather than being refused as a malformed request, so it is the same 404 a key nobody has
+	 * gets. Package-private: {@link MemberDataWriteApi} asks it.
+	 */
+	Optional<Long> unnumbered(String competitorId) {
+		if (!A_KEY.matcher(competitorId).matches()) {
+			return Optional.empty();
+		}
+
+		return db.sql("select c.id from competitor c"
+						+ " where c.id = ? and c.member_number is null"
+						+ " and exists (select 1 from account a where a.competitor_id = c.id)")
+				.param(Long.parseLong(competitorId)).query(Long.class).optional();
+	}
+
+	/** A key as the database writes one: no leading zero, and short enough to be a {@code bigint}. */
+	private static final Pattern A_KEY = Pattern.compile("[1-9][0-9]{0,17}");
 
 	/**
 	 * The data of one member by his key, read in one statement. Package-private because

@@ -82,6 +82,9 @@ class TheWrittenPagesSayMojiPodaciWhereTheySaidTheCardTest extends DatabaseTest 
 	}
 
 	private void everyEditHolds(String language) {
+		/* The text as V94 left it: V95 (owner, 11.11.2026) moved the sign-offs of all three pages and took sentences out of them, which is held by TheWrittenPagesStateTheFactCarriedOverTest. */
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "96");
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "95");
 		assertThat(CHANGES).as("the table of edits is empty, so this case measures nothing").hasSize(4);
 
 		for (Change change : CHANGES) {
@@ -157,6 +160,9 @@ class TheWrittenPagesSayMojiPodaciWhereTheySaidTheCardTest extends DatabaseTest 
 	 */
 	@Test
 	void thePolicyIsSignedOffOnTheEighthOfNovemberAndTheOtherTwoKeepTheirDays() {
+		/* The text as V94 left it: V95 (owner, 11.11.2026) moved the sign-offs of all three pages and took sentences out of them, which is held by TheWrittenPagesStateTheFactCarriedOverTest. */
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "96");
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "95");
 		for (String language : List.of("sr", "en")) {
 			boolean serbian = language.equals("sr");
 			String mark = serbian ? "Poslednja izmena: " : "Last amended: ";
@@ -165,7 +171,7 @@ class TheWrittenPagesSayMojiPodaciWhereTheySaidTheCardTest extends DatabaseTest 
 					.endsWith(serbian ? CHANGES.get(3).standsInSerbian() : CHANGES.get(3).standsInEnglish())
 					.containsOnlyOnce(mark).doesNotContain("07.11.2026");
 			assertThat(bodyOf("pravilnik", 19, language)).as("the %s rulebook keeps its day", language)
-					.endsWith(mark + "09.11.2026.");
+					.endsWith(mark + "10.11.2026.");
 			assertThat(bodyOf("uslovi-koriscenja", 11, language)).as("the %s terms keep their day", language)
 					.endsWith(mark + "29.10.2026.");
 		}

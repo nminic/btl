@@ -107,6 +107,20 @@ export const MEMBERSHIP_ADDRESS = 'moja-clanarina'
  * takmicara i tu pristupaju”). */
 export const MY_DATA_ADDRESS = 'moji-podaci'
 
+/**
+ * Where the pencil on the screen Uplate leads for somebody who registered and has no member number yet
+ * (owner, 10.11.2026): the form of his data by the key the screen lists him under
+ * (`pages/admin/UnnumberedMemberData.tsx`). It has the door of the screen of the members (`needs.ts`),
+ * and stands outside `clanovi/`, because the section's own link to that screen would read as a way up
+ * a level from it (`pages/publicData.test.tsx`).
+ */
+export const UNNUMBERED_DATA_ADDRESS = 'administracija/podaci-clana/:competitorId'
+
+/** That address for one registrant, with the language. */
+export function unnumberedDataPath(locale: string, competitorId: number): string {
+  return `/${locale}/${UNNUMBERED_DATA_ADDRESS.replace(':competitorId', String(competitorId))}`
+}
+
 /* The member area. It hangs off the picture and the cog in the header, not off
  * the navigation, because it belongs to one person rather than to the league.
  *
@@ -249,6 +263,8 @@ export const EXTRA_ADDRESSES: Address[] = [
   { path: 'takmicar/:memberNumber', seoKey: 'competitor' },
   { path: 'takmicar/:memberNumber/priznanja', seoKey: 'competitorAwards' },
   { path: 'takmicar/:memberNumber/podaci', seoKey: 'competitorData' },
+  /* The same form for somebody with no number. Words of its own, because no two addresses share a name. */
+  { path: UNNUMBERED_DATA_ADDRESS, seoKey: 'unnumberedMemberData' },
   /* Before the event, because the static segment has to win: /kalendar/dan/... is
      a day and never a race whose address happens to begin with "dan". */
   { path: 'kalendar/dan/:date', seoKey: 'calendarDay' },

@@ -101,7 +101,7 @@ describe('the picture on a profile, changed later', () => {
       renderAt(`/sr/takmicar/${'000007'}/podaci`, 'competitor', '000007')
 
       const panel = await panelFor()
-      const send = await panel.findByRole('button', { name: 'Pošalji na odobrenje' })
+      const send = await panel.findByRole('button', { name: 'Pošalji' })
 
       /* Told off rather than switched off: reachable, and saying why. */
       expect(send).toHaveAttribute('aria-disabled', 'true')
@@ -113,7 +113,7 @@ describe('the picture on a profile, changed later', () => {
          lives in the handler too. */
       await user.click(send)
 
-      expect(panel.getByRole('button', { name: 'Pošalji na odobrenje' })).toBeVisible()
+      expect(panel.getByRole('button', { name: 'Pošalji' })).toBeVisible()
       /* And nothing left the browser over a press the screen itself refused. */
       expect(sends(asked)).toEqual([])
 
@@ -130,9 +130,9 @@ describe('the picture on a profile, changed later', () => {
          this shape lands on. */
       fireEvent.change(size, { target: { value: String(ONE_STEP_ALONG_IT) } })
 
-      await user.click(panel.getByRole('button', { name: 'Pošalji na odobrenje' }))
+      await user.click(panel.getByRole('button', { name: 'Pošalji' }))
 
-      const told = await waitFor(() => (screen.getByText(/čeka odobrenje/)))
+      const told = await waitFor(() => (screen.getByText(/još nije na profilu/)))
 
       expect(told).toBeVisible()
       /* And the reader is taken to what replaced the control they pressed, rather
@@ -278,7 +278,7 @@ describe('the picture on a profile, changed later', () => {
     await user.upload(await panel.findByLabelText(/Izaberi novu sliku/), anImage())
     await measurePicture()
     await panel.findByLabelText('Veličina isečka')
-    await user.click(panel.getByRole('button', { name: 'Pošalji na odobrenje' }))
+    await user.click(panel.getByRole('button', { name: 'Pošalji' }))
 
     /* The server's own reason, in the words the dictionary gives that reason, and never
        one sentence of ours over all four. */
@@ -287,8 +287,8 @@ describe('the picture on a profile, changed later', () => {
     )
     /* The control is still there and still says what it did: a refusal he can act on is
        answered by choosing another file, not by being told there is nothing to do. */
-    expect(panel.getByRole('button', { name: 'Pošalji na odobrenje' })).toBeVisible()
-    expect(panel.queryByText(/čeka odobrenje/)).not.toBeInTheDocument()
+    expect(panel.getByRole('button', { name: 'Pošalji' })).toBeVisible()
+    expect(panel.queryByText(/još nije na profilu/)).not.toBeInTheDocument()
     /* And the picture he chose is still chosen, so a refusal does not send him back to
        an empty panel with nothing picked. */
     expect(panel.getByLabelText('Veličina isečka')).toBeVisible()
@@ -330,7 +330,7 @@ describe('the picture on a profile, changed later', () => {
     await measurePicture()
     await panel.findByLabelText('Veličina isečka')
 
-    const send = panel.getByRole('button', { name: 'Pošalji na odobrenje' })
+    const send = panel.getByRole('button', { name: 'Pošalji' })
 
     await user.click(send)
 
@@ -348,7 +348,7 @@ describe('the picture on a profile, changed later', () => {
 
     release(did())
 
-    const told = await waitFor(() => (screen.getByText(/čeka odobrenje/)))
+    const told = await waitFor(() => (screen.getByText(/još nije na profilu/)))
 
     expect(told).toBeVisible()
     /* And one send it stays after the answer came back. */
@@ -377,7 +377,7 @@ describe('the picture on a profile, changed later', () => {
 
     const panel = await panelFor()
 
-    expect(await panel.findByRole('button', { name: 'Pošalji na odobrenje' })).toBeVisible()
+    expect(await panel.findByRole('button', { name: 'Pošalji' })).toBeVisible()
   })
 
   /* BOTH STATES OF THE ONE FACT THIS PANEL READS OFF THE MEMBER'S OWN RECORD, since
@@ -435,7 +435,7 @@ describe('the picture on a profile, changed later', () => {
       expect(mine.queryByText(sr.picture.none)).not.toBeInTheDocument()
       /* And the panel is still a panel: he can choose and send a new one, which is the whole
          reason it is drawn for him at all (owner, 12.08.2026). */
-      expect(mine.getByRole('button', { name: 'Pošalji na odobrenje' })).toBeVisible()
+      expect(mine.getByRole('button', { name: 'Pošalji' })).toBeVisible()
     } finally {
       has.stop()
     }

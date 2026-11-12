@@ -323,8 +323,8 @@ describe('the price list', () => {
 
     const table = await screen.findByRole('table', { name: 'Cenovnik' })
 
-    expect(within(table).getByText('11.11. - 20.11.')).toBeVisible()
-    expect(within(table).getByText('1.4. - 10.11.')).toBeVisible()
+    expect(within(table).getByText('21.11. - 30.11.')).toBeVisible()
+    expect(within(table).getByText('1.4. - 20.11.')).toBeVisible()
     // The junior price is the one row with no period at all.
     expect(within(table).getByText('Svaka uplata')).toBeVisible()
     // The in-season price buys a profile but no place in the standing.
@@ -472,7 +472,7 @@ describe('the price list', () => {
     /* Said in full, so the second half of the sentence is held too: read from the
        dictionary on both sides, a test tells you the same string equals itself
        and a wrong date inside it passes. */
-    expect(open).toHaveAccessibleDescription(/Obnova te sezone je otvorena od 11. novembra/)
+    expect(open).toHaveAccessibleDescription(/Obnova te sezone je otvorena od 21. novembra/)
 
     await user.click(open)
 
@@ -538,14 +538,14 @@ describe('the price list', () => {
     expect(open).toHaveAttribute('aria-disabled', 'false')
     expect(open).toHaveAccessibleDescription(/Iznos koji sada upišeš važi za sezonu 2029/)
     expect(open).toHaveAccessibleDescription(
-      /Portal pamti jedan iznos i ne pamti prethodne, pa isti upis menja i iznos koji od tog trenutka stoji/,
+      /Podešava se do 21\. novembra/,
     )
     /* And here there is a running season to name, which is the half that makes
        this a warning rather than a note: 2028 began the day before and its amount
        was settled by 15 October 2027. */
     expect(open).toHaveAccessibleDescription(runningSeasonSentence())
     expect(open).toHaveAccessibleDescription(/Sezona 2028 je već u toku/)
-    expect(open).toHaveAccessibleDescription(/zaključan 11. novembra prethodne godine, a ovaj upis ga ipak menja/)
+    expect(open).toHaveAccessibleDescription(/a ovaj upis menja i njen iznos/)
   })
 
   it('has one live region on the price list, not two', async () => {
@@ -605,7 +605,7 @@ describe('the price list', () => {
     const note = screen.getByText(/taksu za obradu plaćanja/)
 
     expect(within(feeTable).getByText(String(PROCESSING_FEE_EUR))).toBeVisible()
-    expect(note).toHaveTextContent('nije članarina')
+    expect(note).toHaveTextContent('Uplata u evrima na izvodu je veća za taksu za obradu plaćanja.')
     /* And no row of the MAIN list has the fee added into it: a cell of exactly "3" is a
        cell no price list would ever have, so looking for one proved nothing.
        What could go wrong is a price with the fee added, and that is what is
@@ -663,7 +663,7 @@ describe('the price list', () => {
          pre-filled it from the row being changed: this case only clears and retypes the
          euro field, so the name on the wire is the row's own, „11. do 20. novembra". */
       expect(JSON.parse(String(sent.init?.body))).toEqual({
-        label: '11. do 20. novembra',
+        label: '21. do 30. novembra',
         eur: 33,
         rsd: 4200,
       })
@@ -685,7 +685,7 @@ describe('the price list', () => {
     renderAt('/sr/administracija/cenovnik', 'superadmin')
 
     await screen.findByRole('table', { name: 'Cenovnik' })
-    await user.click(screen.getByRole('button', { name: 'Otvori: 11. do 20. novembra' }))
+    await user.click(screen.getByRole('button', { name: 'Otvori: 21. do 30. novembra' }))
 
     const eur = screen.getByLabelText(/Iznos u evrima/)
 
@@ -709,7 +709,7 @@ describe('the price list', () => {
       renderAt('/sr/administracija/cenovnik', 'superadmin')
 
       await screen.findByRole('table', { name: 'Cenovnik' })
-      await user.click(screen.getByRole('button', { name: 'Otvori: 11. do 20. novembra' }))
+      await user.click(screen.getByRole('button', { name: 'Otvori: 21. do 30. novembra' }))
 
     /* Three fields and no more. The window is the year itself and is not
        something an administrator types (owner, 30.07.2026); it used to ask for a
@@ -734,7 +734,7 @@ describe('the price list', () => {
       const table = within(await screen.findByRole('table', { name: 'Cenovnik' }))
       expect(table.getByText('33')).toBeVisible()
       // And the period it belongs to is where it was.
-      expect(table.getByText('11.11. - 20.11.')).toBeVisible()
+      expect(table.getByText('21.11. - 30.11.')).toBeVisible()
     } finally {
       stop()
     }
@@ -785,7 +785,7 @@ describe('the price list', () => {
       await user.type(eur, '7')
       await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
 
-      expect(await screen.findByRole('alert')).toHaveTextContent(/od 11. novembra utvrđen/)
+      expect(await screen.findByRole('alert')).toHaveTextContent(/od 21. novembra utvrđen/)
     } finally {
       stop()
     }
@@ -916,7 +916,7 @@ describe('the price list', () => {
       renderAt('/sr/administracija/cenovnik', 'superadmin')
 
       await screen.findByRole('table', { name: 'Cenovnik' })
-      await user.click(screen.getByRole('button', { name: 'Otvori: 11. do 20. novembra' }))
+      await user.click(screen.getByRole('button', { name: 'Otvori: 21. do 30. novembra' }))
 
       const field = screen.getByLabelText(box)
 
@@ -1748,7 +1748,7 @@ describe('the five queues read from the file', () => {
 
       expect(confirm).toHaveAttribute('aria-disabled', 'true')
       expect(confirm).not.toBeDisabled()
-      expect(confirm).toHaveAccessibleDescription('Upiši razlog da bi mogao da pošalješ.')
+      expect(confirm).toHaveAccessibleDescription('Upiši razlog.')
 
       /* Pressed with nothing written, on the box five queues share. Reachable
          means pressable, so the refusal has to live in the handler too: without
@@ -2282,9 +2282,10 @@ describe('the five queues read from the file', () => {
        this loop reading the first twice, so the words that withhold a message
        could have been rewritten into words that promise one and nothing would
        have said so. Measured: they were, and all 1940 tests passed. */
-    expect(sr.review.reasonPlaceholder).toContain('Član dobija tvoj razlog u poruci')
-    expect(sr.review.reasonKeptPlaceholder).toContain('Poruka ne ide')
+    expect(sr.review.reasonPlaceholder).toContain('Razlog koji upišeš stiže članu u poruci')
+    expect(sr.review.reasonKeptPlaceholder).toBe('Upiši razlog odbijanja.')
     expect(sr.review.reasonKeptPlaceholder).not.toContain('Član dobija tvoj razlog')
+    expect(sr.review.reasonKeptPlaceholder).not.toContain('stiže članu')
     /* And neither of them says the member may send another. Until 16.08.2026
        they could not: a biography was written once, at joining. The panel in
        Podešavanja changes that (PR94), and these words are still not the place
@@ -2471,7 +2472,7 @@ describe('the five queues read from the file', () => {
 
       expect(screen.queryByRole('button', { name: 'Odbij' })).not.toBeInTheDocument()
       expect(
-        screen.getByText(/nema člana kome bi odgovor stigao/),
+        screen.getByText(/nema člana kome bi stigao odgovor/),
       ).toBeVisible()
       // Approving is still a decision the moderator can take; nothing is sent.
       expect(screen.getByRole('button', { name: 'Odobri' })).toBeVisible()

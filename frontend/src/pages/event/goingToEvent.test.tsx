@@ -609,7 +609,7 @@ describe('the switch that says you are going', () => {
     await user.click(theSwitch())
 
     expect(
-      await screen.findByText('Ovaj događaj je već održan, pa se najava dolaska više ne prima.'),
+      await screen.findByText('Ovaj događaj je već održan.'),
     ).toBeVisible()
     expect(theSwitch()).toHaveAttribute('aria-pressed', 'false')
     expect(rows()).toHaveLength(before)
@@ -761,7 +761,7 @@ describe('writing to somebody else who is going', () => {
        (RateEvent.tsx, PendingQueue.tsx, Pager.tsx). */
     expect(send).toHaveAttribute('aria-disabled', 'true')
     expect(send).not.toBeDisabled()
-    expect(send).toHaveAccessibleDescription('Napiši poruku da bi mogao da je pošalješ.')
+    expect(send).toHaveAccessibleDescription('Napiši poruku.')
 
     /* And pressed, not merely inspected. An attribute is a promise about a
        press; this is the press. Reachable means pressable, so the refusal has
@@ -1290,7 +1290,7 @@ describe('writing to somebody else who is going', () => {
     await user.click(screen.getByRole('button', { name: 'Pošalji poruku' }))
 
     expect(
-      await screen.findByText('Portal ne poznaje tog člana, pa poruka nije poslata.'),
+      await screen.findByText('Ovog člana više nema na portalu.'),
     ).toBeVisible()
 
     /* Nothing was confirmed, and nothing was lost. */
@@ -1343,7 +1343,7 @@ describe('writing to somebody else who is going', () => {
 
     expect(
       await screen.findByText(
-        'Portal nije uspeo da dokaže serveru da zahtev dolazi sa ove strane. Osveži stranu i pokušaj ponovo.',
+        'Zahtev nije prošao. Osveži stranu i pokušaj ponovo.',
       ),
     ).toBeVisible()
     expect(screen.queryByText(new RegExp('^Poruka je poslata članu'))).toBeNull()
@@ -1500,7 +1500,7 @@ describe('writing to somebody else who is going', () => {
     )
     await user.click(screen.getByRole('button', { name: 'Pošalji poruku' }))
 
-    expect(screen.getByText('Napiši poruku da bi mogao da je pošalješ.')).toBeVisible()
+    expect(screen.getByText('Napiši poruku.')).toBeVisible()
     expect(screen.queryByText(new RegExp('^Poruka je poslata članu'))).toBeNull()
     expect(posted).toEqual([])
   })

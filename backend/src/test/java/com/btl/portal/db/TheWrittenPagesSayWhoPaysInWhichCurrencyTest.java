@@ -60,13 +60,13 @@ class TheWrittenPagesSayWhoPaysInWhichCurrencyTest extends DatabaseTest {
 			"separate line item|higher membership fee|member with an address in Serbia", Pattern.CASE_INSENSITIVE);
 
 	/**
-	 * What STANDS now for an edit: V92 (owner, 08.11.2026) moved the rulebook's sign-off on from the day V80 gave it, so
-	 * the sign-off edit stands as 09.11.2026; that V80 itself writes 30.10.2026 over the text it found is held by
-	 * TheWrittenPagesSayWhoPaysInWhichCurrencyCarriedOverTest, which undoes V92 first.
+	 * What STANDS now for an edit: V93 (owner, 10.11.2026) moved the rulebook's sign-off on from the day V80 gave it, so
+	 * the sign-off edit stands as 10.11.2026; that V80 itself writes 30.10.2026 over the text it found is held by
+	 * TheWrittenPagesSayWhoPaysInWhichCurrencyCarriedOverTest, which undoes V93 first.
 	 */
 	private static String standsNow(Change change, boolean serbian) {
 		if (change.id().equals("CUR-02")) {
-			return serbian ? "Poslednja izmena: 09.11.2026." : "Last amended: 09.11.2026.";
+			return serbian ? "Poslednja izmena: 10.11.2026." : "Last amended: 10.11.2026.";
 		}
 
 		return serbian ? change.standsInSerbian() : change.standsInEnglish();
@@ -85,6 +85,9 @@ class TheWrittenPagesSayWhoPaysInWhichCurrencyTest extends DatabaseTest {
 	}
 
 	private void everyEditHolds(String language) {
+		/* The text as V94 left it: V95 (owner, 11.11.2026) moved the sign-offs of all three pages and took sentences out of them, which is held by TheWrittenPagesStateTheFactCarriedOverTest. */
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "96");
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "95");
 		assertThat(CHANGES).as("the table of edits is empty, so this case measures nothing").hasSize(2);
 
 		for (Change change : CHANGES) {
@@ -146,10 +149,13 @@ class TheWrittenPagesSayWhoPaysInWhichCurrencyTest extends DatabaseTest {
 
 	/**
 	 * THE SIGN-OFF STANDS ONCE, AS THE LAST LINE OF THE RULEBOOK, and neither the day V77 gave it nor the day V80 gave it
-	 * stands on the page: V92 (owner, 08.11.2026) moved it on to 09.11.2026.
+	 * stands on the page: V93 (owner, 10.11.2026) moved it on to 10.11.2026.
 	 */
 	@Test
-	void theRulebookIsSignedOffOnTheDayV92GaveItAndNoEarlierDayStandsOnIt() {
+	void theRulebookIsSignedOffOnTheDayV93GaveItAndNoEarlierDayStandsOnIt() {
+		/* The text as V94 left it: V95 (owner, 11.11.2026) moved the sign-offs of all three pages and took sentences out of them, which is held by TheWrittenPagesStateTheFactCarriedOverTest. */
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "96");
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "95");
 		for (String language : List.of("sr", "en")) {
 			String last = bodyOf(RULEBOOK, 19, language);
 			String stands = standsNow(CHANGES.get(1), language.equals("sr"));

@@ -184,7 +184,7 @@ import java.util.Optional;
  * more than the rule it replaced.</b> It argued that the fee must not be asked here because
  * „a condition over either column would refuse EVERY pair agreed between January and
  * September". That is true of {@code membership (competitor_id, season, basis)}, which carries
- * a season and has no row for the one being formed until it goes on sale on 11 November. <b>It
+ * a season and has no row for the one being formed until it goes on sale on 21 November. <b>It
  * is false of whether he is active NOW</b>, which V22 said of the flag in as many words: „`competitor.
  * active` (V7) is one boolean with no season in it. It answers „is he a member NOW"." Since AF-1 that
  * question is {@link AMemberIsActive}, asked of the seasons that make him active at this moment. Two
@@ -206,7 +206,7 @@ import java.util.Optional;
  *
  * <p><b>What is still NOT asked, and this half of the old paragraph stands.</b> Nothing here
  * reads {@code membership}, so nobody is refused for not having paid the season the pair is
- * being made FOR - which nobody can have done before 11 November. The day forming really depends
+ * being made FOR - which nobody can have done before 21 November. The day forming really depends
  * on the season's own membership rather than on „is he a member now", it is one decision in one
  * place and this paragraph is where it lands.
  *
@@ -889,8 +889,7 @@ class PairWriteApi {
 	 * @param who the one who sent the invitation, by the name his profile carries
 	 */
 	static String theInvitationBodyReads(String who) {
-		return who + " te poziva u trkački par. Par nastaje tek kad ti potvrdiš, i važi za sezonu"
-				+ " koja počinje posle 31. decembra.";
+		return who + " te poziva u trkački par za narednu sezonu.";
 	}
 
 	/**
@@ -908,7 +907,8 @@ class PairWriteApi {
 	 * @param season the season the new pair holds for, off the row rather than off the clock
 	 */
 	static String theSupersededPairReads(String who, int season) {
-		return who + " je od sezone " + season + " u drugom trkačkom paru, pa je vaš raskinut.";
+		return "Vaš trkački par za sezonu " + season + " je raskinut. " + who
+				+ " je od te sezone u drugom paru.";
 	}
 
 	/**

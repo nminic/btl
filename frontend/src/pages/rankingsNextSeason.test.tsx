@@ -140,7 +140,7 @@ async function standing(): Promise<Drawn[]> {
 const NUMBERS = (rows: Drawn[]) => rows.map((row) => row.number)
 
 describe('the table, in the transfer window of the first season', () => {
-  it.each(['2027-11-11', '2027-12-31'])('offers 2028 above 2027 on %s and opens on 2027', async (day) => {
+  it.each(['2027-11-21', '2027-12-31'])('offers 2028 above 2027 on %s and opens on 2027', async (day) => {
     const { stop } = answering()
 
     try {
@@ -159,7 +159,7 @@ describe('the table, in the transfer window of the first season', () => {
     const { stop } = answering()
 
     try {
-      renderAt('/sr/tabela', 'visitor', null, undefined, '2027-11-11')
+      renderAt('/sr/tabela', 'visitor', null, undefined, '2027-11-21')
 
       const rows = await standing()
 
@@ -177,7 +177,7 @@ describe('the table, in the transfer window of the first season', () => {
     const { stop } = answering()
 
     try {
-      renderAt('/sr/tabela?sezona=2028', 'visitor', null, undefined, '2027-11-11')
+      renderAt('/sr/tabela?sezona=2028', 'visitor', null, undefined, '2027-11-21')
 
       const select = await control()
       const rows = await standing()
@@ -202,7 +202,7 @@ describe('the table, in the transfer window of the first season', () => {
 
     try {
       /* Only the member who holds both has the beginners' category, and only in 2028. */
-      renderAt('/sr/tabela?sezona=2028', 'visitor', null, undefined, '2027-11-11')
+      renderAt('/sr/tabela?sezona=2028', 'visitor', null, undefined, '2027-11-21')
       await standing()
 
       expect(screen.getByRole('button', { name: 'Početnici' })).toBeTruthy()
@@ -215,7 +215,7 @@ describe('the table, in the transfer window of the first season', () => {
     const { stop } = answering()
 
     try {
-      renderAt('/sr/tabela', 'visitor', null, undefined, '2027-11-11')
+      renderAt('/sr/tabela', 'visitor', null, undefined, '2027-11-21')
       await standing()
 
       expect(screen.getByRole('button', { name: 'M 40-54' })).toBeTruthy()
@@ -229,7 +229,7 @@ describe('the table, in the transfer window of the first season', () => {
     const { stop } = answering()
 
     try {
-      renderAt('/sr/tabela?sezona=2028&kategorija=M%20R', 'visitor', null, undefined, '2027-11-11')
+      renderAt('/sr/tabela?sezona=2028&kategorija=M%20R', 'visitor', null, undefined, '2027-11-21')
 
       expect(NUMBERS(await standing())).toEqual([BOTH])
     } finally {
@@ -239,7 +239,7 @@ describe('the table, in the transfer window of the first season', () => {
 })
 
 describe('the table, before the window and in 2026', () => {
-  it.each(['2027-11-10', '2027-03-01', '2026-11-10', '2026-11-11', '2026-12-31'])(
+  it.each(['2027-11-20', '2027-03-01', '2026-11-10', '2026-11-11', '2026-12-31'])(
     'offers 2027 alone on %s, and an address that names 2028 shows 2027',
     async (day) => {
       const { stop } = answering()

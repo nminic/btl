@@ -1814,7 +1814,7 @@ class VerificationWriteApiTest {
 	 */
 	@Test
 	void aFounderWhoHasNotPaidTheSeasonOnSaleIsRefusedInTheOwnersWordsAndTheItemStays() throws Exception {
-		clock.moveTo(Instant.parse("2027-11-20T09:00:00Z"));
+		clock.moveTo(Instant.parse("2027-11-30T09:00:00Z"));
 
 		db.sql("delete from membership where competitor_id = ? and season = 2028")
 				.param(memberId(BOJAN)).update();
@@ -2393,7 +2393,7 @@ class VerificationWriteApiTest {
 	 * sentence he said</b>: it is not in quotation marks there, and the first form of it, in the
 	 * entry of 26.09.2026, is marked as my reasoning awaiting his confirmation. So the three
 	 * parts are held separately: this case holds the third and
-	 * {@link #andHeIsToldWhichRunWasApprovedAndWhatItIsWorth} holds the first two.
+	 * {@link #andHeIsToldWhichRunClosedItAndNotWhatItIsWorth} holds the first two.
 	 *
 	 * <p>The season in the message is asserted to be 2028 and not 2027, which is the same axis
 	 * as the case above read from the member's side: a message naming the run's own season
@@ -2445,7 +2445,8 @@ class VerificationWriteApiTest {
 	}
 
 	/**
-	 * AND HE IS TOLD WHICH RUN IT WAS AND WHAT IT IS WORTH: THE FIRST TWO PARTS OF IT.
+	 * AND HE IS TOLD WHICH RUN IT WAS, AND NOT WHAT IT IS WORTH: THE FIRST TWO PARTS OF IT (owner,
+	 * 10.11.2026, who rewrote the sentence without the points; they were held here until then).
 	 *
 	 * <p>The message named neither the race nor the day until it was read against the entry
 	 * above, although both were in hand a few lines from where it is written - they are what the
@@ -2470,7 +2471,7 @@ class VerificationWriteApiTest {
 	 * itself, so that it cannot measure a member who was already shut out.
 	 */
 	@Test
-	void andHeIsToldWhichRunWasApprovedAndWhatItIsWorth() throws Exception {
+	void andHeIsToldWhichRunClosedItAndNotWhatItIsWorth() throws Exception {
 		long bojan = memberId(BOJAN);
 		LocalDate theLaterDay = LocalDate.of(2027, 6, 5);
 		long theLaterRace = race(anotherEvent, "Trinaestica", theLaterDay, "13.00", 100, 100);
@@ -2500,11 +2501,13 @@ class VerificationWriteApiTest {
 				.contains("Desetka");
 		assertThat(said).as("the day it names is not the day that run was run")
 				.contains("13.03.2027");
+		/* The owner's words of 10.11.2026 for this message name the race and the day and no longer say what the
+		   run is worth, so the points of the approved run are asserted ABSENT: this is the case that held them
+		   when the sentence said "koji nosi ... bodova", and it now holds that they stay out. */
 		assertThat(said)
-				.as("the points it names are not the approved run's, which are %s, or they are not"
-						+ " written with the comma (PDL P18, 18.10.2026)", points)
-				.contains("koji nosi " + points.replace('.', ',') + " bodova.")
-				.doesNotContain(points);
+				.as("the message names the points of the approved run, %s, which the owner's words of"
+						+ " 10.11.2026 no longer carry", points)
+				.doesNotContain("koji nosi").doesNotContain(points).doesNotContain(points.replace('.', ','));
 
 		assertThat(said)
 				.as("it names the race of another result of his, or the event's own name")
@@ -4170,7 +4173,7 @@ class VerificationWriteApiTest {
 		assertThat(arrived[0].getAllRecipients()[0].toString())
 				.as("the letter went to whoever decided instead of whoever ran")
 				.isEqualTo(A_COMPETITOR);
-		assertThat(arrived[0].getSubject()).contains("odobren");
+		assertThat(arrived[0].getSubject()).contains("verifikovan");
 
 		int afterTheApproval = arrived.length;
 
@@ -4264,7 +4267,7 @@ class VerificationWriteApiTest {
 
 		MimeMessage toTheEnglish = theOneLetterTo(A_COMPETITOR);
 
-		assertThat(toTheEnglish.getSubject()).isEqualTo("Your result has been approved");
+		assertThat(toTheEnglish.getSubject()).isEqualTo("Your result has been verified");
 		assertThat(toTheEnglish.getContent().toString()).contains(" points").contains("ascent ")
 				.doesNotContain("uspon");
 	}
@@ -4279,7 +4282,7 @@ class VerificationWriteApiTest {
 
 		MimeMessage toTheSerbian = theOneLetterTo(A_COMPETITOR);
 
-		assertThat(toTheSerbian.getSubject()).isEqualTo("Vaš rezultat je odobren");
+		assertThat(toTheSerbian.getSubject()).isEqualTo("Vaš rezultat je verifikovan");
 		assertThat(toTheSerbian.getContent().toString()).contains("uspon ").doesNotContain("ascent");
 	}
 
@@ -4299,10 +4302,9 @@ class VerificationWriteApiTest {
 
 		MimeMessage toTheSerbian = theOneLetterTo(A_COMPETITOR);
 
-		assertThat(toTheSerbian.getSubject()).isEqualTo("Odobren vam je rezultat");
-		assertThat(toTheSerbian.getContent().toString()).startsWith("Moderator vam je odobrio rezultat:")
-			.contains("Sezona 2027 je zamrznuta, pa rezultat ostaje u vašoj istoriji, a tabela, plasmani"
-				+ " i nagrade te sezone se ne menjaju.")
+		assertThat(toTheSerbian.getSubject()).isEqualTo("Verifikovan vam je rezultat");
+		assertThat(toTheSerbian.getContent().toString()).startsWith("Verifikovan vam je rezultat:")
+			.contains("Rezultat je upisan u vašu istoriju. Tabela zamrznute sezone 2027 ostaje ista.")
 			.doesNotContain("Od ovog trenutka rezultat ulazi");
 	}
 
@@ -4316,10 +4318,10 @@ class VerificationWriteApiTest {
 
 		MimeMessage toTheEnglish = theOneLetterTo(A_COMPETITOR);
 
-		assertThat(toTheEnglish.getSubject()).isEqualTo("A result has been approved for you");
-		assertThat(toTheEnglish.getContent().toString()).startsWith("A moderator has approved a result for you:")
-			.contains("Season 2027 is frozen, so the result stays in your history, and the table,"
-				+ " rankings and awards of that season do not change.");
+		assertThat(toTheEnglish.getSubject()).isEqualTo("A result has been verified for you");
+		assertThat(toTheEnglish.getContent().toString()).startsWith("A result has been verified for you:")
+			.contains("The result is entered in your history. The table of the frozen season 2027 stays"
+				+ " the same.");
 	}
 
 	/**
@@ -4332,7 +4334,7 @@ class VerificationWriteApiTest {
 		clock.moveTo(Instant.parse("2028-01-01T14:59:59Z"));
 
 		assertThat(answer(RESULTS_MODERATOR, anasMarathon, true, null)).isEqualTo(200);
-		assertThat(theOneLetterTo(A_COMPETITOR).getSubject()).isEqualTo("Vaš rezultat je odobren");
+		assertThat(theOneLetterTo(A_COMPETITOR).getSubject()).isEqualTo("Vaš rezultat je verifikovan");
 	}
 
 	@Test
@@ -4340,7 +4342,7 @@ class VerificationWriteApiTest {
 		clock.moveTo(Instant.parse("2028-01-01T15:00:00Z"));
 
 		assertThat(answer(RESULTS_MODERATOR, anasMarathon, true, null)).isEqualTo(200);
-		assertThat(theOneLetterTo(A_COMPETITOR).getSubject()).isEqualTo("Odobren vam je rezultat");
+		assertThat(theOneLetterTo(A_COMPETITOR).getSubject()).isEqualTo("Verifikovan vam je rezultat");
 	}
 
 	/**
@@ -4364,7 +4366,7 @@ class VerificationWriteApiTest {
 
 		MimeMessage letter = theOneLetterTo(A_COMPETITOR);
 
-		assertThat(letter.getSubject()).isEqualTo("Vaš rezultat je odobren");
+		assertThat(letter.getSubject()).isEqualTo("Vaš rezultat je verifikovan");
 		assertThat(letter.getContent().toString()).doesNotContain("zamrznuta");
 	}
 
@@ -4394,7 +4396,7 @@ class VerificationWriteApiTest {
 
 		MimeMessage notFrozen = theOneLetterTo(A_COMPETITOR);
 
-		assertThat(notFrozen.getSubject()).isEqualTo("Vaš rezultat je odobren");
+		assertThat(notFrozen.getSubject()).isEqualTo("Vaš rezultat je verifikovan");
 		assertThat(notFrozen.getContent().toString()).doesNotContain("zamrznuta");
 	}
 
@@ -4408,8 +4410,8 @@ class VerificationWriteApiTest {
 
 		MimeMessage frozen = theOneLetterTo(A_COMPETITOR);
 
-		assertThat(frozen.getSubject()).isEqualTo("Odobren vam je rezultat");
-		assertThat(frozen.getContent().toString()).contains("Sezona 2027 je zamrznuta")
+		assertThat(frozen.getSubject()).isEqualTo("Verifikovan vam je rezultat");
+		assertThat(frozen.getContent().toString()).contains("Tabela zamrznute sezone 2027 ostaje ista")
 			.doesNotContain("2028");
 	}
 
@@ -4739,7 +4741,7 @@ class VerificationWriteApiTest {
 
 		assertThat(refused.getStatus()).isEqualTo(409);
 		assertThat(reasonIn(refused))
-				.isEqualTo("Trka još nije održana, pa rezultat ne može da se odobri.");
+				.isEqualTo("Trka još nije održana.");
 		assertThat(stateOf(bojansRun)).isEqualTo("waiting");
 		assertThat(howManyResults(BOJAN)).isZero();
 

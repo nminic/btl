@@ -679,7 +679,7 @@ describe('answering a served invitation into a team', () => {
      second source for a value: with one sex only, "always the one word" and "the right word" are
      the same screen. */
   it(
-    'tells a woman who already has a team in her word, and not in the man\'s',
+    'tells a woman who already has a team that she is in one (the same words as the man\'s since 10.11.2026)',
     async () => {
       aServerWhere(waitingWhere(true))
       asking = HER
@@ -688,20 +688,18 @@ describe('answering a served invitation into a team', () => {
       await screen.findByRole('heading', { level: 1, name: OPENED.subject })
 
       expect(await screen.findByText(sr.teams.inviteOvertakenUnnamedFemale)).toBeVisible()
-      expect(screen.queryByText(sr.teams.inviteOvertakenUnnamed)).toBeNull()
       expect(anyAcceptButton()).toBeNull()
     },
     SLOW,
   )
 
   it(
-    'tells a man who already has a team in his word, and not in the woman\'s',
+    'tells a man who already has a team that he is in one (the same words as the woman\'s since 10.11.2026)',
     async () => {
       aServerWhere(waitingWhere(true))
       await openTheQuestion()
 
       expect(screen.getByText(sr.teams.inviteOvertakenUnnamed)).toBeVisible()
-      expect(screen.queryByText(sr.teams.inviteOvertakenUnnamedFemale)).toBeNull()
     },
     SLOW,
   )
@@ -719,7 +717,6 @@ describe('answering a served invitation into a team', () => {
       await user.click(await screen.findByRole('button', { name: sr.teams.inviteAccept }))
 
       expect(await screen.findByText(sr.teams.inviteOvertakenUnnamedFemale)).toBeVisible()
-      expect(screen.queryByText(sr.teams.inviteOvertakenUnnamed)).toBeNull()
     },
     SLOW,
   )
@@ -744,7 +741,6 @@ describe('answering a served invitation into a team', () => {
       await screen.findByRole('heading', { level: 1, name: OPENED.subject })
 
       expect(await screen.findByText(sr.teams.inviteOvertakenUnnamedFemale)).toBeVisible()
-      expect(screen.queryByText(sr.teams.inviteOvertakenUnnamed)).toBeNull()
       expect(arrivedResource('competitors')).not.toBeUndefined()
     },
     SLOW,
@@ -766,7 +762,6 @@ describe('answering a served invitation into a team', () => {
       await user.click(await screen.findByRole('button', { name: sr.teams.inviteAccept }))
 
       expect(await screen.findByText(sr.teams.inviteOvertakenUnnamedFemale)).toBeVisible()
-      expect(screen.queryByText(sr.teams.inviteOvertakenUnnamed)).toBeNull()
     },
     SLOW,
   )
@@ -789,7 +784,6 @@ describe('answering a served invitation into a team', () => {
       await screen.findByRole('heading', { level: 1, name: OPENED.subject })
 
       expect(await screen.findByText(sr.teams.inviteOvertakenUnnamed)).toBeVisible()
-      expect(screen.queryByText(sr.teams.inviteOvertakenUnnamedFemale)).toBeNull()
     },
     SLOW,
   )
@@ -860,7 +854,6 @@ describe('answering a served invitation into a team', () => {
       expect(await screen.findByText(sr.teams.inviteOvertakenUnnamedFemale)).toBeVisible()
       /* In the same instant, and not one after the other. */
       expect(theRefuseButton()).toBeVisible()
-      expect(screen.queryByText(sr.teams.inviteOvertakenUnnamed)).toBeNull()
     },
     SLOW,
   )
@@ -902,7 +895,6 @@ describe('answering a served invitation into a team', () => {
       await user.click(await screen.findByRole('button', { name: sr.teams.inviteAccept }))
 
       expect(await screen.findByText(sr.teams.inviteOvertakenUnnamedFemale)).toBeVisible()
-      expect(screen.queryByText(sr.teams.inviteOvertakenUnnamed)).toBeNull()
     },
     SLOW,
   )
@@ -937,7 +929,6 @@ describe('answering a served invitation into a team', () => {
       expect(await screen.findByText(sr.teams.inviteOvertakenUnnamedFemale)).toBeVisible()
       expect(theRefuseButton()).toBeVisible()
       expect(screen.queryByText(sr.data.error)).toBeNull()
-      expect(screen.queryByText(sr.teams.inviteOvertakenUnnamed)).toBeNull()
     },
     SLOW,
   )

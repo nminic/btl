@@ -277,7 +277,7 @@ describe('a sentence with a value put into it', () => {
          `teams.joinWhenPaid` below is made with where its key is written out. */
       '? (ServedTeamInvite.tsx)',
       /* The sentence a bare number gets from the decision route, chosen by
-         `whatABareNumberSays` and handed the number: „Server je odgovorio brojem {status}".
+         `whatABareNumberSays` and handed the number: „Ništa nije sačuvano (greška {status}). Pokušaj ponovo za koji minut."
          It stood under `PendingQueue.tsx` until R1 of the results flows, when the line that
          draws it moved, unchanged, into a module of its own so the table of results could
          draw it too. A status is written in figures after „brojem", so it has no case to be
@@ -395,7 +395,6 @@ describe('a sentence with a value put into it', () => {
       'event.written',
       'form.pasteCut',
       'form.suggested',
-      'home.moreRuns',
       'home.place',
       /* The heading of the counters on the front page: „Sezona {season}.". The year is a
          figure after a noun in the nominative, so it has no case to be wrong in. It was
@@ -434,6 +433,10 @@ describe('a sentence with a value put into it', () => {
          does not decline. */
       'membership.coveredByTheBalance',
       'membership.feeExempt',
+      /* The sentence a member freed of the fee reads where the renewal would be, which since 10.11.2026
+         (owner: „Članarina za sezonu 2027 je izmirena.") names the season on sale: a bare year after
+         „za sezonu", which follows as a label and does not decline. */
+      'membership.feeExemptNoRenewal',
       /* The heading of the panel somebody who has not paid pays in, which takes the season the
          way the renewal heading below takes it (`membership.renewal`): a bare number from the
          clock (`seasonBeingRenewed`), not a value with a separator or a case of its own. */
@@ -443,7 +446,7 @@ describe('a sentence with a value put into it', () => {
       /* What the balance takes off the slip and what is left to send (owner, 25.10.2026, the
          sentence chosen as offered). Both are amounts with their money after them, written by
          `money` inside `member/WhatHeSends.tsx`'s own `written`, so no arrow is read off this call:
-         „Balans pokriva 700 RSD, pa uplaćuješ 4.100 RSD." puts each after a verb as its object, and
+         „Balans pokriva 700 RSD, a za uplatu ostaje 4.100 RSD." puts each after a verb as its object, and
          a figure with its money does not decline. */
       'membership.fromTheBalance',
       'membership.inTeam',

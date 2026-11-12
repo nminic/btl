@@ -75,7 +75,7 @@ class WhatAMembershipChangeSaysTest {
 		assertThat(WhatAMembershipChangeSays.paymentRecorded(SEASON)).isEqualTo(new Said(
 				"Evidentirana je vaša uplata članarine",
 				"Za sezonu 2028 evidentirana je vaša uplata članarine.\n\n"
-						+ "Za sezonu 2028 ste član lige, a osnov vašeg članstva je uplata.\n\n"
+						+ "Za sezonu 2028 ste član lige.\n\n"
 						+ "Balkanska trkačka liga"));
 
 		assertThat(WhatAMembershipChangeSays.basisChanged(SEASON, Basis.FEE_EXEMPT)).isEqualTo(new Said(
@@ -93,16 +93,14 @@ class WhatAMembershipChangeSaysTest {
 
 		assertThat(WhatAMembershipChangeSays.beginnersCategoryMoved(false, SEASON, 2029)).isEqualTo(new Said(
 				"Početnička kategorija vam je zatvorena",
-				"Upisano vam je članstvo za sezonu 2028, pa se vaši odobreni rezultati iz te sezone računaju"
-						+ " u zvaničnu sezonu. Time ste prešli prag od 12 bodova, pa vam je početnička kategorija"
-						+ " zatvorena za sezonu 2029.\n\n"
+				"Početnička kategorija vam je zatvorena za sezonu 2029, jer ste u sezoni 2028 prešli prag od 12"
+						+ " bodova.\n\n"
 						+ "Balkanska trkačka liga"));
 
 		assertThat(WhatAMembershipChangeSays.beginnersCategoryMoved(true, SEASON, 2029)).isEqualTo(new Said(
 				"Početnička kategorija vam je ponovo otvorena",
-				"Poništeno vam je članstvo za sezonu 2028, pa se vaši rezultati iz te sezone više ne računaju"
-						+ " u zvaničnu sezonu. Time ste pali ispod praga od 12 bodova, pa vam je početnička"
-						+ " kategorija ponovo otvorena za sezonu 2029.\n\n"
+				"Početnička kategorija vam je ponovo otvorena za sezonu 2029, jer je članstvo za sezonu 2028"
+						+ " poništeno.\n\n"
 						+ "Balkanska trkačka liga"));
 
 		assertThat(WhatAMembershipChangeSays.referralThanked("Ime Prezime", SEASON,
@@ -141,7 +139,8 @@ class WhatAMembershipChangeSaysTest {
 		for (boolean open : new boolean[] {false, true}) {
 			String body = WhatAMembershipChangeSays.beginnersCategoryMoved(open, 2031, 2035).body();
 
-			assertThat(body).contains("članstvo za sezonu 2031,").contains("za sezonu 2035.")
+			assertThat(body).contains(open ? "članstvo za sezonu 2031 poništeno" : "u sezoni 2031 prešli")
+					.contains("za sezonu 2035")
 					.doesNotContain("sezonu 2032").doesNotContain("sezonu 2036").doesNotContain("2,03");
 		}
 	}

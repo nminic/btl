@@ -17,7 +17,7 @@ describe('screenFor', () => {
     )
 
     expect(screen.getByRole('heading', { level: 1, name: 'Timovi' })).toBeVisible()
-    expect(screen.getByText(/Ovaj ekran dolazi u sledećoj fazi/)).toBeVisible()
+    expect(screen.getByText(/Ovaj ekran je u izradi/)).toBeVisible()
   })
 
   it('gives every address of the portal a screen of its own', () => {

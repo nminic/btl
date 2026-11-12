@@ -96,10 +96,10 @@ async function describeARace(user: ReturnType<typeof setupUser>, name = 'Trka kr
   await user.type(screen.getByLabelText(/Link/), 'https://primer.rs/rezultati')
 }
 
-/* The two forms do not share a submit label - „Pošalji na proveru" away from the calendar
+/* The two forms do not share a submit label - „Pošalji rezultat" away from the calendar
    and „Pošalji rezultat" on it - so the name is the caller's to give rather than a default
    that happens to be right on three roads out of four. */
-const send = async (user: ReturnType<typeof setupUser>, named = 'Pošalji na proveru') => {
+const send = async (user: ReturnType<typeof setupUser>, named = 'Pošalji rezultat') => {
   await user.click(screen.getByRole('button', { name: named }))
 }
 
@@ -1095,7 +1095,7 @@ describe('a run sent back, sent again', () => {
       /* And he is told it went AGAIN, the one thing the confirmation cannot work out afterwards
          (`NewResult.tsx`, `done`). */
       expect(
-        await screen.findByText('Rezultat je ponovo poslat na proveru.', undefined, SOON),
+        await screen.findByText('Rezultat je ponovo poslat.', undefined, SOON),
       ).toBeVisible()
     },
     SLOW,
@@ -1581,7 +1581,7 @@ describe('a refusal that says the counted result is not there', () => {
       listening(() => answeredWith(404))
       renderAt('/sr/moji-rezultati', 'competitor', HIS, undefined, null)
 
-      const before = await takeTheSecondBack(user, /Server je odgovorio brojem 404/)
+      const before = await takeTheSecondBack(user, /greška 404/)
 
       /* Read the moment the sentence is there, because the sentence and the asking again are one
          answer: what the screen does after that is not this case's. The same moment is when the
@@ -1600,7 +1600,7 @@ describe('a refusal that says the counted result is not there', () => {
       listening(() => answeredWith(404))
       const { router } = renderAt('/sr/moji-rezultati', 'competitor', HIS, undefined, '2026-08-23')
 
-      const before = await correctTheFirst(user, router, /Server je odgovorio brojem 404/)
+      const before = await correctTheFirst(user, router, /greška 404/)
 
       expect(before.sent, 'the list of what was sent was never read, so this measures nothing').toBeGreaterThan(0)
       expect(reads()).toEqual({ counted: before.counted + 1, sent: before.sent + 1 })
@@ -1609,8 +1609,8 @@ describe('a refusal that says the counted result is not there', () => {
   )
 
   const SAYING_NOTHING_ABOUT_THE_RESULT: [string, () => Response | Promise<Response>, RegExp][] = [
-    ['a 403', () => answeredWith(403), /nije uspeo da dokaže serveru/],
-    ['a 500', () => answeredWith(500), /Server je odgovorio brojem 500/],
+    ['a 403', () => answeredWith(403), /Zahtev nije prošao/],
+    ['a 500', () => answeredWith(500), /greška 500/],
     [
       'no answer at all',
       () => Promise.reject(new TypeError('Failed to fetch')),

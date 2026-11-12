@@ -225,7 +225,7 @@ describe('the list of races under the name of a race, on the form a result is en
     await user.type(screen.getByLabelText('Minuti'), '52')
     await user.type(screen.getByLabelText('Sekunde'), '10')
     await user.type(screen.getByLabelText(/Link/), 'https://primer.rs/rezultati')
-    await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
+    await user.click(screen.getByRole('button', { name: 'Pošalji rezultat' }))
 
     await waitFor(() => {
       expect(writes()).toHaveLength(1)
@@ -508,7 +508,7 @@ describe('the town on the form a result is entered on, which is the boundary of 
     await user.type(screen.getByLabelText('Minuti'), '52')
     await user.type(screen.getByLabelText('Sekunde'), '10')
     await user.type(screen.getByLabelText(/Link/), 'https://primer.rs/rezultati')
-    await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
+    await user.click(screen.getByRole('button', { name: 'Pošalji rezultat' }))
 
     await waitFor(() => {
       expect(writes()).toHaveLength(1)

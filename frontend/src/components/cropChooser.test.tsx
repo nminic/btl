@@ -265,7 +265,7 @@ describe('choosing which square of a picture counts', () => {
 
     expect(whole).toHaveAttribute('alt', 'Slika koju si izabrao')
     expect(whole).toHaveAttribute('src', expect.stringContaining('data:image/jpeg'))
-    expect(frame).toHaveTextContent(/Ostatak je zatamnjen/)
+    expect(frame).toHaveTextContent(/Na profilu se vidi deo slike u krugu/)
     /* And the sentence names the shape, because the shape is the whole of what
        changed on 27.08.2026 and a screen reader hears only these words: dimming
        is a colour and a circle is a curve, and neither is anything at all
@@ -496,7 +496,7 @@ describe('a picture the portal cannot draw the circle from', () => {
        same screen behind, so the sentence is the only thing a member has to go
        on. */
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Slika je premala. Najkraća strana mora da ima bar 240 piksela, da bi krug ostao oštar svuda gde se prikazuje.',
+      'Slika je premala. Najkraća strana mora da ima bar 240 piksela.',
     )
     expect(screen.queryByRole('group', { name: 'Isecanje slike' })).toBeNull()
     /* And the file goes with the refusal: a member left holding a picture they

@@ -221,7 +221,7 @@ describe('what one answer is taken to mean', () => {
   it('says which number it was when a 409 carries no reason anybody can read', async () => {
     /* THE NUMBER ITSELF, AND IT HAD NO CASE UNTIL 21.09.2026: written back as a literal
        400 the whole package stayed green, and a 409 whose body nobody could read would
-       have told the reader „Server je odgovorio brojem 400" - a number that was never on
+       have told the reader „Ništa nije sačuvano (greška 400)" - a number that was never on
        the wire. The reason is not invented either, for the same reason the 400 beside
        this one does not invent one: a refusal nobody can name is not one of the three
        the screens know. */

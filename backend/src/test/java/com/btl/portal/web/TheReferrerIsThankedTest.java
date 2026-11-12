@@ -73,10 +73,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 class TheReferrerIsThankedTest {
 
 	/** 11:00 in Belgrade in November 2027: the season on sale is 2028, the year of the clock 2027. */
-	private static final Instant IN_NOVEMBER_2027 = Instant.parse("2027-11-16T09:00:00Z");
+	private static final Instant IN_NOVEMBER_2027 = Instant.parse("2027-11-26T09:00:00Z");
 
 	/** A year later: the next season is on sale, and the newcomer is activated for it a second time. */
-	private static final Instant IN_NOVEMBER_2028 = Instant.parse("2028-11-16T09:00:00Z");
+	private static final Instant IN_NOVEMBER_2028 = Instant.parse("2028-11-26T09:00:00Z");
 
 	private static final int THE_NEXT_SEASON = 2029;
 

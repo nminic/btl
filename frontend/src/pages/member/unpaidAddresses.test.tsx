@@ -94,8 +94,10 @@ describe('which addresses are shut to somebody who has not paid', () => {
 
   it('are all of administration and the forms of a team, and the league\'s entry of results', () => {
     expect(SHUT_BEHIND).toHaveLength(BEHIND.length)
+    /* Seventeen since 10.11.2026, with the data of somebody who has no member number (the pencil on
+       Uplate), which is administration and shut to him like the rest. */
     expect(BEHIND.map(([address]) => pathOf(address)).filter((one) => one.includes('/administracija')))
-      .toHaveLength(16)
+      .toHaveLength(17)
   })
 
   it('leave his two pages and the public ones open, and there are public ones', () => {

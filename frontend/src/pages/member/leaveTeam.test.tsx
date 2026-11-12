@@ -386,7 +386,7 @@ describe('leaving a team from the membership screen', () => {
        somebody else's team. */
     expect(
       screen.getByText(
-        `Sigurno izlaziš iz tima ${MINE.name}? Nazad se vraćaš samo ako tim prihvati tvoju prijavu ili te ponovo pozove.`,
+        `Sigurno želiš da napustiš tim ${MINE.name}?`,
       ),
     ).toBeInTheDocument()
     expect(screen.queryByText(new RegExp(FIRST.name))).not.toBeInTheDocument()
@@ -471,7 +471,7 @@ describe('leaving a team from the membership screen', () => {
        assertion carries it: matched on the template alone this would pass for any number
        the server answered, 404 and 500 alike. */
     expect(
-      await screen.findByText(/Server je odgovorio brojem 404/, undefined, { timeout: SLOW }),
+      await screen.findByText(/greška 404/, undefined, { timeout: SLOW }),
     ).toBeInTheDocument()
     expect(screen.getByText(`Trenutno si u timu ${MINE.name}.`)).toBeInTheDocument()
   })

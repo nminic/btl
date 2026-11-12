@@ -509,7 +509,7 @@ class TeamJoiningApiTest {
 	 */
 	@Test
 	void anApplicantWhoHoldsOnlyTheSeasonBeingRunIsNotShownToTheTeamAndHisRowWaits() throws Exception {
-		clock.moveTo(Instant.parse("2027-11-20T09:00:00Z"));
+		clock.moveTo(Instant.parse("2027-11-30T09:00:00Z"));
 
 		assertThat(applicationsOf(THE_TEAM, LEADER).stream().anyMatch(one -> one.startsWith(APPLICANT)))
 				.as("he holds the season on sale, so the team sees him")

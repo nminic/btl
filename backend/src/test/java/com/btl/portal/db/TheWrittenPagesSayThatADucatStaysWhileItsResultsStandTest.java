@@ -8,11 +8,11 @@ import java.util.regex.Pattern;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * THE RULEBOOK SAYS THAT A DUCAT STAYS FOR AS LONG AS THE RESULTS THAT WON IT STAND, AND ITS SIGN-OFF IS 09.11.2026 (V92,
+ * THE RULEBOOK SAYS THAT A DUCAT STAYS FOR AS LONG AS THE RESULTS THAT WON IT STAND, AND ITS SIGN-OFF IS 12.11.2026 (V96,
  * owner, 08.11.2026), IN BOTH LANGUAGES.
  *
- * <p><b>Why this exists, and it is the other half of V92 (as {@link TheWrittenPagesSayThatTheProfileIsEditedOnThePageMojiPodaciTest}
- * is of V89).</b> V92 makes one edit in each language, and one sign-off in each, with {@code replace()} calls. A replace
+ * <p><b>Why this exists, and it is the other half of V96 (as {@link TheWrittenPagesSayThatTheProfileIsEditedOnThePageMojiPodaciTest}
+ * is of V89).</b> V96 makes one edit in each language, and one sign-off in each, with {@code replace()} calls. A replace
  * is exact and has one failure mode, which is to match NOTHING and report success; the migration itself refuses that, so
  * what is held here is the other side: that what the owner decided is what the portal serves, in both languages, that
  * the sentence it replaced stands nowhere on any of the three pages, and that the paragraphs beside it were not taken
@@ -24,9 +24,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  * sentence (V78's, and the V77 paragraph before it) stands nowhere, and the new sentence stands once, in the rulebook.
  * The neighbours: the paragraph before the sentence and the paragraph after it are untouched. And the sign-offs: only the
  * rulebook moved (owner, 07.11.2026: the date moves whenever the words of a legal text change, to the day the change
- * reaches QA), the policy keeps 08.11.2026 (V90) and the terms 29.10.2026, and 30.10.2026 stands on none of the three.
+ * reaches QA), the policy and the terms keep 11.11.2026 (V95), and 11.11.2026 stands on the rulebook nowhere.
  *
- * <p><b>The day 09.11.2026 is the day expected</b> (see the head of V92). If the file reaches QA on another day, the day
+ * <p><b>The day 12.11.2026 is the day expected</b> (see the head of V96). If the file reaches QA on another day, the day
  * is moved in the migration, in the table below and in every guard that holds it.
  */
 class TheWrittenPagesSayThatADucatStaysWhileItsResultsStandTest extends DatabaseTest {
@@ -40,7 +40,7 @@ class TheWrittenPagesSayThatADucatStaysWhileItsResultsStandTest extends Database
 			"A ducat stays for as long as the results that won it stand. A monthly and a seasonal ducat of a frozen season stays for good.";
 
 	/**
-	 * One edit of V92 as the owner decided it. The full new text must stand once in the section, and a piece of the old
+	 * One edit of V96 as the owner decided it. The full new text must stand once in the section, and a piece of the old
 	 * text must not stand in it.
 	 */
 	record Change(String id, String slug, int position, String standsInSerbian, String goneFromSerbian,
@@ -54,13 +54,13 @@ class TheWrittenPagesSayThatADucatStaysWhileItsResultsStandTest extends Database
 					THE_SENTENCE_IN_ENGLISH,
 					"except in the case of its deletion"),
 			new Change("DUCAT-02", RULEBOOK, 19,
-					"Poslednja izmena: 09.11.2026.",
-					"izmena: 30.10.2026.",
-					"Last amended: 09.11.2026.",
-					"amended: 30.10.2026."));
+					"Poslednja izmena: 12.11.2026.",
+					"izmena: 11.11.2026.",
+					"Last amended: 12.11.2026.",
+					"amended: 11.11.2026."));
 
 	/**
-	 * The sentence V78 wrote, which V92 replaced, and the V77 paragraph before it, by their roots, in each language: the
+	 * The sentence V78 wrote, which V96 replaced, and the V77 paragraph before it, by their roots, in each language: the
 	 * owner's old claim that the ducats stay with the profile (except for its deletion) and the older claim that a won
 	 * ducat stays forever.
 	 */
@@ -114,15 +114,15 @@ class TheWrittenPagesSayThatADucatStaysWhileItsResultsStandTest extends Database
 	}
 
 	/**
-	 * THE TABLE KNOWS EVERY EDIT THE MIGRATION MAKES, so a third edit added to V92 without a line here fails (the floor is
-	 * the file Flyway resolved): each of the 4 rows of V92 carries one old text, written between two {@code $old$} marks.
+	 * THE TABLE KNOWS EVERY EDIT THE MIGRATION MAKES, so a third edit added to V96 without a line here fails (the floor is
+	 * the file Flyway resolved): each of the 4 rows of V96 carries one old text, written between two {@code $old$} marks.
 	 */
 	@Test
-	void theTableNamesEveryEditV92Makes() {
-		String sql = migrationSql("92");
+	void theTableNamesEveryEditV96Makes() {
+		String sql = migrationSql("96");
 
 		assertThat(sql.split("\\$old\\$", -1).length - 1)
-				.as("V92 carries an edit that the table of this file does not name (or the table names one V92 lacks)")
+				.as("V96 carries an edit that the table of this file does not name (or the table names one V96 lacks)")
 				.isEqualTo(CHANGES.size() * 2 * 2);
 	}
 
@@ -172,22 +172,22 @@ class TheWrittenPagesSayThatADucatStaysWhileItsResultsStandTest extends Database
 
 	/**
 	 * ONLY THE RULEBOOK IS SIGNED WITH THE NEW DAY: its sign-off stands once as the last line, in both languages, the
-	 * other two documents keep the day of their own last change, and the day V80 gave the rulebook stands on none of the
-	 * three, so a sign-off moved on all three (or on none) fails.
+	 * other two documents keep the day of their own last change, and the day V95 gave the rulebook stands on it nowhere
+	 * and the other two do not move, so a sign-off moved on all three (or on none) fails.
 	 */
 	@Test
-	void theRulebookIsSignedOffOnTheNinthOfNovemberAndTheOtherTwoKeepTheirDays() {
+	void theRulebookIsSignedOffOnTheTwelfthOfNovemberAndTheOtherTwoKeepTheirDays() {
 		for (String language : List.of("sr", "en")) {
 			boolean serbian = language.equals("sr");
 			String mark = serbian ? "Poslednja izmena: " : "Last amended: ";
 
 			assertThat(bodyOf(RULEBOOK, 19, language)).as("the %s rulebook ends with its sign-off", language)
 					.endsWith(serbian ? CHANGES.get(1).standsInSerbian() : CHANGES.get(1).standsInEnglish())
-					.containsOnlyOnce(mark).doesNotContain("30.10.2026").doesNotContain("29.10.2026");
+					.containsOnlyOnce(mark).doesNotContain("11.11.2026").doesNotContain("30.10.2026").doesNotContain("29.10.2026");
 			assertThat(bodyOf("politika-privatnosti", 7, language)).as("the %s policy keeps its day", language)
-					.endsWith(mark + "08.11.2026.");
+					.endsWith(mark + "11.11.2026.");
 			assertThat(bodyOf("uslovi-koriscenja", 11, language)).as("the %s terms keep their day", language)
-					.endsWith(mark + "29.10.2026.");
+					.endsWith(mark + "11.11.2026.");
 		}
 	}
 }

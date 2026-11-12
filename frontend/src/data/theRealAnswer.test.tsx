@@ -370,7 +370,7 @@ describe('a member freed of the fee, on the answer the server gives', () => {
          freed of the fee was being shown all three. The renewal panel itself stays, and
          says there is nothing to pay: that is the portal answering the question rather
          than hiding it. */
-      expect(screen.getByText(/nema šta da uplatiš/)).toBeVisible()
+      expect(screen.getByText(/Članarina za sezonu 2027 je izmirena/)).toBeVisible()
       expect(screen.queryByRole('heading', { name: 'Uplatnica' })).not.toBeInTheDocument()
       expect(screen.queryByRole('heading', { name: 'Kartica' })).not.toBeInTheDocument()
     } finally {
@@ -440,7 +440,7 @@ describe('the referral link, on the answer the server gives', () => {
     try {
       renderAt('/sr/moja-clanarina', 'competitor', stillAMember)
 
-      expect(await screen.findByText(/^Svako ko se učlani preko tvog linka/)).toBeVisible()
+      expect(await screen.findByText(/^Za svakog ko se učlani preko tvog linka/)).toBeVisible()
       expect(screen.queryByRole('button', { name: 'Kopiraj link za preporuku' })).not.toBeInTheDocument()
       expect(screen.queryByText(/registracija/)).not.toBeInTheDocument()
       expect(screen.queryByText(/undefined/)).not.toBeInTheDocument()
@@ -543,7 +543,7 @@ describe('the referral link, on the answer the server gives', () => {
       renderAt('/sr/moja-clanarina', 'competitor', stillAMember)
 
       /* Waited for through the sentence drawn in the same pass as the link would be. */
-      expect(await screen.findByText(/^Svako ko se učlani preko tvog linka/)).toBeVisible()
+      expect(await screen.findByText(/^Za svakog ko se učlani preko tvog linka/)).toBeVisible()
       expect(screen.queryByRole('button', { name: 'Kopiraj link za preporuku' })).not.toBeInTheDocument()
       expect(document.body.textContent ?? '', 'the code the answer carried, written on the page').not.toContain(
         sent,

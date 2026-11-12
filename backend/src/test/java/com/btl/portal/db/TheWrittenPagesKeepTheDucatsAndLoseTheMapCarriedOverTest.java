@@ -86,16 +86,16 @@ class TheWrittenPagesKeepTheDucatsAndLoseTheMapCarriedOverTest extends DatabaseT
 	}
 
 	/**
-	 * The pages as they stood before V78, and the proof that this is so: a piece of every old text stands again. V92
+	 * The pages as they stood before V78, and the proof that this is so: a piece of every old text stands again. V96
 	 * (owner, 08.11.2026) replaced the sentence V78 wrote in the rulebook's section 18, so it is undone first, read out of
-	 * V92 itself, and what is put back below is then the text V78 itself left.
+	 * V96 itself, and what is put back below is then the text V78 itself left.
 	 */
 	private void theTextAsItStoodBeforeV78() {
-		TheWrittenPagesBeforeV71.undoBodyEdits(db, "92");
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "96");
 		theTextV78FinishedIsUndone();
 	}
 
-	/** The same, from the text V78 itself left (V92 already undone by the caller). */
+	/** The same, from the text V78 itself left (V96 already undone by the caller). */
 	private void theTextV78FinishedIsUndone() {
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "78");
 
@@ -140,12 +140,12 @@ class TheWrittenPagesKeepTheDucatsAndLoseTheMapCarriedOverTest extends DatabaseT
 	void v78OverTheTextItFoundGivesTheTextThePortalServesAndChangesNothingElse() {
 		Map<String, String> servedNow = everyText();
 
-		/* The portal serves V92 on top of V78; what V78 is held to is the text V78 itself left. */
-		TheWrittenPagesBeforeV71.undoBodyEdits(db, "92");
+		/* The portal serves V96 on top of V78; what V78 is held to is the text V78 itself left. */
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "96");
 
 		Map<String, String> finished = everyText();
 
-		assertThat(finished).as("undoing V92 changed nothing, so this measures nothing").isNotEqualTo(servedNow);
+		assertThat(finished).as("undoing V96 changed nothing, so this measures nothing").isNotEqualTo(servedNow);
 
 		theTextV78FinishedIsUndone();
 
@@ -173,8 +173,8 @@ class TheWrittenPagesKeepTheDucatsAndLoseTheMapCarriedOverTest extends DatabaseT
 	 */
 	@Test
 	void v78RunAgainOverTheFinishedTextStopsAndListsEveryEdit() {
-		/* The text V78 finished: V92 replaced its ducat sentence, and over that text V78 would not find its new text. */
-		TheWrittenPagesBeforeV71.undoBodyEdits(db, "92");
+		/* The text V78 finished: V96 replaced its ducat sentence, and over that text V78 would not find its new text. */
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "96");
 
 		PSQLException error = v78Refused();
 

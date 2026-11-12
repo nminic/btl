@@ -85,16 +85,19 @@ class TheWrittenPagesSayWhoPaysInWhichCurrencyCarriedOverTest extends DatabaseTe
 	}
 
 	/**
-	 * The pages as they stood before V80, and the proof that this is so: a piece of every old text stands again. V92
-	 * (owner, 08.11.2026) moved the rulebook's sign-off on from the day V80 gave it, so it is undone first, read out of V92
+	 * The pages as they stood before V80, and the proof that this is so: a piece of every old text stands again. V93
+	 * (owner, 10.11.2026) moved the rulebook's sign-off on from the day V80 gave it, so it is undone first, read out of V93
 	 * itself, and what is put back below is then the text V80 itself left.
 	 */
 	private void theTextAsItStoodBeforeV80() {
-		TheWrittenPagesBeforeV71.undoBodyEdits(db, "92");
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "96");
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "95");
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "94");
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "93");
 		theTextV80FinishedIsUndone();
 	}
 
-	/** The same, from the text V80 itself left (V92 already undone by the caller). */
+	/** The same, from the text V80 itself left (V93 already undone by the caller). */
 	private void theTextV80FinishedIsUndone() {
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "80");
 
@@ -139,12 +142,15 @@ class TheWrittenPagesSayWhoPaysInWhichCurrencyCarriedOverTest extends DatabaseTe
 	void v80OverTheTextItFoundGivesTheTextThePortalServesAndChangesNothingElse() {
 		Map<String, String> servedNow = everyText();
 
-		/* The portal serves V92 on top of V80; what V80 is held to is the text V80 itself left. */
-		TheWrittenPagesBeforeV71.undoBodyEdits(db, "92");
+		/* The portal serves V93 on top of V80; what V80 is held to is the text V80 itself left. */
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "96");
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "95");
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "94");
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "93");
 
 		Map<String, String> finished = everyText();
 
-		assertThat(finished).as("undoing V92 changed nothing, so this measures nothing").isNotEqualTo(servedNow);
+		assertThat(finished).as("undoing V93 changed nothing, so this measures nothing").isNotEqualTo(servedNow);
 
 		theTextV80FinishedIsUndone();
 
@@ -171,8 +177,11 @@ class TheWrittenPagesSayWhoPaysInWhichCurrencyCarriedOverTest extends DatabaseTe
 	 */
 	@Test
 	void v80RunAgainOverTheFinishedTextStopsAndListsEveryEdit() {
-		/* The text V80 finished: V92 moved its sign-off on, and over that text V80 would not find its new sign-off. */
-		TheWrittenPagesBeforeV71.undoBodyEdits(db, "92");
+		/* The text V80 finished: V93 moved its sign-off on, and over that text V80 would not find its new sign-off. */
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "96");
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "95");
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "94");
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "93");
 
 		PSQLException error = v80Refused();
 

@@ -72,7 +72,9 @@ class DucatConstraintsTest extends DatabaseTest {
 			+ " counted";
 	private static final String DUCAT_COLUMNS = CONDITION_COLUMNS + ", " + DRAWING_COLUMNS;
 	private static final String AWARD_COLUMNS =
-			"competitor_id, ducat_id, kind, threshold, reached, period, season, month";
+			"competitor_id, ducat_id, kind, threshold, reached, period, season, month, tier, won_on";
+	/** And what V91 added: the value of the ducat when it was won, and the day of the race that won it. */
+	private static final String A_TIER_AND_DAY = "3, date '2027-04-10'";
 
 	/**
 	 * A COIN THAT BREAKS NOTHING ABOUT ITS DRAWING, for every row here whose fault is
@@ -105,7 +107,13 @@ class DucatConstraintsTest extends DatabaseTest {
 	}
 
 	private static String award(String values) {
-		return "insert into ducat_award (" + AWARD_COLUMNS + ") values (" + values + ")";
+		return "insert into ducat_award (" + AWARD_COLUMNS + ") values (" + values + ", " + A_TIER_AND_DAY + ")";
+	}
+
+	/** An award that is right in everything but the tier and the day, which are what the caller says. */
+	private static String awardOn(String tier, String wonOn) {
+		return "insert into ducat_award (" + AWARD_COLUMNS + ") values (" + A_MEMBER + ", " + A_SEASON_DUCAT
+				+ ", 'totalKm', 1000, 1200, 'season', 2027, null, " + tier + ", " + wonOn + ")";
 	}
 
 	/** A condition nothing is wrong with, for the rows whose fault is in the drawing. */
@@ -297,11 +305,12 @@ class DucatConstraintsTest extends DatabaseTest {
 				/* WHO HAS WON WHICH. */
 				Violation.notNull("ducat_award_id_not_null", "id",
 						"insert into ducat_award (id, " + AWARD_COLUMNS + ") values (null, " + A_MEMBER
-								+ ", " + A_SEASON_DUCAT + ", 'totalKm', 1000, 1200, 'season', 2027, null)"),
+								+ ", " + A_SEASON_DUCAT + ", 'totalKm', 1000, 1200, 'season', 2027, null, "
+								+ A_TIER_AND_DAY + ")"),
 				Violation.of("ducat_award_pk",
 						"insert into ducat_award (id, " + AWARD_COLUMNS + ") select id, " + A_MEMBER
-								+ ", " + A_SEASON_DUCAT + ", 'totalKm', 1000, 1200, 'season', 2028, null"
-								+ " from ducat_award limit 1"),
+								+ ", " + A_SEASON_DUCAT + ", 'totalKm', 1000, 1200, 'season', 2028, null, "
+								+ A_TIER_AND_DAY + " from ducat_award limit 1"),
 
 				Violation.notNull("ducat_award_competitor_id_not_null", "competitor_id",
 						award("null, " + A_SEASON_DUCAT + ", 'totalKm', 1000, 1200, 'season', 2027, null")),
@@ -313,8 +322,8 @@ class DucatConstraintsTest extends DatabaseTest {
 						award(A_MEMBER + ", 999999, 'totalKm', 1000, 1200, 'season', 2027, null")),
 				Violation.notNull("ducat_award_awarded_at_not_null", "awarded_at",
 						"insert into ducat_award (" + AWARD_COLUMNS + ", awarded_at) values (" + A_MEMBER
-								+ ", " + A_SEASON_DUCAT + ", 'totalKm', 1000, 1200, 'season', 2027, null,"
-								+ " null)"),
+								+ ", " + A_SEASON_DUCAT + ", 'totalKm', 1000, 1200, 'season', 2027, null, "
+								+ A_TIER_AND_DAY + ", null)"),
 
 				Violation.notNull("ducat_award_kind_not_null", "kind",
 						award(A_MEMBER + ", " + A_SEASON_DUCAT + ", null, 1000, 1200, 'season', 2027, null")),
@@ -341,6 +350,18 @@ class DucatConstraintsTest extends DatabaseTest {
 				Violation.of("ducat_award_period_known",
 						award(A_MEMBER + ", " + A_SEASON_DUCAT + ", 'totalKm', 1000, 1200, 'week', 2027,"
 								+ " null")),
+
+				/* WHAT V91 ADDED. The value of the ducat when it was won is a whole number from one to
+				   five, as it is on the definition, and is refused at both ends; the day of the race and
+				   the value cannot be left empty (a row has to say them or not exist). */
+				Violation.notNull("ducat_award_tier_not_null", "tier", awardOn("null", "date '2027-04-10'")),
+				Violation.of("ducat_award_tier_in_range", awardOn("0", "date '2027-04-10'")),
+				Violation.of("ducat_award_tier_in_range", awardOn("6", "date '2027-04-10'")),
+				Violation.notNull("ducat_award_won_on_not_null", "won_on", awardOn("3", "null")),
+				Violation.of("ducat_award_result_fk",
+						"insert into ducat_award (" + AWARD_COLUMNS + ", result_id) values (" + A_MEMBER + ", "
+								+ A_SEASON_DUCAT + ", 'totalKm', 1000, 1200, 'season', 2027, null, "
+								+ A_TIER_AND_DAY + ", 999999)"),
 
 				/* WHICH PERIOD IT WAS WON IN, in both directions. A badge that stands for ever
 				   belongs to no season, and one that does not, does. */

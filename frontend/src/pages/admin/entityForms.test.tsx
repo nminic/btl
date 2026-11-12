@@ -1040,7 +1040,7 @@ describe('two teams under one name', () => {
        "already exists": the words have to match what is compared, or a member
        reads that a team of that name exists, goes to the list, and finds a name
        that is not the one they typed. */
-    expect(screen.getByText(/ne računaju kao razlika/)).toBeVisible()
+    expect(screen.getByText(/Tim sa ovim nazivom već postoji/)).toBeVisible()
     expect(screen.queryByRole('status', { name: 'Sačuvano' })).toBeNull()
   })
 

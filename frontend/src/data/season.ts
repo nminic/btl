@@ -25,10 +25,14 @@ export const FIRST_SEASON = 2027
 
 /** Renewal and the transfer window both open on this day.
  *
- * **It is `11-11` from 27.10.2026** (PDL, „Novi godišnji ciklus od 11. novembra"): „Prijave
- * ce pocinjati 11. novembra svake godine i trajati 10 dana po ceni od 35 eur (4200)", and
- * the owner chose that everything which opened on 15 October moves with it. The one
- * exception is the first year, `FIRST_SALE` below, which opens on its own day.
+ * **It is `11-21` from 10.11.2026** (PDL, „Ciklus od 21. novembra (10.11.2026)"): „Pomeri period
+ * prvog uclanjenja i starta portala zvanicno sa 11.11. na 21.11. Dakle prvi i najpovoljniji period
+ * traje od 21.11. do 30.11., a onda se drugi skracuje tako da pocne 1.12.", every year, and the
+ * owner chose that everything which opened on 11 November moves with it. The one exception is
+ * the first year, `FIRST_SALE` below, which opens on its own day.
+ *
+ * **It was `11-11` from 27.10.2026 until then** (PDL, „Novi godišnji ciklus od 11. novembra"):
+ * „Prijave ce pocinjati 11. novembra svake godine i trajati 10 dana po ceni od 35 eur (4200)".
  *
  * **It was `10-15` until then and `10-01` until 29.09.2026**, when the owner moved it: „Zelim da prvi
  * period postane 15-31. oktobar, drugi 1-30. novembar a ostalo ostaje isto. S tim
@@ -43,7 +47,7 @@ export const FIRST_SEASON = 2027
  * by asking this file for the behaviour and `data/pricing.ts` for the day. The
  * backend carries the identical pair and the identical floor
  * (`SeasonClock.transferWindowOpen`, `TheSellingYearAndTheTransferWindowOpenOnOneDayTest`). */
-export const WINDOW_OPENS = '11-11'
+export const WINDOW_OPENS = '11-21'
 
 /**
  * The first day anything is sold, and the one year in which `WINDOW_OPENS` is not the day the
@@ -52,7 +56,10 @@ export const WINDOW_OPENS = '11-11'
  * Owner, 27.10.2026: „Iako ce tako biti upisan cenovnik na svim mestima, hocu da ove godine
  * ljudi i dalje mogu da se prijavljuju i pre 11.11. po uslovima koji ce vaziti 11.11." So in
  * 2026 the window is open from this day, the season on sale is 2027 and the price is that of
- * the period which opens on `WINDOW_OPENS` (`dayThePriceListIsReadOn`). From the next year the
+ * the period which opens on `WINDOW_OPENS` (`dayThePriceListIsReadOn`). It stands unchanged
+ * when the day moved to 21 November (owner, 10.11.2026: „Ove godine ostaje otvoreno kako je
+ * sada"): 2027 costs 35 EUR with the right to be ranked until 30.11.2026 and 40 EUR from
+ * 1.12.2026. From the next year the
  * general rule is the whole rule. **A date and not a day of the year, because it happens
  * once**, which is the opposite of `WINDOW_OPENS`. It is the same fact `SeasonClock.FIRST_SALE`
  * is on the server, and `REGISTRATION_OPENS` in `data/pricing.ts` reads it from here.
@@ -233,13 +240,13 @@ export function transfersTakeEffect(today: string): number {
  * PDL, owner, 26.09.2026: „portal člana kroz to vreme prikazuje u poretku naredne sezone po tekućem
  * izboru", and 18.10.2026: „2028 ce tek od [11.11] moci da se izabere i da se puni novoprijavljenim /
  * uplacenim takmicarima. Pre 2027 NE POSTOJE SEZONE NI U FILTERU NITI BILO GDE!" So the table of the
- * next season exists from the day the window opens (`inYearlyWindow`, 11 November) to the end of the
+ * next season exists from the day the window opens (`inYearlyWindow`, 21 November) to the end of the
  * year, and not a day before: nobody can hold a membership of it earlier.
  *
  * **Nothing in 2026, and that is the answer and not a gap.** In 2026 the season shown is already 2027
  * (`seasonShown`) and 2027 is also the one a transfer lands in (`transfersTakeEffect`), so there is no
  * season further on to offer; asking for it would put 2027 on the list twice. The first day this
- * answers anything is 11 November 2027, with 2028.
+ * answers anything is 21 November 2027, with 2028.
  *
  * **Not `transfersTakeEffect` on its own.** That answers every day of the year, since a team may be
  * agreed in March for the season after; this is the narrower question of when a TABLE of it is read,

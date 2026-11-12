@@ -88,9 +88,9 @@ class AMemberIsActiveTest {
 	/** The window opens on 11 November: the next season counts from its first instant and not before. */
 	@Test
 	void theNextSeasonCountsFromTheFirstInstantOf11November() {
-		assertThat(activeAt(belgrade(2027, 11, 10, 23, 59, 59, 999_999_999)))
+		assertThat(activeAt(belgrade(2027, 11, 20, 23, 59, 59, 999_999_999)))
 				.containsExactly(only2027, cancelled2028);
-		assertThat(activeAt(belgrade(2027, 11, 11, 0, 0, 0, 0)))
+		assertThat(activeAt(belgrade(2027, 11, 21, 0, 0, 0, 0)))
 				.containsExactly(only2027, only2028, cancelled2028);
 	}
 

@@ -1,4 +1,4 @@
-/* THE RULEBOOK SAYS THAT A DUCAT STAYS FOR AS LONG AS THE RESULTS THAT WON IT STAND, AND ITS SIGN-OFF MOVES TO 09.11.2026, IN
+/* THE RULEBOOK SAYS THAT A DUCAT STAYS FOR AS LONG AS THE RESULTS THAT WON IT STAND, AND ITS SIGN-OFF MOVES TO 12.11.2026, IN
    SERBIAN AND IN ENGLISH.
 
    WHOSE DECISION, AND WHERE IT IS WRITTEN. PDL, the entry "Pravilnik, odeljak 18, dobija rečenicu" (owner, 08.11.2026,
@@ -16,35 +16,39 @@
      "A ducat stays for as long as the results that won it stand. A monthly and a seasonal ducat of a frozen season stays
       for good."
 
+   THE OLD SENTENCE IS ASKED OF THE TEXT AS IT STANDS AFTER V95. V93, V94 and V95 edited the rulebook after V78 (sections 12,
+   14, 9, 13 and 14 and the sign-off in section 19) and none of them touched section 18, so the sentence of V78 stands once in
+   each language, exactly as V78 wrote it. That is not assumed here: every edit below is asked how many times its old text
+   stands, and anything but once stops the migration.
+
    THE SIGN-OFF OF THE RULEBOOK MOVES, AND ONLY THE RULEBOOK'S. PDL, "Datum Poslednja izmena na pravnom tekstu pomera se
    uvek kad se reči tog teksta promene" (owner, 07.11.2026): the date moves whenever the words of a legal text change, to the
    day the change reaches QA, and does not move when the words do not change. The words of the rulebook change here, so its
-   "Poslednja izmena: 30.10.2026." (V80) becomes "Poslednja izmena: 09.11.2026." and "Last amended: 30.10.2026." becomes
-   "Last amended: 09.11.2026." (section 19). The terms (29.10.2026) and the policy (08.11.2026, V90) are not touched and keep
-   theirs.
+   "Poslednja izmena: 11.11.2026." (V95, which took it over from V93, V80 and V77 before it) becomes "Poslednja izmena:
+   12.11.2026." and "Last amended: 11.11.2026." becomes "Last amended: 12.11.2026." (section 19). The terms and the policy
+   (both 11.11.2026 since V95) are not touched and keep theirs.
 
-   THE DAY IS NOT KNOWN YET, AND IS WRITTEN AS THE DAY IT IS EXPECTED. This pull request goes to QA on the day the pull request
-   that starts taking ducats away goes, and that day was not fixed when this was written. 09.11.2026 is the day expected. If
-   the file reaches QA on another day, the date is moved before the merge, in this file and in every place that holds it,
-   which ADL A2 allows because the file has not been applied anywhere.
+   THE DAY IS WRITTEN AS THE DAY IT IS EXPECTED. 12.11.2026 is the day this file is expected to reach QA. If it reaches QA on
+   another day, the date is moved before the merge, in this file and in every place that holds it, which ADL A2 allows
+   because the file has not been applied anywhere.
 
    WHEN IT MUST REACH QA. The same decision of 08.11.2026 says it goes with a migration on the same day the portal starts
    taking ducats away.
 
-   HOW. The shape of V78, V80 and V89: every edit is asked how many times its old text stands in the text it is aimed at, and
+   HOW. The shape of V93, V94 and V95: every edit is asked how many times its old text stands in the text it is aimed at, and
    anything but exactly once is a problem. A section that already carries the new text is a problem too, asked of the
-   section with the old text taken out first, as in V77 and V89. The edits are all asked and not stopped at the first
-   problem; if there is any, one error lists every edit and what it found, the statement is rolled back with nothing
-   changed, and Flyway refuses to start the backend. A replace() that matched nothing would be recorded as a migration that
-   succeeded while the old text went on being published (V57 has the whole argument).
+   section with the old text taken out first. The edits are all asked and not stopped at the first problem; if there is any,
+   one error lists every edit and what it found, the statement is rolled back with nothing changed, and Flyway refuses to
+   start the backend. A replace() that matched nothing would be recorded as a migration that succeeded while the old text
+   went on being published (V57 has the whole argument).
 
    WHAT IT DOES NOT TOUCH: no schema, no constraint, no key, no index, no row added or removed; the body of two section texts
    of the rulebook (sections 18 and 19, in both languages) and in them only the one sentence and the date. Not the paragraphs
    before and after the ducat sentence, not the gallery after them.
 
-   WHY A NEW FILE AND NOT AN EDIT OF V78 OR V80: ADL A2. They have been applied, their checksums are in
-   flyway_schema_history, and MigrationsAreImmutableTest holds Flyway to them. V92 and not another number: main stood at V90 on
-   08.11.2026 (1eea9c16) and V91 was taken by an open pull request.
+   WHY A NEW FILE AND NOT AN EDIT OF V78 OR V95: ADL A2. They have been applied, their checksums are in
+   flyway_schema_history, and MigrationsAreImmutableTest holds Flyway to them. V96 and not another number: this was written
+   as V92 against main at V90 (08.11.2026) and renumbered when main reached V95 (12.11.2026), V92 to V95 being taken there.
 
    WHAT HOLDS THE HOMES OF THIS TEXT TOGETHER. frontend/src/test/mock/pages.json, which PageApiTest compares the Serbian
    answer of this server to, field by field; frontend/src/test/writtenPages.snapshot.json, which
@@ -74,12 +78,12 @@ begin
              $new$A ducat stays for as long as the results that won it stand. A monthly and a seasonal ducat of a frozen season stays for good.$new$),
 
             ('DUCAT-02 sign-off', 'pravilnik', 19, 'sr',
-             $old$Poslednja izmena: 30.10.2026.$old$,
-             $new$Poslednja izmena: 09.11.2026.$new$),
+             $old$Poslednja izmena: 11.11.2026.$old$,
+             $new$Poslednja izmena: 12.11.2026.$new$),
 
             ('DUCAT-02 sign-off', 'pravilnik', 19, 'en',
-             $old$Last amended: 30.10.2026.$old$,
-             $new$Last amended: 09.11.2026.$new$)
+             $old$Last amended: 11.11.2026.$old$,
+             $new$Last amended: 12.11.2026.$new$)
 
         ) as edits (label, slug, section_position, in_language, old_text, new_text)
     loop

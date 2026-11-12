@@ -67,9 +67,9 @@ class TheWrittenPagesKeepTheDucatsAndLoseTheMapTest extends DatabaseTest {
 			Pattern.CASE_INSENSITIVE);
 
 	/**
-	 * What STANDS now for an edit: V92 (owner, 08.11.2026) replaced the sentence V78 wrote in section 18 with the owner's
-	 * sentence of that day, so the ducat edit stands as V92's text; that V78 itself writes its own sentence over the text
-	 * it found is held by TheWrittenPagesKeepTheDucatsAndLoseTheMapCarriedOverTest, which undoes V92 first.
+	 * What STANDS now for an edit: V96 (owner, 08.11.2026) replaced the sentence V78 wrote in section 18 with the owner's
+	 * sentence of that day, so the ducat edit stands as V96's text; that V78 itself writes its own sentence over the text
+	 * it found is held by TheWrittenPagesKeepTheDucatsAndLoseTheMapCarriedOverTest, which undoes V96 first.
 	 */
 	private static String standsNow(Change change, boolean serbian) {
 		if (change.id().equals("DUK-01")) {
@@ -138,7 +138,7 @@ class TheWrittenPagesKeepTheDucatsAndLoseTheMapTest extends DatabaseTest {
 	/**
 	 * THE DUCAT SENTENCE STANDS ONCE AND THE PARAGRAPHS AROUND IT ARE WHERE THEY WERE, in Serbian and in English: the one
 	 * before it and the one after it are the owner's and V77's, and a replace that took a neighbour with it would pass the
-	 * table above. The sentence in the middle is V92's now (see {@link #standsNow}).
+	 * table above. The sentence in the middle is V96's now (see {@link #standsNow}).
 	 */
 	@Test
 	void theDucatSentenceStandsBetweenTheParagraphsItStoodBetween() {
@@ -191,7 +191,7 @@ class TheWrittenPagesKeepTheDucatsAndLoseTheMapTest extends DatabaseTest {
 	}
 
 	/**
-	 * THE SENTENCE V78 WROTE STANDS NOWHERE ANY MORE, V92 (owner, 08.11.2026) having replaced it, and the sentence that
+	 * THE SENTENCE V78 WROTE STANDS NOWHERE ANY MORE, V96 (owner, 08.11.2026) having replaced it, and the sentence that
 	 * stands in its place is held to its single home by TheWrittenPagesSayThatADucatStaysWhileItsResultsStandTest.
 	 */
 	@Test

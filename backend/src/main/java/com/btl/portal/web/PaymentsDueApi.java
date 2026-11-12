@@ -311,7 +311,7 @@ class PaymentsDueApi {
 		}
 
 		/* THE SEASON PAYMENT IS BEING TAKEN FOR, read ONCE for the whole answer. Read per row
-		   it could cross 11 November between two rows of one list, and two accounts would be
+		   it could cross 21 November between two rows of one list, and two accounts would be
 		   answered about two different seasons under one heading. `PaymentApi` reads the same
 		   method at the same point of its own work, which is what keeps the writer and this
 		   reader from disagreeing about which membership closes a row. */

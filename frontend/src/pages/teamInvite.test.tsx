@@ -494,7 +494,7 @@ describe('a member who is asked by more than one team', () => {
     /* **The right to answer is worked out when the message is drawn, not remembered on it.**
        Three teams may ask the same person on the same day and none of them knows about the
        others, so „already answered" cannot be a flag on any one of them (PDL, 06.09.2026). */
-    expect(await screen.findByText(/U međuvremenu si ušao u tim "Dunavski trkači"/)).toBeVisible()
+    expect(await screen.findByText(/Već si u timu Dunavski trkači/)).toBeVisible()
     expect(screen.queryByRole('button', { name: 'Prihvati' })).toBeNull()
   }, SEVERAL_SCREENS)
 
@@ -541,7 +541,7 @@ describe('a member who is asked by more than one team', () => {
 
     await user.click(must(after[1], 'the invitation Dunavski trkači sent, which nobody answered'))
 
-    expect(await screen.findByText(/U međuvremenu si ušla u tim "Vardarski krug"/)).toBeVisible()
+    expect(await screen.findByText(/Već si u timu Vardarski krug/)).toBeVisible()
     expect(screen.queryByText(/ušao/)).toBeNull()
   }, SEVERAL_SCREENS)
 
@@ -838,7 +838,7 @@ describe('which day the answer is read off', () => {
       <>
         <Invite from={DUNAV} who="000002" />
         <Become who="000002" />
-        <Day on="2027-11-11" />
+        <Day on="2027-11-21" />
       </>,
     )
 
@@ -853,7 +853,7 @@ describe('which day the answer is read off', () => {
        was sent it would be 2027, a season already run from end to end, and the club would
        count every result that member has. */
     await user.click(await screen.findByRole('button', { name: 'pozovi 000002 u tim 1' }))
-    await user.click(screen.getByRole('button', { name: 'danas je 2027-11-11' }))
+    await user.click(screen.getByRole('button', { name: 'danas je 2027-11-21' }))
     await user.click(screen.getByRole('button', { name: 'postani 000002' }))
     await openTheInvitation(user)
     await user.click(await screen.findByRole('button', { name: 'Prihvati' }))
@@ -878,8 +878,8 @@ describe('which day the answer is read off', () => {
         <Invite from={VARDAR} who="000002" />
         <Become who="000003" />
         <Become who="000002" />
-        <Day on="2027-11-11" />
-        <Day on="2027-11-20" />
+        <Day on="2027-11-21" />
+        <Day on="2027-11-30" />
       </>,
     )
 
@@ -890,7 +890,7 @@ describe('which day the answer is read off', () => {
     await user.click(await screen.findByRole('button', { name: 'pozovi 000002 u tim 1' }))
     await user.click(screen.getByRole('button', { name: 'pozovi 000002 u tim 3' }))
 
-    await user.click(screen.getByRole('button', { name: 'danas je 2027-11-11' }))
+    await user.click(screen.getByRole('button', { name: 'danas je 2027-11-21' }))
     await user.click(screen.getByRole('button', { name: 'postani 000002' }))
 
     const both = (await inbox(user)).filter((one) => /Poziv u tim "/.test(one.textContent ?? ''))
@@ -901,12 +901,12 @@ describe('which day the answer is read off', () => {
     /* Read on a **third** day, so the day the notice carries is not also the day the panel is
        drawn on: written the same day, „the message's day" and „today" are one string and the
        assertion would pass on a panel that drew the clock (review, 06.09.2026). */
-    await user.click(screen.getByRole('button', { name: 'danas je 2027-11-20' }))
+    await user.click(screen.getByRole('button', { name: 'danas je 2027-11-30' }))
     await user.click(screen.getByRole('button', { name: 'postani 000003' }))
 
     const told = (await inbox(user)).filter((one) => /ostao bez odgovora/.test(one.textContent ?? ''))
 
-    expect(must(told[0], 'the notice Vardar was sent').textContent).toContain('11. 11. 2027.')
+    expect(must(told[0], 'the notice Vardar was sent').textContent).toContain('21. 11. 2027.')
   }, SEVERAL_SCREENS)
 
 })

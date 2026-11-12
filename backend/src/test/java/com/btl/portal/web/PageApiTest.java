@@ -512,11 +512,11 @@ class PageApiTest {
 				{ "sr", "| Brevo (Sendinblue SAS) | Vaša adresa i sadržaj poruke | Francuska |\n"
 						+ "| Zoho Corporation | Prepiska sa adresom info@: vaša adresa i sadržaj poruka | SAD |\n"
 						+ "| Poslovna banka Udruženja |",
-						"Poslednja izmena: 08.11.2026." },
+						"Poslednja izmena: 11.11.2026." },
 				{ "en", "| Brevo (Sendinblue SAS) | Your address and the content of the message | France |\n"
 						+ "| Zoho Corporation | Correspondence with info@: your address and the content of the messages"
 						+ " | USA |\n| The Association's business bank |",
-						"Last amended: 08.11.2026." } };
+						"Last amended: 11.11.2026." } };
 
 		for (String[] each : asked) {
 			JsonNode served = answerIn(each[0]);

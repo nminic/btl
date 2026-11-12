@@ -89,7 +89,7 @@ describe('a new invitation from the member’s row', () => {
 
     for (const [number, why] of [
       [HAS_A_PASSWORD, 'Član je već postavio lozinku.'],
-      [NO_ACCOUNT, 'Član nema nalog na portalu, pa pozivnica nema kome da ode.'],
+      [NO_ACCOUNT, 'Član nema nalog na portalu.'],
     ] as const) {
       const off = envelope(await rowOf(number))
 
@@ -166,7 +166,7 @@ describe('a new invitation from the member’s row', () => {
     [
       'a relay that does not take the letter',
       () => refused('thePostDidNotTakeIt', 503),
-      'Pošta trenutno ne prima poruke, pa pozivnica nije poslata. Pokušaj ponovo za koji minut.',
+      'Pozivnica nije poslata. Pokušaj ponovo za koji minut.',
     ],
   ])('says beside the row what the server said of %s', async (_what, answering, words) => {
     const server = serving(answering)

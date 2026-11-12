@@ -91,7 +91,7 @@ class FrozenSeasonApiTest {
 		for (String number : List.of("000401", "000402", "000403", "000404")) {
 			db.sql("insert into membership (competitor_id, season, basis, decided_by_name, decided_at)"
 							+ " values ((select id from competitor where member_number = ?), 2028, 'feeExempt',"
-							+ " 'Probni Probic', timestamptz '2027-11-20 10:00:00+00')")
+							+ " 'Probni Probic', timestamptz '2027-11-30 10:00:00+00')")
 					.param(number).update();
 		}
 

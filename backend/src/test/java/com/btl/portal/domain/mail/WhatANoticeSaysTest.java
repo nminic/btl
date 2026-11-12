@@ -275,12 +275,9 @@ class WhatANoticeSaysTest {
 						"Lozinka na vašem nalogu u Balkanskoj trkačkoj ligi promenjena je"
 								+ " 24.09.2026. 16:35.",
 						"",
-						"Tom promenom su odjavljeni svi ostali uređaji sa kojih ste bili prijavljeni, i"
-								+ " na njima ćete ponovo morati da se prijavite, novom lozinkom.",
+						"Odjavljeni ste sa svih ostalih uređaja.",
 						"",
-						"Ako ste ovo uradili vi, nemate šta dalje da uradite.",
-						"",
-						"Ako niste, neko drugi zna vašu staru lozinku. Odmah zatražite novu lozinku sa"
+						"Ako ovo niste uradili vi, neko drugi zna vašu staru lozinku. Odmah zatražite novu lozinku sa"
 								+ " strane za prijavu i javite nam se na info@balkanskatrkackaliga.net.",
 						""));
 
@@ -289,12 +286,9 @@ class WhatANoticeSaysTest {
 				.isEqualTo(String.join("\n",
 						"The password of your BTL account was changed on 24 September 2026 at 16:35.",
 						"",
-						"That change signed out every other device you were signed in on, and on each"
-								+ " of them you will have to sign in again, with the new password.",
+						"You have been signed out of all other devices.",
 						"",
-						"If it was you, there is nothing more you need to do.",
-						"",
-						"If it was not, somebody else knows your old password. Ask for a new password on"
+						"If this was not you, somebody else knows your old password. Ask for a new password on"
 								+ " the sign-in page at once and write to us at"
 								+ " info@balkanskatrkackaliga.net.",
 						""));

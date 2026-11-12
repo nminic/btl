@@ -669,7 +669,7 @@ describe('a question that has been overtaken, and a pair that makes room', () =>
 
     await user.click(must(hers[0], 'the notice'))
 
-    expect(screen.getByText(/Relja Momčilović je od sezone 2027 u drugom trkačkom paru/)).toBeVisible()
+    expect(screen.getByText(/Relja Momčilović je od te sezone u drugom paru/)).toBeVisible()
 
     /* **And her pair is really gone**, which the notice alone does not say: an accept that told her
        and left the old pair standing would leave exactly this screen behind. */
@@ -885,7 +885,7 @@ describe('accepting when both of them are already paired', () => {
     await openTheNotice(user)
 
     expect(
-      screen.getByText(/Relja Momčilović je od sezone 2027 u drugom trkačkom paru/),
+      screen.getByText(/Relja Momčilović je od te sezone u drugom paru/),
     ).toBeVisible()
     /* And it is dated the day it was written, not the day the pair it ends was made. */
     expect(
@@ -897,7 +897,7 @@ describe('accepting when both of them are already paired', () => {
     await openTheNotice(user)
 
     expect(
-      screen.getByText(/Katarina Novaković je od sezone 2027 u drugom trkačkom paru/),
+      screen.getByText(/Katarina Novaković je od te sezone u drugom paru/),
     ).toBeVisible()
   }, SLOW)
 })

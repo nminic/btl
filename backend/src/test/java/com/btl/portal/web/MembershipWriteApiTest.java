@@ -96,7 +96,7 @@ class MembershipWriteApiTest {
 	private static final Instant WHEN_HE_WAS_FREED_BEFORE = Instant.parse("2027-03-09T08:15:42Z");
 
 	/** Inside the renewal window: what is on sale is 2028 while the season being RUN is 2027. */
-	private static final Instant IN_OCTOBER_2027 = Instant.parse("2027-11-11T09:00:00Z");
+	private static final Instant IN_OCTOBER_2027 = Instant.parse("2027-11-21T09:00:00Z");
 
 	/**
 	 * The fortnight before the portal opens, PDL:806: the owner opens the first profiles and

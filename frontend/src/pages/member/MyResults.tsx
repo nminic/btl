@@ -39,7 +39,7 @@ export function MyResults() {
 /**
  * THE WORD A RUN'S STATE IS DRAWN WITH, which is the portal's word for it and not the server's.
  *
- * <p>The route answers V9's `waiting` and `rejected`, and the screen has said „Čeka proveru" and
+ * <p>The route answers V9's `waiting` and `rejected`, and the screen has said „Na čekanju" („Čeka proveru" until 10.11.2026) and
  * „Odbijeno" under `status.pending` and `status.rejected` since the list was the browser's own.
  * One place turns the one into the other, so the pill, the class it is styled by and the words a
  * reader hears cannot each read the state their own way.
