@@ -111,7 +111,9 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 				"limit_seconds", "distance_km", "ascent_m", "descent_m", "category", "season");
 
 		assertThat(columnsOf("result")).containsExactlyInAnyOrder("id", "competitor_id", "race_id", "race_date",
-				"distance_km", "ascent_m", "descent_m", "seconds", "points", "category");
+				"distance_km", "ascent_m", "descent_m", "seconds", "points", "category",
+				/* V97: when and how the result came in, empty for the history. */
+				"brought_at", "brought_by");
 
 		assertThat(columnsOf("attending")).containsExactlyInAnyOrder("id", "event_id", "competitor_id");
 

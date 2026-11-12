@@ -607,7 +607,8 @@
     },
     "weekend": "Weekend",
     "addOnDay": "New event on {date}",
-    "spanDays": "from {from} to {to}"
+    "spanDays": "from {from} to {to}",
+    "featured": "featured event"
   },
   "race": {
     "kind": {

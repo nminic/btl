@@ -6,7 +6,9 @@
  *
  * Two golds on purpose: gold-600 is the only gold that reaches 4.5:1 on white,
  * gold-300 is its counterpart on dark surfaces. Gold means achievement, never
- * decoration, so it is reserved for podium places, medals and ducats.
+ * decoration, so it is reserved for podium places, medals and ducats, the weekend
+ * and today in the calendar, and, since 12.11.2026, a featured event's tile there
+ * (owner: „neka cela pločica bude zlatna").
  */
 :root {
   /* Blue and gold come from the league logo and are the only official colors. */
@@ -199,6 +201,55 @@
   --kind-training-ink: #0a4b52;
   --kind-training-face: #b3dde3;
   --kind-training-edge: #0d626b;
+
+  /* A featured event, on the tile it gets in the calendar (owner, 12.11.2026: „Kad su
+   * istaknuti događaji prikazani u kalendaru, neka cela pločica bude zlatna, a onda
+   * prilagodi ostale boje elemenata unutar nje tako da budu vidljivi.").
+   *
+   * The face of the tile and everything inside it is gold, and it is the same block of
+   * gold in both themes, which is the shape of the gold band above: painted straight on
+   * the gold scale, so its ink is one value and not a pair. On the dark theme the tile
+   * is the brightest thing in its day, and that is what being singled out means.
+   *
+   * **The edge keeps the colour of the event's kind** (owner, 12.11.2026, the same
+   * evening, choosing between a gold edge and the kind's: race, skup and trening stay
+   * told apart on a featured tile as on any other). Only the face and what is inside
+   * it are gold.
+   *
+   * Because the face does not flip, nothing drawn on it may flip either, and that is
+   * the „adjust the other colours" half of the sentence. The dark theme's dots are
+   * light colours made for a near black card and fall to between 1,11 and 1,76 to 1 on
+   * this gold; the light theme's clear 3:1 here, but marathon by 0,07. The dark theme's
+   * kind edges fall the same way, to 1,51 (race), 1,77 (skup) and 1,29 (trening). So the
+   * tile re-points the six dot colours to the deeper set below, and the edge of each
+   * kind to the light theme's edge of that same kind, held here once so it does not
+   * flip (`pages/Calendar.css`, `.chip--featured`), in both themes alike.
+   *
+   * **The two kind edges written out are the light theme's values copied, and that is
+   * deliberate**: the kind tokens above them flip, so pointing at them would bring the
+   * dark value back with the dark theme. The race edge can name its step of the blue
+   * scale, which does not flip. `styles/featuredTile.test.ts` holds each of the three
+   * equal to the light value of its own kind, so the copies cannot part company.
+   *
+   * Measured on `--featured-face` (#f0c94a): the ink 8,70:1 against the 4,5 a name
+   * owes as text (WCAG 2.2 SC 1.4.3); the edges 5,62:1 (race), 6,63:1 (skup) and
+   * 4,42:1 (trening), and the narrowest dot 4,63:1, against the 3 a graphic owes
+   * (SC 1.4.11). The guard is in `styles/featuredTile.test.ts`.
+   *
+   * Colour is not the only thing that says it: the tile names itself „istaknut
+   * događaj" for a screen reader, the way it already names a gathering and a training
+   * (SC 1.4.1). */
+  --featured-face: var(--gold-300);
+  --featured-ink: var(--gold-band-ink);
+  --featured-edge-race: var(--blue-700);
+  --featured-edge-gathering: #4a2790;
+  --featured-edge-training: #0d626b;
+  --featured-length-short: #0f4a9a;
+  --featured-length-half: #0b5c35;
+  --featured-length-long: #5c4406;
+  --featured-length-marathon: #8f3d0f;
+  --featured-length-ultra: #9a2219;
+  --featured-length-unmeasured: #5a2f8c;
 
   --accent-hover: var(--blue-600);
   --accent-contrast: var(--white);
