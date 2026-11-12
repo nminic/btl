@@ -15,6 +15,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -91,6 +93,11 @@ import java.util.Optional;
  * table, and {@code result_race_fk} cascades from the race - so a {@code delete from
  * race} written here would be a second place answering a question the schema has
  * already answered, and the day the two disagreed the schema would win silently.
+ *
+ * <p><b>It is still one DELETE, and since the ducats it is not alone in its transaction.</b> Before it, the
+ * same transaction reads whose runs the cascade is about to take, because once it has run nothing is left
+ * to read them from, and those members' ducats are reconciled after the commit
+ * ({@link DucatsFollowTheResults}).
  */
 @RestController
 class EventWriteApi {
@@ -131,6 +138,8 @@ class EventWriteApi {
 
 	private final JdbcClient db;
 
+	private final DucatsFollowTheResults ducats;
+
 	/**
 	 * Written by hand rather than left on the method, the same choice {@link PaymentApi}
 	 * made and for the same reason: changing an event's day and moving its races is one
@@ -138,8 +147,9 @@ class EventWriteApi {
 	 */
 	private final TransactionTemplate inOneTransaction;
 
-	EventWriteApi(JdbcClient db, TransactionTemplate inOneTransaction) {
+	EventWriteApi(JdbcClient db, TransactionTemplate inOneTransaction, DucatsFollowTheResults ducats) {
 		this.db = db;
+		this.ducats = ducats;
 		this.inOneTransaction = inOneTransaction;
 	}
 
@@ -284,7 +294,8 @@ class EventWriteApi {
 			return no(HttpStatus.BAD_REQUEST, THE_FORM_IS_NOT_COMPLETE);
 		}
 
-		return inOneTransaction.execute(committing -> {
+		List<Long> moved = new ArrayList<>();
+		ResponseEntity<?> answer = inOneTransaction.execute(committing -> {
 			Optional<Standing> before = db.sql(
 							"select id, slug, name, date from btl_event where id = ?")
 					.param(id)
@@ -352,8 +363,19 @@ class EventWriteApi {
 					.params(deltaDays, id)
 					.update();
 
+			/* EVERY MEMBER WITH A RUN AT ONE OF ITS RACES: the day just moved every run with its race, and
+			   the town or the country typed is the country a ducat of countries counts the run in. */
+			moved.addAll(whoRanAt(id));
+
 			return ResponseEntity.ok(new Written(id, address));
 		});
+
+		/* AND THEIR DUCATS AFTER THE COMMIT. What is told of it is {@link AwardingDucats}' (PDL, 12.11.2026:
+		   only a ducat a result brought in from the start of awarding carried over). A refusal above wrote
+		   nothing and named nobody. */
+		ducats.follow(moved);
+
+		return answer;
 	}
 
 	/**
@@ -371,9 +393,31 @@ class EventWriteApi {
 	@DeleteMapping("/api/events/{id}")
 	@RightIsNeeded("entity:events")
 	ResponseEntity<?> remove(@PathVariable long id) {
-		int gone = db.sql("delete from btl_event where id = ?").param(id).update();
+		/* WHOSE RUNS GO WITH IT, read in the transaction that deletes and BEFORE it deletes, so a run entered
+		   in between is either read here or waits for the delete and goes with it. One statement stood here
+		   alone until the ducats needed this list; the delete and the answer are the ones it had. */
+		List<Long> gone = new ArrayList<>();
+		ResponseEntity<?> answer = inOneTransaction.execute(committing -> {
+			gone.addAll(whoRanAt(id));
 
-		return gone == 0 ? no(HttpStatus.NOT_FOUND, null) : ResponseEntity.noContent().build();
+			int deleted = db.sql("delete from btl_event where id = ?").param(id).update();
+
+			return deleted == 0 ? no(HttpStatus.NOT_FOUND, null) : ResponseEntity.noContent().build();
+		});
+
+		/* AND THEIR DUCATS AFTER THE COMMIT: the owner, 11.08.2026, „Ne.” to telling anybody of the deletion,
+		   and 08.11.2026, no message of its own for a ducat taken away. A ducat this run writes is told by
+		   {@link AwardingDucats} by the rule of 12.11.2026, as the run that should have written it would. */
+		ducats.follow(gone);
+
+		return answer;
+	}
+
+	/** Every member with a row of {@code result} at a race of this event. */
+	private List<Long> whoRanAt(long event) {
+		return db.sql("select distinct r.competitor_id from result r join race on race.id = r.race_id"
+						+ " where race.event_id = ?")
+				.param(event).query(Long.class).list();
 	}
 
 	/**

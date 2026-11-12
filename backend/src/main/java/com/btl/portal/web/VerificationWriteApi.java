@@ -626,6 +626,8 @@ class VerificationWriteApi {
 
 	private final JdbcClient db;
 
+	private final DucatsFollowTheResults ducats;
+
 	private final WhatHeMayDo mayHe;
 
 	private final TransactionTemplate inOneTransaction;
@@ -682,8 +684,9 @@ class VerificationWriteApi {
 	VerificationWriteApi(JdbcClient db, WhatHeMayDo mayHe, TransactionTemplate inOneTransaction,
 			Clock clock, MemberOfAccount memberOfAccount, BestOfficialSeason bestOfficialSeason,
 			Postman postman, ObjectMapper json, AMembershipOfTheSeasonHeWouldJoin holdsTheSeason,
-			@Value("${btl.mail.league}") String theLeague) {
+			@Value("${btl.mail.league}") String theLeague, DucatsFollowTheResults ducats) {
 		this.db = db;
+		this.ducats = ducats;
 		this.holdsTheSeason = holdsTheSeason;
 		this.mayHe = mayHe;
 		this.inOneTransaction = inOneTransaction;
@@ -1171,6 +1174,14 @@ class VerificationWriteApi {
 				   thirty seconds. The line in his inbox is a ROW and stays inside with
 				   everything else the answer writes; only what leaves the building waits. */
 				postAfterwards(carried);
+
+				/* AND THE DUCATS AFTER IT, for the same reason and from the same place: an approved run,
+				   new or a correction, and nothing for a refusal, which moves no result. What the message
+				   names is read off the result that carried him over (V97, PDL 12.11.2026), not off this
+				   act, so it is not handed over from here. */
+				if (carried.approved() != null) {
+					ducats.follow(carried.member());
+				}
 
 				yield carried.answer();
 			}
@@ -2093,6 +2104,10 @@ class VerificationWriteApi {
 		BigDecimal points = BtlScoreCalculator.calculate(counted.distanceKm().doubleValue(),
 				counted.ascentM(), counted.descentM(), counted.seconds());
 
+		/* THE MOMENT OF THIS APPROVAL, which the result keeps with the word „approval” (V97): a ducat this
+		   result carries him over to is told because of it, now or at night (PDL, 12.11.2026). */
+		Timestamp approvedAt = Timestamp.from(clock.instant());
+
 		/* THE RUN AS IT IS APPROVED, BUILT ONCE. The letter about this approval and the line in his
 		   inbox about what it did to his category are two messages about one run, and they cannot
 		   name two different runs if both are written from this one value. It names the race the run
@@ -2122,22 +2137,26 @@ class VerificationWriteApi {
 			   and not a fault: a row he already has, or one another request is writing at this
 			   moment, leaves nothing written, and the exception takes the claim back. */
 			int written = db.sql("insert into result (competitor_id, race_id, race_date, distance_km,"
-							+ " ascent_m, descent_m, seconds, points)"
-							+ " values (?, ?, ?, ?, ?, ?, ?, ?)"
+							+ " ascent_m, descent_m, seconds, points, brought_at, brought_by)"
+							+ " values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 							+ " on conflict (competitor_id, race_id) do nothing")
 					.params(item.competitorId(), race, on.day(),
 							counted.distanceKm(), counted.ascentM(), counted.descentM(),
-							counted.seconds(), points)
+							counted.seconds(), points, approvedAt, AwardingDucats.Brought.APPROVAL.word())
 					.update();
 
 			if (written == 0) {
 				throw new HeHasAResultOnThisRace();
 			}
 		} else {
+			/* AN APPROVED CORRECTION IS AN APPROVAL, and the result carries its moment from now on: a ducat
+			   the corrected figures carry him over to is a ducat of a result approved now (PDL, 12.11.2026),
+			   whatever the row said before, history included. */
 			db.sql("update result set distance_km = ?, ascent_m = ?, descent_m = ?, seconds = ?,"
-							+ " points = ? where id = ?")
+							+ " points = ?, brought_at = ?, brought_by = ? where id = ?")
 					.params(counted.distanceKm(), counted.ascentM(), counted.descentM(),
-							counted.seconds(), points, sent.amendsResultId())
+							counted.seconds(), points, approvedAt, AwardingDucats.Brought.APPROVAL.word(),
+							sent.amendsResultId())
 					.update();
 		}
 
