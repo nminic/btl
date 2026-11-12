@@ -85,13 +85,16 @@ class CalendarApi {
 	 * boja i njeno ime u legendi"). Its results are not read either; the decision below is
 	 * about a timed race and nothing else.
 	 *
-	 * <p><b>A timed race is an ultra until its results say otherwise</b> (PDL, „Ispravke sa
-	 * ekrana 16.10.2026", owner in his own words): „vodi se da je ultramaraton po defaultu
-	 * jer nema ograničenja, ali čim počnu da pristižu rezultati, oni diktiraju koje će tačke
-	 * ostati u sistemu." And, chosen the same day among the outcomes offered: once results
-	 * arrive, the dots are exactly the lengths those results carry, so the ultra goes away
-	 * where none of them is an ultra. Its own {@code category} cannot answer this: the race
-	 * fixes no length, carries nought, and the column says „short".
+	 * <p><b>A timed race carries the sixth dot until its results say otherwise</b> (PDL, owner
+	 * 12.11.2026, who changed his decision of 16.10.2026): „Zimski BTL dezorijentiring se kao
+	 * vremenska trka tumači kao ultramaraton jer ima crvenu tačku. To nije tačno - ukoliko je
+	 * trka vremenska, treba da ima tačku ljubičaste boje (Bez zadate dužine)", chosen among the
+	 * outcomes offered with „Ljubičasta dok nema rezultata". Refused: always purple, and purple
+	 * beside the dots of the results. Once results exist the 16.10.2026 rule stands unchanged:
+	 * „Kad stignu rezultati, tačke su tačno one koje rezultati nose", so the purple dot goes
+	 * away where there is a result, and an ultra is drawn only where a result is an ultra. Its
+	 * own {@code category} cannot answer this: the race fixes no length, carries nought, and
+	 * the column says „short".
 	 *
 	 * <p><b>A result is a row of {@code result}</b>, which only an approval writes
 	 * ({@code VerificationWriteApi}); a submission still waiting is in
@@ -106,7 +109,7 @@ class CalendarApi {
 	private static final String DOTS = "case r.kind"
 			+ " when 'length' then array[r.category]"
 			+ " when 'free' then array['unmeasured']"
-			+ " when 'time' then coalesce(ran.lengths, array['ultra'])"
+			+ " when 'time' then coalesce(ran.lengths, array['unmeasured'])"
 			+ " end";
 
 	@GetMapping("/api/events")

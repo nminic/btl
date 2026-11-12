@@ -26,10 +26,11 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 /**
  * THE DOTS A RACE CARRIES IN THE CALENDAR, asked of {@code /api/races} against a real database.
  *
- * <p>The decision is the owner's of 16.10.2026 (PDL, „Ispravke sa ekrana 16.10.2026"): „vodi se
- * da je ultramaraton po defaultu jer nema ograničenja, ali čim počnu da pristižu rezultati, oni
- * diktiraju koje će tačke ostati u sistemu", and, chosen the same day among the outcomes
- * offered, the ultra goes away when no result is an ultra. Rule: {@code CalendarApi.DOTS}.
+ * <p>The decisions are the owner's of 16.10.2026 (PDL, „Ispravke sa ekrana 16.10.2026"): once
+ * results arrive „oni diktiraju koje će tačke ostati u sistemu", so the ultra is drawn only
+ * where a result is an ultra; and of 12.11.2026, who changed the rest: a timed race with no
+ * result carries the purple dot „Bez zadate dužine" (chosen: „Ljubičasta dok nema rezultata"),
+ * not the red one. Rule: {@code CalendarApi.DOTS}.
  *
  * <p><b>Every value a case reads could come from somewhere else, and the fixture parts the two
  * every time:</b>
@@ -92,6 +93,18 @@ class CalendarDotsTest {
 		result(second, allShorter, "21.10");
 		submission(first, allShorter, "100.00");
 
+		/* Timed, and the only result is a member whose fee has lapsed: his membership is of a
+		   season long gone, and the result is still a result (owner, 16.10.2026: „i iz rezultata
+		   člana kome je istekla članarina"). */
+		long lapsedMember = competitor("990903", "c0ffee0000000903");
+		db.sql("insert into membership (competitor_id, season, basis, payment_id, decided_by,"
+						+ " decided_by_name, decided_at) values (?, 2020, 'feeExempt', null,"
+						+ " (select id from account order by id limit 1), 'Prvi Blagajnik',"
+						+ " timestamptz '2020-03-01 09:00:00+00')")
+				.params(lapsedMember).update();
+		long lapsed = race("lapsed", "vremenska", "time", 10_800, "0");
+		result(lapsedMember, lapsed, "100.00");
+
 		/* A race over a length, half a marathon, with a result written at another length. */
 		long length = race("length", "duzinska", "length", 0, "21.10");
 		result(first, length, "42.20");
@@ -102,12 +115,22 @@ class CalendarDotsTest {
 
 		races.putAll(Map.of("nothingYet", nothingYet, "oneShorter", oneShorter,
 				"ultraAndShorter", ultraAndShorter, "allShorter", allShorter, "length", length,
-				"free", free));
+				"free", free, "lapsed", lapsed));
 	}
 
 	@Test
-	void aTimedRaceWithNoResultIsAnUltraAndAWaitingSubmissionDoesNotCount() throws Exception {
-		assertThat(dotsOf("nothingYet")).containsExactly("ultra");
+	void aTimedRaceWithNoResultCarriesThePurpleDotAndAWaitingSubmissionDoesNotCount()
+			throws Exception {
+		/* Until 12.11.2026 this said ultra, which defended the owner's decision of 16.10.2026 and
+		   not the one that replaced it. The submission that waits is at a half marathon: counting it
+		   would answer half. */
+		assertThat(dotsOf("nothingYet")).containsExactly("unmeasured");
+	}
+
+	@Test
+	void aTimedRaceWhoseOnlyResultIsAnUltraOfAMemberWhoseFeeLapsedCarriesTheUltraAndNotThePurple()
+			throws Exception {
+		assertThat(dotsOf("lapsed")).containsExactly("ultra");
 	}
 
 	@Test

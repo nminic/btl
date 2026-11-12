@@ -1271,11 +1271,10 @@ export function countsByCategory(results: Result[]): Map<RaceCategory, number> {
  *
  * **Which dots a race carries is the server's answer and not worked out here**
  * (`CalendarApi.DOTS`). A race over a length carries its own; a free race the
- * sixth, the one without a set length (30.08.2026); and a timed race is an ultra
- * until its results say otherwise, after which it carries exactly the lengths its
- * results were run at (owner, 16.10.2026: „vodi se da je ultramaraton po defaultu
- * jer nema ograničenja, ali čim počnu da pristižu rezultati, oni diktiraju koje će
- * tačke ostati u sistemu"). This side never had the results to decide the last of
+ * sixth, the one without a set length (30.08.2026); and a timed race the
+ * same sixth dot until its results say otherwise (owner, 12.11.2026: „Ljubičasta dok
+ * nema rezultata"), after which it carries exactly the lengths its results were run at
+ * (owner, 16.10.2026: „Kad stignu rezultati, tačke su tačno one koje rezultati nose"). This side never had the results to decide the last of
  * those, and a second copy of the first two beside the server's would be two rules
  * for one dot.
  */
