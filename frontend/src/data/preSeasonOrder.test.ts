@@ -88,7 +88,7 @@ describe('the pre-season order of the members without points in the season', () 
   })
 
   it('puts the table in the same order, under nobody who has points in the season', () => {
-    expect(numbers(rankingWithEverybody(FIELD, HISTORY, { season: 2027, gender: 'M' }))).toEqual([
+    expect(numbers(rankingWithEverybody(FIELD, HISTORY, { season: 2027, gender: 'M' }, BEFORE_THE_SEASON))).toEqual([
       '000004',
       '000002',
       '000003',
@@ -100,7 +100,7 @@ describe('the pre-season order of the members without points in the season', () 
   it('leaves the ones with points in the season in the season order, whatever their history', () => {
     /* 000001 has more history than 000005, and 000005 has more points in the season. */
     const results = [...HISTORY, inTheSeason('000005', 8), inTheSeason('000001', 3)]
-    const table = numbers(rankingWithEverybody(FIELD, results, { season: 2027, gender: 'M' }))
+    const table = numbers(rankingWithEverybody(FIELD, results, { season: 2027, gender: 'M' }, BEFORE_THE_SEASON))
 
     expect(table).toEqual(['000005', '000001', '000004', '000002', '000003'])
 
@@ -108,5 +108,13 @@ describe('the pre-season order of the members without points in the season', () 
 
     expect(numbers(board)).toEqual(table)
     expect(board.map((slot) => slot.ranked)).toEqual([true, true, false, false, false])
+  })
+
+  it('goes back to the member numbers from the first day of the season shown, and not a day later or earlier', () => {
+    const on = (season: number, today: string) =>
+      numbers(rankingWithEverybody(FIELD, HISTORY, { season, gender: 'M' }, today))
+
+    expect(on(2027, '2026-12-31')).toEqual(['000004', '000002', '000003', '000001', '000005'])
+    expect(on(2027, '2027-01-01')).toEqual(['000001', '000002', '000003', '000004', '000005'])
   })
 })

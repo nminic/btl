@@ -1,5 +1,5 @@
 import { categoryCodeFor, categoryLabel } from './categories'
-import { boardsAreToppedUp, FIRST_SEASON, nextSeasonOnOffer, seasonShown } from './season'
+import { boardsAreToppedUp, FIRST_SEASON, nextSeasonOnOffer, seasonHasBegun, seasonShown } from './season'
 import { DOTS } from './types'
 import type {
   BtlEvent,
@@ -498,6 +498,10 @@ export function rankingFor(
  * hundredths (`plusHundredths`). Higher first, then the lower member number. The two boards that
  * order members who HAVE season points never call this, so the season ordering is untouched.
  */
+function byNumber(left: Competitor, right: Competitor): number {
+  return left.memberNumber.localeCompare(right.memberNumber)
+}
+
 function byHistoryThenNumber(results: Result[]): (left: Competitor, right: Competitor) => number {
   const history = new Map<string, number>()
 
@@ -538,6 +542,7 @@ export function rankingWithEverybody(
   competitors: Competitor[],
   results: Result[],
   filter: RankingFilter,
+  today: string,
 ): RankingRow[] {
   const ranked = rankingFor(competitors, results, filter)
   const placed = new Set(ranked.map((row) => row.competitor.memberNumber))
@@ -552,7 +557,10 @@ export function rankingWithEverybody(
        a fee for the season is not the right to rank in it (PDL, 28.10.2026), and a member who paid only
        for the next season holds no fee for this one, which is the debt this function used to name. */
     .filter((competitor) => standsIn(competitor, filter.season))
-    .sort(byHistoryThenNumber(results))
+    /* The history order is the order of the PRE-season only (owner, 12.11.2026: „Kad počne sezona biće po
+       sezonskim poenima i kriterijumima kako smo dogovorili. Ovo se odnosi samo na predsezonu"); once the
+       season shown has begun the unraced stand by member number again. */
+    .sort(seasonHasBegun(filter.season, today) ? byNumber : byHistoryThenNumber(results))
     .map((competitor, index) => ({
       competitor,
       ...EMPTY_TOTALS,

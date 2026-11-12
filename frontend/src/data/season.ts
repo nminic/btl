@@ -173,6 +173,17 @@ export function boardsAreToppedUp(today: string): boolean {
   return today < BOARDS_ARE_FILLED_BEFORE
 }
 
+/**
+ * Whether a season has begun on this day: from 1 January of it on, and never before the league's
+ * first (`seasonRunning`, the one place the running season is answered). The pre-season of a season is
+ * every day before that, including the November and December on which its table is already shown
+ * (`nextSeasonOnOffer`). Owner, 12.11.2026, of the order of the members without points: „Ovo se odnosi
+ * samo na predsezonu."
+ */
+export function seasonHasBegun(season: number, today: string): boolean {
+  return (seasonRunning(today) ?? 0) >= season
+}
+
 export function inYearlyWindow(today: string): boolean {
   const dayInYear = today.slice(5)
 

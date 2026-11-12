@@ -119,8 +119,8 @@ function Standing({
         season,
         gender,
         categoryCode: category,
-      }),
-    [field, results, season, fallback, notBegun, gender, category],
+      }, today),
+    [field, results, season, fallback, notBegun, gender, category, today],
   )
 
   /* No sentence under the heading (owner, 04.08.2026). It said that the 2027

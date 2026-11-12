@@ -113,11 +113,11 @@ describe('the table of a season', () => {
   })
 
   it('draws every member of that season, raced or not, and no member of another season', () => {
-    expect(numbers(rankingWithEverybody(field, results, { season: 2027, gender: 'M' }))).toEqual([
+    expect(numbers(rankingWithEverybody(field, results, { season: 2027, gender: 'M' }, '2027-06-01'))).toEqual([
       '000001',
       '000004',
     ])
-    expect(numbers(rankingWithEverybody(field, results, { season: 2028, gender: 'M' }))).toEqual([
+    expect(numbers(rankingWithEverybody(field, results, { season: 2028, gender: 'M' }, '2027-12-01'))).toEqual([
       '000001',
       '000002',
     ])

@@ -358,19 +358,34 @@ describe('Rankings', () => {
 
     const [, ...unraced] = rows
 
-    /* Numbered on from the one above them, in the order of the points of their whole history and then
-       of their member numbers (PDL, 12.11.2026). */
+    /* Numbered on from the one above them, in the order of their member numbers: the season has begun
+       (1 March), and the order of the history is the pre-season's only (PDL, 12.11.2026, owner: „Ovo se
+       odnosi samo na predsezonu"). */
     expect(unraced.map((row) => within(row).getAllByRole('cell')[0]?.textContent)).toEqual(
       unraced.map((_, index) => String(index + 2)),
     )
     const numbers = unraced.map((row) => must(row.textContent?.match(/\d{6}/)?.[0], 'a member number'))
 
-    expect(numbers).toEqual(inHistoryOrder(numbers))
-    /* And not the order of the numbers, which would satisfy a table that never looked at the history. */
-    expect(numbers).not.toEqual([...numbers].sort())
+    expect(numbers).toEqual([...numbers].sort())
+    /* And not the order of the history, which on this fixture is another order. */
+    expect(numbers).not.toEqual(inHistoryOrder(numbers))
     /* Second and third place are not gold for somebody who has not run. */
     expect(unraced.filter((row) => row.classList.contains('podium'))).toEqual([])
     expect(unraced.every((row) => row.textContent?.includes(formatPoints(0, 'sr')) === true)).toBe(true)
+  }, SLOW)
+
+  it('stands everybody by the points of their whole history before the season begins, and not the order of the numbers', async () => {
+    /* The same fixture as the case above, read on the last day before 2027 (PDL, 12.11.2026). */
+    serveAlso([])
+    renderAt('/sr/tabela', 'visitor', null, undefined, '2026-12-31')
+
+    const rows = within(await screen.findByRole('table', {}, { timeout: HALF })).getAllByRole('row').slice(1)
+    const numbers = rows.map((row) => must(row.textContent?.match(/\d{6}/)?.[0], 'a member number'))
+
+    expect(selectElement(screen.getByLabelText('Sezona')).value).toBe('2027')
+    expect(numbers.length).toBeGreaterThan(3)
+    expect(numbers).toEqual(inHistoryOrder(numbers))
+    expect(numbers).not.toEqual([...numbers].sort())
   }, SLOW)
 
   it('opens on a 2028 of everybody with nothing, and leaves 2027 to the ones who raced', async () => {
