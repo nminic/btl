@@ -250,6 +250,7 @@ class TheCycleOf11NovemberCarriedOverTest extends DatabaseTest {
 		/* V77 (29.10.2026) struck sentences of the same sections and moved all three sign-offs, so it is undone first,
 		   read out of V77 itself, and what is put back below is then the text V76 left. V80 (30.10.2026) moved the
 		   rulebook's sign-off on from the day V77 gave it, so it is undone before them. */
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "96");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "95");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "94");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "93");

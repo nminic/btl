@@ -125,6 +125,7 @@ class TheWrittenPagesStateTheFactCarriedOverTest extends DatabaseTest {
 
 	@BeforeEach
 	void theTextAsV24ToV94LeftIt() {
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "96");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "95");
 	}
 
