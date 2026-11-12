@@ -176,22 +176,22 @@ const NOT_A_REASON: Record<string, string[]> = {
      set, and `MembershipConstraintsTest` reads it out of `pg_constraint` rather than believing a
      copy. Same kind of constant as `PricingWriteApi`'s two above. */
   'MembershipWriteApi.java': ['feeExempt', 'balance'],
-  /* `PairWriteApi` declares four that are not refusals, and none of them is a new KIND: two
-     subject lines, a sender's name and a letter, the same shapes `CompetitorWriteApi` and
-     `MePhotoApi` already hold above. `THE_PAIR_IS_BROKEN` is what the other half reads in his
-     inbox when a pair ends (`pair.brokenSubject` in `i18n/sr.json`); `THE_PAIR_INVITATION`,
-     added 28.09.2026 the same day `ask` began writing the invitation itself into the
-     recipient's inbox, is the same shape one act earlier - what he reads when he is ASKED
-     (`pair.inviteSubject`), never a reason anybody is refused. `THE_LEAGUE` is who the portal
-     says it is when it writes to a member itself, the owner's choice of 19.09.2026 between
-     three offered answers; `MAN` is the letter `competitor.gender` carries for a man, the same
-     value `CompetitorWriteApi`'s own `M` already excuses above, read here off a different class
-     for a different reason. None of the four is answered by asking a question and none is
-     refused by anybody: the class writes them rather than replies with them. */
+  /* `PairWriteApi` declares three that are not refusals, and none of them is a new KIND: two
+     subject lines and a letter, the same shapes `CompetitorWriteApi` and `MePhotoApi` already
+     hold above. Its `THE_LEAGUE` is no longer one of them: since 12.11.2026 it is
+     `THE_LEAGUE = Postman.THE_LEAGUE`, a name rather than a literal, the same shape
+     `TeamJoiningWriteApi` has below, so the pattern never matches it. `THE_PAIR_IS_BROKEN` is
+     what the other half reads in his inbox when a pair ends (`pair.brokenSubject` in
+     `i18n/sr.json`); `THE_PAIR_INVITATION`, added 28.09.2026 the same day `ask` began writing
+     the invitation itself into the recipient's inbox, is the same shape one act earlier - what
+     he reads when he is ASKED (`pair.inviteSubject`), never a reason anybody is refused; `MAN`
+     is the letter `competitor.gender` carries for a man, the same value `CompetitorWriteApi`'s
+     own `M` already excuses above, read here off a different class for a different reason.
+     None of the three is answered by asking a question and none is refused by anybody: the
+     class writes them rather than replies with them. */
   'PairWriteApi.java': [
     'Trkački par je raskinut',
     'Poziv u trkački par',
-    'Balkanska trkačka liga',
     'M',
   ],
   /* `TeamJoiningWriteApi` declares one that is not a refusal, and it is a shape this table
@@ -206,8 +206,8 @@ const NOT_A_REASON: Record<string, string[]> = {
   'TeamJoiningWriteApi.java': ['Poziv u tim je ostao bez odgovora'],
   /* `ResultsByTheLeagueApi` declares two that are not refusals, both shapes this table holds
      already: `queue:results`, the RIGHT its routes ask for (a word of the matrix, like a queue's name
-     on `MePhotoApi`), and `Rezultati`, the name the portal writes a member's inbox line under, like
-     `PairWriteApi`'s `Balkanska trkačka liga`. */
+     on `MePhotoApi`), and `Rezultati`, the name the portal writes a member's inbox line under, the
+     same shape as the subject lines `PairWriteApi` declares above. */
   'ResultsByTheLeagueApi.java': ['queue:results', 'Rezultati'],
 }
 
@@ -525,8 +525,12 @@ describe('the reasons the server can name', () => {
        `DELETE /api/pairs/{id}` (`PairWriteApi.end`) names no reason, only a 404 that stands for four
        causes, so its map (`WHEN_BREAKING_A_PAIR`, which the line "Raskini" hands to `ServerSaid`) is
        where a sentence goes the day it does. Registered here so that day makes this floor fail on a name
-       nobody answers rather than on the count alone; the count of eight does not move. */
-    ['PairWriteApi.java', [WHEN_ANSWERING_A_PAIR_INVITE, WHEN_INVITING_INTO_A_PAIR, WHEN_BREAKING_A_PAIR], 8],
+       nobody answers rather than on the count alone; the count of eight does not move.
+
+       SEVEN SINCE 12.11.2026: `THE_LEAGUE` became `Postman.THE_LEAGUE`, a name rather than a
+       literal, so the file stopped declaring the league's name itself (PR 714, the sender's name
+       on mail). No reason was added or taken away. */
+    ['PairWriteApi.java', [WHEN_ANSWERING_A_PAIR_INVITE, WHEN_INVITING_INTO_A_PAIR, WHEN_BREAKING_A_PAIR], 7],
     /* ADDED 28.09.2026 WITH THE SCREEN THAT ANSWERS A SERVED INVITATION INTO A TEAM, and it
        is this list's twin of the line above it in every way but one. Six constants splitting
        three ways: one is not a refusal at all (a subject line, `NOT_A_REASON`), two are real

@@ -260,9 +260,56 @@ class PostmanTest {
 
 		postman.send(new Said("Naslov", "Telo"), "clan@primer.rs");
 
-		assertThat(waitForOne().getFrom()[0].toString())
+		assertThat(theAddressOfTheSender(waitForOne()))
 				.as("the message left with an address other than the configured one")
 				.isEqualTo(from);
+	}
+
+	/** The bare address of the sender, the name in front of it taken off. */
+	private static String theAddressOfTheSender(MimeMessage arrived) throws Exception {
+		return ((jakarta.mail.internet.InternetAddress) arrived.getFrom()[0]).getAddress();
+	}
+
+	/**
+	 * THE SENDER CARRIES THE NAME OF THE LEAGUE, ON BOTH WAYS A LETTER LEAVES, AND THE ADDRESS IS STILL
+	 * THE CONFIGURED ONE.
+	 *
+	 * <p>PDL P13, 19.09.2026: when the portal writes to a member itself, the sender is the name of the
+	 * league. Measured 12.11.2026 on a real delivered message: {@code From: <no-reply@...>} with no
+	 * name, which is what a mailbox provider sees from a script. The name is a literal here and not
+	 * {@code Postman.THE_LEAGUE}: a constant compared with itself would stay green when somebody
+	 * changed the one string the owner decided.
+	 *
+	 * <p>The raw header is read as well, because the name has a {@code č} in it and a header written
+	 * as raw UTF-8 is read as a row of question marks by the oldest clients: it must travel as an
+	 * RFC 2047 encoded word.
+	 */
+	@Test
+	void theSenderIsNamedAfterTheLeagueAndTheAddressIsStillTheConfiguredOne() throws Exception {
+		postman.send(new Said("Naslov", "Telo"), "clan@primer.rs");
+		MimeMessage plain = waitForOne();
+
+		SMTP.purgeEmailFromAllMailboxes();
+
+		postman.sendWith(new Said("Naslov", "Telo"), "clan@primer.rs",
+				new Postman.Attachment("a.png", "image/png", () -> new byte[]{1}));
+		MimeMessage withFile = waitForOne();
+
+		for (MimeMessage arrived : List.of(plain, withFile)) {
+			jakarta.mail.internet.InternetAddress sender =
+					(jakarta.mail.internet.InternetAddress) arrived.getFrom()[0];
+
+			assertThat(sender.getPersonal())
+					.as("the sender does not carry the name of the league")
+					.isEqualTo("Balkanska trkačka liga");
+			assertThat(sender.getAddress())
+					.as("adding a name changed the address, which is verified with the relay")
+					.isEqualTo(from);
+			assertThat(arrived.getHeader("From", null))
+					.as("the name did not travel as an encoded word")
+					.contains("=?UTF-8?")
+					.doesNotContain("č");
+		}
 	}
 
 	/**
@@ -318,7 +365,7 @@ class PostmanTest {
 		new Postman(relay, "drugacija@primer.rs", league, "", "", false)
 				.send(new Said("Naslov", "Telo"), "clan@primer.rs");
 
-		assertThat(waitForOne().getFrom()[0].toString())
+		assertThat(theAddressOfTheSender(waitForOne()))
 				.as("the portal wrote from an address of its own rather than from the one it"
 						+ " was given")
 				.isEqualTo("drugacija@primer.rs");
@@ -482,7 +529,7 @@ class PostmanTest {
 		MimeMessage arrived = waitForOne();
 
 		assertThat(arrived.getSubject()).isEqualTo("Uplatnica za članarinu");
-		assertThat(arrived.getFrom()[0].toString()).isEqualTo(from);
+		assertThat(theAddressOfTheSender(arrived)).isEqualTo(from);
 		assertThat(arrived.getReplyTo()[0].toString()).isEqualTo(league);
 		assertThat(arrived.getAllRecipients()).extracting(Object::toString).containsExactly("clan@primer.rs");
 
