@@ -487,20 +487,47 @@ export function rankingFor(
 }
 
 /**
+ * WHO COMES FIRST AMONG THE MEMBERS WHO HAVE NO POINTS IN THE SEASON SHOWN, which is everybody in the
+ * pre-season (PDL, 12.11.2026, owner: „Primeni za top 10 liste na naslovnoj strani i na strani BTL
+ * tabele sortiranje po istorijskim BTL poenima kao prvom parametru, a tek kao drugi parametar članski
+ * broj"; scope chosen: „Među članovima bez bodova sezone", and „Ovo se odnosi samo na predsezonu").
+ *
+ * The history is every result the portal holds for the member, **also before 2027** and whether or
+ * not any season counts it (`numbered`, never `standingSeasonOf`): it is the one list that is about
+ * the member and not about a season. Summed by member NUMBER, the key a result carries, in
+ * hundredths (`plusHundredths`). Higher first, then the lower member number. The two boards that
+ * order members who HAVE season points never call this, so the season ordering is untouched.
+ */
+function byHistoryThenNumber(results: Result[]): (left: Competitor, right: Competitor) => number {
+  const history = new Map<string, number>()
+
+  for (const result of numbered(results)) {
+    history.set(result.memberNumber, plusHundredths(history.get(result.memberNumber) ?? 0, result.points))
+  }
+
+  const of = (competitor: Competitor) => history.get(competitor.memberNumber) ?? 0
+
+  return (left, right) => of(right) - of(left) || left.memberNumber.localeCompare(right.memberNumber)
+}
+
+/**
  * THE STANDING OF THE SEASON BEING SHOWN AS THE RUNNING ONE, WITH EVERY MEMBER ON IT, raced or not.
  *
  * PDL P7, owner, 18.10.2026 („Izbor kategorije se vidi odmah i svuda, u oba smera"): „tabela sezone
  * prikazuje svakog člana sa važećom članarinom za tu sezonu, i bez ijedne trke, ispod onih koji imaju
  * bodove, sa 0 bodova i 0 trka, uvek", and the same day, of which season: „Ovo je samo sada bitno"
  * - the season shown as the running one. So the members `rankingFor` leaves out because they have no
- * race stand UNDER everybody it placed, with empty totals, in the order of their member numbers (the
- * last rung of every list on the portal), and they are numbered on from there: „Red bez trke ima
+ * race stand UNDER everybody it placed, with empty totals, by the points of their whole history and then by member number
+ * (`byHistoryThenNumber`), and they are numbered on from there: „Red bez trke ima
  * redni broj, ali nikad boju postolja" (same entry), which is the screen's half.
  *
  * **A function of its own and not a change to `rankingFor`, and that is the point of it.** Two other
  * readers stand on `rankingFor`: `boardOfTen`, whose boards hold only members with points from
  * 1 January 2027 (owner, 17.10.2026), and the awards (`profile/awards.ts`), where a member with no
  * race placed third would be handed a medal. Neither may see these rows.
+ *
+ * **The unraced are ordered by the BTL points of their whole history, then by member number** (PDL,
+ * 12.11.2026, `byHistoryThenNumber`); the ranked above them keep the season ordering.
  *
  * **Who „has a fee for that season" is asked of the season itself** (`standsIn`): the categories the
  * server answers per season, one for each season he holds with the right to rank. Until 30.10.2026 it
@@ -525,7 +552,7 @@ export function rankingWithEverybody(
        a fee for the season is not the right to rank in it (PDL, 28.10.2026), and a member who paid only
        for the next season holds no fee for this one, which is the debt this function used to name. */
     .filter((competitor) => standsIn(competitor, filter.season))
-    .sort((left, right) => left.memberNumber.localeCompare(right.memberNumber))
+    .sort(byHistoryThenNumber(results))
     .map((competitor, index) => ({
       competitor,
       ...EMPTY_TOTALS,
@@ -1305,8 +1332,9 @@ export type BoardSlot = {
 
 /**
  * The ten to show on the front page: the standing of the season as far as it
- * goes, and then the members who have joined but not yet raced, oldest
- * membership first, until the ten places are used up.
+ * goes, and then the members who have joined but not yet raced, the one with the
+ * most BTL points in all of their history first (`byHistoryThenNumber`), until the
+ * ten places are used up.
  *
  * The topping up is PDL P14, and it is there against one thing: "Top 10 liste se
  * prave unapred od registrovanih članova ... Time liste nisu prazne." Two
@@ -1352,9 +1380,9 @@ export function boardOfTen(
       (competitor) =>
         competitor.gender === gender && !taken.has(competitor.memberNumber) && standsIn(competitor, season),
     )
-    // The member number is handed out on activation, so its order is the order
-    // people joined in.
-    .sort((left, right) => left.memberNumber.localeCompare(right.memberNumber))
+    /* By all the BTL points the member ever scored, then by member number (PDL, 12.11.2026); the member
+       number is handed out on activation, so its order is the order people joined in. */
+    .sort(byHistoryThenNumber(results))
     .slice(0, BOARD_PLACES - board.length)
     .map((competitor) => ({ competitor, points: 0, ranked: false }))
 
