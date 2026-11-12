@@ -60,7 +60,7 @@ const inTheSeason = (memberNumber: string, points: number): Result => ({
   inItsStanding: true,
 })
 
-const FIELD = ['000001', '000002', '000003', '000004', '000005'].map(member)
+const FIELD = ['000003', '000005', '000001', '000004', '000002'].map(member)
 
 const HISTORY: Result[] = [
   old('000001', '2019-05-01', 10),
