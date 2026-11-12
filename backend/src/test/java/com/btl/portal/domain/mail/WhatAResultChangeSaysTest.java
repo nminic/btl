@@ -7,11 +7,22 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.Reader;
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.text.MessageFormat;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Properties;
 import java.util.ResourceBundle;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -221,10 +232,7 @@ class WhatAResultChangeSaysTest {
 							"",
 							run,
 							"",
-							serbian ? "Trka je održana pre prve zvanične sezone lige (2027). Rezultat je upisan"
-									+ " u vašu istoriju."
-									: "The race was run before the first official season of the league (2027)."
-									+ " The result is entered in your history.",
+							serbian ? BEFORE_THE_FIRST_SEASON : BEFORE_THE_FIRST_SEASON_IN_ENGLISH,
 							"",
 							"Balkanska trkačka liga"));
 
@@ -338,6 +346,66 @@ class WhatAResultChangeSaysTest {
 
 	private static String lines(String... each) {
 		return String.join("\n", each);
+	}
+
+	/**
+	 * THE OWNER'S SENTENCE ABOUT A RACE RUN BEFORE THE FIRST SEASON, of 12.11.2026 (PDL „Zagrevanje:
+	 * istorijski prikaz pre prve sezone", chosen with the recommendation put to him): „Trka je održana
+	 * pre prve zvanične sezone lige (2027), pa rezultat ostaje u vašoj istoriji i ne ulazi ni u jednu
+	 * sezonsku tabelu, Top listu zvanične sezone ni nagradu." The English is ours.
+	 */
+	private static final String BEFORE_THE_FIRST_SEASON = "Trka je održana pre prve zvanične sezone lige (2027),"
+			+ " pa rezultat ostaje u vašoj istoriji i ne ulazi ni u jednu sezonsku tabelu, Top listu zvanične"
+			+ " sezone ni nagradu.";
+
+	private static final String BEFORE_THE_FIRST_SEASON_IN_ENGLISH = "The race was run before the first official"
+			+ " season of the league (2027), so the result stays in your history and does not count towards any"
+			+ " season table, Top list of an official season or award.";
+
+	/**
+	 * AND NO TEXT A MEMBER READS SAYS IT ANY OTHER WAY: every value of every dictionary under {@code mail/}
+	 * and {@code notices/} that speaks of a race run before the first season carries the owner's whole
+	 * sentence, in both languages. Walked, not named, so the sentence written back in its earlier words
+	 * („… (2027). Rezultat je upisan u vašu istoriju.") anywhere, or in a new message, fails here. Read
+	 * through {@link Properties}, so a comment that quotes an earlier decision is not a text.
+	 */
+	@Test
+	void everyTextAboutARaceBeforeTheFirstSeasonCarriesTheOwnersWholeSentence() throws IOException {
+		Map<String, String> opening = Map.of(
+				"pre prve zvanične sezone lige (2027)", BEFORE_THE_FIRST_SEASON,
+				"before the first official season of the league (2027)", BEFORE_THE_FIRST_SEASON_IN_ENGLISH);
+		Map<String, Integer> seen = new HashMap<>();
+		List<String> otherwise = new ArrayList<>();
+
+		for (String folder : List.of("mail", "notices")) {
+			try (Stream<Path> found = Files.walk(Path.of("src", "main", "resources", folder))) {
+				for (Path file : found.filter(one -> one.toString().endsWith(".properties")).toList()) {
+					Properties read = new Properties();
+
+					try (Reader in = new InputStreamReader(Files.newInputStream(file), StandardCharsets.UTF_8)) {
+						read.load(in);
+					}
+
+					for (String key : read.stringPropertyNames()) {
+						String value = read.getProperty(key);
+
+						opening.forEach((words, sentence) -> {
+							if (value.contains(words)) {
+								seen.merge(words, 1, Integer::sum);
+
+								if (!value.contains(sentence)) {
+									otherwise.add(file + " " + key);
+								}
+							}
+						});
+					}
+				}
+			}
+		}
+
+		assertThat(seen).as("a text in each language that speaks of such a race, or this measures nothing")
+				.containsOnlyKeys(opening.keySet());
+		assertThat(otherwise).as("texts that say it in other words than the owner's of 12.11.2026").isEmpty();
 	}
 
 	/** AND NONE OF THEM IS EMPTY OR LEAVES A HOLE UNFILLED. */
