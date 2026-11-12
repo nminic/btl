@@ -38,11 +38,17 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <p>PDL, owner, 08.11.2026: "Pozadinski posao koji ponovo računa dukate svih članova radi jednom noću (03:00)
  * i još jednom 1. januara u 15:00, pre zamrzavanja", and "prolaz kroz istoriju dodeljuje tiho."
  *
- * <p><b>Three members, committed</b>, because every member is reconciled in a transaction of his own
+ * <p><b>Five members, committed</b>, because every member is reconciled in a transaction of his own
  * ({@link AwardingDucats#forMember}) and sees only what is committed: ANA has an account and a membership of
  * 2028, BOJAN has the same and <b>no account</b>, CELA has <b>no account and a membership that ended in
  * 2027</b>. Each has run 125 km in a February (the first two in 2028, the third in 2027), so each is owed the
- * monthly ducat, and a pass that skipped a member for either reason leaves that member without it.
+ * monthly ducat, and a pass that skipped a member for either reason leaves that member without it. DANE has
+ * <b>no membership row at all</b> and the same two runs in 2028, one of them a climb of 100000 m (PDL, owner,
+ * 18.10.2026: "Dukati broje sve rezultate, i pre 2027 i iz godina bez članstva"): a ducat that stands for ever
+ * is his, a ducat of a month is not (it is owed to a season he holds), so a pass that walked only the members of
+ * a membership leaves him without {@code duk-uspon}. HOLDER holds the monthly ducat of February 2028 and has <b>no result at all</b>, so
+ * a pass that walked only the members who have a result leaves him holding what is no longer his: the pass
+ * takes it away, which is what the pass is for after a deletion.
  * {@link #everythingThisWroteGoes} takes it all away again, and the ducats the pass wrote to anybody else
  * committed in the shared database.
  */
@@ -55,6 +61,10 @@ class DucatsAreReconciledAtNightTest {
 	private static final String BOJAN = "000972";
 
 	private static final String CELA = "000973";
+
+	private static final String DANE = "000974";
+
+	private static final String HOLDER = "000975";
 
 	private static final Clock THE_NIGHT_OF_THE_PASS = Clock.fixed(LocalDateTime.of(2028, 3, 15, 3, 0)
 			.atZone(SeasonClock.ZONE).toInstant(), ZoneOffset.UTC);
@@ -71,13 +81,15 @@ class DucatsAreReconciledAtNightTest {
 	private long awardsBefore;
 
 	@BeforeEach
-	void threeMembersEachOwedTheMonthlyDucat() {
+	void fiveMembersFourOwedTheMonthlyDucatAndOneHoldingAnUnearnedOne() {
 		awardsBefore = db.sql("select coalesce(max(id), 0) from ducat_award").query(Long.class).single();
 
 		transactions.executeWithoutResult(any -> {
 			member(ANA);
 			member(BOJAN);
 			member(CELA);
+			member(DANE);
+			member(HOLDER);
 			db.sql("insert into account (first_name, last_name, email, role_id, competitor_id)"
 							+ " values ('Probni', 'Probic', 'dukat-noc@primer.rs',"
 							+ " (select id from role where code = 'competitor'), ?)")
@@ -97,6 +109,14 @@ class DucatsAreReconciledAtNightTest {
 
 			run(CELA, "dukat-noc-2027-prva", "60");
 			run(CELA, "dukat-noc-2027-druga", "65");
+
+			run(DANE, "dukat-noc-2028-prva", "60", 100000);
+			run(DANE, "dukat-noc-2028-druga", "65");
+
+			db.sql("insert into ducat_award (competitor_id, ducat_id, kind, threshold, reached, period, season,"
+							+ " month, tier, won_on) select ?, ducat.id, 'totalKm', 125, 125, 'month', 2028, 2, 1,"
+							+ " date '2028-02-10' from ducat where ducat.code = 'duk-mesecni-km'")
+					.param(id(HOLDER)).update();
 		});
 	}
 
@@ -105,9 +125,10 @@ class DucatsAreReconciledAtNightTest {
 		transactions.executeWithoutResult(any -> {
 			db.sql("delete from ducat_award where id > ?").param(awardsBefore).update();
 			db.sql("delete from membership where competitor_id in (select id from competitor where member_number"
-					+ " in (?, ?, ?))").params(ANA, BOJAN, CELA).update();
+					+ " in (?, ?, ?, ?, ?))").params(ANA, BOJAN, CELA, DANE, HOLDER).update();
 			db.sql("delete from account where email = 'dukat-noc@primer.rs'").update();
-			db.sql("delete from competitor where member_number in (?, ?, ?)").params(ANA, BOJAN, CELA).update();
+			db.sql("delete from competitor where member_number in (?, ?, ?, ?, ?)")
+					.params(ANA, BOJAN, CELA, DANE, HOLDER).update();
 			db.sql("delete from btl_event where slug like 'dukat-noc-%'").update();
 		});
 	}
@@ -121,6 +142,9 @@ class DucatsAreReconciledAtNightTest {
 		assertThat(codesOf(CELA)).as("a member whose membership ended in 2027").containsExactly("duk-mesecni-km");
 		assertThat(db.sql("select season from ducat_award where competitor_id = ?").param(id(CELA))
 				.query(Integer.class).single()).as("his ducat is the one of 2027").isEqualTo(2027);
+		assertThat(codesOf(DANE)).as("a member with no membership row at all, his permanent ducat")
+				.containsExactly("duk-uspon");
+		assertThat(codesOf(HOLDER)).as("a member who holds a ducat and has no result any more").isEmpty();
 	}
 
 	@Test
@@ -130,6 +154,8 @@ class DucatsAreReconciledAtNightTest {
 		assertThat(codesOf(ANA)).containsExactly("duk-mesecni-km");
 		assertThat(codesOf(BOJAN)).containsExactly("duk-mesecni-km");
 		assertThat(codesOf(CELA)).containsExactly("duk-mesecni-km");
+		assertThat(codesOf(DANE)).containsExactly("duk-uspon");
+		assertThat(codesOf(HOLDER)).isEmpty();
 	}
 
 	@Test
@@ -158,18 +184,20 @@ class DucatsAreReconciledAtNightTest {
 	void theServiceIsCalledOutsideAnyTransactionForEveryMember() {
 		aPassThatFailsFor(-1).atNight();
 
-		assertThat(inATransaction).hasSize(3).containsOnly(false);
+		assertThat(inATransaction).hasSize(5).containsOnly(false);
 	}
 
 	@Test
 	void aFailureInTheLastMemberOfThePassIsLoggedAndTheOnesBeforeHimStand() {
-		long failing = id(CELA);
+		long failing = id(HOLDER);
 
 		heardWhile(() -> aPassThatFailsFor(failing).atNight());
 
 		assertThat(codesOf(ANA)).containsExactly("duk-mesecni-km");
 		assertThat(codesOf(BOJAN)).containsExactly("duk-mesecni-km");
-		assertThat(codesOf(CELA)).isEmpty();
+		assertThat(codesOf(CELA)).containsExactly("duk-mesecni-km");
+		assertThat(codesOf(DANE)).containsExactly("duk-uspon");
+		assertThat(codesOf(HOLDER)).as("the one that failed keeps what he held").containsExactly("duk-mesecni-km");
 	}
 
 	@Test
@@ -206,7 +234,7 @@ class DucatsAreReconciledAtNightTest {
 
 		assertThat(db.sql("select count(*) from ducat_award where id > ?").param(awardsBefore)
 				.query(Long.class).single()).as("the pass wrote, so nothing sent is not nothing done")
-				.isGreaterThanOrEqualTo(3);
+				.isGreaterThanOrEqualTo(4);
 		assertThat(db.sql("select count(*) from message").query(Long.class).single()).isEqualTo(messagesBefore);
 	}
 
@@ -341,8 +369,12 @@ class DucatsAreReconciledAtNightTest {
 	}
 
 	private void run(String number, String slug, String kilometres) {
+		run(number, slug, kilometres, 0);
+	}
+
+	private void run(String number, String slug, String kilometres, int ascent) {
 		db.sql("insert into result (competitor_id, race_id, race_date, distance_km, ascent_m, descent_m, seconds,"
-						+ " points) select ?, race.id, race.date, " + kilometres + ", 0, 0, 3000, 1 from race"
+						+ " points) select ?, race.id, race.date, " + kilometres + ", " + ascent + ", 0, 3000, 1 from race"
 						+ " where race.name = ?")
 				.params(id(number), slug).update();
 	}
