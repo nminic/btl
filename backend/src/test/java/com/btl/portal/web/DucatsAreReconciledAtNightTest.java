@@ -23,6 +23,7 @@ import org.springframework.scheduling.config.ScheduledTaskHolder;
 import org.springframework.scheduling.support.SimpleTriggerContext;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -33,10 +34,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * THE PASS AT NIGHT: every member is reconciled, one that fails stops nobody, the pass before the freeze says
- * when it could not, nothing is sent, and nothing of it runs at start.
+ * when it could not, nothing of the history is told and a ducat of a result brought in since the start of
+ * awarding is, and nothing of it runs at start.
  *
  * <p>PDL, owner, 08.11.2026: "Pozadinski posao koji ponovo računa dukate svih članova radi jednom noću (03:00)
- * i još jednom 1. januara u 15:00, pre zamrzavanja", and "prolaz kroz istoriju dodeljuje tiho."
+ * i još jednom 1. januara u 15:00, pre zamrzavanja", and "prolaz kroz istoriju dodeljuje tiho."; and
+ * 12.11.2026: "Tiho ostaje samo ono što dolazi iz rezultata odobrenih pre početka dodele."
  *
  * <p><b>Five members, committed</b>, because every member is reconciled in a transaction of his own
  * ({@link AwardingDucats#forMember}) and sees only what is committed: ANA has an account and a membership of
@@ -225,8 +228,13 @@ class DucatsAreReconciledAtNightTest {
 		assertThat(beforeTheFreeze.warnings()).isEmpty();
 	}
 
+	/**
+	 * WHAT THE PASS WRITES OF THE HISTORY IS SILENT („Tiho ostaje samo ono što dolazi iz rezultata odobrenih pre
+	 * početka dodele”, owner, 12.11.2026): every run of this fixture was written with no moment, so the pass
+	 * writes four ducats and sends nothing to anybody.
+	 */
 	@Test
-	void thePassSendsNothingToAnybodyWhileItWritesDucats() {
+	void thePassSendsNothingOfTheHistoryWhileItWritesDucats() {
 		long messagesBefore = db.sql("select count(*) from message").query(Long.class).single();
 
 		aPass().atNight();
@@ -236,6 +244,54 @@ class DucatsAreReconciledAtNightTest {
 				.query(Long.class).single()).as("the pass wrote, so nothing sent is not nothing done")
 				.isGreaterThanOrEqualTo(4);
 		assertThat(db.sql("select count(*) from message").query(Long.class).single()).isEqualTo(messagesBefore);
+	}
+
+	/**
+	 * A DUCAT OF A RESULT APPROVED SINCE THE START, WHICH THE STEP AFTER ITS APPROVAL NEVER WROTE, IS WRITTEN BY
+	 * THE PASS AND TOLD AS THAT STEP WOULD HAVE TOLD IT (owner, 12.11.2026: „Kad dukat koji donese rezultat
+	 * odobren od sada upiše noćni prolaz (jer je korak posle odobrenja pao), član dobija poruku isto kao da ga
+	 * je upisao korak posle odobrenja.”). Four members on the two sides of each axis:
+	 * <ul>
+	 * <li>BOJAN's run of 10 February, the one that reaches 125 km, was approved at the start of awarding to
+	 * the instant: told, in the words of an approval.
+	 * <li>ANA's run of 3 February was approved since the start, but it is her run of the 10th, history, that
+	 * carried her over: silent. A message tied to any result of hers brought in since the start would tell.
+	 * <li>CELA's run of 10 February 2027 carried her over and was approved a second BEFORE the start: silent.
+	 * A rule that asked only whether the moment is there would tell.
+	 * <li>DANE's climb of 3 February was entered by the league since the start and carried him over to
+	 * „Karmanov uspon”: told, in the league's words.
+	 * </ul>
+	 * And only to them: no message to the whole league and none to anybody else.
+	 */
+	@Test
+	void thePassTellsADucatOfAResultBroughtInSinceTheStartAsTheStepAfterTheApprovalWould() {
+		Instant before = AwardingDucats.AWARDING_BEGAN.minusSeconds(1);
+
+		transactions.executeWithoutResult(any -> {
+			broughtIn(BOJAN, "dukat-noc-2028-druga", AwardingDucats.AWARDING_BEGAN, "approval");
+			broughtIn(ANA, "dukat-noc-2028-prva", AwardingDucats.AWARDING_BEGAN.plusSeconds(60), "approval");
+			broughtIn(CELA, "dukat-noc-2027-druga", before, "approval");
+			broughtIn(DANE, "dukat-noc-2028-prva", AwardingDucats.AWARDING_BEGAN.plusSeconds(60), "league");
+		});
+		long lastMessage = db.sql("select coalesce(max(id), 0) from message").query(Long.class).single();
+
+		aPass().atNight();
+
+		assertThat(db.sql("select coalesce(to_id::text, 'the league') || ' | ' || from_name || ' | ' || subject"
+						+ " || ' | ' || body from message where id > ? and (to_id is null or to_id in (select id from"
+						+ " competitor where member_number in (?, ?, ?, ?, ?))) order by to_id, id")
+				.params(lastMessage, ANA, BOJAN, CELA, DANE, HOLDER).query(String.class).list())
+				.containsExactly(
+						id(BOJAN) + " | Balkanska trkačka liga | Osvojili ste dukat | Odobren vam je rezultat sa trke"
+								+ " dukat-noc-2028-druga od 10.02.2028, i njime ste osvojili dukat \"Mesečni"
+								+ " kilometri\" za februar 2028. Dukat stoji na vašem profilu.",
+						id(DANE) + " | Balkanska trkačka liga | Osvojili ste dukat | Liga vam je unela rezultat sa"
+								+ " trke dukat-noc-2028-prva od 03.02.2028, i njime ste osvojili dukat \"Karmanov"
+								+ " uspon\". Dukat stoji na vašem profilu.");
+		assertThat(codesOf(ANA)).as("Ana was not written her ducat, so her silence says nothing")
+				.contains("duk-mesecni-km");
+		assertThat(codesOf(CELA)).as("Cela was not written her ducat, so her silence says nothing")
+				.contains("duk-mesecni-km");
 	}
 
 	/**
@@ -366,6 +422,13 @@ class DucatsAreReconciledAtNightTest {
 						+ " descent_m) values ((select id from btl_event where slug = ?), ?, false, date '" + day
 						+ "', 'length', 0, 10, 0, 0)")
 				.params(slug, slug).update();
+	}
+
+	/** The moment and the way his run on the race of {@code slug} came in. */
+	private void broughtIn(String number, String slug, Instant at, String by) {
+		assertThat(db.sql("update result set brought_at = ?, brought_by = ? where competitor_id = ?"
+						+ " and race_id = (select id from race where name = ?)")
+				.params(Timestamp.from(at), by, id(number), slug).update()).isEqualTo(1);
 	}
 
 	private void run(String number, String slug, String kilometres) {

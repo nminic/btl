@@ -130,6 +130,8 @@ class MemberMembershipApi {
 
 	private final JdbcClient db;
 
+	private final DucatsFollowTheResults ducats;
+
 	private final Clock clock;
 
 	private final TransactionTemplate inOneTransaction;
@@ -151,8 +153,9 @@ class MemberMembershipApi {
 	MemberMembershipApi(JdbcClient db, Clock clock, TransactionTemplate inOneTransaction, BalanceBook book,
 			BookingAPayment booking, GrantingASeason granting, CurrencyOfMember currencyOf,
 			MemberOfAccount memberOfAccount, ABeginnersCategoryAMembershipMoves category,
-			ASeasonBegins teamsAndPairs) {
+			ASeasonBegins teamsAndPairs, DucatsFollowTheResults ducats) {
 		this.db = db;
+		this.ducats = ducats;
 		this.clock = clock;
 		this.inOneTransaction = inOneTransaction;
 		this.book = book;
@@ -210,7 +213,21 @@ class MemberMembershipApi {
 	ResponseEntity<?> cancel(@PathVariable String memberNumber, @RequestBody Cancelling typed,
 			@AuthenticationPrincipal WhoIsAsking.Member asking) {
 
-		return inOneTransaction.execute(committing -> cancelling(memberNumber, typed, asking));
+		ResponseEntity<?> answer = inOneTransaction.execute(committing -> cancelling(memberNumber, typed, asking));
+
+		/* AND HIS DUCATS ONCE THE CANCELLATION HAS COMMITTED; what it takes away is never told (PDL,
+		   08.11.2026), and what it writes is told by {@link AwardingDucats} by the rule of 12.11.2026. Derived by the coordinator (ADL,
+		   08.11.2026), from „u godini u kojoj nije bio član dobija samo trajne dukate” and „Stornirana uplata:
+		   … član postaje neaktivan za tu sezonu”: „Storno je zato okidač usklađivanja.” After the commit and
+		   never inside it, because this route holds his row `for update` and a reconciliation from inside
+		   would wait on it without end. A cancellation that wrote nothing is reconciled all the same, which
+		   changes nothing; a number nobody holds finds nobody. */
+		if (answer.getStatusCode().is2xxSuccessful()) {
+			db.sql("select id from competitor where member_number = ?").param(memberNumber)
+					.query(Long.class).optional().ifPresent(ducats::follow);
+		}
+
+		return answer;
 	}
 
 	@PutMapping("/api/members/{memberNumber}/membership")

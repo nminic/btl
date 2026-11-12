@@ -10,6 +10,7 @@ import com.btl.portal.domain.award.DucatReconciliation.Plan;
 import com.btl.portal.domain.award.DucatReconciliation.Rewrite;
 import com.btl.portal.domain.award.DucatReconciliation.Run;
 import com.btl.portal.domain.award.RaceDone;
+import com.btl.portal.domain.mail.WhatAResultChangeSays;
 import com.btl.portal.domain.season.SeasonClock;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Component;
@@ -21,10 +22,14 @@ import java.sql.Date;
 import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 
 /**
  * BRINGS ONE MEMBER'S DUCATS INTO LINE WITH HIS RESULTS: writes the ones he meets and does not hold,
@@ -65,11 +70,42 @@ import java.util.Set;
  * {@link VerificationWriteApi}'s, for the same reason.
  *
  * <p><b>A row written past the turn is met by {@code on conflict do nothing}</b>, and is not reported:
- * what this answers is only what it wrote, because a message is sent on each (step four), and a ducat
- * somebody else wrote is that writer's to announce.
+ * what this answers and announces is only what it wrote, and a ducat somebody else wrote is that writer's
+ * to announce.
+ *
+ * <p><b>WHAT IT WROTE IS ANNOUNCED IN THE SAME TRANSACTION, WHOEVER CALLS IT.</b> The owner, 12.11.2026:
+ * „Portal pamti koji je rezultat doneo dukat i kad je rezultat odobren. Poruka „Osvojili ste dukat”
+ * nabraja samo dukate iz rezultata odobrenih od početka dodele, i piše se u istoj transakciji sa
+ * dukatom.” And of the job at night, the same day: „član dobija poruku isto kao da ga je upisao korak
+ * posle odobrenja. Tiho ostaje samo ono što dolazi iz rezultata odobrenih pre početka dodele.” So whether
+ * a ducat is announced is a fact about the ducat and not about the act that ran the reconciliation: it is
+ * announced when the result that carried him over its threshold ({@code ducat_award.result_id}, V91) was
+ * brought in at or after {@link #AWARDING_BEGAN} ({@code result.brought_at}, V97), and written in silence
+ * otherwise. The step after an approval and the job at night call the same {@link #forMember}, so the
+ * message has this one home, and either the ducat and its message both stand or neither does: a message
+ * that fails takes the ducat back with it, and the next run writes both.
+ *
+ * <p><b>ONE MESSAGE PER RESULT THAT CARRIED HIM OVER</b>, naming that result's race and day and the way it
+ * came in, and listing every ducat it brought in this run. „Odobren vam je rezultat sa trke {trka} od
+ * {dan}, i njime ste osvojili dukat …” says „njime”, with it, so a ducat another result carried over is
+ * not that sentence's to claim. Where one run writes ducats of two results (a step that failed before is
+ * made up now), each result is told as if its own step had written it.
  */
 @Component
 class AwardingDucats {
+
+	/**
+	 * THE START OF AWARDING, AND ITS ONE HOME: a ducat is announced when the result that carried him over was
+	 * brought in at or after this moment, and written in silence when it was brought in before it or at no
+	 * recorded moment (the history, whose {@code brought_at} V97 leaves empty). 12.11.2026 at midnight in
+	 * Belgrade, the day the owner decided it: V97 runs on no database before that day, so no moment an
+	 * approval or an entry records is earlier, and nothing brought in once the portal awards is left out.
+	 */
+	static final Instant AWARDING_BEGAN = Instant.parse("2026-11-11T23:00:00Z");
+
+	/** The months as a Serbian sentence names them after „za”, written out rather than asked of a locale. */
+	private static final String[] MONTHS = {"januar", "februar", "mart", "april", "maj", "jun", "jul",
+			"avgust", "septembar", "oktobar", "novembar", "decembar"};
 
 	/** True of a row of {@code ducat_award} under the alias {@code a} whose season has not frozen. */
 	private static final String A_PERIOD_STILL_OPEN = " (a.period = 'always' or not exists"
@@ -89,14 +125,53 @@ class AwardingDucats {
 	}
 
 	/**
+	 * How a result came in: the word {@code result.brought_by} holds for it ({@code result_brought_by_known},
+	 * V97), and the beginning of the sentence that tells of a ducat it brought.
+	 */
+	enum Brought {
+		APPROVAL("approval", "Odobren vam je rezultat sa trke "),
+		LEAGUE("league", "Liga vam je unela rezultat sa trke ");
+
+		private final String word;
+
+		private final String opening;
+
+		Brought(String word, String opening) {
+			this.word = word;
+			this.opening = opening;
+		}
+
+		/** The word the column holds. */
+		String word() {
+			return word;
+		}
+
+		static Brought named(String word) {
+			for (Brought one : values()) {
+				if (one.word.equals(word)) {
+					return one;
+				}
+			}
+
+			throw new IllegalArgumentException("no way of bringing a result in is called " + word);
+		}
+	}
+
+	/**
 	 * One ducat this reconciliation wrote.
 	 *
-	 * @param id      the row in {@code ducat_award}
-	 * @param code    the family's code, {@code duk-sve-trke}
-	 * @param season  empty for a ducat that stands for ever
-	 * @param month   1 to 12, and empty unless the family repeats by month
+	 * @param id       the row in {@code ducat_award}
+	 * @param code     the family's code, {@code duk-sve-trke}
+	 * @param season   empty for a ducat that stands for ever
+	 * @param month    1 to 12, and empty unless the family repeats by month
+	 * @param resultId the result that carried him over its threshold, which decides whether it is told
 	 */
-	record Won(long id, String code, BigDecimal threshold, Integer season, Integer month, int tier) {
+	record Won(long id, String code, BigDecimal threshold, Integer season, Integer month, int tier,
+			long resultId) {
+	}
+
+	/** The result that carried him over, as the message names it. */
+	private record Carried(Brought by, String race, LocalDate day) {
 	}
 
 	/** Reconciles one member in a transaction of its own, and answers only what it wrote. */
@@ -160,10 +235,80 @@ class AwardingDucats {
 					.query(Long.class)
 					.optional()
 					.ifPresent(id -> written.add(new Won(id, one.instance().code(), one.instance().threshold(),
-							one.instance().season(), one.instance().month(), one.instance().tier())));
+							one.instance().season(), one.instance().month(), one.instance().tier(),
+							one.crossing().resultId())));
 		}
 
+		announce(competitorId, written);
+
 		return List.copyOf(written);
+	}
+
+	/**
+	 * WHAT IT WROTE, TOLD IN THIS SAME TRANSACTION: one message for each result that carried him over and was
+	 * brought in from the start of awarding, in the order of the results' keys; nothing for the rest.
+	 */
+	private void announce(long competitorId, List<Won> written) {
+		Map<Long, List<Won>> byResult = new TreeMap<>();
+
+		for (Won one : written) {
+			byResult.computeIfAbsent(one.resultId(), any -> new ArrayList<>()).add(one);
+		}
+
+		for (Map.Entry<Long, List<Won>> one : byResult.entrySet()) {
+			db.sql("select r.brought_by, race.name, r.race_date from result r join race on race.id = r.race_id"
+							+ " where r.id = ? and r.brought_at >= ?")
+					.params(one.getKey(), Timestamp.from(AWARDING_BEGAN))
+					.query((row, any) -> new Carried(Brought.named(row.getString(1)), row.getString(2),
+							row.getDate(3).toLocalDate()))
+					.optional()
+					.ifPresent(carried -> tell(competitorId, carried, one.getValue()));
+		}
+	}
+
+	/**
+	 * „Osvojili ste dukat”, in the words the owner approved on 08.11.2026 (relayed by the coordinator):
+	 * „Odobren vam je rezultat sa trke {trka} od {dan}, i njime ste osvojili dukat „{ime}”. Dukat stoji na
+	 * vašem profilu.”, „Liga vam je unela” for an entry, and one message listing several. The sender is the
+	 * league, PDL P13, 19.09.2026: „Kad portal sam piše poruku članu, pošiljalac je naziv lige.” <b>The name
+	 * of a ducat stands in English quotes</b>, not in the low ones the relayed words carry: PDL, 18.10.2026,
+	 * „Tekst koji portal piše koristi engleske navodnike”, which {@code TheQuotesAMemberReadsAreEnglishTest}
+	 * holds over every string compiled into the portal.
+	 */
+	private void tell(long competitorId, Carried carried, List<Won> won) {
+		Map<String, String> names = new HashMap<>();
+
+		db.sql("select code, name from ducat where code in (:codes)")
+				.param("codes", won.stream().map(Won::code).distinct().toList())
+				.query((row, one) -> names.put(row.getString(1), row.getString(2)))
+				.list();
+
+		List<String> each = new ArrayList<>();
+
+		for (Won one : won) {
+			each.add("\"" + names.get(one.code()) + "\"" + period(one));
+		}
+
+		boolean many = each.size() > 1;
+		String listed = many
+				? String.join(", ", each.subList(0, each.size() - 1)) + " i " + each.getLast()
+				: each.getFirst();
+
+		db.sql("insert into message (to_id, from_id, from_name, subject, body) values (?, null, ?, ?, ?)")
+				.params(competitorId, PairWriteApi.THE_LEAGUE, "Osvojili ste dukat",
+						carried.by().opening + carried.race() + " od " + WhatAResultChangeSays.asADay(carried.day())
+								+ ", i njime ste osvojili " + (many ? "dukate " : "dukat ") + listed + ". "
+								+ (many ? "Dukati stoje na vašem profilu." : "Dukat stoji na vašem profilu."))
+				.update();
+	}
+
+	/** „ za jul 2027” for a ducat of a month, „ za sezonu 2027” for one of a season, nothing for ever. */
+	private static String period(Won one) {
+		if (one.month() != null) {
+			return " za " + MONTHS[one.month() - 1] + " " + one.season();
+		}
+
+		return one.season() == null ? "" : " za sezonu " + one.season();
 	}
 
 	private List<Family> families() {

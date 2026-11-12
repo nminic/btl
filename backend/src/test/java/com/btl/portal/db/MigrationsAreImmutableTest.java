@@ -818,7 +818,15 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   renumbered when main reached V95.
 
 			   Pinned LAST, when the file was final, off this very assertion. */
-			new Applied("96", "V96__the_rulebook_says_a_ducat_stays_while_the_results_that_won_it_stand.sql", -74488312));
+			new Applied("96", "V96__the_rulebook_says_a_ducat_stays_while_the_results_that_won_it_stand.sql", -74488312),
+
+			/* V97. A result remembers when and how it was brought in, the moment of its approval or of the league's entry
+			   and which of the two (owner, 12.11.2026, PDL "Portal pamti koji je rezultat doneo dukat i kad je rezultat
+			   odobren"): two nullable columns and two rules, the history left empty and nothing made up. 97 and no other:
+			   main stood at V96 when it was written.
+
+			   Pinned LAST, when the file was final, off this very assertion. */
+			new Applied("97", "V97__a_result_remembers_when_and_how_it_was_brought_in.sql", -645330917));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {
