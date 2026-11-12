@@ -20,6 +20,7 @@ import { sep } from 'node:path'
 import { sources } from '../test/sources'
 import { at, first, htmlElement, last, must, selectElement } from '../test/at'
 import { countTheHistoryInItsSeasons } from '../test/countedHistory'
+import { inHistoryOrder } from '../test/historyOrder'
 import { inLeague, playTheHistoryAsLeagueSeasons } from '../test/leagueSeasons'
 import { renderAt } from '../test/render'
 import { membersAsServed, serverThat } from '../test/serverAnswers'
@@ -357,13 +358,16 @@ describe('Rankings', () => {
 
     const [, ...unraced] = rows
 
-    /* Numbered on from the one above them, in the order of their member numbers. */
+    /* Numbered on from the one above them, in the order of the points of their whole history and then
+       of their member numbers (PDL, 12.11.2026). */
     expect(unraced.map((row) => within(row).getAllByRole('cell')[0]?.textContent)).toEqual(
       unraced.map((_, index) => String(index + 2)),
     )
     const numbers = unraced.map((row) => must(row.textContent?.match(/\d{6}/)?.[0], 'a member number'))
 
-    expect(numbers).toEqual([...numbers].sort())
+    expect(numbers).toEqual(inHistoryOrder(numbers))
+    /* And not the order of the numbers, which would satisfy a table that never looked at the history. */
+    expect(numbers).not.toEqual([...numbers].sort())
     /* Second and third place are not gold for somebody who has not run. */
     expect(unraced.filter((row) => row.classList.contains('podium'))).toEqual([])
     expect(unraced.every((row) => row.textContent?.includes(formatPoints(0, 'sr')) === true)).toBe(true)
