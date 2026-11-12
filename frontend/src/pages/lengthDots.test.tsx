@@ -49,7 +49,7 @@ import { CalendarExtract } from './home/CalendarExtract'
  * length.
  *
  * **Which dots a race carries is the server's answer since 16.10.2026**
- * (`CalendarApi.DOTS`, the timed race that is an ultra until its results say
+ * (`CalendarApi.DOTS`, the timed race that carries the sixth dot until its results say
  * otherwise), so a race here is given its dots the way the server gives them, and
  * every race carries a category that says something else: a screen that went back to
  * reading the category would draw it, and the cases below would see it. The router is here because both draw links (`Markdown.test.tsx` renders
@@ -116,11 +116,13 @@ function drawn(races: Race[], draw: (races: Race[]) => React.ReactNode) {
 
 describe('the dots a screen draws beside an event', () => {
   it('draw what the server says a race carries, and not the category beside it', () => {
-    /* A timed race with no result yet is an ultra, one with results carries what they
-       were run at, and a free race the sixth dot (owner, 16.10.2026, and 30.08.2026).
+    /* A timed race with no result yet carries the sixth dot, one with results carries what
+       they were run at, and a free race the sixth dot (owner, 12.11.2026, 16.10.2026 and
+       30.08.2026).
        The category under each says „marathon", which is what a screen reading it
        instead would draw. */
     const cases: [RaceKind, readonly Dot[]][] = [
+      ['time', ['unmeasured']],
       ['time', ['ultra']],
       ['time', ['half', 'long']],
       ['free', ['unmeasured']],

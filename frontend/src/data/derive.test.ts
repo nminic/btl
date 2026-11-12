@@ -1601,15 +1601,15 @@ describe('dotsAt', () => {
 
   it('draws the dots the server says a race carries, not the one its category says', () => {
     /* Which dots a race carries is worked out by the server (`CalendarApi.DOTS`): a
-       timed race is an ultra until its results say otherwise, and then exactly the
-       lengths they were run at (owner, 16.10.2026). Its category is the category of
+       timed race carries the sixth dot until its results say otherwise, and then exactly
+       the lengths they were run at (owner, 12.11.2026 and 16.10.2026). Its category is the category of
        nought, „short", so every race here carries a category that is NOT among its
        dots, and reading the one in place of the other is seen. */
-    const timedWithNothingYet: Race = { ...race(1, 12, 'short'), kind: 'time', dots: ['ultra'] }
+    const timedWithNothingYet: Race = { ...race(1, 12, 'short'), kind: 'time', dots: ['unmeasured'] }
     const timedWithResults: Race = { ...race(2, 13, 'short'), kind: 'time', dots: ['long', 'half'] }
     const free: Race = { ...race(3, 14, 'short'), kind: 'free', dots: ['unmeasured'] }
 
-    expect(dotsAt(event(12), [timedWithNothingYet])).toEqual(['ultra'])
+    expect(dotsAt(event(12), [timedWithNothingYet])).toEqual(['unmeasured'])
     expect(dotsAt(event(13), [timedWithResults])).toEqual(['half', 'long'])
     expect(dotsAt(event(14), [free])).toEqual(['unmeasured'])
   })

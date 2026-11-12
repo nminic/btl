@@ -602,7 +602,8 @@
     },
     "weekend": "Vikend",
     "addOnDay": "Nov događaj {date}",
-    "spanDays": "od {from} do {to}"
+    "spanDays": "od {from} do {to}",
+    "featured": "istaknut događaj"
   },
   "race": {
     "kind": {

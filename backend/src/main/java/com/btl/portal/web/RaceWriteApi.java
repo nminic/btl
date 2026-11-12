@@ -141,6 +141,11 @@ import java.util.Optional;
  * {@code (race_id, season)}. So a {@code delete from result} written here would be a
  * second place answering a question the schema has already answered, and the day the two
  * disagreed the schema would win silently.
+ *
+ * <p><b>It is still one DELETE, and since the ducats it is not alone in its transaction.</b> Before it, the
+ * same transaction reads whose runs the cascade is about to take, because once it has run nothing is left
+ * to read them from, and those members' ducats are reconciled after the commit
+ * ({@link DucatsFollowTheResults}).
  */
 @RestController
 class RaceWriteApi {
@@ -200,6 +205,8 @@ class RaceWriteApi {
 
 	private final JdbcClient db;
 
+	private final DucatsFollowTheResults ducats;
+
 	/**
 	 * Written by hand rather than left on the method, the same choice
 	 * {@link EventWriteApi} made and for the same reason: writing a race and moving the
@@ -223,8 +230,9 @@ class RaceWriteApi {
 	private final BestOfficialSeason bestOfficialSeason;
 
 	RaceWriteApi(JdbcClient db, TransactionTemplate inOneTransaction, Clock clock,
-			BestOfficialSeason bestOfficialSeason) {
+			BestOfficialSeason bestOfficialSeason, DucatsFollowTheResults ducats) {
 		this.db = db;
+		this.ducats = ducats;
 		this.inOneTransaction = inOneTransaction;
 		this.clock = clock;
 		this.bestOfficialSeason = bestOfficialSeason;
@@ -557,7 +565,8 @@ class RaceWriteApi {
 			return no(HttpStatus.BAD_REQUEST, THE_FORM_IS_NOT_COMPLETE);
 		}
 
-		return inOneTransaction.execute(committing -> {
+		List<Long> moved = new ArrayList<>();
+		ResponseEntity<?> answer = inOneTransaction.execute(committing -> {
 			Optional<TheDayOfAnEvent.Standing> event = theEventOfTheRaceHeldForThisWrite(id);
 
 			/* THE SAME ANSWER SOMEBODY WITHOUT THE RIGHT GETS, and that is deliberate: a
@@ -637,8 +646,20 @@ class RaceWriteApi {
 
 			recountItsRunsIfWhatItFixesMoved(id, before, checked);
 
+			/* EVERY MEMBER WITH A RUN HERE, whether or not the recount above rewrote it: a day moved moves
+			   the day of every run at the race with it (`result_race_fk`, on update cascade, V7), and a
+			   ducat of a month is the day's. */
+			moved.addAll(whoRanAt(id));
+
 			return ResponseEntity.ok(new Written(id, beginning, address));
 		});
+
+		/* AND THEIR DUCATS AFTER THE COMMIT. What is told of it is {@link AwardingDucats}' (PDL, 12.11.2026:
+		   only a ducat a result brought in from the start of awarding carried over). A refusal above wrote
+		   nothing and named nobody. */
+		ducats.follow(moved);
+
+		return answer;
 	}
 
 	/**
@@ -811,6 +832,12 @@ class RaceWriteApi {
 				.update();
 	}
 
+	/** Every member with a row of {@code result} at this race. */
+	private List<Long> whoRanAt(long race) {
+		return db.sql("select distinct competitor_id from result where race_id = ?").param(race)
+				.query(Long.class).list();
+	}
+
 	/**
 	 * Whether an approved run stands at this race: a row of {@code result}, whoever's it is, a
 	 * member whose fee has lapsed included. A run still waiting is not one, and neither is the
@@ -848,7 +875,8 @@ class RaceWriteApi {
 	@DeleteMapping("/api/races/{id}")
 	@RightIsNeeded("entity:events")
 	ResponseEntity<?> remove(@PathVariable long id) {
-		return inOneTransaction.execute(committing -> {
+		List<Long> gone = new ArrayList<>();
+		ResponseEntity<?> answer = inOneTransaction.execute(committing -> {
 			Optional<TheDayOfAnEvent.Standing> event = theEventOfTheRaceHeldForThisWrite(id);
 
 			if (event.isEmpty()) {
@@ -862,12 +890,23 @@ class RaceWriteApi {
 				return no(HttpStatus.CONFLICT, THE_ADDRESS_IS_TAKEN);
 			}
 
+			/* WHOSE RUNS GO WITH IT, read BEFORE the race goes and inside the same transaction: afterwards
+			   the cascade has left nothing to read them from. */
+			gone.addAll(whoRanAt(id));
+
 			db.sql("delete from race where id = ?").param(id).update();
 
 			TheDayOfAnEvent.theEventNowBeginsOn(db, event.get(), beginning, address);
 
 			return ResponseEntity.noContent().build();
 		});
+
+		/* AND THEIR DUCATS AFTER THE COMMIT: the owner, 11.08.2026, „Ne.” to telling anybody of the deletion,
+		   and 08.11.2026, no message of its own for a ducat taken away. A ducat this run writes is told by
+		   {@link AwardingDucats} by the rule of 12.11.2026, as the run that should have written it would. */
+		ducats.follow(gone);
+
+		return answer;
 	}
 
 	/**
