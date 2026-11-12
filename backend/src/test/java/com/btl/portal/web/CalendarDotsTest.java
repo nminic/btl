@@ -93,14 +93,14 @@ class CalendarDotsTest {
 		result(second, allShorter, "21.10");
 		submission(first, allShorter, "100.00");
 
-		/* Timed, and the only result is a member whose fee has lapsed: his membership is of a
-		   season long gone, and the result is still a result (owner, 16.10.2026: „i iz rezultata
-		   člana kome je istekla članarina"). */
+		/* Timed, and the only result is a member whose fee has lapsed for the race's season: his
+		   only membership is of a later one, so none covers this race, and the result is still a
+		   result (owner, 16.10.2026: „i iz rezultata člana kome je istekla članarina"). */
 		long lapsedMember = competitor("990903", "c0ffee0000000903");
 		db.sql("insert into membership (competitor_id, season, basis, payment_id, decided_by,"
-						+ " decided_by_name, decided_at) values (?, 2020, 'feeExempt', null,"
+						+ " decided_by_name, decided_at) values (?, 2028, 'feeExempt', null,"
 						+ " (select id from account order by id limit 1), 'Prvi Blagajnik',"
-						+ " timestamptz '2020-03-01 09:00:00+00')")
+						+ " timestamptz '2027-03-01 09:00:00+00')")
 				.params(lapsedMember).update();
 		long lapsed = race("lapsed", "vremenska", "time", 10_800, "0");
 		result(lapsedMember, lapsed, "100.00");
