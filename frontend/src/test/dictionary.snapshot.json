@@ -314,6 +314,7 @@
     "sponsorOfTheDay": "Sponzor dana",
     "partners": "Sponzori i partneri",
     "noneYet": "U ovoj sezoni još nema istrčanih trka ove distance.",
+    "warmUpNoneYet": "U zagrevanju nema trka ove distance.",
     "turning": "Najviše trka po distanci",
     "pauseTurning": "Zaustavi smenjivanje",
     "resumeTurning": "Nastavi smenjivanje",
@@ -490,6 +491,7 @@
     "men": "Muškarci",
     "women": "Žene",
     "season": "Sezona",
+    "warmUp": "Zagrevanje",
     "myRow": "vaš red",
     "categoryFilter": "Kategorija",
     "allCategories": "Sve",
@@ -558,6 +560,7 @@
     },
     "pairs": "Najbolji trkački parovi",
     "pairsNone": "U ovoj sezoni nijedan trkački par još nema zajedničku trku.",
+    "warmUpPairs": "U zagrevanju nijedan trkački par nema zajedničku trku.",
     "sharedRaces": {
       "one": "{count} zajednička trka",
       "few": "{count} zajedničke trke",
@@ -565,6 +568,7 @@
     },
     "progress": "Najbolji napredak",
     "progressEmpty": "U ovoj sezoni još niko nije popravio zbir bodova iz prethodne sezone.",
+    "warmUpProgress": "U zagrevanju se napredak ne meri.",
     "bestRaces": "Najbolji pojedinačni rezultati",
     "kilometers": "Najviše kilometara",
     "onCourse": "Najduže na stazi",
@@ -579,6 +583,7 @@
       "time": "Vreme na stazi"
     },
     "empty": "U ovoj sezoni nema nijednog rezultata.",
+    "warmUpEmpty": "U zagrevanju nema nijednog rezultata.",
     "place": "{position}. mesto"
   },
   "calendar": {

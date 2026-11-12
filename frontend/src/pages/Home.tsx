@@ -1,7 +1,7 @@
 import { useToday } from '../clock/useClock'
 import { Resource } from '../components/Resource'
-import { seasonOf, totalsOf } from '../data/derive'
-import { seasonShown } from '../data/season'
+import { countedIn, totalsOf } from '../data/derive'
+import { boardsOpenOn, seasonShown, WARM_UP } from '../data/season'
 import { combineFour, useCompetitors, useEvents, useRaces, useResults } from '../data/useResource'
 import { useI18n } from '../i18n/useI18n'
 import { CalendarExtract } from './home/CalendarExtract'
@@ -76,13 +76,18 @@ export function Home() {
              for such a member (owner, 13.09.2026), so there is nothing here left
              to take out. */
           const field = competitors
-          /* The season's own figures, so what its season counts and nothing else (`seasonOf`, PDL
-             P9, 18.10.2026): a run of somebody who was not a member that year is not the season's. */
-          const totals = totalsOf(results.filter((one) => seasonOf(one) === season))
-          /* One heading for every season it can show, because there is only one kind
-             of season it shows now. „Sezona 2019, probni podaci" stood here until
-             16.10.2026, over the fullest season of the imported history. */
-          const label = t('home.season', { season })
+          /* THE COUNTERS AT THE TOP OF THE RIGHT COLUMN AND THE TURNING CHART ARE THE WARM-UP before the
+             first season has begun, and the season shown after it (owner, 12.11.2026: „widgeti na
+             naslovnoj strani gore desno (umesto Sezona 2027. treba da se zove zagrevanje) i ovaj
+             rotirajući widget po dužini trke"; `boardsOpenOn`). The two boards of ten stay on the
+             season: before it has begun they already read the history (PR 716). */
+          const view = boardsOpenOn(today)
+          /* The view's own figures, so what its season counts and nothing else (`countedIn`, PDL P9,
+             18.10.2026): a run of somebody who was not a member that year is not the season's. */
+          const totals = totalsOf(results.filter((one) => countedIn(one, view)))
+          /* „Sezona 2019, probni podaci" stood here until 16.10.2026, over the fullest season of the
+             imported history. */
+          const label = view === WARM_UP ? t('rankings.warmUp') : t('home.season', { season: view })
 
           return (
             <>
@@ -97,7 +102,7 @@ export function Home() {
                 </div>
 
                 <div className="home__chart">
-                  <TopByCategory competitors={field} results={results} season={season} />
+                  <TopByCategory competitors={field} results={results} season={view} />
                 </div>
 
                 <div className="home__next">

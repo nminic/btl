@@ -2,6 +2,11 @@ import { useFilterParams } from '../app/useFilterParams'
 
 export const ALL_SEASONS = 'sve'
 
+/** How the address names the warm-up of the Top lists (`WARM_UP` in `data/season.ts`), in the words of
+ *  the screen it names, as `sve` names all of them on a profile. It is the default while it is shown, so
+ *  the address carries it only on a day it is not, and then it is held against the offer and falls back. */
+export const WARM_UP_ADDRESS = 'zagrevanje'
+
 /**
  * Which season the profile is being read in, from the address.
  *
