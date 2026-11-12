@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { screen, waitFor, within } from '@testing-library/react'
 import { clearResourceCache } from '../../data/client'
 import { must } from '../../test/at'
+import { inHistoryOrder } from '../../test/historyOrder'
 import { renderAt } from '../../test/render'
 import { answeringCategory, refused, serverThat, type Asked, type CategoryAnswered } from '../../test/serverAnswers'
 import { SLOW } from '../../test/slow'
@@ -411,7 +412,13 @@ describe('the table of the season shown as the running one', () => {
       })
 
       expect(rows.map(categoryIn)).toEqual(men4054.map(() => 'M 40-54'))
-      expect(rows.map((row) => row.textContent?.match(/\d{6}/)?.[0])).toEqual(men4054.map((one) => one.memberNumber))
+      const drawn = rows.map((row) => row.textContent?.match(/\d{6}/)?.[0])
+      const asked = men4054.map((one) => one.memberNumber)
+
+      /* All of them, in the order of the points of their whole history and then of their number
+         (PDL, 12.11.2026), which is not the order of the numbers. */
+      expect(drawn).toEqual(inHistoryOrder(asked))
+      expect(drawn).not.toEqual([...asked].sort())
       expect(screen.queryByText(/Jovana Tomašević/)).not.toBeInTheDocument()
     } finally {
       server.stop()
