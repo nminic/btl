@@ -2965,11 +2965,14 @@ describe('what the written pages say the fee buys', () => {
        29.10.2026 and the rulebook 30.10.2026. It moved on to 08.11.2026 with „Moji podaci"
        said where it said the card Podaci (V90; owner, 08.11.2026). The rulebook moved on to
        10.11.2026 with the transfer window for teams that opens on 21 November (V93; owner,
-       10.11.2026, the day it is expected on QA). Written per
+       10.11.2026, the day it is expected on QA), and on to 11.11.2026 with the sentences the
+       owner's rewrite took out of it (V95; owner, 11.11.2026), and on to 12.11.2026 with the
+       sentence that says a ducat stays for as long as the results that won it stand (V96;
+       owner, 08.11.2026), by the same rule. Written per
        document and not as one day for all three, so a date moved on one of them,
        or left behind on one, is a failure that names the document. */
     const SIGNED_OFF = {
-      pravilnik: '11.11.2026',
+      pravilnik: '12.11.2026',
       'uslovi-koriscenja': '11.11.2026',
       'politika-privatnosti': '11.11.2026',
     } as const
