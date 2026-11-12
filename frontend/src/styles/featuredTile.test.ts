@@ -68,14 +68,35 @@ function readBy(rules: CSSStyleRule[]): { property: string; token: string }[] {
   )
 }
 
+/** The value the light theme gives a token, followed to a colour. A token with one value
+ *  has one, and it answers here as well. */
+function lightColour(name: string, seen: string[] = []): string {
+  expect(seen, `${name} is defined in terms of itself`).not.toContain(name)
+
+  const value = must(given(name)[0], `${name} has no value`)
+  const named = value.match(/^var\((--[a-z0-9-]+)\)$/)
+
+  return named === null ? value : lightColour(must(named[1], 'the name inside var()'), [...seen, name])
+}
+
 /* The rules that draw a tile and what is on it. `.chip--featured` itself is left out,
    because it is the rule being measured and not one of the rules it answers for. */
+const chipRules = everyRule(calendar, 'Calendar.css').filter(
+  (rule) => rule.selectorText.includes('.chip') && rule.selectorText !== '.chip--featured',
+)
 const tileRules = [
-  ...everyRule(calendar, 'Calendar.css').filter(
-    (rule) => rule.selectorText.includes('.chip') && rule.selectorText !== '.chip--featured',
-  ),
+  ...chipRules,
   ...everyRule(table, 'table.css').filter((rule) => rule.selectorText.includes('.length-dot')),
 ]
+
+/* What the tile itself is painted with: read by a `background` of a rule that draws the
+   tile, and not of a dot on it. Only these may be the gold; anything else pointed at the
+   gold is a part of the tile that has vanished into it. */
+const grounds = new Set(
+  readBy(chipRules)
+    .filter((one) => one.property.startsWith('background'))
+    .map((one) => one.token),
+)
 
 /* Read by the tile, and given a value per theme. Those are the ones that would come
    out of the gold in one theme or the other. */
@@ -127,13 +148,47 @@ describe('the gold tile of a featured event', () => {
     }
   })
 
+  it('makes the ground gold and nothing else', () => {
+    /* The face of each kind is pointed at the gold, which is what makes the tile gold.
+       Anything else pointed there, an edge or a dot, would be measured against itself
+       below and quietly left out, so it is refused here instead. */
+    expect(grounds.size, 'no ground found on the tile').toBeGreaterThanOrEqual(3)
+
+    for (const token of flipping) {
+      expect(
+        pointedAt(token) === '--featured-face',
+        `${token} is ${grounds.has(token) ? 'a ground and is not gold' : 'not a ground and is gold'}`,
+      ).toBe(grounds.has(token))
+    }
+  })
+
+  it('keeps each kind its own edge, the one the light theme gives it', () => {
+    /* Owner, 12.11.2026, the same evening: the edge of a featured tile keeps the colour
+       of its kind, race, skup or trening. The light theme's, because the gold under it
+       does not flip and the dark theme's edges vanish into it. Every kind edge the tile
+       reads, by its name; three today. */
+    const edges = flipping.filter((token) => /^--kind-[a-z]+-edge$/.test(token))
+
+    expect(edges.length, `found only ${edges.join(', ')}`).toBeGreaterThanOrEqual(3)
+
+    const drawn = edges.map((token) => colour(pointedAt(token)))
+
+    for (const [index, token] of edges.entries()) {
+      expect(drawn[index], `${token} on a featured tile is not its own light edge`).toBe(lightColour(token))
+    }
+
+    /* And three edges are three colours, so a tile whose kinds all share one edge fails
+       even if that one edge happened to be somebody's light value. */
+    expect(new Set(drawn).size, `the kinds share an edge: ${drawn.join(', ')}`).toBe(edges.length)
+  })
+
   it('carries every colour on it at the contrast its job owes, against the gold', () => {
     const face = colour('--featured-face')
     const measured = flipping
       .map((token) => ({ token, to: pointedAt(token) }))
-      /* The ground itself: the face of each kind is pointed at the gold, which is what
-         makes the tile gold and is the thing everything else is measured against. */
-      .filter((one) => one.to !== '--featured-face')
+      /* The ground itself is the thing everything else is measured against, and the case
+         above holds that only the ground is pointed at it. */
+      .filter((one) => !grounds.has(one.token))
       .map((one) => {
         const floor = inks.has(one.token) ? FLOOR_TEXT : FLOOR_GRAPHIC
         const ratio = contrast(colour(one.to), face)
@@ -159,5 +214,7 @@ describe('the gold tile of a featured event', () => {
        theme's marathon dot, which clears 3:1 by seven hundredths. */
     expect(contrast('#e3c04a', '#f0c94a')).toBeCloseTo(1.11, 2)
     expect(contrast('#b8531a', '#f0c94a')).toBeCloseTo(3.07, 2)
+    /* And the dark theme's edge of a trening, the narrowest of the three kinds. */
+    expect(contrast('#62c3ce', '#f0c94a')).toBeCloseTo(1.29, 2)
   })
 })

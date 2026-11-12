@@ -26,8 +26,8 @@ import '../../styles/table.css'
  *
  * And a featured event is gold over whichever of the three it is (owner, 12.11.2026:
  * „Kad su istaknuti događaji prikazani u kalendaru, neka cela pločica bude zlatna").
- * On top of the kind and not instead of it: the kind still decides how wide the edge
- * is (`pages/Calendar.css`, `.chip--featured`).
+ * On top of the kind and not instead of it: the kind still decides the edge, its colour
+ * and how wide it is (owner, the same evening; `pages/Calendar.css`, `.chip--featured`).
  */
 function tileClass(event: BtlEvent): string {
   return [

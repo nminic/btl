@@ -71,12 +71,16 @@ const FEATURED_GATHERING = anEvent(3, 'Istaknut skup', 'gathering', true)
 const PLAIN_GATHERING = anEvent(4, 'Običan skup', 'gathering', false)
 const FEATURED_BAR = anEvent(5, 'Istaknuta dvodnevna', 'race', true)
 const PLAIN_BAR = anEvent(6, 'Obična dvodnevna', 'race', false)
+const FEATURED_TRAINING = anEvent(7, 'Istaknut trening', 'training', true)
 
 /* Every one-day event on the 22nd, so the page of that day holds both kinds of tile;
    the two bars over the 17th and the 18th, a Saturday and a Sunday of one row. A
    gathering and a training carry no races, so they stand on the day they are entered
    under, which is the 22nd as well. */
-const GATHERINGS = [FEATURED_GATHERING, PLAIN_GATHERING].map((one) => ({ ...one, date: '2027-07-22' }))
+const GATHERINGS = [FEATURED_GATHERING, PLAIN_GATHERING, FEATURED_TRAINING].map((one) => ({
+  ...one,
+  date: '2027-07-22',
+}))
 const SHOWN = [PLAIN_RACE, FEATURED_RACE, ...GATHERINGS, FEATURED_BAR, PLAIN_BAR]
 
 const RACES = [
@@ -156,13 +160,21 @@ describe('a featured event in the month', () => {
     await screen.findByRole('heading', { level: 2, name: 'jul 2027.' })
 
     try {
-      /* Gold over the kind and not instead of it: the sheet keeps the wider edge of a
-         gathering on the gold tile, and it can only do that if the tile still says it is
-         a gathering. The word for the kind is spoken as well. */
+      /* Gold over the kind and not instead of it: the edge of a featured tile keeps the
+         colour and the width of its kind (owner, 12.11.2026, the same evening), and the
+         sheet can only draw that if the tile still says which kind it is. Which colour
+         each kind's edge is on the gold is held in `styles/featuredTile.test.ts`; this
+         is the markup half, one featured tile of each of the three kinds. The word for
+         the kind is spoken as well. */
       const [gathering] = tilesOf(FEATURED_GATHERING.name)
 
       expect(gathering?.className).toBe('chip chip--gathering chip--featured')
       expect(gathering?.textContent).toContain(sr.event.kind.gathering)
+
+      const [training] = tilesOf(FEATURED_TRAINING.name)
+
+      expect(training?.className).toBe('chip chip--training chip--featured')
+      expect(training?.textContent).toContain(sr.event.kind.training)
 
       const [race] = tilesOf(FEATURED_RACE.name)
 
