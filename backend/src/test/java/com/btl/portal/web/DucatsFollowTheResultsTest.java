@@ -226,6 +226,39 @@ class DucatsFollowTheResultsTest {
 		assertThat(nobodyElseGotADucat()).isTrue();
 	}
 
+	/**
+	 * AN APPROVED CORRECTION IS AN APPROVAL, OF A RESULT THE LEAGUE ENTERED TOO: the correction gives the result
+	 * its own moment and the word „approval”, so the ducat it carries him over to is told as an approval and not
+	 * as the league's entry the row said before. A correction that kept the moment and the way the row already
+	 * had would say „Liga vam je unela”.
+	 */
+	@Test
+	void anApprovedCorrectionOfAResultTheLeagueEnteredIsToldAsAnApproval() throws Exception {
+		long first = race("dukat-okidac-prva", "Prva majska", LocalDate.of(2027, 5, 2));
+		long second = race("dukat-okidac-druga", "Majska trka", LocalDate.of(2027, 5, 20));
+
+		result(ANA, first, "100");
+
+		long corrected = result(ANA, second, "20");
+
+		db.sql("update result set brought_at = ?, brought_by = 'league' where id = ?")
+				.params(Timestamp.from(IN_JUNE.minus(Duration.ofDays(10))), corrected).update();
+		reconciled(ANA);
+		assertThat(ducatsOf(ANA)).as("120 km in May is short of the ducat").isEmpty();
+
+		long item = waiting(ANA, second, "30", corrected);
+
+		assertThat(decided(item).getStatus()).isEqualTo(200);
+
+		assertThat(db.sql("select brought_by || ' ' || brought_at from result where id = ?").param(corrected)
+				.query(String.class).single()).as("the correction kept the moment and the way of the entry")
+				.isEqualTo("approval " + db.sql("select ?::timestamptz::text").param(Timestamp.from(IN_JUNE))
+						.query(String.class).single());
+		assertThat(ducatMessagesTo(ANA)).singleElement().asString()
+				.startsWith("Balkanska trkačka liga | " + THE_SUBJECT + " | Odobren vam je rezultat sa trke Majska trka"
+						+ " od 20.05.2027");
+	}
+
 	@Test
 	void aRunTheLeagueEntersTellsHimInItsOwnWordsAndAnotherOnTheSameSaveIsReconciledToo() throws Exception {
 		long first = race("dukat-okidac-prva", "Prva majska", LocalDate.of(2027, 5, 2));
