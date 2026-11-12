@@ -87,6 +87,7 @@ class TheWrittenPagesSayThatTheProfileIsEditedOnThePageMojiPodaciCarriedOverTest
 	/** The pages as they stood before V89, and the proof that this is so: a piece of every old text stands again. */
 	private void theTextAsItStoodBeforeV89() {
 		/* The text as V94 left it: V95 (owner, 11.11.2026) moved the sign-offs of all three pages and took sentences out of them, which is held by TheWrittenPagesStateTheFactCarriedOverTest. */
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "96");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "95");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "90");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "89");
@@ -131,9 +132,11 @@ class TheWrittenPagesSayThatTheProfileIsEditedOnThePageMojiPodaciCarriedOverTest
 	@Test
 	void v89OverTheTextItFoundGivesTheTextThePortalServesAndChangesNothingElse() {
 		/* The text as V94 left it: V95 (owner, 11.11.2026) is held by TheWrittenPagesStateTheFactCarriedOverTest. */
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "96");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "95");
 		Map<String, String> finished = everyText();
 		jdbc.execute(migrationSql("95"));
+		jdbc.execute(migrationSql("96"));
 
 		theTextAsItStoodBeforeV89();
 
@@ -168,6 +171,7 @@ class TheWrittenPagesSayThatTheProfileIsEditedOnThePageMojiPodaciCarriedOverTest
 	void v89RunAgainOverTheFinishedTextStopsAndListsEveryEdit() {
 		/* The text V89 finished, which is the text before V90 linked its sentence and moved its sign-off (08.11.2026). */
 		/* The text as V94 left it: V95 (owner, 11.11.2026) moved the sign-offs of all three pages and took sentences out of them, which is held by TheWrittenPagesStateTheFactCarriedOverTest. */
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "96");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "95");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "90");
 
