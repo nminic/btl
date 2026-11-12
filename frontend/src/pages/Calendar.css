@@ -330,6 +330,40 @@
   box-shadow: inset 3px 0 0 0 var(--kind-training-edge);
 }
 
+/* A featured event: the whole tile gold, and every colour on it the one that can be
+   seen on gold (owner, 12.11.2026: „neka cela pločica bude zlatna, a onda prilagodi
+   ostale boje elemenata unutar nje tako da budu vidljivi").
+
+   **Said by re-pointing the tokens the tile already reads, not by painting over it.**
+   Every rule above and below, the kind's wider edge, the bar's pieces that drop
+   their edge and the dots in the table sheet, goes on drawing exactly what it drew,
+   from these values instead. A rule that painted the gold over them would have had
+   to repeat each of them here, and the first one forgotten is a continuing piece of a
+   bar wearing an edge in the middle of the bar, which `.chip--continues` takes away.
+
+   The edge stays as wide as the kind made it, three pixels on a race and six on a
+   gathering or a training, so the shape still says which of them it is when the
+   colour no longer can. The values, and what each measures on the gold, are in
+   `styles/tokens.css`; the tokens do not flip, so neither theme has anything to
+   override here. */
+.chip--featured {
+  --kind-race-face: var(--featured-face);
+  --kind-race-ink: var(--featured-ink);
+  --kind-race-edge: var(--featured-edge);
+  --kind-gathering-face: var(--featured-face);
+  --kind-gathering-ink: var(--featured-ink);
+  --kind-gathering-edge: var(--featured-edge);
+  --kind-training-face: var(--featured-face);
+  --kind-training-ink: var(--featured-ink);
+  --kind-training-edge: var(--featured-edge);
+  --length-short: var(--featured-length-short);
+  --length-half: var(--featured-length-half);
+  --length-long: var(--featured-length-long);
+  --length-marathon: var(--featured-length-marathon);
+  --length-ultra: var(--featured-length-ultra);
+  --length-unmeasured: var(--featured-length-unmeasured);
+}
+
 .chip:hover {
   transform: translateX(2px);
 }

@@ -17,6 +17,29 @@ import { useI18n } from '../../i18n/useI18n'
 import '../../styles/table.css'
 
 /**
+ * The classes that say what kind of tile an event gets, the same for a tile of one day
+ * and for every piece of a bar, so the two cannot come to colour one event differently.
+ *
+ * A gathering and a training take a colour of their own, because they carry no lengths
+ * and would otherwise read as a race whose distances nobody has entered yet (owner,
+ * 23.08.2026). A race keeps the tile it always had, so it takes no modifier.
+ *
+ * And a featured event is gold over whichever of the three it is (owner, 12.11.2026:
+ * „Kad su istaknuti događaji prikazani u kalendaru, neka cela pločica bude zlatna").
+ * On top of the kind and not instead of it: the kind still decides how wide the edge
+ * is (`pages/Calendar.css`, `.chip--featured`).
+ */
+function tileClass(event: BtlEvent): string {
+  return [
+    'chip',
+    event.kind === 'race' ? '' : `chip--${event.kind}`,
+    event.featured ? 'chip--featured' : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
+}
+
+/**
  * What is inside a tile: the name, the word for its kind where it is not a race,
  * the range where it has one, and the lengths.
  *
@@ -51,6 +74,12 @@ function ChipBody({
   return (
     <>
       <span className="chip__name">{event.name}</span>
+      {/* That it is singled out, in words, because the gold is the only thing that
+          draws it (owner, 12.11.2026, „neka cela pločica bude zlatna"; WCAG 2.2
+          SC 1.4.1). Spoken and not shown, which is the shape the tile's kind and the
+          weekend of a day already take: a tile a seventh of the page wide has no room
+          for a visible word, and the gold says it to whoever can see it. */}
+      {event.featured && <span className="visually-hidden">, {t('calendar.featured')}</span>}
       {/* And the word beside the colour, for whoever cannot separate two of them
           (WCAG 2.2 SC 1.4.1). Only where the tile is not a race: a race is what
           the calendar is made of, and saying so on every one of them would be
@@ -95,11 +124,7 @@ export function EventChip({ event, races }: { event: BtlEvent; races: Race[] }) 
 
   return (
     <Link
-      /* A gathering and a training take a colour of their own, because they carry
-         no lengths and would otherwise read as a race whose distances nobody has
-         entered yet (owner, 23.08.2026). A race keeps the tile it always had, so
-         it takes no modifier. */
-      className={event.kind === 'race' ? 'chip' : `chip chip--${event.kind}`}
+      className={tileClass(event)}
       to={`/${locale}/kalendar/${event.slug}`}
       title={event.name}
     >
@@ -178,8 +203,7 @@ export function EventScale({ piece, races }: { piece: Extract<Drawn, { at: 'scal
   })
 
   const className = [
-    'chip',
-    event.kind === 'race' ? '' : `chip--${event.kind}`,
+    tileClass(event),
     'chip--scale',
     /* What the piece does at each end, said as a class so the stylesheet draws it.
        A piece opens where the event starts, where the month starts, or where a row
