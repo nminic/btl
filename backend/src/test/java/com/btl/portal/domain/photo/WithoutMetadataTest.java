@@ -490,6 +490,72 @@ class WithoutMetadataTest {
 		assertThat(WithoutMetadata.of(sent, "image/png")).isEqualTo(cut);
 	}
 
+	/** The public entry, with no ceiling given, stops at the real one: a stream of 5 MiB or less that inflates past it. */
+	@Test
+	void theRealCeilingStopsAStreamThatInflatesPastHalfAGigabyte() {
+		byte[] png = png();
+		byte[] head = Arrays.copyOf(png, 33);
+		byte[] iend = Arrays.copyOfRange(png, png.length - 12, png.length);
+		long copies = WithoutMetadata.INFLATED_CEILING / 258 + 1;
+		byte[] stream = zerosAsRepeatedMatches(copies);
+
+		assertThat(stream.length).as("the stream must fit the size the upload allows").isLessThan(5 * 1024 * 1024);
+
+		byte[] sent = concat(head, chunk("IDAT", concat(stream, said())), iend);
+
+		assertThat(WithoutMetadata.of(sent, "image/png")).as("the bomb was inflated to its end, or the image data was cut")
+				.isEqualTo(sent);
+	}
+
+	/**
+	 * A zlib stream of one zero byte followed by {@code copies} matches of 258 bytes at distance 1, in one
+	 * fixed-Huffman block: it inflates to {@code 1 + 258 * copies} zeros from about 13 bits per 258 bytes.
+	 */
+	private static byte[] zerosAsRepeatedMatches(long copies) {
+		java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+		long[] bits = { 0 };
+		int[] count = { 0 };
+		java.util.function.BiConsumer<Integer, Integer> put = (value, width) -> {
+			/* Huffman codes go out most significant bit first. */
+			for (int i = width - 1; i >= 0; i--) {
+				bits[0] |= (long) ((value >> i) & 1) << count[0]++;
+
+				if (count[0] == 8) {
+					out.write((int) bits[0]);
+					bits[0] = 0;
+					count[0] = 0;
+				}
+			}
+		};
+
+		out.write(0x78);
+		out.write(0x01);
+		put.accept(1, 1);
+		/* The block type, 01, is a number of two bits and goes least significant bit first. */
+		put.accept(1, 1);
+		put.accept(0, 1);
+		put.accept(0x30, 8);
+
+		for (long i = 0; i < copies; i++) {
+			put.accept(0xC5, 8);
+			put.accept(0, 5);
+		}
+
+		put.accept(0, 7);
+
+		if (count[0] > 0) {
+			out.write((int) bits[0]);
+		}
+
+		long total = 1 + 258 * copies;
+		long b = total % 65521;
+		out.write((int) (b >> 8));
+		out.write((int) b);
+		out.write(0);
+		out.write(1);
+		return out.toByteArray();
+	}
+
 	/* ------------------------------------------------------------------------------------------------
 	   WEBP
 	   ------------------------------------------------------------------------------------------------ */
