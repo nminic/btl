@@ -675,6 +675,21 @@ describe('the years a profile offers', () => {
   })
 })
 
+/**
+ * THE WALL OF DUCATS, ONCE THE PAGE HAS DRAWN.
+ *
+ * Waited for by the heading of the section, which stands whether he holds ducats or none, and then read
+ * without waiting. A wait for the wall itself would sit out the whole of `asyncUtilTimeout` (`SLOW`,
+ * twenty seconds) on a page that drew no wall, and the case would end on the clock of the case rather
+ * than on its own sentence (`btl/CLAUDE.md`, section 25): measured on a page asking the wrong member's
+ * ducats, four cases ended „Test timed out" and not one on what it says.
+ */
+async function theWallOfDucats(): Promise<HTMLElement> {
+  await screen.findByRole('heading', { name: /^Dukati \d/ })
+
+  return screen.getByRole('list', { name: '' })
+}
+
 describe('a ducat that belongs to one month rather than to all of them', () => {
   it('says which month, beside the coin that carries it', async () => {
     /* A profile holding July and August must not read as one ducat written down
@@ -721,7 +736,8 @@ describe('a ducat that belongs to one month rather than to all of them', () => {
          permanent and the filter must not touch it (PDL P11). */
       renderAt('/sr/takmicar/000001/priznanja?sezona=2010', 'visitor', null, undefined, '2027-08-01')
 
-      expect(await screen.findByText('jul 2027.')).toBeVisible()
+      await theWallOfDucats()
+      expect(screen.getByText('jul 2027.')).toBeVisible()
 
       /* The coin is an image with a name since the hint went (11.08.2026), and
          on a profile that name is the only thing telling one instance of a
@@ -896,7 +912,7 @@ describe('a wall of ducats that grows as it is read', () => {
 
     renderAt('/sr/takmicar/000021/priznanja')
 
-    const wall = await screen.findByRole('list', { name: '' })
+    const wall = await theWallOfDucats()
     const names = within(wall)
       .getAllByRole('listitem')
       .map((item) => item.querySelector('strong')?.textContent)
@@ -917,7 +933,7 @@ describe('a wall of ducats that grows as it is read', () => {
     /* 000021 is answered all twelve as held (`servingMany`). */
     renderAt('/sr/takmicar/000021/priznanja')
 
-    const wall = await screen.findByRole('list', { name: '' })
+    const wall = await theWallOfDucats()
     await waitFor(() => {
       expect(screen.getAllByRole('button', { name: 'Učitaj još dukata' })).toHaveLength(1)
     })
@@ -969,7 +985,7 @@ describe('a wall of ducats that grows as it is read', () => {
 
     renderAt('/sr/takmicar/000021/priznanja')
 
-    const wall = await screen.findByRole('list', { name: '' })
+    const wall = await theWallOfDucats()
 
     expect(wall.textContent ?? '', 'a ducat is worth something on the screen again').not.toMatch(
       /[1-5]\s*(\/|od)\s*5|\bI{1,3}V?\b/,
