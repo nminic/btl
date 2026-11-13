@@ -100,9 +100,10 @@ describe('the Top lists, before and from the first season', () => {
     expect(leader).toHaveTextContent(personOf(KILOMETRES.memberNumber).lastName)
     expect(leader).toHaveTextContent(formatNumber(KILOMETRES.total / 100, 'sr', 2))
 
-    /* The board of progress has no season before it to grow from, and says so in its own words; and the
-       pairs of the history are of 2019, none of the first season, so that board says it in its own. */
-    expect(board('Najbolji napredak').getByText('U zagrevanju se napredak ne meri.')).toBeVisible()
+    /* The board of progress has no season before it to grow from, and says from which season it is
+       measured, as the first season does (owner, 13.11.2026); and the pairs of the history are of 2019,
+       none of the first season, so that board says it in the words of the warm-up. */
+    expect(board('Najbolji napredak').getByText('Napredak takmičara se meri tek od sezone 2028.')).toBeVisible()
     expect(
       board('Najbolji trkački parovi').getByText('U zagrevanju nijedan trkački par nema zajedničku trku.'),
     ).toBeVisible()
@@ -145,7 +146,6 @@ describe('the Top lists, before and from the first season', () => {
     expect(season.value).toBe('2027')
     expect(within(season).queryByRole('option', { name: 'Zagrevanje' })).not.toBeInTheDocument()
     expect(board('Najviše kilometara').getByText('U ovoj sezoni nema nijednog rezultata.')).toBeVisible()
-    expect(board('Najbolji napredak').queryByText('U zagrevanju se napredak ne meri.')).not.toBeInTheDocument()
   }, SLOW)
 })
 

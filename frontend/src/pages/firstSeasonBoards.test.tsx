@@ -9,7 +9,8 @@ import { SLOW } from '../test/slow'
 /* Two decisions of the owner of 13.11.2026 about the Top lists in the league's first season, and only in it:
 
    - the board of best progress, empty all through 2027, says „Napredak takmičara se meri tek od sezone 2028."
-     (chosen: „Samo 2027, posle stara"), and from 2028 the sentence it had before;
+     (chosen: „Samo 2027, posle stara"), and so does it in the warm-up („Neka ova recenica ipak stoji i na
+     Zagrevanju za najbolji napredak"); from 2028 the sentence it had before;
    - „I samo prve sezone, dok se ne proširi visina boksa za najbolji napredak, koristi u obračunu ukupno 3 para
      umesto 5": three pairs on the board in 2027, five from 2028; and three in the warm-up too („ZELIM TRI I
      TAMO JER CE SVAKAKO BITI BEZ PORETKA I NISKA VISINA!").
@@ -24,7 +25,6 @@ const BEFORE = '2026-12-31'
 
 const FIRST_SEASON_SENTENCE = 'Napredak takmičara se meri tek od sezone 2028.'
 const LATER_SENTENCE = 'U ovoj sezoni još niko nije popravio zbir bodova iz prethodne sezone.'
-const WARM_UP_SENTENCE = 'U zagrevanju se napredak ne meri.'
 
 const HALVES: [string, string][] = [
   ['000001', '000002'],
@@ -133,7 +133,6 @@ describe('the board of best progress in the first season', () => {
     await screen.findByLabelText('Sezona')
     expect(board('Najbolji napredak').getByText(FIRST_SEASON_SENTENCE)).toBeVisible()
     expect(board('Najbolji napredak').queryByText(LATER_SENTENCE)).not.toBeInTheDocument()
-    expect(board('Najbolji napredak').queryByText(WARM_UP_SENTENCE)).not.toBeInTheDocument()
   }, SLOW)
 
   it('says what it said before, from 2028', async () => {
@@ -144,12 +143,12 @@ describe('the board of best progress in the first season', () => {
     expect(board('Najbolji napredak').queryByText(FIRST_SEASON_SENTENCE)).not.toBeInTheDocument()
   }, SLOW)
 
-  it('keeps its own sentence in the warm-up', async () => {
+  it('says the same in the warm-up', async () => {
     renderAt('/sr/top-liste', 'visitor', null, undefined, BEFORE)
 
     await screen.findByLabelText('Sezona')
-    expect(board('Najbolji napredak').getByText(WARM_UP_SENTENCE)).toBeVisible()
-    expect(board('Najbolji napredak').queryByText(FIRST_SEASON_SENTENCE)).not.toBeInTheDocument()
+    expect(board('Najbolji napredak').getByText(FIRST_SEASON_SENTENCE)).toBeVisible()
+    expect(board('Najbolji napredak').queryByText(LATER_SENTENCE)).not.toBeInTheDocument()
   }, SLOW)
 })
 

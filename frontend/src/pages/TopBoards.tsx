@@ -590,12 +590,12 @@ function Drawn({ picker, view, sources }: { picker: Picker; view: SeasonView; so
       kind: 'chart',
       id: 'progress',
       title: t('topBoards.progress'),
-      /* Three sentences. The warm-up has no season before it; the league's first season has none
-         either, and says from which season progress is measured (owner, 13.11.2026, „Samo 2027,
-         posle stara"); from 2028 a season has one, and the board is empty only if nobody bettered it. */
-      empty: inWarmUp
-        ? t('topBoards.warmUpProgress')
-        : view === FIRST_SEASON
+      /* Two sentences. Neither the warm-up nor the league's first season has a season before it, so
+         both say from which season progress is measured (owner, 13.11.2026, „Samo 2027, posle stara",
+         and of the warm-up: „Neka ova recenica ipak stoji i na Zagrevanju za najbolji napredak"); from
+         2028 a season has one, and the board is empty only if nobody bettered it. */
+      empty:
+        inWarmUp || view === FIRST_SEASON
           ? t('topBoards.progressFirstSeason', { season: FIRST_SEASON + 1 })
           : t('topBoards.progressEmpty'),
       columns: sources.progress.map((row) => ({
