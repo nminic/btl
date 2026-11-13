@@ -153,6 +153,22 @@ class WithoutMetadataTest {
 						(byte) 0xD0, (byte) 0xFF, (byte) 0xD8 }, segment(0xC4, new byte[] { 3 }), EOI));
 	}
 
+	@Test
+	void anOddNumberOfFillBytesInFrontOfAMarkerLeavesTheMarkerItsFirstByte() {
+		/* FF FF FE is one fill and the comment marker, not a pair: stepping over two bytes would take the marker's
+		   FF as the second of a pair, lose the segment's start and skip on to the next FF. */
+		byte[] fill = { (byte) 0xFF };
+		byte[] kept = segment(0xC4, new byte[] { 3 });
+		byte[] picture = concat(SOI, fill, segment(0xFE, said()), fill, kept, EOI);
+
+		assertThat(says(picture, WHERE_AND_WITH_WHAT)).isTrue();
+
+		byte[] cleaned = WithoutMetadata.of(picture, "image/jpeg");
+
+		assertThat(cleaned).isEqualTo(concat(SOI, fill, fill, kept, EOI));
+		assertThat(says(cleaned, WHERE_AND_WITH_WHAT)).isFalse();
+	}
+
 	/**
 	 * ADL, owner, 07.11.2026: „čišćenje ne staje nego nastavlja kao pregledač: preskoči pokvareno mesto i skida
 	 * metapodatke i iza njega; slika se prima i čista je". Every case below first asks that the sent file DOES
@@ -428,6 +444,50 @@ class WithoutMetadataTest {
 		byte[] notAStream = concat(head, extra, iend);
 
 		assertThat(WithoutMetadata.of(notAStream, "image/png")).isSameAs(notAStream);
+	}
+
+	/**
+	 * A stream that inflates past the ceiling is treated as one that does not end (the measured case: 5 MiB
+	 * inflating to 5.4 GB, 2.9 s of a processor under a database connection). The ceiling is given small
+	 * here, so the case inflates kilobytes. The recorded boundary: text inside the IDAT length of such a
+	 * stream stays, as in the WebP image chunks.
+	 */
+	@Test
+	void aStreamThatInflatesPastTheCeilingIsTakenAsOneThatDoesNotEndAndOneThatInflatesToItIsNot() {
+		byte[] png = png();
+		byte[] head = Arrays.copyOf(png, 33);
+		byte[] iend = Arrays.copyOfRange(png, png.length - 12, png.length);
+		int inflated = 10_000;
+		java.util.zip.Deflater deflater = new java.util.zip.Deflater();
+		deflater.setInput(new byte[inflated]);
+		deflater.finish();
+		byte[] buffer = new byte[1000];
+		byte[] stream = new byte[0];
+
+		while (!deflater.finished()) {
+			stream = concat(stream, Arrays.copyOf(buffer, deflater.deflate(buffer)));
+		}
+
+		deflater.end();
+
+		byte[] withText = concat(stream, said());
+		byte[] sent = concat(head, chunk("IDAT", withText), iend);
+		byte[] cut = concat(head, chunk("IDAT", stream), iend);
+
+		assertThat(says(sent, WHERE_AND_WITH_WHAT)).isTrue();
+		assertThat(WithoutMetadata.imageStreamLength(sent, inflated)).as("exactly the ceiling is not past it")
+				.isEqualTo(stream.length);
+		assertThat(WithoutMetadata.of(sent, "image/png", inflated)).isEqualTo(cut);
+		assertThat(WithoutMetadata.of(sent, "image/png", Long.MAX_VALUE)).isEqualTo(cut);
+
+		assertThat(WithoutMetadata.imageStreamLength(sent, inflated - 1L)).as("one past the ceiling does not end")
+				.isEqualTo(withText.length);
+		byte[] past = WithoutMetadata.of(sent, "image/png", inflated - 1L);
+		assertThat(past).as("the image data was cut, or the text went").isEqualTo(sent);
+
+		/* The ceiling of the public entry is the constant, and a real picture is far below it. */
+		assertThat(WithoutMetadata.INFLATED_CEILING).isEqualTo(512L * 1024 * 1024);
+		assertThat(WithoutMetadata.of(sent, "image/png")).isEqualTo(cut);
 	}
 
 	/* ------------------------------------------------------------------------------------------------
