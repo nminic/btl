@@ -13,8 +13,10 @@ import java.util.Objects;
  * EVERY DUCAT OF A FAMILY THAT EXISTS BY A GIVEN DAY: the periods that have begun, times the thresholds
  * of the run.
  *
- * <p>The server's copy of {@code instancesOf} and {@code tierOf} in {@code frontend/src/data/ducatRule.ts},
- * with the same two edges: a family that repeats by month or by season begins in the league's first
+ * <p>The one home of this since 13.11.2026: until then {@code frontend/src/data/ducatRule.ts} worked the
+ * same list out again in the browser ({@code instancesOf} and {@code tierOf}), and since the page of
+ * awards reads what the server awarded ({@code DucatAwardApi}) it only draws one ducat it is told of
+ * ({@code instanceAt}). The two edges are these: a family that repeats by month or by season begins in the league's first
  * season ({@link SeasonClock#FIRST_SEASON}) and runs to the end of the month or the season the day falls
  * in, while a family that stands for ever has one instance per threshold and reads every race on a
  * profile, including the ones run before the league existed (PDL P16, „Petnaest ugrađenih porodica

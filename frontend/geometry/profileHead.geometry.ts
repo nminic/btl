@@ -158,6 +158,14 @@ const THE_LISTS: Answers = {
   '/api/pairs': [],
   '/api/results': file('results.json'),
   '/api/ducats': file('ducats.json'),
+  /* HER THREE DUCATS, as the server awarded them (`DucatAwardApi`, since 13.11.2026). Until then the page
+     worked three out of `results.json` itself; the page now reads this address, and an address left out of
+     this list is a 404 that leaves „Priznanja" undrawn. */
+  [`/api/ducat-awards/${HER}`]: [
+    { ducat: 'duk-sve-trke', value: 100, tier: 3, season: null, month: null },
+    { ducat: 'duk-krace-trke', value: 100, tier: 3, season: null, month: null },
+    { ducat: 'duk-drzave', value: 10, tier: 3, season: null, month: null },
+  ],
   '/api/frozen-seasons': [{ season: 2027 }],
   '/api/frozen-tables/2027': FROZEN,
   '/api/me/applications': {

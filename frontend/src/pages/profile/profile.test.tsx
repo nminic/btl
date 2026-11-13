@@ -675,32 +675,31 @@ describe('the years a profile offers', () => {
   })
 })
 
+/**
+ * THE WALL OF DUCATS, ONCE THE PAGE HAS DRAWN.
+ *
+ * Waited for by the heading of the section, which stands whether he holds ducats or none, and then read
+ * without waiting. A wait for the wall itself would sit out the whole of `asyncUtilTimeout` (`SLOW`,
+ * twenty seconds) on a page that drew no wall, and the case would end on the clock of the case rather
+ * than on its own sentence (`btl/CLAUDE.md`, section 25): measured on a page asking the wrong member's
+ * ducats, four cases ended „Test timed out" and not one on what it says.
+ */
+async function theWallOfDucats(): Promise<HTMLElement> {
+  await screen.findByRole('heading', { name: /^Dukati \d/ })
+
+  return screen.getByRole('list', { name: '' })
+}
+
 describe('a ducat that belongs to one month rather than to all of them', () => {
   it('says which month, beside the coin that carries it', async () => {
     /* A profile holding July and August must not read as one ducat written down
        twice, so the month stands beside the coin as words of the page.
      *
-     * Two files are stood in for, because nothing in the generated data can
-     * reach this on its own: the season of 2027 has not begun, and every result
-     * there is was run before it. One race in July 2027 and one family that
-     * repeats by the month are the smallest world in which a monthly ducat can
-     * be held at all. */
+     * Two answers are stood in for: one family that repeats by the month, and the
+     * one ducat of it the server says this member holds, for July 2027 (the month
+     * as the server keeps it, 1 to 12, so a page that read it 0 to 11 says August). */
     const real = globalThis.fetch
-    const race = {
-      id: 'r-jul',
-      memberNumber: '000001',
-      raceId: 't-jul',
-      raceName: 'Julska trka, kratka',
-      eventName: 'Julska trka',
-      eventSlug: 'julska-trka',
-      date: '2027-07-04',
-      distanceKm: 21.1,
-      ascentM: 200,
-      descentM: 200,
-      seconds: 7200,
-      points: 30,
-      category: 'half',
-    }
+    const held = [{ ducat: 'duk-mesecni-km', value: 20, tier: 1, season: 2027, month: 7 }]
     const family = {
       id: 'duk-mesecni-km',
       name: 'Mesečni kilometri',
@@ -722,8 +721,8 @@ describe('a ducat that belongs to one month rather than to all of them', () => {
     globalThis.fetch = (async (input: RequestInfo | URL) => {
       const asked = String(input)
 
-      if (asked.endsWith('/api/results')) {
-        return new Response(JSON.stringify([race]), { status: 200 })
+      if (asked === '/api/ducat-awards/000001') {
+        return new Response(JSON.stringify(held), { status: 200 })
       }
 
       return asked.endsWith('/api/ducats')
@@ -737,7 +736,8 @@ describe('a ducat that belongs to one month rather than to all of them', () => {
          permanent and the filter must not touch it (PDL P11). */
       renderAt('/sr/takmicar/000001/priznanja?sezona=2010', 'visitor', null, undefined, '2027-08-01')
 
-      expect(await screen.findByText('jul 2027.')).toBeVisible()
+      await theWallOfDucats()
+      expect(screen.getByText('jul 2027.')).toBeVisible()
 
       /* The coin is an image with a name since the hint went (11.08.2026), and
          on a profile that name is the only thing telling one instance of a
@@ -851,9 +851,14 @@ describe('a wall of ducats that grows as it is read', () => {
      across and a row is one ducat: five before the button, which is the
      arrangement a telephone comes closest to.
 
-     Stood up rather than found: the most decorated member of the generated data
-     holds three ducats, so nothing in it is long enough to be cut. What is
-     under test is the cutting. */
+     Stood up rather than found: the served file of ducats held is six long, so
+     nothing in it is long enough to be cut. What is under test is the cutting.
+
+     The member is told he holds every one of them, NEWEST FIRST AS THE SERVER
+     ORDERS THEM (`DucatAwardApi`), which here is the catalogue backwards, so a
+     page that drew the families' order instead of the record's is a different
+     wall. And another member holds a ducat the asked one does not, so a page that
+     read his answer would draw it. */
   function servingMany(howMany: number, tier = 1) {
     const real = globalThis.fetch
     const many = Array.from({ length: howMany }, (_, at) => ({
@@ -875,25 +880,60 @@ describe('a wall of ducats that grows as it is read', () => {
       counted: '',
     }))
 
-    globalThis.fetch = (async (input: RequestInfo | URL) =>
-      String(input).endsWith('/api/ducats')
-        ? new Response(JSON.stringify(many), { status: 200 })
-        : real(input))
+    const held = many
+      .map((one) => ({ ducat: one.id, value: one.value, tier, season: null, month: null }))
+      .reverse()
+    const another = [{ ducat: 'duk-proba-tudji', value: 1, tier, season: null, month: null }]
+    const familiesWithAnother = [...many, { ...must(many[0], 'a family'), id: 'duk-proba-tudji', name: 'Tuđi' }]
+
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      const asked = String(input)
+
+      if (asked === '/api/ducat-awards/000021') {
+        return new Response(JSON.stringify(held), { status: 200 })
+      }
+
+      if (asked.startsWith('/api/ducat-awards/')) {
+        return new Response(JSON.stringify(another), { status: 200 })
+      }
+
+      return asked.endsWith('/api/ducats')
+        ? new Response(JSON.stringify(familiesWithAnother), { status: 200 })
+        : real(input)
+    })
 
     return () => {
       globalThis.fetch = real
     }
   }
 
+  it('draws the ducats the server says he holds, in the order it says them, and nobody else\'s', async () => {
+    const stop = servingMany(5)
+
+    renderAt('/sr/takmicar/000021/priznanja')
+
+    const wall = await theWallOfDucats()
+    const names = within(wall)
+      .getAllByRole('listitem')
+      .map((item) => item.querySelector('strong')?.textContent)
+
+    expect(names).toEqual(['Proba 5', 'Proba 4', 'Proba 3', 'Proba 2', 'Proba 1'])
+    expect(screen.getByRole('heading', { name: 'Dukati 5' })).toBeVisible()
+
+    /* Exactly five is the first refill's worth, so there is nothing more to load and no button saying so. */
+    expect(screen.queryByRole('button', { name: 'Učitaj još dukata' })).toBeNull()
+
+    stop()
+  })
+
   it('shows five of them and grows, rather than the whole wall at once', async () => {
     const stop = servingMany(12)
     const user = setupUser()
 
-    /* 000021 has run more races than anybody else in the data, so every one of
-       the twelve thresholds above is behind them. */
+    /* 000021 is answered all twelve as held (`servingMany`). */
     renderAt('/sr/takmicar/000021/priznanja')
 
-    const wall = await screen.findByRole('list', { name: '' })
+    const wall = await theWallOfDucats()
     await waitFor(() => {
       expect(screen.getAllByRole('button', { name: 'Učitaj još dukata' })).toHaveLength(1)
     })
@@ -945,7 +985,7 @@ describe('a wall of ducats that grows as it is read', () => {
 
     renderAt('/sr/takmicar/000021/priznanja')
 
-    const wall = await screen.findByRole('list', { name: '' })
+    const wall = await theWallOfDucats()
 
     expect(wall.textContent ?? '', 'a ducat is worth something on the screen again').not.toMatch(
       /[1-5]\s*(\/|od)\s*5|\bI{1,3}V?\b/,

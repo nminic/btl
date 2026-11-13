@@ -60,15 +60,11 @@ import java.util.List;
  *
  * <p><b>AND WHO HOLDS WHICH DUCAT IS NOT HERE.</b> V15 has the table -
  * {@code ducat_award}, with the snapshot of what the member had when he won it -
- * and section 3 of the privacy policy does make a recognition public. It is left out all the same,
- * because no screen reads it: the portal serves fifteen definitions under this
- * name and nothing else, and a server that answers with more than the portal asks
- * for is a server publishing on the chance it will be wanted. When a screen needs
- * it, it is its own increment with its own decision about the ORDER those
- * recognitions come back in - and the field that names the holder will be the
- * MEMBER NUMBER, which is what section 3 of the privacy policy makes public, never a name beside
- * anything else off the member's row. {@code DucatApiTest} measures that nothing
- * about a member who holds a ducat leaves through this route today.
+ * and since 13.11.2026 a screen reads it: the page „Priznanja i nagrade", one member
+ * at a time and named by his MEMBER NUMBER, at {@link DucatAwardApi}, which carries
+ * its own decisions about who may read it and in what ORDER the ducats come back.
+ * This route stays the fifteen definitions and nothing else, so {@code DucatApiTest}
+ * still measures that nothing about a member who holds a ducat leaves through it.
  *
  * <p><b>The boundary that used to be here is gone, and this says so because the
  * next reader will look for it.</b> Until 20.09.2026 this javadoc ended on a

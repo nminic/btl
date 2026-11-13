@@ -48,6 +48,13 @@
     "teamId",
     "teamSince"
   ],
+  "ducat-awards.json": [
+    "ducat",
+    "month",
+    "season",
+    "tier",
+    "value"
+  ],
   "ducats.json": [
     "art",
     "bottom",
