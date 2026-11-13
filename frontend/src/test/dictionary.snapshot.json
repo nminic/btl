@@ -568,6 +568,7 @@
     },
     "progress": "Najbolji napredak",
     "progressEmpty": "U ovoj sezoni još niko nije popravio zbir bodova iz prethodne sezone.",
+    "progressFirstSeason": "Napredak takmičara se meri tek od sezone {season}.",
     "warmUpProgress": "U zagrevanju se napredak ne meri.",
     "bestRaces": "Najbolji pojedinačni rezultati",
     "kilometers": "Najviše kilometara",

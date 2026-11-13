@@ -7,7 +7,7 @@ import { ColumnChart, type ChartColumn } from '../components/ColumnChart'
 import { Resource } from '../components/Resource'
 import { SeasonPicker } from '../components/SeasonPicker'
 import { offeredSeason, WARM_UP_ADDRESS } from '../components/season'
-import { seasonShown, WARM_UP, warmUpShown, type SeasonView } from '../data/season'
+import { FIRST_SEASON, seasonShown, WARM_UP, warmUpShown, type SeasonView } from '../data/season'
 import {
   bestSingleRaces,
   seasonsOnOffer,
@@ -75,6 +75,18 @@ const PROGRESS_PLACES = 5
    drugog. **Ima mesta jer se prikazuje pet parova, ne deset.**" A row of a pair is four lines
    tall, so ten of them would be a box twice the height of the two beside it. */
 const PAIR_PLACES = 5
+
+/* AND THREE IN THE LEAGUE'S FIRST SEASON, for the same reason of height (owner, 13.11.2026): „I samo
+   prve sezone, dok se ne proširi visina boksa za najbolji napredak, koristi u obračunu ukupno 3 para
+   umesto 5." The box of progress beside the pairs stands empty and short through all of 2027, since
+   nobody has a season before it to grow from. From 2028 it is five again. The warm-up is no season
+   and keeps five, which is what the coordinator's reading of the decision says. */
+const FIRST_SEASON_PAIR_PLACES = 3
+
+/** How many pairs the board of a view keeps: the one place that number is answered, live and frozen. */
+function pairPlacesIn(view: SeasonView): number {
+  return view === FIRST_SEASON ? FIRST_SEASON_PAIR_PLACES : PAIR_PLACES
+}
 
 /** One cell after the name, and how it is set: words read from the left,
  *  numbers from the right, and a column a telephone does not have room for. */
@@ -307,7 +319,7 @@ function liveSources(
     progress: topByProgress(field, results, season, PROGRESS_PLACES, frozenBefore),
     kilometers: topByKilometers(field, results, season, PLACES),
     onCourse: topByTimeOnCourse(field, results, season, PLACES),
-    pairs: topPairs(pairs, field, results, season, PAIR_PLACES),
+    pairs: topPairs(pairs, field, results, season, pairPlacesIn(season)),
     bestRaces: bestSingleRaces(field, results, season, PLACES),
   }
 }
@@ -352,7 +364,7 @@ function frozenSources(tables: FrozenTables, people: (one: FrozenPerson) => Froz
     onCourse: list('timeOnCourse', null, PLACES).map(placed),
     pairs: [...tables.pairs]
       .sort((left, right) => left.position - right.position)
-      .slice(0, PAIR_PLACES)
+      .slice(0, pairPlacesIn(tables.season))
       .map((one) => {
         const first = people(one.halves[0])
         const second = people(one.halves[1])
@@ -576,7 +588,14 @@ function Drawn({ picker, view, sources }: { picker: Picker; view: SeasonView; so
       kind: 'chart',
       id: 'progress',
       title: t('topBoards.progress'),
-      empty: t(inWarmUp ? 'topBoards.warmUpProgress' : 'topBoards.progressEmpty'),
+      /* Three sentences. The warm-up has no season before it; the league's first season has none
+         either, and says from which season progress is measured (owner, 13.11.2026, „Samo 2027,
+         posle stara"); from 2028 a season has one, and the board is empty only if nobody bettered it. */
+      empty: inWarmUp
+        ? t('topBoards.warmUpProgress')
+        : view === FIRST_SEASON
+          ? t('topBoards.progressFirstSeason', { season: FIRST_SEASON + 1 })
+          : t('topBoards.progressEmpty'),
       columns: sources.progress.map((row) => ({
         competitor: row.competitor,
         value: row.points,
@@ -744,7 +763,7 @@ function Drawn({ picker, view, sources }: { picker: Picker; view: SeasonView; so
       bestPairs,
       bestRaces,
     ]
-  }, [sources, locale, t, linkTo, inWarmUp])
+  }, [sources, locale, t, linkTo, inWarmUp, view])
 
   return (
     <>
