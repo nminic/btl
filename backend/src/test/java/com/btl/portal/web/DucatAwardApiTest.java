@@ -27,6 +27,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
@@ -60,6 +61,9 @@ class DucatAwardApiTest {
 	private static final Instant OCTOBER_2028 = LocalDateTime.of(2028, 10, 1, 12, 0)
 			.atZone(SeasonClock.ZONE).toInstant();
 
+	private static final Instant NOVEMBER_2026 = LocalDateTime.of(2026, 11, 13, 12, 0)
+			.atZone(SeasonClock.ZONE).toInstant();
+
 	/** A member with ducats whose newest race is newer than any of the asked member's. */
 	private static final String OTHER = "000501";
 
@@ -76,8 +80,12 @@ class DucatAwardApiTest {
 	@Autowired
 	private JdbcClient db;
 
+	@Autowired
+	private AClockTheCaseMoves clock;
+
 	@BeforeEach
 	void threeMembersHoldDucats() {
+		clock.moveTo(OCTOBER_2028);
 		member(OTHER);
 		member(LAPSED);
 		member(ASKED);
@@ -144,6 +152,25 @@ class DucatAwardApiTest {
 		assertThat(rowsOf(answer(OTHER, null))).containsExactly(
 				"duk-mesecni-km 125 1 2028 9",
 				"duk-maratoni 100 4 null null");
+	}
+
+	@Test
+	void aMemberWhoHasNotPaidTheSeasonStillAheadIsAnsweredTheDucatsOfThePreviousSeasonStillRunning()
+			throws Exception {
+		/* NOVEMBER 2026: the season being paid for is 2027, the first, and the one running is 2026, which
+		   the league has no memberships for. The member who has not yet paid 2027 is not active, so the
+		   only thing that serves his ducat of a race of 2026 is the half of the rule that says a day
+		   before the first season is served. The other member has paid 2027 and his row is written FIRST,
+		   so an answer that let every row through would put his ducat in front of the asked one's. */
+		clock.moveTo(NOVEMBER_2026);
+		member("000505");
+		member("000506");
+		memberOf("000506", 2027);
+		held("000506", "duk-maratoni", "100", 4, null, null, "2026-06-06", "2026-06-07");
+		held("000505", "duk-uspon", "100000", 4, null, null, "2026-06-05", "2026-06-07");
+
+		assertThat(rowsOf(answer("000505", null))).containsExactly("duk-uspon 100000 4 null null");
+		assertThat(rowsOf(answer("000506", null))).containsExactly("duk-maratoni 100 4 null null");
 	}
 
 	@Test
@@ -273,8 +300,37 @@ class DucatAwardApiTest {
 
 		@Bean
 		@Primary
-		Clock theClockOfOctober2028() {
-			return Clock.fixed(OCTOBER_2028, ZoneOffset.UTC);
+		AClockTheCaseMoves theClockOfOctober2028() {
+			return new AClockTheCaseMoves(OCTOBER_2028);
+		}
+	}
+
+	/** A clock the case moves, standing in October 2028 until it says otherwise. */
+	static final class AClockTheCaseMoves extends Clock {
+
+		private Instant now;
+
+		private AClockTheCaseMoves(Instant now) {
+			this.now = now;
+		}
+
+		void moveTo(Instant when) {
+			this.now = when;
+		}
+
+		@Override
+		public Instant instant() {
+			return now;
+		}
+
+		@Override
+		public ZoneId getZone() {
+			return ZoneOffset.UTC;
+		}
+
+		@Override
+		public Clock withZone(ZoneId zone) {
+			return Clock.fixed(now, zone);
 		}
 	}
 }
