@@ -130,6 +130,15 @@ public final class WithoutMetadata {
 
 	private static final int WEBP_HAS_XMP = 0x04;
 
+	/**
+	 * The most bytes the image stream of a PNG is inflated to while its end is looked for. A stream is
+	 * 5 MiB at most when it reaches this class, and one that small can still inflate to gigabytes (measured
+	 * 07.11.2026: 5,242,380 bytes inflating to about 5.4 GB, 2.9 s of one processor, with a database
+	 * connection and the advisory lock held). The largest real photograph below 5 MiB inflates to a few
+	 * hundred MB, so this leaves it room. Past it the stream is treated as one that does not end.
+	 */
+	static final long INFLATED_CEILING = 512L * 1024 * 1024;
+
 	private WithoutMetadata() {
 	}
 
@@ -142,9 +151,14 @@ public final class WithoutMetadata {
 	 * @return the cleaned bytes, or {@code picture} itself where there was nothing to take
 	 */
 	public static byte[] of(byte[] picture, String mediaType) {
+		return of(picture, mediaType, INFLATED_CEILING);
+	}
+
+	/** {@link #of(byte[], String)} with the ceiling of the inflated PNG stream given, so a test need not inflate half a gigabyte. */
+	static byte[] of(byte[] picture, String mediaType, long inflatedCeiling) {
 		return switch (mediaType) {
 			case "image/jpeg" -> jpeg(picture);
-			case "image/png" -> png(picture);
+			case "image/png" -> png(picture, inflatedCeiling);
 			case "image/webp" -> webp(picture);
 			default -> throw new IllegalArgumentException(mediaType + " is not a type the schema holds");
 		};
@@ -267,13 +281,13 @@ public final class WithoutMetadata {
 	   PNG
 	   ------------------------------------------------------------------------------------------------ */
 
-	private static byte[] png(byte[] in) {
+	private static byte[] png(byte[] in, long inflatedCeiling) {
 		int turn = pngOrientation(in);
 		ByteArrayOutputStream out = new ByteArrayOutputStream(in.length);
 		out.write(in, 0, 8);
 
 		int at = 8;
-		int stream = imageStreamLength(in);
+		int stream = imageStreamLength(in, inflatedCeiling);
 		int seen = 0;
 		boolean trimmed = false;
 
@@ -346,8 +360,13 @@ public final class WithoutMetadata {
 	 * really takes, found by inflating it to its end and asking the inflater what it did not use. Where the
 	 * stream does not end (a picture cut in its data, or data that is no zlib stream) it is all of the IDAT
 	 * data there is, which keeps what a viewer would show as far as it goes.
+	 *
+	 * <p>A stream that inflates to more than {@code ceiling} bytes is treated the same way, as one that does
+	 * not end: the inflating stops there, and all of the IDAT data is kept. THE RECORDED BOUNDARY of that:
+	 * text placed inside the IDAT length of a stream that inflates past the ceiling stays, as it does for the
+	 * WebP image chunks (ADL 07.11.2026). Nothing that draws is lost, and a real picture is never this large.
 	 */
-	private static int imageStreamLength(byte[] in) {
+	static int imageStreamLength(byte[] in, long ceiling) {
 		ByteArrayOutputStream data = new ByteArrayOutputStream();
 		byte[] idat = "IDAT".getBytes(StandardCharsets.ISO_8859_1);
 		byte[] iend = "IEND".getBytes(StandardCharsets.ISO_8859_1);
@@ -375,9 +394,17 @@ public final class WithoutMetadata {
 			byte[] sink = new byte[8192];
 
 			boolean moving = true;
+			long inflated = 0;
 
 			while (moving && !inflater.finished()) {
-				moving = inflater.inflate(sink) > 0;
+				int got = inflater.inflate(sink);
+				inflated += got;
+
+				if (inflated > ceiling) {
+					return all.length;
+				}
+
+				moving = got > 0;
 			}
 
 			/* An inflater that stops short of the end wants more input, which this file does not have. */

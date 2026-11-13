@@ -153,6 +153,22 @@ class WithoutMetadataTest {
 						(byte) 0xD0, (byte) 0xFF, (byte) 0xD8 }, segment(0xC4, new byte[] { 3 }), EOI));
 	}
 
+	@Test
+	void anOddNumberOfFillBytesInFrontOfAMarkerLeavesTheMarkerItsFirstByte() {
+		/* FF FF FE is one fill and the comment marker, not a pair: stepping over two bytes would take the marker's
+		   FF as the second of a pair, lose the segment's start and skip on to the next FF. */
+		byte[] fill = { (byte) 0xFF };
+		byte[] kept = segment(0xC4, new byte[] { 3 });
+		byte[] picture = concat(SOI, fill, segment(0xFE, said()), fill, kept, EOI);
+
+		assertThat(says(picture, WHERE_AND_WITH_WHAT)).isTrue();
+
+		byte[] cleaned = WithoutMetadata.of(picture, "image/jpeg");
+
+		assertThat(cleaned).isEqualTo(concat(SOI, fill, fill, kept, EOI));
+		assertThat(says(cleaned, WHERE_AND_WITH_WHAT)).isFalse();
+	}
+
 	/**
 	 * ADL, owner, 07.11.2026: „čišćenje ne staje nego nastavlja kao pregledač: preskoči pokvareno mesto i skida
 	 * metapodatke i iza njega; slika se prima i čista je". Every case below first asks that the sent file DOES
@@ -428,6 +444,130 @@ class WithoutMetadataTest {
 		byte[] notAStream = concat(head, extra, iend);
 
 		assertThat(WithoutMetadata.of(notAStream, "image/png")).isSameAs(notAStream);
+	}
+
+	/**
+	 * A stream that inflates past the ceiling is treated as one that does not end (the measured case: 5 MiB
+	 * inflating to 5.4 GB, 2.9 s of a processor under a database connection). The ceiling is given small
+	 * here, so the case inflates kilobytes. The recorded boundary: text inside the IDAT length of such a
+	 * stream stays, as in the WebP image chunks.
+	 */
+	@Test
+	void aStreamThatInflatesPastTheCeilingIsTakenAsOneThatDoesNotEndAndOneThatInflatesToItIsNot() {
+		byte[] png = png();
+		byte[] head = Arrays.copyOf(png, 33);
+		byte[] iend = Arrays.copyOfRange(png, png.length - 12, png.length);
+		int inflated = 10_000;
+		java.util.zip.Deflater deflater = new java.util.zip.Deflater();
+		deflater.setInput(new byte[inflated]);
+		deflater.finish();
+		byte[] buffer = new byte[1000];
+		byte[] stream = new byte[0];
+
+		while (!deflater.finished()) {
+			stream = concat(stream, Arrays.copyOf(buffer, deflater.deflate(buffer)));
+		}
+
+		deflater.end();
+
+		byte[] withText = concat(stream, said());
+		byte[] sent = concat(head, chunk("IDAT", withText), iend);
+		byte[] cut = concat(head, chunk("IDAT", stream), iend);
+
+		assertThat(says(sent, WHERE_AND_WITH_WHAT)).isTrue();
+		assertThat(WithoutMetadata.imageStreamLength(sent, inflated)).as("exactly the ceiling is not past it")
+				.isEqualTo(stream.length);
+		assertThat(WithoutMetadata.of(sent, "image/png", inflated)).isEqualTo(cut);
+		assertThat(WithoutMetadata.of(sent, "image/png", Long.MAX_VALUE)).isEqualTo(cut);
+
+		assertThat(WithoutMetadata.imageStreamLength(sent, inflated - 1L)).as("one past the ceiling does not end")
+				.isEqualTo(withText.length);
+		byte[] past = WithoutMetadata.of(sent, "image/png", inflated - 1L);
+		assertThat(past).as("the image data was cut, or the text went").isEqualTo(sent);
+
+		/* The ceiling of the public entry is the constant, and a real picture is far below it. */
+		assertThat(WithoutMetadata.INFLATED_CEILING).isEqualTo(512L * 1024 * 1024);
+		assertThat(WithoutMetadata.of(sent, "image/png")).isEqualTo(cut);
+	}
+
+	/** The public entry, with no ceiling given, stops at the real one: a stream of 5 MiB or less that inflates past it. */
+	@Test
+	void theRealCeilingStopsAStreamThatInflatesPastHalfAGigabyte() {
+		byte[] png = png();
+		byte[] head = Arrays.copyOf(png, 33);
+		byte[] iend = Arrays.copyOfRange(png, png.length - 12, png.length);
+		long copies = WithoutMetadata.INFLATED_CEILING / 258 + 1;
+		byte[] stream = zerosAsRepeatedMatches(copies);
+
+		assertThat(stream.length).as("the stream must fit the size the upload allows").isLessThan(5 * 1024 * 1024);
+
+		byte[] sent = concat(head, chunk("IDAT", concat(stream, said())), iend);
+
+		assertThat(WithoutMetadata.of(sent, "image/png")).as("the bomb was inflated to its end, or the image data was cut")
+				.isEqualTo(sent);
+	}
+
+	/** The other side of the real ceiling, through the public entry: a stream that inflates to just under it ends where it ends. */
+	@Test
+	void theRealCeilingLetsAStreamThatInflatesToJustUnderItEndAndTheTextAfterItGo() {
+		byte[] png = png();
+		byte[] head = Arrays.copyOf(png, 33);
+		byte[] iend = Arrays.copyOfRange(png, png.length - 12, png.length);
+		byte[] stream = zerosAsRepeatedMatches((WithoutMetadata.INFLATED_CEILING - 1) / 258);
+		byte[] sent = concat(head, chunk("IDAT", concat(stream, said())), iend);
+
+		assertThat(says(sent, WHERE_AND_WITH_WHAT)).isTrue();
+		assertThat(WithoutMetadata.of(sent, "image/png")).as("a stream under the ceiling was not followed to its end")
+				.isEqualTo(concat(head, chunk("IDAT", stream), iend));
+	}
+
+	/**
+	 * A zlib stream of one zero byte followed by {@code copies} matches of 258 bytes at distance 1, in one
+	 * fixed-Huffman block: it inflates to {@code 1 + 258 * copies} zeros from about 13 bits per 258 bytes.
+	 */
+	private static byte[] zerosAsRepeatedMatches(long copies) {
+		java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+		long[] bits = { 0 };
+		int[] count = { 0 };
+		java.util.function.BiConsumer<Integer, Integer> put = (value, width) -> {
+			/* Huffman codes go out most significant bit first. */
+			for (int i = width - 1; i >= 0; i--) {
+				bits[0] |= (long) ((value >> i) & 1) << count[0]++;
+
+				if (count[0] == 8) {
+					out.write((int) bits[0]);
+					bits[0] = 0;
+					count[0] = 0;
+				}
+			}
+		};
+
+		out.write(0x78);
+		out.write(0x01);
+		put.accept(1, 1);
+		/* The block type, 01, is a number of two bits and goes least significant bit first. */
+		put.accept(1, 1);
+		put.accept(0, 1);
+		put.accept(0x30, 8);
+
+		for (long i = 0; i < copies; i++) {
+			put.accept(0xC5, 8);
+			put.accept(0, 5);
+		}
+
+		put.accept(0, 7);
+
+		if (count[0] > 0) {
+			out.write((int) bits[0]);
+		}
+
+		long total = 1 + 258 * copies;
+		long b = total % 65521;
+		out.write((int) (b >> 8));
+		out.write((int) b);
+		out.write(0);
+		out.write(1);
+		return out.toByteArray();
 	}
 
 	/* ------------------------------------------------------------------------------------------------
