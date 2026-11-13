@@ -29,9 +29,10 @@ import { setupUser } from '../../test/user'
  * tree in `data/aFailedReadIsSaid.test.ts`, so a second form with a list is a decision the day it is
  * written. The first is a measurement and is only dated here.
  *
- * <p>That form has three roads in and the list is of use on one: a new result, where the name is free.
- * A waiting result opened again (`?ponovo=`) and a counted one being corrected (`?ispravka=`) hold the
- * name, so nothing is typed into it and a list is not drawn. The event-page form offers no list at
+ * <p>That form has three roads in and the list is of use on two: a new result, where the name is free,
+ * and a run sent back and opened again (`?ponovo=`), whose event and race the member may change
+ * (PDL 10.10.2026). A counted one being corrected (`?ispravka=`) holds the name, so nothing is typed
+ * into it and a list is not drawn. The event-page form offers no list at
  * all: its race is the row pressed, and its read of the races goes through `Resource`, which already
  * says it. Each of the four is a case below.
  *
@@ -415,7 +416,7 @@ describe('where the keyboard is when the list that could not be read has been re
 })
 
 describe('the other forms that send a result, when the races could not be read', () => {
-  it('does not offer the list on a run sent back and opened again, because the name is held there', async () => {
+  it('says it on a run sent back and opened again, because the name is the member\'s to change there', async () => {
     theServerAnswers({ '/api/races': failing })
     /* A run a moderator sent back, off the served list of the asker's own runs
        (`test/mock/me/result-submissions.json`, the run of a race the calendar does not hold):
@@ -423,19 +424,19 @@ describe('the other forms that send a result, when the races could not be read',
        sent back. */
     renderAt('/sr/rezultat/novi?ponovo=40', 'competitor', ME, undefined, TODAY)
 
-    /* The road that holds the name, which is what is drawn once the list has the run. */
+    /* The road that lets the name be changed (PDL 10.10.2026, "Odbijena prijava nije verifikovana"),
+       which is what is drawn once the list has the run. */
     await screen.findByText(/Ispravljaš rezultat koji je odbijen/, undefined, SOON)
 
     const box = nameBox()
 
-    expect(box).toHaveAttribute('aria-disabled', 'true')
-    /* Nothing is typed into a held box, so a list is of no use to it and a sentence about one would
-       offer a button for something that cannot be used. */
-    await waitFor(() => {
-      expect(timesAsked('/api/races')).toBeGreaterThan(0)
-    }, SOON)
-    expect(screen.queryByRole('alert')).toBeNull()
-    expect(retryButtons()).toHaveLength(0)
+    expect(box).not.toHaveAttribute('aria-disabled')
+    /* A box that takes a name has a list, so the sentence about one stands beside it with the
+       button that asks again, exactly as on a new result. */
+    const field = within(fieldOf(box))
+
+    expect(await field.findByRole('alert', undefined, SOON)).toHaveTextContent(sr.data.error)
+    expect(field.getByRole('button', { name: RETRY })).toBeVisible()
   }, SLOW)
 
   it('does not offer it on the correction of a counted result either', async () => {

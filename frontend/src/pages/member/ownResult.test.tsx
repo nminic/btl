@@ -262,13 +262,13 @@ describe('a run a moderator sent back', () => {
     ).toBeNull()
   }, SLOW)
 
-  it('opens the form on the run, its race held and its day open, where the calendar does not hold the race', async () => {
-    /* „Sve osim trke" (owner, 27.08.2026): sent again, a run keeps the race it named. A race the
-       calendar does not hold is the member's to describe in full, so the day and every figure stay
-       his to change; the case below is the other side. Reachable and refused rather than switched
-       off, which is the portal's way of locking anything (PDL: „Odbijeno, ne ugašeno"). What holds
-       beneath the lock, when the box is made to say another race, is read off the request in
-       `resultToTheServer.test.tsx`. */
+  it('opens the form on the run, its race open and its day open, where the calendar does not hold the race', async () => {
+    /* A run that was sent back is not a verified one, so its event and its race are the member's to
+       change (owner, 10.10.2026, PDL „Odbijena prijava nije „verifikovana""; „sve osim trke" of
+       27.08.2026 is the rule for a counted result, which the case after the next one holds). A race
+       the calendar does not hold is the member's to describe in full, so the day and every figure
+       stay his to change as well; the case below is the other side. What goes to the server when
+       the box says another race is read off the request in `resultToTheServer.test.tsx`. */
     const user = setupUser()
 
     answering(() => [
@@ -296,8 +296,9 @@ describe('a run a moderator sent back', () => {
     const race = screen.getByLabelText(/^Naziv trke/)
 
     expect(race).toHaveValue('Trka oko Palićkog jezera')
-    expect(race).toHaveAttribute('aria-disabled', 'true')
-    expect(race).toHaveAttribute('readonly')
+    expect(race).not.toHaveAttribute('aria-disabled')
+    expect(race).not.toHaveAttribute('readonly')
+    expect(screen.getByLabelText(/^Događaj/)).not.toHaveAttribute('readonly')
     expect(screen.getByLabelText(/^Datum trke/)).toHaveValue(fieldDate('2026-08-01'))
 
     for (const open of [/^Datum trke/, /^Dužina/, /^Uspon/, /^Spust/, /^Sati/, /^Minuti/, /^Sekunde/]) {
@@ -340,11 +341,13 @@ describe('a run a moderator sent back', () => {
       await user.click(await screen.findByRole('link', { name: `Ispravi i pošalji ponovo: ${name}` }, SOON))
       await screen.findByText(/Ispravljaš rezultat koji je odbijen/, undefined, SOON)
 
-      for (const locked of [/^Naziv trke/, /^Datum trke/, ...held]) {
+      for (const locked of [/^Datum trke/, ...held]) {
         expect(screen.getByLabelText(locked), String(locked)).toHaveAttribute('readonly')
       }
 
-      for (const free of open) {
+      /* And the name of the race is not among them: the day and the figures are held for as long as
+         the race is the one it was (the link the form opens with), and the name is his to change. */
+      for (const free of [/^Naziv trke/, ...open]) {
         expect(screen.getByLabelText(free), String(free)).not.toHaveAttribute('readonly')
       }
     },
