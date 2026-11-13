@@ -67,6 +67,71 @@ const css = () => readFileSync(join(process.cwd(), 'src/components/ColumnChart.c
 const charsOf = () =>
   screen.getByRole('region', { name: 'Grafikon' }).style.getPropertyValue('--count-chars')
 
+/**
+ * The `transition` the stylesheet gives an element, by the cascade and not by
+ * the text of one rule: every rule outside a media query whose selector can
+ * match an element with these classes inside a `.colchart`, ordered by how many
+ * class names the selector has and then by where it stands, the last one
+ * winning. jsdom applies no stylesheet, so this is read off the file.
+ */
+function winningTransition(classes: string[], reduced = false): string | undefined {
+  const source = css().replace(/\/\*[\s\S]*?\*\//g, '')
+  const found: { weight: number; at: number; value: string }[] = []
+  /* Where each `@media` block starts and ends, by counting braces: its rules are
+     matched by the pattern below on their own, with nothing left to say they
+     were inside one. */
+  const media: [number, number][] = []
+  for (const start of source.matchAll(/@media[^{]*\{/g)) {
+    let depth = 1
+    let at = start.index + start[0].length
+    while (depth > 0 && at < source.length) {
+      depth += source[at] === '{' ? 1 : source[at] === '}' ? -1 : 0
+      at += 1
+    }
+    media.push([start.index, at])
+  }
+  const rule = /([^{}]+)\{([^{}]*)\}/g
+  let match: RegExpExecArray | null
+  while ((match = rule.exec(source)) !== null) {
+    const selectors = (match[1] ?? '').trim()
+    const inMedia = media.some(([from, to]) => match !== null && match.index > from && match.index < to)
+    const value = /(?:^|;|\s)transition:\s*([^;]+)/.exec(match[2] ?? '')?.[1]
+    if (value === undefined || inMedia !== reduced) continue
+    for (const one of selectors.split(',')) {
+      const parts = one.trim().split(/\s+/)
+      const names = parts.map((part) => part.match(/\.[\w-]+/g) ?? [])
+      const last = names[names.length - 1] ?? []
+      const ancestors = names.slice(0, -1).flat()
+      if (
+        last.length > 0 &&
+        last.every((name) => classes.includes(name.slice(1))) &&
+        ancestors.every((name) => name === '.colchart')
+      ) {
+        found.push({ weight: names.flat().length, at: match.index, value })
+      }
+    }
+  }
+  found.sort((a, b) => a.weight - b.weight || a.at - b.at)
+  return found[found.length - 1]?.value
+}
+
+describe('the pin and the cascade', () => {
+  const pin = ['colchart__count', 'colchart__count--pin']
+
+  it('slides with the face: the winning transition carries the height and the turn', () => {
+    expect(winningTransition(pin)).toMatch(/inset-block-end var\(--turn\)/)
+    expect(winningTransition(pin)).toMatch(/opacity var\(--fade\)/)
+  })
+
+  it('stands still for whoever asked for less movement, the same way', () => {
+    expect(winningTransition(pin, true)).toBe('none')
+  })
+
+  it('is read the way the face is: the plain count keeps its fade only', () => {
+    expect(winningTransition(['colchart__count'])).toBe('opacity var(--fade)')
+  })
+})
+
 describe('the number of races on a column', () => {
   it('is a pin on the face and not a number in the bar', () => {
     draw([counting('12')])
