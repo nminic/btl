@@ -507,6 +507,20 @@ class WithoutMetadataTest {
 				.isEqualTo(sent);
 	}
 
+	/** The other side of the real ceiling, through the public entry: a stream that inflates to just under it ends where it ends. */
+	@Test
+	void theRealCeilingLetsAStreamThatInflatesToJustUnderItEndAndTheTextAfterItGo() {
+		byte[] png = png();
+		byte[] head = Arrays.copyOf(png, 33);
+		byte[] iend = Arrays.copyOfRange(png, png.length - 12, png.length);
+		byte[] stream = zerosAsRepeatedMatches((WithoutMetadata.INFLATED_CEILING - 1) / 258);
+		byte[] sent = concat(head, chunk("IDAT", concat(stream, said())), iend);
+
+		assertThat(says(sent, WHERE_AND_WITH_WHAT)).isTrue();
+		assertThat(WithoutMetadata.of(sent, "image/png")).as("a stream under the ceiling was not followed to its end")
+				.isEqualTo(concat(head, chunk("IDAT", stream), iend));
+	}
+
 	/**
 	 * A zlib stream of one zero byte followed by {@code copies} matches of 258 bytes at distance 1, in one
 	 * fixed-Huffman block: it inflates to {@code 1 + 258 * copies} zeros from about 13 bits per 258 bytes.
