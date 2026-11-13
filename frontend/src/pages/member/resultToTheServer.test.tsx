@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 import type { BtlEvent, Race, Result, SentRun } from '../../data/types'
 import { renderAt } from '../../test/render'
@@ -927,9 +927,9 @@ describe('a run sent back, sent again', () => {
 
   it('goes again on the event he chose, by its key, and with no town of its own', async () => {
     /* A run sent on an event of the calendar he chose carries the event's key and no town (V66, V67),
-       and sent again it names the same event, read off the run like its race and not off a box. The
-       served town is the EVENT's, which the form holds but must not send: the route refuses a town
-       beside a chosen event (`theRaceIsNamedTwice`). */
+       and sent again it names the same event, because the form opens with that event chosen
+       (`linksAtTheStart`) and he leaves it. The served town is the EVENT's, which the form holds but
+       must not send: the route refuses a town beside a chosen event (`theRaceIsNamedTwice`). */
     const user = setupUser()
 
     listeningWith([
@@ -947,7 +947,7 @@ describe('a run sent back, sent again', () => {
     renderAt('/sr/rezultat/novi?ponovo=81', 'competitor', ME, undefined, '2027-08-23')
 
     await screen.findByText(/Ispravljaš rezultat koji je odbijen/, undefined, SOON)
-    expect(screen.getByLabelText(/^Događaj/)).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByLabelText(/^Događaj/)).not.toHaveAttribute('aria-disabled')
     expect(screen.queryByLabelText('Mesto'), 'a run on a chosen event asks for a town').toBeNull()
 
     await user.clear(screen.getByLabelText(/Link/))
@@ -966,10 +966,12 @@ describe('a run sent back, sent again', () => {
     }
   }, SLOW)
 
-  it('takes an event chosen from the list for a run sent before there was one, and keeps its race', async () => {
-    /* A run sent before V66 names no event and holds its race. Choosing an event for it emptied the
-       race nobody could type into again, and the event chosen was not sent, since only the run was
-       read (review of PR 581). Now the race stays and the event's key goes. */
+  it('takes an event chosen from the list for a run sent before there was one, and the race typed again', async () => {
+    /* A run sent before V66 names no event. Choosing an event for it made the race nobody could type
+       into empty, and the event chosen was not sent, since only the run was read (review of PR 581).
+       Since 10.10.2026 the race is the member's to change (PDL „Odbijena prijava nije
+       „verifikovana""): choosing an event empties the race box as it does on a new result, because
+       its list is now that event's, and what is typed there goes with the event's key. */
     const user = setupUser()
 
     listeningWith([aRun(83, { raceId: null, raceName: 'Stara staza', raceDate: '2027-06-02', raceKind: 'free', eventName: null })])
@@ -979,7 +981,11 @@ describe('a run sent back, sent again', () => {
     await user.type(screen.getByLabelText(/^Događaj/), 'beogradski')
     await user.click(must(screen.getAllByRole('button', { name: /Beogradski maraton – / })[0], 'the event'))
 
-    expect(screen.getByLabelText(/^Naziv trke/), 'the held race was emptied').toHaveValue('Stara staza')
+    const race = screen.getByLabelText(/^Naziv trke/)
+
+    expect(race, 'the race follows the event chosen').toHaveValue('')
+    expect(race).not.toHaveAttribute('readonly')
+    await user.type(race, 'Stara staza')
 
     await send(user)
 
@@ -1102,7 +1108,7 @@ describe('a run sent back, sent again', () => {
   )
 
   it(
-    'goes again as the race it described where the calendar does not hold one, whatever the box says',
+    'goes again as the race it described where the calendar does not hold one, when the names are left as they were',
     async () => {
       const user = setupUser()
 
@@ -1133,12 +1139,9 @@ describe('a run sent back, sent again', () => {
 
       await screen.findByText(/Ispravljaš rezultat koji je odbijen/, undefined, SOON)
 
-      /* THE NAME FORCED PAST ITS LOCK, which is the half beneath it: whatever reaches the form, the
-         run goes as the race it was sent with (owner, 27.08.2026: „sve osim trke"). The lock is
-         `ownResult.test.tsx`'s. */
-      fireEvent.change(screen.getByLabelText(/^Naziv trke/), {
-        target: { value: 'Sasvim druga trka' },
-      })
+      /* THE NAMES LEFT, which is the half that has not moved: a member who corrects only the link
+         sends the race the run was sent with, in the words it was sent with. The names are open
+         (`ownResult.test.tsx`) and the case below is the member who changes them. */
       await user.clear(screen.getByLabelText(/Link/))
       await user.type(screen.getByLabelText(/Link/), 'https://primer.rs/ispravno')
       await send(user)
@@ -1168,6 +1171,142 @@ describe('a run sent back, sent again', () => {
         link: 'https://primer.rs/ispravno',
         comment: 'Startni broj 7',
       })
+    },
+    SLOW,
+  )
+
+  it(
+    'goes again under the names he changed, and not the ones the run was sent with',
+    async () => {
+      /* PDL 10.10.2026, owner, „Odbijena prijava nije „verifikovana"": a member who chose the wrong
+         race sends the run again with another. The two names he types are not the two the run was
+         sent with, so a body read off the run (the other source of the same words) fails here. */
+      const user = setupUser()
+
+      listeningWith([
+        aRun(80, {
+          raceName: 'Trka oko Palićkog jezera',
+          raceDate: '2027-08-01',
+          raceKind: 'free',
+          city: 'Subotica',
+          country: 'RS',
+        }),
+      ])
+      renderAt('/sr/rezultat/novi?ponovo=80', 'competitor', ME, undefined, '2027-08-23')
+
+      await screen.findByText(/Ispravljaš rezultat koji je odbijen/, undefined, SOON)
+
+      await user.clear(screen.getByLabelText(/^Događaj/))
+      await user.type(screen.getByLabelText(/^Događaj/), 'Nov događaj')
+      await user.clear(screen.getByLabelText(/^Naziv trke/))
+      await user.type(screen.getByLabelText(/^Naziv trke/), 'Druga trka')
+      await send(user)
+
+      await waitFor(() => {
+        expect(writes()).toHaveLength(1)
+      }, SOON)
+
+      const body = bodyOf(must(writes()[0], 'the request'))
+
+      expect([body.eventName, body.raceName]).toEqual(['Nov događaj', 'Druga trka'])
+      for (const beside of ['raceId', 'eventId']) {
+        expect(Object.hasOwn(body, beside), `${beside} travelled beside a typed race`).toBe(false)
+      }
+    },
+    SLOW,
+  )
+
+  it(
+    'goes again as the race of the calendar he chose instead of the one that was sent back',
+    async () => {
+      /* The run was sent back on the second race of the event (126, the 4th of April), and the member
+         chooses the first (125, the 3rd): the list is newest first, so the one he chooses is the
+         SECOND row. A body that carried the id of the run that was sent back, or the first row of the
+         list, fails here. */
+      const user = setupUser()
+
+      listeningWith([
+        aRun(95, {
+          raceId: 126,
+          raceName: 'Beogradski maraton',
+          raceDate: '2027-04-04',
+          raceKind: 'length',
+          distanceKm: 42.2,
+          eventId: 1133,
+          eventName: 'Beogradski maraton',
+        }),
+      ])
+      renderAt('/sr/rezultat/novi?ponovo=95', 'competitor', ME, undefined, '2027-08-23')
+
+      await screen.findByText(/Ispravljaš rezultat koji je odbijen/, undefined, SOON)
+      await user.clear(screen.getByLabelText(/^Naziv trke/))
+      await user.type(screen.getByLabelText(/^Naziv trke/), 'Beogradski')
+
+      const rows = await screen.findAllByRole('button', { name: /Beogradski maraton – / })
+
+      expect(rows.length, 'one race cannot tell a row from the first row').toBeGreaterThan(1)
+      await user.click(must(rows[1], 'the second race offered'))
+      await send(user)
+
+      await waitFor(() => {
+        expect(writes()).toHaveLength(1)
+      }, SOON)
+
+      const body = bodyOf(must(writes()[0], 'the request'))
+
+      expect(body.raceId).toBe(125)
+      for (const beside of ['raceName', 'raceKind', 'placeId', 'city', 'country', 'day', 'eventId', 'eventName']) {
+        expect(Object.hasOwn(body, beside), `${beside} travelled beside a raceId`).toBe(false)
+      }
+    },
+    SLOW,
+  )
+
+  it(
+    'goes again as a race the calendar does not hold when the name of the race of the calendar is typed over',
+    async () => {
+      /* The link breaks the moment the name is edited, and what the race filled goes with it: the day
+         and the figures are the member's again, and no id travels with a name that is not the race's. */
+      const user = setupUser()
+
+      listeningWith([
+        aRun(96, {
+          raceId: 126,
+          raceName: 'Beogradski maraton',
+          raceDate: '2027-04-04',
+          raceKind: 'length',
+          distanceKm: 42.2,
+          eventId: 1133,
+          eventName: 'Beogradski maraton',
+        }),
+      ])
+      renderAt('/sr/rezultat/novi?ponovo=96', 'competitor', ME, undefined, '2027-08-23')
+
+      await screen.findByText(/Ispravljaš rezultat koji je odbijen/, undefined, SOON)
+      await user.clear(screen.getByLabelText(/^Naziv trke/))
+      await user.type(screen.getByLabelText(/^Naziv trke/), 'Neka moja trka')
+
+      for (const handedBack of [/^Datum trke/, /^Dužina/, /^Uspon/, /^Spust/]) {
+        const box = screen.getByLabelText(handedBack)
+
+        expect(box, String(handedBack)).toHaveValue('')
+        expect(box, String(handedBack)).not.toHaveAttribute('readonly')
+      }
+
+      await user.type(screen.getByLabelText(/^Datum trke/), '04042027')
+      await user.type(screen.getByLabelText(/^Dužina/), '10')
+      await user.type(screen.getByLabelText(/^Uspon/), '100')
+      await user.type(screen.getByLabelText(/^Spust/), '100')
+      await send(user)
+
+      await waitFor(() => {
+        expect(writes()).toHaveLength(1)
+      }, SOON)
+
+      const body = bodyOf(must(writes()[0], 'the request'))
+
+      expect([body.raceName, body.eventId, body.distanceKm]).toEqual(['Neka moja trka', 1133, 10])
+      expect(Object.hasOwn(body, 'raceId'), 'the id of the race travelled with a name that is not its').toBe(false)
     },
     SLOW,
   )

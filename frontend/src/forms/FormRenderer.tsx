@@ -205,6 +205,17 @@ type Props = {
    */
   fixed?: string[]
   /**
+   * LINKS THE FORM OPENS ALREADY MADE, in the shape `led` keeps them: per field, what its entry filled
+   * and what that entry holds.
+   *
+   * <p>For a form that opens on a record that was once made by choosing from a list, and is to behave
+   * as if the choice had just been made: the boxes the entry holds stay held, and typing over the name
+   * empties what it filled, so a name changed by the reader cannot stand over the old entry's
+   * identity. Left out, no link is made, which is every other form (`led` starts empty). Not derived
+   * from the list here, because a list may not have arrived when the form opens.
+   */
+  startsLinked?: Record<string, { filled: string[]; held: string[] }>
+  /**
    * WHETHER THE BUTTON THAT SENDS IS HELD, as a render can see it: a send of the screen's own is out
    * and the press waits for it.
    *
@@ -1071,6 +1082,7 @@ export function FormRenderer({
   follows = {},
   linksWhenTyped = [],
   fixed = [],
+  startsLinked = {},
   sendIsHeld = false,
   sendIsOut,
   onChange,
@@ -1166,7 +1178,7 @@ export function FormRenderer({
   /* The fields that were filled from a chosen entry, and are therefore not this
      reader's to change. Names and not a flag per field, because what is locked is
      decided by the entry that was chosen and differs from one list to the next. */
-  const [led, setLed] = useState<Record<string, { filled: string[]; held: string[] }>>({})
+  const [led, setLed] = useState<Record<string, { filled: string[]; held: string[] }>>(startsLinked)
   /* Locked is what any entry chosen in any list holds; emptied when a link breaks is everything
      that entry filled. Kept per field, so typing into one list breaks that list's link and not
      another's: a race named for himself on an event he chose keeps the event. */

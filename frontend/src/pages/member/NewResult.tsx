@@ -100,11 +100,15 @@ function filledFromCounted(one: Result): FormValues {
 function filledFrom(one: SentRun): FormValues {
   return {
     /* The event the run named (V66): the name the server answers, and the key where he chose an
-       event of the calendar for a run it does not hold, so the run goes again on the same event and
-       carries no town of its own (V67). A run of the calendar has its event through its race, and
-       a run sent before V66 names none, so he names one now. */
+       event of the calendar, so the run goes again on the same event and, where it holds no race of
+       the calendar, carries no town of its own (V67). A run sent before V66 names none, so he names
+       one now. */
     eventName: one.eventName ?? '',
-    eventId: one.raceId === null && one.eventId !== null ? String(one.eventId) : '',
+    eventId: one.eventName !== null && one.eventId !== null ? String(one.eventId) : '',
+    /* And which race of the calendar it was, which no box draws (`racesToOffer.ts`, `fills`): the form
+       opens as if the race had just been chosen from the list (`linksAtTheStart`), so the member may
+       leave it or choose another. */
+    raceId: one.raceId === null ? '' : String(one.raceId),
     raceName: one.raceName,
     date: fieldDate(one.raceDate),
     /* The kind and the place come back with everything else. Left out, they are
@@ -175,6 +179,32 @@ function outsideTheSeasons(day: unknown, seasons: number[]): boolean {
   const year = /\b(\d{4})\b/.exec(String(day))?.[1]
 
   return year !== undefined && !seasons.includes(Number(year))
+}
+
+/**
+ * THE LINKS A RUN SENT BACK OPENS WITH, which is what choosing its event and its race from the lists
+ * would have made (`FormRenderer`, `startsLinked`).
+ *
+ * <p>Owner, 10.10.2026 (PDL, „Odbijena prijava nije „verifikovana""): sent again, a run sent back may
+ * have its event and its race changed, by the rules the form already has: chosen from those that
+ * exist, or a new one typed. So it opens as a run whose names were just chosen: the day and the
+ * figures the race fixes stay held while the race is the one it was, and typing over a name empties
+ * what that name filled, which is what stops a changed name from standing over the old race's
+ * identity.
+ *
+ * <p>An event is linked only where the run names one that is the calendar's, and a race only where
+ * the calendar holds it. A run that typed its event, or whose race the calendar does not hold, opens
+ * with nothing to hold.
+ */
+function linksAtTheStart(one: SentRun): Record<string, { filled: string[]; held: string[] }> {
+  const raceFixes = ['raceId', 'date', ...heldByTheRace(raceKind(one.raceKind))]
+
+  return {
+    ...(one.eventName !== null && one.eventId !== null
+      ? { eventName: { filled: ['eventId', 'date'], held: ['eventId'] } }
+      : {}),
+    ...(one.raceId === null ? {} : { raceName: { filled: raceFixes, held: raceFixes } }),
+  }
 }
 
 function heldByTheRace(kind: RaceKind): string[] {
@@ -317,9 +347,8 @@ function TheForm({ me }: { me: string }) {
   const fixingOne = waiting
     ? undefined
     : counted.find((one) => String(one.id) === fixing && one.memberNumber === me)
-  /* Whichever of the two this is, when it is either: the race is read off the
-     record on both roads in, and one name for that saves the next reader from
-     having to notice that there are two. */
+  /* Whichever of the two this is, when it is either: whether the form was opened on a record at
+     all, which is what the confirmation asks. */
   const named = correcting ?? fixingOne
   /* Whether this form corrects a result that is already COUNTED, on either road in: the counted
      result itself (`?ispravka=`), or a correction of it that a moderator sent back and the member
@@ -345,9 +374,11 @@ function TheForm({ me }: { me: string }) {
    * `amendsResultId`, and what `ResultWriteApi.his` reads `result` by.
    * <li><b>A run sent back that corrected nothing</b> is a run, sent again through the route
    * every run takes (the owner's choice of 10.10.2026, in the record's wording: „sada ponovno
-   * slanje odbijene prijave preko postojećih ruta"). Its race is the one the run named, read off
-   * the run and not off a box: a race in the calendar goes by its id and nothing else about it,
-   * and a race the calendar does not hold goes by the name the run carried.
+   * slanje odbijene prijave preko postojećih ruta"). <b>Its event and its race are read off the
+   * boxes, like a new run's</b>, because the owner let the member change both when a run is sent
+   * back (PDL 10.10.2026, „Odbijena prijava nije „verifikovana""): the form opens with the race the
+   * run named already chosen (`linksAtTheStart`), so a race in the calendar goes by its id and
+   * nothing else about it, and a race the calendar does not hold goes by the name in the box.
    * <li><b>A new run</b> goes by whether the member picked a race out of the list, which is the
    * one thing that puts an id in the values (`racesToOffer.ts`).
    * </ul>
@@ -370,36 +401,26 @@ function TheForm({ me }: { me: string }) {
       return theCorrectionWasSentIn(corrects, { ...figures, ...proof })
     }
 
-    /* The race a run keeps is the one the record already names, and not what the box holds.
-       The box is locked (`fixed` below), so the two agree; read off the record anyway, because a
-       lock is a courtesy to whoever is filling the form in and the rule „sve osim trke" (owner,
-       27.08.2026) has to hold whatever reaches this function. Measured by a review on 28.08.2026,
-       when one road read the box: the locked field changed by other means sent „Sasvim druga
-       trka" into the queue in place of the race the member actually ran. */
+    /* The race is the one the member chose from the list, which is the one thing that puts an id in
+       the values, and a run sent back opens with its own race chosen (`linksAtTheStart`). It is read
+       off the box on this road too since 10.10.2026, when the owner let the member change the names
+       of a run that was sent back; the rule „sve osim trke" (owner, 27.08.2026) is a rule for a
+       counted result, which goes above and never reaches here. */
     const raceId =
-      correcting === undefined
-        ? values.raceId === undefined || values.raceId === ''
-          ? null
-          : Number(values.raceId)
-        : correcting.raceId
+      values.raceId === undefined || values.raceId === '' ? null : Number(values.raceId)
 
     /* THE EVENT, ONE OF TWO WAYS (V66, `ResultWriteApi.Ran`): the key of an event of the calendar he
-       chose, which brings its own town, or the name he typed, which goes with the town he gave. A run
-       sent again that named an event names it again, read off the run and not off a box, like its
-       race; one sent before V66 named none, so the event is the one he names now, chosen or typed
-       (review of PR 581: read off the run alone, a choice made now was dropped). */
+       chose, which brings its own town, or the name he typed, which goes with the town he gave. Read
+       off the boxes on every road, a run sent again included (since 10.10.2026 its event is his to
+       change; review of PR 581 found the other reading dropping a choice made now). */
     const chosenEvent =
-      correcting !== undefined && correcting.eventName !== null
-        ? correcting.eventId
-        : values.eventId === undefined || values.eventId === ''
-          ? null
-          : Number(values.eventId)
+      values.eventId === undefined || values.eventId === '' ? null : Number(values.eventId)
     const theEvent =
       chosenEvent !== null
         ? { eventId: chosenEvent }
         : {
-            /* Off the box, sent again as well: a run that named an event holds the box to that
-               name (`fixed`), and one sent before V66 named none, so what he types is the name. */
+            /* Off the box, sent again as well: what he types is the name, or the name of the run
+               that was sent back where he left it. */
             eventName: String(values.eventName),
             /* The town by name and country, never a `placeId`: `PlaceField` writes those two
                and has no GeoNames mark to give, which is `Registration.tsx`'s own decision
@@ -411,7 +432,7 @@ function TheForm({ me }: { me: string }) {
     return theRunWasSentIn(
       raceId === null
         ? {
-            raceName: named?.raceName ?? String(values.raceName),
+            raceName: String(values.raceName),
             /* `day` and not `date`, which is what the record on the server calls it. As it is
                handed: the form has already put the day in the shape a record keeps it in
                (`forms/records.ts`, `storedDates`), and converted here as well it would be
@@ -586,36 +607,28 @@ function TheForm({ me }: { me: string }) {
                   ? { raceKind: 'length' }
                   : filledFromCounted(fixingOne)
             }
-            /* Everything except which race it was (owner, 27.08.2026: „sve osim
-               trke"). Sent again, a run keeps the race it named, and a race chosen wrongly
-               is deleted and entered anew, which is what the list beside this offers.
+            /* A COUNTED RESULT HOLDS ITS NAMES AND ITS DAY, and a run sent back holds nothing of the
+               sort. „Naziv događaja i naziv trke se ne menjaju kad je rezultat verifikovan" (owner,
+               04.09.2026), and a run sent back is not verified: „Odbijena prijava nije
+               „verifikovana"" (owner, 10.10.2026, PDL), so the member who chose the wrong race may
+               send it again with another, chosen from those that exist or typed as a new one. What
+               the race fixes stays held through the link the form opens with (`startsLinked`), as
+               it is on a new run.
+
+               **A correction of a counted result sent back is a correction of a verified one**
+               (`corrects`), so it is held like the correction it is: the six fields it changes are
+               the numbers and the proof (PDL 04.09.2026), and the route that takes it
+               (`PUT /api/results/{id}`) has no event and no race in it.
 
                **And the day, on a correction of a COUNTED result, which is the
                coordinator's reasoning of 02.10.2026 and not the owner's word.** The route that
-               takes it (`PUT /api/results/{id}`, `ResultWriteApi.Correction`) reads the three
-               measures, the time, a link and a comment and has no day in it, so a day changed
-               here was dropped in silence while the member was told the change went in. A box the
-               server will not take must not look like one it will. The owner's decision names the
-               six fields a correction changes (PDL 04.09.2026) and the day is not among them.
-
-               **And on a run of the calendar sent again, the day and every figure the race
-               fixes**, derived on 10.10.2026 for the same reason (`heldByTheRace`): the race
-               answers for them on the server. A run the calendar does not hold keeps its day
-               and its figures open, because there the member answers for all of it. */
-            fixed={
-              correctsACountedResult
-                ? ['eventName', 'raceName', 'date']
-                : correcting === undefined
-                  ? undefined
-                  : [
-                      /* The event goes with the race (`filledFrom`), unless the run named none
-                         because it was sent before V66: then he names one now. */
-                      ...(correcting.eventName === null ? [] : ['eventName']),
-                      ...(correcting.raceId === null
-                        ? ['raceName']
-                        : ['raceName', 'date', ...heldByTheRace(raceKind(correcting.raceKind))]),
-                    ]
-            }
+               takes it (`ResultWriteApi.Correction`) reads the three measures, the time, a link
+               and a comment and has no day in it, so a day changed here was dropped in silence
+               while the member was told the change went in. A box the server will not take must
+               not look like one it will. The owner's decision names the six fields a correction
+               changes (PDL 04.09.2026) and the day is not among them. */
+            fixed={correctsACountedResult ? ['eventName', 'raceName', 'date'] : undefined}
+            startsLinked={correcting === undefined || correctsACountedResult ? undefined : linksAtTheStart(correcting)}
             /* THE DAY IS HELD TO THE SEASONS OPEN FOR A REPORT, on the screen as the server holds it
                (`theRaceIsOutsideTheSeason`), in the owner's approved words (PDL P9, 19.10.2026,
                „Reči forme člana i moderatorovog ekrana": „Datum mora da bude u tekućoj sezoni.").
