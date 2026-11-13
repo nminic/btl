@@ -69,7 +69,7 @@ const charsOf = () =>
 
 /**
  * The `transition` the stylesheet gives an element, by the cascade and not by
- * the text of one rule: every rule outside a media query whose selector can
+ * the text of one rule: every rule (those inside a media query only when asked for) whose selector can
  * match an element with these classes inside a `.colchart`, ordered by how many
  * class names the selector has and then by where it stands, the last one
  * winning. jsdom applies no stylesheet, so this is read off the file.
@@ -96,7 +96,7 @@ function winningTransition(classes: string[], reduced = false): string | undefin
     const selectors = (match[1] ?? '').trim()
     const inMedia = media.some(([from, to]) => match !== null && match.index > from && match.index < to)
     const value = /(?:^|;|\s)transition:\s*([^;]+)/.exec(match[2] ?? '')?.[1]
-    if (value === undefined || inMedia !== reduced) continue
+    if (value === undefined || (inMedia && !reduced)) continue
     for (const one of selectors.split(',')) {
       const parts = one.trim().split(/\s+/)
       const names = parts.map((part) => part.match(/\.[\w-]+/g) ?? [])
