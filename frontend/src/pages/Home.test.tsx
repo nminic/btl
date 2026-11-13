@@ -32,7 +32,8 @@ describe('Home', () => {
     expect(headings).toEqual([
       'Top 10 muškarci',
       'Top 10 žene',
-      expect.stringContaining('Sezona'),
+      /* The counters: the warm-up before the first season, the season from it (owner, 12.11.2026). */
+      expect.stringMatching(/^(Sezona \d{4}\.|Zagrevanje)$/),
       'Priprema, pozor, SAD!',
       'Reč predsednika',
       'BTL kalkulator',
@@ -436,11 +437,14 @@ describe('the season the front page counts', () => {
     vi.stubGlobal('fetch', served)
   })
 
-  it('counts 2027 before it begins, at nought, and calls nothing sample data', async () => {
+  it('counts the warm-up before 2027 begins, and calls nothing sample data', async () => {
+    /* Until 12.11.2026 this was 2027 at nought (owner, 16.10.2026). The owner then asked for the warm-up
+       here before the first season („umesto Sezona 2027. treba da se zove zagrevanje"), counted from all
+       the history; what it counts, and the day it stops, is held in `pages/warmUp.test.tsx`. */
     renderAt('/sr', 'visitor', null, undefined, '2026-10-16')
 
-    expect(await screen.findByRole('heading', { level: 2, name: 'Sezona 2027.' })).toBeVisible()
-    expect(await resultsRow()).toBe('Prijavljenih rezultata: 0 rezultata')
+    expect(await screen.findByRole('heading', { level: 2, name: 'Zagrevanje' })).toBeVisible()
+    expect(await resultsRow()).not.toBe('Prijavljenih rezultata: 0 rezultata')
     expect(screen.queryByText(/probni podaci/)).not.toBeInTheDocument()
   }, SLOW)
 

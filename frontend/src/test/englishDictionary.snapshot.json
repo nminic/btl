@@ -314,6 +314,7 @@
     "sponsorOfTheDay": "Sponsor of the day",
     "partners": "Sponsors and partners",
     "noneYet": "No race of this distance has been run this season yet.",
+    "warmUpNoneYet": "There are no races of this length in the warm-up.",
     "turning": "Most races by distance",
     "pauseTurning": "Stop the turning",
     "resumeTurning": "Resume the turning",
@@ -490,6 +491,7 @@
     "men": "Men",
     "women": "Women",
     "season": "Season",
+    "warmUp": "Warm-up",
     "myRow": "your row",
     "categoryFilter": "Category",
     "allCategories": "All",
@@ -558,6 +560,7 @@
     },
     "pairs": "Best racing pairs",
     "pairsNone": "No racing pair has a race in common yet this season.",
+    "warmUpPairs": "No racing pair has a race in common in the warm-up.",
     "sharedRaces": {
       "one": "{count} race in common",
       "few": "{count} races in common",
@@ -565,6 +568,7 @@
     },
     "progress": "Best progress",
     "progressEmpty": "Nobody has improved on the previous season's total yet this season.",
+    "progressFirstSeason": "Competitors' progress is measured only from the {season} season.",
     "bestRaces": "Best single results",
     "kilometers": "Most kilometres",
     "onCourse": "Longest on course",
@@ -579,6 +583,7 @@
       "time": "Time on course"
     },
     "empty": "There is no result at all in this season.",
+    "warmUpEmpty": "There is no result at all in the warm-up.",
     "place": "{position}. place"
   },
   "calendar": {

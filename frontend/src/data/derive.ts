@@ -1,5 +1,13 @@
 import { categoryCodeFor, categoryLabel } from './categories'
-import { boardsAreToppedUp, FIRST_SEASON, nextSeasonOnOffer, seasonHasBegun, seasonShown } from './season'
+import {
+  boardsAreToppedUp,
+  FIRST_SEASON,
+  nextSeasonOnOffer,
+  seasonHasBegun,
+  seasonShown,
+  WARM_UP,
+  type SeasonView,
+} from './season'
 import { DOTS } from './types'
 import type {
   BtlEvent,
@@ -71,6 +79,10 @@ export const EMPTY_TOTALS: Totals = {
  *
  * **A view of a member's own history does not ask this**, and asks `yearOf` instead: the profile,
  * the page of an event and the ducats count what was run, whether or not a season counts it.
+ *
+ * **Since 12.11.2026 a run before 2027 is on a Top list in one place: the warm-up** (`inWarmUp`, PDL
+ * „Zagrevanje"), which the owner set apart from every season: „Ne ulazi ni u top listu tokom zvanične
+ * sezone." So the quotation above still holds for every season, its tables, its Top lists and its awards.
  */
 export function seasonOf(result: Result): number | null {
   return result.inItsSeason ? yearOf(result) : null
@@ -171,6 +183,33 @@ export function standsIn(competitor: Competitor, season: number): boolean {
 /** The year a result was run in, which is what a history is read by (see `seasonOf`). */
 export function yearOf(result: Result): number {
   return Number(result.date.slice(0, 4))
+}
+
+/**
+ * WHETHER THE WARM-UP COUNTS A RESULT (`WARM_UP` in `data/season.ts`): every result run before the
+ * league's first season, of every year the portal has and whoever ran it, which is the content the
+ * owner chose on 12.11.2026 („prikaz obuhvata sve rezultate do danas"). A view of history, so it asks
+ * `yearOf` and not `seasonOf`: no season counts any of these runs, and none ever will.
+ */
+export function inWarmUp(result: Result): boolean {
+  return yearOf(result) < FIRST_SEASON
+}
+
+/**
+ * WHETHER A BOARD OF THIS VIEW COUNTS A RESULT, and the one place the Top lists and the turning chart
+ * of the front page ask it. A season counts what its standings count (`standingSeasonOf`), the warm-up
+ * counts what was run before the first season (`inWarmUp`), and **the two never meet**: no result before
+ * 2027 is in a season (`seasonOf`), and no result of a season is before 2027. Owner, 12.11.2026: „Ne
+ * ulazi ni u top listu tokom zvanične sezone."
+ */
+export function onTheBoardsOf(result: Result, view: SeasonView): boolean {
+  return view === WARM_UP ? inWarmUp(result) : standingSeasonOf(result) === view
+}
+
+/** The same question for the counters of the front page, which count a season the way the season counts
+ *  (`seasonOf`, not its standings), and the warm-up as above. */
+export function countedIn(result: Result, view: SeasonView): boolean {
+  return view === WARM_UP ? inWarmUp(result) : seasonOf(result) === view
 }
 
 /** A result that names the member it belongs to. */
@@ -1466,9 +1505,9 @@ function tallyOf(results: Result[]): Map<string, Tally> {
 function seasonRows(
   competitors: Competitor[],
   results: Result[],
-  season: number,
+  season: SeasonView,
 ): TallyRow[] {
-  const tally = tallyOf(results.filter((result) => standingSeasonOf(result) === season))
+  const tally = tallyOf(results.filter((result) => onTheBoardsOf(result, season)))
 
   return competitors.flatMap((competitor) => {
     const own = tally.get(competitor.memberNumber)
@@ -1499,12 +1538,12 @@ const BY_CATEGORY = byLadder<TallyRow>([
 export function topByCategory(
   competitors: Competitor[],
   results: Result[],
-  season: number,
+  season: SeasonView,
   category: RaceCategory,
   limit: number,
 ): Placed<TallyRow>[] {
   const tally = tallyOf(
-    results.filter((result) => standingSeasonOf(result) === season && result.category === category),
+    results.filter((result) => onTheBoardsOf(result, season) && result.category === category),
   )
 
   const columns = competitors.flatMap((competitor) => {
@@ -1665,17 +1704,21 @@ export function topPairs(
   pairs: RacingPair[],
   competitors: Competitor[],
   results: Result[],
-  season: number,
+  season: SeasonView,
   limit: number,
 ): Placed<PairRow>[] {
   const known = new Map(competitors.map((one) => [one.memberNumber, one]))
   /* Only what the standings count (`standingSeasonOf`): „Bodovi člana bez prava rangiranja ne ulaze u
      zbir tima ni para" (owner, 11.08.2026). With his runs gone the two of them ran nothing together,
      so the pair is not on the board at all, and his name is on no list (PDL, 28.10.2026). */
-  const inSeason = results.filter((result) => standingSeasonOf(result) === season)
+  const inSeason = results.filter((result) => onTheBoardsOf(result, season))
 
+  /* A pair is made for a season, and the warm-up is none, so it is drawn for the pairs of the first
+     season, the only ones that exist while it is shown (`warmUpShown`), over the races they ran
+     together before it. Derived, not the owner's word, and said so in the pull request. */
+  const madeFor = season === WARM_UP ? FIRST_SEASON : season
   const rows = pairs
-    .filter((pair) => pair.season === season)
+    .filter((pair) => pair.season === madeFor)
     .flatMap((pair) => {
       const one = known.get(pair.memberNumbers[0])
       const two = known.get(pair.memberNumbers[1])
@@ -1734,7 +1777,7 @@ export function topPairs(
 export function topByKilometers(
   competitors: Competitor[],
   results: Result[],
-  season: number,
+  season: SeasonView,
   limit: number,
 ): Placed<TallyRow>[] {
   const rows = seasonRows(competitors, results, season)
@@ -1757,7 +1800,7 @@ const BY_TIME_ON_COURSE = byLadder<TotalsRow>([
 export function topByTimeOnCourse(
   competitors: Competitor[],
   results: Result[],
-  season: number,
+  season: SeasonView,
   limit: number,
 ): Placed<TotalsRow>[] {
   const rows = seasonRows(competitors, results, season)
@@ -1820,7 +1863,7 @@ const BY_PROGRESS = byLadder<ProgressRow>([
 export function topByProgress(
   competitors: Competitor[],
   results: Result[],
-  season: number,
+  season: SeasonView,
   limit: number,
   /* WHAT EACH MEMBER HELD IN THE SEASON BEFORE AT ITS FREEZE, by member number, where that season is
      frozen (`data/frozen.ts`, `pointsAtTheFreeze`): „najbolji napredak ... uzimaju broj iz snimka" (PDL,
@@ -1828,6 +1871,11 @@ export function topByProgress(
      not move this board. Left out, the season before is read off the results, as it is while it runs. */
   frozenBefore?: Map<string, number>,
 ): Placed<ProgressRow>[] {
+  /* The warm-up is one view and has no season before it to grow from, so nobody is on this board in it. */
+  if (season === WARM_UP) {
+    return []
+  }
+
   /* THE TWO SEASONS ARE ASKED TWO DIFFERENT QUESTIONS, ON PURPOSE. The season of the board is a
      standing, so only what its standings count (`standingSeasonOf`); the season before is the measure
      of where he started, and it counts whether or not he held it with the right to rank (owner,
@@ -1882,11 +1930,11 @@ export type RaceRow = {
 export function bestSingleRaces(
   competitors: Competitor[],
   results: Result[],
-  season: number,
+  season: SeasonView,
   limit: number,
 ): Placed<RaceRow>[] {
   const byNumber = new Map(competitors.map((competitor) => [competitor.memberNumber, competitor]))
-  const inSeason = numbered(results).filter((result) => standingSeasonOf(result) === season)
+  const inSeason = numbered(results).filter((result) => onTheBoardsOf(result, season))
   const totals = totalsByMember(inSeason)
 
   /* The season behind the race, carried on the row: the last two rungs need it,

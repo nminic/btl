@@ -6,8 +6,8 @@ import { useToday } from '../clock/useClock'
 import { ColumnChart, type ChartColumn } from '../components/ColumnChart'
 import { Resource } from '../components/Resource'
 import { SeasonPicker } from '../components/SeasonPicker'
-import { offeredSeason } from '../components/season'
-import { seasonShown } from '../data/season'
+import { offeredSeason, WARM_UP_ADDRESS } from '../components/season'
+import { FIRST_SEASON, seasonShown, WARM_UP, warmUpShown, type SeasonView } from '../data/season'
 import {
   bestSingleRaces,
   seasonsOnOffer,
@@ -75,6 +75,20 @@ const PROGRESS_PLACES = 5
    drugog. **Ima mesta jer se prikazuje pet parova, ne deset.**" A row of a pair is four lines
    tall, so ten of them would be a box twice the height of the two beside it. */
 const PAIR_PLACES = 5
+
+/* AND THREE IN THE LEAGUE'S FIRST SEASON, for the same reason of height (owner, 13.11.2026): „I samo
+   prve sezone, dok se ne proširi visina boksa za najbolji napredak, koristi u obračunu ukupno 3 para
+   umesto 5." The box of progress beside the pairs stands empty and short through all of 2027, since
+   nobody has a season before it to grow from. From 2028 it is five again.
+
+   And three in the warm-up as well, whose box of progress is just as empty and short (owner,
+   13.11.2026): „ZELIM TRI I TAMO JER CE SVAKAKO BITI BEZ PORETKA I NISKA VISINA!" */
+const FIRST_SEASON_PAIR_PLACES = 3
+
+/** How many pairs the board of a view keeps: the one place that number is answered, live and frozen. */
+function pairPlacesIn(view: SeasonView): number {
+  return view === FIRST_SEASON || view === WARM_UP ? FIRST_SEASON_PAIR_PLACES : PAIR_PLACES
+}
 
 /** One cell after the name, and how it is set: words read from the left,
  *  numbers from the right, and a column a telephone does not have room for. */
@@ -299,7 +313,7 @@ function liveSources(
   field: Competitor[],
   results: Result[],
   pairs: RacingPair[],
-  season: number,
+  season: SeasonView,
   frozenBefore: Map<string, number> | undefined,
 ): Sources {
   return {
@@ -307,7 +321,7 @@ function liveSources(
     progress: topByProgress(field, results, season, PROGRESS_PLACES, frozenBefore),
     kilometers: topByKilometers(field, results, season, PLACES),
     onCourse: topByTimeOnCourse(field, results, season, PLACES),
-    pairs: topPairs(pairs, field, results, season, PAIR_PLACES),
+    pairs: topPairs(pairs, field, results, season, pairPlacesIn(season)),
     bestRaces: bestSingleRaces(field, results, season, PLACES),
   }
 }
@@ -352,7 +366,7 @@ function frozenSources(tables: FrozenTables, people: (one: FrozenPerson) => Froz
     onCourse: list('timeOnCourse', null, PLACES).map(placed),
     pairs: [...tables.pairs]
       .sort((left, right) => left.position - right.position)
-      .slice(0, PAIR_PLACES)
+      .slice(0, pairPlacesIn(tables.season))
       .map((one) => {
         const first = people(one.halves[0])
         const second = people(one.halves[1])
@@ -395,7 +409,9 @@ function frozenSources(tables: FrozenTables, people: (one: FrozenPerson) => Froz
   }
 }
 
-type Picker = { seasons: number[]; season: number; fallback: number }
+/** What the control at the top of the page is handed: the seasons, the value it shows and the one it
+ *  opens on, as the address writes them, and whether the warm-up is one of the values. */
+type Picker = { seasons: number[]; value: string; fallback: string; warmUp: boolean }
 
 function Boards({
   competitors,
@@ -417,29 +433,44 @@ function Boards({
      `seasonsOnOffer`). Held against the offer, as on the table, so an address naming
      2019 shows this season under a control that says so. */
   const seasons = useMemo(() => seasonsOnOffer(results, today), [results, today])
-  const fallback = seasonShown(today)
-  const season = Number(offeredSeason(seasonParam ?? '', seasons, String(fallback)))
-  const picker = { seasons, season, fallback }
+  /* AND BEFORE THE FIRST SEASON HAS BEGUN, THE WARM-UP, WHICH IS WHAT THE PAGE OPENS ON (owner, 12.11.2026:
+     „default predsezonsku sezonu na Top Listama", „zove Zagrevanje"; `warmUpShown`). From 1 January 2027
+     it is no value of the control at all, so an address naming it falls back to the season shown, the way
+     an address naming 2019 does. */
+  const warmUp = warmUpShown(today)
+  const fallback = warmUp ? WARM_UP_ADDRESS : String(seasonShown(today))
+  const value = offeredSeason(seasonParam ?? '', seasons, fallback)
+  const picker = { seasons, value, fallback, warmUp }
+
+  if (value === WARM_UP_ADDRESS) {
+    return <LiveBoards competitors={competitors} results={results} pairs={pairs} picker={picker} view={WARM_UP} frozenBefore={undefined} />
+  }
+
+  const season = Number(value)
 
   /* WHICH SEASON IS FROZEN IS THE RECORD'S AND NEVER THE CLOCK'S (PDL, derived 10.10.2026, „za čitanje
      zamrznutosti odlučuje zapis o činu, ne sat"). */
   if (frozenSeasons.includes(season)) {
-    return <FrozenBoards competitors={competitors} picker={picker} />
+    return <FrozenBoards competitors={competitors} picker={picker} season={season} />
   }
 
   /* And the season before frozen: the list of progress measures against what it held at its freeze. */
   if (frozenSeasons.includes(season - 1)) {
-    return <LiveAfterAFrozenSeason competitors={competitors} results={results} pairs={pairs} picker={picker} />
+    return <LiveAfterAFrozenSeason competitors={competitors} results={results} pairs={pairs} picker={picker} season={season} />
   }
 
-  return <LiveBoards competitors={competitors} results={results} pairs={pairs} picker={picker} frozenBefore={undefined} />
+  return <LiveBoards competitors={competitors} results={results} pairs={pairs} picker={picker} view={season} frozenBefore={undefined} />
 }
 
-function FrozenBoards({ competitors, picker }: { competitors: Competitor[]; picker: Picker }) {
-  const state = useFrozenTables(picker.season)
-  const people = useFrozenPeople(competitors, picker.season)
+function FrozenBoards({ competitors, picker, season }: { competitors: Competitor[]; picker: Picker; season: number }) {
+  const state = useFrozenTables(season)
+  const people = useFrozenPeople(competitors, season)
 
-  return <Resource state={state}>{(tables) => <Drawn picker={picker} sources={frozenSources(tables, people)} />}</Resource>
+  return (
+    <Resource state={state}>
+      {(tables) => <Drawn picker={picker} view={season} sources={frozenSources(tables, people)} />}
+    </Resource>
+  )
 }
 
 function LiveAfterAFrozenSeason({
@@ -447,13 +478,15 @@ function LiveAfterAFrozenSeason({
   results,
   pairs,
   picker,
+  season,
 }: {
   competitors: Competitor[]
   results: Result[]
   pairs: RacingPair[]
   picker: Picker
+  season: number
 }) {
-  const state = useFrozenTables(picker.season - 1)
+  const state = useFrozenTables(season - 1)
 
   return (
     <Resource state={state}>
@@ -463,6 +496,7 @@ function LiveAfterAFrozenSeason({
           results={results}
           pairs={pairs}
           picker={picker}
+          view={season}
           frozenBefore={pointsAtTheFreeze(before)}
         />
       )}
@@ -475,12 +509,15 @@ function LiveBoards({
   results,
   pairs,
   picker,
+  view,
   frozenBefore,
 }: {
   competitors: Competitor[]
   results: Result[]
   pairs: RacingPair[]
   picker: Picker
+  /** A season, or the warm-up: what every board below counts (`onTheBoardsOf` in `data/derive.ts`). */
+  view: SeasonView
   frozenBefore: Map<string, number> | undefined
 }) {
   /* Who the boards of this season are drawn from (PDL P11). The article „Top liste" is the
@@ -490,16 +527,18 @@ function LiveBoards({
      The list itself since 21.09.2026, for the reason `Rankings.tsx` writes out. */
   const field = competitors
   const sources = useMemo(
-    () => liveSources(field, results, pairs, picker.season, frozenBefore),
-    [field, results, pairs, picker.season, frozenBefore],
+    () => liveSources(field, results, pairs, view, frozenBefore),
+    [field, results, pairs, view, frozenBefore],
   )
 
-  return <Drawn picker={picker} sources={sources} />
+  return <Drawn picker={picker} view={view} sources={sources} />
 }
 
-function Drawn({ picker, sources }: { picker: Picker; sources: Sources }) {
+function Drawn({ picker, view, sources }: { picker: Picker; view: SeasonView; sources: Sources }) {
   const { locale, t } = useI18n()
-  const { seasons, season, fallback } = picker
+  const { seasons, value, fallback, warmUp } = picker
+  /* The sentences of an empty board say „in this season", which the warm-up is not, so it has its own. */
+  const inWarmUp = view === WARM_UP
 
   /* Held steady across renders (`useProfileLink` is a `useCallback` over the reader and the
      locale), so it may sit in the list below without rebuilding the boards on every render. */
@@ -510,7 +549,7 @@ function Drawn({ picker, sources }: { picker: Picker; sources: Sources }) {
     const profile = (row: { competitor: Competitor } & Frozen) =>
       row.frozen === undefined ? linkTo(row.competitor) : row.frozen.to
     const keyOf = (row: Frozen, live: string) => row.frozen?.key ?? live
-    const noResults = t('topBoards.empty')
+    const noResults = t(inWarmUp ? 'topBoards.warmUpEmpty' : 'topBoards.empty')
 
     /* One of the five lists by length, as a chart of its own. On the front page
        these five turn one into another; here each stands still and keeps its own
@@ -551,7 +590,14 @@ function Drawn({ picker, sources }: { picker: Picker; sources: Sources }) {
       kind: 'chart',
       id: 'progress',
       title: t('topBoards.progress'),
-      empty: t('topBoards.progressEmpty'),
+      /* Two sentences. Neither the warm-up nor the league's first season has a season before it, so
+         both say from which season progress is measured (owner, 13.11.2026, „Samo 2027, posle stara",
+         and of the warm-up: „Neka ova recenica ipak stoji i na Zagrevanju za najbolji napredak"); from
+         2028 a season has one, and the board is empty only if nobody bettered it. */
+      empty:
+        inWarmUp || view === FIRST_SEASON
+          ? t('topBoards.progressFirstSeason', { season: FIRST_SEASON + 1 })
+          : t('topBoards.progressEmpty'),
       columns: sources.progress.map((row) => ({
         competitor: row.competitor,
         value: row.points,
@@ -658,7 +704,7 @@ function Drawn({ picker, sources }: { picker: Picker; sources: Sources }) {
           },
         ],
       })),
-      empty: t('topBoards.pairsNone'),
+      empty: t(inWarmUp ? 'topBoards.warmUpPairs' : 'topBoards.pairsNone'),
     }
 
     /* The whole of a result, across the whole width of the page (owner,
@@ -719,7 +765,7 @@ function Drawn({ picker, sources }: { picker: Picker; sources: Sources }) {
       bestPairs,
       bestRaces,
     ]
-  }, [sources, locale, t, linkTo])
+  }, [sources, locale, t, linkTo, inWarmUp, view])
 
   return (
     <>
@@ -732,7 +778,7 @@ function Drawn({ picker, sources }: { picker: Picker; sources: Sources }) {
             `fallback` is the season this screen opens on, so the address carries
             a year only while it is not that one, which is what every other
             screen does and is the one thing that changed here. */}
-        <SeasonPicker seasons={seasons} season={String(season)} fallback={String(fallback)} />
+        <SeasonPicker seasons={seasons} season={value} fallback={fallback} warmUp={warmUp} />
       </div>
 
       <div className="boards__grid">

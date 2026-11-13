@@ -65,7 +65,8 @@ describe('the address of the president', () => {
 
     const address = await screen.findByRole('heading', { level: 2, name: 'Reč predsednika' })
     const board = screen.getByRole('heading', { level: 2, name: 'Top 10 muškarci' })
-    const counters = screen.getByRole('heading', { level: 2, name: /Sezona/ })
+    /* The counters: „Zagrevanje" before the first season, „Sezona N." from it (owner, 12.11.2026). */
+    const counters = screen.getByRole('heading', { level: 2, name: /^(Sezona \d{4}\.|Zagrevanje)$/ })
 
     /* Same grid as the boards, and after them: one grid holds the whole page
        now, so the two are cells of it rather than children of one column. */

@@ -638,6 +638,10 @@ describe('a sentence with a value put into it', () => {
       'teams.proposeBody',
       'teams.proposeDone',
       'topBoards.place',
+      /* „Napredak takmičara se meri tek od sezone {season}." (owner, 13.11.2026, for the league's first
+         season only). The year is the season after `FIRST_SEASON`, in figures after „sezone", so it has
+         no case to be wrong in. */
+      'topBoards.progressFirstSeason',
       /* The races a pair ran together, under the points they scored on them (owner, 04.08.2026).
          A plural, so the number decides which of the three Serbian forms the sentence takes. */
       'topBoards.sharedRaces',

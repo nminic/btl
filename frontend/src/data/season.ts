@@ -136,6 +136,10 @@ export function seasonRunning(today: string): number | null {
  * Not `seasonRunning`, which answers nothing before 2027 and is right to: a
  * sentence about „the season now running" is about nothing in 2026. A screen still
  * has to show some season, and the one it shows is the first the league runs.
+ *
+ * **Before 2027 the Top lists, the counters of the front page and its turning chart open on the
+ * warm-up instead** (owner, 12.11.2026, `boardsOpenOn` below), so for them the „brojači na nuli" of
+ * 16.10.2026 hold from 1 January 2027. The table and the boards of ten still open on this.
  */
 export function seasonShown(today: string): number {
   return Math.max(FIRST_SEASON, Number(today.slice(0, 4)))
@@ -182,6 +186,41 @@ export function boardsAreToppedUp(today: string): boolean {
  */
 export function seasonHasBegun(season: number, today: string): boolean {
   return (seasonRunning(today) ?? 0) >= season
+}
+
+/**
+ * THE WARM-UP: the one view of the Top lists and of the front page that is not a season.
+ *
+ * Owner, 12.11.2026 (PDL, „Zagrevanje: istorijski prikaz pre prve sezone"): „Da dodaš default
+ * predsezonsku sezonu na Top Listama", „Neka se i na Top Listama zove Zagrevanje umesto
+ * Istorijat", and of where: „Samo top liste, ali i widgeti na naslovnoj strani gore desno (umesto
+ * Sezona 2027. treba da se zove zagrevanje) i ovaj rotirajući widget po dužini trke." What it counts
+ * is every result run before the league's first season (`inWarmUp` in `data/derive.ts`), chosen with
+ * the recommendation put to him: all results up to now.
+ *
+ * **A value of its own and not a year**, because it is no season of the league's: „Ne ulazi ni u top
+ * listu tokom zvanične sezone., Ovo je samo istorijski prikaz zabave radi koji se neće ponavljati
+ * nakon 1.1.2027. kad krenu zvanične sezone". A view that held a year could be compared with a
+ * season, and nothing is equal to this but itself.
+ */
+export const WARM_UP = 'warmUp'
+
+/** What a board of the Top lists or of the front page is drawn for: one season, or the warm-up. */
+export type SeasonView = number | typeof WARM_UP
+
+/**
+ * Whether the warm-up is on offer on this day, which is also whether those screens open on it: every
+ * day before the league's first season has begun (`seasonHasBegun`, the one home of that boundary),
+ * and never from 1 January 2027 on, for that season or any later one. Derived from the owner's „neće
+ * ponavljati nakon 1.1.2027" and „default", and said so in the pull request.
+ */
+export function warmUpShown(today: string): boolean {
+  return !seasonHasBegun(FIRST_SEASON, today)
+}
+
+/** The view those screens open on: the warm-up while it is shown, and the season shown after it. */
+export function boardsOpenOn(today: string): SeasonView {
+  return warmUpShown(today) ? WARM_UP : seasonShown(today)
 }
 
 export function inYearlyWindow(today: string): boolean {
