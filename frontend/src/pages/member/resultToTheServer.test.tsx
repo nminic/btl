@@ -1027,7 +1027,7 @@ describe('a run sent back, sent again', () => {
     await user.type(screen.getByLabelText(/^Događaj/), 'Nov događaj')
 
     /* The town is asked again, because the event no longer brings its own. */
-    await user.type(await screen.findByLabelText('Mesto'), 'Niš')
+    await user.type(await screen.findByLabelText('Mesto', undefined, SOON), 'Niš')
     await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
     await user.type(screen.getByLabelText(/^Datum trke/), '01062027')
     await send(user)
@@ -1318,7 +1318,7 @@ describe('a run sent back, sent again', () => {
       await user.clear(screen.getByLabelText(/^Naziv trke/))
       await user.type(screen.getByLabelText(/^Naziv trke/), 'Beogradski')
 
-      const rows = await screen.findAllByRole('button', { name: /Beogradski maraton – / })
+      const rows = await screen.findAllByRole('button', { name: /Beogradski maraton – / }, SOON)
 
       expect(rows.length, 'one race cannot tell a row from the first row').toBeGreaterThan(1)
       await user.click(must(rows[1], 'the second race offered'))
