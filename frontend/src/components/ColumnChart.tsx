@@ -62,9 +62,27 @@ export type ChartColumn = {
 }
 
 /** The number in a level of a bar, with what it is read out after it. */
-function Count({ label, reading, quiet }: { label: string; reading?: string; quiet?: boolean }) {
+function Count({
+  label,
+  reading,
+  quiet,
+  pin,
+}: {
+  label: string
+  reading?: string
+  quiet?: boolean
+  pin?: boolean
+}) {
   return (
-    <span className={quiet === true ? 'colchart__count colchart__count--quiet' : 'colchart__count'}>
+    <span
+      className={[
+        'colchart__count',
+        quiet === true ? 'colchart__count--quiet' : '',
+        pin === true ? 'colchart__count--pin' : '',
+      ]
+        .filter((one) => one !== '')
+        .join(' ')}
+    >
       {label}
       {reading !== undefined && <span className="visually-hidden"> {reading}</span>}
     </span>
@@ -77,7 +95,15 @@ function Count({ label, reading, quiet }: { label: string; reading?: string; qui
  *
  * A link while there is a profile to link to, and a plain block otherwise.
  */
-function Bar({ column, highest }: { column: ChartColumn; highest: number }) {
+function Bar({
+  column,
+  highest,
+  pin,
+}: {
+  column: ChartColumn
+  highest: number
+  pin: boolean
+}) {
   const name = `${column.competitor.firstName} ${column.competitor.lastName}`
   const { base } = column
   /* What the two levels of a two-level bar are shares of, held at one the same
@@ -98,8 +124,14 @@ function Bar({ column, highest }: { column: ChartColumn; highest: number }) {
           it and the name is across the middle of the face. */}
       <span className="colchart__track">
         <Portrait competitor={column.competitor} />
+        {/* A count of races is a pin on the foot of the face, not a number in
+            the bar (owner, 13.11.2026): the bar of one race is six pixels and
+            the circle is twenty-seven, so in the bar it stuck out of it. Right
+            after the face in the markup, so it is read where it was read when it
+            stood in the bar: after the face, before the name. */}
+        {pin && <Count label={column.label} reading={column.reading} pin />}
         <span className="colchart__bar">
-          {base === undefined ? (
+          {pin ? null : base === undefined ? (
             <Count label={column.label} reading={column.reading} />
           ) : (
             <>
@@ -239,6 +271,11 @@ export function ColumnChart({
   onHeld?: (bars: HTMLElement | null) => void
 }) {
   const highest = Math.max(1, ...columns.map((one) => one.value))
+  /* Which of the two kinds of chart this is, read from the data it was given
+     and not from a list of names: a bar with a lower level is the board of best
+     progress, two numbers in a bar, and they stay in it. Every other chart
+     counts races, and its number is a pin on the face (owner, 13.11.2026). */
+  const pin = !columns.some((one) => one.base !== undefined)
   /* How wide the circle in a bar has to be, in characters, which is the longest
      number this chart draws (owner, 05.08.2026: it has to be a circle, and a
      circle wide enough for two decimals is wider than one holding a count of
@@ -263,6 +300,7 @@ export function ColumnChart({
       className={[
         'colchart',
         control === undefined ? '' : 'colchart--control',
+        pin ? 'colchart--pins' : '',
         /* Whether this chart turns at all, which is a different question from
            whether it is turning right now: the bars are told to slide by the
            first and the words are taken out by the second. Asked of the prop
@@ -332,7 +370,7 @@ export function ColumnChart({
                Nothing else needed the other key. A board is a list of places,
                and two rows of one board are never the same place. */
             <li key={place} className="colchart__column">
-              <Bar column={column} highest={highest} />
+              <Bar column={column} highest={highest} pin={pin} />
             </li>
           ))}
         </ol>
