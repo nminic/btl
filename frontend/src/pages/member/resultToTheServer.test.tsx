@@ -966,6 +966,82 @@ describe('a run sent back, sent again', () => {
     }
   }, SLOW)
 
+  it('goes again on the other event he chose from the list, and not on the one that was sent back', async () => {
+    /* The run was sent on event 1118 and the member chooses the Belgrade marathon (1133, the newest
+       row of that name): a key read off the run, the other source of the same number, fails here. */
+    const user = setupUser()
+
+    listeningWith([
+      aRun(84, {
+        raceId: null,
+        raceName: 'Krug oko tvrđave',
+        raceDate: '2027-06-01',
+        raceKind: 'free',
+        eventId: 1118,
+        eventName: 'Mala Sveta gora',
+      }),
+    ])
+    renderAt('/sr/rezultat/novi?ponovo=84', 'competitor', ME, undefined, '2027-08-23')
+
+    await screen.findByText(/Ispravljaš rezultat koji je odbijen/, undefined, SOON)
+    await user.clear(screen.getByLabelText(/^Događaj/))
+    await user.type(screen.getByLabelText(/^Događaj/), 'beogradski')
+    await user.click(must(screen.getAllByRole('button', { name: /Beogradski maraton – / })[0], 'the event'))
+    /* The race follows the event chosen and is empty, to be typed again. */
+    await user.type(screen.getByLabelText(/^Naziv trke/), 'Krug oko tvrđave')
+    await send(user)
+
+    await waitFor(() => {
+      expect(writes()).toHaveLength(1)
+    }, SOON)
+
+    const body = bodyOf(must(writes()[0], 'the request'))
+
+    expect(body.eventId).toBe(1133)
+    for (const beside of ['eventName', 'city', 'country']) {
+      expect(Object.hasOwn(body, beside), `${beside} went beside a chosen event`).toBe(false)
+    }
+  }, SLOW)
+
+  it('goes again on the event he typed over the one that was chosen, and carries no key of the old one', async () => {
+    /* Typing over the name breaks the link (`linksAtTheStart`): the key the old event filled goes
+       with it, or the new name would travel beside the old event's number. */
+    const user = setupUser()
+
+    listeningWith([
+      aRun(85, {
+        raceId: null,
+        raceName: 'Krug oko tvrđave',
+        raceDate: '2027-06-01',
+        raceKind: 'free',
+        city: 'Novi Sad',
+        country: 'RS',
+        eventId: 1118,
+        eventName: 'Mala Sveta gora',
+      }),
+    ])
+    renderAt('/sr/rezultat/novi?ponovo=85', 'competitor', ME, undefined, '2027-08-23')
+
+    await screen.findByText(/Ispravljaš rezultat koji je odbijen/, undefined, SOON)
+    await user.clear(screen.getByLabelText(/^Događaj/))
+    await user.type(screen.getByLabelText(/^Događaj/), 'Nov događaj')
+
+    /* The town is asked again, because the event no longer brings its own. */
+    await user.type(await screen.findByLabelText('Mesto'), 'Niš')
+    await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
+    await user.type(screen.getByLabelText(/^Datum trke/), '01062027')
+    await send(user)
+
+    await waitFor(() => {
+      expect(writes()).toHaveLength(1)
+    }, SOON)
+
+    const body = bodyOf(must(writes()[0], 'the request'))
+
+    expect(body.eventName).toBe('Nov događaj')
+    expect(Object.hasOwn(body, 'eventId'), 'the key of the old event travelled beside a typed name').toBe(false)
+  }, SLOW)
+
   it('takes an event chosen from the list for a run sent before there was one, and the race typed again', async () => {
     /* A run sent before V66 names no event. Choosing an event for it made the race nobody could type
        into empty, and the event chosen was not sent, since only the run was read (review of PR 581).
