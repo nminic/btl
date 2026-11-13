@@ -115,7 +115,7 @@ describe('the number of races on a column', () => {
     const body = rule.slice(0, rule.indexOf('}'))
 
     expect(body).not.toMatch(/--diameter:|inline-size|block-size|border-radius/)
-    expect(body).toMatch(/var\(--diameter\) \/ 2/)
+    expect(body).toMatch(/var\(--diameter\) \* 0\.6/)
     expect(body).toMatch(/inset-block-end:\s*calc\(var\(--bar\)/)
     expect(body).toMatch(/box-shadow:\s*0 0 0 2px var\(--surface\)/)
   })
