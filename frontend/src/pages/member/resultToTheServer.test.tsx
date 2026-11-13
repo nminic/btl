@@ -1042,6 +1042,54 @@ describe('a run sent back, sent again', () => {
     expect(Object.hasOwn(body, 'eventId'), 'the key of the old event travelled beside a typed name').toBe(false)
   }, SLOW)
 
+  it('goes again on the event typed over the one of a race of the calendar, with no key of the old event or of the race', async () => {
+    /* The run was sent back on race 126 of event 1133, "Beogradski maraton". Typing another name
+       over the event breaks both links: the key of the old event and the id of the race go with it,
+       and the name typed is the one that travels. A body that kept either of the two numbers, or
+       read the name off the run, fails here. */
+    const user = setupUser()
+
+    listeningWith([
+      aRun(97, {
+        raceId: 126,
+        raceName: 'Beogradski maraton',
+        raceDate: '2027-04-04',
+        raceKind: 'length',
+        distanceKm: 42.2,
+        city: 'Beograd',
+        country: 'RS',
+        eventId: 1133,
+        eventName: 'Beogradski maraton',
+      }),
+    ])
+    renderAt('/sr/rezultat/novi?ponovo=97', 'competitor', ME, undefined, '2027-08-23')
+
+    await screen.findByText(/Ispravljaš rezultat koji je odbijen/, undefined, SOON)
+    await user.clear(screen.getByLabelText(/^Događaj/))
+    await user.type(screen.getByLabelText(/^Događaj/), 'Nov događaj')
+
+    /* What the race and the event filled is handed back, and the town is asked, because the event no
+       longer brings its own. */
+    await user.type(await screen.findByLabelText('Mesto', undefined, SOON), 'Niš')
+    await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
+    await user.type(screen.getByLabelText(/^Datum trke/), '04042027')
+    await user.type(screen.getByLabelText(/^Dužina/), '10')
+    await user.type(screen.getByLabelText(/^Uspon/), '100')
+    await user.type(screen.getByLabelText(/^Spust/), '100')
+    await send(user)
+
+    await waitFor(() => {
+      expect(writes()).toHaveLength(1)
+    }, SOON)
+
+    const body = bodyOf(must(writes()[0], 'the request'))
+
+    expect(body.eventName).toBe('Nov događaj')
+    for (const beside of ['eventId', 'raceId']) {
+      expect(Object.hasOwn(body, beside), `${beside} travelled beside a typed event`).toBe(false)
+    }
+  }, SLOW)
+
   it('takes an event chosen from the list for a run sent before there was one, and the race typed again', async () => {
     /* A run sent before V66 names no event. Choosing an event for it made the race nobody could type
        into empty, and the event chosen was not sent, since only the run was read (review of PR 581).
