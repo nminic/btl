@@ -101,6 +101,15 @@ describe('the number of races on a column', () => {
     expect(screen.getByRole('region', { name: 'Grafikon' })).not.toHaveClass('colchart--pins')
   })
 
+  it('keeps the number in the bar of a column without a lower level in a chart that has them', () => {
+    draw([progress, { ...counting('5', '000002'), reading: 'bodova' }])
+
+    const lone = screen.getByText('5', { selector: 'span' })
+
+    expect(lone.closest('.colchart__bar')).not.toBeNull()
+    expect(lone).not.toHaveClass('colchart__count--pin')
+  })
+
   it('asks for a circle as wide as the longest number in its own chart', () => {
     const { unmount } = draw([counting('7')])
     const small = charsOf()
