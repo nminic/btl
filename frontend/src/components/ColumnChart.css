@@ -62,6 +62,12 @@
   padding-block-start: 3.1rem;
 }
 
+/* The bar is clean on a chart that counts races, so nothing hangs below it and
+   the step under the bars is the plain one. */
+.colchart--pins .colchart__columns {
+  padding-block-end: var(--space-12);
+}
+
 /* Centred, not stretched (owner, 31.07.2026). Stretching handed the face the
    width of the column and squeezed the height it was given, so the first circle,
    in the widest column, came out an ellipse and none of them stood over the
@@ -319,6 +325,31 @@
   font-weight: 700;
 }
 
+/* The number of races as a pin on the foot of the face (owner, 13.11.2026).
+ *
+ * In the bar it stuck out of the short ones: the track is about 25px in the
+ * widget and the circle is 27px. Here it is hung on the lower edge of the
+ * face, two fifths of it over the face and three fifths below it: more over the
+ * face covers the initials of the small face on a phone. It is placed from the
+ * same sum as the face itself, so it slides with it when the chart turns. Same circle, same size rule
+ * (--count-chars), so a three digit count is still a circle.
+ *
+ * The ring in the colour of the card is what keeps it apart from any photo. */
+/* Two names deep, like the rule that gives the face its transitions: the rule
+   that fades every count (`.colchart__count, .colchart__caption`, further down)
+   has one name and comes later, so written with one name this lost to it and the
+   pin jumped to its new height while the face slid. */
+.colchart .colchart__count--pin {
+  inset: auto;
+  inset-inline: 0;
+  inset-block-end: calc(var(--bar) + var(--face-gap) - var(--diameter) * 0.6);
+  z-index: 1;
+  box-shadow: 0 0 0 2px var(--surface);
+  transition:
+    opacity var(--fade),
+    inset-block-end var(--turn);
+}
+
 /* The figure in the lower level. The same circle, a touch smaller: the level
    under it is already the quieter of the two, and a second colour of circle
    would be a third thing for a reader to learn. Smaller of itself, too, because
@@ -471,6 +502,7 @@
   .colchart__bar,
   .colchart .colchart__column .portrait,
   .colchart__count,
+  .colchart .colchart__count--pin,
   .colchart__caption {
     transition: none;
   }
