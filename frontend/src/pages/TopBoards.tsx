@@ -79,13 +79,15 @@ const PAIR_PLACES = 5
 /* AND THREE IN THE LEAGUE'S FIRST SEASON, for the same reason of height (owner, 13.11.2026): „I samo
    prve sezone, dok se ne proširi visina boksa za najbolji napredak, koristi u obračunu ukupno 3 para
    umesto 5." The box of progress beside the pairs stands empty and short through all of 2027, since
-   nobody has a season before it to grow from. From 2028 it is five again. The warm-up is no season
-   and keeps five, which is what the coordinator's reading of the decision says. */
+   nobody has a season before it to grow from. From 2028 it is five again.
+
+   And three in the warm-up as well, whose box of progress is just as empty and short (owner,
+   13.11.2026): „ZELIM TRI I TAMO JER CE SVAKAKO BITI BEZ PORETKA I NISKA VISINA!" */
 const FIRST_SEASON_PAIR_PLACES = 3
 
 /** How many pairs the board of a view keeps: the one place that number is answered, live and frozen. */
 function pairPlacesIn(view: SeasonView): number {
-  return view === FIRST_SEASON ? FIRST_SEASON_PAIR_PLACES : PAIR_PLACES
+  return view === FIRST_SEASON || view === WARM_UP ? FIRST_SEASON_PAIR_PLACES : PAIR_PLACES
 }
 
 /** One cell after the name, and how it is set: words read from the left,

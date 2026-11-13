@@ -11,7 +11,8 @@ import { SLOW } from '../test/slow'
    - the board of best progress, empty all through 2027, says „Napredak takmičara se meri tek od sezone 2028."
      (chosen: „Samo 2027, posle stara"), and from 2028 the sentence it had before;
    - „I samo prve sezone, dok se ne proširi visina boksa za najbolji napredak, koristi u obračunu ukupno 3 para
-     umesto 5": three pairs on the board in 2027, five from 2028, and five in the warm-up, which is no season.
+     umesto 5": three pairs on the board in 2027, five from 2028; and three in the warm-up too („ZELIM TRI I
+     TAMO JER CE SVAKAKO BITI BEZ PORETKA I NISKA VISINA!").
 
    **The postavka keeps the two seasons and the warm-up apart.** Five pairs are made for 2027 and five for 2028
    out of the same ten members, and every pair ran one race together in each of 2027, 2028 and 2020, so every
@@ -165,10 +166,10 @@ describe('the board of pairs in the first season', () => {
     expect(await pairsOn('/sr/top-liste', IN_2028)).toBe(5)
   }, SLOW)
 
-  it('keeps five in the warm-up, which is no season', async () => {
+  it('keeps three in the warm-up too, whose box of progress is as short', async () => {
     servePairs()
 
-    expect(await pairsOn('/sr/top-liste', BEFORE)).toBe(5)
+    expect(await pairsOn('/sr/top-liste', BEFORE)).toBe(3)
   }, SLOW)
 
   it('keeps three in 2027 once it is frozen, out of the five the freeze wrote down', async () => {
