@@ -1017,6 +1017,10 @@ describe('TopBoards', () => {
    *  depends on it). */
   const TODAY = '2026-08-04'
 
+  /** A day of the first season, for the cases about what the page opens on and falls back to: before
+   *  it the page opens on the warm-up (owner, 12.11.2026), whose own cases are in `warmUp.test.tsx`. */
+  const IN_THE_SEASON = '2027-03-01'
+
   /** The board with the given heading, looked up the way a screen reader does:
    *  through the region the heading names. Both kinds answer to it, the ones
    *  drawn as a table and the ones drawn as a chart. */
@@ -1416,8 +1420,11 @@ describe('TopBoards', () => {
        **Two seasons, because one of them can hide the fault.** The history this describe serves
        begins in 2026, so 2019 has nothing in it and the boards under it are empty either way: only
        the control tells the two apart. 2026 is the season the floor exists to keep off, and it is
-       full: the boards under it are not empty if the address is believed. */
-    renderAt(`/sr/top-liste?sezona=${named}`)
+       full: the boards under it are not empty if the address is believed.
+
+       **Read on a day of the season**, because before it the page opens on the warm-up (owner,
+       12.11.2026), and that fallback is held in `pages/warmUp.test.tsx`. */
+    renderAt(`/sr/top-liste?sezona=${named}`, 'visitor', null, undefined, IN_THE_SEASON)
 
     expect(selectElement(await screen.findByLabelText('Sezona', {}, { timeout: HALF })).value).toBe('2027')
     expect(board('Najviše kilometara').queryAllByRole('row').slice(1)).toEqual([])
@@ -1879,12 +1886,13 @@ describe('TopBoards', () => {
 
   it('opens on a season of its own, and changes every board with one filter', async () => {
     const user = setupUser()
-    renderAt('/sr/top-liste')
+    renderAt('/sr/top-liste', 'visitor', null, undefined, IN_THE_SEASON)
 
     const season = await screen.findByLabelText('Sezona', {}, { timeout: HALF })
     /* No season in the address, so the page opens on the first season of the league
-       on both days the suite is read as, empty as it is: nothing falls back to a
-       fuller one (owner, 16.10.2026). The history has nothing in 2027. */
+       on a day of it, empty as it is: nothing falls back to a fuller one (owner,
+       16.10.2026). The history has nothing in 2027. Before the season it opens on the
+       warm-up instead (owner, 12.11.2026, `pages/warmUp.test.tsx`). */
     expect(selectElement(season).value).toBe('2027')
     expect(board('Najviše kilometara').queryAllByRole('row').slice(1)).toEqual([])
 

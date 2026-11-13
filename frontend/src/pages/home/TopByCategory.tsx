@@ -3,6 +3,7 @@ import { useProfileLink } from '../profile/useProfileLink'
 import { useEffect, useState } from 'react'
 import { ColumnChart, type ChartColumn } from '../../components/ColumnChart'
 import { topByCategory } from '../../data/derive'
+import { WARM_UP, type SeasonView } from '../../data/season'
 import type { Competitor, RaceCategory, Result } from '../../data/types'
 import { useI18n } from '../../i18n/useI18n'
 import { FIRST, NEXT } from './rotation'
@@ -58,7 +59,8 @@ export function TopByCategory({
 }: {
   competitors: Competitor[]
   results: Result[]
-  season: number
+  /** A season, or the warm-up before the first one (`boardsOpenOn`). */
+  season: SeasonView
   /** Only a test shortens this; nothing in the application passes it. */
   turnMs?: number
 }) {
@@ -165,7 +167,12 @@ export function TopByCategory({
          it out would widen the very thing the bar was showing. */
       /* The query hangs off an address, so it is asked for first and appended only when there
          is one: a profile nobody may open has no bar to press (`profile/visible.ts`). */
-      to: appended(linkTo(column.competitor), `?sezona=${season}&duzina=${shown}`),
+      /* The warm-up is every year before the first season, which a profile names as all of them, its
+         default, so it carries the length alone. */
+      to: appended(
+        linkTo(column.competitor),
+        season === WARM_UP ? `?duzina=${shown}` : `?sezona=${String(season)}&duzina=${shown}`,
+      ),
     }),
   )
 
@@ -177,7 +184,7 @@ export function TopByCategory({
       onHeld={hold}
       swapping={shown !== category}
       caption={t(`home.mostOf.${shown}`)}
-      empty={t('home.noneYet')}
+      empty={t(season === WARM_UP ? 'home.warmUpNoneYet' : 'home.noneYet')}
       label={t('home.turning')}
       control={
         /* A discreet gold disc in the corner rather than a labelled pill on the

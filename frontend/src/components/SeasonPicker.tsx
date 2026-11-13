@@ -1,5 +1,5 @@
 import { useI18n } from '../i18n/useI18n'
-import { ALL_SEASONS } from './season'
+import { ALL_SEASONS, WARM_UP_ADDRESS } from './season'
 import { useFilterParams } from '../app/useFilterParams'
 
 /**
@@ -24,6 +24,7 @@ export function SeasonPicker({
   season,
   fallback,
   label,
+  warmUp = false,
 }: {
   seasons: number[]
   /**
@@ -46,6 +47,10 @@ export function SeasonPicker({
    *  it offers years whose runs count in no season (owner, 02.11.2026: „ne treba da pise SEZONA
    *  nego GODINA ... zvanicno je prva sezona 2027"). */
   label?: string
+  /** Whether the warm-up is one more value of the control, after the seasons: only the Top lists
+   *  hand it in, and only before the league's first season has begun (owner, 12.11.2026, PDL
+   *  „Zagrevanje"; `warmUpShown`). */
+  warmUp?: boolean
 }) {
   const { t } = useI18n()
   const [params, setParams] = useFilterParams()
@@ -74,6 +79,7 @@ export function SeasonPicker({
           {year}
         </option>
       ))}
+      {warmUp && <option value={WARM_UP_ADDRESS}>{t('rankings.warmUp')}</option>}
     </select>
   )
 
