@@ -1,15 +1,13 @@
 import {
   coinNumber,
   firstOf,
-  instancesOf,
+  instanceAt,
   periodLegend,
   ruleSentence,
-  tierOf,
   topFor,
   unitOf,
   type DucatFamily,
 } from './ducatRule'
-import { at, first } from '../test/at'
 
 /** A family with everything switched off, so each test turns on the one thing
  *  it is about. */
@@ -109,102 +107,77 @@ describe('the one coin the rulebook draws for a family', () => {
   })
 })
 
-describe('the ducats a family actually makes', () => {
-  it('makes exactly one when the family has neither period nor series', () => {
-    const made = instancesOf(plain, '2029-05-04', 'M')
+describe('one ducat a member holds, drawn from its family', () => {
+  /* Which ducats he holds is the server's since 13.11.2026 (`DucatAwardApi`), and what it sends is the
+     family's code, the threshold, the tier it was won at, and the season and month (1 to 12). */
+  const always = { value: 10, tier: 3, season: null, month: null } as const
 
-    expect(made).toHaveLength(1)
-    expect(first(made).from).toBe('')
-    expect(first(made).to).toBe('')
+  it('stands for ever, with no period on it, where the record names no season', () => {
+    const drawn = instanceAt(plain, 'M', always)
+
+    expect(drawn).toEqual({
+      id: 'duk-proba',
+      name: 'Proba',
+      kind: 'raceCount',
+      value: 10,
+      from: '',
+      to: '',
+      tier: 3,
+      mark: 'races',
+      art: 'none',
+      top: 'ISTRČANIH',
+      bottom: 'TRKA',
+    })
   })
 
-  it('makes one a month, from the first season up to the month we are in', () => {
-    const made = instancesOf({ ...plain, period: 'month', periodAt: 'bottom' }, '2028-03-15', 'M')
-
-    // Twelve of 2027 and three of 2028, the third being the month in progress.
-    expect(made).toHaveLength(15)
-    expect(first(made).from).toBe('2027-01-01')
-    expect(first(made).to).toBe('2027-01-31')
-    expect(at(made, 14).bottom).toBe('MART 2028')
+  it('carries the tier the record kept, and not the one the family has today', () => {
+    /* A run's tier rises part way and a ducat won at one tier goes on saying it (V91). The family says 3,
+       the record says 5, so a coin drawn from the family is a different coin. */
+    expect(instanceAt(plain, 'M', { ...always, tier: 5 }).tier).toBe(5)
   })
 
-  it('closes February on the day February closes', () => {
-    /* A month ends where it ends: the twenty-eighth, and the twenty-ninth in a
-       leap year. Written out once here so that no rule anywhere has to know. */
-    const made = instancesOf({ ...plain, period: 'month' }, '2028-02-10', 'M')
+  it('names the threshold in its identity when the family is a run', () => {
+    const drawn = instanceAt({ ...plain, value: 100, step: 100, last: 1000 }, 'M', { ...always, value: 300 })
 
-    expect(at(made, 1).to).toBe('2027-02-28')
-    expect(at(made, 13).to).toBe('2028-02-29')
+    expect(drawn.id).toBe('duk-proba-300')
+    expect(drawn.value).toBe(300)
   })
 
-  it('makes none at all before the first season has begun', () => {
-    // The league starts on 1 January 2027, and until then there is no month to
-    // have run 125 kilometres in.
-    expect(instancesOf({ ...plain, period: 'month' }, '2026-08-10', 'M')).toHaveLength(0)
-  })
+  it('is one season, closed on the last day of its year, with the season where the family puts it', () => {
+    const drawn = instanceAt({ ...plain, period: 'season', periodAt: 'top' }, 'M', { ...always, season: 2028 })
 
-  it('makes one a season, each closed on the last day of its year', () => {
-    const made = instancesOf({ ...plain, period: 'season', periodAt: 'top' }, '2028-06-01', 'M')
-
-    expect(made).toHaveLength(2)
-    expect(first(made).from).toBe('2027-01-01')
-    expect(first(made).to).toBe('2027-12-31')
-    expect(at(made, 1).top).toBe('SEZONA 2028')
-  })
-
-  it('makes one per step of a series, up to the last', () => {
-    const made = instancesOf(
-      { ...plain, value: 100, step: 100, last: 1000, tierUpFrom: 500 },
-      '2027-01-01',
-      'M',
-    )
-
-    expect(made.map((one) => one.value)).toEqual([100, 200, 300, 400, 500, 600, 700, 800, 900, 1000])
-    // Ten ducats, ten identities, or a profile would hold one of them ten times.
-    expect(new Set(made.map((one) => one.id)).size).toBe(10)
-  })
-
-  it('lifts the second half of a series a value higher', () => {
-    /* The owner moved the step up to the middle of the series rather than its
-       end (10.08.2026): a hundred races and a thousand should not wear the same
-       metal. */
-    const made = instancesOf(
-      { ...plain, value: 100, step: 100, last: 1000, tierUpFrom: 500 },
-      '2027-01-01',
-      'M',
-    )
-
-    expect(made.filter((one) => one.tier === 3).map((one) => one.value)).toEqual([100, 200, 300, 400])
-    expect(made.filter((one) => one.tier === 4)).toHaveLength(6)
-  })
-
-  it('multiplies the periods by the thresholds when a family has both', () => {
-    const made = instancesOf(
-      { ...plain, period: 'season', value: 10, step: 10, last: 30 },
+    expect([drawn.id, drawn.from, drawn.to, drawn.top, drawn.bottom]).toEqual([
+      'duk-proba-2028',
       '2028-01-01',
-      'M',
-    )
+      '2028-12-31',
+      'SEZONA 2028',
+      'TRKA',
+    ])
+  })
 
-    expect(made).toHaveLength(6)
-    expect(new Set(made.map((one) => one.id)).size).toBe(6)
+  it('is one month, read 1 to 12 as the server keeps it, and closed on the day that month closes', () => {
+    const monthly = { ...plain, period: 'month', periodAt: 'bottom' } as const
+    const february = instanceAt(monthly, 'M', { ...always, season: 2028, month: 2 })
+
+    expect([february.id, february.from, february.to, february.bottom]).toEqual([
+      'duk-proba-2028-02',
+      '2028-02-01',
+      '2028-02-29',
+      'FEBRUAR 2028',
+    ])
+    expect(instanceAt(monthly, 'M', { ...always, season: 2027, month: 2 }).to).toBe('2027-02-28')
+
+    /* The last month is the edge a reading of 0 to 11 falls off. */
+    const december = instanceAt(monthly, 'M', { ...always, season: 2027, month: 12 })
+
+    expect([december.to, december.bottom]).toEqual(['2027-12-31', 'DECEMBAR 2027'])
   })
 
   it('reads the legend to the member whose profile it is', () => {
     const gendered = { ...plain, top: 'POPEO SE', topFemale: 'POPELA SE' }
 
-    expect(first(instancesOf(gendered, '2027-01-01', 'F')).top).toBe('POPELA SE')
-  })
-})
-
-describe('the value of a ducat', () => {
-  it('is the family value where the family does not step up', () => {
-    expect(tierOf(plain, 10)).toBe(3)
-  })
-
-  it('never climbs past the fifth', () => {
-    /* The scale has five metals and there is no sixth to draw, so a family that
-       is already the highest and steps up stays where it is. */
-    expect(tierOf({ ...plain, tier: 5, tierUpFrom: 5 }, 10)).toBe(5)
+    expect(instanceAt(gendered, 'F', always).top).toBe('POPELA SE')
+    expect(instanceAt(gendered, 'M', always).top).toBe('POPEO SE')
   })
 })
 

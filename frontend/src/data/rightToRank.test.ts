@@ -17,8 +17,6 @@ import {
   topByTimeOnCourse,
   topPairs,
 } from './derive'
-import { earnedDucats } from './ducatEarned'
-import type { DucatFamily } from './ducatRule'
 import { awardsOf } from '../pages/profile/awards'
 import type { Competitor, RacingPair, Result, Team } from './types'
 
@@ -248,29 +246,9 @@ describe('what he keeps', () => {
     expect(bestOfficialSeason(RESULTS_2027, '000002')).toBe(80)
   })
 
-  it('earns the ducats of his runs', () => {
-    const family: DucatFamily = {
-      id: 'duk-proba',
-      name: 'Proba',
-      kind: 'raceCount',
-      value: 2,
-      period: 'always',
-      top: 'ISTRČANIH',
-      topFemale: '',
-      bottom: 'TRKA',
-      periodAt: 'none',
-      mark: 'races',
-      art: 'none',
-      tier: 3,
-      step: 0,
-      last: 0,
-      tierUpFrom: 0,
-      counted: 'trka',
-    }
-    const two = [withoutTheRight('000002', '2027-05-01', 10), withoutTheRight('000002', '2027-06-01', 10)]
-
-    expect(earnedDucats(UNRANKED, two, [family], '2027-07-01').map((ducat) => ducat.kind)).toEqual(['raceCount'])
-  })
+  /* AND HE EARNS THE DUCATS OF HIS RUNS, which this side no longer works out: since 13.11.2026 the server
+     writes them (`AwardingDucats`) and the page reads what it wrote (`data/ducatHeld.ts`). The case that
+     held it here moved with the decision, to `AwardingDucatsTest.aMemberWithoutTheRightToRankGetsTheMonthlyDucatAsWell`. */
 })
 
 describe('whether he stands in the table of a season', () => {

@@ -339,12 +339,8 @@ class ResultApi {
 						   fee does not stand until New Year. Reading the hiding as one that applies
 						   only to a year of 2027 or later is the coordinator's derivation from that
 						   sentence, not the owner's words. */
-						+ " where " + AMemberIsActive.of("c.id", now)
-						+ " or extract(year from r.race_date) <> :theSeasonRunning"
-						+ " or extract(year from r.race_date) < :theFirstSeason"
+						+ " where " + aRunIsServed("c.id", "r.race_date", now)
 						+ " order by r.race_date, r.id")
-				.param("theSeasonRunning", theSeasonRunning(now))
-				.param("theFirstSeason", SeasonClock.FIRST_SEASON)
 				.query((row, one) -> {
 					String memberNumber = row.getString(2);
 					LocalDate day = row.getDate(7).toLocalDate();
@@ -432,6 +428,30 @@ class ResultApi {
 	 * holds that. The cases that hold the band apart from the clock stand on three different
 	 * days: {@code ResultApiTest.aResultCarriesTheBandOfTheSeasonItWasRunInWhateverTheFee}.
 	 */
+	/**
+	 * WHETHER A RUN IS SERVED TO ANYBODY, AND THIS IS THE ONE HOME OF THAT RULE: everything, except the
+	 * running season of a member whose fee has lapsed, and never a run before the league's first season
+	 * withheld for that reason. The note on {@link #results} gives the owner's words for each half.
+	 *
+	 * <p><b>Two routes ask it and neither has a copy.</b> This one, of every result, and
+	 * {@link DucatAwardApi}, of the race that carried a member over a ducat's threshold: the owner,
+	 * 08.11.2026, „Dukat se upisuje i članu kome je istekla članarina; ko ga vidi zavisi od pravila
+	 * profila", and a ducat is drawn from what the profile is drawn from. A ducat served where the race
+	 * that won it is withheld would tell a reader the run this route does not.
+	 *
+	 * <p>The two years are written into the text and not bound, which is safe because both are numbers the
+	 * server works out ({@link AMemberIsActive#of} does the same with its two).
+	 *
+	 * @param competitorColumn the column naming the member, as {@link AMemberIsActive#of} takes it
+	 * @param dayColumn        the column holding the day of the run
+	 * @param now              the moment the request reads the clock at, once
+	 */
+	static String aRunIsServed(String competitorColumn, String dayColumn, ZonedDateTime now) {
+		return "(" + AMemberIsActive.of(competitorColumn, now)
+				+ " or extract(year from " + dayColumn + ") <> " + theSeasonRunning(now)
+				+ " or extract(year from " + dayColumn + ") < " + SeasonClock.FIRST_SEASON + ")";
+	}
+
 	private static int theSeasonRunning(ZonedDateTime now) {
 		return now.withZoneSameInstant(SeasonClock.ZONE).getYear();
 	}

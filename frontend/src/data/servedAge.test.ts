@@ -327,8 +327,15 @@ describe('which fields the portal serves', () => {
        „Zamrznuta sezona je materijalizovan zapis, ne izračun”).** Public, as the tables of a season are.
        About a person they carry what a table already shows: the number, the name, the gender and the
        category of that season (public by PDL „Oblik zamrzavanja”, point 6), and nothing about his
-       fee or his age. Added to the snapshot by hand; the two seasons are named in `MAY_HOLD_A_YEAR`. */
-    expect(Object.keys(served)).toHaveLength(22)
+       fee or his age. Added to the snapshot by hand; the two seasons are named in `MAY_HOLD_A_YEAR`.
+
+       **Twenty three since 13.11.2026: `ducat-awards.json`, the ducats one member holds
+       (`DucatAwardApi`, step five of „Dukate dodeljuje verifikacija rezultata").** Public, as the results
+       they are won from are. Five paths, none nested: which family, the threshold, the tier, and the
+       season and month of a ducat of a period; never the day of the race that won it (PDL, 08.11.2026,
+       „taj datum ne prikazuje nigde na portalu"). Added to the snapshot by hand; the season is named in
+       `MAY_HOLD_A_YEAR`. */
+    expect(Object.keys(served)).toHaveLength(23)
     expect(Object.values(served).flat().length).toBeGreaterThan(100)
     expect(Object.values(served).flat().filter((one) => one.includes('.')).length).toBeGreaterThan(
       10,
@@ -431,6 +438,11 @@ describe('what the portal serves about how old somebody is', () => {
        first season of the league, for the twenty nine members the file frees of the fee. */
     'competitors.json:membershipSeason',
     'competitors.json:teamSince',
+    /* THE SEASON OF A DUCAT OF A MONTH OR OF A SEASON, since 13.11.2026 (`DucatAwardApi`): which season a
+       ducat he holds is FOR, copied when it was won (`ducat_award.season`, V15). The months and seasons a
+       family repeats in begin in the league's first season (`DucatInstances`), so never before 2027; its
+       value in the file is 2027. Nothing about him besides the ducat itself. */
+    'ducat-awards.json:season',
     /* THE FROZEN SEASON ITSELF, since 05.11.2026 (`FrozenSeasonApi`): which seasons the freeze has
        written down, and the season one snapshot is OF. Never before 2027 (`season_frozen_season_not_before
        _the_league`, V83), and their value in the files is 2027, the first season of the league. */

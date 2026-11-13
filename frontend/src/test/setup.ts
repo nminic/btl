@@ -319,6 +319,9 @@ function broughtIn(file: Record<string, unknown>[], me: Record<string, unknown>)
    odmah"), so this now points at `src/test`, one folder above where they live now. */
 const PUBLIC_DIR = join(process.cwd(), 'src', 'test')
 
+/** The member `mock/ducat-awards.json` is the answer of `GET /api/ducat-awards/{memberNumber}` for. */
+const THE_MEMBER_THE_SERVED_DUCATS_ARE_OF = '000001'
+
 /** Which file under `src/test/` answers an address: the generated record of a
  *  resource, and otherwise the path itself, which is how a picture is still read.
  *
@@ -551,6 +554,21 @@ vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
     return String(Reflect.get(Object(file), 'season')) === frozenTables[1]
       ? new Response(JSON.stringify(file), { status: 200, headers: { 'content-type': 'application/json' } })
       : new Response(null, { status: 404 })
+  }
+
+  /* THE DUCATS ONE MEMBER HOLDS (`DucatAwardApi`), answered off `mock/ducat-awards.json` for the member
+     that file is the answer for, and as nothing for every other number: what the server says of a member
+     who holds none, of a number nobody holds and of a deleted member alike. `DucatAwardApiTest` holds the
+     file to the server's answer. A case about another member's ducats puts its own server in front. */
+  const heldDucats = /^\/api\/ducat-awards\/([^/]+)$/.exec(asked)
+
+  if (heldDucats !== null) {
+    return new Response(
+      heldDucats[1] === THE_MEMBER_THE_SERVED_DUCATS_ARE_OF
+        ? readFileSync(join(PUBLIC_DIR, '/mock/ducat-awards.json'), 'utf-8')
+        : '[]',
+      { status: 200, headers: { 'content-type': 'application/json' } },
+    )
   }
 
   /* `GET /api/me/photo` (`MePhotoApi.mine`), READ ONLY: the same address takes the picture itself as a

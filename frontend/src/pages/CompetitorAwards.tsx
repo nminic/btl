@@ -2,15 +2,14 @@ import { memberNumberIn, redirectTo } from './profileAddress'
 import { categoryLabel } from '../data/categories'
 import { useMemo, useRef } from 'react'
 import { Navigate, useLocation, useParams } from 'react-router'
-import { useToday } from '../clock/useClock'
 import { PageMeta } from '../app/PageMeta'
 import { DucatArt } from '../components/DucatArt'
 import { Loader } from '../components/Loader'
 import { Resource } from '../components/Resource'
 import { useColumns, useGrowing } from '../components/growing'
 import { LoadMore } from '../components/LoadMore'
-import { earnedDucats } from '../data/ducatEarned'
-import { unitFor, type Ducat } from '../data/ducatRule'
+import { heldDucats, useHeldDucats, type HeldDucat } from '../data/ducatHeld'
+import { unitFor, type Ducat, type DucatFamily } from '../data/ducatRule'
 import { pairsNow, resultsOf, seasonsWithResults } from '../data/derive'
 import type { Competitor, RacingPair, Team } from '../data/types'
 import { formatNumber, formatPoints, wholePeriod } from '../i18n/format'
@@ -72,14 +71,17 @@ function AwardsBody({
      its line now ends with the racing pair (PDL P11, owner, 18.10.2026, „Trkački par stoji u liniji
      ispod imena, posle tima"). One head on both parts (`profile/ProfileHead.tsx`): a line that said
      the pair on „Rezultati" and dropped it on „Priznanja" would be two answers about one person. */
+  /* AND THE DUCATS HE HOLDS, since 13.11.2026, as the server awarded them (`data/ducatHeld.ts`), read by
+     the number on the address before anything is known of the reader: the route answers every reader
+     alike (`DucatAwardApi`), and the page decides below who reaches it. */
   const state = combinePair(
     combineFour(useCompetitors(), useResults(), useTeams(), usePairs()),
-    combinePair(useDucats(), useEveryFrozenTable()),
+    combinePair(combinePair(useDucats(), useHeldDucats(memberNumber)), useEveryFrozenTable()),
   )
 
   return (
     <Resource state={state}>
-      {([[everybody, results, allTeams, fromFile], [ducats, frozenTables]]) => {
+      {([[everybody, results, allTeams, fromFile], [[ducats, held], frozenTables]]) => {
         /* The same three answers as the profile itself, from the same place, and through the
            same overlay: this page draws the same head from the same record, and a check written
            on one of the two is a check on neither. */
@@ -126,6 +128,7 @@ function AwardsBody({
             competitors={among}
             results={results}
             ducats={ducats}
+            held={held}
             frozenTables={frozenTables}
             team={teams.find((one) => one.id === competitor.teamId)}
             teams={teams}
@@ -171,6 +174,7 @@ function AwardsFor({
   competitors,
   results,
   ducats,
+  held,
   frozenTables,
   team,
   teams,
@@ -180,7 +184,10 @@ function AwardsFor({
   part: string | undefined
   competitors: Parameters<typeof awardsOf>[1]
   results: Parameters<typeof awardsOf>[2]
-  ducats: Parameters<typeof earnedDucats>[2]
+  /** Every family of ducats (`/api/ducats`), which the ones he holds are drawn from. */
+  ducats: DucatFamily[]
+  /** The ducats he holds, newest first (`/api/ducat-awards/{memberNumber}`). */
+  held: HeldDucat[]
   /** Every frozen season's snapshot (`/api/frozen-tables/{season}`): its trophies are read, not worked out. */
   frozenTables: FrozenTables[]
   team: Parameters<typeof ProfileTop>[0]['team']
@@ -191,7 +198,6 @@ function AwardsFor({
 }) {
   const { locale, t } = useI18n()
   const { search } = useLocation()
-  const today = useToday()
   const asked = useSeason()
 
   /* A FROZEN SEASON'S TROPHIES ARE ITS SNAPSHOT'S (PDL, owner, 05.11.2026), and a season the record does not
@@ -228,12 +234,12 @@ function AwardsFor({
     () => all.filter((one) => season === ALL_SEASONS || String(one.season) === season),
     [all, season],
   )
-  /* Today, because the families that repeat only have the months that have
-     begun: a ducat for August 2027 is not a ducat anybody can be short of in
-     July (ADL A12, 7). */
+  /* WHAT THE SERVER HAS AWARDED HIM, drawn from the families (`data/ducatHeld.ts`). Worked out here
+     from his results until 13.11.2026; the server writes it now, when a result is verified, corrected or
+     deleted, and at night (PDL, 08.11.2026, plan „Dukate dodeljuje verifikacija rezultata"). */
   const earned = useMemo(
-    () => earnedDucats(competitor, results, ducats, today),
-    [competitor, results, ducats, today],
+    () => heldDucats(held, ducats, competitor.gender),
+    [held, ducats, competitor.gender],
   )
 
   /* One held ducat, in a sentence, for a reader who cannot see the coin. The
@@ -258,8 +264,8 @@ function AwardsFor({
 
   /* Five rows of them before the first refill (owner, 11.08.2026), and a row is
      however many stand across the wall at this width: six on a desktop, two on
-     a telephone. Newest first is the order `earnedDucats` already hands them
-     back in. */
+     a telephone. Newest first is the order the server hands them back in, by the
+     day of the race that won each (`DucatAwardApi`). */
   const wall = useRef<HTMLUListElement>(null)
   const across = useColumns(wall)
   const {

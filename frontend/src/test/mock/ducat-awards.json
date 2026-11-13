@@ -1,0 +1,8 @@
+[
+  { "ducat": "duk-mesecni-km", "value": 125, "tier": 1, "season": 2027, "month": 7 },
+  { "ducat": "duk-sve-trke", "value": 200, "tier": 3, "season": null, "month": null },
+  { "ducat": "duk-sezonski-km", "value": 1000, "tier": 2, "season": 2027, "month": null },
+  { "ducat": "duk-drzave", "value": 20, "tier": 3, "season": null, "month": null },
+  { "ducat": "duk-sve-trke", "value": 100, "tier": 3, "season": null, "month": null },
+  { "ducat": "duk-polumaratoni", "value": 100, "tier": 3, "season": null, "month": null }
+]

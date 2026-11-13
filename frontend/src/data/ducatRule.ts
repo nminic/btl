@@ -24,8 +24,10 @@ import type { Gender } from './types'
  *                     (100 races, 200 races, up to 1000)
  *
  * A family is what the rulebook shows and what this file stores. An instance is
- * one ducat a member can actually hold, and `instancesOf` is the only place the
- * two are joined.
+ * one ducat a member can actually hold. Which instances a family makes, and which
+ * of them a member holds, is the server's since 13.11.2026 (`DucatInstances`,
+ * `DucatAwardApi`); `instanceAt` is the only place this side joins a family to one
+ * ducat it is told he holds.
  */
 
 export const DUCAT_KINDS = [
@@ -211,87 +213,57 @@ function lastDay(season: number, month: number): number {
 }
 
 /**
- * Every ducat of one family that exists by the day given: the periods that have
- * begun, times the thresholds of the series.
+ * ONE DUCAT A MEMBER HOLDS, drawn from its family and from where it stands in it: the threshold he
+ * crossed, what it was worth when he crossed it, and the season and the month of a ducat of a period.
  *
- * The list is worked out rather than stored, because it grows by itself: two
- * ducats a month and four a season, for ever. A table somebody fills in would
- * mean twenty-eight rows typed every first of January, and a portal that lies
- * about what can be won until somebody remembers to type them (ADL A12, 7).
+ * Which ducats he holds is the server's (`DucatAwardApi`, the record `ducat_award` that verification
+ * writes), and so is the list of instances a family makes (`DucatInstances`, ADL A12, 7). Until
+ * 13.11.2026 this side worked both out again on every draw (`instancesOf`, `data/ducatEarned.ts`); now
+ * it only draws. **The tier is the one the record keeps and is not worked out again here**: a run's tier
+ * rises part way (`tierUpFrom`), and a ducat won at one tier goes on saying it after the definition is
+ * rewritten (V91, A36 O13).
+ *
+ * `month` is 1 to 12 as the server keeps it, and both are empty for a ducat of all time
+ * (`ducat_award_a_period_says_its_season`, `ducat_award_only_a_month_says_its_month`, V15). The
+ * identity is the one `instancesOf` gave the same ducat, so the wall's keys did not change with it.
  */
-export function instancesOf(family: DucatFamily, today: string, gender: Gender): Ducat[] {
-  const out: Ducat[] = []
-  const thisSeason = Number(today.slice(0, 4))
-  const thisMonth = Number(today.slice(5, 7)) - 1
+export function instanceAt(
+  family: DucatFamily,
+  gender: Gender,
+  held: { value: number; tier: DucatTier; season: number | null; month: number | null },
+): Ducat {
   const top = topFor(family, gender)
+  const drawn = (from: string, to: string, legend: string, suffix: string): Ducat => ({
+    id: `${family.id}${suffix}${family.step > 0 ? `-${String(held.value)}` : ''}`,
+    name: family.name,
+    kind: family.kind,
+    value: held.value,
+    from,
+    to,
+    tier: held.tier,
+    mark: family.mark,
+    art: family.art,
+    top: family.periodAt === 'top' ? legend : top,
+    bottom: family.periodAt === 'bottom' ? legend : family.bottom,
+  })
+  const { season, month } = held
 
-  const thresholds: number[] = []
-  for (
-    let value = family.value;
-    value <= (family.step > 0 ? family.last : family.value);
-    value += family.step > 0 ? family.step : 1
-  ) {
-    thresholds.push(value)
+  if (season === null) {
+    return drawn('', '', '', '')
   }
 
-  const add = (from: string, to: string, legend: string, suffix: string) => {
-    for (const value of thresholds) {
-      out.push({
-        id: `${family.id}${suffix}${family.step > 0 ? `-${value}` : ''}`,
-        name: family.name,
-        kind: family.kind,
-        value,
-        from,
-        to,
-        tier: tierOf(family, value),
-        mark: family.mark,
-        art: family.art,
-        top: family.periodAt === 'top' ? legend : top,
-        bottom: family.periodAt === 'bottom' ? legend : family.bottom,
-      })
-    }
+  if (month === null) {
+    return drawn(`${String(season)}-01-01`, `${String(season)}-12-31`, periodLegend('season', season, 0), `-${String(season)}`)
   }
 
-  if (family.period === 'always') {
-    add('', '', '', '')
+  const mm = twoDigits(month)
 
-    return out
-  }
-
-  for (let season = FIRST_SEASON; season <= thisSeason; season += 1) {
-    if (family.period === 'season') {
-      add(
-        `${season}-01-01`,
-        `${season}-12-31`,
-        periodLegend('season', season, 0),
-        `-${season}`,
-      )
-      continue
-    }
-
-    const until = season === thisSeason ? thisMonth : 11
-    for (let month = 0; month <= until; month += 1) {
-      add(
-        `${season}-${twoDigits(month + 1)}-01`,
-        `${season}-${twoDigits(month + 1)}-${twoDigits(lastDay(season, month))}`,
-        periodLegend('month', season, month),
-        `-${season}-${twoDigits(month + 1)}`,
-      )
-    }
-  }
-
-  return out
-}
-
-/** One value up, and the fifth is the top: there is no sixth metal to strike.
- *  Written out rather than added to, because `tier + 1` is a number and the
- *  scale is five names, and telling the compiler otherwise takes a cast. */
-const NEXT: Record<DucatTier, DucatTier> = { 1: 2, 2: 3, 3: 4, 4: 5, 5: 5 }
-
-/** The value of one ducat of a family: the family's own, one higher from the
- *  threshold at which the owner said the series stops being ordinary. */
-export function tierOf(family: DucatFamily, value: number): DucatTier {
-  return family.tierUpFrom > 0 && value >= family.tierUpFrom ? NEXT[family.tier] : family.tier
+  return drawn(
+    `${String(season)}-${mm}-01`,
+    `${String(season)}-${mm}-${twoDigits(lastDay(season, month - 1))}`,
+    periodLegend('month', season, month - 1),
+    `-${String(season)}-${mm}`,
+  )
 }
 
 /** The one instance the rulebook draws for a family: the first of them, which

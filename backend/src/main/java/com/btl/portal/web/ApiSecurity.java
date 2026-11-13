@@ -124,7 +124,10 @@ class ApiSecurity {
 			PhotoApi.A_SMALL_PICTURE_IS_ASKED_FOR_AT,
 			/* The tables of one frozen season, named by the season (FrozenSeasonApi says why this is not
 			   under /api/frozen-seasons). Anybody, as the tables of a season are. */
-			"/api/frozen-tables/{season}");
+			"/api/frozen-tables/{season}",
+			/* The ducats one member holds, named by his number (DucatAwardApi says why it is anybody's:
+			   the profile drew them from /api/results, which is). */
+			"/api/ducat-awards/{memberNumber}");
 
 	/**
 	 * WHO THE SETTINGS NAME, ANSWERED ONCE FOR THE WHOLE APPLICATION AND NOT ONLY FOR THIS
