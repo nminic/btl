@@ -1,4 +1,4 @@
-import { act, screen, within } from '@testing-library/react'
+import { act, configure, screen, within } from '@testing-library/react'
 import { at, must } from '../test/at'
 import { renderAt } from '../test/render'
 import { THE_SAVE_ASKS, sayNoToTheSave, sayYesToTheSave, theSaveSheet } from '../test/saveSheet'
@@ -21,6 +21,11 @@ import { setupUser } from '../test/user'
  * THE EVENT AND ITS NUMBERS, taken from the sample and asserted below so a change of the sample says so: Bešnjaja
  * trek, whose two races have one result and three results (races 141 and 142, the table drawing 142 first).
  */
+
+/* Every wait of this file is given a quarter of the time a case has (the precedent is `member/settingsByStanding.test.tsx`),
+   so a wait that never succeeds ends the case with the assertion's own words and not with the case's clock: the suite
+   waits as long as the case, and a case that fails by its clock cannot be told from a case that was never measured. */
+configure({ asyncUtilTimeout: SLOW / 4 })
 
 const TWO_RACES_AND_FOUR_RESULTS = 'Ovim čuvanjem brišeš 2 trke i 4 rezultata.'
 const THE_NUMBER_IS_NOT_KNOWN = 'Ovim čuvanjem brišeš 2 trke, a broj rezultata koji odlaze još nije poznat.'
