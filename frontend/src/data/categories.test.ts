@@ -60,12 +60,24 @@ describe('categoryLabel', () => {
 
   it('names the beginners by the word that carries the gender', () => {
     /* Serbian says it in one word and needs no letter in front of it; English
-       says `Rookies` for both (owner, 18.10.2026). So the label comes out of the
-       dictionary and the code does not. */
+       needs one, because `rookie` does not tell the genders apart: `M Rookies` and
+       `F Rookies` (owner, 13.11.2026, who overturned the `M R` and `F R` of
+       11.08.2026 and the bare `Rookies` of 18.10.2026). So the label comes out of
+       the dictionary and the code does not. */
     expect(categoryLabel('M R', inSerbian)).toBe('Početnici')
     expect(categoryLabel('Ž R', inSerbian)).toBe('Početnice')
-    expect(categoryLabel('M R', inEnglish)).toBe('Rookies')
-    expect(categoryLabel('Ž R', inEnglish)).toBe('Rookies')
+    expect(categoryLabel('M R', inEnglish)).toBe('M Rookies')
+    expect(categoryLabel('Ž R', inEnglish)).toBe('F Rookies')
+  })
+
+  it('writes the letter of the rookie category as the letter of the age bands', () => {
+    /* Two homes of one fact: the women's letter is `category.markFemale` for the age
+       bands and was typed again into `category.rookieFemale`. Tied here, so a day the
+       letter moves takes both. English only: Serbian has no letter in front of it. */
+    const inEnglish = (key: string) => translate(en, 'en', key)
+
+    expect(categoryLabel('M R', inEnglish)).toBe(`${inEnglish('category.markMale')} Rookies`)
+    expect(categoryLabel('Ž R', inEnglish)).toBe(`${inEnglish('category.markFemale')} Rookies`)
   })
 
   it.each(AGE_BANDS)('writes the band %s with a space after the mark, in Serbian', (band) => {
