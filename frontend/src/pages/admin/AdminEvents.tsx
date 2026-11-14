@@ -597,13 +597,22 @@ export function AdminEvents() {
              * @returns every race the route refused, in the order they were sent; nothing where
              *          every one went through
              */
+            /**
+             * THE FILED RACES THAT A SAVE OF THESE VALUES KEEPS, by their identity: the ones a row of the table
+             * still carries, and none at all where the kind is not a race (owner, 23.08.2026: saved as something
+             * else it takes every race it had away). ONE PLACE for what the press deletes (`writeTheRaces`) and
+             * for what the question before it counts (`takenAway`), so the sheet cannot say one set of races and
+             * the save delete another.
+             */
+            const theRacesThisSaveKeeps = (values: FormValues): Set<string> =>
+              kindOf(values) === 'race'
+                ? new Set(current.filter((row) => row.id !== '').map((row) => row.id))
+                : new Set<string>()
+
             async function writeTheRaces(values: FormValues, eventId: string): Promise<RaceRefusal[]> {
               const refusals: RaceRefusal[] = []
               const was = allRaces.filter((one) => String(one.eventId) === eventId)
-              const kept =
-                kindOf(values) === 'race'
-                  ? new Set(current.filter((row) => row.id !== '').map((row) => row.id))
-                  : new Set<string>()
+              const kept = theRacesThisSaveKeeps(values)
 
               /* THE TABLE IS HELD AS THE ROWS THIS PRESS WALKS, before anything is sent. Two things
                  find a row again by its OBJECT afterwards: a refusal (`EventRaces.tsx`, `NotSaved`),
@@ -1078,10 +1087,7 @@ export function AdminEvents() {
              * a deletion counts it (`goingWith`), and not through the event or its address.
              */
             const takenAway = (values: FormValues): Set<string> => {
-              const survives =
-                kindOf(values) === 'race'
-                  ? new Set(current.filter((row) => row.id !== '').map((row) => row.id))
-                  : new Set<string>()
+              const survives = theRacesThisSaveKeeps(values)
 
               return new Set(
                 allRaces

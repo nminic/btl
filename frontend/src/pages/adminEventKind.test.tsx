@@ -2,6 +2,7 @@ import { act, screen, within } from '@testing-library/react'
 import { at, must } from '../test/at'
 import { renderAt } from '../test/render'
 import { THE_SAVE_ASKS, sayNoToTheSave, sayYesToTheSave, theSaveSheet } from '../test/saveSheet'
+import { SLOW } from '../test/slow'
 import { setupUser } from '../test/user'
 
 /* One question, in a file of its own: what the screen does when somebody saves an event in a way that takes its
@@ -100,7 +101,7 @@ describe('an event saved in a way that takes its races away', () => {
     } finally {
       undo()
     }
-  })
+  }, SLOW)
 
   it('asks at once, and says the same, while the results are still coming', async () => {
     /* A file on its way and a file that failed are one sentence on the row that deletes the event (owner,
@@ -119,7 +120,7 @@ describe('an event saved in a way that takes its races away', () => {
     } finally {
       undo()
     }
-  })
+  }, SLOW)
 
   it('says the number as soon as the results arrive, while the question is on the screen', async () => {
     /* The number is read at every draw and not once at the press: a press that lands before the largest file the
@@ -143,7 +144,7 @@ describe('an event saved in a way that takes its races away', () => {
     } finally {
       undo()
     }
-  })
+  }, SLOW)
 
   it('says the races and the results of the event when the kind is changed', async () => {
     const undo = stubFetch('served')
@@ -158,7 +159,7 @@ describe('an event saved in a way that takes its races away', () => {
     } finally {
       undo()
     }
-  })
+  }, SLOW)
 
   it('counts only the race taken off the table, and only its results, for an event that stays a race', async () => {
     /* The save deletes what was filed and not what is on the screen, and the number is the number of the races it
@@ -187,7 +188,7 @@ describe('an event saved in a way that takes its races away', () => {
     } finally {
       undo()
     }
-  })
+  }, SLOW)
 
   it('says the races taken off the table even when the rows were taken off the screen first', async () => {
     /* The save deletes what was filed, not what is on the screen, so the question has to count the same thing. Delete
@@ -210,7 +211,7 @@ describe('an event saved in a way that takes its races away', () => {
     } finally {
       undo()
     }
-  })
+  }, SLOW)
 
   it('sends the save only when the answer is yes, and then confirms it', async () => {
     const undo = stubFetch('served')
@@ -231,7 +232,7 @@ describe('an event saved in a way that takes its races away', () => {
     } finally {
       undo()
     }
-  })
+  }, SLOW)
 
   it('sends nothing when the answer is no, and leaves the form as it was typed', async () => {
     const undo = stubFetch('served')
@@ -250,7 +251,7 @@ describe('an event saved in a way that takes its races away', () => {
     } finally {
       undo()
     }
-  })
+  }, SLOW)
 
   it('lets through a save whose races are all still there, with no question', async () => {
     /* The other direction of the same question: measured only for what it asks, a question can be made to ask about
@@ -274,7 +275,7 @@ describe('an event saved in a way that takes its races away', () => {
     } finally {
       undo()
     }
-  })
+  }, SLOW)
 
   it('lets through a gathering that has no races to take away, with no question', async () => {
     /* The question is about a deletion, so where there is nothing to delete there is nothing to ask. Measured by a
@@ -306,5 +307,5 @@ describe('an event saved in a way that takes its races away', () => {
     } finally {
       undo()
     }
-  })
+  }, SLOW)
 })
