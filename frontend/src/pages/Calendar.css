@@ -330,6 +330,20 @@
   box-shadow: inset 3px 0 0 0 var(--kind-training-edge);
 }
 
+/* An unscored race: a tile of its own and no dot of a length on it (owner, 14.11.2026: „Nebodovana trka u
+   kalendaru nema tačku dužine, samo oznaku na pločici"). Rose, because neither it nor anything near it is
+   anywhere else on the portal: the five lengths hold blue, green, gold, orange and red, a gathering holds
+   violet and a training teal, and the red of the longest length is a dot and not a tile. Said by the same
+   three tokens and the same inward edge as the two kinds above, so the three are made by one method.
+   The word travels with the colour (the tile names the kind for a screen reader and the legend names it
+   in words), so nothing here rests on the colour alone (WCAG 2.2 SC 1.4.1). */
+.chip--unscored {
+  background: var(--kind-unscored-face);
+  color: var(--kind-unscored-ink);
+  border-left-color: var(--kind-unscored-edge);
+  box-shadow: inset 3px 0 0 0 var(--kind-unscored-edge);
+}
+
 /* A featured event: the tile's face gold, and every colour on it the one that can be
    seen on gold (owner, 12.11.2026: „neka cela pločica bude zlatna, a onda prilagodi
    ostale boje elemenata unutar nje tako da budu vidljivi"). The edge keeps the colour
@@ -358,6 +372,9 @@
   --kind-training-face: var(--featured-face);
   --kind-training-ink: var(--featured-ink);
   --kind-training-edge: var(--featured-edge-training);
+  --kind-unscored-face: var(--featured-face);
+  --kind-unscored-ink: var(--featured-ink);
+  --kind-unscored-edge: var(--featured-edge-unscored);
   --length-short: var(--featured-length-short);
   --length-half: var(--featured-length-half);
   --length-long: var(--featured-length-long);
@@ -631,6 +648,12 @@
   background: var(--kind-training-face);
   border-left-color: var(--kind-training-edge);
   box-shadow: inset 3px 0 0 0 var(--kind-training-edge);
+}
+
+.legend__tile--unscored {
+  background: var(--kind-unscored-face);
+  border-left-color: var(--kind-unscored-edge);
+  box-shadow: inset 3px 0 0 0 var(--kind-unscored-edge);
 }
 
 .legend__item {

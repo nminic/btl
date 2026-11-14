@@ -26,6 +26,7 @@ import { memberOf } from '../data/derive'
 import { raceLabel, raceMeasure } from '../data/raceLabel'
 import { inEventOrder } from '../data/raceOrder'
 import { outsideLink } from '../data/outsideLink'
+import { kindHasRaces } from '../data/types'
 import type { Race, BtlEvent } from '../data/types'
 import { useSession } from '../session/useSession'
 import { EventActions } from './event/EventActions'
@@ -668,7 +669,7 @@ export function EventDetail() {
                   four headings and no rows, which is exactly the „a race whose
                   distances nobody has entered yet" that its tile was given its own
                   colour to deny, so the tile and the page said opposite things. */}
-              {event.kind === 'race' && <RaceTable event={event} />}
+              {kindHasRaces(event.kind) && <RaceTable event={event} />}
 
               <EventResults slug={event.slug} date={event.date} />
 

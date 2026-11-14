@@ -139,9 +139,10 @@ describe('the gold tile of a featured event', () => {
   })
 
   it('points every colour the tile reads that flips with the theme at one that does not', () => {
-    /* The kind's three and the six lengths' today. Fewer means the parse found
-       nothing and the rest of this file measures an empty set. */
-    expect(flipping.length, `found only ${flipping.join(', ')}`).toBeGreaterThanOrEqual(9)
+    /* The three tokens of each of the four kinds and the six lengths' today. Fewer means the parse
+       found nothing, or that a kind has stopped being read by the tile, and the rest of this file
+       measures an empty set. */
+    expect(flipping.length, `found only ${flipping.join(', ')}`).toBeGreaterThanOrEqual(18)
 
     for (const token of flipping) {
       pointedAt(token)
@@ -166,10 +167,10 @@ describe('the gold tile of a featured event', () => {
     /* Owner, 12.11.2026, the same evening: the edge of a featured tile keeps the colour
        of its kind, race, skup or trening. The light theme's, because the gold under it
        does not flip and the dark theme's edges vanish into it. Every kind edge the tile
-       reads, by its name; three today. */
+       reads, by its name; four today. */
     const edges = flipping.filter((token) => /^--kind-[a-z]+-edge$/.test(token))
 
-    expect(edges.length, `found only ${edges.join(', ')}`).toBeGreaterThanOrEqual(3)
+    expect(edges.length, `found only ${edges.join(', ')}`).toBeGreaterThanOrEqual(4)
 
     const drawn = edges.map((token) => colour(pointedAt(token)))
 
@@ -177,7 +178,7 @@ describe('the gold tile of a featured event', () => {
       expect(drawn[index], `${token} on a featured tile is not its own light edge`).toBe(lightColour(token))
     }
 
-    /* And three edges are three colours, so a tile whose kinds all share one edge fails
+    /* And four edges are four colours, so a tile whose kinds all share one edge fails
        even if that one edge happened to be somebody's light value. */
     expect(new Set(drawn).size, `the kinds share an edge: ${drawn.join(', ')}`).toBe(edges.length)
   })
@@ -196,9 +197,9 @@ describe('the gold tile of a featured event', () => {
         return { ...one, floor, ratio }
       })
 
-    /* Three inks of text, one per kind; and three edges and six dots of graphic. */
-    expect(measured.filter((one) => one.floor === FLOOR_TEXT)).toHaveLength(3)
-    expect(measured.filter((one) => one.floor === FLOOR_GRAPHIC).length).toBeGreaterThanOrEqual(9)
+    /* Four inks of text, one per kind; and four edges and six dots of graphic. */
+    expect(measured.filter((one) => one.floor === FLOOR_TEXT)).toHaveLength(4)
+    expect(measured.filter((one) => one.floor === FLOOR_GRAPHIC).length).toBeGreaterThanOrEqual(10)
 
     for (const one of measured) {
       expect(

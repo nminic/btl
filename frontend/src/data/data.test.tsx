@@ -741,6 +741,8 @@ describe('the generated data', () => {
     expect(kinds.every((one) => EVENT_KINDS.some((known) => known === one))).toBe(true)
     expect(kinds).toContain('gathering')
     expect(kinds).toContain('race')
+    /* And the one unscored race (owner, 14.11.2026), which is what the cases about that kind are asked of. */
+    expect(kinds).toContain('unscored')
     expect(events.filter((one) => one.status !== undefined)).toEqual([])
   })
 

@@ -1572,6 +1572,20 @@ describe('dotsAt', () => {
     dots: [category],
   })
 
+  it('draws no length on an unscored race, whatever the served file says it carries', () => {
+    /* Owner, 14.11.2026: „Nebodovana trka u kalendaru nema tačku dužine, samo oznaku na pločici". The
+       server answers a race of a length with its own category whichever event it stands under
+       (`races.json` carries `ultra` on the unscored triathlon), so the exemption is on the EVENT: the same
+       races handed to a scored event of the same id draw their dots, and to an unscored one draw none. */
+    const races = [race(1, 12, 'marathon'), race(2, 12, 'short')]
+
+    expect(dotsAt({ ...event(12), kind: 'race' }, races)).toEqual(['short', 'marathon'])
+    expect(dotsAt({ ...event(12), kind: 'unscored' }, races)).toEqual([])
+    /* And not every event that is not a race: a training or a gathering that somehow stands over races
+       is not this rule's business, so the exemption is for the one kind and no other. */
+    expect(dotsAt({ ...event(12), kind: 'gathering' }, races)).toEqual(['short', 'marathon'])
+  })
+
   it('takes the lengths of that event and of no other', () => {
     const races = [
       race(1, 12, 'short'),

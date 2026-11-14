@@ -15169,5 +15169,18 @@
     "description": "",
     "link": "",
     "copiedFrom": 1111
+  },
+  {
+    "id": 1168,
+    "slug": "palicki-triatlon-2027",
+    "name": "Palićki triatlon",
+    "date": "2027-07-18",
+    "city": "Subotica",
+    "country": "RS",
+    "kind": "unscored",
+    "featured": false,
+    "description": "",
+    "link": "",
+    "copiedFrom": null
   }
 ]

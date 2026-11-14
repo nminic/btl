@@ -241,10 +241,10 @@ export function raceWrittenIn(body: unknown): number | null {
 }
 
 /**
- * THE ELEVEN REFUSALS AN EVENT BEING WRITTEN CAN MEET, each to a sentence in the dictionary.
+ * THE THIRTEEN REFUSALS AN EVENT BEING WRITTEN CAN MEET, each to a sentence in the dictionary.
  *
  * <p>`pages/account/refusals.test.ts` reads `EventWriteApi.java` and requires this table to
- * cover every `static final String` it declares, in both directions, so a twelfth arrives as
+ * cover every `static final String` it declares, in both directions, so a fourteenth arrives as
  * a red gate rather than as a code somebody cannot read.
  *
  * <p><b>Two of these cannot be reached from the form and are answered all the same.</b>
@@ -267,6 +267,14 @@ export const WHEN_WRITING_AN_EVENT: Record<string, string> = {
   theDateWouldMoveAResultToAnotherYear:
     'admin.eventSaveRefused.theDateWouldMoveAResultToAnotherYear',
   theRaceCountsInALeagueOfItsSeason: 'admin.eventSaveRefused.theRaceCountsInALeagueOfItsSeason',
+  /* PDL, 14.11.2026 (owner, decision 6 of the second round on „Ostale discipline kao lična evidencija"):
+     an event that has a result does not change between a scored and an unscored race. The screen stops the
+     reader before he presses (`eventKindHeld.ts`); this is the server saying it to one that did not. */
+  aKindWithResultsDoesNotChange: 'admin.eventSaveRefused.aKindWithResultsDoesNotChange',
+  /* PDL, 14.11.2026 (derived, „Prelazak događaja iz Bodovane u Nebodovanu trku odbija se i bez rezultata ako se
+     ijedna njegova trka računa u nekoj ligi"): the other half of the same change of kind, refused where no result
+     stands but a race of the event counts in a league. */
+  anUnscoredRaceIsNotInALeague: 'admin.eventSaveRefused.anUnscoredRaceIsNotInALeague',
 }
 
 /**

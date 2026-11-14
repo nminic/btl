@@ -263,10 +263,10 @@ const NOT_YET_ON_ANY_SCREEN: Record<string, string[]> = {
      dictionary on the line for that file below and the entry went, as the case at the bottom of
      this file requires of a reason whose screen has arrived. */
   /* THE UNSCORED RACE, step 1 of its increment (PDL, 14.11.2026, „Ostale discipline kao lična evidencija"):
-     the server refuses a change of kind between a scored and an unscored race while a result stands, and
-     an unscored race in a league, before any screen sends either. The screens of steps 2 and 4 map them,
-     and the case at the bottom of this file takes these entries away the day they do. */
-  'EventWriteApi.java': ['aKindWithResultsDoesNotChange', 'anUnscoredRaceIsNotInALeague'],
+     the server refuses an unscored race in a league before any screen sends it. The two refusals of the
+     change of kind on `EventWriteApi` stood here too and went with step 2, which answers them on the event
+     form; this one goes the day the league screen maps it, and the case at the bottom of this file takes it
+     away then. */
   'LeagueWriteApi.java': ['anUnscoredRaceIsNotInALeague'],
 }
 
@@ -634,6 +634,10 @@ describe('the reasons the server can name', () => {
        route answers one word, and what it means to the reader depends on whether he was
        saving an event or one of its mornings. The race's thirteenth arrived 10.10.2026 with
        the owner's answer that a race carrying an approved result keeps its kind (PDL P4). */
+    /* Twelve since 14.11.2026: `aKindWithResultsDoesNotChange`, an event with a result does not change between a
+       scored and an unscored race (PDL, „Ostale discipline kao lična evidencija"), answered on the event form.
+       Thirteen the same day with `anUnscoredRaceIsNotInALeague`, the same change refused while a race of the event
+       counts in a league. Both are answered on the event form, so neither stands in `NOT_YET_ON_ANY_SCREEN`. */
     ['EventWriteApi.java', [WHEN_WRITING_AN_EVENT], 13],
     ['RaceWriteApi.java', [WHEN_WRITING_A_RACE], 14],
     /* THE LEAGUE'S OWN ENTRY OF RESULTS FROM THE EVENT PAGE, added 19.10.2026 with the screen that
