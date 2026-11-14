@@ -326,7 +326,7 @@ function TheForm({ me }: { me: string }) {
   /* THE EVENT AND ITS KIND IN THE FORM AS THEY STAND, which decide whether the climb may be left out on a
      new run or one sent again: the kind of the event chosen from the calendar, or the box's where he
      typed one (the box is drawn only then, `showWhenEmpty`). Nothing until the form has said anything. */
-  const [inTheBoxes, setInTheBoxes] = useState<{ eventId: string; eventKind: string } | null>(null)
+  const [inTheBoxes, setInTheBoxes] = useState<{ eventId: string; eventKind: string; chosen: string } | null>(null)
   const sent = useMyResultSubmissions(me, revision)
   /* THE SEASONS HE MAY SEND A RUN OF, which the server says (`/api/me`): the lists offer nothing of
      any other, and the day is held to them (PDL P9, 19.10.2026). Not waited for: the form is drawn
@@ -410,13 +410,7 @@ function TheForm({ me }: { me: string }) {
   /* WHETHER THE RUN THIS FORM SENDS IS ONE OF A SCORED RACE: the counted result's own list, the kind a
      run sent back was sent under, or the kind in the box. */
   const kindInTheBoxes =
-    inTheBoxes === null
-      ? null
-      : inTheBoxes.eventId === ''
-        ? inTheBoxes.eventKind
-        : (events.status === 'ready'
-            ? events.data.find((one) => String(one.id) === inTheBoxes.eventId)?.kind
-            : undefined) ?? null
+    inTheBoxes === null ? null : inTheBoxes.eventId === '' ? inTheBoxes.eventKind : inTheBoxes.chosen
   const scored =
     fixingOne !== undefined
       ? !(unscored.status === 'ready' && unscored.data.some((one) => one.id === fixingOne.id))
@@ -669,7 +663,13 @@ function TheForm({ me }: { me: string }) {
             /* The kind in its box, as it is typed or filled, so the climb is asked for or not as it
                changes. */
             onChange={(values) =>
-              setInTheBoxes({ eventId: String(values.eventId ?? ''), eventKind: String(values.eventKind ?? '') })
+              setInTheBoxes({
+                eventId: String(values.eventId ?? ''),
+                eventKind: String(values.eventKind ?? ''),
+                /* Filled with the key by the list of events (`eventsToOffer.ts`), and nothing where no event
+                   was chosen. */
+                chosen: String(values.kindOfTheChosenEvent ?? ''),
+              })
             }
             /* A fresh form starts on „Dužinska" (owner, 30.08.2026), and that is done
                here rather than in the definition because a field has no notion of a

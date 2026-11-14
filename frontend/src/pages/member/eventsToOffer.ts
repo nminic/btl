@@ -56,7 +56,10 @@ function offered(events: BtlEvent[], today: string, wanted: (year: number) => bo
       id: String(one.id),
       value: one.name,
       said: [one.name, formatNumericDate(one.date), one.city].filter((part) => part !== '').join(' – '),
-      fills: { eventId: String(one.id), date: fieldDate(one.date) },
+      /* And the event's kind beside its key, which no box draws and nothing sends (the kind of a chosen event
+         is the event's, PDL 14.11.2026, (4)): the member's form reads it to ask the climb or not, and a broken
+         link empties it with the key. */
+      fills: { eventId: String(one.id), date: fieldDate(one.date), kindOfTheChosenEvent: one.kind },
       holds: ['eventId'],
     }))
 }
