@@ -145,7 +145,7 @@ class EventWriteApi {
 	static final String A_KIND_WITH_RESULTS_DOES_NOT_CHANGE = "aKindWithResultsDoesNotChange";
 
 	/**
-	 * A scored event whose race counts in a league may not become an unscored one. The literal
+	 * An event whose race counts in a league may not become an unscored one, from whatever kind. The literal
 	 * {@link LeagueWriteApi#AN_UNSCORED_RACE_IS_NOT_IN_A_LEAGUE} holds, declared again as the pair above
 	 * is: one rule, one word, whichever door it came through. My reasoning, not a decision of its own: a
 	 * league refuses an unscored race, and turning the event into one would put that race into the league
@@ -336,11 +336,12 @@ class EventWriteApi {
 				return wrong;
 			}
 
-			/* BETWEEN A SCORED AND AN UNSCORED RACE, ONLY WHILE NO RESULT STANDS (see
-			   {@link #A_KIND_WITH_RESULTS_DOES_NOT_CHANGE}). A move into a training or a gathering is not
-			   this change and is answered as it was: PDL, 14.11.2026, „Prelazak u Trening ili Skup se ovim
-			   ne menja". */
-			if (WhatAnEventCarries.crossesTheScoring(before.get().kind(), kindOf(typed))) {
+			/* INTO A SCORED OR AN UNSCORED RACE FROM ANY OTHER KIND, ONLY WHILE NO RESULT STANDS (see
+			   {@link #A_KIND_WITH_RESULTS_DOES_NOT_CHANGE} and `WhatAnEventCarries.entersAKindThatHoldsRaces`,
+			   which says why the way in is asked and not only the step between the two). A move into a
+			   training or a gathering is answered as it was: PDL, 14.11.2026, „Prelazak u Trening ili Skup se
+			   ovim ne menja". */
+			if (WhatAnEventCarries.entersAKindThatHoldsRaces(before.get().kind(), kindOf(typed))) {
 				if (carriesAResult(id)) {
 					return no(HttpStatus.CONFLICT, A_KIND_WITH_RESULTS_DOES_NOT_CHANGE);
 				}

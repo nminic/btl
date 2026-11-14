@@ -88,13 +88,26 @@ public final class WhatAnEventCarries {
 	}
 
 	/**
-	 * WHETHER CHANGING AN EVENT FROM ONE KIND TO THE OTHER MOVES IT BETWEEN A SCORED AND AN UNSCORED RACE:
-	 * both kinds hold races and they are not the same. Owner, PDL, 14.11.2026, second round of questions
-	 * about the plan, (6): „Vrsta događaja koji ima ijedan rezultat ne može da se promeni između Bodovane i
-	 * Nebodovane trke dok rezultati stoje". A move into a training or a gathering is not this change.
+	 * WHETHER A CHANGE OF KIND ENTERS A KIND THAT HOLDS RACES FROM ANOTHER KIND: the change that must not be
+	 * made while the races of the event carry a result (and, into an unscored race, while one counts in a
+	 * league). Owner, PDL, 14.11.2026, second round of questions about the plan, (6): „Vrsta događaja koji
+	 * ima ijedan rezultat ne može da se promeni između Bodovane i Nebodovane trke dok rezultati stoje", and
+	 * „Prelazak u Trening ili Skup se ovim ne menja: i dalje briše trke uz pitanje sa brojem rezultata".
+	 *
+	 * <p><b>It is asked on the way IN and never on the way out, and that is the whole shape.</b> A move into
+	 * a training or a gathering stays free, because the screen of 07.11.2026 (PR 724) saves the event first
+	 * and deletes its races afterwards, so an event can stand as a training with its races and their results
+	 * for a moment, or for longer where a deletion is refused. Such an event no longer says whether its runs
+	 * were scored. Asked only between a scored and an unscored race, two changes in a row (a scored race
+	 * into a training, the training into an unscored race) carried a result from one to the other, and the
+	 * same two put an unscored race into a league; review of PR 729 measured both. Asked of every way in,
+	 * no sequence of changes can: a result that stands under an event keeps the kind it was entered under
+	 * until it is deleted, which is the remedy the owner named („greška se ispravlja brisanjem i ponovnim
+	 * unosom"). The cost: an event saved as a training whose races could not all be deleted goes back to a
+	 * race only once its results are gone.
 	 */
-	public static boolean crossesTheScoring(String before, String after) {
-		return holdsRaces(before) && holdsRaces(after) && !before.equals(after);
+	public static boolean entersAKindThatHoldsRaces(String before, String after) {
+		return holdsRaces(after) && !before.equals(after);
 	}
 
 	/** Whether this is a link the table would hold. Empty is one, and is not a link. */

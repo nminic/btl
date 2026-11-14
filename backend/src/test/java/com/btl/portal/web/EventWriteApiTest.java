@@ -1413,6 +1413,69 @@ class EventWriteApiTest {
 		assertThat(kindOfTheEvent(acted)).isEqualTo("race");
 	}
 
+	/**
+	 * AND NOT IN TWO STEPS THROUGH A TRAINING OR A GATHERING EITHER (review of PR 729, measured with these
+	 * three sequences): the move into the training is free, and the way back into either race is refused while
+	 * the result stands, so a scored result never becomes an unscored one and an unscored one never becomes
+	 * scored. The rule the owner set has to hold whichever way the server is walked: „zabranu
+	 * bodovana/nebodovana mora da drži server, ne samo ekran" (PDL, 14.11.2026).
+	 */
+	@ParameterizedTest
+	@CsvSource({"race, training, unscored", "race, gathering, unscored", "unscored, training, race",
+			"unscored, gathering, race"})
+	void aResultDoesNotCrossBetweenAScoredAndAnUnscoredRaceThroughATrainingOrAGathering(String from, String via,
+			String to) throws Exception {
+		db.sql("update btl_event set kind = ? where id = ?").params(from, acted).update();
+
+		assertThat(change(acted, theSameEventAs(via)).getStatus()).isEqualTo(200);
+
+		MockHttpServletResponse answer = change(acted, theSameEventAs(to));
+
+		assertThat(answer.getStatus()).isEqualTo(409);
+		assertThat(reasonIn(answer)).isEqualTo(EventWriteApi.A_KIND_WITH_RESULTS_DOES_NOT_CHANGE);
+		assertThat(kindOfTheEvent(acted)).isEqualTo(via);
+	}
+
+	/**
+	 * AND AN UNSCORED RACE DOES NOT REACH A LEAGUE THAT WAY: a scored event whose race counts in a league,
+	 * with no result, goes into a training or a gathering and is refused on the way into an unscored race; on
+	 * the way back into a scored race it is not, since a scored race in a league is the ordinary state.
+	 */
+	@ParameterizedTest
+	@CsvSource({"training", "gathering"})
+	void anUnscoredRaceDoesNotReachALeagueThroughATrainingOrAGathering(String via) throws Exception {
+		db.sql("delete from result where race_id in (select id from race where event_id = ?)").param(acted)
+				.update();
+		leagueCounting("liga-2027", 2027, raceCalled("Kratka"));
+
+		assertThat(change(acted, theSameEventAs(via)).getStatus()).isEqualTo(200);
+
+		MockHttpServletResponse answer = change(acted, theSameEventAs("unscored"));
+
+		assertThat(answer.getStatus()).isEqualTo(409);
+		assertThat(reasonIn(answer)).isEqualTo(EventWriteApi.AN_UNSCORED_RACE_IS_NOT_IN_A_LEAGUE);
+		assertThat(kindOfTheEvent(acted)).isEqualTo(via);
+		assertThat(change(acted, theSameEventAs("race")).getStatus()).isEqualTo(200);
+		assertThat(kindOfTheEvent(acted)).isEqualTo("race");
+	}
+
+	/**
+	 * AND THE SCREEN'S OWN ROAD OF 07.11.2026 STILL WORKS (PR 724): the event is saved as a training or a
+	 * gathering while its races carry a result, and the race with the result is deleted afterwards; once the
+	 * result is gone the event goes back to a race like any other.
+	 */
+	@ParameterizedTest
+	@CsvSource({"training", "gathering"})
+	void theScreensRoadSavesTheEventFirstAndDeletesItsRacesAfterwards(String via) throws Exception {
+		assertThat(change(acted, theSameEventAs(via)).getStatus()).isEqualTo(200);
+		assertThat(http.perform(delete("/api/races/" + raceCalled("Duga")).with(csrf())
+						.cookie(new Cookie(SessionCookie.NAME, session)))
+				.andReturn().getResponse().getStatus()).isEqualTo(204);
+
+		assertThat(change(acted, theSameEventAs("race")).getStatus()).isEqualTo(200);
+		assertThat(kindOfTheEvent(acted)).isEqualTo("race");
+	}
+
 	/** {@code acted} as it stands, of the kind asked: its own name and day, so nothing else moves. */
 	private Form theSameEventAs(String kind) {
 		return aForm().withPlace(aKnownTown()).withName("Trka drugi-2027").withDay(ITS_DAY).withKind(kind);
