@@ -271,8 +271,39 @@ class ResultApi {
 			boolean inItsStanding, Runner runner) {
 	}
 
+	/**
+	 * EVERY SCORED RUN, AND ONLY THOSE. PDL, 14.11.2026, the technique written beside the owner's answers
+	 * (my reasoning, in PDL): „`/api/results` služi samo bodovane rezultate, a nebodovani imaju svoju rutu
+	 * koju čitaju samo profil i „Moji rezultati”". Every table, list and sum the screens build is built off
+	 * this answer, so a run of an unscored race that never reaches it can never be counted by any of them.
+	 * Joined to {@code scored_race} (V99), the one place every count on this server reads.
+	 */
 	@GetMapping("/api/results")
 	List<Result> results() {
+		return served("scored_race", true);
+	}
+
+	/**
+	 * EVERY RUN OF AN UNSCORED RACE, in the shape of {@link #results} and to the same readers (the same
+	 * rule of who is served, and the route is open to anybody as that one is). Joined to
+	 * {@code unscored_race} (V99), which is every race {@code scored_race} does not hold.
+	 *
+	 * <p><b>{@code points} is the zero the row keeps</b> ({@link PointsOfARun}), and the screen draws it as
+	 * „–". <b>{@code inItsSeason} and {@code inItsStanding} are false on every row</b>, since they say
+	 * whether a season or its standings count the run, and PDL, 14.11.2026: „Rezultat ostale discipline nema
+	 * bodove i ne ulazi ni u šta što liga računa". The runner is named as on the other route.
+	 */
+	@GetMapping("/api/unscored-results")
+	List<Result> unscoredResults() {
+		return served("unscored_race", false);
+	}
+
+	/**
+	 * @param races   the view of races the runs are joined to: {@code scored_race} or
+	 *                {@code unscored_race}, written by this class and never by a caller
+	 * @param counted whether a season may count these runs at all
+	 */
+	private List<Result> served(String races, boolean counted) {
 		/* THE CLOCK, read once for the whole answer: the year withheld and whose fee stands are one
 		   moment. */
 		ZonedDateTime now = ZonedDateTime.now(clock);
@@ -318,7 +349,7 @@ class ResultApi {
 						+ " (select " + WhenASeasonWasActivated.of("m") + " from membership m"
 						+ " where m.competitor_id = r.competitor_id"
 						+ " and m.season = extract(year from r.race_date)) as activated_at"
-						+ " from result r"
+						+ " from result r join " + races + " s on s.id = r.race_id"
 						+ " join competitor c on c.id = r.competitor_id"
 						+ " join race ra on ra.id = r.race_id"
 						+ " join btl_event e on e.id = ra.event_id"
@@ -353,10 +384,10 @@ class ResultApi {
 							row.getString(4), row.getString(5), row.getString(6),
 							day, row.getBigDecimal(8), row.getInt(9),
 							row.getInt(10), row.getInt(11), row.getBigDecimal(12), row.getString(13),
-							row.getBoolean(19),
+							counted && row.getBoolean(19),
 							/* THE SEASON IS THE YEAR OF THE RUN, the year the membership above was
 							   joined on, and never the clock's. */
-							row.getBoolean(19)
+							counted && row.getBoolean(19)
 									&& WhenASeasonWasActivated.ranks(day.getYear(), row.getTimestamp(20)),
 							/* NULL WHEN HE HAS NO MEMBER NUMBER, the key still there. The note on
 							   this class says why a registration without one is not named. */

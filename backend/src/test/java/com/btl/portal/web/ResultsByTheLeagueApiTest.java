@@ -2424,4 +2424,75 @@ class ResultsByTheLeagueApiTest {
 				.params(number, race, race, amends)
 				.query(Long.class).single();
 	}
+
+	/* ===================================================================== an unscored race (PDL, 14.11.2026) */
+
+	/**
+	 * AT AN UNSCORED RACE THE LEAGUE ENTERS AND CHANGES A RUN, AND THE RUN KEEPS NO POINTS. PDL, 14.11.2026:
+	 * „Rezultat ostale discipline nema bodove", and the technique beside it, „rezultat nebodovane trke čuva 0
+	 * bodova". The same figures entered at a scored race of the fixture are worth what the formula makes of
+	 * them, so the zero is the race's and not the figures'.
+	 */
+	@Test
+	void atAnUnscoredRaceTheLeagueEntersAndChangesARunThatKeepsNoPoints() throws Exception {
+		long swim = race(anUnscoredEvent("plivanje-2027", "Plivanje", LocalDate.of(2027, 5, 9)), "Plivanje",
+				LocalDate.of(2027, 5, 9), "free", 0, "0", 0, 0);
+
+		assertThat(entered(RESULTS_MODERATOR, swim, rows(row(VERA, "12.00", 100, 100, AN_HOUR))).getStatus())
+				.isEqualTo(201);
+		assertThat(entered(RESULTS_MODERATOR, theHill, rows(row(VERA, "12.00", 100, 100, AN_HOUR))).getStatus())
+				.isEqualTo(201);
+
+		assertThat(pointsOf(VERA, swim)).isEqualTo("0.00");
+		assertThat(pointsOf(VERA, theHill))
+				.isEqualTo(BtlScoreCalculator.calculate(12.0, 100, 100, AN_HOUR).toPlainString())
+				.isNotEqualTo("0.00");
+
+		long result = db.sql("select r.id from result r join competitor c on c.id = r.competitor_id"
+				+ " where c.member_number = ? and r.race_id = ?").params(VERA, swim).query(Long.class).single();
+
+		assertThat(changed(RESULTS_MODERATOR, swim, result, figuresBody("20.00", 200, 200, AN_HOUR)).getStatus())
+				.isEqualTo(204);
+		assertThat(pointsOf(VERA, swim)).as("the change gave the run points").isEqualTo("0.00");
+	}
+
+	/**
+	 * AND THE SAVE OF THE EVENT PAGE THAT NAMES AN UNSCORED EVENT OF THE CALENDAR PUTS ITS NEW RACE ON IT, with
+	 * a run that keeps no points, where an event that is not a race at all is still refused (the owner,
+	 * 23.08.2026; an unscored race holds races, PDL 14.11.2026).
+	 */
+	@Test
+	void aSaveOnAnUnscoredEventOfTheCalendarPutsTheRaceOnItAndATrainingStillTakesNone() throws Exception {
+		long unscored = anUnscoredEvent("plivanje-jezero-2027", "Plivanje na jezeru", LocalDate.of(2027, 5, 9));
+		long training = event("trening-2027", "Trening", LocalDate.of(2027, 5, 9));
+
+		db.sql("update btl_event set kind = 'training' where id = ?").param(training).update();
+
+		assertThat(onAnEvent(RESULTS_MODERATOR, onTheEvent(training,
+				newRace("Krug na treningu", "2027-05-09", "free", null, null, null, null),
+				row(VERA, "3.00", 0, 0, AN_HOUR))).getStatus()).isEqualTo(400);
+		MockHttpServletResponse saved = onAnEvent(RESULTS_MODERATOR, onTheEvent(unscored,
+				newRace("Tri kilometra", "2027-05-09", "free", null, null, null, null),
+				row(VERA, "3.00", 0, 0, AN_HOUR)));
+
+		assertThat(saved.getStatus()).as(saved.getContentAsString()).isEqualTo(201);
+
+		long race = db.sql("select id from race where event_id = ?").param(unscored).query(Long.class).single();
+
+		assertThat(pointsOf(VERA, race)).isEqualTo("0.00");
+	}
+
+	private long anUnscoredEvent(String slug, String name, LocalDate date) {
+		long made = event(slug, name, date);
+
+		db.sql("update btl_event set kind = 'unscored' where id = ?").param(made).update();
+
+		return made;
+	}
+
+	private String pointsOf(String number, long race) {
+		return db.sql("select r.points from result r join competitor c on c.id = r.competitor_id"
+						+ " where c.member_number = ? and r.race_id = ?")
+				.params(number, race).query(String.class).single();
+	}
 }

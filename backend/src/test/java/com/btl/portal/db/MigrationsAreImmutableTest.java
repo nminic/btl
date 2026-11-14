@@ -834,7 +834,15 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   sign-off in each language, each stopping the migration unless its old text stands exactly once.
 
 			   Pinned LAST, when the file was final, off this very assertion. */
-			new Applied("98", "V98__the_rulebook_names_the_rookie_category_with_the_letter_of_the_gender.sql", 1520798233));
+			new Applied("98", "V98__the_rulebook_names_the_rookie_category_with_the_letter_of_the_gender.sql", 1520798233),
+
+			/* V99. An unscored race is a fourth kind of event, and the view every count of results joins asks the
+			   kind (owner, 14.11.2026, PDL "Ostale discipline kao lična evidencija"): the kind constraint widened by
+			   one value, and two views over the key of a race, nothing already standing changed. 99 and no other:
+			   main stood at V98 when it was written, and the rulebook's change of the same increment is V100.
+
+			   Pinned LAST, when the file was final, off this very assertion. */
+			new Applied("99", "V99__an_unscored_race_is_a_kind_of_event_and_only_a_scored_one_is_counted.sql", 1387120764));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {
