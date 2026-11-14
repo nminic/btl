@@ -12,6 +12,7 @@ import { AdminEvents } from './admin/AdminEvents'
 import { at, first, inputElement, must, selectElement } from '../test/at'
 import { sayNo, sayYes, theSheet } from '../test/deleteSheet'
 import { Saved } from '../test/saved'
+import { sayYesToTheSave } from '../test/saveSheet'
 import { answeredWith, refused, serverThat } from '../test/serverAnswers'
 import { whatWasSent, whereItWrote } from '../test/sent'
 import { clearResourceCache, loadResource } from '../data/client'
@@ -325,6 +326,7 @@ describe('the races of an event', () => {
 
     await user.selectOptions(screen.getByLabelText(/^Vrsta događaja/), 'training')
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+    await sayYesToTheSave(user)
 
     expect(await screen.findByRole('status', { name: 'Sačuvano' })).toBeVisible()
   })
@@ -358,6 +360,7 @@ describe('the races of an event', () => {
 
     await user.selectOptions(screen.getByLabelText(/^Vrsta događaja/), 'gathering')
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+    await sayYesToTheSave(user)
 
     const saved = await screen.findByRole('status', { name: 'Sačuvano' })
 
@@ -424,6 +427,7 @@ describe('the races of an event', () => {
 
     await user.selectOptions(screen.getByLabelText(/^Vrsta događaja/), 'gathering')
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+    await sayYesToTheSave(user)
 
     expect(await screen.findByRole('status', { name: 'Sačuvano' })).toBeVisible()
 
@@ -545,6 +549,7 @@ describe('the races of an event', () => {
 
     await user.click(within(shorter).getByRole('button', { name: /^Obriši \d+\. trku$/ }))
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+    await sayYesToTheSave(user)
 
     expect(await screen.findByRole('status', { name: 'Sačuvano' })).toBeVisible()
 
@@ -1149,6 +1154,7 @@ describe('the races of an event', () => {
       must(screen.getAllByRole('button', { name: /^Obriši \d+\. trku$/ })[0], 'the first row'),
     )
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+    await sayYesToTheSave(user)
     await screen.findByRole('status', { name: 'Sačuvano' })
     await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
 
@@ -1239,6 +1245,7 @@ describe('the races of an event', () => {
       must(screen.getAllByRole('button', { name: /^Obriši \d+\. trku$/ })[seventy], 'its button'),
     )
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+    await sayYesToTheSave(user)
     await screen.findByRole('status', { name: 'Sačuvano' })
     await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
 
@@ -1594,6 +1601,7 @@ describe('the races of an event', () => {
 
     await user.click(must(rows[0], 'the first race row'))
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+    await sayYesToTheSave(user)
 
     const said = (await screen.findAllByRole('alert')).map((one) => one.textContent ?? '').join(' ')
 
@@ -3565,6 +3573,7 @@ describe('an event that is deleted', () => {
 
     await user.selectOptions(form.getByLabelText(/^Vrsta događaja/), 'gathering')
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+    await sayYesToTheSave(user)
     await screen.findByRole('status', { name: 'Sačuvano' })
 
     /**

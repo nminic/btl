@@ -4,6 +4,7 @@ import { fieldValue, shownValue, textFrom, valuesFor } from '../../forms/records
 import type { FieldError, FieldOption, FormDef, FormValues } from '../../forms/types'
 import { SYMBOL } from '../../app/actionSymbol'
 import { ActionButton } from '../../components/ActionButton'
+import { Prompt } from '../../components/Prompt'
 import { useI18n } from '../../i18n/useI18n'
 import { plainWords } from '../../forms/worded'
 import { useSession } from '../../session/useSession'
@@ -66,6 +67,7 @@ export function EntityEditor({
   form: drawn,
   fixed,
   holdsWhileSaving = false,
+  asksBeforeSaving,
 }: {
   entity: EntityDef
   editing: Editing
@@ -235,12 +237,39 @@ export function EntityEditor({
    * about them moves, which is the condition `save` and `fixed` were written under as well.
    */
   holdsWhileSaving?: boolean
+  /**
+   * A QUESTION THE SCREEN PUTS TO THE READER BEFORE ITS OWN SAVE IS SENT, for the save that takes something
+   * away with it, said with the number.
+   *
+   * <p>The events pass it, and only they (owner, 07.11.2026, PDL „I čuvanje događaja koje briše njegove trke
+   * radi isto"): a save that takes the races of an event away (the kind changed to a gathering, or a row of
+   * the table of races deleted) does not wait for the results to arrive, as it did until then, and asks
+   * first how many results go with them. It is the sheet that asks before an event is deleted
+   * (`DeleteSheet`, owner 28.09.2026), copied with the guards that hold it: the sheet is
+   * `components/Prompt.tsx`, and the answer „Odustani" writes nothing and leaves the form as it was with everything
+   * typed. The answer yes closes it, and the form that is held while the save is out (`holdsWhileSaving`) says the
+   * save is out.
+   *
+   * <p><b>`when` is asked of the press and `says` is asked of every draw</b>, so the number in the sheet is the
+   * number of the moment it is read: the results are the largest file the portal has, and a press that lands
+   * before they are here sees the sentence say so and then say the number when they arrive.
+   *
+   * <p><b>Only asked where the screen sends its own save</b> (`save`): the other road writes into the session
+   * and takes nothing with it.
+   */
+  asksBeforeSaving?: {
+    when: (values: FormValues) => boolean
+    title: string
+    says: (values: FormValues) => string
+  }
 }) {
   const { t } = useI18n()
   const { creations, create, editRecord } = useSession()
   const [saved, setSaved] = useState<FormValues | null>(null)
   /** What the screen's own save said instead of a confirmation, or nothing. */
   const [said, setSaid] = useState<ReactNode>(null)
+  /** The values a press was made over while the screen's question is on the page, or nothing. */
+  const [question, setQuestion] = useState<FormValues | null>(null)
   /* A press that is still out, held in a ref and not in state. Two presses inside one
      tick would both read a `false` that React has not re-rendered yet, and the second
      would send the same record again and answer this reader about it. The same ref is what
@@ -284,7 +313,36 @@ export function EntityEditor({
    */
   const folded = (values: FormValues): FormValues => alsoFolds?.(values) ?? values
 
+  /**
+   * THE PRESS, OR THE QUESTION IT HAS TO ANSWER FIRST.
+   *
+   * Asked over the folded values, which is what would be written, and not over what was typed: an event that
+   * follows its earliest race is the same event whatever the typed day says, and a save that takes races away
+   * is a save that does, whichever values it is asked of.
+   */
   async function handleSubmit(given: FormValues) {
+    if (save !== undefined && asksBeforeSaving?.when(folded(given)) === true) {
+      setQuestion(given)
+
+      return
+    }
+
+    await send(given)
+  }
+
+  /**
+   * THE WAY OF SAYING YES, which is the press itself, and the question goes with it.
+   *
+   * It closes at once and does not stay standing over the request the way the sheet over a deletion does: the form
+   * is held for as long as the save is out (`holdsWhileSaving`) and says so under itself, which is the one place the
+   * reader is told, and a second sentence of the same words from a sheet over it would be read out twice.
+   */
+  function answerYes(given: FormValues) {
+    setQuestion(null)
+    void send(given)
+  }
+
+  async function send(given: FormValues) {
     const values = folded(given)
 
     /* What the form asked for, and what is read off it.
@@ -512,6 +570,21 @@ export function EntityEditor({
           server did; the words come from the screen that owns the route, so an editor
           serving seven entities says nothing of its own here. */}
       {said}
+
+      {/* THE QUESTION BEFORE A SAVE THAT TAKES SOMETHING AWAY, over the form it was asked from. Named by the
+          words of the screen that asks, and described by its body, which says the number (`Prompt`). The
+          way of saying yes is the button that sends, in the form's own word for it. Nothing is sent until
+          it is chosen, and „Odustani" and Escape close it with nothing written. */}
+      {question !== null && asksBeforeSaving !== undefined && (
+        <Prompt
+          title={asksBeforeSaving.title}
+          choices={[{ label: t(form.submitKey), onChoose: () => answerYes(question) }]}
+          decline={t('admin.form.keep')}
+          onDecline={() => setQuestion(null)}
+        >
+          <p>{asksBeforeSaving.says(folded(question))}</p>
+        </Prompt>
+      )}
     </div>
   )
 }

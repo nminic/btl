@@ -321,6 +321,13 @@ describe('a sentence with a value put into it', () => {
       'admin.eventDeleteRaces',
       'admin.eventDeleteResults',
       'admin.eventDeleteTakes',
+      /* „Ovim čuvanjem brišeš {races} i {results}." and „Ovim čuvanjem brišeš {races}, a broj rezultata koji
+         odlaze još nije poznat.", asked before an event is SAVED in a way that takes its races away (owner,
+         07.11.2026, PDL „I čuvanje događaja koje briše njegove trke radi isto"). The same two values as the
+         sentences over a deletion above, made by the same two plural keys in `admin/eventDeletionWords.ts`,
+         and each is the object of „brišeš" in the accusative (MY REASONING for the wording). */
+      'admin.eventSaveTakes',
+      'admin.eventSaveTakesCountUnknown',
       'admin.form.deleteNamed',
       'admin.form.openNamed',
       'admin.form.raceNumber',

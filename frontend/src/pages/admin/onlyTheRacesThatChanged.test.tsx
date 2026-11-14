@@ -11,6 +11,7 @@ import { serverThat } from '../../test/serverAnswers'
 import { whatWasSent, whereItWrote } from '../../test/sent'
 import { SLOW } from '../../test/slow'
 import { setupUser, type Pressing } from '../../test/user'
+import { sayYesToTheSave } from '../../test/saveSheet'
 
 /* Every wait is given half of what a case is given, for the reason `rowMembership.test.tsx` gives: a
    mutation then fails on its assertion and not on the clock of the case. */
@@ -297,7 +298,10 @@ describe('the races a save of an event sends', () => {
     const user = await open()
 
     await user.click(screen.getByRole('button', { name: `Obriši ${String(rowOf(length))}. trku` }))
-    await save(user)
+    /* A save that takes a race away asks first, with the number of results that go with it (owner, 07.11.2026). */
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+    await sayYesToTheSave(user)
+    await screen.findByRole('status', { name: 'Sačuvano' })
 
     expect(whereItWrote(server.asked).sort()).toEqual(
       [`PUT /api/events/${String(event.id)}`, `DELETE /api/races/${String(length.id)}`].sort(),

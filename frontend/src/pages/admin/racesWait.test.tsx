@@ -13,6 +13,7 @@ import { answeredWith, refused, serverThat } from '../../test/serverAnswers'
 import { whatWasSent, whereItWrote } from '../../test/sent'
 import { SLOW } from '../../test/slow'
 import { setupUser, type Pressing } from '../../test/user'
+import { sayNoToTheSave, sayYesToTheSave, theSaveSheet } from '../../test/saveSheet'
 import { touchEveryRace } from '../../test/touchEveryRace'
 
 /**
@@ -442,6 +443,64 @@ describe('an event whose races wait', () => {
     expect(writtenSince(0).filter((one) => one === 'POST /api/events')).toHaveLength(1)
   }, SLOW)
 
+  /**
+   * THE QUESTION BEFORE A SAVE COUNTS THE RACES OF THE EVENT THE DELETION WILL DELETE FROM, ON A RETRY TOO (review of
+   * PR 724, the one high finding). After a partly refused save of a NEW event or of a COPY the form is still open on
+   * nothing, so the event the form is open on says „nov", while the retry deletes from the event the press made
+   * (`waitingFor`). Counted over the first, the sheet was not drawn and the deletion of an accepted race went out
+   * unasked. A row of the race the route accepted is taken off the table, and the press asks, with that one race.
+   */
+  it.each(['a new event', 'a copy'])(
+    'asks before the retry of %s deletes a race the route had accepted, and sends nothing when the answer is no',
+    async (shape) => {
+      let racePosts = 0
+
+      answering = (path, init) => {
+        if (path !== '/api/races' || init?.method !== 'POST') {
+          return null
+        }
+
+        racePosts += 1
+
+        return racePosts === 2 ? refused('theDistanceIsNotKeptExactly') : null
+      }
+
+      const user = setupUser()
+
+      if (shape === 'a new event') {
+        renderAt('/sr/administracija/dogadjaji', 'superadmin')
+        await aNewEventWith(user, 'BBKT pitanje', [
+          { name: 'Prva trka', km: '10' },
+          { name: 'Druga trka', km: '15' },
+        ])
+      } else {
+        renderAt('/sr/administracija/dogadjaji?kopija=32', 'superadmin')
+        await screen.findByRole('heading', { name: /^Trke na događaju/ })
+      }
+
+      await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+      await screen.findByText(sr.admin.eventSavedRacesRefused)
+
+      /* The first row is the race the route accepted: the one refused is the second. */
+      await user.click(must(screen.getAllByRole('button', { name: /^Obriši \d+\. trku$/ })[0], 'the first row'))
+
+      const before = watching.asked.length
+
+      await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+      expect(
+        within(await theSaveSheet()).getByText(/^Ovim čuvanjem brišeš 1 trku/),
+        'the sheet counts the one race the retry deletes',
+      ).toBeVisible()
+      expect(writtenSince(before), 'nothing is sent before the answer').toEqual([])
+
+      await sayNoToTheSave(user)
+
+      expect(writtenSince(before), 'a no sends nothing').toEqual([])
+    },
+    SLOW,
+  )
+
   it('sends no race and holds no field when the event itself is refused', async () => {
     /* The first write is the one that failed, so there is no saved event for anything to wait
        under: no race goes, nothing is held, and no list of refused races is drawn. */
@@ -636,8 +695,9 @@ describe('an event whose races wait', () => {
     const served = (await loadResource<Race[]>('races')).filter((one) => one.eventId === event.id)
     const firstServed = must(served[0], 'the first race of the event')
 
-    /* The largest file the portal has, read before the press: a save that takes races away waits
-       for it (`alsoRefuses`), and this case is about what comes after the wait. */
+    /* The largest file the portal has, read before the press, so the sheet that asks first says a
+       number (`asksBeforeSaving`; owner, 07.11.2026), and this case is about what comes after the
+       answer. */
     await loadResource(RESULTS)
     answering = (path, init) => {
       if (!path.startsWith('/api/races/') || init?.method !== 'DELETE') {
@@ -661,6 +721,7 @@ describe('an event whose races wait', () => {
       `${kind} draws a table of races`,
     ).toBeNull()
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+    await sayYesToTheSave(user)
 
     /* The sentence says the event is saved and what to do, and points at no table. Waited for as
        the alert and compared as text, so a press that said the other sentence fails on what it
@@ -680,10 +741,13 @@ describe('an event whose races wait', () => {
       ),
     )
 
-    /* And the press that follows sends the races and nothing else: the same deletions, again. */
+    /* And the press that follows sends the races and nothing else: the same deletions, again. It asks again
+       as well, because it takes the same races away (owner, 07.11.2026: a save that deletes the races of an
+       event asks first); the answer of the first press is not an answer to this one. */
     const before = watching.asked.length
 
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+    await sayYesToTheSave(user)
     await screen.findByRole('alert')
 
     expect(writtenSince(before).sort()).toEqual(
@@ -893,6 +957,8 @@ describe('an event whose races wait', () => {
     const before = watching.asked.length
 
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+    /* Three races of the event the first press made go with it, so it asks (owner, 07.11.2026). */
+    await sayYesToTheSave(user)
     /* The press is over when the list names the race the route kept, which is said only at its
        end: the list stood before it with the refused row alone. Waited for by that and not by the
        number of requests, so a press that stops early fails on what it wrote and not by running
@@ -1271,7 +1337,7 @@ describe('an event whose races wait', () => {
     it('counts no race for an event saved as a gathering, whose races the route took away', async () => {
       const { event } = await aServedEventWithRaces()
 
-      /* Read before the press: a save that takes races away waits for the results (`alsoRefuses`). */
+      /* Read before the press, so the sheet that asks first says a number (`asksBeforeSaving`). */
       await loadResource(RESULTS)
 
       const user = setupUser()
@@ -1282,6 +1348,7 @@ describe('an event whose races wait', () => {
         sr.event.kind.gathering,
       )
       await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+      await sayYesToTheSave(user)
       await screen.findByRole('status', { name: 'Sačuvano' })
       await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
 
