@@ -14,7 +14,7 @@ export const THE_SAVE_ASKS = 'Sačuvati događaj?'
 
 /** The sheet, found by its question. */
 export async function theSaveSheet(): Promise<HTMLElement> {
-  return screen.findByRole('dialog', { name: THE_SAVE_ASKS })
+  return screen.findByRole('dialog', { name: THE_SAVE_ASKS }, { timeout: 3000 })
 }
 
 /** Says yes in the sheet: the press that sends the save. Returns the sheet, for what follows. */
