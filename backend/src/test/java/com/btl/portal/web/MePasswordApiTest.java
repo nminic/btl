@@ -1131,6 +1131,93 @@ class MePasswordApiTest {
 	}
 
 	/**
+	 * THE THIRD ROLE OF THE AXIS: AN ADMINISTRATION ACCOUNT THAT IS ALSO A MEMBER.
+	 *
+	 * <p>PDL P8, the answers of the owner of 17.10.2026 in the evening, and the entry of 07.11.2026 that
+	 * repeats it: „Nalog administracije koji nije i član na Podešavanjima vidi i temu i promenu lozinke".
+	 * The sentence is about an account that is NOT a member, so the account that is one is asked what a
+	 * member is asked, and PDL P8 of 16.10.2026 says it of the administration in as many words: „Moderator
+	 * čiji je sopstveni član istekao je istekao član: ne menja svoje podatke ni lozinku kroz portal;
+	 * lozinku menja vezom za obnovu lozinke". The three roles of the screen are therefore three cells of
+	 * the route: a member (above), an administration account with no member (above), and this one, which
+	 * the other two cannot stand in for, because the first has no administration in it and the second no
+	 * member.
+	 *
+	 * <p><b>The account of these two cases is built so that it IS this role</b>: the role is the
+	 * administration's and the account names a member, both asked of the database before the route is, so a
+	 * fixture that quietly made a competitor (which {@link #account} does) cannot stand in for it.
+	 */
+	@ParameterizedTest
+	@ValueSource(strings = {"moderator", "superadmin"})
+	void anAdministrationAccountThatIsAlsoAMemberWhoseFeeStandsChangesItsPassword(String role)
+			throws Exception {
+		String email = anAdministratorBehindAMember(role, Behind.A_FEE_THAT_STANDS);
+
+		MockHttpServletResponse answer = asking(theSessionOf(email),
+				body(MY_OLD_PASSWORD, MY_NEW_PASSWORD, MY_NEW_PASSWORD));
+
+		assertThat(answer.getStatus())
+				.as("an administration account (%s) that is also a member whose fee stands was turned away from"
+						+ " changing its password", role)
+				.isEqualTo(204);
+		assertThat(new StoredPassword().matches(MY_NEW_PASSWORD, passwordHashOf(email)))
+				.as("the new password was not written")
+				.isTrue();
+	}
+
+	/**
+	 * AN ADMINISTRATION ACCOUNT WHOSE OWN MEMBER HAS LAPSED IS TOLD THE ADDRESS IS NOT THERE, and nothing
+	 * happens: the same answer as the member's (see below), for both roles and both kinds of lapse. The
+	 * right old password and a new one that would be accepted, so the only thing that can be the reason is the
+	 * lapse and not the form.
+	 */
+	@ParameterizedTest
+	@CsvSource({
+			"moderator,LAPSED_WITH_A_ROW", "moderator,LAPSED_WITHOUT_A_ROW",
+			"superadmin,LAPSED_WITH_A_ROW", "superadmin,LAPSED_WITHOUT_A_ROW" })
+	void anAdministrationAccountWhoseOwnMemberHasLapsedIsToldTheAddressIsNotThere(String role, Behind kind)
+			throws Exception {
+		String email = anAdministratorBehindAMember(role, kind);
+
+		MockHttpServletResponse answer = asking(theSessionOf(email),
+				body(MY_OLD_PASSWORD, MY_NEW_PASSWORD, MY_NEW_PASSWORD));
+
+		assertThat(answer.getStatus())
+				.as("an administration account (%s) whose own member has lapsed (%s) was not answered as an address"
+						+ " that is not there", role, kind)
+				.isEqualTo(404);
+		assertThat(answer.getContentAsString())
+				.as("a refusal that says anything says that a write lives here")
+				.isEmpty();
+		assertThat(new StoredPassword().matches(MY_OLD_PASSWORD, passwordHashOf(email)))
+				.as("a request that was turned away changed the password")
+				.isTrue();
+	}
+
+	/**
+	 * An account of the administration with a member of the given standing behind it, and the address it signs
+	 * in with: {@link #aMemberBehindAnAccount} with the role moved to the administration's, and asked of the
+	 * database afterwards that it IS the administration and that it names a member.
+	 */
+	private String anAdministratorBehindAMember(String role, Behind kind) {
+		String email = aMemberBehindAnAccount(kind, 1);
+
+		db.sql("update account set role_id = (select id from role where code = ?) where email = ?")
+				.params(role, email).update();
+
+		assertThat(db.sql("select r.code from account a join role r on r.id = a.role_id where a.email = ?")
+				.param(email).query(String.class).single())
+				.as("the account of this case is not of the administration, so it measures a member")
+				.isEqualTo(role);
+		assertThat(db.sql("select competitor_id is not null from account where email = ?").param(email)
+				.query(Boolean.class).single())
+				.as("the account of this case names no member, so it measures the administration alone")
+				.isTrue();
+
+		return email;
+	}
+
+	/**
 	 * A MEMBER WHOSE FEE HAS LAPSED IS TOLD THE ADDRESS IS NOT THERE, AND NOTHING HAPPENS.
 	 *
 	 * <p>PDL P8, 11.10.2026, the owner's choice between offered outcomes: „Istekao član po odluci od

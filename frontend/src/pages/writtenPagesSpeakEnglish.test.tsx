@@ -353,8 +353,9 @@ describe('an address with a question on it is still the resource it names', () =
    *
    * So the fix had no reader and the revert had no witness. Asked directly instead, which is
    * the one place the question is live - and it is not hypothetical for `pages` alone:
-   * `GET /api/payments` accepts `?search=` too (`data/client.ts` says why the screen filters
-   * the answer itself instead), so the second resource with a parameter already exists. */
+   * `GET /api/payments` took `?search=` too until 07.11.2026 (`data/client.ts` says why the
+   * screen filters the answer itself, and where the term travels now), so the helper is asked
+   * of an address with a query whatever the server makes of it. */
 
   it('is recognised with a language on it, and a write still is not', () => {
     expect(isResource('/api/pages?lang=en')).toBe(true)

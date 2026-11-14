@@ -102,7 +102,7 @@ describe('finding one man on the list', () => {
     /* MEASURED, AND IT IS THE ONE DIFFERENCE BETWEEN THIS RULE AND THE ROUTE'S. The route
        assembles a `like` pattern, so `%` there matches anything; here it is a per cent sign
        and matches nobody, because nobody's name holds one. Held as a case rather than as a
-       sentence in a comment, so the day this portal starts sending `?search=` the difference
+       sentence in a comment, so the day this portal starts sending the term (`POST /api/payments/search`) the difference
        is a red case and not an archaeology problem. */
     expect(found('%')).toEqual([])
     expect(found('Mark%')).toEqual([])
