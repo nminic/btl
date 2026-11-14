@@ -333,6 +333,56 @@ describe('the ring beside the table', () => {
     expect(total).toHaveTextContent(`${String(scored.length + unscored.length)} trka`)
   })
 
+  it('follows the year: none in a year without them, though the member has them in other years', async () => {
+    /* 2019 is a year of this member with scored races and no unscored one, and 2020 and 2026 are years
+       with. The ring, the total in its middle and the reading for the screen reader are the year's and
+       not the member's: a ring that counted every year's unscored races gave 2019 a slice of three. */
+    renderAt(`${ADDRESS}?sezona=2019`)
+
+    await screen.findByRole('table', { name: 'Rezultati' })
+    const { scored, unscored } = await bothLists()
+    const inYear = (list: Result[], year: string) =>
+      list.filter((result) => result.date.startsWith(year)).length
+    const reading = screen.getByRole('table', { name: 'Trke po distanci' })
+
+    expect(unscored.length).toBeGreaterThan(0)
+    expect(inYear(unscored, '2019')).toBe(0)
+    expect(inYear(scored, '2019')).toBeGreaterThan(0)
+    expect(within(reading).queryByRole('rowheader', { name: 'Nebodovane trke' })).not.toBeInTheDocument()
+    expect(
+      must(
+        within(reading).getByRole('rowheader', { name: 'Zbirno' }).parentElement,
+        'the total row',
+      ),
+    ).toHaveTextContent(`${String(inYear(scored, '2019'))} trka`)
+    expect(document.querySelector('.donut__total')).toHaveTextContent(String(inYear(scored, '2019')))
+    expect(document.querySelectorAll('.donut__seg').length).toBeGreaterThan(0)
+  })
+
+  it('counts the unscored races of the year chosen, and of that year alone', async () => {
+    renderAt(`${ADDRESS}?sezona=2020`)
+
+    await screen.findByRole('table', { name: 'Rezultati' })
+    const { scored, unscored } = await bothLists()
+    const scoredIn2020 = scored.filter((result) => result.date.startsWith('2020')).length
+    const unscoredIn2020 = unscored.filter((result) => result.date.startsWith('2020')).length
+    const reading = screen.getByRole('table', { name: 'Trke po distanci' })
+    const row = must(
+      within(reading).getByRole('rowheader', { name: 'Nebodovane trke' }).parentElement,
+      'the row of the unscored slice',
+    )
+
+    expect(unscoredIn2020).toBe(1)
+    expect(unscored.length).toBeGreaterThan(unscoredIn2020)
+    expect(at(within(row).getAllByRole('cell'), 0)).toHaveTextContent(String(unscoredIn2020))
+    expect(
+      must(within(reading).getByRole('rowheader', { name: 'Zbirno' }).parentElement, 'the total row'),
+    ).toHaveTextContent(`${String(scoredIn2020 + unscoredIn2020)} trka`)
+    expect(document.querySelector('.donut__total')).toHaveTextContent(
+      String(scoredIn2020 + unscoredIn2020),
+    )
+  })
+
   it('has no such slice for a member who has none, and the profile is the one it was', async () => {
     const stop = serverThat((path) =>
       path === '/api/unscored-results'
