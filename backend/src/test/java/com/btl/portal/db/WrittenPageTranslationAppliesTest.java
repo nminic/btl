@@ -486,29 +486,28 @@ class WrittenPageTranslationAppliesTest extends DatabaseTest {
 	 * PRAVILNIK'S ENGLISH ARTICLE 36 NAMES THE ROOKIE CATEGORY THE WAY frontend/src/i18n/en.json
 	 * ACTUALLY NAMES IT ON SCREEN - READ FROM THE DICTIONARY PAIR ITSELF, NEVER TYPED AS A LITERAL.
 	 *
-	 * <p>Measured in three steps, none of them this task's to resolve: {@code data/categories.ts}
-	 * translates no category except by printing its raw code for everything but the first-season
-	 * band; the first-season CODE cannot read "F R" in English because {@code genderMark} is not
-	 * language aware and returns "M"/"Ž" on every language, so the code is "M R" / "Ž R" and never
-	 * "F R" anywhere; and {@code en.json}'s own {@code category.rookieMale} /
-	 * {@code category.rookieFemale} already both read "Rookies". So the owner's decision of
-	 * 11.08.2026 ("Na engleskom će se zvati M R i F R") is undelivered on the actual screen today,
-	 * and fixing that is a shared-function increment of its own (both {@code en.json} and
-	 * {@code genderMark} would have to change together). Until then this document follows the
-	 * screen: a reader must be able to find, on the English screen, the exact label the English
-	 * Rulebook names.
+	 * <p>Until 13.11.2026 the two keys {@code category.rookieMale} and {@code category.rookieFemale}
+	 * both read "Rookies" (owner, 18.10.2026), and this document followed the screen: Article 36 said
+	 * "Rookies" for both. The owner decided on 13.11.2026 (PDL, section "Početnička kategorija") that
+	 * English names them "M Rookies" and "F Rookies", on every table and list and in Article 36, so
+	 * the two keys now differ and Article 36 names BOTH, which V98 writes. This case is the other
+	 * half of that migration, asked of the text the portal serves after every migration and not of
+	 * the text V43 wrote: the document and the screen are one fact in two homes, and the day either
+	 * moves the other has to say so.
 	 *
 	 * <p><b>The two values compared are read from the dictionaries, not hand typed</b> - the same
 	 * discipline {@link #theLeadingNumberOfAnEnglishHeadingMatchesTheSerbianHeadingItIsPairedWith}
 	 * keeps for headings: its foundation is a LIST of thirty-nine pairs read from the schema; this
 	 * one's foundation is a DICTIONARY of two keys read from the two JSON files the portal itself
-	 * ships as the source of what a screen prints. A hard-coded {@code "Rookies"} here would drift
+	 * ships as the source of what a screen prints. A hard-coded {@code "M Rookies"} here would drift
 	 * silently the day either file's wording changes; asking the file instead cannot.
+	 *
+	 * <p><b>Not put back to V43</b> ({@code reapply()}): that text still says "Rookies" for both,
+	 * which is the text this case was written for and is not the text the portal serves. What is
+	 * asked is the text as every migration, V98 included, leaves it.
 	 */
 	@Test
 	void article36NamesTheRookieCategoryExactlyAsEnJsonDoes() throws Exception {
-		reapply();
-
 		JsonNode enCategory = new ObjectMapper()
 				.readTree(repositoryRoot().resolve("frontend/src/i18n/en.json")).path("category");
 		JsonNode srCategory = new ObjectMapper()
@@ -520,16 +519,20 @@ class WrittenPageTranslationAppliesTest extends DatabaseTest {
 		String serbianRookieFemale = srCategory.path("rookieFemale").asString();
 
 		assertThat(englishRookieMale)
-				.as("en.json's own two keys must still read the same word, or this case is not"
-						+ " measuring the fact it claims to")
-				.isEqualTo(englishRookieFemale);
+				.as("en.json's own two keys must name two different categories (the letter of the gender in"
+						+ " front, owner 13.11.2026), or this case is not measuring the fact it claims to")
+				.isNotEqualTo(englishRookieFemale);
 
 		String article36 = wholeEnglishBodyOf("pravilnik");
 
 		assertThat(article36)
-				.as("Article 36 does not name the rookie category the way en.json actually does"
+				.as("Article 36 does not name the men's rookie category the way en.json actually does"
 						+ " (\"%s\")", englishRookieMale)
 				.contains(englishRookieMale);
+		assertThat(article36)
+				.as("Article 36 does not name the women's rookie category the way en.json actually does"
+						+ " (\"%s\")", englishRookieFemale)
+				.contains(englishRookieFemale);
 		assertThat(article36)
 				.as("Article 36 still carries the untranslated Serbian dictionary value for the"
 						+ " men's rookie label (\"%s\")", serbianRookieMale)
