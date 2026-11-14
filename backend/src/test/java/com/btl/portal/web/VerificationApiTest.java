@@ -1822,6 +1822,25 @@ class VerificationApiTest {
 		assertThat(hersButNotARun.path("eventId").isNull())
 				.as("a comment answered with the event of a run").isTrue();
 		assertThat(hersButNotARun.path("eventName").isNull()).isTrue();
+
+		/* AND THE KIND OF THE EVENT EACH RUN IS ON (V101): the race's event's for a run from the calendar, the
+		   kind the member sent a described run under, which an event he chose and that changed since does not
+		   move, and nothing on another tab. The race's event and the chosen one are made unscored, and the
+		   typed run is sent as one, so a constant, or the chosen event's kind as it is now, answers wrong. */
+		db.sql("update btl_event set kind = 'unscored' where id in (?, ?)").params(theRacesEvent, chosenEvent)
+				.update();
+		db.sql("update result_submission set event_kind = 'unscored' where id = ?").param(typed).update();
+
+		for (int calendar : List.of(0, 1, 3)) {
+			assertThat(itemIn(THE_SUPERADMIN, RESULTS, calendar).path("eventKind").asString())
+					.as("item %d did not answer with its race's event's kind", calendar).isEqualTo("unscored");
+		}
+
+		assertThat(itemIn(THE_SUPERADMIN, RESULTS, 4).path("eventKind").asString())
+				.as("a run on a chosen event answered with the event's kind as it is now, not the one sent")
+				.isEqualTo("race");
+		assertThat(itemIn(THE_SUPERADMIN, RESULTS, 5).path("eventKind").asString()).isEqualTo("unscored");
+		assertThat(itemIn(THE_SUPERADMIN, COMMENTS, 0).path("eventKind").isNull()).isTrue();
 	}
 
 	/** The four figures of a served run as one value, the distance compared by its value. */

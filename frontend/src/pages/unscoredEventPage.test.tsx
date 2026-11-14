@@ -113,6 +113,25 @@ describe('the page of an unscored event', () => {
     ).toHaveAttribute('href', `/sr/kalendar/${SLUG}/ocena`)
   }, SLOW)
 
+  /* AND ITS TWO DOORS OF ENTRY, the member's report from the page and the moderator's rows, let the climb of its
+     free race be left out (PDL, 14.11.2026, „Uspon i spust na netrkačkoj trci su neobavezni (prazno znači 0)”). A
+     free race leaves the climb to the runner, so the box is asked on both; at a scored race it is required. */
+  it('lets the member who reports a run of it leave the climb out', async () => {
+    renderAt(`${PAGE}/prijava?trka=99001`, 'competitor', '000002', undefined, TODAY)
+
+    expect(await screen.findByLabelText(/^Uspon/, undefined, { timeout: SLOW / 2 })).not.toBeRequired()
+    expect(screen.getByLabelText(/^Spust/)).not.toBeRequired()
+  }, SLOW)
+
+  it('lets the moderator who enters its rows leave the climb out', async () => {
+    renderAt(`${PAGE}/rezultati?trka=99001`, 'superadmin', null, undefined, TODAY)
+
+    expect(await screen.findByLabelText(/^Uspon/, undefined, { timeout: SLOW / 2 })).toHaveAttribute(
+      'aria-required',
+      'false',
+    )
+  }, SLOW)
+
   it('offers nobody who did not run it to rate it', async () => {
     renderAt(PAGE, 'competitor', '000007', undefined, TODAY)
 

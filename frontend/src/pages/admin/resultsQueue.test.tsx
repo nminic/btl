@@ -403,6 +403,32 @@ describe('the queue of results as the server answers it', () => {
     }
   })
 
+  /* A RUN SENT AS ONE OF AN UNSCORED RACE is marked so, as a fact and never as a choice (PDL, 15.11.2026,
+     „moderator vrstu ne menja"), and the panel over it lets the climb be left out (PDL, 14.11.2026, „Uspon i
+     spust na netrkačkoj trci su neobavezni"). The same run of a scored race carries no mark and is asked for
+     both. A race to a limit leaves the climb to the runner, so its boxes are the ones asked. */
+  it('marks a run of an unscored race, and its panel asks no climb of it where a scored one does', async () => {
+    const UNSCORED: ServedPendingItem = { ...TO_A_LIMIT, id: 799, memberNumber: '000060', eventKind: 'unscored' }
+    const server = serverWith([OF_A_LENGTH, TO_A_LIMIT, UNSCORED])
+    const user = setupUser()
+
+    try {
+      openTheQueue()
+
+      expect((await rowOf('000060')).getByText(sr.event.kind.unscored)).toBeVisible()
+      expect((await rowOf('000020')).queryByText(sr.event.kind.unscored)).toBeNull()
+
+      await user.click((await rowOf('000060')).getByRole('button', { name: sr.review.amend }))
+      expect(screen.getByLabelText(/^Uspon/)).toHaveAttribute('aria-required', 'false')
+      await user.click(screen.getByRole('button', { name: sr.review.cancel }))
+
+      await user.click((await rowOf('000020')).getByRole('button', { name: sr.review.amend }))
+      expect(screen.getByLabelText(/^Uspon/)).toHaveAttribute('aria-required', 'true')
+    } finally {
+      server.stop()
+    }
+  })
+
   it('offers to set the figures only on a race the calendar holds', async () => {
     const server = serverWith(RUNS)
 

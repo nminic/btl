@@ -73,6 +73,55 @@ describe('the races the league does not score, in „Moji rezultati"', () => {
     expect(within(at(rows, 0)).getAllByRole('link').length).toBeGreaterThan(0)
   }, SLOW)
 
+  /* A RUN SENT AS ONE OF AN UNSCORED RACE is listed with no points and no word about them (PDL, 14.11.2026, „bez
+     prikaza bodova"), and a run of a scored race beside it keeps both. */
+  it('list a run sent as an unscored one with no points, beside a scored one that keeps them', async () => {
+    const sent = (id: number, raceName: string, eventKind: string) => ({
+      id,
+      state: 'waiting',
+      raceId: null,
+      raceName,
+      raceDate: '2026-07-12',
+      raceKind: 'free',
+      city: 'Beograd',
+      country: 'RS',
+      distanceKm: 3,
+      ascentM: 0,
+      descentM: 0,
+      seconds: 3600,
+      link: 'https://primer.rs/rezultati',
+      comment: '',
+      reason: null,
+      amendsResultId: null,
+      eventId: null,
+      eventName: raceName,
+      eventKind,
+    })
+    const stop = serverThat((path) =>
+      path === '/api/me/result-submissions'
+        ? new Response(JSON.stringify([sent(81, 'Plivanje oko Ade', 'unscored'), sent(82, 'Kros oko Ade', 'race')]), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          })
+        : null,
+    ).stop
+
+    try {
+      renderAt(PAGE, 'competitor', MEMBER)
+
+      const swim = must(
+        (await screen.findByText('Plivanje oko Ade', undefined, { timeout: SLOW / 2 })).closest('li'),
+        'the run sent as an unscored one',
+      )
+      const run = must(screen.getByText('Kros oko Ade').closest('li'), 'the run sent as a scored one')
+
+      expect(swim.textContent).not.toMatch(/poen|bod/i)
+      expect(run.textContent).toMatch(/poen/i)
+    } finally {
+      stop()
+    }
+  }, SLOW)
+
   it('leave no heading behind for a member who has none', async () => {
     renderAt(PAGE, 'competitor', WITH_NONE)
 

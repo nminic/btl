@@ -1003,6 +1003,28 @@ class VerificationDecisionConcurrencyTest {
 	}
 
 	/**
+	 * AND AN ADDRESS TAKEN MEANWHILE BY AN EVENT OF THE OTHER KIND, an unscored race where the member sent a
+	 * scored one, refuses it the same way and in its own words (PDL, 15.11.2026: „Vrsta je onakva kakvu je
+	 * član izabrao"): the run would otherwise go on that event and take its kind. Asked of the event as it is
+	 * held, which is the one place that can see it, since it was not there when the approval asked.
+	 */
+	@Test
+	void anAddressTakenMeanwhileByAnEventOfTheOtherKindRefusesItAndTheRowWaitsAgain() throws Exception {
+		aRunOnARaceTheCalendarDoesNotHoldWaits();
+
+		long theOneThatTookIt = takenWhileTheApprovalWaits("unscored");
+
+		MockHttpServletResponse refused = theApprovalHeldUp.get(30, TimeUnit.SECONDS);
+
+		assertThat(refused.getStatus()).isEqualTo(409);
+		assertThat(refused.getContentAsString(StandardCharsets.UTF_8))
+				.contains("Ovaj događaj nije iste vrste kao trka");
+		theRowWaitsAsItWasSent();
+		assertThat(db.sql("select id from btl_event where slug like ?").param(MADE_BY_THESE_CASES)
+				.query(Long.class).list()).containsExactly(theOneThatTookIt);
+	}
+
+	/**
 	 * AN EVENT DELETED AFTER THE APPROVAL ASKED ABOUT IT REFUSES THE APPROVAL IN WORDS, AND THE ROW IT
 	 * HAD CLAIMED WAITS AGAIN.
 	 *
