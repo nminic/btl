@@ -274,8 +274,9 @@ describe('the table of results beside the races the league does not score', () =
 describe('the figures beside the table, which count the races the league scores alone', () => {
   it('are the same with the unscored races served and with none served, in the year they fall in', async () => {
     /* THE SOURCE SWAP, which is the measure that says the figures do not read the unscored list: the
-       same page is drawn twice over the same scored results, once with the unscored list as it is
-       (115,40 km of it, the longest 62 km) and once with it empty. The two readings must be one. */
+       kilometres of the scored races alone (the figure the page must say) and the kilometres of both
+       lists (115,40 km more, the longest race 62 km) are two different numbers, and the widget must
+       say the first and never the second. */
     renderAt(`${ADDRESS}?sezona=sve`)
     const { scored, unscored } = await bothLists()
     const scoredKm = `${formatNumber(totalsOf(scored).kilometers, 'sr', 2)} km`
@@ -285,13 +286,17 @@ describe('the figures beside the table, which count the races the league scores 
 
     const region = await screen.findByRole('region', { name: 'Zbirna statistika' })
 
-    await waitFor(() => {
-      expect(region).toHaveTextContent(scoredKm)
-    }, { timeout: SLOW / 2 })
-    expect(region).not.toHaveTextContent(bothKm)
-    expect(region).toHaveTextContent(
-      formatNumber(totalsOf(scored).ascent, 'sr') + ' m',
+    /* Every row of the widget unrolls from nought over the same moment, so the two figures are waited
+       for together: the kilometres land before the climb does, and a read in between is a half-rolled
+       number and not an answer. */
+    await waitFor(
+      () => {
+        expect(region).toHaveTextContent(scoredKm)
+        expect(region).toHaveTextContent(`${formatNumber(totalsOf(scored).ascent, 'sr')} m`)
+      },
+      { timeout: SLOW / 2 },
     )
+    expect(region).not.toHaveTextContent(bothKm)
   }, SLOW)
 
   it('leave the points as the scored races alone make them', async () => {
