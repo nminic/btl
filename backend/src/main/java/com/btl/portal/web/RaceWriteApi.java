@@ -716,7 +716,8 @@ class RaceWriteApi {
 			   stays the runner's: the one function every other road asks, so a run counted again
 			   is counted exactly as an approval of it today would count it. */
 			Figures counted = WhatARaceCarries.figuresOf(after, run.figures());
-			BigDecimal points = BtlScoreCalculator.calculate(counted.distanceKm().doubleValue(), counted.ascentM(), counted.descentM(), counted.seconds());
+			/* AND NOTHING AT AN UNSCORED RACE (PointsOfARun, PDL 14.11.2026). */
+			BigDecimal points = PointsOfARun.at(db, id, counted);
 
 			/* A RUN THE CORRECTION LEFT EXACTLY AS IT WAS IS NOT A RUN IT CHANGED, so nothing is
 			   written over it and its member is not told about it. */
@@ -1019,8 +1020,8 @@ class RaceWriteApi {
 		/* AN EVENT THAT IS NOT A RACE HOLDS NO RACES (owner, 23.08.2026), and it is asked
 		   before anything about the race itself: what is wrong is the event it was aimed
 		   at, and answering about the kind of the RACE would send an administrator to the
-		   wrong cell. */
-		if (!WhatAnEventCarries.A_RACE.equals(event.kind())) {
+		   wrong cell. An unscored race is a race in this sense (PDL, 14.11.2026). */
+		if (!WhatAnEventCarries.holdsRaces(event.kind())) {
 			return no(HttpStatus.BAD_REQUEST, THE_EVENT_HOLDS_NO_RACES);
 		}
 

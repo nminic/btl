@@ -1290,4 +1290,27 @@ class ARaceCorrectedRecountsItsRunsTest {
 	private static Form free(String name, LocalDate day, int ascent, int descent) {
 		return new Form(null, name, true, day, "free", null, null, ascent, descent);
 	}
+
+	/**
+	 * AN UNSCORED RACE CORRECTED COUNTS ITS RUNS AGAIN AND THEY STILL KEEP NO POINTS: the figures the race
+	 * fixes move onto the run, and the points stay the zero an unscored race keeps (PDL, 14.11.2026,
+	 * „rezultat nebodovane trke čuva 0 bodova"). The same correction of a scored race of the fixture gives
+	 * its run what the formula makes of the new figures, so the zero is the race's and not the figures'.
+	 */
+	@Test
+	void anUnscoredRaceCorrectedCountsItsRunsAgainAndTheyKeepNoPoints() throws Exception {
+		event("plivanje-2027", "Plivanje", THE_TENS_DAY);
+		db.sql("update btl_event set kind = 'unscored' where slug = 'plivanje-2027'").update();
+
+		long swim = race("plivanje-2027", "Plivanje", THE_TENS_DAY, "length", 0, "10", 120, 110);
+		long swum = result(secondRunner, swim, "10", 120, 110, 2700, new BigDecimal("0.00"));
+
+		assertThat(change(swim, ofALength("Plivanje", THE_TENS_DAY, "10", 400, 380)).getStatus()).isEqualTo(200);
+		assertThat(change(anotherEventsTen, ofALength("Desetka", THE_TENS_DAY, "10", 400, 380)).getStatus())
+				.isEqualTo(200);
+
+		assertThat(rowOf(swum).ascentM()).as("the run was not counted again at all").isEqualTo(400);
+		assertThat(rowOf(swum).points()).as("the run counted again was given points").isEqualByComparingTo("0.00");
+		assertThat(rowOf(runAtTheTen).points()).isEqualByComparingTo(counted("10", 400, 380, 2700));
+	}
 }

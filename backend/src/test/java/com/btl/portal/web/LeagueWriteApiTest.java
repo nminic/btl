@@ -1150,6 +1150,33 @@ class LeagueWriteApiTest {
 				.query(Integer.class).single();
 	}
 
+	/**
+	 * AN UNSCORED RACE COUNTS IN NO LEAGUE, NAMED ALONE OR WITH ITS WHOLE DAY, and nothing is written; the
+	 * scored race of the same season beside it still goes in. PDL, 14.11.2026: a run of an unscored race „ne
+	 * ulazi ni u šta što liga računa"; the refusal of the binding is the plan's reasoning
+	 * ({@link LeagueWriteApi#AN_UNSCORED_RACE_IS_NOT_IN_A_LEAGUE} says so).
+	 */
+	@Test
+	void anUnscoredRaceCountsInNoLeagueAloneOrWithItsDayAndAScoredOneStillGoesIn() throws Exception {
+		long swim = event("plivanje-2028", "2028-05-05");
+		long itsRace = race(swim, "Plivanje", "2028-05-05");
+		long run = race(event("krug-2028", "2028-05-06"), "Krug", "2028-05-06");
+
+		db.sql("update btl_event set kind = 'unscored' where id = ?").param(swim).update();
+
+		List<Long> before = counted(acted);
+
+		for (MockHttpServletResponse refused : List.of(countRace(acted, itsRace), countDay(acted, swim))) {
+			assertThat(refused.getStatus()).isEqualTo(400);
+			assertThat(refused.getContentAsString()).contains(LeagueWriteApi.AN_UNSCORED_RACE_IS_NOT_IN_A_LEAGUE);
+		}
+
+		assertThat(counted(acted)).as("a refused binding wrote a race anyway").isEqualTo(before);
+
+		assertThat(countRace(acted, run).getStatus()).isEqualTo(204);
+		assertThat(counted(acted)).contains(run).doesNotContain(itsRace);
+	}
+
 	/** A key no row holds, asked of the table rather than written out as a big number. */
 	private long theKeyNobodyHolds() {
 		return db.sql("select coalesce(max(id), 0) + 1 from league").query(Long.class).single()

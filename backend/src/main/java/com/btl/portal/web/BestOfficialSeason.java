@@ -196,8 +196,11 @@ class BestOfficialSeason {
 	Map<Long, Map<Integer, BigDecimal>> live(Long onlyOf) {
 		Map<Long, Map<Integer, BigDecimal>> totals = new HashMap<>();
 
+		/* ONLY A SCORED RUN, joined to `scored_race` (V99), the one place every count on this server asks:
+		   PDL, 14.11.2026, a run of an unscored race „ne ulazi ni u šta što liga računa", the categories
+		   included. */
 		db.sql("select r.competitor_id, cast(extract(year from r.race_date) as integer), sum(r.points)"
-						+ " from result r"
+						+ " from result r join scored_race s on s.id = r.race_id"
 						+ " join membership m on m.competitor_id = r.competitor_id"
 						+ " and m.season = extract(year from r.race_date)"
 						+ " where extract(year from r.race_date) >= :first"

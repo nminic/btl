@@ -120,9 +120,11 @@ class TheTablesOfASeason {
 
 		members.forEach(member -> standing.add(member.id()));
 
+		/* ONLY A SCORED RUN, joined to `scored_race` (V99): PDL, 14.11.2026, a run of an unscored race „ne
+		   ulazi ni u šta što liga računa (tabele, rang liste, kategorije, zbir tima i para, ... Top liste)". */
 		return db.sql("select r.id, r.competitor_id, r.race_id, ra.event_id, r.race_date, r.distance_km,"
 						+ " r.ascent_m, r.descent_m, r.seconds, r.points, r.category, ra.name"
-						+ " from result r join race ra on ra.id = r.race_id"
+						+ " from result r join scored_race s on s.id = r.race_id join race ra on ra.id = r.race_id"
 						+ " where extract(year from r.race_date) = ?"
 						+ " order by r.race_date, r.id")
 				.param(season)

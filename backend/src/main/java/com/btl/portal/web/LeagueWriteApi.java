@@ -121,6 +121,14 @@ class LeagueWriteApi {
 	static final String THE_RACE_IS_NOT_OF_THE_LEAGUES_SEASON = "theRaceIsNotOfTheLeaguesSeason";
 
 	/**
+	 * A race of an unscored event counts in no league, whether it is named alone or with its whole day.
+	 * PDL, 14.11.2026: a run of an unscored race „ne ulazi ni u šta što liga računa"; that the binding
+	 * itself is refused is the plan's reasoning and not the owner's words (`plan-nebodovane-trke.md`,
+	 * „vezivanje nema kapiju: administrator bi mogao da veže i nebodovanu trku").
+	 */
+	static final String AN_UNSCORED_RACE_IS_NOT_IN_A_LEAGUE = "anUnscoredRaceIsNotInALeague";
+
+	/**
 	 * The shape {@code league_slug_shape} checks, written here so that a typed address is
 	 * refused with a sentence instead of arriving as a 500 from the check constraint.
 	 *
@@ -432,6 +440,18 @@ class LeagueWriteApi {
 			if (named == 0) {
 				return oneRace ? no(HttpStatus.BAD_REQUEST, THE_RACE_IS_NOT_KNOWN)
 						: no(HttpStatus.BAD_REQUEST, theEventIsThereAtAll(asked.eventId()));
+			}
+
+			/* EVERY RACE NAMED MUST BE A SCORED ONE, asked of `scored_race` (V99) and never of the kind
+			   here, and ALL OF THE DAY OR NONE OF IT as above: one kind is the whole event's (PDL,
+			   14.11.2026, „sve trke događaja su iste vrste"), so a day is all scored or none of it. */
+			long scored = oneRace
+					? countOf("select count(*) from scored_race where id = ?", asked.raceId())
+					: countOf("select count(*) from race ra join scored_race s on s.id = ra.id"
+							+ " where ra.event_id = ?", asked.eventId());
+
+			if (scored < named) {
+				return no(HttpStatus.BAD_REQUEST, AN_UNSCORED_RACE_IS_NOT_IN_A_LEAGUE);
 			}
 
 			if (howManyOfThemPairWithTheLeaguesSeason(id, asked) < named) {
