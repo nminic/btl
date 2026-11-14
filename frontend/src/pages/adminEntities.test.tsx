@@ -20,6 +20,7 @@ import { eventSlug } from './admin/entityForms'
 import { SEASON } from '../data/pricing'
 import { inEventOrder } from '../data/raceOrder'
 import { formatShortDate } from '../i18n/format'
+import { kindHasRaces } from '../data/types'
 import type { BtlEvent, League, Race, Result } from '../data/types'
 import { fieldDate, isoDate, shiftDate } from '../forms/dateField'
 import { renderAt } from '../test/render'
@@ -1464,7 +1465,7 @@ describe('the races of an event', () => {
     const user = setupUser()
     const events = await loadResource<BtlEvent[]>('events')
     const mine = must(
-      events.filter((one) => one.kind !== 'race').at(-1),
+      events.filter((one) => !kindHasRaces(one.kind)).at(-1),
       'an event with no races, so one press is one request',
     )
 
@@ -1511,7 +1512,7 @@ describe('the races of an event', () => {
     const user = setupUser()
     const events = await loadResource<BtlEvent[]>('events')
     const mine = must(
-      events.filter((one) => one.kind !== 'race').at(-1),
+      events.filter((one) => !kindHasRaces(one.kind)).at(-1),
       'an event with no races',
     )
 
@@ -1545,7 +1546,7 @@ describe('the races of an event', () => {
     const user = setupUser()
     const events = await loadResource<BtlEvent[]>('events')
     const mine = must(
-      events.filter((one) => one.kind !== 'race').at(-1),
+      events.filter((one) => !kindHasRaces(one.kind)).at(-1),
       'an event with no races',
     )
 
@@ -1656,7 +1657,7 @@ describe('the races of an event', () => {
     const user = setupUser()
     const events = await loadResource<BtlEvent[]>('events')
     const mine = must(
-      events.find((one) => one.kind !== 'race'),
+      events.find((one) => !kindHasRaces(one.kind)),
       'an event with no races, so one press is one request',
     )
 
@@ -1738,7 +1739,7 @@ describe('the races of an event', () => {
     const user = setupUser()
     const events = await loadResource<BtlEvent[]>('events')
     const mine = must(
-      events.find((one) => one.kind !== 'race'),
+      events.find((one) => !kindHasRaces(one.kind)),
       'an event with no races, so one press is one request',
     )
 
@@ -1936,7 +1937,7 @@ describe('the races of an event', () => {
     const user = setupUser()
     const events = await loadResource<BtlEvent[]>('events')
     const mine = must(
-      events.find((one) => one.kind !== 'race'),
+      events.find((one) => !kindHasRaces(one.kind)),
       'an event with no races',
     )
     const itsOwn = 'adresa-koju-je-server-dao-2099'

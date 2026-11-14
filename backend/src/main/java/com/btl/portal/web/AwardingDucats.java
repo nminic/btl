@@ -337,9 +337,11 @@ class AwardingDucats {
 	 * {@link DucatKind#COUNTRY_COUNT} refuses to count is not one this can produce.
 	 */
 	private List<Run> runs(long competitorId) {
+		/* ONLY A SCORED RUN, joined to `scored_race` (V99): PDL, 14.11.2026, a run of an unscored race „ne
+		   ulazi ni u šta što liga računa (..., dukati, bedž sa brojem trka, ...)". */
 		return db.sql("select r.id, r.race_date, r.category, coalesce(town_country.code, typed_country.code),"
 						+ " r.distance_km, r.ascent_m, r.seconds, r.points"
-						+ " from result r"
+						+ " from result r join scored_race s on s.id = r.race_id"
 						+ " join race on race.id = r.race_id"
 						+ " join btl_event e on e.id = race.event_id"
 						+ " left join place town on town.id = e.place_id"

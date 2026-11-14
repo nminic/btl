@@ -136,6 +136,23 @@ class EventWriteApi {
 	static final String THE_RACE_COUNTS_IN_A_LEAGUE_OF_ITS_SEASON =
 			"theRaceCountsInALeagueOfItsSeason";
 
+	/**
+	 * PDL, 14.11.2026, the owner's answers to the second round of questions about the plan, (6): „Vrsta
+	 * događaja koji ima ijedan rezultat ne može da se promeni između Bodovane i Nebodovane trke dok
+	 * rezultati stoje; greška se ispravlja brisanjem i ponovnim unosom", and the record measured beside it
+	 * that the server must hold it and not only the screen.
+	 */
+	static final String A_KIND_WITH_RESULTS_DOES_NOT_CHANGE = "aKindWithResultsDoesNotChange";
+
+	/**
+	 * An event whose race counts in a league may not become an unscored one, from whatever kind. The literal
+	 * {@link LeagueWriteApi#AN_UNSCORED_RACE_IS_NOT_IN_A_LEAGUE} holds, declared again as the pair above
+	 * is: one rule, one word, whichever door it came through. My reasoning, not a decision of its own: a
+	 * league refuses an unscored race, and turning the event into one would put that race into the league
+	 * through this door instead.
+	 */
+	static final String AN_UNSCORED_RACE_IS_NOT_IN_A_LEAGUE = "anUnscoredRaceIsNotInALeague";
+
 	private final JdbcClient db;
 
 	private final DucatsFollowTheResults ducats;
@@ -199,7 +216,7 @@ class EventWriteApi {
 	}
 
 	/** An event as it stands before an edit, which is what decides the new address. */
-	private record Standing(long id, String slug, String name, LocalDate date) {
+	private record Standing(long id, String slug, String name, LocalDate date, String kind) {
 	}
 
 	/**
@@ -297,10 +314,13 @@ class EventWriteApi {
 		List<Long> moved = new ArrayList<>();
 		ResponseEntity<?> answer = inOneTransaction.execute(committing -> {
 			Optional<Standing> before = db.sql(
-							"select id, slug, name, date from btl_event where id = ?")
+							/* HELD FROM HERE TO THE COMMIT, in the mode every write of a race or a result
+							   under this event holds it ({@link TheDayOfAnEvent#theEventHeldForThisWrite}),
+							   so that whether it carries a result is still true when its kind is written. */
+							"select id, slug, name, date, kind from btl_event where id = ? for no key update")
 					.param(id)
 					.query((row, one) -> new Standing(row.getLong(1), row.getString(2),
-							row.getString(3), row.getDate(4).toLocalDate()))
+							row.getString(3), row.getDate(4).toLocalDate(), row.getString(5)))
 					.optional();
 
 			/* THE SAME ANSWER SOMEBODY WITHOUT THE RIGHT GETS, and that is deliberate: an
@@ -314,6 +334,21 @@ class EventWriteApi {
 
 			if (wrong != null) {
 				return wrong;
+			}
+
+			/* INTO A SCORED OR AN UNSCORED RACE FROM ANY OTHER KIND, ONLY WHILE NO RESULT STANDS (see
+			   {@link #A_KIND_WITH_RESULTS_DOES_NOT_CHANGE} and `WhatAnEventCarries.entersAKindThatHoldsRaces`,
+			   which says why the way in is asked and not only the step between the two). A move into a
+			   training or a gathering is answered as it was: PDL, 14.11.2026, „Prelazak u Trening ili Skup se
+			   ovim ne menja". */
+			if (WhatAnEventCarries.entersAKindThatHoldsRaces(before.get().kind(), kindOf(typed))) {
+				if (carriesAResult(id)) {
+					return no(HttpStatus.CONFLICT, A_KIND_WITH_RESULTS_DOES_NOT_CHANGE);
+				}
+
+				if (WhatAnEventCarries.AN_UNSCORED_RACE.equals(kindOf(typed)) && countsInALeague(id)) {
+					return no(HttpStatus.CONFLICT, AN_UNSCORED_RACE_IS_NOT_IN_A_LEAGUE);
+				}
 			}
 
 			/* PDL P10b, ASKED BEFORE ANYTHING IS WRITTEN so a refusal never leaves the
@@ -411,6 +446,20 @@ class EventWriteApi {
 		ducats.follow(gone);
 
 		return answer;
+	}
+
+	/** Whether a race of this event carries a result at all, whoever's and of whatever kind. */
+	private boolean carriesAResult(long event) {
+		return Boolean.TRUE.equals(db.sql("select exists(select 1 from result r join race ra on ra.id = r.race_id"
+						+ " where ra.event_id = ?)")
+				.param(event).query(Boolean.class).single());
+	}
+
+	/** Whether a race of this event counts in any league. */
+	private boolean countsInALeague(long event) {
+		return Boolean.TRUE.equals(db.sql("select exists(select 1 from league_race lr join race ra on ra.id = lr.race_id"
+						+ " where ra.event_id = ?)")
+				.param(event).query(Boolean.class).single());
 	}
 
 	/** Every member with a row of {@code result} at a race of this event. */

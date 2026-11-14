@@ -334,8 +334,13 @@ describe('which fields the portal serves', () => {
        they are won from are. Five paths, none nested: which family, the threshold, the tier, and the
        season and month of a ducat of a period; never the day of the race that won it (PDL, 08.11.2026,
        „taj datum ne prikazuje nigde na portalu"). Added to the snapshot by hand; the season is named in
-       `MAY_HOLD_A_YEAR`. */
-    expect(Object.keys(served)).toHaveLength(23)
+       `MAY_HOLD_A_YEAR`.
+
+       **Twenty four since 14.11.2026: `unscored-results.json`, the races the league does not score
+       (`GET /api/unscored-results`, PDL „Ostale discipline kao lična evidencija").** The very row of
+       `results.json`, fifteen paths, none nested, with 0 points: what a member swam or rode and in what
+       time, which is what the public profile already shows of a run. Added to the snapshot by hand. */
+    expect(Object.keys(served)).toHaveLength(24)
     expect(Object.values(served).flat().length).toBeGreaterThan(100)
     expect(Object.values(served).flat().filter((one) => one.includes('.')).length).toBeGreaterThan(
       10,

@@ -625,22 +625,24 @@
   color: var(--text);
 }
 
-/* The six lengths, flat in one row instead of behind a list that has to be
-   opened (owner, 31.07.2026). The row is scrollable rather than wrapping,
-   because a filter that becomes two rows on one telephone and one on another is
-   a control that moves the table under the reader's thumb. Every one of the six
-   is a button, so a keyboard reaches the ones past the edge by tabbing to them
-   and the browser brings them into view. */
+/* The lengths, flat in one block instead of behind a list that has to be opened
+   (owner, 31.07.2026): „Sve", the five lengths and, since 14.11.2026, „Nebodovane
+   trke".
+
+   It was scrollable rather than wrapping while there were six, because six fit
+   one row at 360 and a filter that becomes two rows on one telephone and one on
+   another is a control that moves the table under the reader's thumb. Seven do
+   not fit: measured at 360, the row needed 426 pixels of the 328 there are, so
+   the new button stood almost wholly outside it, behind a scrollbar that is not
+   drawn (WCAG 2.2 SC 1.4.10 asks for no sideways scrolling at that width, and a
+   filter nobody can see is no filter). It wraps, and the line it wraps at is the
+   same on every telephone of that width, because the buttons' widths are the
+   words' and not the phone's. */
 .profile__lengths {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-4);
   margin-bottom: var(--space-12);
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-
-.profile__lengths::-webkit-scrollbar {
-  display: none;
 }
 
 .profile__length {
@@ -818,6 +820,15 @@
 
 .profile__dot--ultra {
   background: var(--length-ultra);
+}
+
+/* A race the league does not score has no length group, so it carries no one of the five hues: a
+   hollow ring in the muted text colour, which is a different SHAPE from the filled dots and not only
+   a different colour (WCAG 2.2 SC 1.4.1). The reading beside it says what it is. */
+.profile__dot--unscored {
+  box-sizing: border-box;
+  border: 2px solid var(--text-muted);
+  background: transparent;
 }
 
 /* The results table keeps the same columns whatever is filtered out of it.

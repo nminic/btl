@@ -25790,5 +25790,21 @@
     "dots": [
       "half"
     ]
+  },
+  {
+    "id": 1613,
+    "eventId": 1168,
+    "name": "Palićki triatlon",
+    "renamed": false,
+    "date": "2027-07-18",
+    "kind": "length",
+    "limitSeconds": 0,
+    "distanceKm": 51.5,
+    "ascentM": 0,
+    "descentM": 0,
+    "category": "ultra",
+    "dots": [
+      "ultra"
+    ]
   }
 ]

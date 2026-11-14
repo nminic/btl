@@ -1223,6 +1223,26 @@ class RaceWriteApiTest {
 				.isEqualTo(before);
 	}
 
+	@ParameterizedTest
+	@CsvSource({"race, add", "unscored, add", "race, change", "unscored, change"})
+	void aScoredAndAnUnscoredRaceBothHoldRaces(String kind, String how) throws Exception {
+		/* The other side of the case below: since 14.11.2026 an unscored race is a race in the sense of the
+		   owner's sentence of 23.08.2026 (PDL, „Nebodovana trka"), so a race is written under it and changed
+		   there as under a scored one. */
+		db.sql("update btl_event set kind = ? where id = ?").params(kind, another).update();
+
+		long before = howManyRaces();
+
+		MockHttpServletResponse answer = how.equals("add")
+				? add(aForm().under(another))
+				: change(raceCalled("Tudja"), anEdit().under(another));
+
+		assertThat(answer.getStatus())
+				.as("a race could not be %sed under a %s", how, kind)
+				.isEqualTo(how.equals("add") ? 201 : 200);
+		assertThat(howManyRaces()).isEqualTo(how.equals("add") ? before + 1 : before);
+	}
+
 	/**
 	 * EVERY WAY A FORM CAN BE WRONG IS ANSWERED AS A SENTENCE, NEVER AS A SERVER FAULT.
 	 *

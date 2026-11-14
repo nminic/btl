@@ -2,6 +2,7 @@ import { act, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { loadResource } from '../../data/client'
 import { inEventOrder } from '../../data/raceOrder'
+import { kindHasRaces } from '../../data/types'
 import type { BtlEvent, Race } from '../../data/types'
 import { RESULTS } from '../../data/useResource'
 import { dogadjaj } from '../../forms/definitions'
@@ -602,7 +603,7 @@ describe('an event whose races wait', () => {
     const user = setupUser()
     const events = await loadResource<BtlEvent[]>('events')
     const other = must(
-      events.find((one) => one.kind !== 'race'),
+      events.find((one) => !kindHasRaces(one.kind)),
       'an event with no races, so one press is one request',
     )
 

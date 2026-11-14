@@ -44,32 +44,52 @@ const BAND = 30
  */
 const GROWTH = 12
 
+/** The sixth slice (PDL, 14.11.2026, „Ostale discipline kao lična evidencija"): races the league does
+ *  not score, which the profile draws in the ring and keeps out of every figure beside it. */
+const UNSCORED = 'unscored'
+
+/** What a slice can be: one of the five lengths, or the races the league does not score. */
+type SliceKind = RaceCategory | typeof UNSCORED
+
+/** The five lengths and then the unscored ones, in the order the ring goes round. */
+const KINDS: SliceKind[] = [...CATEGORIES, UNSCORED]
+
 /** One colour per length, named rather than written: the values are per theme
- *  and live in styles/tokens.css. */
-const COLOURS: Record<RaceCategory, string> = {
+ *  and live in styles/tokens.css. The unscored ones take the muted text colour, which both themes
+ *  already define and which holds 3:1 against the card in both of them (WCAG 2.2 SC 1.4.11), so
+ *  the ring adds no colour to a palette of five hues somebody may not be able to tell apart. */
+const COLOURS: Record<SliceKind, string> = {
   short: 'var(--length-short)',
   half: 'var(--length-half)',
   long: 'var(--length-long)',
   marathon: 'var(--length-marathon)',
   ultra: 'var(--length-ultra)',
+  unscored: 'var(--text-muted)',
 }
 
 export function CategoryDonut({
   counts,
   caption,
+  unscored = 0,
 }: {
   counts: Map<RaceCategory, number>
   caption: string
+  /** How many of the races were ones the league does not score. Asked for only by the profile; a team
+   *  page draws the ring over scored results alone and passes nothing. */
+  unscored?: number
 }) {
   const { locale, t } = useI18n()
-  const [pointed, setPointed] = useState<RaceCategory | null>(null)
-  const total = CATEGORIES.reduce((sum, one) => sum + (counts.get(one) ?? 0), 0)
+  const [pointed, setPointed] = useState<SliceKind | null>(null)
+  const countOf = (one: SliceKind) => (one === UNSCORED ? unscored : (counts.get(one) ?? 0))
+  const nameOf = (one: SliceKind) =>
+    one === UNSCORED ? t('profile.unscoredFilter') : t(`category.${one}`)
+  const total = KINDS.reduce((sum, one) => sum + countOf(one), 0)
 
   let offset = 0
-  const slices: { one: RaceCategory; value: number; share: number; offset: number }[] = []
+  const slices: { one: SliceKind; value: number; share: number; offset: number }[] = []
 
-  for (const one of CATEGORIES) {
-    const value = counts.get(one) ?? 0
+  for (const one of KINDS) {
+    const value = countOf(one)
     const share = total === 0 ? 0 : value / total
 
     // Only what was actually run gets a slice.
@@ -164,7 +184,7 @@ export function CategoryDonut({
                     drawing, which no longer takes pointer events at all, so the
                     tooltip had quietly stopped appearing. */}
                 <title>
-                  {t(`category.${slice.one}`)}: {formatNumber(slice.value, locale)}
+                  {nameOf(slice.one)}: {formatNumber(slice.value, locale)}
                 </title>
               </circle>
             )
@@ -181,7 +201,9 @@ export function CategoryDonut({
         <text className="donut__unit" x={CENTRE} y={CENTRE + 28} textAnchor="middle">
           {chosen === undefined
             ? t('profile.racesWord', { count: total })
-            : t(`profile.categoryWord.${chosen.one}`, { count: chosen.value })}
+            : chosen.one === UNSCORED
+              ? t('profile.unscoredWord', { count: chosen.value })
+              : t(`profile.categoryWord.${chosen.one}`, { count: chosen.value })}
         </text>
       </svg>
 
@@ -193,7 +215,7 @@ export function CategoryDonut({
         <tbody>
           {slices.map((slice) => (
             <tr key={slice.one}>
-              <th scope="row">{t(`category.${slice.one}`)}</th>
+              <th scope="row">{nameOf(slice.one)}</th>
               <td>{formatNumber(slice.value, locale)}</td>
               <td>{formatNumber(slice.share * 100, locale)}%</td>
             </tr>

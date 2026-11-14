@@ -69,8 +69,16 @@ const INSIDE_THE_BOX = /(?<![\w-])table-scroll(?![\w-])[^<>]*[^/<>]>[\s{}]*$/
  * The one table that needs no box: one clipped to a single pixel.
  *
  * The donut of categories draws itself for the eye and writes the same numbers
- * out as a table for a screen reader (`visually-hidden`, index.css). A pixel
- * pushes nothing, and a box around it would scroll a table nobody can see.
+ * out as a table for a screen reader (`visually-hidden`, index.css). A box that
+ * scrolls would scroll a table nobody can see.
+ *
+ * **It was written here that „a pixel pushes nothing", and that was wrong for a
+ * table** (review of PR 728, 14.11.2026): a table ignores the pixel `visually-hidden`
+ * gives it and is as wide as its longest row, so at 360px and 200% text the row
+ * „Nebodovane trke" took the page 13px past its edge. What holds it is the box
+ * around it, `.donut-block` (CategoryDonut.css, position and clip), which
+ * `styles/hiddenTableIsHeld.test.ts` reads and `geometry/donutHiddenTable.geometry.ts`
+ * asks of Chrome.
  *
  * Written as the reason rather than as a path, so a second hidden table is
  * excused on the day it is written and a visible one never is.

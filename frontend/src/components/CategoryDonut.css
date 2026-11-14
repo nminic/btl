@@ -4,7 +4,22 @@
  * beside it: from the top of the first figure there to the bottom of the last.
  * A square that takes the height it is given and never more width than it has. */
 
+/* THE BOX THAT HOLDS THE TABLE FOR THE READER, whatever is written in it.
+ *
+ * The ring writes its numbers out again as a `visually-hidden` table, and a table does not obey the
+ * pixel that recipe gives it: its columns are as wide as their words, so the table is as wide as its
+ * longest row and stands where `position: absolute` put it. With no positioned box around it, that is
+ * measured against the page, and at 360px with the text at 200% the row „Nebodovane trke" ran 13px past
+ * the right edge and the page scrolled sideways to nothing (review of PR 728; `styles/table.css` says
+ * the same of the tables that are drawn, and gives them a box of their own).
+ *
+ * So this is the positioned box, and it clips: `overflow: clip` and not `hidden`, which would make it a
+ * scroll container with a scrollbar of its own, and a clip cannot be scrolled into. A longer name
+ * tomorrow, or a language with longer words, gains nothing here, because what stands outside the box is
+ * not part of the page's width at all. The ring is inside its own viewBox, so nothing of it is cut. */
 .donut-block {
+  position: relative;
+  overflow: clip;
   display: flex;
   align-items: center;
   justify-content: center;

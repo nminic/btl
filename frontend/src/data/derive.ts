@@ -1299,6 +1299,10 @@ export type SeriesEntry = {
  * a result for, and the widget is the front page's answer to „what do I run next".
  * They stay in the calendar, where they are found by looking rather than by being
  * put in front of everybody.
+ *
+ * **And only SCORED ones** (owner, 14.11.2026, „Naslovna, blok „Priprema, pozor, SAD",
+ * najavljuje samo bodovane trke"): `'race'` is the scored kind, so the filter below already
+ * leaves an unscored race out, and `derive.test.ts` holds that it does.
  */
 export function upcomingSeries(events: BtlEvent[], today: string, limit: number): SeriesEntry[] {
   const ahead = events
@@ -1353,6 +1357,15 @@ export function countsByCategory(results: Result[]): Map<RaceCategory, number> {
  * for one dot.
  */
 export function dotsAt(event: BtlEvent, races: readonly Pick<Race, 'eventId' | 'dots'>[]): Dot[] {
+  /* None on an unscored race (owner, 14.11.2026: „Nebodovana trka u kalendaru nema tačku dužine,
+     samo oznaku na pločici"). Said here and not left to what the server sends for such a race,
+     because the dot is the league's code for a length that counts and a tile that carries it
+     would say the race is one of the league's; and said in the one function both screens that
+     draw dots ask, so the calendar and the front page cannot part company. */
+  if (event.kind === 'unscored') {
+    return []
+  }
+
   /* Read off the race and not off a list the event carries. The list is written
      by the generator and by nothing else, so a race added in administration was
      run by nobody as far as this was concerned: its event lost the dot for that

@@ -27,11 +27,13 @@ import {
 import type { Competitor, Gender, RacingPair, Result, Team } from '../data/types'
 import {
   combineFour,
+  combinePair,
   useCompetitors,
   usePairs,
   useResults,
   useTeams,
 } from '../data/useResource'
+import { useUnscoredResults } from '../data/unscoredResults'
 import { formatDuration, formatNumber, formatPoints, formatShortDate } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 import { shortBio } from './profile/bio'
@@ -45,6 +47,17 @@ import './Profile.css'
  *  their "everything" the same way, and one of them changing its mind must not
  *  silently change the other. */
 const ALL_LENGTHS = 'sve'
+
+/** What the address says when the filter is „Nebodovane trke" (PDL, 14.11.2026, „Ostale discipline kao
+ *  lična evidencija"). The seventh value of the same parameter as the five lengths: it is chosen
+ *  from the same row and it excludes them, so it is one choice and not a second filter. */
+const UNSCORED_LENGTH = 'nebodovane'
+
+/** One line of the table: a result and whether the league scored it. A pair rather than a flag on
+ *  `Result`, because the type is the one `/api/results` serves and an unscored result is the very
+ *  same row; what says which list it came out of is the list, and nothing the server could get
+ *  wrong in a field. */
+type Line = { result: Result; unscored: boolean }
 
 /**
  * How many results arrive with the page, before the table starts growing.
@@ -110,12 +123,13 @@ function Biography({ text, gender }: { text: string | null; gender: Gender }) {
 }
 
 /**
- * The length filter, as one row of six rather than a list that has to be opened.
+ * The length filter, as one row rather than a list that has to be opened: „Sve", the five lengths,
+ * and since 14.11.2026 a seventh, „Nebodovane trke".
  *
  * Two clicks became one (owner, 31.07.2026), and the row takes the same height
- * the closed select took, so nothing below it moved. There are exactly six and
- * there will only ever be six, which is what makes this shape safe: a filter
- * with an open-ended set of values could not be laid out flat.
+ * the closed select took, so nothing below it moved. The set is closed (seven, and
+ * the seventh is a kind of race and not a length), which is what makes this shape
+ * safe: a filter with an open-ended set of values could not be laid out flat.
  *
  * Each one carries two names: the length as the rest of the portal says it, and
  * the short form that fits on a telephone, where six controls have to share
@@ -139,6 +153,8 @@ function LengthFilter({
       full: t(`category.${one}`),
       short: t(`profile.lengthsShort.${one}`),
     })),
+    /* The races the league does not score, last: it is not a length and does not sit among them. */
+    { key: UNSCORED_LENGTH, full: t('profile.unscoredFilter'), short: t('profile.unscoredShort') },
   ]
 
   return (
@@ -178,6 +194,7 @@ function ProfileBody({
   competitor,
   competitors,
   results,
+  unscoredResults,
   team,
   teams,
   pairs,
@@ -185,6 +202,9 @@ function ProfileBody({
   competitor: Competitor
   competitors: Competitor[]
   results: Result[]
+  /** What `/api/unscored-results` serves: the races the league does not score. Drawn in the list and
+   *  in the ring and counted in no figure (`data/unscoredResults.ts`). */
+  unscoredResults: Result[]
   team: Team | undefined
   teams: Team[]
   /** The pairs that hold now, the file and this visit together (`data/derive.ts`, `pairsNow`). */
@@ -201,7 +221,16 @@ function ProfileBody({
   /* Only the years this person has results in (owner, 02.11.2026: a year with none „ne treba da
      se pojavi kao opcija za tog takmicara u njegovoj listi"). Not the running year, and not a year
      an address names: such an address opens on all of them, through `offeredSeason`. */
-  const options = useMemo(() => seasonsWithResults(mine), [mine])
+  const unscoredMine = useMemo(
+    () => resultsOf(unscoredResults, competitor.memberNumber),
+    [unscoredResults, competitor.memberNumber],
+  )
+  /* A year in which somebody only swam is a year they have results in, so the unscored ones offer
+     years as well; the figures below still count the scored ones alone. */
+  const options = useMemo(
+    () => seasonsWithResults([...mine, ...unscoredMine]),
+    [mine, unscoredMine],
+  )
   /* Held against the list before anything is read in it, so the control and the
      table below it cannot show two different years. */
   const season = offeredSeason(asked, options, undefined)
@@ -211,7 +240,8 @@ function ProfileBody({
      is ignored. */
   const askedLength = params.get('duzina')
   const length =
-    askedLength !== null && CATEGORIES.some((one) => one === askedLength)
+    askedLength !== null &&
+    (askedLength === UNSCORED_LENGTH || CATEGORIES.some((one) => one === askedLength))
       ? askedLength
       : ALL_LENGTHS
 
@@ -219,12 +249,36 @@ function ProfileBody({
     () => mine.filter((result) => season === ALL_SEASONS || result.date.startsWith(season)),
     [mine, season],
   )
-  const shown = useMemo(
-    () => inSeason.filter((result) => length === ALL_LENGTHS || result.category === length),
-    [inSeason, length],
+  const unscoredInSeason = useMemo(
+    () => unscoredMine.filter((result) => season === ALL_SEASONS || result.date.startsWith(season)),
+    [unscoredMine, season],
   )
+  /* WHAT THE TABLE HOLDS, by the owner's decision of 14.11.2026: „Sve" shows the scored and the
+     unscored together, a length shows only the scored ones of that length, and „Nebodovane trke"
+     shows only those. Newest first, and on one day the scored one first (the sort is stable and the
+     scored ones are put in first). */
+  const shown = useMemo<Line[]>(() => {
+    const scored = (): Line[] =>
+      inSeason
+        .filter((result) => length === ALL_LENGTHS || result.category === length)
+        .map((result) => ({ result, unscored: false }))
+    const unscoredLines = (): Line[] =>
+      unscoredInSeason.map((result) => ({ result, unscored: true }))
 
-  /* The two widgets follow the season and nothing else. */
+    if (length === UNSCORED_LENGTH) {
+      return unscoredLines()
+    }
+
+    return length === ALL_LENGTHS
+      ? [...scored(), ...unscoredLines()].sort((left, right) =>
+          right.result.date.localeCompare(left.result.date),
+        )
+      : scored()
+  }, [inSeason, unscoredInSeason, length])
+
+  /* The figures follow the season and nothing else, and they count the scored races ALONE (owner,
+     14.11.2026: „Brojači statistike na profilu (km, uspon, spust, vreme, bodovi) broje samo bodovane
+     trke; nebodovane se vide u krugu i u listi rezultata"). */
   const totals = useMemo(() => totalsOf(inSeason), [inSeason])
 
   /* A table that grows as it is read, the same mechanism the comments under an
@@ -288,7 +342,11 @@ function ProfileBody({
         <Biography text={competitor.bio} gender={competitor.gender} />
 
         <section className="profile__card profile__card--donut">
-          <CategoryDonut counts={countsByCategory(inSeason)} caption={t('profile.byCategory')} />
+          <CategoryDonut
+            counts={countsByCategory(inSeason)}
+            unscored={unscoredInSeason.length}
+            caption={t('profile.byCategory')}
+          />
         </section>
 
         <Counters totals={totals} races={false} />
@@ -303,7 +361,7 @@ function ProfileBody({
 
         {shown.length === 0 ? (
           <div className="profile__results-empty">
-            <p>{emptyText(t, mine.length, season)}</p>
+            <p>{emptyText(t, mine.length + unscoredMine.length, season, length)}</p>
             {(season !== ALL_SEASONS || length !== ALL_LENGTHS) && (
               <button
                 type="button"
@@ -348,8 +406,8 @@ function ProfileBody({
                 </tr>
               </thead>
               <tbody>
-                {shown.slice(0, grown).map((result) => (
-                  <tr key={result.id}>
+                {shown.slice(0, grown).map(({ result, unscored }) => (
+                  <tr key={`${unscored ? 'unscored' : 'scored'}-${result.id}`}>
                     <td>{formatShortDate(result.date, locale)}</td>
                     {/* The event, not just its name (owner, 31.07.2026). Somebody
                         reading a result wants the race it came out of, and until
@@ -366,11 +424,16 @@ function ProfileBody({
                           because a colour on its own says nothing to anyone who
                           cannot tell two of them apart. */}
                       <span
-                        className={`profile__dot profile__dot--${result.category}`}
+                        className={`profile__dot profile__dot--${unscored ? 'unscored' : result.category}`}
                         aria-hidden="true"
                       />
+                      {/* A race the league does not score has no length group: the dot is a
+                          hollow one, and the reading says what it is instead of a group (colour
+                          is never the only thing that tells them apart). */}
                       <span className="visually-hidden">
-                        {t(`category.${result.category}`)}
+                        {unscored
+                          ? t('profile.unscoredWord', { count: 1 })
+                          : t(`category.${result.category}`)}
                         {': '}
                       </span>
                       {formatNumber(result.distanceKm, locale, 2)}
@@ -378,7 +441,19 @@ function ProfileBody({
                     <td className="table__hide-phone">{formatNumber(result.ascentM, locale)}</td>
                     <td className="table__hide-phone">{formatNumber(result.descentM, locale)}</td>
                     <td className="table__hide-phone">{formatDuration(result.seconds)}</td>
-                    <td className="table__points">{formatPoints(result.points, locale)}</td>
+                    <td className="table__points">
+                      {unscored ? (
+                        <>
+                          {/* „–" and not 0,00: the league did not score it, which is not the same
+                              as scoring nothing. Said in words for a reader who hears a dash as
+                              silence. */}
+                          <span aria-hidden="true">–</span>
+                          <span className="visually-hidden">{t('profile.noPoints')}</span>
+                        </>
+                      ) : (
+                        formatPoints(result.points, locale)
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -416,7 +491,14 @@ function emptyText(
   t: (key: string, params?: Record<string, string | number>) => string,
   raced: number,
   season: string,
+  length: string,
 ): string {
+  if (length === UNSCORED_LENGTH && raced > 0) {
+    /* Its own pair of sentences, because „nema rezultata izabrane distance" is about a length and
+       the unscored races are not one. */
+    return season === ALL_SEASONS ? t('profile.noneUnscored') : t('profile.noneUnscoredInFilter')
+  }
+
   if (raced === 0) {
     /* Written without a gender, unlike the biography above it. The portal has
        exactly one member who has never raced, so one of the two forms of this
@@ -459,11 +541,17 @@ export function CompetitorProfile({ memberNumber: given }: { memberNumber?: stri
   } = useSession()
   const { role } = useRole()
   const overlay = useOverlay()
-  const state = combineFour(useCompetitors(), useResults(), useTeams(), usePairs())
+  /* The races the league does not score are a fifth read beside the four, and not folded into
+     `useResults`: `/api/results` serves the scored ones alone so that nothing which counts can ever
+     meet an unscored result (`data/unscoredResults.ts`). */
+  const state = combinePair(
+    combineFour(useCompetitors(), useResults(), useTeams(), usePairs()),
+    useUnscoredResults(),
+  )
 
   return (
     <Resource state={state}>
-      {([everybody, results, allTeams, fromFile]) => {
+      {([[everybody, results, allTeams, fromFile], unscoredResults]) => {
         /* Through the overlay, so a choice made in Podešavanja this visit is answered by this
            screen at once rather than only after the data is loaded again.
 
@@ -554,6 +642,7 @@ export function CompetitorProfile({ memberNumber: given }: { memberNumber?: stri
                 competitor={competitor}
                 competitors={competitors}
                 results={results}
+                unscoredResults={unscoredResults}
                 team={teams.find((one) => one.id === competitor.teamId)}
                 teams={teams}
                 pairs={pairsNow(fromFile, pairsMade, pairsBroken)}
