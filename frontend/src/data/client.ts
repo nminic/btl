@@ -171,8 +171,11 @@ export const RESOURCE_NAMES = [
      the screen clears this name after a write goes through and reads it again.
 
      THE SIXTEENTH, AND THE ONE WHOSE ROUTE TAKES A PARAMETER THIS PORTAL NEVER SENDS.
-     `GET /api/payments` accepts `?search=`, and the screen filters the answer itself
-     instead (`admin/paymentSearch.ts` says which of the two decides and why). A cache
+     `GET /api/payments` took `?search=` until 07.11.2026 and refuses it now (ADL, „Pojam pretrage uplata ne
+     putuje u adresi zahteva nego u telu"): a term, which is often the name of somebody who is not a member yet,
+     travels in the body of `POST /api/payments/search`, so the address of this resource carries no query at
+     all. The screen filters the answer itself instead (`admin/paymentSearch.ts` says which of the two decides
+     and why). A cache
      keyed by name is the reason it has to: `loadResource` holds one promise per name
      with no parameter in the key, so a narrowed answer stored under this name would be
      handed back to the next reader who asked for the whole list. */

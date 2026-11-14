@@ -7,6 +7,8 @@ import com.btl.portal.domain.season.SeasonClock;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
@@ -175,18 +177,32 @@ import java.util.stream.Collectors;
  * a table this route does not name, and a fixture where the two disagree is what holds it.
  * </ul>
  *
- * <p><b>NOTHING IS REFUSED HERE BUT A TERM THAT HOLDS A ZERO CHARACTER, and ADL A54 is why that
- * is said out loud rather than left to be noticed.</b> That decision requires a route to state
- * which of the two meanings an omitted field has, and its other half - a refused form says what
- * is missing - is about forms being refused. This route has no form: the search term is
- * optional, and <b>absent and blank both
- * mean „the whole list"</b> rather than „nothing matches". There is no length at which a term
- * is refused, because no decision sets one and inventing a refusal is not this route's to make.
- * The zero is not a length and not an invention: {@code text} cannot hold it, so a term carrying
- * one reached the statement and was answered 500 (measured on 09.10.2026 with
- * {@code search=%00}), and it is answered 400 now by the question {@link NoTextHoldsAZero} asks of
- * every text of a body. No other REQUEST parameter of this portal reaches a statement as it was
- * typed (a path variable does, and a zero in a path never gets this far).
+ * <p><b>THE TERM TRAVELS IN THE BODY OF A REQUEST AND NEVER IN ITS ADDRESS</b> (ADL, 07.11.2026, owner,
+ * chosen between offered outcomes, with the assistant's recommendation: „Pojam pretrage uplata ne putuje u
+ * adresi zahteva nego u telu, jer je to često ime nekoga ko još nije član, a adresa ostaje u logu servera.
+ * Ponuđeno i neizabrano: prihvatiti kako jeste."). The list is {@code GET /api/payments}, whole, and the
+ * narrowed one is {@code POST /api/payments/search} with {@code {"term": "..."}}. <b>The form of the route is
+ * my reasoning and not the owner's</b>: he decided where the term travels, not how. A POST answers a question
+ * and writes nothing, and it is still a POST in everything the portal asks of one (the CSRF token, 401 for
+ * nobody and 404 for a right that is not held, ADL A8).
+ *
+ * <p><b>THE OLD ADDRESS IS REFUSED AND NOT IGNORED.</b> {@code GET /api/payments?search=...} answers 400 with
+ * nothing in it, for any value including none. Left to be ignored it would answer the WHOLE list to a caller
+ * who believes he narrowed it, and the term he put in the address would have reached the log all the same;
+ * refused, he is told. This is my reasoning, and the owner's „stara adresa više ne vraća rezultate" is what it
+ * is read from. (Nothing in this portal sends it: the screen filters the answer itself,
+ * {@code admin/paymentSearch.ts}, so nobody is told anything he was not already.)
+ *
+ * <p><b>NOTHING IS REFUSED HERE BUT THE OLD ADDRESS, and ADL A54 is why that is said out loud rather than left
+ * to be noticed.</b> That decision requires a route to state which of the two meanings an omitted field has,
+ * and its other half - a refused form says what is missing - is about forms being refused. The term is
+ * optional: absent, null and blank all mean „the whole list" rather than „nothing matches", and the body
+ * itself is not optional (a request with no body is the container's 400). There is no length at which a term
+ * is refused beyond the size every body is held to ({@link NoBodyIsLargerThan}), because no decision sets one
+ * and inventing a refusal is not this route's to make. A zero character is refused as it is in every body:
+ * {@code text} cannot hold it, so a term carrying one reached the statement and was answered 500 (measured on
+ * 09.10.2026 with {@code search=%00}), and it is answered 400 by the question {@link NoTextHoldsAZero} asks of
+ * every text of a body.
  *
  * <p><b>THE ORDER IS THE ONE A HUMAN READS, and it is total.</b> By surname then given name,
  * through the {@code sr_latn} collation the columns already carry (V1, O21), because that is
@@ -294,30 +310,48 @@ class PaymentsDueApi {
 	}
 
 	/**
-	 * @param search the member number, given name, surname or full name to look for. Absent and
-	 *               blank are ONE answer, the whole list, and neither is refused (ADL A54 asks
-	 *               every route to say which of the two meanings omission has; here it means
-	 *               „do not narrow" and can never mean „match nothing").
-	 *               A term holding U+0000 is the one thing refused, with a 400.
+	 * @param search NOT TAKEN: the term of a search does not travel in the address (ADL, 07.11.2026), so any
+	 *               value of this parameter, and the parameter with no value, is answered 400 and nothing
+	 *               is listed. It is declared only so that it can be refused instead of ignored, and it is the
+	 *               one request parameter of this route.
 	 */
 	@GetMapping("/api/payments")
 	@RightIsNeeded("queue:payments")
 	Outstanding due(@RequestParam(name = "search", required = false) String search) {
-		/* A ZERO CHARACTER IS NOT A TERM THE LIST CAN BE NARROWED BY. `text` cannot hold it, so it
-		   would reach the statement below and come back as a 500; it is turned away here, with the
-		   same question the reader of a body asks, before anything is worked out. */
-		if (NoTextHoldsAZero.holdsAZero(search)) {
+		if (search != null) {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
 		}
 
-		/* THE SEASON PAYMENT IS BEING TAKEN FOR, read ONCE for the whole answer. Read per row
-		   it could cross 21 November between two rows of one list, and two accounts would be
-		   answered about two different seasons under one heading. `PaymentApi` reads the same
-		   method at the same point of its own work, which is what keeps the writer and this
-		   reader from disagreeing about which membership closes a row. */
-		int season = SeasonClock.seasonBeingPaidFor(ZonedDateTime.now(clock));
+		return outstanding("");
+	}
 
-		String term = search == null ? "" : search.strip();
+	/**
+	 * @param term the member number, given name, surname or full name to look for. Absent, null and blank
+	 *             are ONE answer, the whole list, and none is refused (ADL A54 asks every route to say which of
+	 *             the two meanings omission has; here it means „do not narrow" and can never mean „match
+	 *             nothing").
+	 */
+	record Search(String term) {
+	}
+
+	/**
+	 * The list narrowed by a term sent in the body. A read that is a POST because of what it carries and for
+	 * nothing else: it writes nothing, and it asks the same right as the list.
+	 */
+	@PostMapping("/api/payments/search")
+	@RightIsNeeded("queue:payments")
+	Outstanding search(@RequestBody Search typed) {
+		return outstanding(typed.term() == null ? "" : typed.term().strip());
+	}
+
+	/**
+	 * THE SEASON PAYMENT IS BEING TAKEN FOR, read ONCE for the whole answer. Read per row it could cross
+	 * 21 November between two rows of one list, and two accounts would be answered about two different
+	 * seasons under one heading. `PaymentApi` reads the same method at the same point of its own work, which is
+	 * what keeps the writer and this reader from disagreeing about which membership closes a row.
+	 */
+	private Outstanding outstanding(String term) {
+		int season = SeasonClock.seasonBeingPaidFor(ZonedDateTime.now(clock));
 
 		return new Outstanding(season, notActiveIn(season, term));
 	}

@@ -254,6 +254,58 @@ describe('the settings of an administration account with no member', () => {
   )
 })
 
+/**
+ * THE THIRD ROLE OF THE AXIS: AN ADMINISTRATION ACCOUNT THAT IS ALSO A MEMBER (owner, 07.11.2026, PDL P11, „Nalog
+ * administracije koji nije i član na Podešavanjima vidi i temu i promenu lozinke"; the sentence is about the account
+ * that is NOT a member, so this one is asked what a member is).
+ *
+ * <p>The three roles of the screen are three cells and not two: a member (below), an administration account with no
+ * member (above), and this one, which neither stands in for. PDL P8, 16.10.2026: „Moderator čiji je sopstveni član
+ * istekao je istekao član: ne menja svoje podatke ni lozinku kroz portal". So, as the route answers them
+ * (`MePasswordApiTest`, the same two cases): with the fee standing he is drawn what a member is, the password and the
+ * privacy beside it included, and with the fee lapsed he is drawn the theme and the one sentence, and no password.
+ *
+ * <p>The member is the one the sample holds: 000001 stands and 000032 has lapsed, the same two the cases of members
+ * use. The ROLE is what changes, and it is handed to the session beside the number, so a screen that read the role to
+ * decide would give a different answer here than for the competitor of the same number.
+ */
+describe('the settings of an administration account that is also a member', () => {
+  it.each(['moderator', 'superadmin'] as const)(
+    'draws a %s whose fee stands every panel a member is drawn, the password and the privacy included',
+    async (role) => {
+      renderAt('/sr/podesavanja', role, '000001')
+
+      await drawn()
+      await screen.findByRole('heading', { level: 2, name: PANELS.privacy })
+
+      expect(
+        within(screen.getByRole('main'))
+          .getAllByRole('heading', { level: 2 })
+          .map((one) => one.textContent),
+      ).toEqual([PANELS.password, PANELS.privacy, PANELS.appearance, PANELS.mail])
+      expect(screen.getByRole('checkbox')).toBeVisible()
+      expectNoSentenceAboutRenewal()
+    },
+    SLOW,
+  )
+
+  it.each(['moderator', 'superadmin'] as const)(
+    'draws a %s whose own member has lapsed the theme and the sentence about the renewal, and no password',
+    async (role) => {
+      renderAt('/sr/podesavanja', role, '000032')
+
+      await drawn()
+
+      expect(screen.queryByRole('heading', { name: PANELS.password })).not.toBeInTheDocument()
+      expect(screen.queryByRole('heading', { name: PANELS.privacy })).not.toBeInTheDocument()
+      expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
+      expect(screen.getByRole('radio', { name: 'Tamna' })).toBeVisible()
+      expectTheSentenceAboutRenewal()
+    },
+    SLOW,
+  )
+})
+
 describe('the settings of a member the list does not hold yet', () => {
   /* A number handed out during this visit is not in the file the list is read from, and after the database
      arrives the two can be a moment apart for a hundred other reasons. The rest of the settings still work;

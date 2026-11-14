@@ -45,8 +45,7 @@ export function isResource(path: string): boolean {
  * The address without what was asked OF it.
  *
  * <p><b>A query names a narrower answer and never another resource</b>, which is the whole of
- * why this exists: `/api/pages?lang=en` is the written pages and `/api/payments?search=x` is
- * the payments. Compared whole, the one name that sends a parameter since 28.09.2026 would
+ * why this exists: `/api/pages?lang=en` is the written pages. Compared whole, the one name that sends a parameter since 28.09.2026 would
  * have answered false here, and the three cases that read this as „did this screen spend
  * anything it should not" would have counted a resource as a write.
  */
