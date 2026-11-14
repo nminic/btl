@@ -1916,12 +1916,11 @@ class VerificationWriteApi {
 				return Counting.notCounted(no(HttpStatus.CONFLICT, noRace));
 			}
 
-			/* AN EVENT THAT IS THERE IS OF THE KIND THE MEMBER SENT THE RUN UNDER, the one he chose or the
-			   one the name he typed already answers to (THE_KIND_IS_THE_MEMBERS); a new one is made of
-			   that kind (theRaceThisApprovalMakes). */
-			if (there.isPresent() && !there.get().kind().equals(sent.eventKind())) {
-				return Counting.notCounted(no(HttpStatus.CONFLICT, THE_KIND_IS_THE_MEMBERS));
-			}
+			/* WHETHER AN EVENT THAT IS THERE IS OF THE KIND THE MEMBER SENT THE RUN UNDER is asked once, of the
+			   event as it is HELD (aRaceOnTheEvent), and not here as well: asked here it changed nothing anybody
+			   could see, since the refusal there is the same 409 and the same sentence and takes the claim back
+			   (measured: taking a question here away left every case green). A new event is made of that
+			   kind (theRaceThisApprovalMakes). */
 
 			/* THE PLACE THE MODERATOR NAMED, judged before the row is claimed. A town typed is a town
 			   of the length and the characters a typed town may hold, beside a country there is
