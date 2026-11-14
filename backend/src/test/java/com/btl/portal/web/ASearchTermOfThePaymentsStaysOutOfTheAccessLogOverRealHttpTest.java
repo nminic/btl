@@ -170,6 +170,37 @@ class ASearchTermOfThePaymentsStaysOutOfTheAccessLogOverRealHttpTest {
 	}
 
 	/**
+	 * The log as it is once it holds every line given, or the failure that names the line that never came.
+	 *
+	 * <p>Tomcat writes the line of a request after the answer has been sent, so the client can hold its answer
+	 * before the line is in the file; a read made right after the last answer sees a log that is only about to be
+	 * complete. What is waited for is the thing the case needs (the lines), with a deadline, as
+	 * {@code BlockedBehindThisHold.untilBothArrive} waits for its two requests; a line that does not come fails
+	 * with its own message and not with the clock of the case.
+	 */
+	private String theLogOnceItHolds(String... lines) throws IOException, InterruptedException {
+		Instant deadline = Instant.now().plusSeconds(10);
+		String log = theLog();
+
+		while (true) {
+			String current = log;
+			Optional<String> missing = Stream.of(lines).filter(one -> !current.contains(one)).findFirst();
+
+			if (missing.isEmpty()) {
+				return log;
+			}
+
+			if (Instant.now().isAfter(deadline)) {
+				throw new AssertionError("the access log should have held the line '" + missing.get()
+						+ "' within ten seconds of the answer, and it never did. The log: " + log);
+			}
+
+			Thread.sleep(20);
+			log = theLog();
+		}
+	}
+
+	/**
 	 * THE TERM IS IN THE BODY AND THE LOG DOES NOT HOLD IT, while the same log holds the term of the old address.
 	 */
 	@Test
@@ -189,7 +220,8 @@ class ASearchTermOfThePaymentsStaysOutOfTheAccessLogOverRealHttpTest {
 				.as("the old address was answered, and not refused")
 				.isEqualTo(400);
 
-		String log = theLog();
+		String log = theLogOnceItHolds("POST /api/payments/search",
+				"GET /api/payments?search=" + A_TERM_IN_THE_ADDRESS);
 
 		assertThat(log)
 				.as("the log holds no line of the search: the case measures a log that was never written")
