@@ -310,11 +310,19 @@ function EventResults({ slug, date, unscored }: { slug: string; date: string; un
 }
 
 function ScoredEventResults({ slug, date }: { slug: string; date: string }) {
-  return <EventResultsTable slug={slug} date={date} results={useResults()} scored />
+  return <EventResultsTable slug={slug} date={date} results={useResults()} scored filedUnder={RESULTS} />
 }
 
 function UnscoredEventResults({ slug, date }: { slug: string; date: string }) {
-  return <EventResultsTable slug={slug} date={date} results={useUnscoredResults()} scored={false} />
+  return (
+    <EventResultsTable
+      slug={slug}
+      date={date}
+      results={useUnscoredResults()}
+      scored={false}
+      filedUnder={UNSCORED_RESULTS}
+    />
+  )
 }
 
 /**
@@ -329,10 +337,11 @@ function inTheOrderOfThePage(ran: Result[], scored: boolean, races: Race[]): Res
     return ran.toSorted((left, right) => right.points - left.points)
   }
 
-  const place = new Map(inEventOrder(races).map((race, at) => [race.id, at]))
-  const at = (one: Result) => place.get(one.raceId) ?? place.size
+  const order = inEventOrder(races).map((race) => race.id)
 
-  return ran.toSorted((left, right) => at(left) - at(right) || left.seconds - right.seconds)
+  return ran.toSorted(
+    (left, right) => order.indexOf(left.raceId) - order.indexOf(right.raceId) || left.seconds - right.seconds,
+  )
 }
 
 function EventResultsTable({
@@ -340,11 +349,14 @@ function EventResultsTable({
   date,
   results,
   scored,
+  filedUnder,
 }: {
   slug: string
   date: string
   results: ResourceState<Result[]>
   scored: boolean
+  /** What a row taken away with the x is filed under, the list it was read from (`useLive`). */
+  filedUnder: typeof RESULTS | typeof UNSCORED_RESULTS
 }) {
   const { locale, t } = useI18n()
   const today = useToday()
@@ -563,7 +575,7 @@ function EventResultsTable({
                                     if (answer.got === 'done') {
                                       /* Gone at once rather than on the next read; the served
                                          list really has lost it (`leagueResultWrites.ts` drops it). */
-                                      remove(scored ? RESULTS : UNSCORED_RESULTS, String(result.id))
+                                      remove(filedUnder, String(result.id))
                                       setRefused(null)
                                       setSaid(t('results.deleted'))
 

@@ -514,9 +514,10 @@ const RACE_BOX = unosRezultata.fields.filter((one) => one.name === 'raceName')
  * Nebodovana trka"): PDL, 15.11.2026, „kad liga pravi nov događaj, bira se Bodovana ili Nebodovana trka,
  * podrazumevano Bodovana”. A training and a gathering hold no race, so they are not offered.
  */
-const KINDS_OF_A_NEW_EVENT = (dogadjaj.fields.find((one) => one.name === 'kind')?.options ?? []).filter(
-  (option) => option.value === 'race' || option.value === 'unscored',
-)
+const KINDS_OF_A_NEW_EVENT = dogadjaj.fields
+  .filter((one) => one.name === 'kind')
+  .flatMap((field) => optionsFor(field, {}))
+  .filter((option) => option.value === 'race' || option.value === 'unscored')
 const EVENT_BOX = unosRezultata.fields
   .filter((one) => one.name === 'eventName')
   .map((one) => ({ ...one, hintKey: 'leagueResults.eventHint' }))

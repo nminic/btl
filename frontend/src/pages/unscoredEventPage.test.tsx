@@ -1,4 +1,6 @@
-import { screen, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
+import { sayYes } from '../test/deleteSheet'
+import { setupUser } from '../test/user'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import sr from '../i18n/sr.json'
 import { clearResourceCache, loadResource } from '../data/client'
@@ -66,7 +68,11 @@ describe('the page of an unscored event', () => {
 
   beforeEach(() => {
     clearResourceCache()
-    server = serverThat((path) => {
+    server = serverThat((path, init) => {
+      if ((init?.method ?? 'GET') === 'DELETE') {
+        return new Response(null, { status: 204 })
+      }
+
       if (path === '/api/unscored-results') {
         return json(RUNS)
       }
@@ -130,6 +136,26 @@ describe('the page of an unscored event', () => {
       'aria-required',
       'false',
     )
+  }, SLOW)
+
+  it('takes a run away with its x, off the list it was read from', async () => {
+    const user = setupUser()
+
+    renderAt(PAGE, 'superadmin', null, undefined, TODAY)
+
+    const table = await screen.findByRole('table', { name: sr.event.results }, { timeout: SLOW / 2 })
+
+    expect(within(table).getAllByRole('row')).toHaveLength(4)
+
+    await user.click(at(within(table).getAllByRole('button', { name: /^Obriši/ }), 0))
+    await sayYes(user, sr.results.deleteAsk)
+
+    await waitFor(() => {
+      expect(within(table).getAllByRole('row')).toHaveLength(3)
+    })
+    expect(server.asked.filter((one) => one.init?.method === 'DELETE').map((one) => one.path)).toEqual([
+      '/api/races/1613/results/9903',
+    ])
   }, SLOW)
 
   it('offers nobody who did not run it to rate it', async () => {

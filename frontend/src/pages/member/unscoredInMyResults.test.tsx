@@ -1,4 +1,6 @@
-import { screen, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
+import { sayYes } from '../../test/deleteSheet'
+import { setupUser } from '../../test/user'
 import { at, must } from '../../test/at'
 import { renderAt } from '../../test/render'
 import { SLOW } from '../../test/slow'
@@ -120,6 +122,45 @@ describe('the races the league does not score, in „Moji rezultati"', () => {
     } finally {
       stop()
     }
+  }, SLOW)
+
+  /* TAKEN BACK BY ITS OWN X, through the route of a counted result (`DELETE /api/results/{id}`), and gone from its
+     own list at once (`UNSCORED_RESULTS`, the overlay of `useUnscoredResults`), not from the scored one. */
+  it('take one back with its x, through the route of a counted result, and lose its row at once', async () => {
+    const server = serverThat((_path, init) =>
+      (init?.method ?? 'GET') === 'DELETE' ? new Response(null, { status: 204 }) : null,
+    )
+
+    try {
+      const user = setupUser()
+
+      renderAt(PAGE, 'competitor', MEMBER)
+
+      const table = await screen.findByRole('table', { name: 'Nebodovane trke' }, { timeout: SLOW / 2 })
+      const { unscored } = await bothLists()
+      const first = at(unscored, 0)
+
+      await user.click(within(table).getByRole('button', { name: `Obriši: ${first.raceName}` }))
+      await sayYes(user, 'Obriši rezultat?')
+
+      await waitFor(() => {
+        expect(within(table).queryByText(first.raceName)).toBeNull()
+      })
+      expect(server.asked.filter((one) => one.init?.method === 'DELETE').map((one) => one.path)).toEqual([
+        `/api/results/${String(first.id)}`,
+      ])
+    } finally {
+      server.stop()
+    }
+  }, SLOW)
+
+  /* CORRECTED BY ITS PENCIL, on the form of a correction that lets the climb be left out (PDL, 14.11.2026). */
+  it('open the correction of one with the climb left to be left out', async () => {
+    const { unscored } = await bothLists()
+
+    renderAt(`/sr/rezultat/novi?ispravka=${String(at(unscored, 0).id)}`, 'competitor', MEMBER)
+
+    expect(await screen.findByLabelText(/^Uspon/, undefined, { timeout: SLOW / 2 })).not.toBeRequired()
   }, SLOW)
 
   it('leave no heading behind for a member who has none', async () => {
