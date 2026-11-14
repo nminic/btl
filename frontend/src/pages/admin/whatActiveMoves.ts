@@ -32,13 +32,16 @@ export const WHAT_READS_OR_SHOWS_ACTIVE = [
   'members',
   'competitors',
   'results',
+  /* The races the league does not score carry the same member data as `results`, so the route asks the
+     same flag (`GET /api/unscored-results`, PDL 14.11.2026) and is dropped with it. */
+  'unscored-results',
   'teams',
   'pairs',
   'attendance',
   'comments',
 ] as const satisfies readonly ResourceName[]
 
-/** Drops every answer in {@link WHAT_READS_OR_SHOWS_ACTIVE}, the same eight whatever moved the flag. */
+/** Drops every answer in {@link WHAT_READS_OR_SHOWS_ACTIVE}, the same nine whatever moved the flag. */
 export function dropWhatActiveMoves(): void {
   for (const name of WHAT_READS_OR_SHOWS_ACTIVE) {
     clearResourceCache(name)
