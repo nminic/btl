@@ -1,0 +1,247 @@
+/* „RACE IN MOTION": the two decorative layers of the shell (owner, 14.11.2026, PDL „Vizuelno
+ * osveženje „Race in Motion""), and the colours they are drawn in.
+ *
+ * A sheet of its own, so the work beside it on `styles/tokens.css` and on the screens never meets
+ * this in one file. The colours are tokens with a value per theme in the same three blocks
+ * `styles/tokens.css` writes (light, dark by the system, dark by choice), so the theme is decided
+ * once and the components below know nothing about it. Both themes are drawn: the portal has a
+ * light theme a member can choose (`app/themeContext.ts`), and in it the same lines are a deep
+ * blue on white, as faint against the light card as the dark ones are against the navy.
+ *
+ * GOLD AS DECORATION, AND ONLY HERE. The head of `styles/tokens.css` says gold means achievement
+ * and never decoration. The gold line in the header and the waypoints on the edges are the one
+ * exception, asked for by the owner in the same task that asked for the rest of this sheet, and
+ * kept so faint that nothing drawn in it reads as a mark of anything.
+ *
+ * Every colour here is a picture under the words and never the ground they are measured against:
+ * the text of the header stands on the gradient, and `styles/raceInMotion.test.ts` holds the text
+ * at 4,5:1 against both of its stops and against the strongest line laid over each of them.
+ */
+:root {
+  --race-header-top: #ffffff;
+  --race-header-bottom: #f2f5fb;
+  --race-header-glow: #1657bd0f;
+  --race-track: #1657bd2e;
+  --race-gold: #b8901f60;
+  --race-runner: #10459a33;
+  --race-page-glow: #1657bd0d;
+  --race-contour: #1657bd24;
+  --race-route: #b8901f66;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --race-header-top: #111b2f;
+    --race-header-bottom: #0c1527;
+    --race-header-glow: #31517b38;
+    --race-track: #31517b99;
+    --race-gold: #d9ab2e33;
+    --race-runner: #5b93ec3a;
+    --race-page-glow: #16346940;
+    --race-contour: #31517b5c;
+    --race-route: #d9ab2e24;
+  }
+}
+
+:root[data-theme='dark'] {
+  --race-header-top: #111b2f;
+  --race-header-bottom: #0c1527;
+  --race-header-glow: #31517b38;
+  --race-track: #31517b99;
+  --race-gold: #d9ab2e33;
+  --race-runner: #5b93ec3a;
+  --race-page-glow: #16346940;
+  --race-contour: #31517b5c;
+  --race-route: #d9ab2e24;
+}
+
+/* THE HEADER.
+ *
+ * A layer under everything the header holds: the header is the stacking context
+ * (`app/Shell.css`, `.shell__header`) and this sits at its bottom, over the header's own
+ * background and under the bar and the navigation. It cuts what it draws to the header's box and
+ * nothing else: the panels that hang below the header are not its children, so they are never
+ * cut. It adds no height, since it is out of the flow, so the header is as tall as it was. */
+.race-header {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 60% 120% at 88% 0%, var(--race-header-glow), transparent 70%),
+    linear-gradient(180deg, var(--race-header-top), var(--race-header-bottom));
+}
+
+/* The track is one drawing 100rem wide, centred and never stretched: a wide screen sees all of it,
+   a telephone the gentle middle of it. Its height follows from its own proportions, and what runs
+   past the bottom of a short header is cut by the layer. */
+.race-header__track {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: max(100%, 100rem);
+  height: auto;
+  transform: translateX(-50%);
+  fill: none;
+  stroke-linecap: round;
+}
+
+.race-header__lane,
+.race-header__gold {
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.race-header__lane {
+  stroke: var(--race-track);
+}
+
+.race-header__gold {
+  stroke: var(--race-gold);
+}
+
+/* Mobile first: what a telephone does not draw is not drawn to begin with, and each wider screen
+   adds to it. Nothing is taken away at a width. */
+.race-header__lane--tablet,
+.race-header__lane--desktop,
+.race-header__runner {
+  display: none;
+}
+
+/* The runner, a few strokes and no illustration, at the right of the header and low, beside the
+   end of the navigation. Seven per cent from the right edge puts it inside the column of the page
+   on a 1000px screen, under the tools and past the last link, and just outside the column on
+   1440, where the reference draws it. */
+.race-header__runner {
+  position: absolute;
+  right: 7%;
+  bottom: var(--space-8);
+  width: 4rem;
+  height: auto;
+  fill: none;
+  stroke: var(--race-runner);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* THE PAGE.
+ *
+ * Fixed to the window and under everything: the shell is the stacking context
+ * (`app/Shell.css`, `.shell`), so this is drawn over the page colour and under every card, table
+ * and chart, none of which is made any more transparent than it was. Fixed rather than as tall as
+ * the page, so a short page and a page of a thousand rows see the same edges, with nothing
+ * stretched and no seam.
+ *
+ * The glow is two soft pools of navy at two corners; the middle of the window is left as it was. */
+.race-page {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 40% 45% at 0% 12%, var(--race-page-glow), transparent 70%),
+    radial-gradient(ellipse 40% 45% at 100% 88%, var(--race-page-glow), transparent 70%);
+}
+
+/* One band down each outer edge, as narrow as a telephone needs and wider on larger screens. The
+   drawing in it does not grow with the band: the tile keeps its size, so a wider band shows more
+   of the contours and a narrow one only the outermost. */
+.race-page__edge {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 6rem;
+}
+
+.race-page__edge--start {
+  left: 0;
+}
+
+/* The same drawing turned over, and started lower, so the two edges are not one picture twice. */
+.race-page__edge--end {
+  right: 0;
+  transform: scaleX(-1);
+}
+
+/* The drawings are masks over a token colour, so the theme decides the colour and a tile repeats
+   down the window without a seam (each tile ends where it began). Only where the browser knows
+   masks: a browser that did not would paint the colour as a solid band. */
+@supports (mask-image: none) {
+  .race-page__edge::before,
+  .race-page__edge::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    mask-repeat: repeat-y;
+    mask-size: 15rem auto;
+    mask-position: left top;
+  }
+
+  .race-page__edge::before {
+    background-color: var(--race-contour);
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 560' fill='none' stroke='black' stroke-width='1'%3E%3Cpath d='M12 0C18 70 20 210 20 300S6 490 12 560'/%3E%3Cpath stroke-opacity='.85' d='M30 0C36 70 48 150 48 250S24 490 30 560'/%3E%3Cpath stroke-opacity='.7' d='M54 0C60 70 84 120 84 210S48 490 54 560'/%3E%3Cpath stroke-opacity='.55' d='M84 0C90 70 104 220 104 330S78 490 84 560'/%3E%3Cpath stroke-opacity='.4' d='M120 0C126 70 164 100 164 180S114 490 120 560'/%3E%3Cpath stroke-opacity='.35' d='M178 300C178 278 222 272 228 298C234 324 184 330 178 300Z'/%3E%3Cpath stroke-opacity='.25' d='M194 300C194 290 214 288 216 299C218 310 196 312 194 300Z'/%3E%3Cpath stroke-opacity='.3' d='M176 60C176 46 204 44 206 60C208 76 178 76 176 60Z'/%3E%3C/svg%3E");
+  }
+
+  /* The route and its waypoints, the only gold on the page, and not on a telephone, where the band
+     is the gutter beside a card and a gold dot in it would be the loudest thing on the screen. */
+  .race-page__edge::after {
+    display: none;
+    background-color: var(--race-route);
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 960' fill='none' stroke='black' stroke-width='1'%3E%3Cpath stroke-opacity='.7' stroke-dasharray='3 7' d='M40 0C110 90 70 190 150 270S210 430 120 540S40 720 100 820S-30 870 40 960'/%3E%3Ccircle cx='150' cy='270' r='2.5' fill='black' stroke='none'/%3E%3Ccircle cx='150' cy='270' r='6' stroke-opacity='.5'/%3E%3Ccircle cx='100' cy='820' r='2.5' fill='black' stroke='none'/%3E%3C/svg%3E");
+  }
+
+  .race-page__edge--end::before {
+    mask-position: left 13rem;
+  }
+
+  .race-page__edge--end::after {
+    mask-position: left 29rem;
+  }
+}
+
+/* From where a telephone stops being one: a tablet gets the third lane, a wider band of contours,
+   and the route. */
+@media (min-width: 35em) {
+  .race-header__lane--tablet {
+    display: inline;
+  }
+
+  .race-page__edge {
+    width: 10rem;
+  }
+
+  .race-page__edge::after {
+    display: block;
+  }
+}
+
+/* From where the navigation unfolds into a row (`app/Shell.css`): the whole track. */
+@media (min-width: 51.25em) {
+  .race-header__lane--desktop {
+    display: inline;
+  }
+}
+
+/* From a desktop: the runner, and the widest band of contours. */
+@media (min-width: 62.5em) {
+  .race-header__runner {
+    display: block;
+  }
+
+  .race-page__edge {
+    width: 15rem;
+  }
+}
+
+/* Where the reader has asked the system for its own colours, the drawing is not theirs to keep:
+   it would come back in whatever the system paints a background in. And on paper it is ink for
+   nothing. */
+@media (forced-colors: active), print {
+  .race-header,
+  .race-page {
+    display: none;
+  }
+}
