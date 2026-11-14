@@ -1483,7 +1483,8 @@
       "theAddressIsTaken": "Na toj adresi već stoji jedan događaj. Promeni naziv ili datum.",
       "theDateWouldMoveAResultToAnotherYear": "Datum ne može da pređe u drugu godinu dok je na trci ovog događaja upisan rezultat.",
       "theRaceCountsInALeagueOfItsSeason": "Trka ovog događaja se broji u ligi svoje sezone, pa datum ne sme da izađe iz te godine.",
-      "aKindWithResultsDoesNotChange": "Vrsta događaja ne može da se promeni između bodovane i nebodovane trke dok događaj ima rezultate. Ako je greška, obriši rezultate pa ih unesi ponovo."
+      "aKindWithResultsDoesNotChange": "Vrsta događaja ne može da se promeni između bodovane i nebodovane trke dok događaj ima rezultate. Ako je greška, obriši rezultate pa ih unesi ponovo.",
+      "anUnscoredRaceIsNotInALeague": "Događaj ne može da postane nebodovana trka dok mu se neka trka računa u ligi. Prvo je ukloni iz lige."
     },
     "raceSaveRefused": {
       "theFormIsNotComplete": "Redu trke nedostaje naziv ili događaj kome pripada.",

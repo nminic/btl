@@ -1483,7 +1483,8 @@
       "theAddressIsTaken": "There is already an event at that address. Change the name or the date.",
       "theDateWouldMoveAResultToAnotherYear": "The date cannot cross into another year while a result stands at a race of this event.",
       "theRaceCountsInALeagueOfItsSeason": "A race of this event counts in a competition of its season, so the date may not leave that year.",
-      "aKindWithResultsDoesNotChange": "The kind of an event cannot change between a scored and an unscored race while the event has results. If it is a mistake, delete the results and enter them again."
+      "aKindWithResultsDoesNotChange": "The kind of an event cannot change between a scored and an unscored race while the event has results. If it is a mistake, delete the results and enter them again.",
+      "anUnscoredRaceIsNotInALeague": "An event cannot become an unscored race while one of its races counts in a competition. Remove it from the competition first."
     },
     "raceSaveRefused": {
       "theFormIsNotComplete": "The race row is missing a name or the event it belongs to.",

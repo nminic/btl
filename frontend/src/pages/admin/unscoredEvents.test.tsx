@@ -317,6 +317,25 @@ describe('an event of the kind that is not scored', () => {
     expect(kinds()).toEqual(['Bodovana trka', 'Nebodovana trka', 'Trening', 'Skup'])
   }, SLOW)
 
+  it('says in words that a race counted in a league keeps the event a scored one, and not the bare word (d)', async () => {
+    answering = (path, init) =>
+      path === '/api/events/1168' && init?.method === 'PUT'
+        ? refused('anUnscoredRaceIsNotInALeague', 409)
+        : null
+
+    const user = setupUser()
+
+    renderAt('/sr/administracija/dogadjaji', 'superadmin')
+    await open(user, THE_TRIATHLON)
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    const said = await screen.findByText(sr.admin.eventSaveRefused.anUnscoredRaceIsNotInALeague)
+
+    expect(said).toHaveAttribute('role', 'alert')
+    expect(said).not.toHaveTextContent('anUnscoredRaceIsNotInALeague')
+    expect(screen.queryByText(sr.admin.eventSaveRefused.aKindWithResultsDoesNotChange)).toBeNull()
+  }, SLOW)
+
   it('says what the route says where it refuses the change the screen did not stop (d)', async () => {
     answering = (path, init) =>
       path === '/api/events/1168' && init?.method === 'PUT'
