@@ -727,22 +727,27 @@ class ATextWithAZeroIsRefusedOnEveryKindOfRouteTest {
 	/**
 	 * THE LIST OF WHO OWES, NARROWED BY A TERM WITH A ZERO IN IT, IS A 400.
 	 *
-	 * <p>The one parameter of this portal that is put into a statement as it was typed. Measured on
-	 * 09.10.2026 as a 500 for {@code search=%00}. The request parameter is built as the container
-	 * hands it over, the decoded character, because that is what {@code %00} becomes before any
-	 * handler sees it. The control is the same list narrowed by ordinary words, and not narrowed at
+	 * <p>Measured on 09.10.2026 as a 500 for {@code search=%00}, when the term was a request parameter and the
+	 * one text of this portal put into a statement as it was typed. Since 07.11.2026 (ADL, „Pojam pretrage uplata
+	 * ne putuje u adresi zahteva nego u telu") the term is a text of a body, which the reader asks about every
+	 * text of; so the case is asked of the body, and of the old address as well, which is refused for any value
+	 * and so for this one too. The controls are the same list narrowed by ordinary words, and not narrowed at
 	 * all.
 	 */
 	@Test
 	void aSearchTermWithAZeroInItIsA400AndNotAServerFault() throws Exception {
-		assertThat(send(get("/api/payments").param("search", ZERO), BOOKS, null).getStatus())
+		assertThat(send(json(post("/api/payments/search"), body("term", ZERO)), BOOKS, null).getStatus())
 				.as("a term that is a zero was put into a statement")
 				.isEqualTo(400);
-		assertThat(send(get("/api/payments").param("search", withAZero("Marko")), BOOKS, null).getStatus())
+		assertThat(send(json(post("/api/payments/search"), body("term", withAZero("Marko"))), BOOKS, null)
+				.getStatus())
 				.as("a term with a zero inside it was put into a statement")
 				.isEqualTo(400);
+		assertThat(send(get("/api/payments").param("search", withAZero("Marko")), BOOKS, null).getStatus())
+				.as("a term with a zero inside it, in the old address, was put into a statement")
+				.isEqualTo(400);
 
-		assertThat(send(get("/api/payments").param("search", "Marko"), BOOKS, null).getStatus())
+		assertThat(send(json(post("/api/payments/search"), body("term", "Marko")), BOOKS, null).getStatus())
 				.as("the same list narrowed by ordinary words was refused")
 				.isEqualTo(200);
 		assertThat(send(get("/api/payments"), BOOKS, null).getStatus())
@@ -820,7 +825,9 @@ class ATextWithAZeroIsRefusedOnEveryKindOfRouteTest {
 						text -> json(post(decision), body("approved", false, "reason", text)),
 						NAMING_NO_MEMBER, 404),
 				new AtTheDoor("a member holding nothing, the list of who owes",
-						text -> get("/api/payments").param("search", text), MEMBER, 404));
+						text -> json(post("/api/payments/search"), body("term", text)), MEMBER, 404),
+				new AtTheDoor("nobody signed in, the list of who owes",
+						text -> json(post("/api/payments/search"), body("term", text)), null, 401));
 
 		List<String> wrong = new ArrayList<>();
 
