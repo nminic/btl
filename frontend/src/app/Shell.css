@@ -1,8 +1,13 @@
+/* `isolation` makes the shell the stacking context that the background of „Race in Motion" sits at
+   the bottom of (`app/RaceInMotion.css`, `.race-page`): over the page colour, which `body` paints
+   outside the shell, and under every card. It moves nothing else, because every layered thing the
+   portal draws is inside the shell or is a fixed layer above it (the tip of an action button). */
 .shell {
   flex: 1;
   display: flex;
   flex-direction: column;
   min-width: 0;
+  isolation: isolate;
 }
 
 .shell__skip {
@@ -20,7 +25,17 @@
   left: 0;
 }
 
+/* The header is the stacking context its decoration lies at the bottom of (`app/RaceInMotion.css`,
+   `.race-header`), over this background and under the bar and the navigation.
+
+   `z-index: 6` and not any number: it is the highest the header's own panels were given (the
+   language menu 5, the inbox 6), so the header as a whole stands against everything below it exactly
+   where its panels stood before it became a context. A panel that hangs over the page still covers
+   what it covered, a chart's columns (1, 2) among them, and what used to cover a panel still does:
+   the hint on a field (30), the date picker and the place field (6, later in the page). */
 .shell__header {
+  position: relative;
+  z-index: 6;
   border-bottom: 1px solid var(--border);
   background: var(--surface);
 }

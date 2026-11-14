@@ -608,7 +608,8 @@
     "weekend": "Weekend",
     "addOnDay": "New event on {date}",
     "spanDays": "from {from} to {to}",
-    "featured": "featured event"
+    "featured": "featured event",
+    "legendUnscored": "Unscored races"
   },
   "race": {
     "kind": {
@@ -665,7 +666,8 @@
     "edit": "Change",
     "copy": "Copying",
     "kind": {
-      "race": "Race",
+      "race": "Scored race",
+      "unscored": "Unscored race",
       "training": "Training",
       "gathering": "Gathering"
     },
@@ -806,6 +808,16 @@
       "ultra": "Ultra"
     },
     "noneInLength": "There is no result of the chosen distance.",
+    "unscoredFilter": "Unscored races",
+    "unscoredShort": "Unscored",
+    "unscoredWord": {
+      "one": "unscored race",
+      "few": "unscored races",
+      "other": "unscored races"
+    },
+    "noPoints": "No points",
+    "noneUnscored": "There is no unscored race.",
+    "noneUnscoredInFilter": "There is no unscored race in the chosen year.",
     "clearFilters": "Clear the filters",
     "parts": {
       "label": "Parts of the profile",
@@ -1032,7 +1044,8 @@
     "own": "Mine",
     "distance": "Dist.",
     "noneSent": "You have not sent any result yet.",
-    "counted": "Counted"
+    "counted": "Counted",
+    "unscored": "Unscored races"
   },
   "newResult": {
     "title": "Entering a result",
@@ -1480,7 +1493,9 @@
       "theLinkIsNotShaped": "A link has to begin with http:// or https:// and may not contain a space.",
       "theAddressIsTaken": "There is already an event at that address. Change the name or the date.",
       "theDateWouldMoveAResultToAnotherYear": "The date cannot cross into another year while a result stands at a race of this event.",
-      "theRaceCountsInALeagueOfItsSeason": "A race of this event counts in a competition of its season, so the date may not leave that year."
+      "theRaceCountsInALeagueOfItsSeason": "A race of this event counts in a competition of its season, so the date may not leave that year.",
+      "aKindWithResultsDoesNotChange": "The kind of an event cannot change between a scored and an unscored race while the event has results. If it is a mistake, delete the results and enter them again.",
+      "anUnscoredRaceIsNotInALeague": "An event cannot become an unscored race while one of its races counts in a competition. Remove it from the competition first."
     },
     "raceSaveRefused": {
       "theFormIsNotComplete": "The race row is missing a name or the event it belongs to.",
@@ -1505,6 +1520,7 @@
     "eventSaveTakesCountUnknown": "Saving this deletes {races}; how many results go with them is not known yet.",
     "eventSavedUnseen": "The event was saved. Refresh the page.",
     "eventSavedRacesRefused": "The event is saved. The races that were not saved are listed under the table; correct them and press Save. Only the races are sent.",
+    "kindHeldNote": "The kind cannot be changed between a scored and an unscored race while the event has results. If it is a mistake, delete the results and enter them again. Changing it to a training or a gathering is allowed, and then the races and their results are deleted.",
     "eventSavedRacesKept": "The event is saved. The races that were not deleted are listed under the fields of the event; press Save to try deleting them again. Only the races are sent.",
     "eventDeleteTakes": "This deletes {races} and {results} as well.",
     "eventDeleteRaces": {

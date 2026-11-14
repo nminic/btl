@@ -4,7 +4,9 @@ import { daysBetween, fieldDate, isoDate, shiftDate } from '../../forms/dateFiel
 import { copyOf } from '../event/copyOf'
 import { Resource } from '../../components/Resource'
 import { clearResourceCache } from '../../data/client'
+import { kindHasRaces } from '../../data/types'
 import type { BtlEvent } from '../../data/types'
+import { formWithTheKindHeld, kindIsHeld } from './eventKindHeld'
 import {
   RESULTS,
   combinePair,
@@ -522,6 +524,21 @@ export function AdminEvents() {
                effect that copied a record already (see `wanted` above). */
             const under = String(openEvent?.id ?? 'nov')
             /**
+             * HOW MANY RESULTS STAND AT THE RACES OF AN EVENT, none while the file is not here. Not known
+             * is not none for what the sheet over a deletion says (`goingWith`), but here it only decides
+             * whether a kind is held, and a kind not held is still refused by the server
+             * (`aKindWithResultsDoesNotChange`).
+             */
+            const resultsAt = (event: string): number => {
+              const mine = new Set(
+                allRaces.filter((race) => String(race.eventId) === event).map((race) => String(race.id)),
+              )
+
+              return results === null ? 0 : results.filter((made) => mine.has(String(made.raceId))).length
+            }
+            const storedKind = openEvent === undefined ? '' : String(openEvent.kind)
+            const resultsHere = resultsAt(under)
+            /**
              * THE MORNINGS A COPY OPENS HOLDING: the source's, moved by the same number
              * of days, and every one of them a NEW row.
              *
@@ -605,7 +622,7 @@ export function AdminEvents() {
              * the save delete another.
              */
             const theRacesThisSaveKeeps = (values: FormValues): Set<string> =>
-              kindOf(values) === 'race'
+              kindHasRaces(kindOf(values))
                 ? new Set(current.filter((row) => row.id !== '').map((row) => row.id))
                 : new Set<string>()
 
@@ -668,7 +685,7 @@ export function AdminEvents() {
                 rowsOf(racesUnder(allRaces, eventId), fieldDate).map((one) => [one.id, one]),
               )
 
-              const toSend = (kindOf(values) === 'race' ? current : []).filter(
+              const toSend = (kindHasRaces(kindOf(values)) ? current : []).filter(
                 (row) => row.id === '' || isChanged(row, served.get(row.id)),
               )
 
@@ -983,7 +1000,7 @@ export function AdminEvents() {
                   said: (
                     <p className="field__error" role="alert">
                       {t(
-                        kindOf(values) === 'race'
+                        kindHasRaces(kindOf(values))
                           ? 'admin.eventSavedRacesRefused'
                           : 'admin.eventSavedRacesKept',
                       )}
@@ -1139,7 +1156,10 @@ export function AdminEvents() {
                        and its kind out of the event it came from, and none of the
                        three is in question (owner, 23.08.2026). A save writes the
                        fields it carries, so what is not asked stays as it was. */
-                    form={copying ? copyOfEvent : undefined}
+                    /* And the kind held between a scored race and an unscored one where the event has a result
+                       (owner, 14.11.2026, `eventKindHeld.ts`). The kind the event has on the server and the
+                       results at its races are read off the same lists the rest of this screen reads. */
+                    form={formWithTheKindHeld(copying ? copyOfEvent : EVENTS.form, storedKind, resultsHere)}
                     titleKey={copying ? 'admin.form.copying' : undefined}
                     /* EVERY FIELD OF THE EVENT IS HELD WHILE ITS RACES WAIT. A press then sends
                        the races and nothing else (owner, 03.10.2026: „ponovni pokušaj šalje samo
@@ -1164,6 +1184,13 @@ export function AdminEvents() {
                        So this hides and the save deletes, and the two are not the
                        same moment. */
                     beneath={(values, whileSaving) => (
+                      <>
+                      {/* WHY THE OTHER OF THE TWO IS NOT OFFERED, said where the reader is looking for it: a
+                          list that has lost an entry with no word about it reads as a fault (owner, 14.11.2026,
+                          „uz rečenicu zašto"). */}
+                      {kindIsHeld(storedKind, resultsHere) && (
+                        <p className="member__note">{t('admin.kindHeldNote')}</p>
+                      )}
                       <EventRaces
                         /* HELD WHILE THE SAVE IS OUT, every cell and both buttons, for the reason `locked`
                            gives in `EventRaces.tsx`: the press writes the identity of a race it has made
@@ -1185,13 +1212,14 @@ export function AdminEvents() {
                            event as soon as somebody touches the kind. What it draws
                            without a table is the races the route would not take away
                            (`notSaved`, below), which have nowhere else to be named. */
-                        hasRaces={kindOf(values) === 'race'}
+                        hasRaces={kindHasRaces(kindOf(values))}
                         notSaved={{
                           rows: refusedRows,
                           kept: keptRaces,
                           locked: notSaved.some((one) => one.answer.got === 'locked'),
                         }}
                       />
+                      </>
                     )}
                     /* One press writes the event and every one of its mornings, so
                        one unfinished row is the whole press refused (owner,
@@ -1204,7 +1232,7 @@ export function AdminEvents() {
                          left half typed before the kind was changed must not hold
                          the save. It is deleted by that save rather than asked
                          about (owner, 23.08.2026). */
-                      const short = kindOf(values) === 'race' && !allFinished(current)
+                      const short = kindHasRaces(kindOf(values)) && !allFinished(current)
 
                       setRefused(short)
 
@@ -1320,7 +1348,7 @@ export function AdminEvents() {
                          address is derived from the date, so a year's difference
                          left the event answering at the wrong one. The day a person
                          typed was overruled by a race that press deleted. */
-                      const first = (kindOf(values) === 'race' ? current : [])
+                      const first = (kindHasRaces(kindOf(values)) ? current : [])
                         .map((row) => isoDate(row.date))
                         .filter((day) => day !== '')
                         .sort()[0]

@@ -200,7 +200,8 @@ describe('Calendar', () => {
     const dots = container.querySelectorAll('.chip .length-dot')
     expect(dots.length).toBeGreaterThan(0)
     expect([...dots].every((dot) => dot.getAttribute('aria-hidden') === 'true')).toBe(true)
-    /* Nine since 30.08.2026: the three kinds of event stand over the five lengths,
+    /* Ten since 14.11.2026, when an unscored race joined the three kinds (owner: „Legenda dobija red
+       „Nebodovane trke""). Nine since 30.08.2026: the three kinds of event stand over the five lengths,
        because the colour of the whole tile says which kind it is and the dots on it
        say which lengths it holds (owner, 24.08.2026: „Za Skup i Trening koristi
        druge boje i objasni ih u legendi"), and a sixth dot joined them for a race
@@ -210,10 +211,13 @@ describe('Calendar', () => {
        count taken from them would be satisfied by either list falling to nothing. */
     const legend = within(screen.getByRole('list', { name: 'Legenda:' }))
 
-    expect(legend.getAllByRole('listitem')).toHaveLength(9)
+    expect(legend.getAllByRole('listitem')).toHaveLength(10)
     expect(legend.getByText('Bez zadate dužine')).toBeVisible()
-    expect(legend.getAllByRole('listitem').map((one) => one.textContent).slice(0, 3)).toEqual([
-      'Trka',
+    /* The row of the unscored races is the plural the owner named it by, not the singular the form asks
+       for ("Nebodovana trka"), and the scored one is no longer plain „Trka" (14.11.2026). */
+    expect(legend.getAllByRole('listitem').map((one) => one.textContent).slice(0, 4)).toEqual([
+      'Bodovana trka',
+      'Nebodovane trke',
       'Trening',
       'Skup',
     ])

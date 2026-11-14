@@ -731,7 +731,9 @@ describe('the words the seven forms need', () => {
         'a kind field on the event form',
       ).options ?? []
 
-    expect(options.map((one) => one.value)).toEqual(['race', 'training', 'gathering'])
+    /* Four since 14.11.2026 (owner: „Bodovana trka, Nebodovana trka, Trening, Skup. Default Bodovana
+       trka"), and in that order, because the first of them is what a new event is. */
+    expect(options.map((one) => one.value)).toEqual(['race', 'unscored', 'training', 'gathering'])
     expect(EVENTS.form.fields.map((one) => one.name)).not.toContain('status')
     /* And a new one opens on a race before anybody answers (owner,
        10.08.2026). Written as what the form starts holding rather than as what

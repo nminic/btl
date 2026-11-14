@@ -608,7 +608,8 @@
     "weekend": "Vikend",
     "addOnDay": "Nov događaj {date}",
     "spanDays": "od {from} do {to}",
-    "featured": "istaknut događaj"
+    "featured": "istaknut događaj",
+    "legendUnscored": "Nebodovane trke"
   },
   "race": {
     "kind": {
@@ -665,7 +666,8 @@
     "edit": "Izmena",
     "copy": "Kopiranje",
     "kind": {
-      "race": "Trka",
+      "race": "Bodovana trka",
+      "unscored": "Nebodovana trka",
       "training": "Trening",
       "gathering": "Skup"
     },
@@ -806,6 +808,16 @@
       "ultra": "Ultra"
     },
     "noneInLength": "Nema nijednog rezultata izabrane distance.",
+    "unscoredFilter": "Nebodovane trke",
+    "unscoredShort": "Nebodovane",
+    "unscoredWord": {
+      "one": "nebodovana trka",
+      "few": "nebodovane trke",
+      "other": "nebodovanih trka"
+    },
+    "noPoints": "Bez bodova",
+    "noneUnscored": "Nema nijedne nebodovane trke.",
+    "noneUnscoredInFilter": "Za izabranu godinu nema nijedne nebodovane trke.",
     "clearFilters": "Poništi filtere",
     "parts": {
       "label": "Delovi profila",
@@ -1032,7 +1044,8 @@
     "own": "Moje",
     "distance": "Dist.",
     "noneSent": "Još nisi poslao nijedan rezultat.",
-    "counted": "Uračunato"
+    "counted": "Uračunato",
+    "unscored": "Nebodovane trke"
   },
   "newResult": {
     "title": "Unos rezultata",
@@ -1480,7 +1493,9 @@
       "theLinkIsNotShaped": "Link mora da počne sa http:// ili https:// i ne sme da sadrži razmak.",
       "theAddressIsTaken": "Na toj adresi već stoji jedan događaj. Promeni naziv ili datum.",
       "theDateWouldMoveAResultToAnotherYear": "Datum ne može da pređe u drugu godinu dok je na trci ovog događaja upisan rezultat.",
-      "theRaceCountsInALeagueOfItsSeason": "Trka ovog događaja se broji u ligi svoje sezone, pa datum ne sme da izađe iz te godine."
+      "theRaceCountsInALeagueOfItsSeason": "Trka ovog događaja se broji u ligi svoje sezone, pa datum ne sme da izađe iz te godine.",
+      "aKindWithResultsDoesNotChange": "Vrsta događaja ne može da se promeni između bodovane i nebodovane trke dok događaj ima rezultate. Ako je greška, obriši rezultate pa ih unesi ponovo.",
+      "anUnscoredRaceIsNotInALeague": "Događaj ne može da postane nebodovana trka dok mu se neka trka računa u ligi. Prvo je ukloni iz lige."
     },
     "raceSaveRefused": {
       "theFormIsNotComplete": "Redu trke nedostaje naziv ili događaj kome pripada.",
@@ -1505,6 +1520,7 @@
     "eventSaveTakesCountUnknown": "Ovim čuvanjem brišeš {races}, a broj rezultata koji odlaze još nije poznat.",
     "eventSavedUnseen": "Događaj je sačuvan. Osveži stranu.",
     "eventSavedRacesRefused": "Događaj je sačuvan. Trke koje nisu sačuvane označene su ispod tabele; ispravi ih pa pritisni Sačuvaj. Šalju se samo trke.",
+    "kindHeldNote": "Vrsta se ne može menjati između bodovane i nebodovane trke dok događaj ima rezultate. Ako je greška, obriši rezultate pa ih unesi ponovo. U trening ili skup može, a tada se brišu i trke i njihovi rezultati.",
     "eventSavedRacesKept": "Događaj je sačuvan. Trke koje nisu obrisane navedene su ispod polja događaja; pritisni Sačuvaj da se brisanje pokuša ponovo. Šalju se samo trke.",
     "eventDeleteTakes": "Ovim brišeš i {races} i {results}.",
     "eventDeleteRaces": {

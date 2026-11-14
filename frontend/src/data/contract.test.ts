@@ -103,6 +103,10 @@ describe('the list of resources', () => {
          resource, which `test/setup.ts` answers off `mock/results/runners.json`. */
       'results/runners',
       'teams',
+      /* Twenty-three since 14.11.2026, with the profile and „Moji rezultati" showing the races the league
+         does not score (PDL, „Ostale discipline kao lična evidencija"): the same row as `results`, with
+         0 points, declared at `/api/unscored-results`. `/api/results` serves only the scored ones. */
+      'unscored-results',
       'verification',
     ])
   })

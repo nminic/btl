@@ -4,7 +4,13 @@ import { Resource } from '../../components/Resource'
 import { resultsOf } from '../../data/derive'
 import { pointsOf } from '../../data/scoring'
 import type { SentRun } from '../../data/types'
-import { combinePair, RESULTS, useMyResultSubmissions, useResults } from '../../data/useResource'
+import {
+  combineResources,
+  RESULTS,
+  useMyResultSubmissions,
+  useResults,
+} from '../../data/useResource'
+import { useUnscoredResults } from '../../data/unscoredResults'
 import { formatDuration, formatNumber, formatPoints, formatShortDate } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import { DeleteSheet } from '../admin/DeleteSheet'
@@ -62,6 +68,10 @@ function Mine({ me }: { me: string }) {
   const [sentRevision, setSentRevision] = useState(0)
   const counted = useResults(countedRevision)
   const sent = useMyResultSubmissions(me, sentRevision)
+  /* The races the league does not score, a list of their own (`data/unscoredResults.ts`): drawn
+     below the counted ones and never mixed into them, since nothing here may be changed or taken
+     back through the routes of a counted result. */
+  const unscored = useUnscoredResults()
   /* What the server said about taking a counted result back, where it said anything but
      „done". One at a time, because the reader presses one button and waits for it: a second
      press while the first is out is refused below. */
@@ -151,9 +161,10 @@ function Mine({ me }: { me: string }) {
           see yet; drawn after it failed, the same. So a failure of either says so here with the
           one button that asks again for whichever failed (`combinePair`), and neither list is
           drawn as though it were the whole of what there is. */}
-      <Resource state={combinePair(counted, sent)}>
-        {([results, mine]) => {
+      <Resource state={combineResources(counted, sent, unscored)}>
+        {([results, mine, unscoredResults]) => {
           const own = resultsOf(results, me)
+          const ownUnscored = resultsOf(unscoredResults, me)
 
           return (
             <>
@@ -417,6 +428,55 @@ function Mine({ me }: { me: string }) {
                     </tbody>
                   </table>
                 </div>
+              )}
+
+              {/* THE RACES THE LEAGUE DOES NOT SCORE (PDL, 14.11.2026, „Ostale discipline kao lična
+                  evidencija"): a member's own record of a swim, a ride or a triathlon. A section of
+                  its own and only where there is one, so a member who has none sees no empty
+                  heading. No „Izmeni" and no „Obriši": both go through the routes of a counted
+                  result, and entering and correcting these is the next step of the increment. The
+                  points are „–" and not 0,00, because the league did not score them. */}
+              {ownUnscored.length > 0 && (
+                <section aria-labelledby="my-unscored">
+                  <h2 className="profile__section" id="my-unscored">
+                    {t('myResults.unscored')}{' '}
+                    <span className="profile__count">{ownUnscored.length}</span>
+                  </h2>
+                  <div className="table-scroll">
+                    <table className="table">
+                      <caption className="visually-hidden">{t('myResults.unscored')}</caption>
+                      <thead>
+                        <tr>
+                          <th scope="col">{t('profile.columns.date')}</th>
+                          <th scope="col">{t('profile.columns.race')}</th>
+                          <th scope="col" className="table__hide-phone">
+                            {t('profile.columns.length')}
+                          </th>
+                          <th scope="col" className="table__hide-phone">
+                            {t('profile.columns.time')}
+                          </th>
+                          <th scope="col">{t('profile.columns.points')}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {ownUnscored.map((result) => (
+                          <tr key={result.id}>
+                            <td>{formatShortDate(result.date, locale)}</td>
+                            <td>{result.raceName}</td>
+                            <td className="table__hide-phone">
+                              {formatNumber(result.distanceKm, locale, 2)}
+                            </td>
+                            <td className="table__hide-phone">{formatDuration(result.seconds)}</td>
+                            <td className="table__points">
+                              <span aria-hidden="true">–</span>
+                              <span className="visually-hidden">{t('profile.noPoints')}</span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </section>
               )}
             </>
           )
