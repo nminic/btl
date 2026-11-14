@@ -33,3 +33,23 @@ export function whatGoesWith(t: Translate, races: number, results: number | null
     ? t('admin.eventDeleteCountUnknown', { races: racesSaid })
     : t('admin.eventDeleteTakes', { races: racesSaid, results: t('admin.eventDeleteResults', { count: results }) })
 }
+
+/**
+ * WHAT THE SHEET BEFORE A SAVE SAYS GOES WITH IT, when the save takes the races of an event away (owner,
+ * 07.11.2026, PDL „I čuvanje događaja koje briše njegove trke radi isto": „ne čeka da stignu rezultati, nego
+ * pre čuvanja pita sa brojem rezultata koji odlaze").
+ *
+ * <p>The same two counts as the sentence over a deletion and the same two states of the second one, said in
+ * a sentence of its own: that one says „i" because the event goes as well, and a save keeps the event. The
+ * nouns are the deletion's (`admin.eventDeleteRaces`, `admin.eventDeleteResults`), so a race and a result are
+ * the same words on both sheets. Always at least one race: a save that takes none asks nothing.
+ *
+ * <p>MY REASONING, not the owner's: the wording of the title and of this sentence.
+ */
+export function whatSaveTakes(t: Translate, races: number, results: number | null): string {
+  const racesSaid = t('admin.eventDeleteRaces', { count: races })
+
+  return results === null
+    ? t('admin.eventSaveTakesCountUnknown', { races: racesSaid })
+    : t('admin.eventSaveTakes', { races: racesSaid, results: t('admin.eventDeleteResults', { count: results }) })
+}

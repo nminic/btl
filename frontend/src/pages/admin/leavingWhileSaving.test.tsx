@@ -13,6 +13,7 @@ import { answeredWith, refused, serverThat } from '../../test/serverAnswers'
 import { whereItWrote } from '../../test/sent'
 import { SLOW } from '../../test/slow'
 import { setupUser, type Pressing } from '../../test/user'
+import { sayYesToTheSave } from '../../test/saveSheet'
 import { touchEveryRace } from '../../test/touchEveryRace'
 
 /**
@@ -596,8 +597,8 @@ describe('an event whose save is out cannot be left', () => {
       const { event, races } = await aServedEventWithRaces()
       const address = `${THE_LIST}?izmena=${String(event.id)}`
 
-      /* A save that takes races away waits for the results (`alsoRefuses`), and this case is about what
-         comes after that wait. */
+      /* A save that takes races away asks first, with the number of results that go with them
+         (`asksBeforeSaving`; owner, 07.11.2026), and this case is about what comes after the answer. */
       await loadResource(RESULTS)
 
       const user = setupUser()
@@ -607,7 +608,11 @@ describe('an event whose save is out cannot be left', () => {
         await screen.findByLabelText(/^Vrsta događaja/),
         sr.event.kind.gathering,
       )
-      await press(user)
+      await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+      await sayYesToTheSave(user)
+      await waitFor(() => {
+        expect(out).toHaveLength(1)
+      })
 
       for (let written = 0; written < races.length; written += 1) {
         await expectHeld(user, router, sr.admin.form.edit.events, address)

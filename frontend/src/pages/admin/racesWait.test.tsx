@@ -13,6 +13,7 @@ import { answeredWith, refused, serverThat } from '../../test/serverAnswers'
 import { whatWasSent, whereItWrote } from '../../test/sent'
 import { SLOW } from '../../test/slow'
 import { setupUser, type Pressing } from '../../test/user'
+import { sayYesToTheSave } from '../../test/saveSheet'
 import { touchEveryRace } from '../../test/touchEveryRace'
 
 /**
@@ -636,8 +637,9 @@ describe('an event whose races wait', () => {
     const served = (await loadResource<Race[]>('races')).filter((one) => one.eventId === event.id)
     const firstServed = must(served[0], 'the first race of the event')
 
-    /* The largest file the portal has, read before the press: a save that takes races away waits
-       for it (`alsoRefuses`), and this case is about what comes after the wait. */
+    /* The largest file the portal has, read before the press, so the sheet that asks first says a
+       number (`asksBeforeSaving`; owner, 07.11.2026), and this case is about what comes after the
+       answer. */
     await loadResource(RESULTS)
     answering = (path, init) => {
       if (!path.startsWith('/api/races/') || init?.method !== 'DELETE') {
@@ -661,6 +663,7 @@ describe('an event whose races wait', () => {
       `${kind} draws a table of races`,
     ).toBeNull()
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+    await sayYesToTheSave(user)
 
     /* The sentence says the event is saved and what to do, and points at no table. Waited for as
        the alert and compared as text, so a press that said the other sentence fails on what it
@@ -680,10 +683,13 @@ describe('an event whose races wait', () => {
       ),
     )
 
-    /* And the press that follows sends the races and nothing else: the same deletions, again. */
+    /* And the press that follows sends the races and nothing else: the same deletions, again. It asks again
+       as well, because it takes the same races away (owner, 07.11.2026: a save that deletes the races of an
+       event asks first); the answer of the first press is not an answer to this one. */
     const before = watching.asked.length
 
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+    await sayYesToTheSave(user)
     await screen.findByRole('alert')
 
     expect(writtenSince(before).sort()).toEqual(
@@ -1271,7 +1277,7 @@ describe('an event whose races wait', () => {
     it('counts no race for an event saved as a gathering, whose races the route took away', async () => {
       const { event } = await aServedEventWithRaces()
 
-      /* Read before the press: a save that takes races away waits for the results (`alsoRefuses`). */
+      /* Read before the press, so the sheet that asks first says a number (`asksBeforeSaving`). */
       await loadResource(RESULTS)
 
       const user = setupUser()
@@ -1282,6 +1288,7 @@ describe('an event whose races wait', () => {
         sr.event.kind.gathering,
       )
       await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+      await sayYesToTheSave(user)
       await screen.findByRole('status', { name: 'Sačuvano' })
       await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
 

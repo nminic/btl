@@ -9,7 +9,6 @@ import {
   RESULTS,
   combinePair,
   dataOr,
-  failed,
   useEvents,
   useRaces,
   useResults,
@@ -38,7 +37,7 @@ import { EventRaces } from './EventRaces'
 import { raceKind } from '../../data/raceKind'
 import { allFinished, isChanged, rowsOf, storedRow, type RaceOfRow, type RaceRow } from './raceRows'
 import { nextSeason } from './nextSeason'
-import { whatGoesWith } from './eventDeletionWords'
+import { whatGoesWith, whatSaveTakes } from './eventDeletionWords'
 import {
   WHEN_WRITING_AN_EVENT,
   WHEN_WRITING_A_RACE,
@@ -217,7 +216,6 @@ export function AdminEvents() {
      further in. */
   const resultsState = useResults()
   const results = dataOr(resultsState, null)
-  const resultsFailed = failed(resultsState)
   const today = useToday()
   /*
    * `?zapis=<id>` WAS READ HERE AND IS NOT ANY MORE, because nothing produces it.
@@ -1065,6 +1063,33 @@ export function AdminEvents() {
                cannot answer, and a fallback would be a branch nothing could reach. */
             const kindOf = (values: FormValues): string => String(values.kind)
 
+            /**
+             * THE RACES A SAVE OF THESE VALUES TAKES AWAY, by their identity.
+             *
+             * <p>Counted the way the save counts: a filed race that no surviving row keeps is a race this
+             * save takes away, whatever the kind. Where the kind is not a race nothing survives at all, so
+             * every filed race counts; where it is, a race the rows still carry is kept. It is the FILED
+             * list and not the rows on the screen, because that is what the route deletes: a row deleted
+             * from the table and then a kind changed took its race down all the same.
+             *
+             * <p>Races and not results, and that is the whole of it: a result only exists where a race
+             * did, so an event with no filed race has nothing on its address either, and a result is
+             * counted through the races taken away (`asksBeforeSaving`, below), exactly as the sheet over
+             * a deletion counts it (`goingWith`), and not through the event or its address.
+             */
+            const takenAway = (values: FormValues): Set<string> => {
+              const survives =
+                kindOf(values) === 'race'
+                  ? new Set(current.filter((row) => row.id !== '').map((row) => row.id))
+                  : new Set<string>()
+
+              return new Set(
+                allRaces
+                  .filter((one) => String(one.eventId) === under && !survives.has(String(one.id)))
+                  .map((one) => String(one.id)),
+              )
+            }
+
             /* WHAT THE LAST PRESS DID NOT SAVE, in the shape the table draws it: the words for
                every refused row, by the row that was sent, and every race the press meant to take
                away and the route kept, named by its own name and day. The words are the ones
@@ -1171,66 +1196,7 @@ export function AdminEvents() {
                         return 'admin.form.racesRefused'
                       }
 
-                      /* And a save that would take the races away waits for the
-                         results, exactly as the row that deletes the whole event
-                         does (`admin.waitingForResults` below). Until that file is
-                         here there is nothing to take along, and a round measured
-                         what that costs: with the results refused, every race went
-                         and every result stayed, each still counting in the standing
-                         and pointing at a race that does not exist, while the screen
-                         said „Sačuvano".
-
-                         Asked of the state and not of the list: an empty list is the
-                         same answer for a file still on its way, a file that failed,
-                         and an event that truly has no results.
-
-                         And only where this save would really take something away.
-                         Measured by a round: asked of the kind alone, a gathering
-                         with no races at all, and a gathering being entered for the
-                         first time, were both refused while the file of results was
-                         on its way, over a deletion that was never going to happen,
-                         with a message about deleting. That file is the largest the
-                         portal has, and this screen is built to work without it.
-
-                         The two words the delete row uses, and for the same reason:
-                         a file on its way and a file that failed are not the same
-                         news, and „waiting" over a file that will never come is a
-                         screen that asks somebody to wait forever. */
-                      /* Counted over what the save really deletes, which is the list
-                         as it was filed and not the rows on the screen. Measured by a
-                         round when it was counted over the rows: delete the one row
-                         of an event, change the kind, press Sačuvaj, and the guard
-                         let it through while the save still took that race down and
-                         left its result behind, counting in the standing and pointing
-                         at a race that is gone.
-
-                         Races and not results, and that is the whole of it: a result
-                         only exists where a race did, so an event with no filed race
-                         has nothing on its address either. Which is also why the case
-                         of results without races is closed here rather than measured:
-                         the only way to make one was the fault above. */
-                      /* Counted the way the save counts: a filed race that no surviving
-                         row keeps is a race this save takes away, whatever the kind.
-                         Asked of the kind alone it covered only the sweep that empties
-                         a whole event, and let a single deleted row through while that
-                         row's results were still on their way, which is the same fault
-                         the round above measured, one race at a time instead of twelve.
-                         Where the kind is not a race nothing survives at all, so every
-                         filed race counts, exactly as it did before. */
-                      const survives =
-                        kindOf(values) === 'race'
-                          ? new Set(current.filter((row) => row.id !== '').map((row) => row.id))
-                          : new Set<string>()
-
-                      const takesAway = allRaces.some(
-                        (one) => String(one.eventId) === under && !survives.has(String(one.id)),
-                      )
-
-                      if (!takesAway || results !== null) {
-                        return undefined
-                      }
-
-                      return resultsFailed ? 'admin.resultsFailed' : 'admin.waitingForResults'
+                      return undefined
                     }}
                     editing={
                       openEvent === undefined ? editing : { mode: 'one', record: openEvent }
@@ -1290,6 +1256,29 @@ export function AdminEvents() {
                        so a second press is not asked whether the address of the event just taken is
                        free. Only this screen passes it (`EntityEditor`). */
                     holdsWhileSaving
+                    /* A SAVE THAT TAKES RACES AWAY DOES NOT WAIT FOR THE RESULTS: it asks first, with the
+                       number of results that go with the races (owner, 07.11.2026, PDL „I čuvanje događaja
+                       koje briše njegove trke radi isto"; the decision before it, of 28.09.2026, is the row
+                       that deletes the event, `goingWith`). Until that day a save of this kind was refused
+                       while the file of results was on its way or had failed, and said so under the form
+                       (`admin.waitingForResults`, `admin.resultsFailed`). The number is read at every draw
+                       of the sheet, from the results as they are then, and is said not to be known while
+                       they are not here, the same two states as the row's. */
+                    asksBeforeSaving={{
+                      when: (values) => takenAway(values).size > 0,
+                      title: t('admin.eventSaveAsk'),
+                      says: (values) => {
+                        const gone = takenAway(values)
+
+                        return whatSaveTakes(
+                          t,
+                          gone.size,
+                          results === null
+                            ? null
+                            : results.filter((made) => gone.has(String(made.raceId))).length,
+                        )
+                      },
+                    }}
                     /**
                      * The event follows its first morning (owner, 10.08.2026): its
                      * date is the day it begins, so a race entered on an earlier

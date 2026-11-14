@@ -288,7 +288,7 @@ const OPENING: { file: string; how: How; why: string; calls?: { shape: Shape; ca
   {
     file: 'pages/admin/AdminEvents.tsx',
     how: 'says',
-    why: 'THE FILE\'S OWN, and held by `pages/adminEventKind.test.tsx`: the row that deletes an event says `admin.resultsFailed` for a file that failed and `admin.waitingForResults` for one on its way, because told to wait for something that never arrives an administrator is refused for good.',
+    why: 'THE FILE\'S OWN, and held by `pages/adminEventKind.test.tsx`: the sheet that asks before an event is saved in a way that takes its races away says the number of results is not known for a file that failed and for one on its way, the sentence the sheet over a deletion already says (owner, 28.09.2026 and 07.11.2026); it neither waits for the file nor refuses the save, which until 07.11.2026 it did (`admin.waitingForResults`, `admin.resultsFailed`).',
   },
   {
     file: 'pages/admin/PendingQueue.tsx',

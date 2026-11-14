@@ -1,267 +1,297 @@
-import { screen, within } from '@testing-library/react'
+import { act, screen, within } from '@testing-library/react'
 import { at, must } from '../test/at'
 import { renderAt } from '../test/render'
+import { THE_SAVE_ASKS, sayNoToTheSave, sayYesToTheSave, theSaveSheet } from '../test/saveSheet'
 import { setupUser } from '../test/user'
 
-/* One question, in a file of its own: what the screen does when the results have
- * not arrived and somebody saves an event as a gathering.
+/* One question, in a file of its own: what the screen does when somebody saves an event in a way that takes its
+ * races away, and the results have not arrived, have failed, or are here.
  *
- * Apart from the rest because it refuses the file of results, and the portal reads
- * a file once and keeps the answer. Left among the other tests of this screen, that
- * refusal was still the answer for every test after it: forty-eight of them failed,
- * none of them over anything they were about.
+ * Apart from the rest because it refuses the file of results, and the portal reads a file once and keeps the
+ * answer. Left among the other tests of this screen, that refusal was still the answer for every test after it:
+ * forty-eight of them failed, none of them over anything they were about.
+ *
+ * THE DECISION OF 07.11.2026 (owner, chosen between offered outcomes, PDL „I čuvanje događaja koje briše njegove
+ * trke radi isto"): such a save does not wait for the results, as it did until then (`admin.waitingForResults`,
+ * `admin.resultsFailed`, both gone with it), and asks first, with the number of results that go with the races. It
+ * is the sheet that asks before an event is deleted (owner, 28.09.2026), whose own cases are
+ * `pages/admin/deletionSheet.test.tsx`.
+ *
+ * THE EVENT AND ITS NUMBERS, taken from the sample and asserted below so a change of the sample says so: Bešnjaja
+ * trek, whose two races have one result and three results (races 141 and 142, the table drawing 142 first).
  */
-describe('an event saved with no races, before the results are here', () => {
-  it('waits for them rather than taking the races away without them', async () => {
-    /* The save deletes the races and their results together, and until the results
-       are here there is nothing to take along. The row that deletes a whole event
-       holds its button for the same reason and says the same words
-       (`admin.waitingForResults`).
 
-       Measured by a round before this was here: with the results refused, every race
-       went and every result stayed, each of them still counting in the standing and
-       pointing at a race that does not exist, while the screen said „Sačuvano". */
-    const served = globalThis.fetch
-    const user = setupUser()
+const TWO_RACES_AND_FOUR_RESULTS = 'Ovim čuvanjem brišeš 2 trke i 4 rezultata.'
+const THE_NUMBER_IS_NOT_KNOWN = 'Ovim čuvanjem brišeš 2 trke, a broj rezultata koji odlaze još nije poznat.'
 
-    vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) =>
-      String(input).includes('results') ? new Response('', { status: 500 }) : served(input, init),
-    )
+/** What was sent that is not a read, as `METHOD path`, in the order it was sent. */
+let written: string[] = []
+
+/** Lets the file of results through, for the case in which it arrives while the question is on the screen. */
+let letTheResultsThrough: () => void = () => undefined
+
+/** Serves the portal as it is, with the file of results as the case says, and notes every request that writes. */
+function stubFetch(results: 'refused' | 'never settles' | 'arrives late' | 'served'): () => void {
+  const served = globalThis.fetch
+
+  written = []
+  vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
+    const method = init?.method ?? 'GET'
+
+    if (method !== 'GET') {
+      written.push(`${method} ${String(input)}`)
+    }
+
+    if (method === 'GET' && String(input).includes('results') && results !== 'served') {
+      if (results === 'refused') {
+        return new Response('', { status: 500 })
+      }
+
+      return new Promise<Response>((resolve) => {
+        letTheResultsThrough = results === 'arrives late' ? () => resolve(served(input, init)) : () => undefined
+      })
+    }
+
+    return served(input, init)
+  })
+
+  return () => {
+    vi.stubGlobal('fetch', served)
+  }
+}
+
+async function openTheEvent(search: string | null) {
+  const user = setupUser()
+
+  renderAt('/sr/administracija/dogadjaji', 'superadmin')
+
+  if (search !== null) {
+    await user.type(await screen.findByPlaceholderText('Naziv ili mesto'), search)
+  }
+
+  const rows = within(await screen.findByRole('table', { name: 'Događaji' })).getAllByRole('row')
+
+  await user.click(
+    within(must(at(rows, 1), 'the event searched for')).getByRole('button', { name: /^Otvori/ }),
+  )
+  await screen.findByRole('heading', { name: /^Trke na događaju/ })
+
+  return user
+}
+
+describe('an event saved in a way that takes its races away', () => {
+  it('asks at once, and says the number of results is not known, while the results have failed', async () => {
+    /* The save used to be refused here, and said `admin.resultsFailed` under the form. It does not wait for a file
+       that never comes any more: it asks, and says what it cannot yet say. */
+    const undo = stubFetch('refused')
 
     try {
-      renderAt('/sr/administracija/dogadjaji', 'superadmin')
+      const user = await openTheEvent('Bešnjaja')
 
-      const rows = within(await screen.findByRole('table', { name: 'Događaji' })).getAllByRole(
-        'row',
-      )
-
-      await user.click(
-        within(must(at(rows, 1), 'the first event')).getByRole('button', { name: /^Otvori/ }),
-      )
-      await screen.findByRole('heading', { name: /^Trke na događaju/ })
       await user.selectOptions(screen.getByLabelText(/^Vrsta događaja/), 'gathering')
       await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
 
-      expect(screen.queryByRole('status', { name: 'Sačuvano' })).toBeNull()
+      const sheet = within(await theSaveSheet())
 
-      /* The words of a file that failed, not of one still on its way. The row that
-         deletes a whole event tells those two apart on this same screen, and a round
-         measured that this did not: „waiting" over a file that will never come is a
-         screen asking somebody to wait forever. Refused with 500 here, so the words
-         are the ones that fit a refusal. */
-      expect(screen.getByText('Brisanje nije moguće: rezultati se ne mogu učitati')).toBeVisible()
+      expect(sheet.getByText(THE_NUMBER_IS_NOT_KNOWN)).toBeVisible()
+      expect(screen.queryByRole('status', { name: 'Sačuvano' })).toBeNull()
+      expect(screen.queryByText(/^Brisanje/)).toBeNull()
+      expect(written, 'nothing is sent before the answer').toEqual([])
     } finally {
-      vi.stubGlobal('fetch', served)
+      undo()
     }
   })
 
-  it('says the results are still coming while they are still coming', async () => {
-    /* The other of the two states, and the reason they are two: a file on its way
-       will arrive, a file that failed will not, and „waiting" over the second is a
-       screen asking somebody to wait forever. The row that deletes a whole event
-       tells them apart on this same screen, and a round measured that this did not.
-
-       The file never settles here rather than failing, which is what „on its way"
-       is. */
-    const served = globalThis.fetch
-    const user = setupUser()
-
-    vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) =>
-      String(input).includes('results')
-        ? new Promise<Response>(() => undefined)
-        : served(input, init),
-    )
+  it('asks at once, and says the same, while the results are still coming', async () => {
+    /* A file on its way and a file that failed are one sentence on the row that deletes the event (owner,
+       28.09.2026), and so they are here: to the reader about to press, both are the same fact, that the portal cannot
+       tell him the number at this moment. The file never settles, which is what „on its way" is. */
+    const undo = stubFetch('never settles')
 
     try {
-      renderAt('/sr/administracija/dogadjaji', 'superadmin')
+      const user = await openTheEvent('Bešnjaja')
 
-      const rows = within(await screen.findByRole('table', { name: 'Događaji' })).getAllByRole(
-        'row',
-      )
-
-      await user.click(
-        within(must(at(rows, 1), 'the first event')).getByRole('button', { name: /^Otvori/ }),
-      )
-      await screen.findByRole('heading', { name: /^Trke na događaju/ })
       await user.selectOptions(screen.getByLabelText(/^Vrsta događaja/), 'gathering')
       await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
 
-      expect(screen.queryByRole('status', { name: 'Sačuvano' })).toBeNull()
-      expect(screen.getByText('Brisanje čeka rezultate')).toBeVisible()
+      expect(within(await theSaveSheet()).getByText(THE_NUMBER_IS_NOT_KNOWN)).toBeVisible()
+      expect(written).toEqual([])
     } finally {
-      vi.stubGlobal('fetch', served)
+      undo()
     }
   })
 
-  it('waits even when the rows were taken off the screen first', async () => {
-    /* The save deletes what was filed, not what is on the screen, so the refusal has
-       to count the same thing. Measured by a round when it counted the rows instead:
-       delete the one row of an event, change the kind, press Sačuvaj, and it went
-       through while the save still took that race down and left its result behind,
-       counting in the standing and pointing at a race that is gone. */
-    const served = globalThis.fetch
-    const user = setupUser()
-
-    vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) =>
-      String(input).includes('results') ? new Response('', { status: 500 }) : served(input, init),
-    )
+  it('says the number as soon as the results arrive, while the question is on the screen', async () => {
+    /* The number is read at every draw and not once at the press: a press that lands before the largest file the
+       portal has is here sees the sentence say so, and the same sheet says the number when the file comes. */
+    const undo = stubFetch('arrives late')
 
     try {
-      renderAt('/sr/administracija/dogadjaji', 'superadmin')
+      const user = await openTheEvent('Bešnjaja')
 
-      const rows = within(await screen.findByRole('table', { name: 'Događaji' })).getAllByRole(
-        'row',
-      )
+      await user.selectOptions(screen.getByLabelText(/^Vrsta događaja/), 'gathering')
+      await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+      expect(within(await theSaveSheet()).getByText(THE_NUMBER_IS_NOT_KNOWN)).toBeVisible()
+
+      await act(async () => {
+        letTheResultsThrough()
+      })
+
+      expect(await within(await theSaveSheet()).findByText(TWO_RACES_AND_FOUR_RESULTS)).toBeVisible()
+      expect(screen.queryByText(THE_NUMBER_IS_NOT_KNOWN)).toBeNull()
+    } finally {
+      undo()
+    }
+  })
+
+  it('says the races and the results of the event when the kind is changed', async () => {
+    const undo = stubFetch('served')
+
+    try {
+      const user = await openTheEvent('Bešnjaja')
+
+      await user.selectOptions(screen.getByLabelText(/^Vrsta događaja/), 'gathering')
+      await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+      expect(within(await theSaveSheet()).getByText(TWO_RACES_AND_FOUR_RESULTS)).toBeVisible()
+    } finally {
+      undo()
+    }
+  })
+
+  it('counts only the race taken off the table, and only its results, for an event that stays a race', async () => {
+    /* The save deletes what was filed and not what is on the screen, and the number is the number of the races it
+       takes: one of two, with the three results that race has (the first on the table, race 142) and not the four of
+       both. Counted over the event's races it would say two races and four results, and counted over the event's
+       address the same; the two sources give one answer only where the event loses all its races, which is the case
+       above. */
+    const undo = stubFetch('served')
+
+    try {
+      const user = await openTheEvent('Bešnjaja')
 
       await user.click(
-        within(must(at(rows, 1), 'the first event')).getByRole('button', { name: /^Otvori/ }),
+        must(at(screen.queryAllByRole('button', { name: /^Obriši \d+\. trku$/ }), 0), 'the first race of the event'),
       )
-      await screen.findByRole('heading', { name: /^Trke na događaju/ })
 
-      /* Every row off the screen, so nothing is left there to count. */
+      /* Still a race, and still a table. */
+      expect(screen.getByLabelText(/^Vrsta događaja/)).toHaveValue('race')
+
+      await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+      const sheet = within(await theSaveSheet())
+
+      expect(sheet.getByText('Ovim čuvanjem brišeš 1 trku i 3 rezultata.')).toBeVisible()
+      expect(sheet.queryByText(TWO_RACES_AND_FOUR_RESULTS)).toBeNull()
+    } finally {
+      undo()
+    }
+  })
+
+  it('says the races taken off the table even when the rows were taken off the screen first', async () => {
+    /* The save deletes what was filed, not what is on the screen, so the question has to count the same thing. Delete
+       every row of the event, change the kind, press Sačuvaj: the races still go, and the number says so. */
+    const undo = stubFetch('served')
+
+    try {
+      const user = await openTheEvent('Bešnjaja')
+
       for (const button of screen.queryAllByRole('button', { name: /^Obriši \d/ })) {
         await user.click(button)
       }
 
-      /* No race is left to count: the section stays and says there are none, where the table it
-         was drew nothing at all. */
       expect(screen.queryAllByRole('group', { name: /^\d+\. trka$/ })).toHaveLength(0)
 
       await user.selectOptions(screen.getByLabelText(/^Vrsta događaja/), 'gathering')
       await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
 
-      expect(screen.queryByRole('status', { name: 'Sačuvano' })).toBeNull()
-      expect(screen.getByText('Brisanje nije moguće: rezultati se ne mogu učitati')).toBeVisible()
+      expect(within(await theSaveSheet()).getByText(TWO_RACES_AND_FOUR_RESULTS)).toBeVisible()
     } finally {
-      vi.stubGlobal('fetch', served)
+      undo()
     }
   })
 
-  it('waits for them for one race taken off an event that stays a race', async () => {
-    /* The same hold, one race at a time. Until 24.08.2026 the refusal asked the
-       kind alone, so it covered only the save that empties a whole event, and a
-       single row deleted from the table went through while its results waited on
-       a file that had not come: the race went, the result stayed, still counting
-       in the standing and pointing at a race that is gone, and the screen said
-       „Sačuvano".
-
-       Bešnjaja trek of 15.04.2017, which has two races, so the event is still a
-       race with a race left on it after the row goes. Nothing here is about the
-       kind: it is never touched. */
-    const served = globalThis.fetch
-    const user = setupUser()
-
-    vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) =>
-      String(input).includes('results') ? new Response('', { status: 500 }) : served(input, init),
-    )
+  it('sends the save only when the answer is yes, and then confirms it', async () => {
+    const undo = stubFetch('served')
 
     try {
-      renderAt('/sr/administracija/dogadjaji', 'superadmin')
+      const user = await openTheEvent('Bešnjaja')
 
-      await user.type(await screen.findByPlaceholderText('Naziv ili mesto'), 'Bešnjaja')
-
-      const rows = within(await screen.findByRole('table', { name: 'Događaji' })).getAllByRole(
-        'row',
-      )
-
-      await user.click(
-        within(must(at(rows, 1), 'the event searched for')).getByRole('button', { name: /^Otvori/ }),
-      )
-      await screen.findByRole('heading', { name: /^Trke na događaju/ })
-
-      const race = must(
-        at(screen.queryAllByRole('button', { name: /^Obriši \d+\. trku$/ }), 0),
-        'the first race of the event',
-      )
-
-      await user.click(race)
-
-      /* Still a race, and still a table: this is the case the old shape missed. */
-      expect(screen.getByLabelText(/^Vrsta događaja/)).toHaveValue('race')
-      expect(screen.getByRole('region', { name: /^Trke na događaju/ })).toBeVisible()
-
+      await user.selectOptions(screen.getByLabelText(/^Vrsta događaja/), 'gathering')
       await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
 
-      expect(screen.queryByRole('status', { name: 'Sačuvano' })).toBeNull()
-      expect(screen.getByText('Brisanje nije moguće: rezultati se ne mogu učitati')).toBeVisible()
+      expect(written, 'the question comes first').toEqual([])
+
+      await sayYesToTheSave(user)
+
+      expect(await screen.findByRole('status', { name: 'Sačuvano' })).toBeVisible()
+      expect(written.length, 'the answer sent the save').toBeGreaterThan(0)
+      expect(screen.queryByRole('dialog', { name: THE_SAVE_ASKS })).toBeNull()
     } finally {
-      vi.stubGlobal('fetch', served)
+      undo()
     }
   })
 
-  it('lets through a race whose races are all still there', async () => {
-    /* The other direction of the same guard, and the one that was missing when it
-       was widened on 24.08.2026: measured only for what it refuses, a guard can be
-       made to refuse everything and no test says so. Mutation measured: with
-       `survives` ignored, every filed race counts as taken away, this press is
-       refused over a deletion that never happens, and the whole screen of events
-       becomes unusable for as long as the largest file the portal has is broken,
-       while 283 tests in six files stay green.
-
-       Nothing is touched here on purpose. A press that changes nothing is the
-       press that must never wait for a file, and it is also the shortest way to
-       ask the question. */
-    const served = globalThis.fetch
-    const user = setupUser()
-
-    vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) =>
-      String(input).includes('results') ? new Response('', { status: 500 }) : served(input, init),
-    )
+  it('sends nothing when the answer is no, and leaves the form as it was typed', async () => {
+    const undo = stubFetch('served')
 
     try {
-      renderAt('/sr/administracija/dogadjaji', 'superadmin')
+      const user = await openTheEvent('Bešnjaja')
 
-      await user.type(await screen.findByPlaceholderText('Naziv ili mesto'), 'Bešnjaja')
+      await user.selectOptions(screen.getByLabelText(/^Vrsta događaja/), 'gathering')
+      await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+      await sayNoToTheSave(user)
 
-      const rows = within(await screen.findByRole('table', { name: 'Događaji' })).getAllByRole(
-        'row',
-      )
+      expect(screen.queryByRole('dialog', { name: THE_SAVE_ASKS })).toBeNull()
+      expect(screen.queryByRole('status', { name: 'Sačuvano' })).toBeNull()
+      expect(written, 'a no writes nothing').toEqual([])
+      expect(screen.getByLabelText(/^Vrsta događaja/)).toHaveValue('gathering')
+    } finally {
+      undo()
+    }
+  })
 
-      await user.click(
-        within(must(at(rows, 1), 'the event searched for')).getByRole('button', { name: /^Otvori/ }),
-      )
-      await screen.findByRole('heading', { name: /^Trke na događaju/ })
+  it('lets through a save whose races are all still there, with no question', async () => {
+    /* The other direction of the same question: measured only for what it asks, a question can be made to ask about
+       everything and no test says so. Mutation measured: with `survives` ignored, every filed race counts as taken
+       away and every save of an event with races asks, over a deletion that never happens.
 
-      /* Still a race, and every row it was filed with is still on the table, so
-         this save has nothing to take away. */
+       Nothing is touched here on purpose: a press that changes nothing is the press that must never ask. */
+    const undo = stubFetch('refused')
+
+    try {
+      const user = await openTheEvent('Bešnjaja')
+
+      /* Still a race, and every row it was filed with is still on the table. */
       expect(screen.getByLabelText(/^Vrsta događaja/)).toHaveValue('race')
       expect(screen.getAllByRole('button', { name: /^Obriši \d+\. trku$/ })).toHaveLength(2)
 
       await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
 
       expect(await screen.findByRole('status', { name: 'Sačuvano' })).toBeVisible()
-      expect(screen.queryByText(/^Brisanje/)).toBeNull()
+      expect(screen.queryByRole('dialog')).toBeNull()
     } finally {
-      vi.stubGlobal('fetch', served)
+      undo()
     }
   })
 
-  it('lets through a gathering that has no races to take away', async () => {
-    /* The refusal is about a deletion, so where there is nothing to delete there is
-       nothing to wait for. Measured by a round before this was here: asked of the
-       kind alone, a gathering with no races at all was refused over a deletion that
-       was never going to happen, and the file it was waiting for is the largest the
-       portal has. This screen is built to work without it. */
-    const served = globalThis.fetch
-    const user = setupUser()
-
-    vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) =>
-      String(input).includes('results') ? new Response('', { status: 500 }) : served(input, init),
-    )
+  it('lets through a gathering that has no races to take away, with no question', async () => {
+    /* The question is about a deletion, so where there is nothing to delete there is nothing to ask. Measured by a
+       round when the gate asked the kind alone: a gathering with no races at all was held over a deletion that was
+       never going to happen. */
+    const undo = stubFetch('refused')
 
     try {
-      renderAt('/sr/administracija/dogadjaji', 'superadmin')
+      const user = setupUser()
 
+      renderAt('/sr/administracija/dogadjaji', 'superadmin')
       await user.type(await screen.findByPlaceholderText('Naziv ili mesto'), 'BTL sreda')
 
-      const rows = within(await screen.findByRole('table', { name: 'Događaji' })).getAllByRole(
-        'row',
-      )
+      const rows = within(await screen.findByRole('table', { name: 'Događaji' })).getAllByRole('row')
 
       await user.click(
-        within(must(at(rows, 1), 'a gathering in the list')).getByRole('button', {
-          name: /^Otvori/,
-        }),
+        within(must(at(rows, 1), 'a gathering in the list')).getByRole('button', { name: /^Otvori/ }),
       )
 
       const form = within(await screen.findByRole('form', { name: /^Izmena događaja/ }))
@@ -272,9 +302,9 @@ describe('an event saved with no races, before the results are here', () => {
       await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
 
       expect(await screen.findByRole('status', { name: 'Sačuvano' })).toBeVisible()
-      expect(screen.queryByText(/^Brisanje/)).toBeNull()
+      expect(screen.queryByRole('dialog')).toBeNull()
     } finally {
-      vi.stubGlobal('fetch', served)
+      undo()
     }
   })
 })
