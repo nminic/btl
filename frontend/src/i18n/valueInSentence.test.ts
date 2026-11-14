@@ -511,6 +511,10 @@ describe('a sentence with a value put into it', () => {
       'profile.racesWord',
       'profile.showingDucats',
       'profile.showingResults',
+      /* The word for the races the league does not score, in the case the count asks for:
+         „1 nebodovana trka", „2 nebodovane trke", „5 nebodovanih trka". The ring says it in its middle
+         and the table says it in the reading of a row, where the count is one. */
+      'profile.unscoredWord',
       'rankings.rowCount',
       'rankings.rowCountWomen',
       'registration.bioFull',

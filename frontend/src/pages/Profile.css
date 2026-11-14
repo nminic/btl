@@ -820,6 +820,15 @@
   background: var(--length-ultra);
 }
 
+/* A race the league does not score has no length group, so it carries no one of the five hues: a
+   hollow ring in the muted text colour, which is a different SHAPE from the filled dots and not only
+   a different colour (WCAG 2.2 SC 1.4.1). The reading beside it says what it is. */
+.profile__dot--unscored {
+  box-sizing: border-box;
+  border: 2px solid var(--text-muted);
+  background: transparent;
+}
+
 /* The results table keeps the same columns whatever is filtered out of it.
  *
  * Owner, 12.08.2026: „Kad se na strani takmičara klikće po filterima za dužinu
