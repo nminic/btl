@@ -601,7 +601,7 @@ class ResultsByTheLeagueApi {
 			return Done.only(no(HttpStatus.CONFLICT, THE_EVENT_IS_NOT_KNOWN));
 		}
 
-		if (event.isPresent() && !WhatAnEventCarries.A_RACE.equals(event.get().kind())) {
+		if (event.isPresent() && !WhatAnEventCarries.holdsRaces(event.get().kind())) {
 			return Done.only(notComplete());
 		}
 
@@ -1225,12 +1225,13 @@ class ResultsByTheLeagueApi {
 				|| ResultWriteApi.notATime(figures.seconds());
 	}
 
-	/** The run as it is counted, with the points from the one place that answers for them. */
-	private static Run runOf(TheRace race, Figures figures) {
+	/**
+	 * The run as it is counted, with the points from the one place that answers for them, which gives
+	 * nothing at an unscored race ({@link PointsOfARun}, PDL 14.11.2026).
+	 */
+	private Run runOf(TheRace race, Figures figures) {
 		return new Run(race.name(), race.day(), figures.distanceKm(), figures.ascentM(),
-				figures.descentM(), figures.seconds(), BtlScoreCalculator.calculate(
-						figures.distanceKm().doubleValue(), figures.ascentM(), figures.descentM(),
-						figures.seconds()));
+				figures.descentM(), figures.seconds(), PointsOfARun.at(db, race.id(), figures));
 	}
 
 	/** The moment, in the league's zone, which is the zone every season question is asked in. */
