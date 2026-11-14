@@ -628,7 +628,9 @@ describe('the reasons the server can name', () => {
        route answers one word, and what it means to the reader depends on whether he was
        saving an event or one of its mornings. The race's thirteenth arrived 10.10.2026 with
        the owner's answer that a race carrying an approved result keeps its kind (PDL P4). */
-    ['EventWriteApi.java', [WHEN_WRITING_AN_EVENT], 11],
+    /* Twelve since 14.11.2026: `aKindWithResultsDoesNotChange`, an event with a result does not change between a
+       scored and an unscored race (PDL, „Ostale discipline kao lična evidencija"), answered on the event form. */
+    ['EventWriteApi.java', [WHEN_WRITING_AN_EVENT], 12],
     ['RaceWriteApi.java', [WHEN_WRITING_A_RACE], 14],
     /* THE LEAGUE'S OWN ENTRY OF RESULTS FROM THE EVENT PAGE, added 19.10.2026 with the screen that
        meets it (`event/EnterResults.tsx`, PDL P9, 18.10.2026). Eight constants and six reasons then, ten reasons now; the two

@@ -86,6 +86,9 @@ describe('CalendarExtract', () => {
           event(1, 'Trka koja se trči', '2027-04-03'),
           event(2, 'Sreda koja se ne trči', '2027-04-04', 'gathering'),
           event(3, 'Trening koji se ne trči', '2027-04-05', 'training'),
+          /* Owner, 14.11.2026: „Naslovna, blok „Priprema, pozor, SAD", najavljuje samo bodovane trke". An
+             unscored race is a race, and it is not announced. */
+          event(4, 'Nebodovana koja se ne najavljuje', '2027-04-06', 'unscored'),
         ]}
         races={[]}
         today="2027-01-01"
@@ -95,6 +98,10 @@ describe('CalendarExtract', () => {
     expect(screen.getByText('Trka koja se trči')).toBeVisible()
     expect(screen.queryByText('Sreda koja se ne trči'), 'a gathering is offered').toBeNull()
     expect(screen.queryByText('Trening koji se ne trči'), 'a training is offered').toBeNull()
+    expect(
+      screen.queryByText('Nebodovana koja se ne najavljuje'),
+      'an unscored race is announced',
+    ).toBeNull()
   })
 
   it('leads to the calendar on the month today is in', () => {

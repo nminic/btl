@@ -58,16 +58,28 @@ export const RACE_KINDS = ['length', 'time', 'free'] as const
 
 export type RaceKind = (typeof RACE_KINDS)[number]
 
-/* What is being put on: a race, a training session, or a gathering (owner,
+/* What is being put on: a scored race, an unscored race (owner, 14.11.2026: „Bodovana trka,
+   Nebodovana trka, Trening, Skup"), a training session, or a gathering (owner,
    10.08.2026). The calendar has always carried things that are not races; this
    is the first field that says which is which. First in the list is what a new
    event is, so the order is not cosmetic.
 
    A list rather than a union, so the guard over the words for these can be
    walked (keys.test). A union is gone by the time anything runs. */
-export const EVENT_KINDS = ['race', 'training', 'gathering'] as const
+export const EVENT_KINDS = ['race', 'unscored', 'training', 'gathering'] as const
 
 export type EventKind = (typeof EVENT_KINDS)[number]
+
+/**
+ * Whether an event of this kind has races under it: a scored race and an unscored one do, a training
+ * and a gathering do not (PDL, 14.11.2026, fourth supplement of „Ostale discipline kao lična evidencija":
+ * „Nebodovana trka" is chosen for the whole event and its races are filed and edited exactly as those of a
+ * scored one). Asked of a WORD and not of the event, because the administration asks it of what is typed into
+ * the form before anything is saved.
+ */
+export function kindHasRaces(kind: string): boolean {
+  return kind === 'race' || kind === 'unscored'
+}
 
 /**
  * One member saying they are going to one event (owner, 11.08.2026).
