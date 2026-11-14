@@ -1363,12 +1363,17 @@ class EventWriteApiTest {
 		assertThat(kindOfTheEvent(acted)).as("the change was refused and the kind changed anyway").isEqualTo(from);
 	}
 
-	/** AND WITHOUT A RESULT IT CHANGES FREELY, in either direction: the only difference is the result. */
+	/**
+	 * AND WITHOUT A RESULT IT CHANGES FREELY, in either direction: the only difference is the result. The
+	 * other event of the fixture still carries its result, and its race counts in a league, so a question
+	 * asked of any event but this one is answered here as a refusal.
+	 */
 	@ParameterizedTest
 	@CsvSource({"race, unscored", "unscored, race"})
 	void anEventWithNoResultChangesBetweenAScoredAndAnUnscoredRace(String from, String to) throws Exception {
 		db.sql("delete from result where race_id in (select id from race where event_id = ?)").param(acted)
 				.update();
+		leagueCounting("liga-2027", 2027, raceCalled("Tudja"));
 		db.sql("update btl_event set kind = ? where id = ?").params(from, acted).update();
 
 		assertThat(change(acted, theSameEventAs(to)).getStatus()).isEqualTo(200);
