@@ -834,7 +834,15 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   sign-off in each language, each stopping the migration unless its old text stands exactly once.
 
 			   Pinned LAST, when the file was final, off this very assertion. */
-			new Applied("98", "V98__the_rulebook_names_the_rookie_category_with_the_letter_of_the_gender.sql", 1520798233));
+			new Applied("98", "V98__the_rulebook_names_the_rookie_category_with_the_letter_of_the_gender.sql", 1520798233),
+
+			/* V100. The rulebook says in Article 15 that an unscored race is kept on the portal as a personal record and does not count
+			   (owner, 14.11.2026, PDL 'drugi krug pitanja o planu', item 7): one line added to the end of the list of Article 15 in each
+			   language, each stopping the migration unless its old text stands exactly once. The sign-off is not moved: it already reads
+			   14.11.2026 since V98. V99 belongs to step 1 of the same increment and is merged first.
+
+			   Pinned LAST, when the file was final, off this very assertion. */
+			new Applied("100", "V100__the_rulebook_says_an_unscored_race_is_a_personal_record_and_does_not_count.sql", 1865272280));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {

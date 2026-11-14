@@ -1984,6 +1984,25 @@ describe('the rulebook', () => {
     expect(rulebook).toMatch(/kao i svi ostali ulaze i u generalni plasman/)
   })
 
+  it('says in Član 15 that an unscored race is a personal record and does not count', () => {
+    /* Owner, 14.11.2026 (PDL, "drugi krug pitanja o planu", item 7): the sentence is
+       his, word for word, and it is the last item of the list under „Šta se ne
+       boduje", not a line of the article before or after it (V100). The day the
+       rulebook is signed off is not moved by it: 14.11.2026 is the day V98 gave it
+       and the day V100 is expected, which the sign-off case below holds. */
+    const article = must(
+      rulebook?.split('### Član 15. Šta se ne boduje')[1]?.split('### Član 16.')[0],
+      'the text of Član 15',
+    )
+    const items = article.split(NEWLINE).filter((line) => line.startsWith('- '))
+
+    expect(items).toHaveLength(5)
+    expect(items[4]).toBe(
+      '- Nebodovane trke (plivanje, biciklizam, duatlon, triatlon, akvatlon i slično) vode se na portalu samo kao lična evidencija i ne boduju se.',
+    )
+    expect(rulebook?.match(/Nebodovane trke \(/g)?.length).toBe(1)
+  })
+
   it('awards a trophy and nothing else, and says once when a trophy is not given', () => {
     /* Owner, 04.08.2026: the plaque is gone. One trophy covers the winning team,
        the first three overall in each sex, and the first three in every

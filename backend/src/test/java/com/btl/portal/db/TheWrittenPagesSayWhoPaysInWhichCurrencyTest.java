@@ -86,6 +86,7 @@ class TheWrittenPagesSayWhoPaysInWhichCurrencyTest extends DatabaseTest {
 
 	private void everyEditHolds(String language) {
 		/* The text as V94 left it: V95 (owner, 11.11.2026) moved the sign-offs of all three pages and took sentences out of them, which is held by TheWrittenPagesStateTheFactCarriedOverTest. */
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "100");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "98");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "96");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "95");
@@ -155,6 +156,7 @@ class TheWrittenPagesSayWhoPaysInWhichCurrencyTest extends DatabaseTest {
 	@Test
 	void theRulebookIsSignedOffOnTheDayV93GaveItAndNoEarlierDayStandsOnIt() {
 		/* The text as V94 left it: V95 (owner, 11.11.2026) moved the sign-offs of all three pages and took sentences out of them, which is held by TheWrittenPagesStateTheFactCarriedOverTest. */
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "100");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "98");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "96");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "95");
