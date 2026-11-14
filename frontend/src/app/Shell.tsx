@@ -16,6 +16,7 @@ import { ErrorBoundary } from './ErrorBoundary'
 import { LanguageMenu } from './LanguageMenu'
 import { MessagesMenu } from './MessagesMenu'
 import { PageMetaContext } from './pageMetaContext'
+import { HeaderDecoration, PageBackgroundDecoration } from './RaceInMotion'
 import { CONTACT_ADDRESS, FOOTER_ROUTES, navForRole, type NavSection } from './routes'
 import { useNewScreen } from './useNewScreen'
 import { useRouteChrome } from './useRouteChrome'
@@ -199,7 +200,12 @@ export function Shell() {
         {t('shell.skipToContent')}
       </a>
 
+      {/* The two layers of „Race in Motion" (owner, 14.11.2026): pictures under everything, drawn
+          once here so that no screen carries a copy (app/RaceInMotion.tsx). */}
+      <PageBackgroundDecoration />
+
       <header className="shell__header">
+        <HeaderDecoration />
         <div className="shell__bar">
           <Brand onNavigate={closeMenu} />
 
