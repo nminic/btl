@@ -68,6 +68,13 @@ class CalendarApiTest {
 		event("prvi", "2027-03-01", "(select id from place where rank = 2)", "null", "null",
 				false, kinds.get(2 % kinds.size()));
 
+		/* AND ONE EVENT MORE FOR EVERY KIND PAST THE THIRD, so that every kind the rule allows is on the
+		   calendar whatever their number. Four since V99 (PDL, 14.11.2026, the unscored race). */
+		for (int more = 3; more < kinds.size(); more++) {
+			event("dodatni-" + more, "2027-01-0" + more, "(select id from place where rank = 1)", "null", "null",
+					false, kinds.get(more));
+		}
+
 		race("drugi", "2027-06-02", 21.10, "half");
 		race("prvi", "2027-03-01", 42.20, "marathon");
 
@@ -196,7 +203,7 @@ class CalendarApiTest {
 		assertThat(StreamSupport.stream(answer("/api/events").spliterator(), false)
 				.map(one -> one.path("slug").asString()).toList())
 				.as("the calendar came back in the order the rows were written")
-				.containsExactly("prvi", "drugi", "treci");
+				.containsExactly("dodatni-3", "prvi", "drugi", "treci");
 	}
 
 	/**
@@ -316,4 +323,30 @@ class CalendarApiTest {
 		Answers.noFieldIsTheSameInEveryRecord(path, answer(path));
 	}
 
+	/**
+	 * AND AN UNSCORED RACE WITH A RUN AT IT IS ON THE CALENDAR LIKE ANY OTHER, event and race (PDL, 14.11.2026,
+	 * „Događaji ostalih disciplina vide se u javnom kalendaru"). The kind is the event's, so the race keeps a
+	 * race's kind and its dots are worked out as they are for any race of its kind; what the screen draws for
+	 * it is a later step's.
+	 */
+	@Test
+	void anUnscoredRaceWithARunAtItIsOnTheCalendarLikeAnyOther() throws Exception {
+		event("plivanje", "2027-07-07", "(select id from place where rank = 1)", "null", "null", false, "unscored");
+		race("plivanje", "2027-07-07", 3.00, "short");
+		db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date, place_id,"
+				+ " first_season, referral_code, bio, profile_hidden, birthday_shown, father_name, address,"
+				+ " shirt_size, health_statement_at) values ('000701', 'Ana', 'Prva', 'F', date '1990-01-01',"
+				+ " (select id from place where rank = 1), 2027, '0011223344000701', '', false, 'none', 'Otac',"
+				+ " 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00')").update();
+		db.sql("insert into result (competitor_id, race_id, race_date, distance_km, ascent_m, descent_m, seconds,"
+				+ " points) select (select id from competitor where member_number = '000701'), id, date, 3.00, 0,"
+				+ " 0, 3600, 0 from race where name = 'Trka na short'").update();
+
+		assertThat(StreamSupport.stream(answer("/api/events").spliterator(), false)
+				.filter(one -> one.path("slug").asString().equals("plivanje"))
+				.map(one -> one.path("kind").asString()).toList()).containsExactly("unscored");
+		assertThat(StreamSupport.stream(answer("/api/races").spliterator(), false)
+				.filter(one -> one.path("name").asString().equals("Trka na short"))
+				.map(one -> one.path("dots").toString()).toList()).containsExactly("[\"short\"]");
+	}
 }

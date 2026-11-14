@@ -29,17 +29,33 @@ public final class WhatAnEventCarries {
 
 	/**
 	 * <b>Owner, 10.08.2026</b> (PDL): „Dogadjaj ima vrstu: Trka, Trening ili Skup", and
-	 * the default is a race. {@code btl_event_kind_known}, V7, holds the same three.
+	 * the default is a race. Since 14.11.2026 there are four (PDL, „Polje „Vrsta događaja” dobija četiri
+	 * vrednosti umesto tri"): the scored race, the unscored race, a training and a gathering, and
+	 * {@code btl_event_kind_known} holds the same four since V99.
 	 *
 	 * <p>A calendar that covers more than races is the owner's own decision (PDL: the
 	 * calendar carries an association's events that are not races, and in the first phase
 	 * only an administrator adds them), so a gathering with no race under it is an
 	 * ordinary row and not a half filled one.
 	 */
-	public static final Set<String> KINDS = Set.of("race", "training", "gathering");
+	public static final Set<String> KINDS = Set.of("race", "unscored", "training", "gathering");
 
-	/** What an event is unless somebody says otherwise, which is the owner's sentence. */
+	/**
+	 * What an event is unless somebody says otherwise, which is the owner's sentence. Since 14.11.2026 it
+	 * is the SCORED race: PDL, „Bodovana trka (podrazumevano; to je dosadašnja „Trka”)".
+	 */
 	public static final String A_RACE = "race";
+
+	/**
+	 * <b>Owner, 14.11.2026</b> (PDL, „Ostale discipline kao lična evidencija", fourth addition): the
+	 * fourth kind, „Nebodovana trka". It holds races and results as {@link #A_RACE} does, and nothing the
+	 * league counts reads them. Whether a result is scored is asked of the view {@code scored_race} (V99)
+	 * and never of this class, so that rule has one home and this class only names the value a form sends.
+	 */
+	public static final String AN_UNSCORED_RACE = "unscored";
+
+	/** The kinds an event may hold races in: a scored race and an unscored one. */
+	private static final Set<String> HOLDING_RACES = Set.of(A_RACE, AN_UNSCORED_RACE);
 
 	/**
 	 * {@code btl_event_link_shape}, V7: empty, or a web address with no whitespace in it.
@@ -60,6 +76,38 @@ public final class WhatAnEventCarries {
 	private static final Pattern A_LINK = Pattern.compile("^https?://\\S+$");
 
 	private WhatAnEventCarries() {
+	}
+
+	/**
+	 * WHETHER AN EVENT OF THIS KIND HOLDS RACES. Owner, 23.08.2026: an event that is not a race holds no
+	 * races. Since 14.11.2026 an unscored race is a race in that sense, so the routes that write races and
+	 * results let both kinds through and still refuse a training and a gathering.
+	 */
+	public static boolean holdsRaces(String kind) {
+		return HOLDING_RACES.contains(kind);
+	}
+
+	/**
+	 * WHETHER A CHANGE OF KIND ENTERS A KIND THAT HOLDS RACES FROM ANOTHER KIND: the change that must not be
+	 * made while the races of the event carry a result (and, into an unscored race, while one counts in a
+	 * league). Owner, PDL, 14.11.2026, second round of questions about the plan, (6): „Vrsta događaja koji
+	 * ima ijedan rezultat ne može da se promeni između Bodovane i Nebodovane trke dok rezultati stoje", and
+	 * „Prelazak u Trening ili Skup se ovim ne menja: i dalje briše trke uz pitanje sa brojem rezultata".
+	 *
+	 * <p><b>It is asked on the way IN and never on the way out, and that is the whole shape.</b> A move into
+	 * a training or a gathering stays free, because the screen of 07.11.2026 (PR 724) saves the event first
+	 * and deletes its races afterwards, so an event can stand as a training with its races and their results
+	 * for a moment, or for longer where a deletion is refused. Such an event no longer says whether its runs
+	 * were scored. Asked only between a scored and an unscored race, two changes in a row (a scored race
+	 * into a training, the training into an unscored race) carried a result from one to the other, and the
+	 * same two put an unscored race into a league; review of PR 729 measured both. Asked of every way in,
+	 * no sequence of changes can: a result that stands under an event keeps the kind it was entered under
+	 * until it is deleted, which is the remedy the owner named („greška se ispravlja brisanjem i ponovnim
+	 * unosom"). The cost: an event saved as a training whose races could not all be deleted goes back to a
+	 * race only once its results are gone.
+	 */
+	public static boolean entersAKindThatHoldsRaces(String before, String after) {
+		return holdsRaces(after) && !before.equals(after);
 	}
 
 	/** Whether this is a link the table would hold. Empty is one, and is not a link. */

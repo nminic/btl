@@ -77,6 +77,8 @@ class ApiSecurity {
 	static final List<String> READ_BY_ANYBODY =
 			List.of("/api/places", "/api/countries", "/api/events", "/api/races",
 					"/api/leagues", "/api/results",
+					/* The runs of unscored races, public as every other result is (ResultApi). */
+					"/api/unscored-results",
 					"/api/competitors",
 					"/api/ducats",
 					"/api/pairs",

@@ -569,13 +569,14 @@ class EventWriteApiTest {
 	 * refused.
 	 *
 	 * <p>Owner, 10.08.2026: „Dogadjaj ima vrstu: Trka, Trening ili Skup", and the default
-	 * is a race. A gathering is written exactly like a race, which is the owner's decision
+	 * is a race; since 14.11.2026 the unscored race is the fourth (PDL, „Nebodovana trka"). A gathering is written exactly like a race, which is the owner's decision
 	 * that the calendar covers an association's events that are not races.
 	 */
 	@ParameterizedTest
 	@CsvSource(nullValues = "-", value = {"-, 201, race", ", 201, race", "gathering, 201, gathering",
-			"training, 201, training", "race, 201, race", "marathon, 400, -", "Race, 400, -"})
-	void theKindIsOneOfThreeAndLeftOutItIsARace(String asked, int answered, String written)
+			"training, 201, training", "race, 201, race", "unscored, 201, unscored", "marathon, 400, -",
+			"Race, 400, -"})
+	void theKindIsOneOfFourAndLeftOutItIsARace(String asked, int answered, String written)
 			throws Exception {
 
 		MockHttpServletResponse answer = add(aForm().withPlace(aKnownTown()).withKind(asked), session);
@@ -1340,4 +1341,147 @@ class EventWriteApiTest {
 		assertThat(howManyEvents()).isEqualTo(before);
 	}
 
+	// ----- the unscored race (PDL, 14.11.2026) -------------------------------------------------
+
+	/**
+	 * AN EVENT CARRYING A RESULT DOES NOT CHANGE BETWEEN A SCORED AND AN UNSCORED RACE, IN EITHER DIRECTION,
+	 * and nothing about it is written. PDL, 14.11.2026, second round of questions about the plan, (6): „Vrsta
+	 * događaja koji ima ijedan rezultat ne može da se promeni između Bodovane i Nebodovane trke dok rezultati
+	 * stoje", and the record measured beside it that the server must hold it. {@code acted} carries one
+	 * result, at „Duga", and its other race carries none.
+	 */
+	@ParameterizedTest
+	@CsvSource({"race, unscored", "unscored, race"})
+	void anEventCarryingAResultDoesNotChangeBetweenAScoredAndAnUnscoredRace(String from, String to)
+			throws Exception {
+		db.sql("update btl_event set kind = ? where id = ?").params(from, acted).update();
+
+		MockHttpServletResponse answer = change(acted, theSameEventAs(to));
+
+		assertThat(answer.getStatus()).isEqualTo(409);
+		assertThat(reasonIn(answer)).isEqualTo(EventWriteApi.A_KIND_WITH_RESULTS_DOES_NOT_CHANGE);
+		assertThat(kindOfTheEvent(acted)).as("the change was refused and the kind changed anyway").isEqualTo(from);
+	}
+
+	/**
+	 * AND WITHOUT A RESULT IT CHANGES FREELY, in either direction: the only difference is the result. The
+	 * other event of the fixture still carries its result, and its race counts in a league, so a question
+	 * asked of any event but this one is answered here as a refusal.
+	 */
+	@ParameterizedTest
+	@CsvSource({"race, unscored", "unscored, race"})
+	void anEventWithNoResultChangesBetweenAScoredAndAnUnscoredRace(String from, String to) throws Exception {
+		db.sql("delete from result where race_id in (select id from race where event_id = ?)").param(acted)
+				.update();
+		leagueCounting("liga-2027", 2027, raceCalled("Tudja"));
+		db.sql("update btl_event set kind = ? where id = ?").params(from, acted).update();
+
+		assertThat(change(acted, theSameEventAs(to)).getStatus()).isEqualTo(200);
+		assertThat(kindOfTheEvent(acted)).isEqualTo(to);
+	}
+
+	/**
+	 * AND A MOVE INTO A TRAINING OR A GATHERING IS NOT THIS CHANGE, whatever the results: PDL, 14.11.2026,
+	 * „Prelazak u Trening ili Skup se ovim ne menja", and the races go with the question the screen asks (PDL
+	 * 07.11.2026, PR 724), which is not this route's.
+	 */
+	@ParameterizedTest
+	@CsvSource({"race, training", "race, gathering", "unscored, training", "unscored, gathering"})
+	void aMoveIntoATrainingOrAGatheringIsNotRefusedForTheResults(String from, String to) throws Exception {
+		db.sql("update btl_event set kind = ? where id = ?").params(from, acted).update();
+
+		assertThat(change(acted, theSameEventAs(to)).getStatus()).isEqualTo(200);
+		assertThat(kindOfTheEvent(acted)).isEqualTo(to);
+	}
+
+	/**
+	 * A SCORED EVENT WHOSE RACE COUNTS IN A LEAGUE DOES NOT BECOME AN UNSCORED ONE, since a league counts no
+	 * unscored race ({@link LeagueWriteApi#AN_UNSCORED_RACE_IS_NOT_IN_A_LEAGUE}) and this would be the other
+	 * door into one; my reasoning, not a decision of its own. The event carries no result here, so the refusal
+	 * is the league's and not the one above.
+	 */
+	@Test
+	void aScoredEventWhoseRaceCountsInALeagueDoesNotBecomeAnUnscoredOne() throws Exception {
+		db.sql("delete from result where race_id in (select id from race where event_id = ?)").param(acted)
+				.update();
+		leagueCounting("liga-2027", 2027, raceCalled("Kratka"));
+
+		MockHttpServletResponse answer = change(acted, theSameEventAs("unscored"));
+
+		assertThat(answer.getStatus()).isEqualTo(409);
+		assertThat(reasonIn(answer)).isEqualTo(EventWriteApi.AN_UNSCORED_RACE_IS_NOT_IN_A_LEAGUE);
+		assertThat(kindOfTheEvent(acted)).isEqualTo("race");
+	}
+
+	/**
+	 * AND NOT IN TWO STEPS THROUGH A TRAINING OR A GATHERING EITHER (review of PR 729, measured with these
+	 * three sequences): the move into the training is free, and the way back into either race is refused while
+	 * the result stands, so a scored result never becomes an unscored one and an unscored one never becomes
+	 * scored. The rule the owner set has to hold whichever way the server is walked: „zabranu
+	 * bodovana/nebodovana mora da drži server, ne samo ekran" (PDL, 14.11.2026).
+	 */
+	@ParameterizedTest
+	@CsvSource({"race, training, unscored", "race, gathering, unscored", "unscored, training, race",
+			"unscored, gathering, race"})
+	void aResultDoesNotCrossBetweenAScoredAndAnUnscoredRaceThroughATrainingOrAGathering(String from, String via,
+			String to) throws Exception {
+		db.sql("update btl_event set kind = ? where id = ?").params(from, acted).update();
+
+		assertThat(change(acted, theSameEventAs(via)).getStatus()).isEqualTo(200);
+
+		MockHttpServletResponse answer = change(acted, theSameEventAs(to));
+
+		assertThat(answer.getStatus()).isEqualTo(409);
+		assertThat(reasonIn(answer)).isEqualTo(EventWriteApi.A_KIND_WITH_RESULTS_DOES_NOT_CHANGE);
+		assertThat(kindOfTheEvent(acted)).isEqualTo(via);
+	}
+
+	/**
+	 * AND AN UNSCORED RACE DOES NOT REACH A LEAGUE THAT WAY: a scored event whose race counts in a league,
+	 * with no result, goes into a training or a gathering and is refused on the way into an unscored race; on
+	 * the way back into a scored race it is not, since a scored race in a league is the ordinary state.
+	 */
+	@ParameterizedTest
+	@CsvSource({"training", "gathering"})
+	void anUnscoredRaceDoesNotReachALeagueThroughATrainingOrAGathering(String via) throws Exception {
+		db.sql("delete from result where race_id in (select id from race where event_id = ?)").param(acted)
+				.update();
+		leagueCounting("liga-2027", 2027, raceCalled("Kratka"));
+
+		assertThat(change(acted, theSameEventAs(via)).getStatus()).isEqualTo(200);
+
+		MockHttpServletResponse answer = change(acted, theSameEventAs("unscored"));
+
+		assertThat(answer.getStatus()).isEqualTo(409);
+		assertThat(reasonIn(answer)).isEqualTo(EventWriteApi.AN_UNSCORED_RACE_IS_NOT_IN_A_LEAGUE);
+		assertThat(kindOfTheEvent(acted)).isEqualTo(via);
+		assertThat(change(acted, theSameEventAs("race")).getStatus()).isEqualTo(200);
+		assertThat(kindOfTheEvent(acted)).isEqualTo("race");
+	}
+
+	/**
+	 * AND THE SCREEN'S OWN ROAD OF 07.11.2026 STILL WORKS (PR 724): the event is saved as a training or a
+	 * gathering while its races carry a result, and the race with the result is deleted afterwards; once the
+	 * result is gone the event goes back to a race like any other.
+	 */
+	@ParameterizedTest
+	@CsvSource({"training", "gathering"})
+	void theScreensRoadSavesTheEventFirstAndDeletesItsRacesAfterwards(String via) throws Exception {
+		assertThat(change(acted, theSameEventAs(via)).getStatus()).isEqualTo(200);
+		assertThat(http.perform(delete("/api/races/" + raceCalled("Duga")).with(csrf())
+						.cookie(new Cookie(SessionCookie.NAME, session)))
+				.andReturn().getResponse().getStatus()).isEqualTo(204);
+
+		assertThat(change(acted, theSameEventAs("race")).getStatus()).isEqualTo(200);
+		assertThat(kindOfTheEvent(acted)).isEqualTo("race");
+	}
+
+	/** {@code acted} as it stands, of the kind asked: its own name and day, so nothing else moves. */
+	private Form theSameEventAs(String kind) {
+		return aForm().withPlace(aKnownTown()).withName("Trka drugi-2027").withDay(ITS_DAY).withKind(kind);
+	}
+
+	private String kindOfTheEvent(long event) {
+		return db.sql("select kind from btl_event where id = ?").param(event).query(String.class).single();
+	}
 }

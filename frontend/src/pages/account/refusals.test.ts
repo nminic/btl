@@ -262,6 +262,12 @@ const NOT_YET_ON_ANY_SCREEN: Record<string, string[]> = {
      (`profile/InviteToTeam.tsx`), both through `pages/joiningThisTeam.ts`, so both names have a
      dictionary on the line for that file below and the entry went, as the case at the bottom of
      this file requires of a reason whose screen has arrived. */
+  /* THE UNSCORED RACE, step 1 of its increment (PDL, 14.11.2026, „Ostale discipline kao lična evidencija"):
+     the server refuses a change of kind between a scored and an unscored race while a result stands, and
+     an unscored race in a league, before any screen sends either. The screens of steps 2 and 4 map them,
+     and the case at the bottom of this file takes these entries away the day they do. */
+  'EventWriteApi.java': ['aKindWithResultsDoesNotChange', 'anUnscoredRaceIsNotInALeague'],
+  'LeagueWriteApi.java': ['anUnscoredRaceIsNotInALeague'],
 }
 
 describe('the reasons the server can name', () => {
@@ -331,7 +337,7 @@ describe('the reasons the server can name', () => {
        (`admin/LeagueRaceModeration.tsx`). `theSeasonIsFrozen` is in both tables under two
        different dictionary keys, because what the reader has to do about it differs, and
        the union is what this gate counts. */
-    ['LeagueWriteApi.java', [WHEN_WRITING_A_LEAGUE, WHEN_MODERATING_LEAGUE_RACES], 11],
+    ['LeagueWriteApi.java', [WHEN_WRITING_A_LEAGUE, WHEN_MODERATING_LEAGUE_RACES], 12],
     /* THE SEVENTH, ADDED 26.09.2026 WITH THE SCREEN THAT MEETS IT. `PricingWriteApi` had
        named five reasons since PR 370 and nothing on this side could read any of them,
        because no screen called the route at all - `grep -rn "api/pricing" frontend/src`
@@ -628,7 +634,7 @@ describe('the reasons the server can name', () => {
        route answers one word, and what it means to the reader depends on whether he was
        saving an event or one of its mornings. The race's thirteenth arrived 10.10.2026 with
        the owner's answer that a race carrying an approved result keeps its kind (PDL P4). */
-    ['EventWriteApi.java', [WHEN_WRITING_AN_EVENT], 11],
+    ['EventWriteApi.java', [WHEN_WRITING_AN_EVENT], 13],
     ['RaceWriteApi.java', [WHEN_WRITING_A_RACE], 14],
     /* THE LEAGUE'S OWN ENTRY OF RESULTS FROM THE EVENT PAGE, added 19.10.2026 with the screen that
        meets it (`event/EnterResults.tsx`, PDL P9, 18.10.2026). Eight constants and six reasons then, ten reasons now; the two

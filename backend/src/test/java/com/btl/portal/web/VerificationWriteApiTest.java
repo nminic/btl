@@ -5807,4 +5807,58 @@ class VerificationWriteApiTest {
 				.params(memberNumber, subject, QUEUE_BODY_MARKER, submission)
 				.query(Long.class).single();
 	}
+
+	// ----- an unscored race (PDL, 14.11.2026) ------------------------------------------------
+
+	/**
+	 * A RUN APPROVED AT AN UNSCORED RACE OF THE CALENDAR KEEPS NO POINTS, and the same figures approved at a
+	 * scored race are worth what the formula makes of them, so the zero is the race's and not the figures'.
+	 * PDL, 14.11.2026: „Rezultat ostale discipline nema bodove", and beside it, „rezultat nebodovane trke čuva
+	 * 0 bodova".
+	 */
+	@Test
+	void aRunApprovedAtAnUnscoredRaceKeepsNoPointsWhereTheSameRunAtAScoredOneKeepsItsOwn() throws Exception {
+		long swim = freeRace(anUnscoredEvent("plivanje-2027", "Plivanje", SATURDAY), "Plivanje", SATURDAY);
+		long run = freeRace(event("krug-2027", "Krug", SATURDAY), "Krug", SATURDAY);
+		long atTheSwim = runWaitingFor(ANA, swim, SATURDAY, "12.0000", 100, 100, AN_HOUR, null);
+		long atTheRun = runWaitingFor(BOJAN, run, SATURDAY, "12.0000", 100, 100, AN_HOUR, null);
+
+		assertThat(answer(THE_SUPERADMIN, atTheSwim, true, null)).isEqualTo(200);
+		assertThat(answer(THE_SUPERADMIN, atTheRun, true, null)).isEqualTo(200);
+
+		assertThat(pointsOf(ANA, swim)).isEqualTo("0.00");
+		assertThat(pointsOf(BOJAN, run))
+				.isEqualTo(BtlScoreCalculator.calculate(12.0, 100, 100, AN_HOUR).toPlainString());
+	}
+
+	/**
+	 * AND AN UNSCORED EVENT CHOSEN FOR A RUN THE CALENDAR DID NOT HOLD TAKES THE RACE THE APPROVAL MAKES, where
+	 * a training takes none (the case above it); the run keeps no points.
+	 */
+	@Test
+	void anUnscoredEventChosenForARunNotInTheCalendarTakesTheRaceAndTheRunKeepsNoPoints() throws Exception {
+		long unscored = anUnscoredEvent("plivanje-na-adi-2027", "Plivanje na Adi", LocalDate.of(2027, 3, 1));
+		long run = describedRun(ANA, "Ada", "length", THE_DAY_HE_RAN, "6.0000", 0, 0, 1700);
+
+		assertThat(decideWith(THE_SUPERADMIN, run, makingTheRaceOn(unscored, "Krug oko Ade")).getStatus())
+				.isEqualTo(200);
+
+		long race = db.sql("select id from race where event_id = ?").param(unscored).query(Long.class).single();
+
+		assertThat(pointsOf(ANA, race)).isEqualTo("0.00");
+	}
+
+	private long anUnscoredEvent(String slug, String name, LocalDate date) {
+		long made = event(slug, name, date);
+
+		db.sql("update btl_event set kind = 'unscored' where id = ?").param(made).update();
+
+		return made;
+	}
+
+	private String pointsOf(String number, long race) {
+		return db.sql("select r.points from result r join competitor c on c.id = r.competitor_id"
+						+ " where c.member_number = ? and r.race_id = ?")
+				.params(number, race).query(String.class).single();
+	}
 }

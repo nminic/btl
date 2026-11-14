@@ -2101,8 +2101,9 @@ class VerificationWriteApi {
 			counted = placed.counted();
 		}
 
-		BigDecimal points = BtlScoreCalculator.calculate(counted.distanceKm().doubleValue(),
-				counted.ascentM(), counted.descentM(), counted.seconds());
+		/* AND NOTHING AT AN UNSCORED RACE (PointsOfARun, PDL 14.11.2026), asked of the race the run is
+		   counted on, which is the one made just above where the calendar did not hold it. */
+		BigDecimal points = PointsOfARun.at(db, race, counted);
 
 		/* THE MOMENT OF THIS APPROVAL, which the result keeps with the word „approval” (V97): a ducat this
 		   result carries him over to is told because of it, now or at night (PDL, 12.11.2026). */
@@ -2324,7 +2325,7 @@ class VerificationWriteApi {
 	 * One home for the question, asked before the claim and again after it.
 	 */
 	private String whyNoRaceGoesOn(TheDayOfAnEvent.Standing event, LocalDate day) {
-		if (!WhatAnEventCarries.A_RACE.equals(event.kind())) {
+		if (!WhatAnEventCarries.holdsRaces(event.kind())) {
 			return THE_EVENT_HOLDS_NO_RACES;
 		}
 
