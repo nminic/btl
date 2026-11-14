@@ -157,6 +157,9 @@ const THE_LISTS: Answers = {
   '/api/teams': file('teams.json'),
   '/api/pairs': [],
   '/api/results': file('results.json'),
+  /* The races the league does not score, which the profile reads beside `results` since 14.11.2026; left
+     out, the page never finishes reading and the row of the parts is never drawn. */
+  '/api/unscored-results': file('unscored-results.json'),
   '/api/ducats': file('ducats.json'),
   /* HER THREE DUCATS, as the server awarded them (`DucatAwardApi`, since 13.11.2026). Until then the page
      worked three out of `results.json` itself; the page now reads this address, and an address left out of

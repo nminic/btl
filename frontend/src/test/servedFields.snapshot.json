@@ -367,6 +367,23 @@
     "slug",
     "smallLogo"
   ],
+  "unscored-results.json": [
+    "ascentM",
+    "category",
+    "date",
+    "descentM",
+    "distanceKm",
+    "eventName",
+    "eventSlug",
+    "id",
+    "inItsSeason",
+    "inItsStanding",
+    "memberNumber",
+    "points",
+    "raceId",
+    "raceName",
+    "seconds"
+  ],
   "verification.json": [
     "ascentM",
     "body",
