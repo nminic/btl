@@ -103,6 +103,9 @@ class PaymentsDueApiTest {
 
 	private static final String PATH = "/api/payments";
 
+	/** Where the term of a search travels, in the body (ADL, 07.11.2026). */
+	private static final String SEARCH = "/api/payments/search";
+
 	/** An address of the same length that maps nothing, for the refusal to be compared with. */
 	private static final String NOTHING_IS_THERE = "/api/zzzzzzzz";
 
@@ -849,6 +852,91 @@ class PaymentsDueApiTest {
 	}
 
 	/**
+	 * A BODY THAT SAYS NO TERM IN ANY OF ITS SHAPES IS THE WHOLE LIST TOO: {@code {}}, a null, and a term of
+	 * nothing but spaces. The shapes {@link #read} cannot write, because it always writes a string.
+	 */
+	@ParameterizedTest
+	@ValueSource(strings = { "{}", "{\"term\":null}", "{\"term\":\"\"}", "{\"term\":\"  \"}" })
+	void aBodyWithNoTermInAnyShapeIsTheWholeList(String body) throws Exception {
+		MockHttpServletResponse answer = searching(booksCookie, body);
+
+		assertThat(answer.getStatus()).isEqualTo(200);
+		assertThat(keysIn(mapper.readTree(answer.getContentAsString()))).hasSize(10);
+	}
+
+	/**
+	 * THE TERM IS NARROWED BY IN THE BODY AND IN NO OTHER PLACE: the same two readings, one address, three
+	 * answers. The body narrows, the whole list is not narrowed by anything else, and the old address with the
+	 * term in it narrows nothing and is told so (below).
+	 */
+	@Test
+	void theTermNarrowsOnlyWhenItIsInTheBody() throws Exception {
+		assertThat(keysIn(read(booksCookie, "Novak")))
+				.as("a term in the body did not narrow the list")
+				.hasSizeLessThan(10).isNotEmpty();
+		assertThat(keysIn(read(booksCookie, null)))
+				.as("the list asked for with no term was narrowed by something")
+				.hasSize(10);
+	}
+
+	/**
+	 * THE OLD ADDRESS IS REFUSED, FOR ANY VALUE, AND LISTS NOTHING (ADL, 07.11.2026: „Pojam pretrage uplata ne putuje u
+	 * adresi zahteva nego u telu"; the refusal itself is my reasoning, see {@link PaymentsDueApi}). A term that
+	 * would have narrowed the list, one that would have narrowed it to nothing, an empty one and a blank one: all
+	 * 400, with no body, so nobody is answered a list he believes he narrowed.
+	 */
+	@ParameterizedTest
+	@ValueSource(strings = { "Novak", "Nepostojeci", "", "   ", "000123" })
+	void aTermInTheAddressIsRefusedAndNarrowsNothing(String term) throws Exception {
+		MockHttpServletResponse answer = http
+				.perform(asking(booksCookie, get(PATH).param("search", term))).andReturn().getResponse();
+
+		assertThat(answer.getStatus())
+				.as("a term in the address (%s) was answered", term.isBlank() ? "blank" : term)
+				.isEqualTo(400);
+		assertThat(answer.getContentAsString())
+				.as("a term in the address was answered with a list, or with words about one")
+				.doesNotContain("accounts").doesNotContain("season");
+	}
+
+	/** A SEARCH WITH NO BODY AT ALL IS THE CONTAINER'S 400, and not the whole list: the body is not optional, the term in it is. */
+	@Test
+	void aSearchWithNoBodyAtAllIsRefused() throws Exception {
+		assertThat(searching(booksCookie, null).getStatus()).isEqualTo(400);
+	}
+
+	/** A TERM WITH A ZERO IN IT IS A 400 IN THE BODY AS IT IS EVERYWHERE (`NoTextHoldsAZero`), and the same words without it are not. */
+	@Test
+	void aTermWithAZeroInTheBodyIsRefused() throws Exception {
+		assertThat(searching(booksCookie, "{\"term\":\"Mar\\u0000ko\"}").getStatus()).isEqualTo(400);
+		assertThat(searching(booksCookie, "{\"term\":\"Marko\"}").getStatus()).isEqualTo(200);
+	}
+
+	/** THE SEARCH IS ASKED THE SAME DOOR AS THE LIST: nobody signed in is asked to sign in (401). */
+	@Test
+	void theSearchAsksNobodySignedInToSignIn() throws Exception {
+		assertThat(searching(null, "{\"term\":\"Novak\"}").getStatus()).isEqualTo(401);
+	}
+
+	/**
+	 * AND ANYBODY WITHOUT THE RIGHT IS TOLD WHAT AN ADDRESS THAT IS NOT THERE IS TOLD (ADL A8): 404, and the same
+	 * for a moderator holding another queue and for a plain member, compared against a missing address and not
+	 * against a number.
+	 */
+	@ParameterizedTest
+	@ValueSource(strings = { ANOTHER_QUEUE, A_MEMBER })
+	void theSearchIsToldNoMoreToSomebodyWithoutTheRightThanAMissingAddressIs(String who) throws Exception {
+		String cookie = who.equals(ANOTHER_QUEUE) ? anotherQueueCookie : memberCookie;
+
+		int refused = searching(cookie, "{\"term\":\"Novak\"}").getStatus();
+		int missing = http.perform(asking(cookie, post(NOTHING_IS_THERE + "/search").with(csrf())
+				.contentType(MediaType.APPLICATION_JSON).content("{\"term\":\"Novak\"}")))
+				.andReturn().getResponse().getStatus();
+
+		assertThat(refused).isEqualTo(missing).isEqualTo(404);
+	}
+
+	/**
 	 * THE ORDER IS BY SURNAME, THEN GIVEN NAME, THEN KEY, and the last of the three is what
 	 * makes it total.
 	 *
@@ -1407,13 +1495,30 @@ class PaymentsDueApiTest {
 				.param(key).query(BigDecimal.class).single();
 	}
 
+	/**
+	 * The list as the screen would ask for it: whole with no term, and narrowed by a term sent in the BODY of
+	 * {@code POST /api/payments/search} (ADL, 07.11.2026), never in the address.
+	 */
 	private JsonNode read(String cookie, String term) throws Exception {
-		MockHttpServletRequestBuilder asking = term == null ? get(PATH) : get(PATH).param("search", term);
+		MockHttpServletRequestBuilder asking = term == null ? get(PATH)
+				: post(SEARCH).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+						.content(mapper.writeValueAsString(Map.of("term", term)));
 
 		String served = http.perform(asking(cookie, asking)).andReturn()
 				.getResponse().getContentAsString();
 
 		return mapper.readTree(served);
+	}
+
+	/** The search as a request: the given text IS the body, so a shape of body the helper above cannot write can be sent. */
+	private MockHttpServletResponse searching(String cookie, String body) throws Exception {
+		MockHttpServletRequestBuilder asking = post(SEARCH).with(csrf());
+
+		if (body != null) {
+			asking = asking.contentType(MediaType.APPLICATION_JSON).content(body);
+		}
+
+		return http.perform(cookie == null ? asking : asking(cookie, asking)).andReturn().getResponse();
 	}
 
 	private MockHttpServletRequestBuilder asking(String cookie, MockHttpServletRequestBuilder what) {

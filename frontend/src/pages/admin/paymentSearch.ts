@@ -9,9 +9,10 @@ import type { MembershipDue } from '../../data/types'
  * for a named man; he does not page through a list. Three keys, and he named all three.
  *
  * <p><b>THE RULE LIVES IN TWO HOMES AND THIS ONE DECIDES WHAT THE MODERATOR SEES.</b>
- * `GET /api/payments` carries a `search` parameter of its own and narrows the answer server
- * side. <b>This portal never sends it.</b> The list is fetched whole and filtered here, so the
- * answer on screen is decided by this function and by nothing else.
+ * `POST /api/payments/search` takes a term of its own, in the body and not in the address (ADL, 07.11.2026), and
+ * narrows the answer server side; `GET /api/payments` with a `search` in its address is refused. <b>This portal
+ * never sends it.</b> The list is fetched whole and filtered here, so the answer on screen is decided by this
+ * function and by nothing else.
  *
  * <p><b>Why the screen filters rather than the route, which was weighed and not assumed.</b>
  * The cache is keyed by NAME with no parameter in the key (`data/client.ts`, `loadResource`),
