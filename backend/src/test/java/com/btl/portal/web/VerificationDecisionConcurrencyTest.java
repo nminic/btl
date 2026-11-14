@@ -791,8 +791,9 @@ class VerificationDecisionConcurrencyTest {
 		aRunOnARaceTheCalendarDoesNotHoldWaits();
 
 		theOtherRun = db.sql("insert into result_submission (competitor_id, race_id, race_date,"
-						+ " race_name, race_kind, place_id, distance_km, ascent_m, descent_m, seconds,"
-						+ " link, comment) values (?, null, date '2026-09-12', ?, 'length', " + A_TOWN
+						+ " race_name, race_kind, event_kind, place_id, distance_km, ascent_m, descent_m,"
+						+ " seconds, link, comment) values (?, null, date '2026-09-12', ?, 'length', 'race', "
+						+ A_TOWN
 						+ ", 12.0000, 90, 70, 3400, 'https://primer.rs/rezultati', '') returning id")
 				.params(another, THE_NAME_HE_TYPED).query(Long.class).single();
 
@@ -1248,8 +1249,9 @@ class VerificationDecisionConcurrencyTest {
 				.param(theEvent).query(Long.class).single();
 
 		theRun = db.sql("insert into result_submission (competitor_id, race_id, race_date,"
-						+ " race_name, race_kind, place_id, distance_km, ascent_m, descent_m, seconds,"
-						+ " link, comment) values (?, null, date '2026-05-01', 'Opisana', 'length', "
+						+ " race_name, race_kind, event_kind, place_id, distance_km, ascent_m, descent_m,"
+						+ " seconds, link, comment) values (?, null, date '2026-05-01', 'Opisana', 'length',"
+						+ " 'race', "
 						+ A_TOWN + ", 10.0000, 50, 50, 3300, 'https://primer.rs/rezultati', '')"
 						+ " returning id")
 				.param(founder).query(Long.class).single();
@@ -1367,8 +1369,9 @@ class VerificationDecisionConcurrencyTest {
 	 */
 	private void aRunOnARaceTheCalendarDoesNotHoldWaits() {
 		theRun = db.sql("insert into result_submission (competitor_id, race_id, race_date,"
-						+ " race_name, race_kind, place_id, distance_km, ascent_m, descent_m, seconds,"
-						+ " link, comment) values (?, null, date '2026-09-12', ?, 'length', " + A_TOWN
+						+ " race_name, race_kind, event_kind, place_id, distance_km, ascent_m, descent_m,"
+						+ " seconds, link, comment) values (?, null, date '2026-09-12', ?, 'length', 'race', "
+						+ A_TOWN
 						+ ", 12.0000, 80, 60, 3300, 'https://primer.rs/rezultati', '') returning id")
 				.params(founder, THE_NAME_HE_TYPED).query(Long.class).single();
 

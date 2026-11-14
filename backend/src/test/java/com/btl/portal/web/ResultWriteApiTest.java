@@ -2057,7 +2057,20 @@ class ResultWriteApiTest {
 	/** Written as a map rather than through {@code ResultWriteApi.Ran}, so a case can leave a
 	 *  field out ALTOGETHER rather than send it as null - which is what a real form does, and
 	 *  the two reach Jackson the same way only by accident. */
+	/**
+	 * The body, with the kind of the event a described run types (V101, {@code Ran.eventKind}) said for it:
+	 * a scored race, the only kind there was before an unscored one, wherever the form types an event and
+	 * says nothing about its kind. A case about the kind itself names it, or puts it as nothing.
+	 */
 	private String form(Map<String, Object> fields) {
+		if (fields.containsKey("eventName") && !fields.containsKey("eventId") && !fields.containsKey("eventKind")) {
+			Map<String, Object> kinded = new HashMap<>(fields);
+
+			kinded.put("eventKind", "race");
+
+			return mapper.writeValueAsString(kinded);
+		}
+
 		return mapper.writeValueAsString(fields);
 	}
 
@@ -2193,5 +2206,169 @@ class ResultWriteApiTest {
 	 */
 	private static List<String> everyAddressThatGotACopy() {
 		return SMTP.getUserManager().listUser().stream().map(GreenMailUser::getEmail).toList();
+	}
+
+	/* ===================================================== an unscored race on the member's own doors
+	 * PDL, 14.11.2026, „Ostale discipline kao lična evidencija": (1) „Uspon i spust na netrkačkoj trci su
+	 * neobavezni (prazno znači 0)”, (4) „Kad član opiše događaj kojeg nema u kalendaru, u formi bira Bodovana
+	 * ili Nebodovana trka (podrazumevano Bodovana)”, and 15.11.2026: „Poruka članu posle prijave ili izmene
+	 * rezultata nebodovane trke ne nosi bodove; rečenica „Bodovi su konačni kad rezultat bude potvrđen.” se
+	 * izostavlja, a „Izmena se vidi u poretku kad bude potvrđena.” postaje „Izmena se vidi na vašem profilu
+	 * kad bude potvrđena.”" */
+
+	/** The race, with its event made an unscored one. */
+	private long unscored(long race) {
+		db.sql("update btl_event set kind = 'unscored' where id = (select event_id from race where id = ?)")
+				.param(race).update();
+
+		return race;
+	}
+
+	/** Every line about his own result in his inbox, oldest first. */
+	private List<String> linesAboutHisResults(String memberNumber) {
+		return db.sql("select m.subject || ' | ' || m.body from message m join competitor c on c.id = m.to_id"
+						+ " where c.member_number = ? and m.from_name = 'Rezultati' order by m.id")
+				.param(memberNumber).query(String.class).list();
+	}
+
+	private Map<String, Object> theClimbOf(long submission) {
+		return db.sql("select ascent_m, descent_m, event_kind from result_submission where id = ?")
+				.param(submission).query().singleRow();
+	}
+
+	/**
+	 * FROM THE CALENDAR: AT AN UNSCORED RACE THE CLIMB AND THE FALL MAY BE LEFT OUT AND ARE WRITTEN AS NOUGHT,
+	 * A CLIMB SENT IS WRITTEN AS SENT, AND AT A SCORED RACE LEAVING THEM OUT IS STILL A FORM NOT FILLED IN.
+	 * The line in his inbox names no points at the unscored race and leaves out the sentence about them.
+	 */
+	@Test
+	void fromTheCalendarAnUnscoredRaceLeavesTheClimbOutAndItsLineNamesNoPoints() throws Exception {
+		long swim = unscored(race("Plivanje", "2027-03-10", "free", 0, BigDecimal.ZERO, 0, 0));
+		long ride = unscored(race("Voznja", "2027-03-11", "free", 0, BigDecimal.ZERO, 0, 0));
+		Map<String, Object> noClimb = new HashMap<>(Map.of("distanceKm", "3.00", "seconds", 3600,
+				"link", "https://rezultati.rs/plivanje"));
+
+		noClimb.put("raceId", freeRace);
+		assertThat(reasonIn(reportedAs(ME, form(noClimb)))).as("a scored race took a run with no climb")
+				.isEqualTo(ResultWriteApi.THE_FORM_IS_NOT_COMPLETE);
+
+		noClimb.put("raceId", swim);
+		MockHttpServletResponse atTheSwim = reportedAs(ME, form(noClimb));
+
+		assertThat(atTheSwim.getStatus()).as(atTheSwim.getContentAsString()).isEqualTo(201);
+		assertThat(theClimbOf(idIn(atTheSwim))).containsEntry("ascent_m", 0).containsEntry("descent_m", 0)
+				.containsEntry("event_kind", null);
+
+		Map<String, Object> withAClimb = new HashMap<>(noClimb);
+
+		withAClimb.put("raceId", ride);
+		withAClimb.put("ascentM", 120);
+		withAClimb.put("descentM", 80);
+		MockHttpServletResponse atTheRide = reportedAs(ME, form(withAClimb));
+
+		assertThat(atTheRide.getStatus()).isEqualTo(201);
+		assertThat(theClimbOf(idIn(atTheRide))).containsEntry("ascent_m", 120).containsEntry("descent_m", 80);
+
+		Map<String, Object> scored = new HashMap<>(withAClimb);
+
+		scored.put("raceId", freeRace);
+		assertThat(reportedAs(ME, form(scored)).getStatus()).isEqualTo(201);
+
+		List<String> lines = linesAboutHisResults(ME);
+
+		assertThat(lines).hasSize(3);
+		assertThat(lines.get(0)).contains("Plivanje").contains("vreme 1:00:00").doesNotContain("bod");
+		assertThat(lines.get(1)).contains("uspon 120 m, spust 80 m").doesNotContain("bod");
+		assertThat(lines.get(2)).as("a scored race lost its points in the line")
+				.contains(" bodova").contains("Bodovi su konačni kad rezultat bude potvrđen.");
+	}
+
+	/**
+	 * DESCRIBED: AN EVENT TYPED CARRIES THE KIND HE CHOSE, A SCORED OR AN UNSCORED RACE AND NOTHING ELSE, AND
+	 * AN EVENT CHOSEN CARRIES ITS OWN. A typed event with no kind is a form not filled in, never a scored race
+	 * (ADL A8); a kind beside a chosen event, or beside a race of the calendar, is a second answer; a chosen
+	 * event that holds no races is refused as one that is not there.
+	 */
+	@Test
+	void aDescribedRunCarriesTheKindHeChoseOrTheKindOfTheEventHeChose() throws Exception {
+		Map<String, Object> typedUnscored = aDescribedRun();
+
+		typedUnscored.put("eventKind", "unscored");
+		typedUnscored.remove("ascentM");
+		typedUnscored.remove("descentM");
+		MockHttpServletResponse sent = reportedAs(ME, form(typedUnscored));
+
+		assertThat(sent.getStatus()).as(sent.getContentAsString()).isEqualTo(201);
+		assertThat(theClimbOf(idIn(sent))).containsEntry("event_kind", "unscored")
+				.containsEntry("ascent_m", 0).containsEntry("descent_m", 0);
+		assertThat(linesAboutHisResults(ME).get(0)).doesNotContain("bod");
+
+		Map<String, Object> typedScored = aDescribedRun();
+
+		typedScored.put("eventKind", "race");
+		typedScored.put("raceName", "Opisana bodovana");
+		MockHttpServletResponse scored = reportedAs(ME, form(typedScored));
+
+		assertThat(scored.getStatus()).isEqualTo(201);
+		assertThat(theClimbOf(idIn(scored))).containsEntry("event_kind", "race");
+
+		typedScored.remove("ascentM");
+		assertThat(reasonIn(reportedAs(ME, form(typedScored)))).as("a scored race took a run with no climb")
+				.isEqualTo(ResultWriteApi.THE_FORM_IS_NOT_COMPLETE);
+
+		for (String kind : new String[] {null, "training", "gathering", "length"}) {
+			Map<String, Object> wrong = aDescribedRun();
+
+			wrong.put("eventKind", kind);
+			assertThat(reasonIn(reportedAs(ME, form(wrong)))).as("the kind " + kind)
+					.isEqualTo(ResultWriteApi.THE_FORM_IS_NOT_COMPLETE);
+		}
+
+		db.sql("update btl_event set kind = 'unscored' where id = ?").param(anEventOfTheCalendar()).update();
+		MockHttpServletResponse onTheChosen = reportedAs(ME, form(onAChosenEvent()));
+
+		assertThat(onTheChosen.getStatus()).as(onTheChosen.getContentAsString()).isEqualTo(201);
+		assertThat(theClimbOf(idIn(onTheChosen))).containsEntry("event_kind", "unscored");
+
+		Map<String, Object> kindBesideTheChosen = onAChosenEvent();
+
+		kindBesideTheChosen.put("eventKind", "unscored");
+		assertThat(reasonIn(reportedAs(ME, form(kindBesideTheChosen))))
+				.isEqualTo(ResultWriteApi.THE_RACE_IS_NAMED_TWICE);
+
+		db.sql("update btl_event set kind = 'training' where id = ?").param(anEventOfTheCalendar()).update();
+		assertThat(reasonIn(reportedAs(ME, form(onAChosenEvent())))).as("a training was a race a run is at")
+				.isEqualTo(ResultWriteApi.THE_RACE_IS_NOT_KNOWN);
+
+		Map<String, Object> kindBesideTheCalendar = new HashMap<>(Map.of("raceId", freeRace, "distanceKm",
+				"3.00", "seconds", 3600, "link", "https://rezultati.rs/plivanje", "eventKind", "unscored"));
+
+		assertThat(reasonIn(reportedAs(ME, form(kindBesideTheCalendar))))
+				.isEqualTo(ResultWriteApi.THE_RACE_IS_NAMED_TWICE);
+	}
+
+	/**
+	 * A CORRECTION OF A RESULT OF AN UNSCORED RACE MAY LEAVE THE CLIMB OUT, AND ITS LINE NAMES NO POINTS AND
+	 * SAYS THE CHANGE SHOWS ON HIS PROFILE; A DELETION OF ONE NAMES NO POINTS EITHER.
+	 */
+	@Test
+	void aCorrectionAndADeletionAtAnUnscoredRaceNameNoPoints() throws Exception {
+		long swim = unscored(race("Plivanje", "2027-03-10", "free", 0, BigDecimal.ZERO, 0, 0));
+		long mine = ran(ME, swim, "2027-03-10", "3.00", 0, 0, 3600, "0.00");
+		MockHttpServletResponse corrected = correctedAs(ME, mine, correction("3.50", null, null, 3500,
+				"https://rezultati.rs/plivanje", ""));
+
+		assertThat(corrected.getStatus()).as(corrected.getContentAsString()).isEqualTo(200);
+		assertThat(theClimbOf(idIn(corrected))).containsEntry("ascent_m", 0).containsEntry("descent_m", 0);
+		assertThat(linesAboutHisResults(ME).get(0)).doesNotContain("bod")
+				.contains("Izmena se vidi na vašem profilu kad bude potvrđena.")
+				.doesNotContain("poretku");
+
+		assertThat(reasonIn(correctedAs(ME, myOtherResult, correction("12.00", null, null, 3000,
+				"https://rezultati.rs/plivanje", "")))).as("a scored race took a correction with no climb")
+				.isEqualTo(ResultWriteApi.THE_FORM_IS_NOT_COMPLETE);
+
+		assertThat(deletedAs(ME, mine).getStatus()).isEqualTo(204);
+		assertThat(linesAboutHisResults(ME).get(1)).contains("Plivanje").doesNotContain("bod");
 	}
 }

@@ -584,9 +584,9 @@ class VerificationApiTest {
 		   the same figures (measured 06.11.2026: `the_races_kind` replaced by `race_kind`, green). A
 		   hint of `length` asks the race for its distance, and there is no race to ask. */
 		long described = db.sql("insert into result_submission (competitor_id, race_id, race_date,"
-						+ " race_name, race_kind, place_id, distance_km, ascent_m, descent_m, seconds,"
-						+ " link, comment) values ((select id from competitor where member_number = ?),"
-						+ " null, date '2027-03-07', 'Trka van kalendara', 'length', " + EVERYBODYS_TOWN
+						+ " race_name, race_kind, event_kind, place_id, distance_km, ascent_m, descent_m,"
+						+ " seconds, link, comment) values ((select id from competitor where member_number = ?),"
+						+ " null, date '2027-03-07', 'Trka van kalendara', 'length', 'race', " + EVERYBODYS_TOWN
 						+ ", 12.0000, 100, 90, 3000, 'https://primer.rs/van', '') returning id")
 				.param(LAPSED).query(Long.class).single();
 		queuedRun(LAPSED, "Trka van kalendara", "", "2027-03-10 09:00:00+00", described);
@@ -1700,9 +1700,9 @@ class VerificationApiTest {
 		runsWaitInTheResultsTab();
 
 		long typed = db.sql("insert into result_submission (competitor_id, race_id, race_date,"
-						+ " race_name, race_kind, city, country_id, distance_km, ascent_m, descent_m,"
-						+ " seconds, link, comment) values ((select id from competitor where"
-						+ " member_number = ?), null, date '2027-03-07', 'Trka uz jezero', 'length',"
+						+ " race_name, race_kind, event_kind, city, country_id, distance_km, ascent_m,"
+						+ " descent_m, seconds, link, comment) values ((select id from competitor where"
+						+ " member_number = ?), null, date '2027-03-07', 'Trka uz jezero', 'length', 'race',"
 						+ " 'Struga', (select id from country where code = 'MK'), 8.0000, 40, 40, 2400,"
 						+ " '', '') returning id")
 				.param(MEMBER_ONE).query(Long.class).single();
@@ -1766,16 +1766,16 @@ class VerificationApiTest {
 		   typed in another country than anybody's here, so a town read off any other row is a
 		   different answer. */
 		long chosen = db.sql("insert into result_submission (competitor_id, race_id, race_date,"
-						+ " race_name, race_kind, distance_km, ascent_m, descent_m, seconds,"
+						+ " race_name, race_kind, event_kind, distance_km, ascent_m, descent_m, seconds,"
 						+ " link, comment, event_id) values ((select id from competitor where"
-						+ " member_number = ?), null, date '2027-03-07', 'Trka na izabranom', 'free',"
+						+ " member_number = ?), null, date '2027-03-07', 'Trka na izabranom', 'free', 'race',"
 						+ " 7.0000, 10, 10, 2000, '', '', ?) returning id")
 				.params(MEMBER_ONE, chosenEvent).query(Long.class).single();
 		queuedRun(MEMBER_ONE, "Trka na izabranom", "", "2027-03-12 09:00:00+00", chosen);
 		long typed = db.sql("insert into result_submission (competitor_id, race_id, race_date,"
-						+ " race_name, race_kind, place_id, distance_km, ascent_m, descent_m, seconds,"
-						+ " link, comment, event_name) values ((select id from competitor where"
-						+ " member_number = ?), null, date '2027-03-07', 'Krug oko jezera', 'free', "
+						+ " race_name, race_kind, event_kind, place_id, distance_km, ascent_m, descent_m,"
+						+ " seconds, link, comment, event_name) values ((select id from competitor where"
+						+ " member_number = ?), null, date '2027-03-07', 'Krug oko jezera', 'free', 'race', "
 						+ EVERYBODYS_TOWN + ", 6.0000, 10, 10, 1900, '', '', 'Kros oko jezera')"
 						+ " returning id")
 				.param(MEMBER_ONE).query(Long.class).single();

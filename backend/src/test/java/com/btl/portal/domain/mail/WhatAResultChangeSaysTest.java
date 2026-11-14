@@ -38,6 +38,14 @@ class WhatAResultChangeSaysTest {
 	private static final Run ANOTHER_RUN = new Run("Kratka trka", LocalDate.of(2026, 11, 9),
 			new BigDecimal("9.5"), 12, 7, 2645, new BigDecimal("8.10"));
 
+	/** A run of an unscored race, which has no points to tell (`Run#points`, PDL 15.11.2026). */
+	private static final Run AN_UNSCORED_RUN = new Run("Plivanje", LocalDate.of(2027, 5, 6),
+			new BigDecimal("3"), 0, 0, 3600, null);
+
+	/** And a second, for the message that carries two. */
+	private static final Run ANOTHER_UNSCORED_RUN = new Run("Plivanje", LocalDate.of(2027, 5, 6),
+			new BigDecimal("3.5"), 0, 40, 3500, null);
+
 	private static ResourceBundle words() {
 		return ResourceBundle.getBundle("notices/results", Locale.ROOT);
 	}
@@ -419,14 +427,15 @@ class WhatAResultChangeSaysTest {
 	void everyOccasionInEnglishIsEnglishAndSignedAsTheOwnerChose() {
 		for (Said said : everyOneOfThem(MailLanguage.ENGLISH)) {
 			assertThat(said.body())
-					.contains("ascent 350 m")
+					/* The run of a scored race, or of an unscored one (AN_UNSCORED_RUN), in English words. */
+					.containsAnyOf("ascent 350 m", "ascent 0 m")
 					.endsWith("Balkanska trkačka liga")
 					.doesNotContain("uspon")
 					.doesNotContain("Sačuvajte");
 		}
 
 		for (Said said : everyOneOfThem(MailLanguage.SERBIAN)) {
-			assertThat(said.body()).contains("uspon 350 m").doesNotContain("ascent");
+			assertThat(said.body()).containsAnyOf("uspon 350 m", "uspon 0 m").doesNotContain("ascent");
 		}
 	}
 
@@ -480,8 +489,37 @@ class WhatAResultChangeSaysTest {
 				.isInstanceOf(NullPointerException.class);
 		assertThatThrownBy(() -> new Run("Trka", LocalDate.now(), null, 0, 0, 1, BigDecimal.ONE))
 				.isInstanceOf(NullPointerException.class);
-		assertThatThrownBy(() -> new Run("Trka", LocalDate.now(), BigDecimal.ONE, 0, 0, 1, null))
-				.isInstanceOf(NullPointerException.class);
+		/* NO POINTS IS NOT „NOT THERE": it is a run of an unscored race (Run#points), told below. */
+	}
+
+	/**
+	 * A RUN OF AN UNSCORED RACE IS WRITTEN WITHOUT POINTS IN BOTH LANGUAGES, AND THE TWO MESSAGES ABOUT SENDING
+	 * IT IN AND ASKING TO CHANGE IT ARE THEIR OWN: no sentence about points being final, and the change shows
+	 * on his profile (PDL, 15.11.2026, the owner's words on the questions of steps 2b and 3). The run in the
+	 * line ends with its time; everything before it is what a scored run says.
+	 */
+	@Test
+	void aRunOfAnUnscoredRaceNamesNoPointsAndHasItsOwnTwoMessages() {
+		assertThat(WhatAResultChangeSays.inWords(AN_UNSCORED_RUN, MailLanguage.SERBIAN))
+				.isEqualTo("Plivanje, 06.05.2027, 3,00 km, uspon 0 m, spust 0 m, vreme 1:00:00");
+		assertThat(WhatAResultChangeSays.inWords(AN_UNSCORED_RUN, MailLanguage.ENGLISH))
+				.endsWith("time 1:00:00").doesNotContain("points");
+
+		Said entered = WhatAResultChangeSays.entered(AN_UNSCORED_RUN, MailLanguage.SERBIAN);
+
+		assertThat(entered.subject()).isEqualTo("Primili smo vaš rezultat");
+		assertThat(entered.body()).isEqualTo(String.join("\n", "Primili smo rezultat koji ste poslali:", "",
+				"Plivanje, 06.05.2027, 3,00 km, uspon 0 m, spust 0 m, vreme 1:00:00", "", "Balkanska trkačka liga"));
+		assertThat(WhatAResultChangeSays.changed(AN_UNSCORED_RUN, ANOTHER_UNSCORED_RUN, MailLanguage.SERBIAN).body())
+				.contains("Izmena se vidi na vašem profilu kad bude potvrđena.").doesNotContain("poretku")
+				.doesNotContain("bod");
+		assertThat(WhatAResultChangeSays.changed(AN_UNSCORED_RUN, ANOTHER_UNSCORED_RUN, MailLanguage.ENGLISH).body())
+				.contains("The change shows on your profile once it is confirmed.").doesNotContain("standings")
+				.doesNotContain("points");
+		assertThat(WhatAResultChangeSays.approved(AN_UNSCORED_RUN, MailLanguage.SERBIAN).body()).doesNotContain("bod");
+		assertThat(WhatAResultChangeSays.entered(A_RUN, MailLanguage.SERBIAN).body())
+				.as("a scored run lost the sentence about its points")
+				.contains("Bodovi su konačni kad rezultat bude potvrđen.").contains("123,45 bodova");
 	}
 
 	/** All three, built through the three methods a caller really uses rather than through
@@ -494,7 +532,9 @@ class WhatAResultChangeSaysTest {
 	private static Said[] everyOneOfThem(MailLanguage in) {
 		return new Said[] {
 				WhatAResultChangeSays.entered(A_RUN, in),
+				WhatAResultChangeSays.entered(AN_UNSCORED_RUN, in),
 				WhatAResultChangeSays.changed(A_RUN, ANOTHER_RUN, in),
+				WhatAResultChangeSays.changed(AN_UNSCORED_RUN, ANOTHER_UNSCORED_RUN, in),
 				WhatAResultChangeSays.deleted(A_RUN, in),
 				WhatAResultChangeSays.approved(A_RUN, in),
 				WhatAResultChangeSays.enteredBeforeTheLeague(A_RUN, in),

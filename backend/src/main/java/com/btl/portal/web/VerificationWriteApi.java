@@ -497,6 +497,23 @@ class VerificationWriteApi {
 			+ " Izaberi drugi događaj ili upiši nov naziv.";
 
 	/**
+	 * THE EVENT OR THE RACE THE ANSWER PUTS THE RUN ON IS OF THE OTHER KIND THAN THE ONE THE MEMBER SENT IT
+	 * UNDER: a scored race where he sent an unscored one, or the other way round.
+	 *
+	 * <p>Owner, PDL, 15.11.2026, overturning „a moderator to sme da promeni pri odobravanju": „Racunaj da
+	 * nikad ne sme da promeni", with the outcome he chose: „moderator vrstu ne menja. Vrsta je onakva kakvu
+	 * je član izabrao; ako je pogrešio, moderator odbija prijavu uz razlog, a član je ponovo šalje sa
+	 * tačnom vrstom." Putting the run on an event of the other kind would change it all the same, so it is
+	 * refused, whichever of the three ways the answer names one: a race of the calendar, an event chosen,
+	 * or a name typed that the event of that name already answers to in the year of the run. 409 for the
+	 * reason the head of this class gives. <b>The words are a proposal of the author of step 3</b> and go
+	 * to the owner with the pull request.
+	 */
+	private static final String THE_KIND_IS_THE_MEMBERS = "Ovaj događaj nije iste vrste kao trka koju"
+			+ " je član prijavio, a vrsta ostaje onakva kakvu je on izabrao. Ako je pogrešio, odbij prijavu"
+			+ " uz razlog, pa će je poslati ponovo sa tačnom vrstom.";
+
+	/**
 	 * THE RACE WOULD MOVE ITS EVENT TO AN ADDRESS ANOTHER EVENT HOLDS.
 	 *
 	 * <p>A race on an earlier day moves its event to that day (PDL P9, owner, 19.10.2026: „ako
@@ -1766,9 +1783,15 @@ class VerificationWriteApi {
 						   fallback is the coordinator's reading (PDL „[IZVEDENO 19.10.2026, moje, PR
 						   581]”). */
 						+ " coalesce(rs.place_id, chosen.place_id), coalesce(rs.city, chosen.city),"
-						+ " coalesce(rs.country_id, chosen.country_id)"
+						+ " coalesce(rs.country_id, chosen.country_id),"
+						/* THE KIND THE RUN WAS SENT UNDER (V101): the member's on a run he described,
+						   and the event's of its race on a run from the calendar, which is the one
+						   kind such a run can be (PDL, 15.11.2026, „Vrsta je onakva kakvu je član
+						   izabrao"). */
+						+ " coalesce(rs.event_kind, own.kind)"
 						+ " from result_submission rs"
 						+ " left join race ra on ra.id = rs.race_id"
+						+ " left join btl_event own on own.id = ra.event_id"
 						+ " left join btl_event chosen on chosen.id = rs.event_id"
 						+ " where rs.id = ?")
 				.param(item.resultSubmissionId())
@@ -1781,7 +1804,7 @@ class VerificationWriteApi {
 								: new WhatARaceCarries.ARace(row.getString(10), row.getBigDecimal(11),
 										row.getInt(12), row.getInt(13), row.getInt(14)),
 						row.getObject(15, Long.class), row.getString(16),
-						row.getObject(17, Long.class)))
+						row.getObject(17, Long.class), row.getString(18)))
 				.single();
 	}
 
@@ -1849,6 +1872,12 @@ class VerificationWriteApi {
 				return Counting.notCounted(no(HttpStatus.BAD_REQUEST, THE_RACE_IS_NOT_KNOWN));
 			}
 
+			/* AND OF THE KIND THE MEMBER SENT THE RUN UNDER (THE_KIND_IS_THE_MEMBERS). */
+			if (!TheDayOfAnEvent.theEventOfTheRace(db, typed.raceId()).orElseThrow().kind()
+					.equals(sent.eventKind())) {
+				return Counting.notCounted(no(HttpStatus.CONFLICT, THE_KIND_IS_THE_MEMBERS));
+			}
+
 			on = chosen.get();
 		} else if (typed.newRace() != null) {
 			NewRace asked = typed.newRace();
@@ -1885,6 +1914,13 @@ class VerificationWriteApi {
 
 			if (noRace != null) {
 				return Counting.notCounted(no(HttpStatus.CONFLICT, noRace));
+			}
+
+			/* AN EVENT THAT IS THERE IS OF THE KIND THE MEMBER SENT THE RUN UNDER, the one he chose or the
+			   one the name he typed already answers to (THE_KIND_IS_THE_MEMBERS); a new one is made of
+			   that kind (theRaceThisApprovalMakes). */
+			if (there.isPresent() && !there.get().kind().equals(sent.eventKind())) {
+				return Counting.notCounted(no(HttpStatus.CONFLICT, THE_KIND_IS_THE_MEMBERS));
 			}
 
 			/* THE PLACE THE MODERATOR NAMED, judged before the row is claimed. A town typed is a town
@@ -1932,7 +1968,11 @@ class VerificationWriteApi {
 		}
 
 		Figures given = typed.amended() == null ? sent.figures() : typed.amended().figures();
-		Figures counted = on.made() == null ? WhatARaceCarries.figuresOf(on.race(), given) : given;
+		/* THE CLIMB AND THE FALL MAY BE LEFT OUT AT AN UNSCORED RACE, and are nought then
+		   (PointsOfARun#withTheClimbOptional). Asked of the kind the run was sent under, which is the kind
+		   of the race it goes on: every way above that names another kind has been refused. */
+		Figures counted = PointsOfARun.withTheClimbOptional(sent.scored(),
+				on.made() == null ? WhatARaceCarries.figuresOf(on.race(), given) : given);
 
 		if (ResultWriteApi.notADistance(counted.distanceKm())
 				|| ResultWriteApi.notAClimb(counted.ascentM())
@@ -2115,7 +2155,8 @@ class VerificationWriteApi {
 		   is COUNTED on, which for a race the calendar did not hold is the one the moderator named
 		   and not the words the member typed. */
 		Run run = new Run(on.raceName(), on.day(), counted.distanceKm(), counted.ascentM(),
-				counted.descentM(), counted.seconds(), points);
+				counted.descentM(), counted.seconds(),
+				PointsOfARun.toTell(PointsOfARun.scored(db, race), points));
 
 		if (sent.amendsResultId() == null) {
 			/* HIS COMPETITOR ROW IS TAKEN FIRST, FOR KEY SHARE, AND THAT ORDER IS WHAT KEEPS THE
@@ -2170,7 +2211,7 @@ class VerificationWriteApi {
 		   since the race the run is now counted on has its own. */
 		db.sql("update result_submission set race_id = ?, race_date = ?, race_name = null,"
 						+ " race_kind = null, place_id = null, city = null, country_id = null,"
-						+ " event_id = null, event_name = null,"
+						+ " event_id = null, event_name = null, event_kind = null,"
 						+ " distance_km = ?, ascent_m = ?, descent_m = ?, seconds = ? where id = ?")
 				.params(race, on.day(), counted.distanceKm(), counted.ascentM(), counted.descentM(),
 						counted.seconds(), sent.id())
@@ -2206,8 +2247,9 @@ class VerificationWriteApi {
 	 * overturned).
 	 *
 	 * <p><b>THE EVENT IT MAKES.</b> The moderator's name for it, the day the member ran, the town the
-	 * member gave, kind {@code race} (a member reports a run, and only an event that is a race holds
-	 * races, {@code RaceWriteApi}), not featured, and an empty description and link - the event's
+	 * member gave, the kind the member sent the run under, a scored or an unscored race (V101; PDL,
+	 * 15.11.2026: „Vrsta je onakva kakvu je član izabrao"; until that day the kind {@code race} was
+	 * written here as a literal), not featured, and an empty description and link - the event's
 	 * link is the organiser's page (V7), and the address the member sent is proof of his run, not
 	 * that. Its day is its one race's, which is V29's rule as well, asked on commit.
 	 *
@@ -2239,7 +2281,7 @@ class VerificationWriteApi {
 							+ " on conflict (slug) do nothing returning id")
 					.params(address, on.made().eventName(), on.day(), on.made().town().placeId(),
 							on.made().town().city(), on.made().town().countryId(),
-							WhatAnEventCarries.A_RACE)
+							sent.eventKind())
 					.query(Long.class)
 					.optional();
 
@@ -2251,7 +2293,7 @@ class VerificationWriteApi {
 					.param(address).query(Long.class).single();
 		}
 
-		return aRaceOnTheEvent(there, on, counted);
+		return aRaceOnTheEvent(there, on, counted, sent.eventKind());
 	}
 
 	/**
@@ -2276,9 +2318,17 @@ class VerificationWriteApi {
 	 * after the hold and not before, so an approval that waited for another approval of the same words
 	 * meets the race that one made.
 	 */
-	private Placed aRaceOnTheEvent(long id, CountedOn on, Figures counted) {
+	private Placed aRaceOnTheEvent(long id, CountedOn on, Figures counted, String kind) {
 		TheDayOfAnEvent.Standing event = TheDayOfAnEvent.theEventHeldForThisWrite(db, id)
 				.orElseThrow(() -> new TheCalendarMovedMeanwhile(THE_EVENT_IS_NOT_KNOWN));
+
+		/* OF THE KIND THE MEMBER SENT THE RUN UNDER, asked again of the event as it is held: an event
+		   another writer made at this address in between, or one whose kind the administration changed,
+		   answers here (THE_KIND_IS_THE_MEMBERS). An event that holds no races at all is told so below
+		   (THE_EVENT_HOLDS_NO_RACES), which is the truer of the two sentences about it. */
+		if (WhatAnEventCarries.holdsRaces(event.kind()) && !event.kind().equals(kind)) {
+			throw new TheCalendarMovedMeanwhile(THE_KIND_IS_THE_MEMBERS);
+		}
 
 		/* A RACE THE EVENT ALREADY HAS UNDER THE NAME TYPED IS THE RACE, and the run goes on it
 		   (PDL, owner, 23.10.2026, „„Bez duple trke” važi i kod ODOBRAVANJA prijavljenog rezultata:
@@ -2698,10 +2748,17 @@ class VerificationWriteApi {
 	 *                      sent on an event he chose, the three are that event's town (V67)
 	 * @param city          the town he typed instead, with {@code countryId} beside it
 	 * @param countryId     the typed town's country, as its key
+	 * @param eventKind     the kind the run was sent under (V101): the member's on a described run, its
+	 *                      race's event's on a run from the calendar
 	 */
 	private record Submission(long id, Long raceId, LocalDate raceDate, String raceName,
 			Figures figures, Long amendsResultId, WhatARaceCarries.ARace race, Long placeId,
-			String city, Long countryId) {
+			String city, Long countryId, String eventKind) {
+
+		/** Whether the run was sent as a run of a scored race (see {@code eventKind}). */
+		boolean scored() {
+			return !WhatAnEventCarries.AN_UNSCORED_RACE.equals(eventKind);
+		}
 	}
 
 	/**

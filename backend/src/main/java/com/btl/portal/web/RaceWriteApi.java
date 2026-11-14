@@ -729,8 +729,10 @@ class RaceWriteApi {
 					.params(counted.distanceKm(), counted.ascentM(), counted.descentM(), counted.seconds(), points, run.id())
 					.update();
 
-			Run was = new Run(before.name(), before.day(), run.figures().distanceKm(), run.figures().ascentM(), run.figures().descentM(), run.figures().seconds(), run.points());
-			Run is = new Run(race.name(), race.date(), counted.distanceKm(), counted.ascentM(), counted.descentM(), counted.seconds(), points);
+			/* AND THE LINE ABOUT IT NAMES NO POINTS AT AN UNSCORED RACE (PointsOfARun#toTell). */
+			boolean scored = PointsOfARun.scored(db, id);
+			Run was = new Run(before.name(), before.day(), run.figures().distanceKm(), run.figures().ascentM(), run.figures().descentM(), run.figures().seconds(), PointsOfARun.toTell(scored, run.points()));
+			Run is = new Run(race.name(), race.date(), counted.distanceKm(), counted.ascentM(), counted.descentM(), counted.seconds(), PointsOfARun.toTell(scored, points));
 
 			tellHimHisRunWasCountedAgain(run.member(), was, is);
 		}

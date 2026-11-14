@@ -48,7 +48,9 @@ class ARunOnAChosenEventCarriedOverTest extends DatabaseTest {
 
 	/** Everything V67 adds taken away, and the one rule of V10 it drops put back, as V10 wrote it. */
 	private void whatV67Changes() {
+		/* And the kind V101 adds after it, which a table of before V67 did not have either. */
 		jdbc.execute("alter table result_submission"
+				+ " drop column event_kind cascade,"
 				+ " drop constraint result_submission_a_calendar_run_names_no_town,"
 				+ " drop constraint result_submission_a_chosen_event_brings_its_town,"
 				+ " add constraint result_submission_described_race_names_its_town"

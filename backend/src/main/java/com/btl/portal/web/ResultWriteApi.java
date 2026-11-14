@@ -1,5 +1,6 @@
 package com.btl.portal.web;
 
+import com.btl.portal.domain.event.WhatAnEventCarries;
 import com.btl.portal.domain.event.WhatARaceCarries;
 import com.btl.portal.domain.event.WhatARaceCarries.Figures;
 import com.btl.portal.domain.mail.MailLanguage;
@@ -370,10 +371,19 @@ class ResultWriteApi {
 	 *                   {@code eventName}: chosen or typed, as the town is
 	 * @param eventName  the name he TYPED where the calendar has no such event. One of the two is
 	 *                   asked for on this road; a run that names neither is a form not filled in
+	 * @param eventKind  THE KIND OF THE EVENT HE TYPED, a scored race ({@code race}) or an unscored one
+	 *                   ({@code unscored}), and only beside {@code eventName}. PDL, 14.11.2026, (4): „Kad
+	 *                   član opiše događaj kojeg nema u kalendaru, u formi bira Bodovana ili Nebodovana
+	 *                   trka (podrazumevano Bodovana)"; the default is the form's to start from, and a
+	 *                   run that names no kind here is a form not filled in, never a scored race (ADL A8:
+	 *                   „Izostavljeno polje nikad ne sme tiho da promeni vrednost"). An event he CHOSE has
+	 *                   its own kind, so a kind beside {@code eventId} is a second answer to a question the
+	 *                   calendar has answered, refused as a town beside it is
 	 */
 	record Ran(Long raceId, String raceName, LocalDate day, String raceKind, Long placeId,
 			String city, String country, BigDecimal distanceKm, Integer ascentM, Integer descentM,
-			Integer seconds, String link, String comment, Long eventId, String eventName) {
+			Integer seconds, String link, String comment, Long eventId, String eventName,
+			String eventKind) {
 	}
 
 	/**
@@ -494,8 +504,12 @@ class ResultWriteApi {
 		   deleted out from under it and `orElseThrow` never actually throws. */
 		Counted before = standing.get();
 		TheRace race = raceOf(before.raceId()).orElseThrow();
-		Figures figures = WhatARaceCarries.figuresOf(race.fixes(), new Figures(typed.distanceKm(),
-				typed.ascentM(), typed.descentM(), typed.seconds()));
+		/* THE CLIMB AND THE FALL MAY BE LEFT OUT AT AN UNSCORED RACE, and are nought then
+		   (PointsOfARun#withTheClimbOptional carries the owner's words); a correction is the same run
+		   at the same race, so it is asked of the race it is at. */
+		Figures figures = PointsOfARun.withTheClimbOptional(before.scored(),
+				WhatARaceCarries.figuresOf(race.fixes(), new Figures(typed.distanceKm(),
+						typed.ascentM(), typed.descentM(), typed.seconds())));
 
 		if (notADistance(figures.distanceKm()) || notAClimb(figures.ascentM())
 				|| notAClimb(figures.descentM()) || notATime(figures.seconds())) {
@@ -503,16 +517,16 @@ class ResultWriteApi {
 		}
 
 		Run after = new Run(before.raceName(), before.day(), figures.distanceKm(),
-				figures.ascentM(), figures.descentM(), figures.seconds(), pointsFor(
-						figures.distanceKm(), figures.ascentM(), figures.descentM(),
-						figures.seconds()));
+				figures.ascentM(), figures.descentM(), figures.seconds(), PointsOfARun.toTell(
+						before.scored(), pointsFor(figures.distanceKm(), figures.ascentM(),
+								figures.descentM(), figures.seconds())));
 
 		Recipient him = recipient(asking.account());
 		Said said = WhatAResultChangeSays.changed(before.run(), after, him.language());
 
 		Long made = inOneTransaction.execute(committing -> {
 			long submission = writeTheSubmission(me, before.raceId(), before.day(), null, null,
-					null, null, null, TheEvent.NONE, after, typed.link(), typed.comment(),
+					null, null, null, TheEvent.NONE, null, after, typed.link(), typed.comment(),
 					id.value());
 
 			queue(me, submission, before.raceName(), typed.comment());
@@ -601,7 +615,7 @@ class ResultWriteApi {
 		   reason gives for the race's own description. */
 		if (typed.raceName() != null || typed.raceKind() != null || typed.placeId() != null
 				|| typed.city() != null || typed.country() != null || typed.eventId() != null
-				|| typed.eventName() != null) {
+				|| typed.eventName() != null || typed.eventKind() != null) {
 			return no(THE_RACE_IS_NAMED_TWICE);
 		}
 
@@ -630,8 +644,12 @@ class ResultWriteApi {
 			return no(HE_HAS_A_RESULT_ON_THIS_RACE);
 		}
 
-		Figures figures = WhatARaceCarries.figuresOf(race.fixes(), new Figures(typed.distanceKm(),
-				typed.ascentM(), typed.descentM(), typed.seconds()));
+		/* A RACE OF AN UNSCORED EVENT LETS THE CLIMB AND THE FALL BE LEFT OUT, and nought is written
+		   (PointsOfARun#withTheClimbOptional), and its message names no points. */
+		boolean scored = PointsOfARun.scored(db, race.id());
+		Figures figures = PointsOfARun.withTheClimbOptional(scored,
+				WhatARaceCarries.figuresOf(race.fixes(), new Figures(typed.distanceKm(),
+						typed.ascentM(), typed.descentM(), typed.seconds())));
 
 		if (notADistance(figures.distanceKm()) || notAClimb(figures.ascentM())
 				|| notAClimb(figures.descentM()) || notATime(figures.seconds())) {
@@ -639,11 +657,12 @@ class ResultWriteApi {
 		}
 
 		Run run = new Run(race.name(), race.day(), figures.distanceKm(), figures.ascentM(),
-				figures.descentM(), figures.seconds(), pointsFor(figures.distanceKm(),
-						figures.ascentM(), figures.descentM(), figures.seconds()));
+				figures.descentM(), figures.seconds(), PointsOfARun.toTell(scored,
+						pointsFor(figures.distanceKm(), figures.ascentM(), figures.descentM(),
+								figures.seconds())));
 
 		return write(me, typed.raceId(), race.day(), null, null, null, null, null, TheEvent.NONE,
-				run, typed, race.name());
+				null, run, typed, race.name());
 	}
 
 	/*
@@ -663,6 +682,17 @@ class ResultWriteApi {
 	 * moment somebody knows it - which is V10's own reason for these columns.
 	 */
 	private ResponseEntity<?> described(long me, Ran typed) {
+		/* THE KIND OF THE EVENT, FIRST, because whether the climb and the fall may be left out turns on
+		   it (PointsOfARun#withTheClimbOptional). The member's own where he typed the event, and the
+		   chosen event's where he chose one (V101 keeps either). A chosen event that is not there, or
+		   that holds no races, is refused below; until then its run is judged as a scored race's,
+		   which is how every run was judged before an unscored race existed. */
+		String kind = typed.eventId() != null ? kindOfTheEvent(typed.eventId()).orElse(null)
+				: typed.eventKind();
+		boolean scored = !WhatAnEventCarries.AN_UNSCORED_RACE.equals(kind);
+		Figures figures = PointsOfARun.withTheClimbOptional(scored, new Figures(typed.distanceKm(),
+				typed.ascentM(), typed.descentM(), typed.seconds()));
+
 		/* THE KIND IS ASKED FOR ITSELF BEFORE THE CODEBOOK IS ASKED ABOUT IT, and that too
 		   was a 500: `WhatARaceCarries.KINDS` is a `Set.of(...)`, and an immutable set THROWS
 		   on `contains(null)` rather than answering false. So a form that never chose a kind
@@ -672,9 +702,22 @@ class ResultWriteApi {
 		   chosen by its key or typed, and a run that names neither is a form not filled in. */
 		if (isNothing(typed.raceName()) || typed.day() == null || typed.raceKind() == null
 				|| !WhatARaceCarries.KINDS.contains(typed.raceKind())
-				|| notADistance(typed.distanceKm()) || notAClimb(typed.ascentM())
-				|| notAClimb(typed.descentM()) || notATime(typed.seconds())
+				|| notADistance(figures.distanceKm()) || notAClimb(figures.ascentM())
+				|| notAClimb(figures.descentM()) || notATime(figures.seconds())
 				|| (typed.eventId() == null && isNothing(typed.eventName()))) {
+			return no(THE_FORM_IS_NOT_COMPLETE);
+		}
+
+		/* A KIND BESIDE A CHOSEN EVENT is a second answer to what the calendar answers (see Ran), and is
+		   refused as a town beside one is; a TYPED event with no kind, or with one that is not a race, is
+		   a form not filled in. Asked of the two words and not of `WhatAnEventCarries.KINDS`, because a
+		   training or a gathering holds no race a run could be at. */
+		if (typed.eventId() != null && typed.eventKind() != null) {
+			return no(THE_RACE_IS_NAMED_TWICE);
+		}
+
+		if (typed.eventId() == null && !WhatAnEventCarries.A_RACE.equals(kind)
+				&& !WhatAnEventCarries.AN_UNSCORED_RACE.equals(kind)) {
 			return no(THE_FORM_IS_NOT_COMPLETE);
 		}
 
@@ -703,8 +746,11 @@ class ResultWriteApi {
 			   sends him to choose again, which is what he has to do: my reading, since that sentence
 			   names the race and not the event (said in the PR, with words of its own to come with
 			   the member's form). */
-			if (!Boolean.TRUE.equals(db.sql("select exists(select 1 from btl_event where id = ?)")
-					.param(typed.eventId()).query(Boolean.class).single())) {
+			/* AND SO IS AN EVENT THAT HOLDS NO RACE, a training or a gathering, which the member's
+			   form never offers (`eventsToOffer.ts`) and the approval would refuse in any case
+			   (`VerificationWriteApi`, „Taj događaj nije trka."): a run on it has no kind of race to
+			   carry (V101), so it is told now, with the sentence that sends him to choose again. */
+			if (kind == null || !WhatAnEventCarries.holdsRaces(kind)) {
 				return no(THE_RACE_IS_NOT_KNOWN);
 			}
 		} else {
@@ -726,9 +772,10 @@ class ResultWriteApi {
 		boolean fromTheCodebook = typed.placeId() != null;
 		String named = typed.raceName().strip();
 
-		Run run = new Run(named, typed.day(), typed.distanceKm(), typed.ascentM(),
-				typed.descentM(), typed.seconds(),
-				pointsFor(typed.distanceKm(), typed.ascentM(), typed.descentM(), typed.seconds()));
+		Run run = new Run(named, typed.day(), figures.distanceKm(), figures.ascentM(),
+				figures.descentM(), figures.seconds(), PointsOfARun.toTell(scored,
+						pointsFor(figures.distanceKm(), figures.ascentM(), figures.descentM(),
+								figures.seconds())));
 
 		return write(me, null, typed.day(), named, typed.raceKind(),
 				fromTheCodebook ? placeKey(typed.placeId()).orElseThrow() : null,
@@ -736,7 +783,12 @@ class ResultWriteApi {
 				chosen || fromTheCodebook ? null : countryKey(typed.country()).orElseThrow(),
 				chosen ? new TheEvent(typed.eventId(), null)
 						: new TheEvent(null, typed.eventName().strip()),
-				run, typed, named);
+				kind, run, typed, named);
+	}
+
+	/** The kind of an event of the calendar, and nothing where no event answers to the key. */
+	private Optional<String> kindOfTheEvent(long id) {
+		return db.sql("select kind from btl_event where id = ?").param(id).query(String.class).optional();
 	}
 
 	/**
@@ -849,7 +901,7 @@ class ResultWriteApi {
 	 */
 	private ResponseEntity<?> write(long me, Long raceId, LocalDate day, String raceName,
 			String raceKind, Long theTownsKey, String city, Long theCountrysKey, TheEvent event,
-			Run run, Ran typed, String subject) {
+			String eventKind, Run run, Ran typed, String subject) {
 		/* IN HIS LANGUAGE, which is the account's (owner, 10.10.2026, Q3: the inbox copy of the
 		   messages about a result follows the language of the letter). There is no letter for a
 		   run sent in, and so no address to read the language beside; it is read off the account
@@ -860,7 +912,7 @@ class ResultWriteApi {
 
 		Long made = inOneTransaction.execute(committing -> {
 			long submission = writeTheSubmission(me, raceId, day, raceName, raceKind, theTownsKey,
-					city, theCountrysKey, event, run, typed.link(), typed.comment(), null);
+					city, theCountrysKey, event, eventKind, run, typed.link(), typed.comment(), null);
 
 			queue(me, submission, subject, typed.comment());
 			tell(me, said);
@@ -886,19 +938,21 @@ class ResultWriteApi {
 	 * @param theCountrysKey the same, one column along
 	 * @param event          the event a described run names (V66), and {@link TheEvent#NONE}
 	 *                       everywhere else
+	 * @param eventKind      the kind of that event (V101): the member's choice where he typed it, the
+	 *                       chosen event's where he chose one, and empty on a run from the calendar
 	 */
 	private long writeTheSubmission(long me, Long raceId, LocalDate day, String raceName,
 			String raceKind, Long theTownsKey, String city, Long theCountrysKey, TheEvent event,
-			Run run, String link, String comment, Long amends) {
+			String eventKind, Run run, String link, String comment, Long amends) {
 		return db.sql("insert into result_submission (competitor_id, race_id, race_date,"
 						+ " race_name, race_kind, place_id, city, country_id, distance_km,"
 						+ " ascent_m, descent_m, seconds, link, comment, amends_result_id,"
-						+ " event_id, event_name)"
-						+ " values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) returning id")
+						+ " event_id, event_name, event_kind)"
+						+ " values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) returning id")
 				.params(me, raceId, day, raceName, raceKind, theTownsKey, city, theCountrysKey,
 						run.distanceKm(), run.ascentM(), run.descentM(), run.seconds(),
 						ProofThatTheRunHappened.linkAsItGoesIn(report(link, comment)),
-						orEmpty(comment), amends, event.chosen(), event.typed())
+						orEmpty(comment), amends, event.chosen(), event.typed(), eventKind)
 				.query(Long.class)
 				.single();
 	}
@@ -925,13 +979,15 @@ class ResultWriteApi {
 	 */
 	private Optional<Counted> his(long id, long me) {
 		return db.sql("select r.id, r.race_id, r.race_date, ra.name, r.distance_km, r.ascent_m,"
-						+ " r.descent_m, r.seconds, r.points"
+						+ " r.descent_m, r.seconds, r.points,"
+						+ " exists(select 1 from scored_race s where s.id = r.race_id)"
 						+ " from result r join race ra on ra.id = r.race_id"
 						+ " where r.id = ? and r.competitor_id = ?")
 				.params(id, me)
 				.query((row, one) -> new Counted(row.getLong(1), row.getLong(2),
 						row.getDate(3).toLocalDate(), row.getString(4), row.getBigDecimal(5),
-						row.getInt(6), row.getInt(7), row.getInt(8), row.getBigDecimal(9)))
+						row.getInt(6), row.getInt(7), row.getInt(8), row.getBigDecimal(9),
+						row.getBoolean(10)))
 				.optional();
 	}
 
@@ -1131,12 +1187,19 @@ class ResultWriteApi {
 		return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new Refused(reason));
 	}
 
-	/** A result as it stands today, which is the old value the message has to carry. */
+	/**
+	 * A result as it stands today, which is the old value the message has to carry.
+	 *
+	 * @param scored whether its race is a scored one ({@code scored_race}, V99): the message about a run of
+	 *               an unscored race names no points (PointsOfARun#toTell)
+	 */
 	private record Counted(long id, long raceId, LocalDate day, String raceName,
-			BigDecimal distanceKm, int ascentM, int descentM, int seconds, BigDecimal points) {
+			BigDecimal distanceKm, int ascentM, int descentM, int seconds, BigDecimal points,
+			boolean scored) {
 
 		Run run() {
-			return new Run(raceName, day, distanceKm, ascentM, descentM, seconds, points);
+			return new Run(raceName, day, distanceKm, ascentM, descentM, seconds,
+					PointsOfARun.toTell(scored, points));
 		}
 	}
 

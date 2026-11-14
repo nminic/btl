@@ -473,12 +473,18 @@ class VerificationApi {
 	 *                     calendar has no such event; nothing where neither is there. V66 keeps
 	 *                     the chosen key and the typed name exclusive, so this never chooses
 	 *                     between two names that are both there
+	 * @param eventKind    THE KIND OF THE EVENT THE RUN IS ON, a scored race ({@code race}) or an unscored
+	 *                     one ({@code unscored}): the race's event's for a run from the calendar, and the
+	 *                     kind the member sent a described run under (V101). PDL, 15.11.2026: „Vrsta je
+	 *                     onakva kakvu je član izabrao"; the screen shows it as a fact and never offers to
+	 *                     change it, and a run of an unscored race is shown with no points. Nothing where the
+	 *                     tab carries no run
 	 */
 	record Waiting(String queue, long id, LocalDate date, String memberNumber, String who,
 			String subject, String subjectId, String body, String kind, String city,
 			String country, Long photoId, Crop crop, Rating rating, Long raceId, LocalDate raceDate,
 			String raceKind, BigDecimal distanceKm, Integer ascentM, Integer descentM,
-			Integer seconds, String link, Long eventId, String eventName) {
+			Integer seconds, String link, Long eventId, String eventName, String eventKind) {
 	}
 
 	/**
@@ -653,6 +659,10 @@ class VerificationApi {
 						   the calendar, the one the member chose or typed for a described run, and
 						   nothing on every other tab, where both columns join to nothing. */
 						+ " run_event.id as event_id, coalesce(run_event.name, rs.event_name) as event_name,"
+						/* AND ITS KIND (see `Waiting.eventKind`): a described run always carries the
+						   member's (V101, `result_submission_a_described_run_carries_its_kind`), so the
+						   event joined answers only for a run from the calendar, whose race it is. */
+						+ " coalesce(rs.event_kind, run_event.kind) as event_kind,"
 						/* THE CIRCLE OF THE PICTURE THIS ROW HOLDS, named and last so that nothing
 						   above it moves: the mapping reads the early columns by place. Off `shown`
 						   below, which is joined by the ROW's pointer and never by the member's
@@ -774,7 +784,8 @@ class VerificationApi {
 							row.getObject("race_date", LocalDate.class),
 							row.getString("race_kind"), counted.distanceKm(), counted.ascentM(),
 							counted.descentM(), counted.seconds(), row.getString("link"),
-							row.getObject("event_id", Long.class), row.getString("event_name"));
+							row.getObject("event_id", Long.class), row.getString("event_name"),
+							row.getString("event_kind"));
 				})
 				.list();
 	}

@@ -137,7 +137,13 @@ public final class WhatAResultChangeSays {
 	 *                   anybody typed it in (ADL A12, 2c)
 	 * @param distanceKm as measured, which since V25 may carry four decimals
 	 * @param points     what {@code BtlScoreCalculator} makes of the four numbers, and
-	 *                   never a number that arrived with a request
+	 *                   never a number that arrived with a request. <b>Empty for a run of an
+	 *                   unscored race</b>, which has no points to tell: PDL, 15.11.2026, „Poruka
+	 *                   članu posle prijave ili izmene rezultata nebodovane trke ne nosi bodove”, and
+	 *                   the plan's step 3, „poruka o odobrenom rezultatu ne pominje bodove za
+	 *                   nebodovanu trku". The column keeps nought (V7 is NOT NULL); a message that
+	 *                   said „0,00 bodova" would tell the member the league scored his run at
+	 *                   nothing, which is not what happened: it did not score it at all
 	 */
 	public record Run(String raceName, LocalDate day, BigDecimal distanceKm, int ascentM,
 			int descentM, int seconds, BigDecimal points) {
@@ -146,7 +152,11 @@ public final class WhatAResultChangeSays {
 			Objects.requireNonNull(raceName, "raceName");
 			Objects.requireNonNull(day, "day");
 			Objects.requireNonNull(distanceKm, "distanceKm");
-			Objects.requireNonNull(points, "points");
+		}
+
+		/** Whether the league scores this run, which is whether it has points to tell. */
+		public boolean scored() {
+			return points != null;
 		}
 	}
 
@@ -174,9 +184,23 @@ public final class WhatAResultChangeSays {
 		 *  {@link WhatAResultChangeSays#entered}). */
 		A_RESULT_WAS_ENTERED("resultEntered", 1),
 
+		/**
+		 * THE SAME RUN SENT IN, AT AN UNSCORED RACE. PDL, 15.11.2026, the owner on the questions of the
+		 * author of steps 2b and 3: „rečenica „Bodovi su konačni kad rezultat bude potvrđen.” se
+		 * izostavlja", because there are no points for it to be final about.
+		 */
+		A_RESULT_WAS_ENTERED_UNSCORED("resultEnteredUnscored", 1),
+
 		/** „promenjen rezultat", one of the mandatory mails, and the one that carries both
 		 *  values. */
 		A_RESULT_WAS_CHANGED("resultChanged", 2),
+
+		/**
+		 * THE SAME REQUEST FOR A CHANGE, AT AN UNSCORED RACE, which stands in no standing. PDL, 15.11.2026:
+		 * „„Izmena se vidi u poretku kad bude potvrđena.” postaje „Izmena se vidi na vašem profilu kad bude
+		 * potvrđena.”" (the words were proposed to him and he chose them).
+		 */
+		A_RESULT_WAS_CHANGED_UNSCORED("resultChangedUnscored", 2),
 
 		/** Not on the list of mandatory mails by that name, and required by the same decision
 		 *  all the same: „Isto obavestenje ide i kad se obrise verifikovan rezultat." */
@@ -280,7 +304,8 @@ public final class WhatAResultChangeSays {
 	public static Said entered(Run sent, MailLanguage in) {
 		Objects.requireNonNull(sent, "sent");
 
-		return said(Told.A_RESULT_WAS_ENTERED, in, inWords(sent, in));
+		return said(sent.scored() ? Told.A_RESULT_WAS_ENTERED : Told.A_RESULT_WAS_ENTERED_UNSCORED, in,
+				inWords(sent, in));
 	}
 
 	/**
@@ -293,7 +318,10 @@ public final class WhatAResultChangeSays {
 		Objects.requireNonNull(before, "before");
 		Objects.requireNonNull(after, "after");
 
-		return said(Told.A_RESULT_WAS_CHANGED, in, inWords(before, in), inWords(after, in));
+		/* By the run as it will stand, which is at the same race as before: a correction does not move a
+		   run to another race („Menja se sve osim trke"), so the two are scored alike. */
+		return said(after.scored() ? Told.A_RESULT_WAS_CHANGED : Told.A_RESULT_WAS_CHANGED_UNSCORED, in,
+				inWords(before, in), inWords(after, in));
 	}
 
 	/** A RESULT HAS BEEN DELETED, and what it said is the whole of the message. */
@@ -418,17 +446,19 @@ public final class WhatAResultChangeSays {
 	public static String inWords(Run run, MailLanguage in) {
 		Objects.requireNonNull(in, "in");
 
+		/* AND NO POINTS AT ALL FOR A RUN THE LEAGUE DOES NOT SCORE (see Run#points): the line ends with
+		   the time, and nothing else in it changes. */
 		if (in == MailLanguage.ENGLISH) {
 			return run.raceName() + ", " + run.day().format(AN_ENGLISH_DAY) + ", "
 					+ twoDecimals(run.distanceKm(), '.') + " km, ascent " + run.ascentM()
 					+ " m, descent " + run.descentM() + " m, time " + asAClock(run.seconds())
-					+ ", " + twoDecimals(run.points(), '.') + " points";
+					+ (run.scored() ? ", " + twoDecimals(run.points(), '.') + " points" : "");
 		}
 
 		return run.raceName() + ", " + asADay(run.day()) + ", "
 				+ twoDecimals(run.distanceKm(), ',') + " km, uspon " + run.ascentM()
 				+ " m, spust " + run.descentM() + " m, vreme " + asAClock(run.seconds())
-				+ ", " + twoDecimals(run.points(), ',') + " bodova";
+				+ (run.scored() ? ", " + twoDecimals(run.points(), ',') + " bodova" : "");
 	}
 
 	/**

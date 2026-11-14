@@ -842,7 +842,16 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   main stood at V98 when it was written, and the rulebook's change of the same increment is V100.
 
 			   Pinned LAST, when the file was final, off this very assertion. */
-			new Applied("99", "V99__an_unscored_race_is_a_kind_of_event_and_only_a_scored_one_is_counted.sql", 1387120764));
+			new Applied("99", "V99__an_unscored_race_is_a_kind_of_event_and_only_a_scored_one_is_counted.sql", 1387120764),
+
+			/* V101. A described run carries the kind of its event, a scored or an unscored race (owner, 14.11.2026
+			   and 15.11.2026, PDL "Ostale discipline kao lična evidencija": „Vrsta je onakva kakvu je član
+			   izabrao"): one column on result_submission, every described run already standing given the scored
+			   kind it was sent under, and two rules. 101 and not 100: V100 is the rulebook's change of the same
+			   increment, merged last (PR 727).
+
+			   Pinned LAST, when the file was final, off this very assertion. */
+			new Applied("101", "V101__a_described_run_carries_the_kind_of_its_event.sql", 411634573));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {
