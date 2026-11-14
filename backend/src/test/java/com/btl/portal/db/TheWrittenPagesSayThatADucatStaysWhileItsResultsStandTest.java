@@ -1,5 +1,6 @@
 package com.btl.portal.db;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -32,6 +33,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 class TheWrittenPagesSayThatADucatStaysWhileItsResultsStandTest extends DatabaseTest {
 
 	static final String RULEBOOK = "pravilnik";
+
+	/** The text as V96 left it: V98 (owner, 13.11.2026) moved the rulebook's sign-off on, which is held by TheWrittenPagesNameTheRookiesWithTheLetterOfTheGenderTest. */
+	@BeforeEach
+	void theTextAsV96LeftIt() {
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "98");
+	}
 
 	/** The owner's sentence, as he approved it (08.11.2026), and its English as the assistant wrote it. */
 	static final String THE_SENTENCE_IN_SERBIAN =

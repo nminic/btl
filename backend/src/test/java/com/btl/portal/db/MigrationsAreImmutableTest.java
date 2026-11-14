@@ -826,7 +826,15 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   main stood at V96 when it was written.
 
 			   Pinned LAST, when the file was final, off this very assertion. */
-			new Applied("97", "V97__a_result_remembers_when_and_how_it_was_brought_in.sql", -645330917));
+			new Applied("97", "V97__a_result_remembers_when_and_how_it_was_brought_in.sql", -645330917),
+
+			/* V98. The rulebook names the rookie category in English with the letter of the gender in front, 'M Rookies' and
+			   'F Rookies', and its sign-off moves to 14.11.2026 (owner, 13.11.2026, PDL 'Početnička kategorija' and „Datum Poslednja
+			   izmena na pravnom tekstu pomera se uvek kad se reči tog teksta promene“): one edit of Article 36 in English and one
+			   sign-off in each language, each stopping the migration unless its old text stands exactly once.
+
+			   Pinned LAST, when the file was final, off this very assertion. */
+			new Applied("98", "V98__the_rulebook_names_the_rookie_category_with_the_letter_of_the_gender.sql", 1520798233));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {

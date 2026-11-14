@@ -1,5 +1,6 @@
 package com.btl.portal.db;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.postgresql.util.PSQLException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,6 +35,12 @@ class TheWrittenPagesSayThatADucatStaysWhileItsResultsStandCarriedOverTest exten
 
 	@Autowired
 	JdbcTemplate jdbc;
+
+	/** The text as V96 left it: V98 (owner, 13.11.2026) moved the rulebook's sign-off on, which is held by TheWrittenPagesNameTheRookiesWithTheLetterOfTheGenderCarriedOverTest. */
+	@BeforeEach
+	void theTextAsV96LeftIt() {
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "98");
+	}
 
 	private static int theNumberOfRowsV96Edits() {
 		return TheWrittenPagesSayThatADucatStaysWhileItsResultsStandTest.CHANGES.size() * 2;

@@ -18,7 +18,8 @@ export type AgeBand = (typeof AGE_BANDS)[number]
  * reads `M R` and `Ž R` whatever the language, because it is what a filter, an
  * address and a saved choice are written with. In Serbian the word carries the
  * gender on its own, so there the two are `Početnici` and `Početnice` with no
- * letter in front of them, and in English both are `Rookies`; the code here is
+ * letter in front of them, and in English they are `M Rookies` and `F Rookies`, the
+ * letter in front because `rookie` does not tell the genders apart (owner, 13.11.2026); the code here is
  * what the dictionary looks them up by (`categoryLabel`). It was `PS`, for
  * „Prva sezona", a name the owner dropped the same day (11.08.2026).
  */
@@ -83,7 +84,8 @@ export function firstSeasonAllowed(points: number): boolean {
  * women's one is the only part of it that follows the language; the band itself
  * is the same in both. The beginners' category is not an age band: in Serbian it
  * is `Početnici` and `Početnice`, one word each and no letter of gender in
- * front, because the word already says it, and in English it is `Rookies`.
+ * front, because the word already says it, and in English it is `M Rookies` and
+ * `F Rookies`, with the letter of the gender in front (owner, 13.11.2026).
  *
  * **Only what is shown changes.** The code stays what it was: it is what a
  * filter, an address and a saved choice are written with, and the league keys

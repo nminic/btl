@@ -699,8 +699,8 @@
     "writeMemberUnknown": "This member is no longer on the portal."
   },
   "category": {
-    "rookieMale": "Rookies",
-    "rookieFemale": "Rookies",
+    "rookieMale": "M Rookies",
+    "rookieFemale": "F Rookies",
     "markMale": "M",
     "markFemale": "F",
     "short": "Short race",
