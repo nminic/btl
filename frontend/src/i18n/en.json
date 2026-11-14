@@ -806,6 +806,16 @@
       "ultra": "Ultra"
     },
     "noneInLength": "There is no result of the chosen distance.",
+    "unscoredFilter": "Unscored races",
+    "unscoredShort": "Unscored",
+    "unscoredWord": {
+      "one": "unscored race",
+      "few": "unscored races",
+      "other": "unscored races"
+    },
+    "noPoints": "No points",
+    "noneUnscored": "There is no unscored race.",
+    "noneUnscoredInFilter": "There is no unscored race in the chosen year.",
     "clearFilters": "Clear the filters",
     "parts": {
       "label": "Parts of the profile",
@@ -1032,7 +1042,8 @@
     "own": "Mine",
     "distance": "Dist.",
     "noneSent": "You have not sent any result yet.",
-    "counted": "Counted"
+    "counted": "Counted",
+    "unscored": "Unscored races"
   },
   "newResult": {
     "title": "Entering a result",

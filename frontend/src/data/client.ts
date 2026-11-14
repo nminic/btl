@@ -205,6 +205,12 @@ export const RESOURCE_NAMES = [
      reader drops (`session/theCachesFollowTheReader.ts`). */
   'results/runners',
   'teams',
+  /* THE RESULTS OF THE RACES THE LEAGUE DOES NOT SCORE (PDL, 14.11.2026, „Ostale discipline kao lična
+     evidencija"): the same row as `results`, with 0 points, and read by exactly two screens, the
+     profile and „Moji rezultati". A name of its own and not a flag on `results`, because
+     `/api/results` serves only the scored ones and every counter on the portal reads that list: an
+     unscored result must never reach one of them (`data/unscoredResults.ts`). */
+  'unscored-results',
   'verification',
 ] as const
 
