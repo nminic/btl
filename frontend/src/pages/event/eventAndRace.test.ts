@@ -89,7 +89,7 @@ describe('the event and the race of the block', () => {
   it('links an event typed exactly, and lets go of it on any other name, the race following a new one', () => {
     const linked = typingTheEvent({ ...emptyBlock(), eventName: 'Gradska lig', raceName: 'Gradska lig' }, 'gradska liga', OFFERED, [AN_EVENT])
 
-    expect(linked.event).toEqual({ eventId: AN_EVENT.id, slug: AN_EVENT.slug, date: AN_EVENT.date })
+    expect(linked.event).toEqual({ eventId: AN_EVENT.id, slug: AN_EVENT.slug, date: AN_EVENT.date, kind: AN_EVENT.kind })
     expect([linked.eventName, linked.raceName, linked.date]).toEqual(['gradska liga', '', '01/03/2027'])
 
     const left = typingTheEvent(linked, 'gradska ligaX', OFFERED, [AN_EVENT])
@@ -333,7 +333,7 @@ describe('a new edition of a name of one edition', () => {
     expect(
       eventAndRaceOf(onTheOnlyEdition('01/02/2028', { city: ' Ohrid ', country: 'MK', raceName: ' Prva ' }), ALONE),
     ).toEqual({
-      event: { name: 'Gradska liga', date: '2028-02-01', city: 'Ohrid', country: 'MK' },
+      event: { name: 'Gradska liga', date: '2028-02-01', city: 'Ohrid', country: 'MK', kind: 'race' },
       race: { name: 'Prva', kind: 'length', distanceKm: 10, ascentM: 0, descentM: 0, limitSeconds: null },
     })
   })
@@ -432,7 +432,7 @@ describe('a name that stands for several editions', () => {
   })
 
   it('asks nothing once an edition is chosen', () => {
-    const chosen = { ...filled({ eventName: 'Beogradski maraton', date: '01/06/2026' }), event: { eventId: 1, slug: 'b', date: '2026-04-12' } }
+    const chosen = { ...filled({ eventName: 'Beogradski maraton', date: '01/06/2026' }), event: { eventId: 1, slug: 'b', date: '2026-04-12', kind: 'race' } }
 
     expect(boxes(chosen, TODAY, asked)).toEqual([])
   })
@@ -441,7 +441,7 @@ describe('a name that stands for several editions', () => {
 describe('what the save sends of the event and the race', () => {
   it('names a new event by its name, its one day and its town, and gives its race no day of its own', () => {
     expect(eventAndRaceOf(filled(), ASKED)).toEqual({
-      event: { name: 'Jezerska trka', date: '2027-06-01', city: 'Ohrid', country: 'MK' },
+      event: { name: 'Jezerska trka', date: '2027-06-01', city: 'Ohrid', country: 'MK', kind: 'race' },
       race: { name: 'Jezerska desetka', kind: 'length', distanceKm: 10, ascentM: 20, descentM: 30, limitSeconds: null },
     })
   })

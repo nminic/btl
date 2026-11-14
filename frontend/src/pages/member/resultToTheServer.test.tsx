@@ -889,6 +889,7 @@ function aRun(id: number, over: Partial<SentRun> = {}): SentRun {
        asks for one before it sends again, which a case about another thing would trip over. */
     eventId: null,
     eventName: 'Prijavljeni događaj',
+    eventKind: 'race',
     ...over,
   }
 }
@@ -1025,6 +1026,8 @@ describe('a run sent back, sent again', () => {
     await screen.findByText(/Ispravljaš rezultat koji je odbijen/, undefined, SOON)
     await user.clear(screen.getByLabelText(/^Događaj/))
     await user.type(screen.getByLabelText(/^Događaj/), 'Nov događaj')
+    /* The kind of the event he typed, emptied when the event he had chosen went (V101). */
+    await user.selectOptions(screen.getByLabelText(/^Vrsta događaja/), 'race')
 
     /* The town is asked again, because the event no longer brings its own. */
     await user.type(await screen.findByLabelText('Mesto', undefined, SOON), 'Niš')
@@ -1067,6 +1070,8 @@ describe('a run sent back, sent again', () => {
     await screen.findByText(/Ispravljaš rezultat koji je odbijen/, undefined, SOON)
     await user.clear(screen.getByLabelText(/^Događaj/))
     await user.type(screen.getByLabelText(/^Događaj/), 'Nov događaj')
+    /* The kind of the event he typed, emptied when the event he had chosen went (V101). */
+    await user.selectOptions(screen.getByLabelText(/^Vrsta događaja/), 'race')
 
     /* What the race and the event filled is handed back, and the town is asked, because the event no
        longer brings its own. */
@@ -1284,8 +1289,9 @@ describe('a run sent back, sent again', () => {
         raceName: 'Trka oko Palićkog jezera',
         day: '2027-08-01',
         raceKind: 'free',
-        /* The event the run named, read off the run like its race (V66). */
+        /* The event the run named, read off the run like its race (V66), and its kind (V101). */
         eventName: 'Prijavljeni događaj',
+        eventKind: 'race',
         city: 'Subotica',
         country: 'RS',
         distanceKm: 15.5,

@@ -1466,6 +1466,7 @@
     "leagueRaceAdded": "Trka je dodata u ligu.",
     "leagueRaceDropped": "Trka je izbačena iz lige.",
     "leagueRefused": {
+      "anUnscoredRaceIsNotInALeague": "Nebodovana trka se ne računa ni u jednoj ligi, pa se ne može dodati.",
       "theSeasonIsFrozen": "Sezona ove lige je zamrznuta. Trke se mogu samo izbaciti.",
       "theRaceIsNotOfTheLeaguesSeason": "Ta trka nije iz sezone ove lige.",
       "theEventHoldsNoRaces": "Taj događaj još nema nijednu trku.",
@@ -1959,6 +1960,7 @@
       "theEventIsNotKnown": "Taj događaj više nije u kalendaru. Izaberi ga ponovo ili upiši nov.",
       "theRaceIsNotKnown": "Ta trka više nije u kalendaru. Izaberi je ponovo ili upiši novu.",
       "theTownIsMissing": "Upiši mesto novog događaja.",
+      "theEventIsOfAnotherKind": "Događaj sa tim nazivom već postoji u kalendaru, ali je druge vrste od one koju si izabrao. Izaberi ga sa spiska, ili promeni vrstu ili naziv.",
       "theEventWouldMoveOntoAnother": "Trka bi pomerila događaj u godinu u kojoj događaj sa istim nazivom već postoji. Izaberi taj događaj.",
       "theDayIsNotInTheEventsYear": "Dan trke nije u godini izabranog događaja.",
       "anEventStillAheadWouldMoveIntoTheYearJustEnded": "Trka je iz prošle godine. Izaberi događaj iz prošle godine ili upiši nov."

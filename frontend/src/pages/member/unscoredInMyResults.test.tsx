@@ -45,13 +45,19 @@ describe('the races the league does not score, in „Moji rezultati"', () => {
     expect(screen.getByRole('heading', { name: `Nebodovane trke ${String(unscored.length)}` })).toBeVisible()
   }, SLOW)
 
-  it('offer nothing to change or take back, which is the next step of the increment', async () => {
+  /* „IZMENI" AND „OBRIŠI" ON EVERY ONE OF THEM, through the routes of a counted result (the plan's step 3,
+     „Unos rezultata na svim vratima: … ispravka"): the pencil opens the same form at the result's own
+     address, and the x asks first, as on a counted result. */
+  it('offer to change and to take back every one of them, as a counted result does', async () => {
     renderAt(PAGE, 'competitor', MEMBER)
 
     const table = await screen.findByRole('table', { name: 'Nebodovane trke' }, { timeout: SLOW / 2 })
+    const { unscored } = await bothLists()
 
-    expect(within(table).queryAllByRole('button')).toEqual([])
-    expect(within(table).queryAllByRole('link')).toEqual([])
+    expect(within(table).getAllByRole('link', { name: /^Izmeni/ }).map((one) => one.getAttribute('href'))).toEqual(
+      unscored.map((result) => `/sr/rezultat/novi?ispravka=${String(result.id)}`),
+    )
+    expect(within(table).getAllByRole('button', { name: /^Obriši/ })).toHaveLength(unscored.length)
   }, SLOW)
 
   it('are not among the counted ones, whose table keeps its own rows and its own controls', async () => {

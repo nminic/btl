@@ -88,6 +88,7 @@ const FROM_THE_BOOK: ServedPendingItem = {
   link: '',
   eventId: null,
   eventName: null,
+  eventKind: null,
 }
 
 /** Another, at a town typed in another country, sent as a race of a length. */
@@ -110,6 +111,7 @@ const TYPED: ServedPendingItem = {
   link: '',
   eventId: null,
   eventName: null,
+  eventKind: null,
 }
 
 /** A run from the calendar, which names no town. */
@@ -131,6 +133,7 @@ const FROM_THE_CALENDAR: ServedPendingItem = {
   link: '',
   eventId: null,
   eventName: null,
+  eventKind: null,
 }
 
 /** A results row naming no submission, which V10 permits: no day, no race, no figures. */
@@ -153,6 +156,7 @@ const NAMING_NO_RUN: ServedPendingItem = {
   link: '',
   eventId: null,
   eventName: null,
+  eventKind: null,
 }
 
 const RUNS = [FROM_THE_BOOK, TYPED, FROM_THE_CALENDAR, NAMING_NO_RUN]

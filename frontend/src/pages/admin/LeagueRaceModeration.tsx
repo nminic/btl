@@ -195,7 +195,13 @@ export function LeagueRaceModeration({
                `league_race`'s key pairs with the competition's. A day with no race at all is
                therefore not offered either, which is the same state the route answers with a
                sentence of its own. */
+            /* AND ONLY A SCORED RACE: an unscored race counts in no league (PDL, 14.11.2026, „ekran
+               administracije lige ne nudi nebodovane događaje"), and the server refuses one all the same
+               (`anUnscoredRaceIsNotInALeague`). A training and a gathering hold no race, so the day test
+               below already leaves them out; the kind is said here so the unscored race is left out by
+               a question about it, not by an accident of its races. */
             const offered = events.filter((event) =>
+              event.kind === 'race' &&
               everyRace.some(
                 (race) => race.eventId === event.id && race.date.startsWith(String(league.season)),
               ),

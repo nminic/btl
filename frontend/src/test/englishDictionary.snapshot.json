@@ -1466,6 +1466,7 @@
     "leagueRaceAdded": "The race has been added to the competition.",
     "leagueRaceDropped": "The race has been dropped from the competition.",
     "leagueRefused": {
+      "anUnscoredRaceIsNotInALeague": "An unscored race counts in no competition, so it cannot be added here.",
       "theSeasonIsFrozen": "The season of this competition is frozen. Races can only be dropped.",
       "theRaceIsNotOfTheLeaguesSeason": "That race is not from the season of this competition.",
       "theEventHoldsNoRaces": "That event has no race yet.",
@@ -1958,6 +1959,7 @@
       "theGroupIsTooBig": "Too many rows for one save. Split them into two saves.",
       "theEventIsNotKnown": "That event is no longer in the calendar. Choose it again or enter a new one.",
       "theRaceIsNotKnown": "That race is no longer in the calendar. Choose it again or enter a new one.",
+      "theEventIsOfAnotherKind": "An event of that name is already in the calendar, but it is of another kind than the one you chose. Choose it from the list, or change the kind or the name.",
       "theTownIsMissing": "Enter the place of the new event.",
       "theEventWouldMoveOntoAnother": "The race would move the event into a year in which an event with the same name already exists. Choose that event.",
       "theDayIsNotInTheEventsYear": "The day of the race is not in the year of the chosen event.",

@@ -64,6 +64,29 @@ const BY_KIND: Record<RaceKind, FormDef> = {
  * Asked by name and not by position, and what happens when a name stops being there
  * is answered by a case rather than by an exception nothing can reach.
  */
-export function reportForm(kind: RaceKind): FormDef {
-  return BY_KIND[kind]
+/**
+ * THE SAME FORMS AT AN UNSCORED RACE, where the climb and the fall may be left out (PDL, 14.11.2026, „Uspon i
+ * spust na netrkačkoj trci su neobavezni (prazno znači 0)”): an empty box is read as nought
+ * (`reportedResult.ts`). A race of a length fixes both itself, so its form asks neither either way.
+ */
+function withTheClimbOptional(form: FormDef): FormDef {
+  return {
+    ...form,
+    fields: form.fields.map((one) =>
+      one.name === 'ascentM' || one.name === 'descentM' ? { ...one, required: false } : one,
+    ),
+  }
+}
+
+const UNSCORED_BY_KIND: Record<RaceKind, FormDef> = {
+  length: BY_KIND.length,
+  time: withTheClimbOptional(BY_KIND.time),
+  free: withTheClimbOptional(BY_KIND.free),
+}
+
+/**
+ * @param scored whether the race is a scored one; at an unscored one the climb and the fall may be left out
+ */
+export function reportForm(kind: RaceKind, scored = true): FormDef {
+  return (scored ? BY_KIND : UNSCORED_BY_KIND)[kind]
 }

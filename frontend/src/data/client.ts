@@ -444,12 +444,31 @@ export function clearResourceCache(name?: ResourceName, language?: string): void
     return
   }
 
-  const at = addressOf(name, language)
+  for (const one of [name, ...(GO_WITH[name] ?? [])]) {
+    const at = addressOf(one, language)
 
-  inFlight.delete(at)
-  arrived.delete(at)
-  wasDropped(name)
+    inFlight.delete(at)
+    arrived.delete(at)
+    wasDropped(one)
+  }
+
   tellWhoWatchesTheDrops()
+}
+
+/**
+ * THE NAMES WHOSE ANSWER IS OUT OF DATE WHENEVER ANOTHER ONE'S IS, dropped with it.
+ *
+ * <p>**The results of the scored races and of the unscored ones are two answers about one table**
+ * (`result`, split by `scored_race`, V99): whatever takes a result away, a deletion of the member, of
+ * the event or of a race, a save that takes races away or a correction, takes it from whichever of the
+ * two it was in, and the screen that asked cannot tell which. So every place that drops `results` drops
+ * `unscored-results` with it, by being this call, and there is no list of those places to keep (the
+ * finding of the review of PR 728, „Nijedno zatečeno brisanje ne briše keš `unscored-results`”, on six
+ * of them). The other way round is not said: what moves only an unscored result (none does yet) has no
+ * reason to drop the scored list.
+ */
+const GO_WITH: Partial<Record<ResourceName, readonly ResourceName[]>> = {
+  results: ['unscored-results'],
 }
 
 /**

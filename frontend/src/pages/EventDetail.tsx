@@ -6,7 +6,7 @@ import { useToday } from '../clock/useClock'
 import { Markdown } from '../components/Markdown'
 import { Resource } from '../components/Resource'
 import {
-  combinePair,
+  combineResources,
   RESULTS,
   useCompetitors,
   useEvents,
@@ -27,7 +27,9 @@ import { raceLabel, raceMeasure } from '../data/raceLabel'
 import { inEventOrder } from '../data/raceOrder'
 import { outsideLink } from '../data/outsideLink'
 import { kindHasRaces } from '../data/types'
-import type { Race, BtlEvent } from '../data/types'
+import type { Race, BtlEvent, Result } from '../data/types'
+import type { ResourceState } from '../data/useResource'
+import { UNSCORED_RESULTS, useEveryResult, useUnscoredResults } from '../data/unscoredResults'
 import { useSession } from '../session/useSession'
 import { EventActions } from './event/EventActions'
 import { measureHeadingKey, measureKey } from './event/measureHeading'
@@ -291,14 +293,67 @@ function RaceTable({ event }: { event: BtlEvent }) {
  * happen. An event nobody from the league ran gets no section at all rather than
  * a table saying so: for the whole of next season's calendar that sentence would
  * be on every screen and would mean nothing but "not yet".
+ *
+ * **An unscored race reads its own list and draws „–” for the points** (PDL, 14.11.2026, „Strana
+ * događaja nebodovane trke prikazuje rezultate članova kao kod bodovane, sa „–” u koloni bodova”):
+ * `/api/results` serves only the scored ones, and a run of an unscored race is at
+ * `/api/unscored-results` (`data/unscoredResults.ts`). A kind is the whole event's („Vrsta se bira
+ * samo za ceo događaj”), so an event reads one of the two lists and never both, and each wrapper below
+ * calls exactly one of the two hooks.
  */
-function EventResults({ slug, date }: { slug: string; date: string }) {
+function EventResults({ slug, date, unscored }: { slug: string; date: string; unscored: boolean }) {
+  return unscored ? (
+    <UnscoredEventResults slug={slug} date={date} />
+  ) : (
+    <ScoredEventResults slug={slug} date={date} />
+  )
+}
+
+function ScoredEventResults({ slug, date }: { slug: string; date: string }) {
+  return <EventResultsTable slug={slug} date={date} results={useResults()} scored />
+}
+
+function UnscoredEventResults({ slug, date }: { slug: string; date: string }) {
+  return <EventResultsTable slug={slug} date={date} results={useUnscoredResults()} scored={false} />
+}
+
+/**
+ * THE ORDER OF THE ROWS: by points at a scored race, the order that means something in this league,
+ * and at an unscored one, where nothing is scored, by race and then by time. PDL, 15.11.2026, the
+ * owner on the questions of the author of steps 2b and 3: „Na strani nebodovanog događaja rezultati
+ * idu po trci, redom kojim trke stoje na događaju, a unutar trke od najbržeg vremena”. The races in
+ * the order they stand on the event are `inEventOrder`'s, the one place that order is decided.
+ */
+function inTheOrderOfThePage(ran: Result[], scored: boolean, races: Race[]): Result[] {
+  if (scored) {
+    return ran.toSorted((left, right) => right.points - left.points)
+  }
+
+  const place = new Map(inEventOrder(races).map((race, at) => [race.id, at]))
+  const at = (one: Result) => place.get(one.raceId) ?? place.size
+
+  return ran.toSorted((left, right) => at(left) - at(right) || left.seconds - right.seconds)
+}
+
+function EventResultsTable({
+  slug,
+  date,
+  results,
+  scored,
+}: {
+  slug: string
+  date: string
+  results: ResourceState<Result[]>
+  scored: boolean
+}) {
   const { locale, t } = useI18n()
   const today = useToday()
   /* Whoever is reading, so their own result is marked here as their row is in
      every standing (owner, 05.08.2026). Null for a visitor. */
   const { memberNumber: mine, remove } = useSession()
-  const state = combinePair(useResults(), useCompetitors())
+  /* The races too, for the order of an unscored event's rows (`inTheOrderOfThePage`); the page has
+     read them already for its own table, so this is the same answer and not a second request. */
+  const state = combineResources(results, useCompetitors(), useRaces())
   /* The pencil and the x on every row, for whoever checks results (PDL P9, 18.10.2026, the owner:
      „Na nivou reda takmičara želim dva ekonomična dugmeta za edit (olovka) i brisanje (x)”). */
   const manages = useMay()(ENTERS_RESULTS)
@@ -321,10 +376,14 @@ function EventResults({ slug, date }: { slug: string; date: string }) {
 
   return (
     <Resource state={state} inline label={t('event.results')}>
-      {([results, competitors]) => {
-        const ran = results
-          .filter((one) => one.eventSlug === slug)
-          .sort((left, right) => right.points - left.points)
+      {([results, competitors, races]) => {
+        const here = results.filter((one) => one.eventSlug === slug)
+        const raced = new Set(here.map((one) => one.raceId))
+        const ran = inTheOrderOfThePage(
+          here,
+          scored,
+          races.filter((race) => raced.has(race.id)),
+        )
 
         if (ran.length === 0) {
           /* A race that has not been run yet gets nothing at all: for the whole
@@ -466,7 +525,19 @@ function EventResults({ slug, date }: { slug: string; date: string }) {
                         <td className="table__hide-phone">{formatNumber(result.ascentM, locale)}</td>
                         <td className="table__hide-phone">{formatNumber(result.descentM, locale)}</td>
                         <td>{formatDuration(result.seconds)}</td>
-                        <td className="table__points">{formatPoints(result.points, locale)}</td>
+                        <td className="table__points">
+                          {scored ? (
+                            formatPoints(result.points, locale)
+                          ) : (
+                            /* „–” and not 0,00: the league did not score this run at nothing, it did
+                               not score it (PDL, 14.11.2026). Said to a screen reader in words, as
+                               the profile says it (`profile.noPoints`). */
+                            <>
+                              <span aria-hidden="true">–</span>
+                              <span className="visually-hidden">{t('profile.noPoints')}</span>
+                            </>
+                          )}
+                        </td>
                         {manages && (
                           <td>
                             <div className="entity-row-actions">
@@ -492,7 +563,7 @@ function EventResults({ slug, date }: { slug: string; date: string }) {
                                     if (answer.got === 'done') {
                                       /* Gone at once rather than on the next read; the served
                                          list really has lost it (`leagueResultWrites.ts` drops it). */
-                                      remove(RESULTS, String(result.id))
+                                      remove(scored ? RESULTS : UNSCORED_RESULTS, String(result.id))
                                       setRefused(null)
                                       setSaid(t('results.deleted'))
 
@@ -533,8 +604,10 @@ export function EventDetail() {
      the screen must not hold up the name and the date, and the only one that
      needs the races is the copy. */
   const races = useRaces()
-  /* For the deletion, which takes what hangs off the event with it. */
-  const results = useResults()
+  /* For the deletion, which takes what hangs off the event with it, and for whether the reader ran
+     here: both are about a run whichever list serves it, so an unscored event's are counted too
+     (`useEveryResult`). */
+  const results = useEveryResult()
 
   return (
     <Resource state={events}>
@@ -671,7 +744,7 @@ export function EventDetail() {
                   colour to deny, so the tile and the page said opposite things. */}
               {kindHasRaces(event.kind) && <RaceTable event={event} />}
 
-              <EventResults slug={event.slug} date={event.date} />
+              <EventResults slug={event.slug} date={event.date} unscored={event.kind === 'unscored'} />
 
               {/* Who is going, ahead of the race and for members only (owner,
                   11.08.2026). Under the results and over the comments: what is

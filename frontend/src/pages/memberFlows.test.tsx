@@ -2100,6 +2100,7 @@ function aServerThatKeepsWhatIsSent(): {
           amendsResultId: null,
           eventId: typeof run.eventId === 'number' ? run.eventId : null,
           eventName: typeof run.eventName === 'string' ? run.eventName : null,
+          eventKind: typeof run.eventKind === 'string' ? run.eventKind : 'race',
         },
         ...held,
       ]
@@ -2460,8 +2461,10 @@ describe('a result from entry to decision', () => {
         raceName: 'Probna trka',
         day: '2027-05-10',
         raceKind: 'length',
-        /* The event the run named, typed: a new one, whose name its race took (PDL P9, 19.10.2026). */
+        /* The event the run named, typed: a new one, whose name its race took (PDL P9, 19.10.2026), and
+           the kind it was sent under, which the form starts from (V101, „podrazumevano Bodovana"). */
         eventName: 'Probna trka',
+        eventKind: 'race',
         city: 'Niš',
         country: 'RS',
         distanceKm: 21.1,

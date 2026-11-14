@@ -364,7 +364,8 @@ describe('the event and the race the screen names first', () => {
       expect(writes(server.asked)[0]).toEqual({
         path: '/api/results/on-a-race-of-an-event',
         body: {
-          event: { name: 'Jezerska trka', date: '2027-06-01', city: 'Ohrid', country: 'MK' },
+          /* And a scored race, which the kind of a new event starts from (PDL, 15.11.2026). */
+          event: { name: 'Jezerska trka', date: '2027-06-01', city: 'Ohrid', country: 'MK', kind: 'race' },
           race: {
             name: 'Jezerska trka',
             kind: 'length',
@@ -378,6 +379,87 @@ describe('the event and the race the screen names first', () => {
       })
       /* To the page of the event the save made, by the address the answer named. */
       expect(await screen.findByRole('heading', { level: 1, name: 'Jezerska trka' })).toBeVisible()
+    } finally {
+      server.stop()
+    }
+  })
+
+  /* THE KIND OF A NEW EVENT (PDL, 15.11.2026, „Na ekranu lige „Unos rezultata za događaj”, kad liga pravi nov
+     događaj, bira se Bodovana ili Nebodovana trka, podrazumevano Bodovana”), and the climb of a row, which at an
+     unscored race may be left out and travels as nothing (PDL, 14.11.2026, „Uspon i spust na netrkačkoj trci su
+     neobavezni (prazno znači 0)”). A free race asks all six boxes of a row, so the climb is a box of it here. */
+  it('makes a new event of the kind chosen, and takes a row of an unscored one with its climb left out', async () => {
+    const user = setupUser()
+    const server = serving()
+
+    try {
+      await open(user)
+      await user.type(eventBox(), 'Jezersko plivanje')
+
+      const kind = screen.getByLabelText(/^Vrsta događaja/)
+
+      expect(within(kind).getAllByRole('option').map((one) => one.textContent)).toEqual([
+        'Bodovana trka',
+        'Nebodovana trka',
+      ])
+      expect(kind).toHaveValue('race')
+
+      await user.selectOptions(kind, 'unscored')
+      await user.type(screen.getByLabelText(/^Datum/), '01062027')
+      await user.type(screen.getByLabelText(/^Mesto/), 'Ohrid')
+      await user.selectOptions(screen.getByLabelText(/^Država/), 'MK')
+      await user.selectOptions(screen.getByLabelText(/^Vrsta trke/), 'free')
+
+      const member = must(screen.getAllByLabelText(/^Član/)[0], 'the first row')
+
+      await user.type(member, '000002')
+      await user.click(await screen.findByRole('button', { name: /Relja/ }))
+      await user.type(must(screen.getAllByLabelText(/^Dužina/).at(-1), 'the length of the row'), '3')
+
+      expect(must(screen.getAllByLabelText(/^Uspon/).at(-1), 'the climb of the row')).not.toHaveAttribute(
+        'aria-required',
+        'true',
+      )
+
+      await user.type(must(screen.getAllByLabelText('Sati').at(-1), 'the hours'), '1')
+      await save(user)
+
+      await waitFor(() => expect(writes(server.asked)).toHaveLength(1))
+
+      expect(must(writes(server.asked)[0], 'the save').body).toMatchObject({
+        event: { name: 'Jezersko plivanje', kind: 'unscored' },
+        rows: [{ memberNumber: '000002', distanceKm: 3, ascentM: null, descentM: null, seconds: 3600 }],
+      })
+    } finally {
+      server.stop()
+    }
+  })
+
+  it('asks for the climb of a row of a new scored event, and saves nothing without it', async () => {
+    const user = setupUser()
+    const server = serving()
+
+    try {
+      await open(user)
+      await user.type(eventBox(), 'Jezerski kros')
+      await user.type(screen.getByLabelText(/^Datum/), '01062027')
+      await user.type(screen.getByLabelText(/^Mesto/), 'Ohrid')
+      await user.selectOptions(screen.getByLabelText(/^Država/), 'MK')
+      await user.selectOptions(screen.getByLabelText(/^Vrsta trke/), 'free')
+
+      const member = must(screen.getAllByLabelText(/^Član/)[0], 'the first row')
+
+      await user.type(member, '000002')
+      await user.click(await screen.findByRole('button', { name: /Relja/ }))
+      await user.type(must(screen.getAllByLabelText(/^Dužina/).at(-1), 'the length of the row'), '3')
+      await user.type(must(screen.getAllByLabelText('Sati').at(-1), 'the hours'), '1')
+      await save(user)
+
+      expect(must(screen.getAllByLabelText(/^Uspon/).at(-1), 'the climb of the row')).toHaveAttribute(
+        'aria-required',
+        'true',
+      )
+      expect(writes(server.asked)).toEqual([])
     } finally {
       server.stop()
     }

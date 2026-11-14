@@ -34,7 +34,7 @@ import { REQUIRED_KEY } from '../../forms/validate'
  */
 
 /** The event of the calendar the race goes on, by its key, with what the screen reads of it. */
-export type ChosenEvent = { eventId: number; slug: string; date: string }
+export type ChosenEvent = { eventId: number; slug: string; date: string; kind: string }
 
 /** The race of the calendar the rows go on, by its key, and its kind, which decides the rows. */
 export type ChosenRace = { raceId: number; kind: RaceKind }
@@ -54,6 +54,13 @@ export type TheBlock = {
   raceName: string
   race: ChosenRace | null
   kind: RaceKind
+  /**
+   * THE KIND OF A NEW EVENT, a scored or an unscored race (PDL, 15.11.2026, „Na ekranu lige „Unos rezultata
+   * za događaj”, kad liga pravi nov događaj, bira se Bodovana ili Nebodovana trka, podrazumevano Bodovana”).
+   * Read only where the save makes the event; an event of the calendar has its own (`ChosenEvent.kind`),
+   * which choosing it writes here too, so a new edition of it starts as the kind the edition was.
+   */
+  eventKind: string
   /** What a new race of a length fixes, as the boxes hold it. */
   distanceKm: string
   ascentM: string
@@ -75,6 +82,7 @@ export function emptyBlock(): TheBlock {
     raceName: '',
     race: null,
     kind: 'length',
+    eventKind: 'race',
     distanceKm: '',
     ascentM: '',
     descentM: '',
@@ -125,7 +133,8 @@ export function choosingTheEvent(
     : {
         ...block,
         eventName: shown,
-        event: { eventId: event.id, slug: event.slug, date: event.date },
+        event: { eventId: event.id, slug: event.slug, date: event.date, kind: event.kind },
+        eventKind: event.kind,
         date: fieldDate(event.date),
         raceName: '',
         race: null,
@@ -402,7 +411,7 @@ function theLimitOf(block: TheBlock): number {
  * (`EnterResults.tsx`), so the race here is always a new one.
  */
 export type EventAndRaceSent = {
-  event: { id: number } | { name: string; date: string; city: string; country: string }
+  event: { id: number } | { name: string; date: string; city: string; country: string; kind: string }
   race: {
     name: string
     date?: string
@@ -423,6 +432,17 @@ export type EventAndRaceSent = {
  * the name the list gives the linked edition (never the case the box was typed in, so the two editions do
  * not differ by it) and the day, which is its own and its race's, and the town typed.
  */
+/**
+ * WHETHER THE ROWS OF THE BLOCK ARE RUNS OF A SCORED RACE: the kind of the event of the calendar they go
+ * on, or of the new one the save makes. The climb and the fall of a row may be left out only where they
+ * are not (PDL, 14.11.2026, „Uspon i spust na netrkačkoj trci su neobavezni (prazno znači 0)”).
+ */
+export function theRowsAreScored(block: TheBlock, asked: TheBlockIsAsked): boolean {
+  const linked = block.event !== null && !aNewEditionOf(block, asked) ? block.event : null
+
+  return (linked === null ? block.eventKind : linked.kind) !== 'unscored'
+}
+
 export function eventAndRaceOf(block: TheBlock, asked: TheBlockIsAsked): EventAndRaceSent {
   const course = block.kind === 'length'
   const time = block.kind === 'time'
@@ -436,6 +456,7 @@ export function eventAndRaceOf(block: TheBlock, asked: TheBlockIsAsked): EventAn
           date: isoDate(block.date),
           city: block.city.trim(),
           country: block.country,
+          kind: block.eventKind,
         }
       : { id: linked.eventId }
 

@@ -81,6 +81,7 @@ const OF_A_LENGTH: ServedPendingItem = {
   link: 'https://primer.rs/desetka',
   eventId: null,
   eventName: null,
+  eventKind: null,
 }
 
 /** A race to a limit: it fixes the time, so the distance, the climb and the drop are the runner's. */
@@ -103,6 +104,7 @@ const TO_A_LIMIT: ServedPendingItem = {
   link: '',
   eventId: null,
   eventName: null,
+  eventKind: null,
 }
 
 /** A free race, which fixes nothing; and a correction of a result already counted. */
@@ -125,6 +127,7 @@ const FREE_AND_A_CORRECTION: ServedPendingItem = {
   link: 'https://primer.rs/brdska',
   eventId: null,
   eventName: null,
+  eventKind: null,
 }
 
 /** A run on a race the calendar does not hold: it carries the day it was run and no race. */
@@ -147,6 +150,7 @@ const NOT_IN_THE_CALENDAR: ServedPendingItem = {
   link: 'https://primer.rs/van',
   eventId: null,
   eventName: null,
+  eventKind: null,
 }
 
 /** A results row naming no submission, which V10 permits: no day, no race, no figures. */
@@ -169,6 +173,7 @@ const NAMING_NO_RUN: ServedPendingItem = {
   link: '',
   eventId: null,
   eventName: null,
+  eventKind: null,
 }
 
 const RUNS = [OF_A_LENGTH, TO_A_LIMIT, FREE_AND_A_CORRECTION, NOT_IN_THE_CALENDAR, NAMING_NO_RUN]

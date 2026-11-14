@@ -10,7 +10,7 @@ import {
   useMyResultSubmissions,
   useResults,
 } from '../../data/useResource'
-import { useUnscoredResults } from '../../data/unscoredResults'
+import { UNSCORED_RESULTS, useUnscoredResults } from '../../data/unscoredResults'
 import { formatDuration, formatNumber, formatPoints, formatShortDate } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import { DeleteSheet } from '../admin/DeleteSheet'
@@ -105,7 +105,7 @@ function Mine({ me }: { me: string }) {
    * success. Accepted for R2 by the coordinator's scope of the same day, with a 403, a 5xx and
    * an answer that never came moving nothing.
    */
-  function takeBack(result: number): Promise<void> | undefined {
+  function takeBack(result: number, from: typeof RESULTS | typeof UNSCORED_RESULTS = RESULTS): Promise<void> | undefined {
     if (outstanding.current) {
       return undefined
     }
@@ -136,7 +136,7 @@ function Mine({ me }: { me: string }) {
       /* And the overlay follows, so the row goes at once rather than on the next read. The
          served list really has lost it - `resultWrites.ts` drops that cache - and this is
          what covers the moment between the answer and the re-read. */
-      remove(RESULTS, String(result))
+      remove(from, String(result))
       setSaid(t('results.deleted'))
       /* And the list of what was sent is read again, because a correction of this result that
          was waiting or was sent back is gone with it on the server, and nothing here would
@@ -194,19 +194,23 @@ function Mine({ me }: { me: string }) {
                           {formatNumber(one.distanceKm, locale, 2)} km
                           {' · '}
                           {formatDuration(one.seconds)}
-                          {' · '}
+                          {/* NO NUMBER FOR A RUN OF AN UNSCORED RACE, which the league does not score
+                              (PDL, 14.11.2026, „rezultat nebodovane trke čuva 0 bodova i prikazuje
+                              „–”"; the plan's step 3, „bez prikaza bodova"), and so no caveat beside it. */}
+                          {one.eventKind !== 'unscored' && ' · '}
                           {/* Worked out from the figures the server answers, which are what an
                               approval would count today (`WhatARaceCarries.figuresOf`), and not
                               from what the member typed: on a race to a limit those two were 48
                               per cent apart (`resultWrites.ts`). Whether a number belongs here at
                               all before a moderator decides is a question still before the owner
                               (PENDING, 29.09.2026), so the list keeps it as it was. */}
-                          {t('units.btlPoints', {
-                            value: formatPoints(
-                              pointsOf(one.distanceKm, one.ascentM, one.descentM, one.seconds),
-                              locale,
-                            ),
-                          })}
+                          {one.eventKind !== 'unscored' &&
+                            t('units.btlPoints', {
+                              value: formatPoints(
+                                pointsOf(one.distanceKm, one.ascentM, one.descentM, one.seconds),
+                                locale,
+                              ),
+                            })}
                         </p>
                         {/* And the caveat beside it: the count is settled at verification, and
                             until then it is what the figures as they stand work out to (PDL,
@@ -219,7 +223,7 @@ function Mine({ me }: { me: string }) {
                             ispisuju bilo kome prilikom unosa parametara prijave rezultata"), and
                             the caveat went with it there because nothing was left for it to
                             qualify. Here a number still stands, so it stays. */}
-                        {one.state === 'waiting' && (
+                        {one.state === 'waiting' && one.eventKind !== 'unscored' && (
                           <p className="submissions__note">{t('newResult.pointsNotFinal')}</p>
                         )}
                         {/* Why it was sent back, in the moderator's own words, and nothing while
@@ -433,9 +437,10 @@ function Mine({ me }: { me: string }) {
               {/* THE RACES THE LEAGUE DOES NOT SCORE (PDL, 14.11.2026, „Ostale discipline kao lična
                   evidencija"): a member's own record of a swim, a ride or a triathlon. A section of
                   its own and only where there is one, so a member who has none sees no empty
-                  heading. No „Izmeni" and no „Obriši": both go through the routes of a counted
-                  result, and entering and correcting these is the next step of the increment. The
-                  points are „–" and not 0,00, because the league did not score them. */}
+                  heading. „Izmeni" and „Obriši" as on a counted result, through the same routes and
+                  under the same question about a correction that waits (the plan's step 3, „Unos
+                  rezultata na svim vratima: … ispravka"). The points are „–" and not 0,00, because
+                  the league did not score them. */}
               {ownUnscored.length > 0 && (
                 <section aria-labelledby="my-unscored">
                   <h2 className="profile__section" id="my-unscored">
@@ -456,6 +461,7 @@ function Mine({ me }: { me: string }) {
                             {t('profile.columns.time')}
                           </th>
                           <th scope="col">{t('profile.columns.points')}</th>
+                          <th scope="col">{t('myResults.own')}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -470,6 +476,26 @@ function Mine({ me }: { me: string }) {
                             <td className="table__points">
                               <span aria-hidden="true">–</span>
                               <span className="visually-hidden">{t('profile.noPoints')}</span>
+                            </td>
+                            <td>
+                              <div className="my-results__own">
+                                {!aCorrectionWaitsOn(mine, result.id) && (
+                                  <ActionLink
+                                    symbol={SYMBOL.pencil}
+                                    word={t('myResults.change')}
+                                    className="button button--secondary"
+                                    name={t('myResults.changeNamed', { name: result.raceName })}
+                                    to={`/${locale}/rezultat/novi?ispravka=${String(result.id)}`}
+                                  />
+                                )}
+                                <DeleteSheet
+                                  name={result.raceName}
+                                  asks={t('results.deleteAsk')}
+                                  look="button button--secondary"
+                                  onDelete={() => takeBack(result.id, UNSCORED_RESULTS)}
+                                  onKeep={() => setRefusal(null)}
+                                />
+                              </div>
                             </td>
                           </tr>
                         ))}

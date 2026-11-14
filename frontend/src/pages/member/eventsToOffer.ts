@@ -1,4 +1,4 @@
-import type { BtlEvent, Race } from '../../data/types'
+import { kindHasRaces, type BtlEvent, type Race } from '../../data/types'
 import type { Suggestion } from '../../forms/types'
 import { fieldDate } from '../../forms/dateField'
 import { formatNumericDate } from '../../i18n/format'
@@ -49,7 +49,8 @@ export function everyEventToOffer(events: BtlEvent[], today: string): Suggestion
 /** The race events begun by today whose year is wanted, newest first, as the entries of the box. */
 function offered(events: BtlEvent[], today: string, wanted: (year: number) => boolean): Suggestion[] {
   return events
-    .filter((one) => one.kind === 'race' && wanted(yearOf(one.date)) && one.date <= today)
+    /* An unscored race as well as a scored one (PDL, 14.11.2026): both hold races a run is at. */
+    .filter((one) => kindHasRaces(one.kind) && wanted(yearOf(one.date)) && one.date <= today)
     .toSorted((left, right) => right.date.localeCompare(left.date))
     .map((one) => ({
       id: String(one.id),

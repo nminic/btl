@@ -218,6 +218,25 @@ describe('an event of the kind that is not scored', () => {
     )
   }, SLOW)
 
+  it('counts its unscored results when a save takes its races away, and the scored event its scored ones (b)', async () => {
+    /* PDL, 14.11.2026: „pitanje pri prelasku nebodovane trke u trening ili skup broji njene nebodovane
+       rezultate”. The two results are on the list of unscored results and nowhere else. */
+    const answer = theTriathlonRan(2)
+
+    answering = (path, init) =>
+      path.startsWith('/api/unscored-results') && (init?.method ?? 'GET') === 'GET' ? answer(path) : null
+
+    const user = setupUser()
+
+    renderAt('/sr/administracija/dogadjaji', 'superadmin')
+    await open(user, THE_TRIATHLON)
+    await user.selectOptions(screen.getByLabelText(/^Vrsta događaja/), 'gathering')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    expect(await screen.findByText('Ovim čuvanjem brišeš 1 trku i 2 rezultata.')).toBeVisible()
+    expect(whereItWrote(watching.asked)).toEqual([])
+  }, SLOW)
+
   it('asks before it takes the races of it away, with the number of results that go (b)', async () => {
     const user = setupUser()
 
@@ -257,25 +276,34 @@ describe('an event of the kind that is not scored', () => {
     expect(screen.getByText(sr.admin.kindHeldNote)).toBeVisible()
   }, SLOW)
 
-  it('holds an unscored event that has a result to the kind it has, which the file of results cannot say today (c)', async () => {
-    /* A result of an unscored race is not in `/api/results` (PDL, 14.11.2026: the route serves the scored ones
-       and the unscored have a route of their own), so the sample has none and the case gives the screen one: the
-       first result of the file, moved to the race of the unscored event. What is asked is that the kind the event
-       HAS decides which of the two is taken out, and not a constant. */
-    const answer = (path: string) =>
-      real(path)
-        .then((served) => served.json())
-        .then((all: { raceId: number }[]) => {
-          const [one] = all
+  /**
+   * THE LIST OF UNSCORED RESULTS WITH RUNS OF „PALIĆKI TRIATLON" IN IT, where its results really are: a result of
+   * an unscored race is not in `/api/results` (PDL, 14.11.2026, the route serves the scored ones and the unscored
+   * have a route of their own), so the sample has none on the triathlon and the case gives it some, the first of
+   * the file moved to its race. Two and not one, so a count that read one row of them cannot pass.
+   */
+  const theTriathlonRan = (runs: number) => (path: string) =>
+    real(path)
+      .then((served) => served.json())
+      .then((all: { raceId: number }[]) => {
+        const [one] = all
 
-          return new Response(JSON.stringify([...all, { ...one, id: 9999991, raceId: 1613 }]), {
-            status: 200,
-            headers: { 'content-type': 'application/json' },
-          })
-        })
+        return new Response(
+          JSON.stringify([
+            ...all,
+            ...Array.from({ length: runs }, (_, at) => ({ ...one, id: 9999991 + at, raceId: 1613 })),
+          ]),
+          { status: 200, headers: { 'content-type': 'application/json' } },
+        )
+      })
+
+  it('holds an unscored event that has a result to the kind it has, read off the list of unscored results (c)', async () => {
+    /* What is asked is that the kind the event HAS decides which of the two is taken out, and that its results
+       are counted off the list they are served on (`useEveryResult`), not the scored one. */
+    const answer = theTriathlonRan(1)
 
     answering = (path, init) =>
-      path.startsWith('/api/results') && (init?.method ?? 'GET') === 'GET' ? answer(path) : null
+      path.startsWith('/api/unscored-results') && (init?.method ?? 'GET') === 'GET' ? answer(path) : null
 
     const user = setupUser()
 

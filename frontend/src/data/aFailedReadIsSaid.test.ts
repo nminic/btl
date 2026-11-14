@@ -308,6 +308,11 @@ const OPENING: { file: string; how: How; why: string; calls?: { shape: Shape; ca
     why: 'MY REASONING: `usePending` maps a state that is ready and gives every other state back as it is, with its way to ask again, to the two screens that read it and say it (`PendingQueue.tsx`, `SectionNav.tsx`).',
   },
   {
+    file: 'data/unscoredResults.ts',
+    how: 'hands on',
+    why: 'MY REASONING, and held by `pages/admin/unscoredEvents.test.tsx` and `pages/adminEventKind.test.tsx` (the number a save takes waits for both lists): `useEveryResult` joins the scored and the unscored results only once both are ready, and hands any other state of the pair on as it is (`combinePair`), the failure with its way to ask again, to the screens that read it and say it (`AdminEvents.tsx`, `EventDetail.tsx`, `EnterResults.tsx`, `RateEvent.tsx`). Never an empty list for a list that failed.',
+  },
+  {
     file: 'data/useFrozenTables.ts',
     how: 'hands on',
     why: 'MY REASONING, and held by `pages/frozenScreensMore.test.tsx` („wait for the list of frozen seasons, and say where it cannot be read"): `useEveryFrozenTable` reads the status of the list of frozen seasons only to wait for it, and hands a list that failed on as it is, with its way to ask again, to the page of trophies, whose `Resource` says `data.error`. A snapshot that cannot be read is a failed state of its own (`useHeldRead`), never an empty list.',
@@ -371,7 +376,13 @@ const OPENING: { file: string; how: How; why: string; calls?: { shape: Shape; ca
     file: 'pages/member/NewResult.tsx',
     how: 'says',
     why: 'THE FILE\'S OWN, and held by `pages/member/racesUnreadable.test.tsx` (the screen) and `forms/suggestingUnreadable.test.tsx` (the form): when the races could not be read, the box for the race says so beside itself, with the button that asks again, and goes on taking the name typed into it (decision of 03.10.2026, PDL: the races yes, the towns no); and since 19.10.2026 (PDL P9, the event asked first) the box for the event says the same of the calendar and of the seasons open for a report (`offeringEvents`). When a read failed, the list handed to the form for that field is the failure (`suggests`), and not the empty rows held then. The road in with `?ispravka=` waits through `<Resource>`, which says it and offers to ask again. MY REASONING: the two roads that hold the name (`?ponovo=`, `?ispravka=`) say nothing about the list, because nothing is typed into a held box, and `behind` reads the same two files for hint fields of a record kept in the browser and draws nothing from them, so a failure there is not a list that looks empty.',
-    calls: [{ shape: 'condition', call: "results.status === 'ready' ? results.data : []" }],
+    calls: [
+      { shape: 'condition', call: "results.status === 'ready' ? results.data : []" },
+      /* And the unscored ones beside them, for the same one question, which counted result the address names
+         (`?ispravka=`, PDL 14.11.2026): that road waits for both lists through `<Resource>` (`waitFor`), so
+         neither is read as empty while it failed. */
+      { shape: 'condition', call: "unscored.status === 'ready' ? unscored.data : []" },
+    ],
   },
   {
     file: 'pages/profile/InviteToPair.tsx',

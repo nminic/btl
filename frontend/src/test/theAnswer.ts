@@ -282,6 +282,7 @@ export const aWaitingItem = {
   link: '',
   eventId: null,
   eventName: null,
+  eventKind: null,
 }
 
 /**

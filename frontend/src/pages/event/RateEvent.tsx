@@ -5,7 +5,8 @@ import { Resource } from '../../components/Resource'
 import { Stars } from '../../components/Stars'
 import { clearResourceCache } from '../../data/client'
 import { NO_RATING, RATING_MARKS, type EventRating } from '../../data/types'
-import { combineResources, useComments, useEvents, useRaces, useResults } from '../../data/useResource'
+import { combineResources, useComments, useEvents, useRaces } from '../../data/useResource'
+import { useEveryResult } from '../../data/unscoredResults'
 import type { EventComment } from '../../data/types'
 import { useSession } from '../../session/useSession'
 import { isActiveMember } from '../../roles/activeMemberOrAdministration'
@@ -107,7 +108,10 @@ function RateOne({ given }: { given: EventComment[] }) {
      moderator sees now comes off `verification.competitor_id`, read live by
      `VerificationApi` at the moment the queue is drawn - never a copy this screen
      carries in the request. One fewer resource this screen waits on. */
-  const state = combineResources(useEvents(), useResults(), useRaces())
+  /* EVERY RESULT AND NOT ONLY THE SCORED ONES: a member who ran only an unscored race here may rate it
+     (PDL, 15.11.2026, „Član koji na događaju ima samo nebodovan rezultat sme da oceni događaj, i ekran mu
+     pokazuje formu, kako server već dozvoljava”). */
+  const state = combineResources(useEvents(), useEveryResult(), useRaces())
   /* NOTHING CHOSEN YET IS `null`, and then the form shows what he gave before (`hisRatingOf`), or
      nothing. Kept apart rather than seeded, because the event his rating is about is known only once
      the calendar has arrived, after this state is made. */

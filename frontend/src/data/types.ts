@@ -1497,6 +1497,10 @@ export type WaitingRunFields = {
   link: string
   eventId: number | null
   eventName: string | null
+  /** The kind of the event the run is on (`VerificationApi.Waiting.eventKind`, V101): `race` for a scored
+   *  race, `unscored` for an unscored one; the kind the member sent a described run under. Shown to the
+   *  moderator as a fact and never offered to change (PDL, 15.11.2026, „moderator vrstu ne menja"). */
+  eventKind: string | null
 }
 
 /** One run waiting in the results tab, as the screen reads it: a waiting item and its run. */
@@ -1993,4 +1997,7 @@ export type SentRun = {
   /** That event's name as it is now, or the name he typed; nothing where he named none (a run sent
    *  before V66). */
   eventName: string | null
+  /** The kind of that event (`MyResultSubmissionsApi.Sent.eventKind`, V101): `race` or `unscored`, the one
+   *  he sent a described run under. A run of an unscored race is listed with no points. */
+  eventKind: string
 }
