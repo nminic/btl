@@ -1086,12 +1086,22 @@ export function AdminEvents() {
              * counted through the races taken away (`asksBeforeSaving`, below), exactly as the sheet over
              * a deletion counts it (`goingWith`), and not through the event or its address.
              */
+            /**
+             * THE EVENT WHOSE RACES THIS SAVE DELETES FROM: while races wait, the event the earlier press already
+             * saved (`waitingFor`, which is exactly what `saveOne` hands `writeTheRaces` on a retry), and otherwise
+             * the event the form is open on. `under` alone is wrong after a partly refused save of a NEW event or a
+             * copy: the form is still open on nothing (`under` is 'nov'), the retry deletes from the event the
+             * press made, and the question counted none. Asked of the same ref the retry reads, so the sheet and
+             * the deletion name one event.
+             */
+            const theEventThisSaveWrites = (): string => String(waitingFor.current ?? under)
+
             const takenAway = (values: FormValues): Set<string> => {
               const survives = theRacesThisSaveKeeps(values)
 
               return new Set(
                 allRaces
-                  .filter((one) => String(one.eventId) === under && !survives.has(String(one.id)))
+                  .filter((one) => String(one.eventId) === theEventThisSaveWrites() && !survives.has(String(one.id)))
                   .map((one) => String(one.id)),
               )
             }
