@@ -1770,3 +1770,104 @@ describe('the kind of event a result is sent under', () => {
     }
   }, SLOW)
 })
+
+/* A RUN SENT BACK ON AN EVENT OF THE CALENDAR KNOWS THE KIND OF THAT EVENT FROM THE FIRST MOMENT (PDL, 14.11.2026,
+   (1): „Uspon i spust na netrkačkoj trci su neobavezni (prazno znači 0)", on every door; measured on PR 733: a form
+   opened on `?ponovo=` with an event of the calendar asked the climb again after the first keystroke, because the kind
+   of a chosen event is filled by choosing from the list and nothing else filled it).
+
+   THE AXES: the road to the event (the event chosen, a race of the calendar, which sets the same key); the kind of the
+   event (unscored, scored); the moment (before any keystroke, after one); and where the kind comes from (the run sent
+   back, the calendar - each served a kind the other does not, so the one read is the one named). */
+describe('a run sent back on an event of the calendar', () => {
+  const POOL = shaped({ id: 9150, eventId: 9001, name: 'Gradska liga, plivanje', renamed: true, date: '2027-03-01', kind: 'free', distanceKm: 3 })
+
+  /** The calendar with the league as the kind given, and a race of it that fixes no climb. */
+  function theLeagueIs(kind: string): { stop: () => void } {
+    const answer = (body: unknown) =>
+      new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } })
+
+    return serverThat((path) =>
+      path === '/api/events'
+        ? answer(CALENDAR.map((one) => (one.id === LEAGUE.id ? { ...one, kind } : one)))
+        : path === '/api/races'
+          ? answer([...RACES, POOL])
+          : null,
+    )
+  }
+
+  /** The run sent back, on the league as the road says, and the kind the SERVER says it was sent under. */
+  const sentBackOn = (road: 'event' | 'race', eventKind: string) => ({
+    ...SENT_BACK,
+    raceName: road === 'race' ? POOL.name : 'Plivanje oko jezera',
+    raceDate: '2027-03-01',
+    raceId: road === 'race' ? POOL.id : null,
+    eventId: LEAGUE.id,
+    eventName: LEAGUE.name,
+    eventKind,
+    raceKind: road === 'race' ? 'free' : 'length',
+    distanceKm: 3,
+    ascentM: 0,
+    descentM: 0,
+    city: '',
+    country: '',
+  })
+
+  /** Opens it, says one thing (the comment) so the form has been asked, leaves the climb empty, and sends. */
+  async function sendItWithTheClimbLeftOut(user: ReturnType<typeof setupUser>): Promise<void> {
+    renderAt(`${NEW}?ponovo=77`, 'competitor', ME, undefined, TODAY)
+    await screen.findByText(/Link ne otvara rezultate/, undefined, SOON)
+    await user.type(screen.getByLabelText(/Komentar/), ' Dopuna.')
+    await user.clear(screen.getByLabelText(/Uspon/))
+    await user.clear(screen.getByLabelText(/Spust/))
+    await user.click(screen.getByRole('button', { name: 'Pošalji rezultat' }))
+  }
+
+  it.each(['event', 'race'] as const)(
+    'asks no climb of an unscored race, on the road of the %s, after the form has been asked',
+    async (road) => {
+      const user = setupUser()
+      /* The calendar says SCORED while the run says UNSCORED, so a form that read the calendar would ask the climb. */
+      const league = theLeagueIs('race')
+      const route = recording([sentBackOn(road, 'unscored')])
+
+      try {
+        await sendItWithTheClimbLeftOut(user)
+        await screen.findByRole('heading', { name: 'Rezultat je poslat' }, SOON)
+
+        const sent = must(route.sent()[0], 'what was sent')
+
+        expect([road === 'race' ? sent.raceId : sent.eventId, sent.ascentM, sent.descentM]).toEqual([
+          road === 'race' ? POOL.id : LEAGUE.id,
+          null,
+          null,
+        ])
+      } finally {
+        route.stop()
+        league.stop()
+      }
+    },
+    SLOW,
+  )
+
+  it.each(['event', 'race'] as const)(
+    'still asks the climb of a scored race, on the road of the %s',
+    async (road) => {
+      const user = setupUser()
+      /* And the other way round: the calendar says UNSCORED, the run says SCORED. */
+      const league = theLeagueIs('unscored')
+      const route = recording([sentBackOn(road, 'race')])
+
+      try {
+        await sendItWithTheClimbLeftOut(user)
+
+        await waitFor(() => expect(screen.getByLabelText(/^Uspon/)).toHaveAttribute('aria-invalid', 'true'), SOON)
+        expect(route.sent()).toEqual([])
+      } finally {
+        route.stop()
+        league.stop()
+      }
+    },
+    SLOW,
+  )
+})

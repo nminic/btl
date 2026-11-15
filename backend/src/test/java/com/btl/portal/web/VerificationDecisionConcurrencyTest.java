@@ -1018,7 +1018,7 @@ class VerificationDecisionConcurrencyTest {
 
 		assertThat(refused.getStatus()).isEqualTo(409);
 		assertThat(refused.getContentAsString(StandardCharsets.UTF_8))
-				.contains("Ovaj događaj nije iste vrste kao trka");
+				.contains("Član je ovu trku prijavio kao drugu vrstu od ovog događaja.");
 		theRowWaitsAsItWasSent();
 		assertThat(db.sql("select id from btl_event where slug like ?").param(MADE_BY_THESE_CASES)
 				.query(Long.class).list()).containsExactly(theOneThatTookIt);

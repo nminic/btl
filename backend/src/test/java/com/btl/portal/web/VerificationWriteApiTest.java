@@ -5906,7 +5906,7 @@ class VerificationWriteApiTest {
 		assertThat(List.of(ontoTheUnscored.getStatus(), ontoTheScoredRace.getStatus(),
 				ontoTheScoredByName.getStatus())).containsExactly(409, 409, 409);
 		assertThat(List.of(reasonOf(ontoTheUnscored), reasonOf(ontoTheScoredRace), reasonOf(ontoTheScoredByName)))
-				.allSatisfy(reason -> assertThat(reason).startsWith("Ovaj događaj nije iste vrste kao trka"));
+				.allSatisfy(reason -> assertThat(reason).startsWith("Član je ovu trku prijavio kao drugu vrstu od ovog događaja."));
 		assertThat(List.of(howManyEvents(), howManyRaces())).containsExactly(events, races);
 		assertThat(db.sql("select count(*) from result r join competitor c on c.id = r.competitor_id"
 						+ " where c.member_number in (?, ?)").params(ANA, BOJAN).query(Integer.class).single())
