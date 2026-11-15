@@ -104,6 +104,9 @@ class CompetitorCardApiTest {
 	/** A member who is deleted before the case asks. */
 	private static final String DELETED = "000717";
 
+	/** A member whose gender is F: the only woman in the setting, with a membership of 2028. */
+	private static final String WOMAN = "000718";
+
 	private static final String NOBODY = "000799";
 
 	private static final Color APPROVED = new Color(0xd0, 0x20, 0x20);
@@ -146,8 +149,9 @@ class CompetitorCardApiTest {
 
 	@BeforeEach
 	void aLeagueWithRacesAndPortraits() throws IOException {
-		for (String number : List.of(FIRST, ASKED, HIDDEN, NONE, LAPSED, WAITING, GONE, DELETED)) {
-			member(number, number.equals(ASKED) ? "Nikola" : "Ime", number.equals(ASKED) ? "Minić" : "Prezime");
+		for (String number : List.of(FIRST, ASKED, HIDDEN, NONE, LAPSED, WAITING, GONE, DELETED, WOMAN)) {
+			member(number, number.equals(ASKED) ? "Nikola" : "Ime", number.equals(ASKED) ? "Minić" : "Prezime",
+					number.equals(WOMAN) ? "F" : "M");
 			memberOf(number, number.equals(LAPSED) ? 2027 : 2028);
 		}
 
@@ -177,6 +181,12 @@ class CompetitorCardApiTest {
 		run(ASKED, half, "21.1");
 		run(ASKED, marathon, "42.2");
 		run(ASKED, swim, "5.5");
+		/* And two of an EARLIER YEAR, one scored and one unscored: the card counts every year
+		   (owner, 15.11.2026: „Uvek ukupno?"), and the clock stands in 2028, so a count that kept
+		   only the running year would leave these two out. */
+		run(ASKED, race(event("jesen-2027", "2027-10-10", "race"), "Deset 2027", "2027-10-10", 10), "10");
+		run(ASKED, race(event("triatlon-2027", "2027-09-09", "unscored"), "Trcanje 2027", "2027-09-09", 3),
+				"3");
 		/* And the first member's, in the same races, including the kinds he has none of. */
 		run(FIRST, ultra, "50");
 		run(FIRST, ten, "10");
@@ -238,17 +248,19 @@ class CompetitorCardApiTest {
 		/* The category as the public answer gives it, written as the profile writes it, then the team. */
 		assertThat(face.underName()).isEqualTo(WhatACardSays.SERBIAN.category(his.gender(),
 				his.category().ageBand(), his.category().beginner()) + " · Dunavski trkači");
-		assertThat(face.racesFigure()).isEqualTo("5");
+		/* Seven runs over two years: five of 2028 and two of 2027, 101.80 km together. */
+		assertThat(face.racesFigure()).isEqualTo("7");
 		assertThat(face.racesWord()).isEqualTo("trka");
-		assertThat(face.kilometresFigure()).isEqualTo("88,80");
+		assertThat(face.kilometresFigure()).isEqualTo("101,80");
 		assertThat(face.slices()).extracting(slice -> slice.kind() + " " + slice.figure() + " " + slice.word())
-				.containsExactly("short 2 kraće trke", "half 1 polumaraton", "marathon 1 maraton",
-						"unscored 1 nebodovana");
+				.containsExactly("short 3 " + WhatACardSays.SERBIAN.kindWord("short", 3),
+						"half 1 polumaraton", "marathon 1 maraton",
+						"unscored 2 " + WhatACardSays.SERBIAN.kindWord("unscored", 2));
 		assertThat(face.address()).isEqualTo("balkanskatrkackaliga.net");
 
 		CompetitorCard.Face english = cards.faceShown(ASKED, WhatACardSays.ENGLISH).orElseThrow();
 		assertThat(english.racesWord()).isEqualTo("races");
-		assertThat(english.kilometresFigure()).isEqualTo("88.80");
+		assertThat(english.kilometresFigure()).isEqualTo("101.80");
 		assertThat(english.slices()).extracting(CompetitorCard.Slice::word)
 				.containsExactly("short races", "half marathon", "marathon", "unscored");
 	}
@@ -273,10 +285,41 @@ class CompetitorCardApiTest {
 				.reduce(BigDecimal.ZERO, BigDecimal::add);
 		CompetitorCard.Face face = cards.faceShown(ASKED, WhatACardSays.SERBIAN).orElseThrow();
 
-		assertThat(his).as("the case has scored and unscored runs of his").hasSize(5);
+		assertThat(his).as("the case has scored and unscored runs of his").hasSize(7);
+		assertThat(his.stream().filter(one -> one.path("date").asString().startsWith("2027")).count())
+				.as("and two of them are of an earlier year than the one the clock stands in").isEqualTo(2);
+		assertThat(his.stream().filter(one -> one.path("date").asString().startsWith("2028")).count())
+				.as("and the rest are of the running year").isEqualTo(5);
 		assertThat(face.racesFigure()).isEqualTo(WhatACardSays.SERBIAN.count(his.size()));
 		assertThat(face.kilometresFigure()).isEqualTo(WhatACardSays.SERBIAN.kilometres(kilometres));
 		assertThat(face.slices().stream().mapToLong(CompetitorCard.Slice::count).sum()).isEqualTo(his.size());
+	}
+
+	/**
+	 * THE MARK OF THE GENDER IN THE CATEGORY IS THE MEMBER'S OWN. Every other member of the setting
+	 * is a man, so a card that wrote the mark of men for everybody would read the same for them; the
+	 * one woman is the case that tells the two apart, in both languages, and the man beside her keeps
+	 * his.
+	 */
+	@Test
+	void aWomanCardCarriesTheMarkOfWomenAndAManCardTheMarkOfMen() {
+		CompetitorApi.Competitor her = competitors.competitors(null).stream()
+				.filter(one -> WOMAN.equals(one.memberNumber())).findFirst().orElseThrow();
+		CompetitorApi.Competitor him = competitors.competitors(null).stream()
+				.filter(one -> NONE.equals(one.memberNumber())).findFirst().orElseThrow();
+
+		assertThat(her.gender()).as("the case has a woman and the public answer says so").isEqualTo("F");
+		assertThat(him.gender()).isEqualTo("M");
+		assertThat(her.category()).as("and she has a category on the card").isNotNull();
+
+		assertThat(cards.faceShown(WOMAN, WhatACardSays.SERBIAN).orElseThrow().underName())
+				.startsWith("Ž").doesNotStartWith("M")
+				.isEqualTo(WhatACardSays.SERBIAN.category("F", her.category().ageBand(), her.category().beginner()));
+		assertThat(cards.faceShown(WOMAN, WhatACardSays.ENGLISH).orElseThrow().underName())
+				.isEqualTo(WhatACardSays.ENGLISH.category("F", her.category().ageBand(), her.category().beginner()))
+				.doesNotStartWith("M");
+		assertThat(cards.faceShown(NONE, WhatACardSays.SERBIAN).orElseThrow().underName())
+				.startsWith("M").doesNotStartWith("Ž");
 	}
 
 	@Test
@@ -469,16 +512,16 @@ class CompetitorCardApiTest {
 		return response;
 	}
 
-	private void member(String number, String first, String last) {
+	private void member(String number, String first, String last, String gender) {
 		db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
 						+ " place_id, city, country_id, first_season,"
 						+ " referral_code, referred_by, bio, profile_hidden,"
 						+ " birthday_shown, father_name, address, shirt_size, health_statement_at)"
-						+ " values (?, ?, ?, 'M', date '1980-05-05',"
+						+ " values (?, ?, ?, ?, date '1980-05-05',"
 						+ " (select id from place where rank = 1), null, null, 2027,"
 						+ " ?, null, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-09-01 10:00:00+00')")
-				.params(number, first, last, "0011223377" + number).update();
+				.params(number, first, last, gender, "0011223377" + number).update();
 	}
 
 	private void memberOf(String number, int season) {
