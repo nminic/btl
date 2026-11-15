@@ -233,8 +233,7 @@ class TheWrittenPagesSayThatAnUnscoredRaceIsAPersonalRecordCarriedOverTest exten
 		theTextAsItStoodBeforeV100();
 
 		setBody("pravilnik", 19, "sr", bodyOf("pravilnik", 19, "sr").replace("Poslednja izmena: 14.11.2026.", "Poslednja izmena: 12.11.2026."));
-		setBody("pravilnik", 19, "en", bodyOf("pravilnik", 19, "en") + "
-Last amended: 15.11.2026.");
+		setBody("pravilnik", 19, "en", bodyOf("pravilnik", 19, "en") + "\nLast amended: 15.11.2026.");
 
 		jdbc.execute("savepoint before_the_refusal");
 
