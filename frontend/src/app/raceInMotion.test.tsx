@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import { htmlElement } from '../test/at'
+import { htmlElement, must } from '../test/at'
 import { renderAt } from '../test/render'
 import { HeaderDecoration, PageBackgroundDecoration } from './RaceInMotion'
 
@@ -37,7 +37,7 @@ describe('the decoration of the header', () => {
     const { container } = render(<HeaderDecoration />)
     const drawings = everything(htmlElement(container.firstElementChild)).filter((one) => one.localName === 'svg')
 
-    /* The track and the runner. */
+    /* What stands beside the column, and what stands past the tools. */
     expect(drawings).toHaveLength(2)
 
     for (const drawing of drawings) {
@@ -45,16 +45,61 @@ describe('the decoration of the header', () => {
     }
   })
 
-  it('draws two lanes on a telephone, a third from a tablet and a fourth from a desktop, and one gold line', () => {
+  it('draws the five lanes of the reference in three strengths, and its one gold line in the three spans it is seen in', () => {
     const { container } = render(<HeaderDecoration />)
-    const classes = everything(htmlElement(container.firstElementChild))
-      .filter((one) => one.localName === 'path')
-      .map((one) => one.getAttribute('class'))
+    const paths = everything(htmlElement(container.firstElementChild)).filter((one) => one.localName === 'path')
+    const classes = paths.map((one) => one.getAttribute('class'))
 
-    expect(classes.filter((one) => one === 'race-header__lane race-header__lane--always')).toHaveLength(2)
-    expect(classes.filter((one) => one === 'race-header__lane race-header__lane--tablet')).toHaveLength(1)
-    expect(classes.filter((one) => one === 'race-header__lane race-header__lane--desktop')).toHaveLength(1)
-    expect(classes.filter((one) => one === 'race-header__gold')).toHaveLength(1)
+    expect(classes.filter((one) => one?.startsWith('race-header__lane '))).toEqual([
+      'race-header__lane race-header__lane--mid',
+      'race-header__lane race-header__lane--faint',
+      'race-header__lane race-header__lane--full',
+      'race-header__lane race-header__lane--mid',
+      'race-header__lane race-header__lane--faint',
+    ])
+
+    /* Behind the logo and past the navigation beside the column, and up under the runner past the
+       tools. There is no other gold line: the reference has none along the foot of the header. */
+    const gold = paths.filter((one) => one.getAttribute('class') === 'race-header__gold')
+
+    expect(gold.map((one) => one.closest('svg')?.getAttribute('class'))).toEqual([
+      'race-header__track',
+      'race-header__track',
+      'race-header__rise',
+    ])
+  })
+
+  it('gives every line the fade it is drawn in, from its own drawing, so it comes and goes as in the reference', () => {
+    /* The reference's lines are not of one strength: each comes in out of nothing and goes back into
+       it. That strength is a gradient the stroke names, and a name that points at nothing is a line
+       the browser does not draw at all. */
+    const { container } = render(<HeaderDecoration />)
+    const layer = htmlElement(container.firstElementChild)
+    const lines = everything(layer).filter((one) => /race-header__(lane|gold)\b/.test(one.getAttribute('class') ?? ''))
+
+    expect(lines).toHaveLength(8)
+
+    for (const line of lines) {
+      const named = must(/^url\(#([^)]+)\)$/.exec(line.getAttribute('stroke') ?? '')?.[1], 'the fade a line names')
+      const fade = must(line.closest('svg')?.querySelector(`linearGradient[id="${named}"]`), `the fade ${named}`)
+      const stops = [...fade.querySelectorAll('stop')]
+
+      /* It starts and ends at nothing and is somewhere seen. */
+      expect(stops.at(0)?.getAttribute('stop-opacity')).toBe('0')
+      expect(stops.at(-1)?.getAttribute('stop-opacity')).toBe('0')
+      expect(Math.max(...stops.map((stop) => Number(stop.getAttribute('stop-opacity'))))).toBeGreaterThan(0.8)
+    }
+  })
+
+  it('draws the runner as one closed outline traced from the reference', () => {
+    /* Owner, 15.11.2026: „Moze li da se iskopira verno ovo sto sam ti dao kao primer?" One shape,
+       closed; the sheet gives it a thin stroke and nothing inside. */
+    const { container } = render(<HeaderDecoration />)
+    const runner = everything(htmlElement(container.firstElementChild)).filter((one) => one.matches('path.race-header__runner'))
+
+    expect(runner).toHaveLength(1)
+    expect(runner[0]?.closest('svg')).toHaveClass('race-header__rise')
+    expect(runner[0]?.getAttribute('d')).toMatch(/^M[^M]+Z$/)
   })
 })
 
@@ -66,6 +111,8 @@ describe('the decoration of the page', () => {
     expect(layer).toHaveAttribute('aria-hidden', 'true')
     expect(reachable(layer)).toEqual([])
     expect(layer).toHaveTextContent('')
+    /* The drawing is the sheet's, over the whole window: nothing in the tree for it to stand in. */
+    expect(layer.children).toHaveLength(0)
   })
 })
 
