@@ -365,11 +365,12 @@ describe('what a shared link shows', () => {
 
     /* The title of the shared link is the owner's sentence and not the tab's (PDL P11,
        15.11.2026: „boldovan naslov treba da glasi Nikola Minić u Balkanskoj trkačkoj ligi"), and
-       it is the sentence the server sends for this address too (CompetitorPreviewApi). */
-    await waitFor(() =>
-      expect(content('property', 'og:title')).toBe('Strahinja Vukićević u Balkanskoj trkačkoj ligi'),
-    )
-    expect(document.title).toBe(`Strahinja Vukićević, Banja Luka · ${LEAGUE}`)
+       it is the sentence the server sends for this address too (CompetitorPreviewApi).
+       Waited on through the tab, which the same effect writes in the same breath: a shared title
+       that never comes then fails on its own sentence at once, and never on the clock of the case
+       (btl/CLAUDE.md, section 25). */
+    await waitFor(() => expect(document.title).toBe(`Strahinja Vukićević, Banja Luka · ${LEAGUE}`))
+    expect(content('property', 'og:title')).toBe('Strahinja Vukićević u Balkanskoj trkačkoj ligi')
     expect(content('property', 'og:description')).toBe(content('name', 'description'))
     expect(content('property', 'og:site_name')).toBe(LEAGUE)
     /* Waited on, like the canonical it mirrors: the address a profile shares is
@@ -387,10 +388,9 @@ describe('what a shared link shows', () => {
     renderAt('/en/takmicar/000007')
 
     await screen.findByRole('heading', { level: 1, name: 'Strahinja Vukićević' })
-    await waitFor(() =>
-      expect(content('property', 'og:title')).toBe(
-        en.seo.competitor.shareTitle.replace('{name}', 'Strahinja Vukićević'),
-      ),
+    await waitFor(() => expect(document.title).toContain('Strahinja Vukićević, Banja Luka'))
+    expect(content('property', 'og:title')).toBe(
+      en.seo.competitor.shareTitle.replace('{name}', 'Strahinja Vukićević'),
     )
     expect(content('name', 'twitter:title')).toBe(content('property', 'og:title'))
   })
@@ -400,9 +400,8 @@ describe('what a shared link shows', () => {
        names none, share the tab's: the title one page declares does not stay behind on the next. */
     const { router } = renderAt('/sr/takmicar/000007')
 
-    await waitFor(() =>
-      expect(content('property', 'og:title')).toBe('Strahinja Vukićević u Balkanskoj trkačkoj ligi'),
-    )
+    await waitFor(() => expect(document.title).toBe(`Strahinja Vukićević, Banja Luka · ${LEAGUE}`))
+    expect(content('property', 'og:title')).toBe('Strahinja Vukićević u Balkanskoj trkačkoj ligi')
 
     await router.navigate('/sr/tim/dunavski-trkaci')
 
