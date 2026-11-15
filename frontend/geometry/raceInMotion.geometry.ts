@@ -263,6 +263,71 @@ for (const at of [...WIDTHS, { width: 1280, text: 100 } satisfies At]) {
   })
 }
 
+/**
+ * How far each of the runner's feet stands off the gold line he runs up, in pixels on the screen.
+ *
+ * <p>Owner, 15.11.2026: „i pripoji stopala ka podlozi". The runner and the line are two shapes in one
+ * drawing, so they could drift apart only if one of them is moved; this reads both where Chrome draws
+ * them. A foot is the lowest point of the outline in its part of the runner's box (the rear one in the
+ * left quarter, the front one in the lower fifth right of the middle), and the line is sampled densely
+ * and read at that point's x.
+ */
+async function feetOffTheLine(page: Page): Promise<{ rear: number; front: number }> {
+  return page.evaluate(() => {
+    const onScreen = (path: SVGPathElement, steps: number) => {
+      const matrix = path.getScreenCTM()
+      const length = path.getTotalLength()
+
+      return matrix === null
+        ? []
+        : Array.from({ length: steps + 1 }, (_, step) => path.getPointAtLength((length * step) / steps).matrixTransform(matrix))
+    }
+    const runner = document.querySelector<SVGPathElement>('.race-header__runner')
+    const line = document.querySelector<SVGPathElement>('.race-header__rise .race-header__gold')
+
+    if (runner === null || line === null) {
+      return { rear: Number.NaN, front: Number.NaN }
+    }
+
+    const outline = onScreen(runner, 4000)
+    const gold = onScreen(line, 4000).sort((a, b) => a.x - b.x)
+    const box = runner.getBoundingClientRect()
+    const lineAt = (x: number) => {
+      const after = gold.findIndex((point) => point.x >= x)
+      const right = gold[after]
+      const left = gold[after - 1]
+
+      if (right === undefined || left === undefined) {
+        return Number.NaN
+      }
+
+      return left.y + ((right.y - left.y) * (x - left.x)) / (right.x - left.x || 1)
+    }
+    const lowest = (points: DOMPoint[]) => points.reduce((low, point) => (point.y > low.y ? point : low))
+    const rear = lowest(outline.filter((point) => point.x < box.left + box.width * 0.25))
+    const front = lowest(
+      outline.filter((point) => point.x > box.left + box.width * 0.55 && point.y > box.top + box.height * 0.8),
+    )
+
+    return { rear: rear.y - lineAt(rear.x), front: front.y - lineAt(front.x) }
+  })
+}
+
+for (const at of [
+  { width: 1280, text: 100 },
+  { width: 1440, text: 100 },
+  { width: 1714, text: 100 },
+] satisfies At[]) {
+  test(`both feet of the runner stand on the gold line at ${label(at)}`, async ({ open }) => {
+    const { page } = await open(at, '/sr', 'header .brand', ANSWERS)
+    const off = await feetOffTheLine(page)
+
+    /* Within a pixel, either way: no gap under a foot and no foot through the line. */
+    expect(Math.abs(off.rear), `the rear foot is ${off.rear}px off the line`).toBeLessThanOrEqual(1)
+    expect(Math.abs(off.front), `the front foot is ${off.front}px off the line`).toBeLessThanOrEqual(1)
+  })
+}
+
 test('an open menu of the header still lies over the page under it', async ({ open }) => {
   const { page } = await open({ width: 1440, text: 100 }, '/sr', 'header .brand', ANSWERS)
 
