@@ -262,6 +262,9 @@ const NOT_YET_ON_ANY_SCREEN: Record<string, string[]> = {
      (`profile/InviteToTeam.tsx`), both through `pages/joiningThisTeam.ts`, so both names have a
      dictionary on the line for that file below and the entry went, as the case at the bottom of
      this file requires of a reason whose screen has arrived. */
+  /* THE UNSCORED RACE stood here with `LeagueWriteApi`'s `anUnscoredRaceIsNotInALeague` from step 1 of its
+     increment until step 3, which maps it on the panel of a competition's races (`admin/leagueWrites.ts`,
+     PDL 14.11.2026), so the entry went, as the case at the bottom of this file requires. */
 }
 
 describe('the reasons the server can name', () => {
@@ -331,7 +334,7 @@ describe('the reasons the server can name', () => {
        (`admin/LeagueRaceModeration.tsx`). `theSeasonIsFrozen` is in both tables under two
        different dictionary keys, because what the reader has to do about it differs, and
        the union is what this gate counts. */
-    ['LeagueWriteApi.java', [WHEN_WRITING_A_LEAGUE, WHEN_MODERATING_LEAGUE_RACES], 11],
+    ['LeagueWriteApi.java', [WHEN_WRITING_A_LEAGUE, WHEN_MODERATING_LEAGUE_RACES], 12],
     /* THE SEVENTH, ADDED 26.09.2026 WITH THE SCREEN THAT MEETS IT. `PricingWriteApi` had
        named five reasons since PR 370 and nothing on this side could read any of them,
        because no screen called the route at all - `grep -rn "api/pricing" frontend/src`
@@ -628,7 +631,11 @@ describe('the reasons the server can name', () => {
        route answers one word, and what it means to the reader depends on whether he was
        saving an event or one of its mornings. The race's thirteenth arrived 10.10.2026 with
        the owner's answer that a race carrying an approved result keeps its kind (PDL P4). */
-    ['EventWriteApi.java', [WHEN_WRITING_AN_EVENT], 11],
+    /* Twelve since 14.11.2026: `aKindWithResultsDoesNotChange`, an event with a result does not change between a
+       scored and an unscored race (PDL, „Ostale discipline kao lična evidencija"), answered on the event form.
+       Thirteen the same day with `anUnscoredRaceIsNotInALeague`, the same change refused while a race of the event
+       counts in a league. Both are answered on the event form, so neither stands in `NOT_YET_ON_ANY_SCREEN`. */
+    ['EventWriteApi.java', [WHEN_WRITING_AN_EVENT], 13],
     ['RaceWriteApi.java', [WHEN_WRITING_A_RACE], 14],
     /* THE LEAGUE'S OWN ENTRY OF RESULTS FROM THE EVENT PAGE, added 19.10.2026 with the screen that
        meets it (`event/EnterResults.tsx`, PDL P9, 18.10.2026). Eight constants and six reasons then, ten reasons now; the two
@@ -649,8 +656,10 @@ describe('the reasons the server can name', () => {
        06.11.2026 takes back of the morning of 1 January (PDL P9, „server odbija trku iz stare godine na
        događaju koji još predstoji”); `RaceWriteApi` has the same one, its fourteenth.
        (07.11.2026: `theEventWouldMoveOntoAnother` stays, since an event with no race moves forward into the
-       next year's address when its first race is entered; the review of PR 700 found it.) */
-    ['ResultsByTheLeagueApi.java', [WHEN_THE_LEAGUE_ENTERS_RESULTS], 14],
+       next year's address when its first race is entered; the review of PR 700 found it.) Fifteen since
+       15.11.2026: `theEventIsOfAnotherKind`, a new event typed that the calendar already has, of the other kind
+       than the one chosen beside it (PDL, 15.11.2026, the kind of a new event is the one the league chooses). */
+    ['ResultsByTheLeagueApi.java', [WHEN_THE_LEAGUE_ENTERS_RESULTS], 15],
     /* ADDED 25.10.2026 WITH THE BANK STATEMENT ON THE PAYMENTS SCREEN (PDL 24.10.2026). Seven constants:
        four refusals, answered by the statement box, and the three states of a line in `NOT_A_REASON`. */
     /* NINE SINCE 25.10.2026: „Nije članarina" names one refusal of its own, and a fourth state. */

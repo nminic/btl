@@ -43,7 +43,10 @@ export function LengthLegend() {
               className={one === 'race' ? 'legend__tile' : `legend__tile legend__tile--${one}`}
               aria-hidden="true"
             />
-            {t(`event.kind.${one}`)}
+            {/* The row of an unscored race is named in the plural, as the owner named it (14.11.2026:
+                „svuda „Nebodovane trke" (kalendar, filter na profilu)"); the dictionary's own word for the
+                kind is the singular a form asks for. */}
+            {one === 'unscored' ? t('calendar.legendUnscored') : t(`event.kind.${one}`)}
           </li>
         ))}
         {DOTS.map((one) => (

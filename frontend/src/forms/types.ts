@@ -240,10 +240,11 @@ export type FieldDef = {
    */
   showWhenYoungerThan?: { field: string; years: number }
   /**
-   * Shown only while the value named is empty. The one case is the town of a result: a run on an
-   * event the member chose has that event's town, and none of its own (V67), so the field goes
-   * the moment an event is chosen and comes back when the choice is broken. Named rather than
-   * general, for the reason the rule above gives.
+   * Shown only while the value named is empty. The case is the event of a result: a run on an event
+   * the member chose has that event's town, and none of its own (V67), and that event's kind, which is
+   * not his to choose (PDL, 14.11.2026, (4): he chooses Bodovana or Nebodovana trka for an event he
+   * TYPES), so both fields go the moment an event is chosen and come back when the choice is broken.
+   * Named rather than general, for the reason the rule above gives.
    */
   showWhenEmpty?: string
   /**

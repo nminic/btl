@@ -338,7 +338,7 @@ class TwoLeagueSavesOnANewEventTest {
 		}
 
 		String body = "{\"event\":{\"name\":\"" + THE_NAME + "\",\"date\":\"" + THE_REQUESTS_DAY
-				+ "\",\"city\":\"Ohrid\",\"country\":\"MK\"},\"race\":{\"name\":\"" + raceName + "\","
+				+ "\",\"city\":\"Ohrid\",\"country\":\"MK\",\"kind\":\"race\"},\"race\":{\"name\":\"" + raceName + "\","
 				+ "\"kind\":\"length\",\"distanceKm\":" + km + ",\"ascentM\":50,\"descentM\":40,"
 				+ "\"limitSeconds\":null},\"rows\":[" + rows + "]}";
 

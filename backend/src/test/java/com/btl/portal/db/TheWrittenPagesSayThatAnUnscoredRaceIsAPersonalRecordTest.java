@@ -113,31 +113,32 @@ class TheWrittenPagesSayThatAnUnscoredRaceIsAPersonalRecordTest extends Database
 	@Test
 	void theTableNamesEveryEditV100Makes() {
 		assertThat(migrationSql("100").split("\\$old\\$", -1).length - 1)
-				.as("V100 carries an edit that this file does not name (or this file names one V100 lacks): one line in each language,"
+				.as("V100 carries an edit that this file does not name (or this file names one V100 lacks): one line and one sign-off in each language,"
 						+ " each written between two $old$ marks")
-				.isEqualTo(2 * 2);
+				.isEqualTo(4 * 2);
 	}
 
 	/**
-	 * THE RULEBOOK IS SIGNED OFF ON THE DAY V98 GAVE IT, IN BOTH LANGUAGES, AND V100 MOVES NO SIGN-OFF: asked of the text
-	 * the portal serves and of V100 itself. A move of the day in one language only, or to another day, fails the first;
-	 * an edit of a sign-off written into V100 fails the second, even to the same day, because the migration refuses that.
+	 * THE RULEBOOK IS SIGNED OFF ON THE FIFTEENTH OF NOVEMBER, IN BOTH LANGUAGES, AND THE DAY IS MOVED BY V100 ITSELF: asked of
+	 * the text the portal serves (a move in one language only, or to another day, fails it), and of V100, which must carry the
+	 * move from the day V98 gave to the new one in each language, as the edit of a sign-off in the shape of V98.
 	 */
 	@Test
-	void theRulebookStillReadsTheFourteenthOfNovemberInBothLanguagesAndV100MovesNothing() {
+	void theRulebookReadsTheFifteenthOfNovemberInBothLanguagesAndV100IsWhatMovesIt() {
 		for (String language : List.of("sr", "en")) {
-			String mark = language.equals("sr") ? "Poslednja izmena: " : "Last amended: ";
+			boolean serbian = language.equals("sr");
+			String mark = serbian ? "Poslednja izmena: " : "Last amended: ";
 
 			assertThat(bodyOf(RULEBOOK, 19, language)).as("the %s rulebook ends with its sign-off", language)
-					.endsWith(mark + "14.11.2026.")
-					.containsOnlyOnce(mark);
+					.endsWith(mark + "15.11.2026.")
+					.containsOnlyOnce(mark).doesNotContain("14.11.2026");
 			assertThat(bodyOf("politika-privatnosti", 7, language)).as("the %s policy keeps its day", language)
 					.endsWith(mark + "11.11.2026.");
 			assertThat(bodyOf("uslovi-koriscenja", 11, language)).as("the %s terms keep their day", language)
 					.endsWith(mark + "11.11.2026.");
+			assertThat(migrationSql("100")).as("V100 does not move the %s sign-off from the day V98 gave it", language)
+					.contains("$old$" + mark + "14.11.2026.$old$")
+					.contains("$new$" + mark + "15.11.2026.$new$");
 		}
-
-		assertThat(migrationSql("100")).as("V100 moves a sign-off, which it has no new day to give")
-				.doesNotContain("'pravilnik', 19,");
 	}
 }

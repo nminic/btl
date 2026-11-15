@@ -47,10 +47,11 @@ class ResultSubmissionEventCarriedOverTest extends DatabaseTest {
 			+ " place_id, city, country_id, distance_km, ascent_m, descent_m, seconds, link, comment,"
 			+ " amends_result_id";
 
-	/** Everything V66 adds, taken away so it has something to add. */
+	/** Everything V66 adds, taken away so it has something to add, and the kind V101 adds after it,
+	 *  which a table of before V66 did not have either and whose rule the rows below do not meet. */
 	private void whatV66Adds() {
 		jdbc.execute("alter table result_submission drop column event_id cascade,"
-				+ " drop column event_name cascade");
+				+ " drop column event_name cascade, drop column event_kind cascade");
 	}
 
 	private void waiting(String values) {

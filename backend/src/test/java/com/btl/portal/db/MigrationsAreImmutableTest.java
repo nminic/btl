@@ -836,13 +836,30 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   Pinned LAST, when the file was final, off this very assertion. */
 			new Applied("98", "V98__the_rulebook_names_the_rookie_category_with_the_letter_of_the_gender.sql", 1520798233),
 
+			/* V99. An unscored race is a fourth kind of event, and the view every count of results joins asks the
+			   kind (owner, 14.11.2026, PDL "Ostale discipline kao lična evidencija"): the kind constraint widened by
+			   one value, and two views over the key of a race, nothing already standing changed. 99 and no other:
+			   main stood at V98 when it was written, and the rulebook's change of the same increment is V100.
+
+			   Pinned LAST, when the file was final, off this very assertion. */
+			new Applied("99", "V99__an_unscored_race_is_a_kind_of_event_and_only_a_scored_one_is_counted.sql", 1387120764),
+
 			/* V100. The rulebook says in Article 15 that an unscored race is kept on the portal as a personal record and does not count
 			   (owner, 14.11.2026, PDL 'drugi krug pitanja o planu', item 7): one line added to the end of the list of Article 15 in each
 			   language, each stopping the migration unless its old text stands exactly once. The sign-off is not moved: it already reads
 			   14.11.2026 since V98. V99 belongs to step 1 of the same increment and is merged first.
 
 			   Pinned LAST, when the file was final, off this very assertion. */
-			new Applied("100", "V100__the_rulebook_says_an_unscored_race_is_a_personal_record_and_does_not_count.sql", 1865272280));
+			new Applied("100", "V100__the_rulebook_says_an_unscored_race_is_a_personal_record_and_does_not_count.sql", 1865272280),
+
+			/* V101. A described run carries the kind of its event, a scored or an unscored race (owner, 14.11.2026
+			   and 15.11.2026, PDL "Ostale discipline kao lična evidencija": „Vrsta je onakva kakvu je član
+			   izabrao"): one column on result_submission, every described run already standing given the scored
+			   kind it was sent under, and two rules. 101 and not 100: V100 is the rulebook's change of the same
+			   increment, merged last (PR 727).
+
+			   Pinned LAST, when the file was final, off this very assertion. */
+			new Applied("101", "V101__a_described_run_carries_the_kind_of_its_event.sql", 411634573));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {

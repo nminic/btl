@@ -791,8 +791,9 @@ class VerificationDecisionConcurrencyTest {
 		aRunOnARaceTheCalendarDoesNotHoldWaits();
 
 		theOtherRun = db.sql("insert into result_submission (competitor_id, race_id, race_date,"
-						+ " race_name, race_kind, place_id, distance_km, ascent_m, descent_m, seconds,"
-						+ " link, comment) values (?, null, date '2026-09-12', ?, 'length', " + A_TOWN
+						+ " race_name, race_kind, event_kind, place_id, distance_km, ascent_m, descent_m,"
+						+ " seconds, link, comment) values (?, null, date '2026-09-12', ?, 'length', 'race', "
+						+ A_TOWN
 						+ ", 12.0000, 90, 70, 3400, 'https://primer.rs/rezultati', '') returning id")
 				.params(another, THE_NAME_HE_TYPED).query(Long.class).single();
 
@@ -996,6 +997,28 @@ class VerificationDecisionConcurrencyTest {
 
 		assertThat(refused.getStatus()).isEqualTo(409);
 		assertThat(refused.getContentAsString(StandardCharsets.UTF_8)).contains("Taj događaj nije trka");
+		theRowWaitsAsItWasSent();
+		assertThat(db.sql("select id from btl_event where slug like ?").param(MADE_BY_THESE_CASES)
+				.query(Long.class).list()).containsExactly(theOneThatTookIt);
+	}
+
+	/**
+	 * AND AN ADDRESS TAKEN MEANWHILE BY AN EVENT OF THE OTHER KIND, an unscored race where the member sent a
+	 * scored one, refuses it the same way and in its own words (PDL, 15.11.2026: „Vrsta je onakva kakvu je
+	 * član izabrao"): the run would otherwise go on that event and take its kind. Asked of the event as it is
+	 * held, which is the one place that can see it, since it was not there when the approval asked.
+	 */
+	@Test
+	void anAddressTakenMeanwhileByAnEventOfTheOtherKindRefusesItAndTheRowWaitsAgain() throws Exception {
+		aRunOnARaceTheCalendarDoesNotHoldWaits();
+
+		long theOneThatTookIt = takenWhileTheApprovalWaits("unscored");
+
+		MockHttpServletResponse refused = theApprovalHeldUp.get(30, TimeUnit.SECONDS);
+
+		assertThat(refused.getStatus()).isEqualTo(409);
+		assertThat(refused.getContentAsString(StandardCharsets.UTF_8))
+				.contains("Ovaj događaj nije iste vrste kao trka");
 		theRowWaitsAsItWasSent();
 		assertThat(db.sql("select id from btl_event where slug like ?").param(MADE_BY_THESE_CASES)
 				.query(Long.class).list()).containsExactly(theOneThatTookIt);
@@ -1248,8 +1271,9 @@ class VerificationDecisionConcurrencyTest {
 				.param(theEvent).query(Long.class).single();
 
 		theRun = db.sql("insert into result_submission (competitor_id, race_id, race_date,"
-						+ " race_name, race_kind, place_id, distance_km, ascent_m, descent_m, seconds,"
-						+ " link, comment) values (?, null, date '2026-05-01', 'Opisana', 'length', "
+						+ " race_name, race_kind, event_kind, place_id, distance_km, ascent_m, descent_m,"
+						+ " seconds, link, comment) values (?, null, date '2026-05-01', 'Opisana', 'length',"
+						+ " 'race', "
 						+ A_TOWN + ", 10.0000, 50, 50, 3300, 'https://primer.rs/rezultati', '')"
 						+ " returning id")
 				.param(founder).query(Long.class).single();
@@ -1367,8 +1391,9 @@ class VerificationDecisionConcurrencyTest {
 	 */
 	private void aRunOnARaceTheCalendarDoesNotHoldWaits() {
 		theRun = db.sql("insert into result_submission (competitor_id, race_id, race_date,"
-						+ " race_name, race_kind, place_id, distance_km, ascent_m, descent_m, seconds,"
-						+ " link, comment) values (?, null, date '2026-09-12', ?, 'length', " + A_TOWN
+						+ " race_name, race_kind, event_kind, place_id, distance_km, ascent_m, descent_m,"
+						+ " seconds, link, comment) values (?, null, date '2026-09-12', ?, 'length', 'race', "
+						+ A_TOWN
 						+ ", 12.0000, 80, 60, 3300, 'https://primer.rs/rezultati', '') returning id")
 				.params(founder, THE_NAME_HE_TYPED).query(Long.class).single();
 

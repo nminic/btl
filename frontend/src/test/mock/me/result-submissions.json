@@ -17,7 +17,8 @@
     "reason": null,
     "amendsResultId": null,
     "eventId": 1118,
-    "eventName": "Mala Sveta gora"
+    "eventName": "Mala Sveta gora",
+    "eventKind": "race"
   },
   {
     "id": 40,
@@ -37,7 +38,8 @@
     "reason": "Na stranici rezultata nema tvog imena.",
     "amendsResultId": null,
     "eventId": null,
-    "eventName": "Palićki krug"
+    "eventName": "Palićki krug",
+    "eventKind": "race"
   },
   {
     "id": 38,
@@ -57,7 +59,8 @@
     "reason": "Zvanično vreme je 2:05:01, kako i stoji.",
     "amendsResultId": 2,
     "eventId": 291,
-    "eventName": "Tron polumaraton"
+    "eventName": "Tron polumaraton",
+    "eventKind": "race"
   },
   {
     "id": 37,
@@ -77,6 +80,7 @@
     "reason": null,
     "amendsResultId": 3,
     "eventId": 301,
-    "eventName": "Kruševački polumaraton"
+    "eventName": "Kruševački polumaraton",
+    "eventKind": "race"
   }
 ]

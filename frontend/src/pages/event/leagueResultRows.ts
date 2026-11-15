@@ -82,6 +82,17 @@ export function runnersToOffer(runners: Runner[]): Suggestion[] {
   }))
 }
 
+/**
+ * WHETHER A BOX OF A ROW MAY BE LEFT EMPTY: the climb and the fall of a run of an unscored race, and
+ * nothing else. PDL, 14.11.2026: „Uspon i spust na netrkačkoj trci su neobavezni (prazno znači 0)”; an
+ * empty box travels as nothing and the server writes nought (`ResultsByTheLeagueApi`).
+ *
+ * @param scored whether the race the row is on is a scored one
+ */
+export function mayBeLeftOut(figure: Figure, scored: boolean): boolean {
+  return !scored && (figure === 'ascentM' || figure === 'descentM')
+}
+
 /** One box read as a number, or nothing where it holds none. */
 function numberIn(box: string): number | null {
   return box.trim() === '' ? null : parseNumber(box)
@@ -95,13 +106,17 @@ function numberIn(box: string): number | null {
  * (`forms/clock.ts`, `fromBoxes`), and what is asked is that something was typed and that the whole is
  * more than nought (a run in no time is not a run, owner, 31.08.2026).
  */
-export function whatIsWrongWith(row: LeagueRow, kind: RaceKind): 'chooseMember' | 'figuresMissing' | undefined {
+export function whatIsWrongWith(
+  row: LeagueRow,
+  kind: RaceKind,
+  scored = true,
+): 'chooseMember' | 'figuresMissing' | undefined {
   if (row.memberNumber === '') {
     return 'chooseMember'
   }
 
   const asked = figuresAskedOn(kind)
-  const course = THE_COURSE.filter((figure) => asked.includes(figure))
+  const course = THE_COURSE.filter((figure) => asked.includes(figure) && !mayBeLeftOut(figure, scored))
   const clock = THE_CLOCK.filter((figure) => asked.includes(figure))
   const aCourse = course.every((figure) => numberIn(row[figure]) !== null)
   const aClock =

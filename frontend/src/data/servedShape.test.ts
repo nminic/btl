@@ -266,6 +266,26 @@ const aCopiedEvent = { ...anEvent, id: 274, copiedFrom: 273 }
 /** And a result of somebody who has a member number. */
 const aCountedResult = { ...aResult, id: 276, memberNumber: '000001' }
 
+/** A swim of a member, which the league does not score: the row of a result with no points, so the
+ *  profile draws „–" where the others draw a number (`GET /api/unscored-results`). */
+const anUnscoredResult = {
+  ...aCountedResult,
+  id: 277,
+  raceName: 'Plivanje na Adi Ciganliji',
+  eventName: 'Plivanje na Adi Ciganliji',
+  eventSlug: 'plivanje-na-adi-ciganliji-2026',
+  date: '2026-07-12',
+  distanceKm: 1.9,
+  ascentM: 0,
+  descentM: 0,
+  seconds: 2460,
+  points: 0,
+  category: 'short' as const,
+}
+
+/** And one of somebody who has registered and has no member number yet, as `results` has. */
+const anUnscoredResultOfNobody = { ...anUnscoredResult, id: 278, memberNumber: null }
+
 /* ---- off the record the server declares --------------------------------- */
 
 const anAttendance = { eventId: 273, memberNumber: '000001' }
@@ -484,6 +504,7 @@ const aSentRunThatWaits = {
   amendsResultId: null,
   eventId: 1118,
   eventName: 'Mala Sveta gora',
+  eventKind: 'race',
 }
 
 /** A run on a race the calendar does not hold, sent back: no race, and the kind and the town
@@ -508,6 +529,7 @@ const aDescribedRunSentBack = {
   /* An event he typed: a name and no key (V66). */
   eventId: null,
   eventName: 'Palićki krug',
+  eventKind: 'race',
 }
 
 /** A correction of a counted result, sent back: the race is the counted result's, and
@@ -531,6 +553,7 @@ const aCorrectionSentBack = {
   amendsResultId: 2,
   eventId: 291,
   eventName: 'Tron polumaraton',
+  eventKind: 'race',
 }
 
 const readAsSentRunThatWaits: SentRun = aSentRunThatWaits
@@ -824,6 +847,8 @@ describe('the answer the backend gives', () => {
       ['events', [anEvent, aCopiedEvent]],
       ['races', [aRace]],
       ['results', [aResult, aCountedResult]],
+      /* The same row with no points, in both states of the member number it already has two of. */
+      ['unscored-results', [anUnscoredResult, anUnscoredResultOfNobody]],
       ['pages', [aPage]],
       ['ducats', [aDucat]],
       ['attendance', [anAttendance]],
@@ -939,6 +964,7 @@ describe('the answer the backend gives', () => {
     expect(missing(anEvent, servedRow('events'))).toEqual([])
     expect(missing(aRace, servedRow('races'))).toEqual([])
     expect(missing(aResult, servedRow('results'))).toEqual([])
+    expect(missing(anUnscoredResult, servedRow('unscored-results'))).toEqual([])
     expect(missing(aPage, servedRow('pages'))).toEqual([])
     expect(missing(anAttendance, servedRow('attendance'))).toEqual([])
     expect(missing(aComment, servedRow('comments'))).toEqual([])
@@ -1158,6 +1184,10 @@ describe('the answer the backend gives', () => {
          here: its address carries the season and is read by `useFrozenTables`, and its shape is held
          by `FrozenSeasonApiTest`'s floor `Answers` and by `frozen.test.ts`. */
       'frozen-seasons',
+      /* THE TWENTY-THIRD, added 14.11.2026 with the profile and „Moji rezultati" showing the races the
+         league does not score. The row of `results` with 0 points; measured in both states of the member
+         number it shares with it. */
+      'unscored-results',
     ]
 
     /* AND NOTHING IS EXCUSED ANY MORE. */

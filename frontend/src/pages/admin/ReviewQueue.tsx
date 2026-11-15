@@ -116,7 +116,9 @@ function countedOf(one: WaitingRun): Counted | null {
 type Written = Record<Figure, string>
 
 /** The panel that sets the runner's figures before approving, open on one row. */
-type Fixing = { id: string; kind: RaceKind; written: Written }
+/** The panel over one run of the calendar: its race's kind, whether that race is scored (at an unscored
+ *  one the climb and the fall may be left out, PDL 14.11.2026), and the boxes as they are written. */
+type Fixing = { id: string; kind: RaceKind; scored: boolean; written: Written }
 
 /** The boxes seeded with the figures the row shows, so the moderator corrects a number
  *  rather than typing every one again. The distance with the dot the server keeps, which
@@ -622,6 +624,13 @@ export function ReviewQueue() {
                               {one.kind === 'correction' && (
                                 <span className="tag tag--corrected">{t('admin.corrected')}</span>
                               )}
+                              {/* THAT THE MEMBER SENT IT AS A RUN OF AN UNSCORED RACE, as a fact and never
+                                  as a choice (PDL, 15.11.2026, „moderator vrstu ne menja. Vrsta je onakva
+                                  kakvu je član izabrao; ako je pogrešio, moderator odbija prijavu uz
+                                  razlog"). A scored race is the ordinary case and carries no word. */}
+                              {one.eventKind === 'unscored' && (
+                                <span className="tag">{t('event.kind.unscored')}</span>
+                              )}
                               {/* What the member wrote in his own words: a start number, a watch
                                   that stopped. Its own line and never the link under the name,
                                   which it once was, and became an address made of his sentence.
@@ -736,6 +745,7 @@ export function ReviewQueue() {
                                         /* What came with the run was written by nobody here. */
                                         countryWrote: null,
                                         kind: raceKind(one.raceKind),
+                                        scored: one.eventKind !== 'unscored',
                                         written: writtenFrom(counted),
                                       })
                                     }}
@@ -783,7 +793,12 @@ export function ReviewQueue() {
                                       openedFrom(one.id, 'figures')
                                       setOpen(null)
                                       setPlacing(null)
-                                      setFixing({ id: one.id, kind: raceKind(one.raceKind), written: writtenFrom(counted) })
+                                      setFixing({
+                                        id: one.id,
+                                        kind: raceKind(one.raceKind),
+                                        scored: one.eventKind !== 'unscored',
+                                        written: writtenFrom(counted),
+                                      })
                                     }}
                                   />
                                 )}
@@ -973,7 +988,7 @@ function AmendPanel({
   onCancel: () => void
 }) {
   const { t } = useI18n()
-  const asked = figuresAsked(fixing.kind)
+  const asked = figuresAsked(fixing.kind, fixing.scored)
   const has = (name: Figure): boolean => asked.some((one) => one.name === name)
   /* Box by box, in the order they are drawn, and kept per box: a form draws each message
      under its own field, so each control says of itself that it is wrong, and the line
@@ -999,12 +1014,14 @@ function AmendPanel({
 
       {asked.map(({ name, field }) => (
         <div className="rankings__field" key={name}>
-          <AskedLabel id={`amend-${name}`}>{t(field.labelKey)}</AskedLabel>
+          <AskedLabel id={`amend-${name}`} asked={field.required === true}>
+            {t(field.labelKey)}
+          </AskedLabel>
           <input
             id={`amend-${name}`}
             type="text"
             inputMode={field.integer === true ? 'numeric' : 'decimal'}
-            aria-required="true"
+            aria-required={field.required === true}
             aria-invalid={errors.has(name)}
             value={fixing.written[name]}
             onChange={(event) => onChange({ ...fixing, written: { ...fixing.written, [name]: event.target.value } })}

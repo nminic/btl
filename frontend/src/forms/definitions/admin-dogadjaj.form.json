@@ -24,6 +24,10 @@
           "labelKey": "event.kind.race"
         },
         {
+          "value": "unscored",
+          "labelKey": "event.kind.unscored"
+        },
+        {
           "value": "training",
           "labelKey": "event.kind.training"
         },

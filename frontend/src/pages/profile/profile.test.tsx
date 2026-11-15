@@ -1182,7 +1182,12 @@ describe('the table of results on a profile, named in full', () => {
     renderAt('/sr/takmicar/000021?sezona=sve')
 
     const table = await screen.findByRole('table', { name: 'Rezultati' })
-    const mine = (await loadResource<Result[]>('results')).filter((one) => one.memberNumber === '000021')
+    /* „Sve" draws the races the league does not score as well (PDL, 14.11.2026), and they are
+       read from the other list. */
+    const mine = [
+      ...(await loadResource<Result[]>('results')),
+      ...(await loadResource<Result[]>('unscored-results')),
+    ].filter((one) => one.memberNumber === '000021')
     const rows = within(table).getAllByRole('row').slice(1)
     let differing = 0
 

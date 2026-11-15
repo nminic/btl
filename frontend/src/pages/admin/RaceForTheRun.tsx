@@ -111,6 +111,14 @@ export function RaceForTheRun({
     <div className="review__reason" role="group" aria-label={t('review.placeTitle')}>
       <p className="profile__empty">{t('review.placeNote')}</p>
 
+      {/* THE KIND THE MEMBER SENT THE RUN UNDER, as a fact and not as a box (PDL, 15.11.2026: „moderator
+          vrstu ne menja. Vrsta je onakva kakvu je član izabrao; ako je pogrešio, moderator odbija prijavu
+          uz razlog, a član je ponovo šalje sa tačnom vrstom."). The server refuses a run put on an event of
+          the other kind, with its own sentence. */}
+      <p className="profile__empty">
+        {t('admin.field.kind')}: {t(placing.scored ? 'event.kind.race' : 'event.kind.unscored')}
+      </p>
+
       {EVENT_NAME.map((field) => (
         <div className="rankings__field" key={field.name}>
           <AskedLabel id="place-eventName">{t(field.labelKey)}</AskedLabel>
@@ -213,12 +221,14 @@ export function RaceForTheRun({
 
       {asked.map(({ name, field }) => (
         <div className="rankings__field" key={name}>
-          <AskedLabel id={`place-${name}`}>{t(field.labelKey)}</AskedLabel>
+          <AskedLabel id={`place-${name}`} asked={field.required === true}>
+            {t(field.labelKey)}
+          </AskedLabel>
           <input
             id={`place-${name}`}
             type="text"
             inputMode={field.integer === true ? 'numeric' : 'decimal'}
-            aria-required="true"
+            aria-required={field.required === true}
             aria-invalid={errors.has(name)}
             value={placing.written[name]}
             onChange={(event) => onChange({ ...placing, written: { ...placing.written, [name]: event.target.value } })}

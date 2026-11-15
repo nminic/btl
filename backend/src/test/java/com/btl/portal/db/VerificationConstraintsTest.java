@@ -173,8 +173,8 @@ class VerificationConstraintsTest extends DatabaseTest {
 		   than from the calendar, because this probe has no event and no race in it and does not
 		   need one: what is being measured here is the pointer, not the run. */
 		db.sql("insert into result_submission (competitor_id, race_date, race_name, race_kind,"
-				+ " place_id, distance_km, ascent_m, descent_m, seconds, link, comment) values ("
-				+ A_MEMBER + ", date '2027-04-04', 'Probna prijava', 'free', " + A_TOWN
+				+ " event_kind, place_id, distance_km, ascent_m, descent_m, seconds, link, comment) values ("
+				+ A_MEMBER + ", date '2027-04-04', 'Probna prijava', 'free', 'race', " + A_TOWN
 				+ ", 10.00, 100, 100, 3600, '', '')").update();
 
 		/* And one row already waiting, because a primary key can only be broken by a row that

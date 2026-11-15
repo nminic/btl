@@ -85,6 +85,7 @@ function aRun(id: number, over: Partial<SentRun> = {}): SentRun {
        never nothing (`MyResultSubmissionsApi`), so a run with no event is a run sent before V66. */
     eventId: null,
     eventName: 'Prijavljeni događaj',
+    eventKind: 'race',
     ...over,
   }
 }

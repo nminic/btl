@@ -53,8 +53,18 @@ function stubFetch(results: 'refused' | 'never settles' | 'arrives late' | 'serv
         return new Response('', { status: 500 })
       }
 
+      /* Both lists of results, the scored and the unscored (`useEveryResult`), held and let through together:
+         each one let through alone would leave the other holding the number back. */
       return new Promise<Response>((resolve) => {
-        letTheResultsThrough = results === 'arrives late' ? () => resolve(served(input, init)) : () => undefined
+        const before = letTheResultsThrough
+
+        letTheResultsThrough =
+          results === 'arrives late'
+            ? () => {
+                before()
+                resolve(served(input, init))
+              }
+            : () => undefined
       })
     }
 

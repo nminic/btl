@@ -154,11 +154,17 @@ class MyResultSubmissionsApi {
 	 *                       calendar has no such event; nothing where neither is there. V66 keeps
 	 *                       the chosen key and the typed name exclusive, so this never chooses
 	 *                       between two names that are both there
+	 * @param eventKind      THE KIND OF THE EVENT THE RUN IS ON, a scored race ({@code race}) or an
+	 *                       unscored one ({@code unscored}): the race's event's for a run from the
+	 *                       calendar, and the kind he sent a described run under (V101). His list reads
+	 *                       it to leave the points out of a run the league does not score (PDL,
+	 *                       14.11.2026, „rezultat nebodovane trke čuva 0 bodova i prikazuje „–”"), and
+	 *                       his form to send the run again under the kind he chose
 	 */
 	record Sent(long id, String state, Long raceId, String raceName, LocalDate raceDate,
 			String raceKind, String city, String country, BigDecimal distanceKm, Integer ascentM,
 			Integer descentM, Integer seconds, String link, String comment, String reason,
-			Long amendsResultId, Long eventId, String eventName) {
+			Long amendsResultId, Long eventId, String eventName, String eventKind) {
 	}
 
 	/**
@@ -201,7 +207,10 @@ class MyResultSubmissionsApi {
 						+ " rs.link, rs.comment, v.reason, rs.amends_result_id,"
 						/* THE EVENT THE RUN IS ON (see `Sent.eventId`): the race's for a run from the
 						   calendar, the one he chose or typed for a described run. */
-						+ " ev.id as event_id, coalesce(ev.name, rs.event_name) as event_name"
+						+ " ev.id as event_id, coalesce(ev.name, rs.event_name) as event_name,"
+						/* AND ITS KIND (see `Sent.eventKind`): a described run always carries his
+						   (V101), so the event joined answers only for a run from the calendar. */
+						+ " coalesce(rs.event_kind, ev.kind) as event_kind"
 						+ " from result_submission rs"
 						/* BY THE POINTER, never by whose run it is: two runs of one member are two
 						   items, and a join on the member would hand each the other's state. INNER,
@@ -233,7 +242,8 @@ class MyResultSubmissionsApi {
 							counted.ascentM(), counted.descentM(), counted.seconds(),
 							row.getString("link"), row.getString("comment"), row.getString("reason"),
 							row.getObject("amends_result_id", Long.class),
-							row.getObject("event_id", Long.class), row.getString("event_name"));
+							row.getObject("event_id", Long.class), row.getString("event_name"),
+							row.getString("event_kind"));
 				})
 				.list();
 	}

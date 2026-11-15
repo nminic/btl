@@ -205,6 +205,12 @@ export const RESOURCE_NAMES = [
      reader drops (`session/theCachesFollowTheReader.ts`). */
   'results/runners',
   'teams',
+  /* THE RESULTS OF THE RACES THE LEAGUE DOES NOT SCORE (PDL, 14.11.2026, „Ostale discipline kao lična
+     evidencija"): the same row as `results`, with 0 points, and read by exactly two screens, the
+     profile and „Moji rezultati". A name of its own and not a flag on `results`, because
+     `/api/results` serves only the scored ones and every counter on the portal reads that list: an
+     unscored result must never reach one of them (`data/unscoredResults.ts`). */
+  'unscored-results',
   'verification',
 ] as const
 
@@ -438,12 +444,31 @@ export function clearResourceCache(name?: ResourceName, language?: string): void
     return
   }
 
-  const at = addressOf(name, language)
+  for (const one of [name, ...(GO_WITH[name] ?? [])]) {
+    const at = addressOf(one, language)
 
-  inFlight.delete(at)
-  arrived.delete(at)
-  wasDropped(name)
+    inFlight.delete(at)
+    arrived.delete(at)
+    wasDropped(one)
+  }
+
   tellWhoWatchesTheDrops()
+}
+
+/**
+ * THE NAMES WHOSE ANSWER IS OUT OF DATE WHENEVER ANOTHER ONE'S IS, dropped with it.
+ *
+ * <p>**The results of the scored races and of the unscored ones are two answers about one table**
+ * (`result`, split by `scored_race`, V99): whatever takes a result away, a deletion of the member, of
+ * the event or of a race, a save that takes races away or a correction, takes it from whichever of the
+ * two it was in, and the screen that asked cannot tell which. So every place that drops `results` drops
+ * `unscored-results` with it, by being this call, and there is no list of those places to keep (the
+ * finding of the review of PR 728, „Nijedno zatečeno brisanje ne briše keš `unscored-results`”, on six
+ * of them). The other way round is not said: what moves only an unscored result (none does yet) has no
+ * reason to drop the scored list.
+ */
+const GO_WITH: Partial<Record<ResourceName, readonly ResourceName[]>> = {
+  results: ['unscored-results'],
 }
 
 /**

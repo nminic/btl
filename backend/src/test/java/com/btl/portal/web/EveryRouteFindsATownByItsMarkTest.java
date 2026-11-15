@@ -395,6 +395,8 @@ class EveryRouteFindsATownByItsMarkTest {
 		form.put("raceName", "Trka u " + town.name());
 		/* On an event he typed, which is the one road that still names a town (V67). */
 		form.put("eventName", "Dogadjaj u " + town.name());
+		/* And its kind, which an event typed names (V101). */
+		form.put("eventKind", "race");
 		form.put("day", LocalDate.now(clock.withZone(SeasonClock.ZONE)).minusDays(1).toString());
 		form.put("raceKind", "free");
 		form.put(THE_TOWN, town.mark());

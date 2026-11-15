@@ -85,6 +85,7 @@ class TheWrittenPagesNameTheRookiesWithTheLetterOfTheGenderCarriedOverTest exten
 
 	/** The pages as they stood before V98, and the proof that this is so: every old text stands again. */
 	private void theTextAsItStoodBeforeV98() {
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "100");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "98");
 
 		assertThat(bodyOf("pravilnik", 8, "en"))

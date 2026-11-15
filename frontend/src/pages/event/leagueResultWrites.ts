@@ -41,6 +41,10 @@ export const WHEN_THE_LEAGUE_ENTERS_RESULTS: Record<string, string> = {
   theEventIsNotKnown: 'leagueResults.refused.theEventIsNotKnown',
   theRaceIsNotKnown: 'leagueResults.refused.theRaceIsNotKnown',
   theTownIsMissing: 'leagueResults.refused.theTownIsMissing',
+  /* A NEW EVENT TYPED THAT THE CALENDAR ALREADY HAS, OF THE OTHER KIND (PDL, 15.11.2026: the kind of a new
+     event is the one chosen, and the kind of an event that is there is the event's). The words are the
+     author's proposal, with the pull request. */
+  theEventIsOfAnotherKind: 'leagueResults.refused.theEventIsOfAnotherKind',
   /* PDL P9, 20.10.2026: on the morning of 1 January before ten a race of New Year's Eve may go on an
      event of the new year, which then moves back into the year before, and an event with no race
      moves forward into the new year when its first race is entered; where an event of that name stands

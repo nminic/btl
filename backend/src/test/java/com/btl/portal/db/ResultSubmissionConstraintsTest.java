@@ -79,7 +79,8 @@ class ResultSubmissionConstraintsTest extends DatabaseTest {
 			+ " father_name, address, shirt_size, health_statement_at";
 
 	private static final String COLUMNS = "competitor_id, race_id, race_date, race_name, race_kind,"
-			+ " place_id, city, country_id, distance_km, ascent_m, descent_m, seconds, link, comment";
+			+ " place_id, city, country_id, distance_km, ascent_m, descent_m, seconds, link, comment,"
+			+ " event_kind";
 
 	/** From the calendar: the race says its name, its kind and its town, so none of those are here. */
 	private static final String GOOD_FROM_THE_CALENDAR = row(A_MEMBER + ", " + A_RACE + ", " + RACE_DAY
@@ -93,7 +94,50 @@ class ResultSubmissionConstraintsTest extends DatabaseTest {
 			+ ", 'Trka na Zlatiboru', 'time', null, 'Zaselak', " + A_COUNTRY + ", 15.00, 0, 0, 3600, '', ''");
 
 	private static String row(String values) {
-		return "insert into result_submission (" + COLUMNS + ") values (" + values + ")";
+		return "insert into result_submission (" + COLUMNS + ") values (" + values + ", "
+				+ theKindOf(itemOf(values, 1)) + ")";
+	}
+
+	/**
+	 * THE KIND A ROW CARRIES BY V101, given the SQL of its {@code race_id}: a scored race on a described run
+	 * (every run described before an unscored race existed was one), and none on a run from the calendar,
+	 * which has its race's (`result_submission_a_described_run_carries_its_kind`). Said of the row and not
+	 * typed into each one, so a row written for another constraint cannot also break this one and be
+	 * refused for the wrong reason.
+	 */
+	private static String theKindOf(String raceId) {
+		return raceId.strip().equals("null") ? "'race'" : "null";
+	}
+
+	/** The {@code at}-th value of a list of SQL values, counted from nought, commas inside brackets or
+	 *  quotes not counted. */
+	private static String itemOf(String values, int at) {
+		int depth = 0;
+		boolean quoted = false;
+		int item = 0;
+		StringBuilder now = new StringBuilder();
+
+		for (char one : values.toCharArray()) {
+			if (one == '\'' ) {
+				quoted = !quoted;
+			} else if (!quoted && one == '(') {
+				depth++;
+			} else if (!quoted && one == ')') {
+				depth--;
+			} else if (!quoted && depth == 0 && one == ',') {
+				if (item == at) {
+					return now.toString();
+				}
+
+				item++;
+				now.setLength(0);
+				continue;
+			}
+
+			now.append(one);
+		}
+
+		return now.toString();
 	}
 
 	/** The event V66 lets a described run choose, which is not the event of the calendar race. */
@@ -105,7 +149,7 @@ class ResultSubmissionConstraintsTest extends DatabaseTest {
 	 */
 	private static String naming(String event, String typed, String race) {
 		return "insert into result_submission (" + COLUMNS + ", event_id, event_name) values ("
-				+ race + ", " + event + ", " + typed + ")";
+				+ race + ", " + theKindOf(itemOf(race, 1)) + ", " + event + ", " + typed + ")";
 	}
 
 	/** The described run of {@link #GOOD_DESCRIBED}, as {@link #naming} takes it. */
@@ -165,11 +209,11 @@ class ResultSubmissionConstraintsTest extends DatabaseTest {
 				Violation.notNull("result_submission_id_not_null", "id",
 						"insert into result_submission (id, " + COLUMNS + ") values (null, " + A_MEMBER + ", "
 								+ A_RACE + ", " + RACE_DAY + ", null, null, null, null, null, 10.00, 100, 100,"
-								+ " 3600, '', '')"),
+								+ " 3600, '', '', null)"),
 				Violation.of("result_submission_pk",
 						"insert into result_submission (id, " + COLUMNS + ") select id, " + A_MEMBER + ", "
 								+ A_RACE + ", " + RACE_DAY + ", null, null, null, null, null, 12.00, 100, 100,"
-								+ " 3600, '', '' from result_submission limit 1"),
+								+ " 3600, '', '', null from result_submission limit 1"),
 
 				/* Whose run it is, and it is never nobody's. */
 				Violation.notNull("result_submission_competitor_id_not_null", "competitor_id",
@@ -340,15 +384,27 @@ class ResultSubmissionConstraintsTest extends DatabaseTest {
 						naming(AN_EVENT, "null", DESCRIBED)),
 				Violation.of("result_submission_a_chosen_event_brings_its_town",
 						naming(AN_EVENT, "null", A_MEMBER + ", null, " + ANOTHER_DAY + ", 'Trka kroz sumu',"
-								+ " 'free', null, 'Zaselak', " + A_COUNTRY + ", 21.50, 300, 280, 7200, '', ''")));
+								+ " 'free', null, 'Zaselak', " + A_COUNTRY + ", 21.50, 300, 280, 7200, '', ''")),
+
+				/* V101: A DESCRIBED RUN CARRIES THE KIND OF ITS EVENT, a scored or an unscored race and
+				   nothing else, and a run from the calendar carries none, in both directions. */
+				Violation.of("result_submission_event_kind_known", kinded(DESCRIBED, "'training'")),
+				Violation.of("result_submission_a_described_run_carries_its_kind", kinded(DESCRIBED, "null")),
+				Violation.of("result_submission_a_described_run_carries_its_kind",
+						kinded(FROM_THE_CALENDAR, "'race'")));
+	}
+
+	/** The row with the kind V101 keeps written by hand, which {@link #row} otherwise says for it. */
+	private static String kinded(String values, String kind) {
+		return "insert into result_submission (" + COLUMNS + ") values (" + values + ", " + kind + ")";
 	}
 
 	/** A row that names the result it corrects, which {@link #COLUMNS} does not carry. */
 	private static String correcting(String amends, String race) {
 		return "insert into result_submission (competitor_id, amends_result_id, race_id, race_date,"
 				+ " race_name, race_kind, place_id, city, country_id, distance_km, ascent_m,"
-				+ " descent_m, seconds, link, comment) values (" + A_MEMBER + ", " + amends + ", "
-				+ race + ", 10.00, 100, 100, 3600, '', '')";
+				+ " descent_m, seconds, link, comment, event_kind) values (" + A_MEMBER + ", " + amends + ", "
+				+ race + ", 10.00, 100, 100, 3600, '', '', " + theKindOf(itemOf(race, 0)) + ")";
 	}
 
 	@ParameterizedTest
@@ -396,7 +452,9 @@ class ResultSubmissionConstraintsTest extends DatabaseTest {
 	 */
 	static List<String> legitimateRows() {
 		return List.of(GOOD_FROM_THE_CALENDAR, GOOD_DESCRIBED, GOOD_DESCRIBED_TYPED_TOWN,
-				GOOD_DESCRIBED_ON_A_CHOSEN_EVENT, GOOD_DESCRIBED_ON_A_TYPED_EVENT);
+				GOOD_DESCRIBED_ON_A_CHOSEN_EVENT, GOOD_DESCRIBED_ON_A_TYPED_EVENT,
+				/* And described as an unscored race (V101), the other of the two kinds it may carry. */
+				kinded(DESCRIBED, "'unscored'"));
 	}
 
 	@ParameterizedTest

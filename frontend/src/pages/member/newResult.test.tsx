@@ -163,6 +163,14 @@ function calendar(): { stop: () => void } {
 
 /** Everything a run on an event he typed still asks for, once the event and the race are named. */
 async function theRestOfANewRun(user: ReturnType<typeof setupUser>): Promise<void> {
+  /* The kind of the event he typed, which a broken link empties with the rest the chosen event filled or hid
+     (`FormRenderer`, `goneFrom`), so it is asked again: a scored race, as a fresh form starts (V101). */
+  const kind = screen.queryByLabelText(/^Vrsta događaja/)
+
+  if (kind instanceof HTMLSelectElement && kind.value === '') {
+    await user.selectOptions(kind, 'race')
+  }
+
   await user.clear(screen.getByLabelText(/Datum trke/))
   await user.type(screen.getByLabelText(/Datum trke/), '01082027')
   await user.type(screen.getByLabelText('Mesto'), 'Niš')
@@ -1639,4 +1647,126 @@ describe('the town of a run on an event he typed', () => {
     expect(screen.getByLabelText(/^Država/)).toHaveValue('')
     expect(screen.getByLabelText(/^Država/)).toBeEnabled()
   })
+})
+
+/* THE KIND OF EVENT A RESULT IS SENT UNDER (PDL, 14.11.2026, (4): „Kad član opiše događaj kojeg nema u kalendaru, u
+   formi bira Bodovana ili Nebodovana trka (podrazumevano Bodovana)”; (1) „Uspon i spust na netrkačkoj trci su
+   neobavezni (prazno znači 0)”).
+
+   THE AXES: the event (typed, where the box is drawn and its answer travels; chosen from the calendar, where the box
+   is not drawn and nothing about the kind travels, scored and unscored); the kind (scored by default, unscored when
+   he says so); the climb (left empty, which only an unscored race takes). */
+describe('the kind of event a result is sent under', () => {
+  /** A typed event of the kind given, with the climb left out, sent. */
+  async function aTypedRunOfTheKind(user: ReturnType<typeof setupUser>, kind: string | null): Promise<void> {
+    renderAt(NEW, 'competitor', ME, undefined, TODAY)
+    await user.type(await screen.findByLabelText(/^Događaj/), 'Seoski triatlon')
+
+    if (kind !== null) {
+      await user.selectOptions(screen.getByLabelText(/^Vrsta događaja/), kind)
+    }
+
+    await user.clear(screen.getByLabelText(/Datum trke/))
+    await user.type(screen.getByLabelText(/Datum trke/), '01082027')
+    await user.type(screen.getByLabelText('Mesto'), 'Niš')
+    await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
+    await user.type(screen.getByLabelText(/^Dužina/), '25,75')
+    await user.type(screen.getByLabelText('Sati'), '1')
+    await user.type(screen.getByLabelText('Minuti'), '31')
+    await user.type(screen.getByLabelText('Sekunde'), '27')
+    await user.type(screen.getByLabelText(/Link/), 'https://primer.rs/triatlon')
+    await user.click(screen.getByRole('button', { name: 'Pošalji rezultat' }))
+  }
+
+  it('offers the two kinds for an event he types, a scored race first and chosen', async () => {
+    const user = setupUser()
+
+    renderAt(NEW, 'competitor', ME, undefined, TODAY)
+    await user.type(await screen.findByLabelText(/^Događaj/), 'Seoski triatlon')
+
+    const kind = screen.getByLabelText(/^Vrsta događaja/)
+
+    expect(within(kind).getAllByRole('option').map((one) => one.textContent)).toEqual([
+      'Bodovana trka',
+      'Nebodovana trka',
+    ])
+    expect(kind).toHaveValue('race')
+  }, SLOW)
+
+  it('sends an unscored race he typed with its kind, and the climb he left out as nothing', async () => {
+    const user = setupUser()
+    const route = recording()
+
+    try {
+      await aTypedRunOfTheKind(user, 'unscored')
+      await screen.findByRole('heading', { name: 'Rezultat je poslat' }, SOON)
+
+      const sent = must(route.sent()[0], 'what was sent')
+
+      expect([sent.eventName, sent.eventKind, sent.ascentM, sent.descentM]).toEqual([
+        'Seoski triatlon',
+        'unscored',
+        null,
+        null,
+      ])
+    } finally {
+      route.stop()
+    }
+  }, SLOW)
+
+  it('asks for the climb of a scored race he typed, and sends nothing without it', async () => {
+    const user = setupUser()
+    const route = recording()
+
+    try {
+      await aTypedRunOfTheKind(user, null)
+
+      await waitFor(() => {
+        expect(screen.getByLabelText(/^Uspon/)).toHaveAttribute('aria-invalid', 'true')
+      }, SOON)
+      expect(route.sent()).toEqual([])
+    } finally {
+      route.stop()
+    }
+  }, SLOW)
+
+  it('draws no kind for an event he chose, sends none, and takes the climb out of an unscored one', async () => {
+    const user = setupUser()
+    const unscoredCalendar = serverThat((path) =>
+      path === '/api/events'
+        ? new Response(JSON.stringify(CALENDAR.map((one) => (one.id === LEAGUE.id ? { ...one, kind: 'unscored' } : one))), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          })
+        : path === '/api/races'
+          ? new Response(JSON.stringify(RACES), { status: 200, headers: { 'content-type': 'application/json' } })
+          : null,
+    )
+    const route = recording()
+
+    try {
+      await onTheEvent(user)
+
+      expect(screen.queryByLabelText(/^Vrsta događaja/)).toBeNull()
+
+      await user.type(raceName(), 'Plivanje oko jezera')
+      await user.clear(screen.getByLabelText(/Datum trke/))
+      await user.type(screen.getByLabelText(/Datum trke/), '01082027')
+      await user.type(screen.getByLabelText(/^Dužina/), '3')
+      await user.type(screen.getByLabelText('Sati'), '1')
+      await user.type(screen.getByLabelText('Minuti'), '0')
+      await user.type(screen.getByLabelText('Sekunde'), '0')
+      await user.type(screen.getByLabelText(/Link/), 'https://primer.rs/plivanje')
+      await user.click(screen.getByRole('button', { name: 'Pošalji rezultat' }))
+      await screen.findByRole('heading', { name: 'Rezultat je poslat' }, SOON)
+
+      const sent = must(route.sent()[0], 'what was sent')
+
+      expect(Object.keys(sent)).not.toContain('eventKind')
+      expect([sent.eventId, sent.ascentM, sent.descentM]).toEqual([LEAGUE.id, null, null])
+    } finally {
+      route.stop()
+      unscoredCalendar.stop()
+    }
+  }, SLOW)
 })

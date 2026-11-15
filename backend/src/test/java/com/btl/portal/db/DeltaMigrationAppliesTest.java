@@ -656,9 +656,9 @@ class DeltaMigrationAppliesTest extends DatabaseTest {
 				+ " 'Probni', 'Trkac', 'M', date '1991-06-06', null, 'Zaselak', " + ANOTHER_COUNTRY
 				+ ", 2027, '00112233445566cd', null, '', false, 'none', 'Otac',"
 				+ " 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00') returning id)"
-				+ " insert into result_submission (competitor_id, race_date, race_name, race_kind, place_id,"
-				+ " city, country_id, distance_km, ascent_m, descent_m, seconds, link, comment)"
-				+ " select id, date '2027-06-06', 'Trka kroz sumu', 'free', " + town + ", " + city + ", "
+				+ " insert into result_submission (competitor_id, race_date, race_name, race_kind, event_kind,"
+				+ " place_id, city, country_id, distance_km, ascent_m, descent_m, seconds, link, comment)"
+				+ " select id, date '2027-06-06', 'Trka kroz sumu', 'free', 'race', " + town + ", " + city + ", "
 				+ country + ", 10.00, 100, 100, 3600, '', '' from runner";
 	}
 
