@@ -9,6 +9,7 @@ import com.btl.portal.domain.token.SecretToken;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -21,24 +22,30 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.databind.ObjectMapper;
 
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 
 /**
@@ -50,10 +57,13 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * 09.10.2026 (every figure the race fixes, not only the climb and the fall; and a save that
  * moves nothing the race fixes recounts nothing), and his three answers of 10.10.2026 (PDL P4,
  * „Preračun bodova pri izmeni mera trke: tri odgovora (PR 504)"): a race that carries an
- * approved run keeps its kind, refused with a reason; a frozen season and a year before the
- * first one count nothing again; and a member whose run moved is told in his inbox, with the
- * run as it was and as it is, and again when it closes or opens his beginners' category for
- * the next season - never by post.
+ * approved run keeps its kind, refused with a reason; and a member whose run moved is told in
+ * his inbox, with the run as it was and as it is, and again when it closes or opens his
+ * beginners' category for the next season - never by post. The third answer, that a frozen
+ * season and a year before the first one count nothing again, was overturned by the owner on
+ * 15.11.2026 (PDL P4, „[ODLUKA 15.11.2026, vlasnik, menja tačku (2)]"): „Takva trka vise ne
+ * postoji, ovo ne sme da se desava nikad i nigde na sajtu". A race of any year now counts its
+ * runs again, and „Zamrznuta tabela i rang lista ostaju konstante kakve su zamrznute".
  *
  * <p><b>THE FIXTURE IS BUILT SO THAT EVERY VALUE A CASE READS CAN ARRIVE FROM ONE PLACE
  * ONLY.</b>
@@ -82,7 +92,15 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * league, which a line with no addressee would reach (V13).
  * <li><b>The season a race is in and the season the clock is in are told apart at one
  * instant:</b> half an hour after the freeze, a race of 2027 (frozen) and a race of
- * 1 January 2028 (running) are corrected side by side.
+ * 1 January 2028 (running) are corrected side by side. Both count their runs again, so what
+ * tells them apart is the beginners' category, which only the running season asks about.
+ * <li><b>A frozen season is measured in both of its states:</b> frozen by the clock with no
+ * snapshot written yet, and frozen with its snapshot written by the freeze itself
+ * ({@link ASeasonFreezes}), whose every table is then compared row for row, read off the
+ * catalogue and not off a list.
+ * <li><b>The history before the first season is measured in both of its states too:</b> 2026 in
+ * October 2026, which {@link SeasonClock#isFrozen} does not hold frozen, and 2015, which it does.
+ * A recount that still refused one of the two old conditions fails at one of them.
  * <li><b>A run still waiting and a submission already decided stand at the marathon</b>, so
  * a recount that reached {@code result_submission} shows.
  * <li><b>Whether an approved run stands at a race is told apart from the queue and from the
@@ -164,6 +182,9 @@ class ARaceCorrectedRecountsItsRunsTest {
 
 	private static final LocalDate A_DAY_OF_HISTORY = LocalDate.parse("2026-04-12");
 
+	/** A marathon long before the league, of a year the clock holds frozen and the league never ran. */
+	private static final LocalDate A_MARATHON_OF_2015 = LocalDate.parse("2015-04-19");
+
 	/** What a line in the inbox about a run counted again is called. */
 	private static final String RECOUNTED = "Vaš rezultat je preračunat";
 
@@ -193,6 +214,15 @@ class ARaceCorrectedRecountsItsRunsTest {
 
 	@Autowired
 	private AClockTheCaseMoves clock;
+
+	@Autowired
+	private BestOfficialSeason best;
+
+	@Autowired
+	private TheTablesOfASeason tables;
+
+	@Autowired
+	private TransactionTemplate transactions;
 
 	private String session;
 
@@ -418,6 +448,11 @@ class ARaceCorrectedRecountsItsRunsTest {
 				.as("2026 must not be frozen yet in October 2026, or the case about history"
 						+ " measures the freeze and not the first season")
 				.isFalse();
+		assertThat(SeasonClock.isFrozen(A_MARATHON_OF_2015.getYear(), at(WHILE_2027_RUNS)))
+				.as("2015 must be frozen by the clock while 2027 runs, or the case about it measures the"
+						+ " first season alone and not the freeze")
+				.isTrue();
+		assertThat(A_MARATHON_OF_2015.getYear()).isLessThan(SeasonClock.FIRST_SEASON);
 
 		/* THE SEASON AFTER A RACE OF 2027 IS 2028, and a route could read 2028 from three places:
 		   the race's year, the clock's year, and the season on sale. */
@@ -912,31 +947,114 @@ class ARaceCorrectedRecountsItsRunsTest {
 	}
 
 	/**
-	 * PDL P4, THE OWNER'S ANSWER OF 10.10.2026: AFTER THE FREEZE A RACE OF THE FROZEN SEASON
-	 * COUNTS NOTHING AGAIN, WHILE A RACE OF THE SEASON NOW RUNNING DOES, AT THE SAME INSTANT.
+	 * PDL P4, THE OWNER'S DECISION OF 15.11.2026: AFTER THE FREEZE A RACE OF THE FROZEN SEASON COUNTS
+	 * ITS RUNS AGAIN, LIKE A RACE OF THE SEASON NOW RUNNING, AND ASKS NOTHING ABOUT THE CATEGORY.
 	 *
-	 * <p>In the journal's wording: „U zamrznutoj sezoni i u istoriji pre 2027 izmena mera trke ne
-	 * menja ništa, ni profil ni tabelu". The pair is what makes the season asked the RACE'S: a
-	 * route asking the clock's year would count the marathon of 2027 again, and one asking the
-	 * year before the clock's would leave the race of 1 January 2028.
+	 * <p>The owner, in his own words: „Takva trka vise ne postoji, ovo ne sme da se desava nikad i
+	 * nigde na sajtu"; in the journal's: „Rezultat na trci zadate dužine uvek nosi dužinu, uspon i
+	 * spust svoje trke i bodove izračunate iz njih, i u istoriji pre 2027 i u zamrznutoj sezoni".
+	 * Half an hour after the freeze, with no snapshot written yet, the marathon of 2027, the ten of
+	 * 2027 and the race of 1 January 2028 are corrected: every run at the three moves, and each
+	 * member whose run moved is told, and nobody else.
+	 *
+	 * <p><b>The category is told apart by the season and by nothing else.</b> The ten corrected from
+	 * 10 to 12 km carries the rookie's one run of 2027 over the threshold, which in a season still
+	 * counted closes his category for 2028 and tells him so
+	 * ({@link #aCorrectionThatCarriesAMemberOverTheThresholdClosesHisCategoryAndHeIsTold}). In a
+	 * season that has frozen nothing is asked (the line {@code ResultsByTheLeagueApi} keeps, and
+	 * PDL, 30.10.2026: the threshold counts the points „u trenutku njenog zamrzavanja"), so he reads
+	 * the line about his run and nothing about his category. No snapshot stands here on purpose: the
+	 * threshold of a season with one is read off it and could not move whatever was asked, so this
+	 * is the one state in which a route that asked would answer differently.
 	 */
 	@Test
-	void afterTheFreezeARaceOfTheFrozenSeasonCountsNothingAgainWhileOneOfTheRunningSeasonDoes()
+	void afterTheFreezeARaceOfTheFrozenSeasonCountsItsRunsAgainAndAsksNothingAboutTheCategory()
 			throws Exception {
 		clock.moveTo(HALF_AN_HOUR_AFTER_THE_FREEZE);
-		Map<Long, Run> frozen = rowsOf(runnersFirst, runnersSecond, lapsedRun);
+		assertThat(db.sql("select count(*) from season_frozen where season = 2027").query(Long.class).single())
+				.as("a snapshot of 2027 stands, so the category could not move whatever the route asked")
+				.isZero();
+		Map<Long, Run> untouched = rowsOf(runAtTheHalf, alreadyThereRun);
 
 		assertThat(change(theMarathon, ofALength("Maraton", THE_MARATHONS_DAY, "42.195", 520, 310))
 				.getStatus()).isEqualTo(200);
 		assertThat(change(newYearsRace, ofALength("Novogodisnja", NEW_YEARS_DAY, "5.2", 60, 45))
 				.getStatus()).isEqualTo(200);
+		assertThat(change(anotherEventsTen, ofALength("Desetka", THE_TENS_DAY, "12", 120, 110))
+				.getStatus()).isEqualTo(200);
 
-		assertThat(rowsOf(runnersFirst, runnersSecond, lapsedRun))
-				.as("a race of a frozen season counted its runs again").isEqualTo(frozen);
+		assertThat(rowOf(runnersFirst)).as("the runner's run at the marathon of a frozen season")
+				.isEqualTo(countedAt("42.195", 520, 310, 12600, "long"));
+		assertThat(rowOf(runnersSecond)).isEqualTo(countedAt("42.195", 520, 310, 13800, "long"));
+		assertThat(rowOf(lapsedRun)).isEqualTo(countedAt("42.195", 520, 310, 15000, "long"));
+		assertThat(rowOf(rookiesRun)).as("the rookie's run at the ten of a frozen season")
+				.isEqualTo(countedAt("12", 120, 110, 2700, "short"));
 		assertThat(rowOf(runOnNewYearsDay)).as("a race of the season now running")
 				.isEqualTo(countedAt("5.2", 60, 45, 1500, "short"));
-		assertThat(newLines()).as("only the run of the season now running is told about")
-				.extracting(Line::to).containsExactly(third);
+		assertThat(rowsOf(runAtTheHalf, alreadyThereRun))
+				.as("a run at another race, or one the correction did not move, was written over")
+				.isEqualTo(untouched);
+
+		assertThat(linesTo(runner)).extracting(Line::subject).containsExactly(RECOUNTED);
+		assertThat(linesTo(secondRunner)).extracting(Line::subject).containsExactly(RECOUNTED);
+		assertThat(linesTo(lapsed)).extracting(Line::subject).containsExactly(RECOUNTED);
+		assertThat(linesTo(alreadyThere)).as("a line about a run the correction did not move").isEmpty();
+		assertThat(linesTo(rookie)).as("a frozen season asked about the category")
+				.extracting(Line::subject).containsExactly(RECOUNTED);
+		assertThat(linesTo(third)).as("his run at the ten and his run of New Year's Day")
+				.extracting(Line::subject).containsExactly(RECOUNTED, RECOUNTED);
+		assertThat(newLines()).as("a line nobody but the members whose runs moved should have read")
+				.hasSize(6).allSatisfy(line -> assertThat(line.to()).isNotNull());
+	}
+
+	/**
+	 * AND A FROZEN SEASON WHOSE SNAPSHOT IS WRITTEN KEEPS EVERY TABLE OF IT AS IT FROZE, WHILE THE RUNS
+	 * UNDER IT ARE COUNTED AGAIN.
+	 *
+	 * <p>The owner's decision of 15.11.2026 (PDL P4), in the journal's wording: „Zamrznuta tabela i rang
+	 * lista ostaju konstante kakve su zamrznute", and the memory of the owner's word that frozen tables
+	 * and top lists are never counted again. The freeze is the job itself ({@link ASeasonFreezes}), run at
+	 * 16:00 on 1 January 2028; then the marathon of 2027 is corrected half an hour later. Every row of
+	 * every table whose name begins with {@code season_} is read off the catalogue before and after, and
+	 * the snapshot as the public reads it ({@code /api/frozen-tables/2027}) too: both stay byte for byte.
+	 *
+	 * <p><b>And the comparison compares something:</b> the snapshot holds the runner's points of 2027, and
+	 * the recount moves the total of his 2027 that a freeze taken now would write. So a recount that
+	 * wrote its new totals into the snapshot fails here, and a recount that did not happen fails on the
+	 * row of his run.
+	 */
+	@Test
+	void aCorrectionOfARaceOfAFrozenSeasonLeavesEveryTableOfItsSnapshotAsItFroze() throws Exception {
+		BigDecimal hisSeasonAtTheFreeze = best.live(runner).get(runner).get(2027);
+
+		freezeAt(LocalDateTime.of(2028, 1, 1, 16, 0));
+		clock.moveTo(HALF_AN_HOUR_AFTER_THE_FREEZE);
+		linesBefore = db.sql("select coalesce(max(id), 0) from message").query(Long.class).single();
+
+		List<String> frozen = frozenTables();
+		String served = served("/api/frozen-tables/2027");
+
+		assertThat(db.sql("select points from season_competitor where season = 2027 and competitor_id = ?")
+				.param(runner).query(BigDecimal.class).single())
+				.as("the snapshot does not hold the runner's season, so it compares nothing about him")
+				.isEqualByComparingTo(hisSeasonAtTheFreeze);
+
+		assertThat(change(theMarathon, ofALength("Maraton", THE_MARATHONS_DAY, "42.195", 520, 310))
+				.getStatus()).isEqualTo(200);
+
+		assertThat(rowOf(runnersFirst)).isEqualTo(countedAt("42.195", 520, 310, 12600, "long"));
+		assertThat(best.live(runner).get(runner).get(2027))
+				.as("the recount moved nothing a freeze would write, so the comparison below says nothing")
+				.isNotEqualByComparingTo(hisSeasonAtTheFreeze);
+
+		assertThat(frozenTables()).as("a table of the frozen season moved").isEqualTo(frozen);
+		assertThat(served("/api/frozen-tables/2027")).as("the frozen season as the public reads it moved")
+				.isEqualTo(served);
+
+		assertThat(linesTo(runner)).extracting(Line::subject).containsExactly(RECOUNTED);
+		assertThat(linesTo(secondRunner)).extracting(Line::subject).containsExactly(RECOUNTED);
+		assertThat(linesTo(lapsed)).extracting(Line::subject).containsExactly(RECOUNTED);
+		assertThat(newLines()).hasSize(3).allSatisfy(line -> assertThat(line.to()).isNotNull());
 	}
 
 	/**
@@ -945,33 +1063,42 @@ class ARaceCorrectedRecountsItsRunsTest {
 	 * <p>Every event of the fixture has one day, so a season worked out from the event's {@code date}
 	 * gives what the race's own day gives (measured 06.11.2026: the event's year in place of the
 	 * race's, 98 of 98 green). Here one event begins on 31 December 2027 and holds two races, one on
-	 * that day and one on 1 January 2028, with a run at each. Half an hour after the freeze the first
-	 * is of a frozen season and counts nothing again, the second is of the season now running and
-	 * counts its run again: a season taken from the event's day holds both frozen or both running.
+	 * that day and one on 1 January 2028, with a run at each, and both are corrected from 10 to 12 km
+	 * half an hour after the freeze. Since 15.11.2026 both count their runs again whatever the season
+	 * (PDL P4), so what the season still decides is whether the category is asked: the rookie's one
+	 * run of 2028 crosses the threshold, and since 2028 is running his category closes for 2029 and he
+	 * is told so. A season taken from the event's day would hold the second race frozen, ask nothing,
+	 * and tell him nothing; and its year plus one would be 2028, which 2027 alone decides.
 	 */
 	@Test
 	void aTwoDayEventHoldsOneRaceOfTheFrozenSeasonAndOneOfTheRunningSeasonAndEachIsJudgedByItsOwnDay()
 			throws Exception {
+		assertThat(counted("10", 120, 110, 2700)).isLessThan(new BigDecimal("12"));
+		assertThat(counted("12", 120, 110, 2700)).isGreaterThanOrEqualTo(new BigDecimal("12"));
 		event("dvodnevna-2027", "Dvodnevna trka", LocalDate.parse("2027-12-31"));
 
 		long theFirstDay = race("dvodnevna-2027", "Dvodnevna prva", LocalDate.parse("2027-12-31"), "length", 0,
-				"5", 40, 30);
-		long theSecondDay = race("dvodnevna-2027", "Dvodnevna druga", NEW_YEARS_DAY, "length", 0, "5", 40, 30);
-		long runOnTheFirstDay = result(secondRunner, theFirstDay, "5", 40, 30, 1500, counted("5", 40, 30, 1500));
-		long runOnTheSecondDay = result(secondRunner, theSecondDay, "5", 40, 30, 1500, counted("5", 40, 30, 1500));
+				"10", 120, 110);
+		long theSecondDay = race("dvodnevna-2027", "Dvodnevna druga", NEW_YEARS_DAY, "length", 0, "10", 120, 110);
+		long runOnTheFirstDay = result(secondRunner, theFirstDay, "10", 120, 110, 2700,
+				counted("10", 120, 110, 2700));
+		long runOnTheSecondDay = result(rookie, theSecondDay, "10", 120, 110, 2700, counted("10", 120, 110, 2700));
 
 		clock.moveTo(HALF_AN_HOUR_AFTER_THE_FREEZE);
-		Map<Long, Run> frozen = rowsOf(runOnTheFirstDay);
 
-		assertThat(change(theFirstDay, ofALength("Dvodnevna prva", LocalDate.parse("2027-12-31"), "5.2", 60, 45))
+		assertThat(change(theFirstDay, ofALength("Dvodnevna prva", LocalDate.parse("2027-12-31"), "12", 120, 110))
 				.getStatus()).isEqualTo(200);
-		assertThat(change(theSecondDay, ofALength("Dvodnevna druga", NEW_YEARS_DAY, "5.2", 60, 45))
+		assertThat(change(theSecondDay, ofALength("Dvodnevna druga", NEW_YEARS_DAY, "12", 120, 110))
 				.getStatus()).isEqualTo(200);
 
-		assertThat(rowsOf(runOnTheFirstDay)).as("a race of the frozen season counted its run again")
-				.isEqualTo(frozen);
+		assertThat(rowOf(runOnTheFirstDay)).as("a race of the frozen season did not count its run again")
+				.isEqualTo(countedAt("12", 120, 110, 2700, "short"));
 		assertThat(rowOf(runOnTheSecondDay)).as("a race of the season now running did not count its run again")
-				.isEqualTo(countedAt("5.2", 60, 45, 1500, "short"));
+				.isEqualTo(countedAt("12", 120, 110, 2700, "short"));
+		assertThat(linesTo(secondRunner)).extracting(Line::subject).containsExactly(RECOUNTED);
+		assertThat(linesTo(rookie)).as("the season of the second race is not its own day's")
+				.extracting(Line::subject).containsExactly(RECOUNTED, "Početnička kategorija vam je zatvorena");
+		assertThat(linesTo(rookie).get(1).body()).contains("zatvorena za sezonu 2029.");
 	}
 
 	/**
@@ -1010,23 +1137,55 @@ class ARaceCorrectedRecountsItsRunsTest {
 	}
 
 	/**
-	 * PDL P4, THE OWNER'S ANSWER OF 10.10.2026: A RACE FROM BEFORE THE FIRST SEASON COUNTS
-	 * NOTHING AGAIN.
+	 * PDL P4, THE OWNER'S DECISION OF 15.11.2026: A RACE FROM BEFORE THE FIRST SEASON COUNTS ITS RUNS
+	 * AGAIN, AND ITS MEMBER IS TOLD.
 	 *
-	 * <p>PDL P12: „Nigde na portalu nema sezone pre 2027." The clock stands in October 2026,
-	 * when {@link SeasonClock#isFrozen} does not yet hold 2026 frozen, so what keeps the run
-	 * of history as it was is the first season and nothing else.
+	 * <p>The owner's own case: „Promenio sam vertikalne nagibe na trci od 5km. Zasto su Kalini ostali
+	 * stari parametri u rezultatu!" - a race of 2026, whose climb and fall were corrected and whose run
+	 * kept the old ones. The clock stands in October 2026, when {@link SeasonClock#isFrozen} does not
+	 * yet hold 2026 frozen, so what this case parts from the case of 2015 below is the first season and
+	 * nothing else: a recount that still refused a year before it fails here.
 	 */
 	@Test
-	void aRaceFromBeforeTheFirstSeasonCountsNothingAgain() throws Exception {
+	void aRaceFromBeforeTheFirstSeasonCountsItsRunsAgainAndItsMemberIsTold() throws Exception {
 		clock.moveTo(WHILE_2026_IS_HISTORY);
-		Map<Long, Run> before = rowsOf(runOfHistory);
 
 		assertThat(change(aRaceOfHistory, ofALength("Stara", A_DAY_OF_HISTORY, "21.1", 150, 120))
 				.getStatus()).isEqualTo(200);
 
-		assertThat(rowsOf(runOfHistory)).as("a run of history was counted again").isEqualTo(before);
-		assertThat(newLines()).isEmpty();
+		assertThat(rowOf(runOfHistory)).as("a run of history kept the figures of a race that no longer exists")
+				.isEqualTo(countedAt("21.1", 150, 120, 6300, "half"));
+		assertThat(linesTo(runner)).extracting(Line::subject).containsExactly(RECOUNTED);
+		assertThat(newLines()).hasSize(1);
+	}
+
+	/**
+	 * A MARATHON OF 2015 CORRECTED TO 42,202 KM BECOMES AN ULTRA, AND ITS RUN WITH IT, in a year the clock
+	 * holds frozen and the league never ran.
+	 *
+	 * <p>The shape of the Fruškogorski maraton of 2015 in the owner's decision of 15.11.2026: „vlasnik je
+	 * potvrdio da je tačna dužina trke 42,202 km, dakle ultramaraton po pravilu „preko 42,2”, pa i
+	 * rezultat 000001 postaje 42,202 km i ultramaraton". 2015 is frozen by the clock while 2027 runs and
+	 * is before the first season, so a recount that refused either of the two old conditions fails here,
+	 * and the case of 2026 above parts the two. The category of the run is generated from its own length
+	 * (V47), so the run follows its race out of the marathons only if its length is written.
+	 */
+	@Test
+	void aMarathonOf2015CorrectedTo42202BecomesAnUltraAndItsRunWithIt() throws Exception {
+		event("fruskogorski-2015", "Fruskogorski maraton", A_MARATHON_OF_2015);
+
+		long theMarathonOf2015 = race("fruskogorski-2015", "Maraton", A_MARATHON_OF_2015, "length", 0, "42.2",
+				500, 500);
+		long hisRun = result(runner, theMarathonOf2015, "42.2", 500, 500, 14400, counted("42.2", 500, 500, 14400));
+
+		assertThat(rowOf(hisRun).category()).isEqualTo("marathon");
+		assertThat(change(theMarathonOf2015, ofALength("Maraton", A_MARATHON_OF_2015, "42.202", 500, 500))
+				.getStatus()).isEqualTo(200);
+
+		assertThat(rowOf(hisRun)).as("the run stayed a marathon at a race of 42,202 km")
+				.isEqualTo(countedAt("42.202", 500, 500, 14400, "ultra"));
+		assertThat(linesTo(runner)).extracting(Line::subject).containsExactly(RECOUNTED);
+		assertThat(newLines()).hasSize(1);
 	}
 
 	/** What the formula gives for a marathon's three runs, before and after, and with the climb
@@ -1177,6 +1336,48 @@ class ARaceCorrectedRecountsItsRunsTest {
 
 	private static String reasonIn(MockHttpServletResponse answer) throws Exception {
 		return new ObjectMapper().readTree(answer.getContentAsString()).path("reason").asString();
+	}
+
+	/**
+	 * THE FREEZE ITSELF, at this moment in Belgrade: the job of 1 January, given a clock of its own and
+	 * nobody to follow it, the shape {@code AnUnscoredRunMovesNothingTheLeagueCountsTest} set. It joins
+	 * this case's transaction, so what it writes goes when the case does.
+	 */
+	private void freezeAt(LocalDateTime inBelgrade) {
+		Instant at = inBelgrade.atZone(SeasonClock.ZONE).toInstant();
+
+		new ASeasonFreezes(db, Clock.fixed(at, ZoneOffset.UTC), transactions, best, tables,
+				new ObjectProvider<WhatFollowsTheFreeze>() {
+					@Override
+					public Stream<WhatFollowsTheFreeze> orderedStream() {
+						return Stream.empty();
+					}
+				}).freeze();
+	}
+
+	/**
+	 * EVERY ROW OF EVERY TABLE A FREEZE WRITES, as text: each table whose name begins with
+	 * {@code season_}, read off the catalogue rather than listed here, keys included, since nothing
+	 * between two readings in one case rolls anything back.
+	 */
+	private List<String> frozenTables() {
+		List<String> rows = new ArrayList<>();
+
+		for (String table : db.sql("select tablename from pg_tables where schemaname = current_schema()"
+				+ " and tablename like 'season\\_%' order by tablename").query(String.class).list()) {
+			db.sql("select to_jsonb(t)::text from " + table + " t order by 1")
+					.query(String.class)
+					.list()
+					.forEach(row -> rows.add(table + " " + row));
+		}
+
+		assertThat(rows).as("the freeze wrote nothing, so the tables compare nothing").isNotEmpty();
+
+		return rows;
+	}
+
+	private String served(String path) throws Exception {
+		return http.perform(get(path)).andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
 	}
 
 	/** An instant read in the league's own time, which is how every season question is asked. */
