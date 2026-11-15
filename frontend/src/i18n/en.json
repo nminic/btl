@@ -815,6 +815,11 @@
       "few": "unscored races",
       "other": "unscored races"
     },
+    "unscoredRingWord": {
+      "one": "unscored",
+      "few": "unscored",
+      "other": "unscored"
+    },
     "noPoints": "No points",
     "noneUnscored": "There is no unscored race.",
     "noneUnscoredInFilter": "There is no unscored race in the chosen year.",

@@ -815,6 +815,11 @@
       "few": "nebodovane trke",
       "other": "nebodovanih trka"
     },
+    "unscoredRingWord": {
+      "one": "nebodovana",
+      "few": "nebodovane",
+      "other": "nebodovanih"
+    },
     "noPoints": "Bez bodova",
     "noneUnscored": "Nema nijedne nebodovane trke.",
     "noneUnscoredInFilter": "Za izabranu godinu nema nijedne nebodovane trke.",
