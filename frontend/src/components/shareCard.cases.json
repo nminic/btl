@@ -1,0 +1,63 @@
+{
+  "initials": [
+    { "firstName": "Nikola", "lastName": "Minić", "initials": "NM" },
+    { "firstName": "đorđe", "lastName": "Šćekić", "initials": "đŠ" },
+    { "firstName": "Љубица", "lastName": "Јовић", "initials": "ЉЈ" },
+    { "firstName": "Ljiljana", "lastName": "Njegoš", "initials": "LN" },
+    { "firstName": "", "lastName": "Prazno", "initials": "P" }
+  ],
+  "plurals": {
+    "sr": {
+      "0": "other",
+      "1": "one",
+      "2": "few",
+      "4": "few",
+      "5": "other",
+      "11": "other",
+      "12": "other",
+      "14": "other",
+      "21": "one",
+      "22": "few",
+      "81": "one",
+      "84": "few",
+      "104": "few",
+      "111": "other",
+      "112": "other",
+      "115": "other",
+      "282": "few"
+    },
+    "en": {
+      "0": "other",
+      "1": "one",
+      "2": "other",
+      "21": "other",
+      "282": "other"
+    }
+  },
+  "counts": {
+    "sr": [
+      [282, "282"],
+      [1234, "1.234"],
+      [1000000, "1.000.000"]
+    ],
+    "en": [
+      [282, "282"],
+      [1234, "1,234"],
+      [1000000, "1,000,000"]
+    ]
+  },
+  "kilometres": {
+    "sr": [
+      ["8465.94", "8.465,94"],
+      ["999", "999,00"],
+      ["0.125", "0,13"],
+      ["1000000", "1.000.000,00"]
+    ],
+    "en": [
+      ["8465.94", "8,465.94"],
+      ["999", "999.00"],
+      ["0.125", "0.13"],
+      ["1000000", "1,000,000.00"]
+    ]
+  }
+}
