@@ -104,6 +104,11 @@ class EveryMailIsAMandatoryOneTest {
 			   „unet rezultat" iz spiska". */
 			Map.entry("resultApproved", "a result approved: the mandatory mail about a result entered, named by PDL P22 and by the decision of 28.09.2026"),
 			Map.entry("resultChanged", "a result changed"),
+			/* THE SAME TWO AT AN UNSCORED RACE (PDL, 15.11.2026, „Poruka članu posle prijave ili izmene
+			   rezultata nebodovane trke ne nosi bodove"): the same occasions in other words, so the same
+			   channels, the first a line in his inbox and no letter, as `resultEntered` above. */
+			Map.entry("resultEnteredUnscored", "a result entered at an unscored race: the line in his inbox, and no letter"),
+			Map.entry("resultChangedUnscored", "a result changed at an unscored race"),
 			Map.entry("resultDeleted", "a result changed: deleting is the cheapest way to change one without a trace"),
 			/* THE LEAGUE ENTERS, CHANGES AND DELETES FROM THE EVENT PAGE (PDL P9, 18.10.2026: „Za novi
 			   unos član dobija istu poruku kao kad mu moderator odobri rezultat, u sanduče i mejlom;

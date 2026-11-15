@@ -65,6 +65,12 @@ export type Placing = {
   countryWrote: string | null
   /** The kind the moderator decided, asked only of a race the approval makes. */
   kind: RaceKind
+  /**
+   * WHETHER THE RUN WAS SENT AS ONE OF A SCORED RACE, which is the member's to say and not the moderator's
+   * to change (PDL, 15.11.2026: „moderator vrstu ne menja. Vrsta je onakva kakvu je član izabrao"): shown
+   * on the panel as a fact, and at an unscored race the climb and the fall may be left out.
+   */
+  scored: boolean
   /** The figures' boxes, as they are written. */
   written: Record<Figure, string>
 }
@@ -137,8 +143,10 @@ export function figuresFor(placing: Placing, races: readonly Race[]): { name: Fi
   const chosen = placing.chosen
 
   return chosen === null
-    ? figuresAsked('free')
-    : races.filter((one) => one.id === chosen.raceId).flatMap((one) => figuresAsked(raceKind(one.kind)))
+    ? figuresAsked('free', placing.scored)
+    : races
+        .filter((one) => one.id === chosen.raceId)
+        .flatMap((one) => figuresAsked(raceKind(one.kind), placing.scored))
 }
 
 /** What is wrong with one box: the box's own label, and what its rule says. */

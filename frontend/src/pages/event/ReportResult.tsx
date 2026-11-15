@@ -242,7 +242,7 @@ export function ReportResult() {
           return (
             <>
               <FormRenderer
-                form={reportForm(kind)}
+                form={reportForm(kind, event.kind !== 'unscored')}
                 /* NOTHING ABOVE THE FIELDS since 16.10.2026. The sentence that stood here told
                    the member which race this was and what the portal already knew about it;
                    the owner took it off the page: „Ceo disclaimer sa vrha strane obriši". What

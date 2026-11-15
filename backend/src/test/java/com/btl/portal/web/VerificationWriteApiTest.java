@@ -5475,10 +5475,10 @@ class VerificationWriteApiTest {
 	 */
 	private long describedRunWaitingFor(String memberNumber, LocalDate day) {
 		long submission = db.sql("insert into result_submission (competitor_id, race_id,"
-						+ " race_date, race_name, race_kind, place_id, distance_km, ascent_m,"
+						+ " race_date, race_name, race_kind, event_kind, place_id, distance_km, ascent_m,"
 						+ " descent_m, seconds, link, comment)"
 						+ " values ((select id from competitor where member_number = ?), null, ?,"
-						+ " 'Trka koje nema u kalendaru', 'length',"
+						+ " 'Trka koje nema u kalendaru', 'length', 'race',"
 						+ " (select id from place where rank = 1), 12.00, 10, 10, 3000,"
 						+ " 'https://primer.rs/rezultati', '') returning id")
 				.params(memberNumber, day)
@@ -5511,9 +5511,9 @@ class VerificationWriteApiTest {
 			LocalDate day, Integer rank, String typedCity, String countryCode, String km, int climb,
 			int drop, int seconds) {
 		long submission = db.sql("insert into result_submission (competitor_id, race_id,"
-						+ " race_date, race_name, race_kind, place_id, city, country_id, distance_km,"
-						+ " ascent_m, descent_m, seconds, link, comment)"
-						+ " values ((select id from competitor where member_number = ?), null, ?, ?, ?,"
+						+ " race_date, race_name, race_kind, event_kind, place_id, city, country_id,"
+						+ " distance_km, ascent_m, descent_m, seconds, link, comment)"
+						+ " values ((select id from competitor where member_number = ?), null, ?, ?, ?, 'race',"
 						+ " (select id from place where rank = ?), ?,"
 						+ " (select id from country where code = ?), cast(? as numeric), ?, ?, ?,"
 						+ " 'https://primer.rs/rezultati/van-kalendara', '') returning id")
@@ -5838,7 +5838,8 @@ class VerificationWriteApiTest {
 	@Test
 	void anUnscoredEventChosenForARunNotInTheCalendarTakesTheRaceAndTheRunKeepsNoPoints() throws Exception {
 		long unscored = anUnscoredEvent("plivanje-na-adi-2027", "Plivanje na Adi", LocalDate.of(2027, 3, 1));
-		long run = describedRun(ANA, "Ada", "length", THE_DAY_HE_RAN, "6.0000", 0, 0, 1700);
+		/* Sent as a run of an unscored race: since 15.11.2026 only such a run goes on one (see below). */
+		long run = sentAsUnscored(describedRun(ANA, "Ada", "length", THE_DAY_HE_RAN, "6.0000", 0, 0, 1700));
 
 		assertThat(decideWith(THE_SUPERADMIN, run, makingTheRaceOn(unscored, "Krug oko Ade")).getStatus())
 				.isEqualTo(200);
@@ -5860,5 +5861,87 @@ class VerificationWriteApiTest {
 		return db.sql("select r.points from result r join competitor c on c.id = r.competitor_id"
 						+ " where c.member_number = ? and r.race_id = ?")
 				.params(number, race).query(String.class).single();
+	}
+
+	/* ================================= the approval keeps the kind the member chose (PDL, 15.11.2026)
+	 * „Racunaj da nikad ne sme da promeni", and the outcome chosen: „moderator vrstu ne menja. Vrsta je onakva
+	 * kakvu je član izabrao; ako je pogrešio, moderator odbija prijavu uz razlog, a član je ponovo šalje sa
+	 * tačnom vrstom." */
+
+	/** The waiting run, as one the member sent under the unscored kind (V101). */
+	private long sentAsUnscored(long item) {
+		db.sql("update result_submission set event_kind = 'unscored'"
+						+ " where id = (select result_submission_id from verification where id = ?)")
+				.param(item).update();
+
+		return item;
+	}
+
+	private String reasonOf(MockHttpServletResponse answer) throws Exception {
+		return new ObjectMapper().readTree(answer.getContentAsString()).path("reason").asString();
+	}
+
+	/**
+	 * A RUN IS NOT PUT ON AN EVENT OF THE OTHER KIND, BY ANY OF THE THREE WAYS AN ANSWER NAMES ONE: an event
+	 * chosen by its key, a race of the calendar, and a name typed that an event of the other kind already has
+	 * in the year of the run. Each is refused with 409 and the run waits, and nothing is written.
+	 */
+	@Test
+	void anApprovalPutsNoRunOnAnEventOfTheOtherKind() throws Exception {
+		long unscoredEvent = anUnscoredEvent("plivanje-na-adi-2027", "Plivanje na Adi", LocalDate.of(2027, 3, 1));
+		long scoredEvent = event("kros-na-adi-2027", "Kros na Adi", LocalDate.of(2027, 3, 1));
+		long scoredRace = freeRace(scoredEvent, "Kros", THE_DAY_HE_RAN);
+		long scored = describedRun(ANA, "Ada", "length", THE_DAY_HE_RAN, "6.0000", 10, 10, 1700);
+		long unscored = sentAsUnscored(describedRun(BOJAN, "Ada", "length", THE_DAY_HE_RAN, "6.0000", 10, 10,
+				1700));
+		int events = howManyEvents();
+		int races = howManyRaces();
+
+		MockHttpServletResponse ontoTheUnscored = decideWith(THE_SUPERADMIN, scored,
+				makingTheRaceOn(unscoredEvent, "Krug oko Ade"));
+		MockHttpServletResponse ontoTheScoredRace = decideWith(THE_SUPERADMIN, unscored, onTheRace(scoredRace, null));
+		MockHttpServletResponse ontoTheScoredByName = decideWith(THE_SUPERADMIN, unscored,
+				makingTheRace("Kros na Adi", "Krug", "free", null));
+
+		assertThat(List.of(ontoTheUnscored.getStatus(), ontoTheScoredRace.getStatus(),
+				ontoTheScoredByName.getStatus())).containsExactly(409, 409, 409);
+		assertThat(List.of(reasonOf(ontoTheUnscored), reasonOf(ontoTheScoredRace), reasonOf(ontoTheScoredByName)))
+				.allSatisfy(reason -> assertThat(reason).startsWith("Ovaj događaj nije iste vrste kao trka"));
+		assertThat(List.of(howManyEvents(), howManyRaces())).containsExactly(events, races);
+		assertThat(db.sql("select count(*) from result r join competitor c on c.id = r.competitor_id"
+						+ " where c.member_number in (?, ?)").params(ANA, BOJAN).query(Integer.class).single())
+				.isZero();
+	}
+
+	/**
+	 * AND A RUN SENT AS AN UNSCORED ONE, ON A NAME THE CALENDAR DOES NOT HAVE, MAKES AN UNSCORED EVENT: the
+	 * kind is the member's, the run keeps no points, a climb the moderator leaves out is nought, and the letter
+	 * names no points. A run sent as a scored one makes a scored event, as it always did.
+	 */
+	@Test
+	void aRunSentAsAnUnscoredOneMakesAnUnscoredEventAndItsLetterNamesNoPoints() throws Exception {
+		long unscored = sentAsUnscored(describedRun(ANA, "Ada", "free", THE_DAY_HE_RAN, "6.0000", 10, 10, 1700));
+		long scored = describedRun(BOJAN, "Ada", "free", THE_DAY_HE_RAN, "6.0000", 10, 10, 1700);
+
+		MockHttpServletResponse made = decideWith(THE_SUPERADMIN, unscored,
+				makingTheRace("Plivanje oko Ade", "Krug", "free", "{\"distanceKm\":6.0,\"seconds\":1700}"));
+
+		assertThat(made.getStatus()).as(made.getContentAsString()).isEqualTo(200);
+		/* The letter about it, the one road an approval tells him by (ANA's address is A_COMPETITOR). */
+		assertThat(theOneLetterTo(A_COMPETITOR).getContent().toString()).contains("Krug").doesNotContain("bod");
+		assertThat(decideWith(THE_SUPERADMIN, scored, makingTheRace("Kros oko Ade", "Krug", "free", null))
+				.getStatus()).isEqualTo(200);
+
+		assertThat(db.sql("select name || ' ' || kind from btl_event where name in ('Plivanje oko Ade',"
+						+ " 'Kros oko Ade') order by name").query(String.class).list())
+				.containsExactly("Kros oko Ade race", "Plivanje oko Ade unscored");
+		assertThat(db.sql("select r.points || ' ' || r.ascent_m || ' ' || r.descent_m from result r"
+						+ " join competitor c on c.id = r.competitor_id where c.member_number = ?")
+				.param(ANA).query(String.class).single()).isEqualTo("0.00 0 0");
+		assertThat(db.sql("select r.points <> 0 from result r join competitor c on c.id = r.competitor_id"
+						+ " where c.member_number = ?").param(BOJAN).query(Boolean.class).single())
+				.as("the scored run kept no points").isTrue();
+		assertThat(db.sql("select count(*) from result_submission where event_kind is not null and race_id"
+						+ " is not null").query(Integer.class).single()).as("a decided run kept a kind").isZero();
 	}
 }

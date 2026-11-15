@@ -231,6 +231,7 @@ function aRunWith(link: string, body = ''): ServedPendingItem {
     link,
     eventId: null,
     eventName: null,
+    eventKind: null,
   }
 }
 

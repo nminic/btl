@@ -182,4 +182,9 @@ export const WHEN_MODERATING_LEAGUE_RACES: Record<string, string> = {
   theEventHoldsNoRaces: 'admin.leagueRefused.theEventHoldsNoRaces',
   theRaceIsNotOfTheLeaguesSeason: 'admin.leagueRefused.theRaceIsNotOfTheLeaguesSeason',
   theSeasonIsFrozen: 'admin.leagueRefused.theSeasonIsFrozen',
+  /* AN UNSCORED RACE COUNTS IN NO LEAGUE (PDL, 14.11.2026, „ekran administracije lige ne nudi nebodovane
+     događaje i ima rečenicu za odbijanje `anUnscoredRaceIsNotInALeague`"). The panel does not offer one, so
+     this is met only by a screen one step behind the calendar: an event made unscored after the panel read
+     it. */
+  anUnscoredRaceIsNotInALeague: 'admin.leagueRefused.anUnscoredRaceIsNotInALeague',
 }

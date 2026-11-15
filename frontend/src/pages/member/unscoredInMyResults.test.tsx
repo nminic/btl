@@ -1,4 +1,6 @@
-import { screen, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
+import { sayNo, sayYes } from '../../test/deleteSheet'
+import { setupUser } from '../../test/user'
 import { at, must } from '../../test/at'
 import { renderAt } from '../../test/render'
 import { SLOW } from '../../test/slow'
@@ -45,13 +47,19 @@ describe('the races the league does not score, in „Moji rezultati"', () => {
     expect(screen.getByRole('heading', { name: `Nebodovane trke ${String(unscored.length)}` })).toBeVisible()
   }, SLOW)
 
-  it('offer nothing to change or take back, which is the next step of the increment', async () => {
+  /* „IZMENI" AND „OBRIŠI" ON EVERY ONE OF THEM, through the routes of a counted result (the plan's step 3,
+     „Unos rezultata na svim vratima: … ispravka"): the pencil opens the same form at the result's own
+     address, and the x asks first, as on a counted result. */
+  it('offer to change and to take back every one of them, as a counted result does', async () => {
     renderAt(PAGE, 'competitor', MEMBER)
 
     const table = await screen.findByRole('table', { name: 'Nebodovane trke' }, { timeout: SLOW / 2 })
+    const { unscored } = await bothLists()
 
-    expect(within(table).queryAllByRole('button')).toEqual([])
-    expect(within(table).queryAllByRole('link')).toEqual([])
+    expect(within(table).getAllByRole('link', { name: /^Izmeni/ }).map((one) => one.getAttribute('href'))).toEqual(
+      unscored.map((result) => `/sr/rezultat/novi?ispravka=${String(result.id)}`),
+    )
+    expect(within(table).getAllByRole('button', { name: /^Obriši/ })).toHaveLength(unscored.length)
   }, SLOW)
 
   it('are not among the counted ones, whose table keeps its own rows and its own controls', async () => {
@@ -65,6 +73,100 @@ describe('the races the league does not score, in „Moji rezultati"', () => {
     expect(rows).toHaveLength(scored.length)
     expect(rows.filter((row) => named.has(must(at(within(row).getAllByRole('cell'), 1).textContent, 'race')))).toEqual([])
     expect(within(at(rows, 0)).getAllByRole('link').length).toBeGreaterThan(0)
+  }, SLOW)
+
+  /* A RUN SENT AS ONE OF AN UNSCORED RACE is listed with no points and no word about them (PDL, 14.11.2026, „bez
+     prikaza bodova"), and a run of a scored race beside it keeps both. */
+  it('list a run sent as an unscored one with no points, beside a scored one that keeps them', async () => {
+    const sent = (id: number, raceName: string, eventKind: string) => ({
+      id,
+      state: 'waiting',
+      raceId: null,
+      raceName,
+      raceDate: '2026-07-12',
+      raceKind: 'free',
+      city: 'Beograd',
+      country: 'RS',
+      distanceKm: 3,
+      ascentM: 0,
+      descentM: 0,
+      seconds: 3600,
+      link: 'https://primer.rs/rezultati',
+      comment: '',
+      reason: null,
+      amendsResultId: null,
+      eventId: null,
+      eventName: raceName,
+      eventKind,
+    })
+    const stop = serverThat((path) =>
+      path === '/api/me/result-submissions'
+        ? new Response(JSON.stringify([sent(81, 'Plivanje oko Ade', 'unscored'), sent(82, 'Kros oko Ade', 'race')]), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          })
+        : null,
+    ).stop
+
+    try {
+      renderAt(PAGE, 'competitor', MEMBER)
+
+      const swim = must(
+        (await screen.findByText('Plivanje oko Ade', undefined, { timeout: SLOW / 2 })).closest('li'),
+        'the run sent as an unscored one',
+      )
+      const run = must(screen.getByText('Kros oko Ade').closest('li'), 'the run sent as a scored one')
+
+      expect(swim.textContent).not.toMatch(/poen|bod/i)
+      expect(run.textContent).toMatch(/poen/i)
+    } finally {
+      stop()
+    }
+  }, SLOW)
+
+  /* TAKEN BACK BY ITS OWN X, through the route of a counted result (`DELETE /api/results/{id}`), and gone from its
+     own list at once (`UNSCORED_RESULTS`, the overlay of `useUnscoredResults`), not from the scored one. */
+  it('take one back with its x, through the route of a counted result, and lose its row at once', async () => {
+    const server = serverThat((_path, init) =>
+      (init?.method ?? 'GET') === 'DELETE' ? new Response(null, { status: 204 }) : null,
+    )
+
+    try {
+      const user = setupUser()
+
+      renderAt(PAGE, 'competitor', MEMBER)
+
+      const table = await screen.findByRole('table', { name: 'Nebodovane trke' }, { timeout: SLOW / 2 })
+      const { unscored } = await bothLists()
+      const first = at(unscored, 0)
+
+      /* Kept first, which sends nothing and leaves the row, then taken back. */
+      await user.click(within(table).getByRole('button', { name: `Obriši: ${first.raceName}` }))
+      await sayNo(user, 'Obriši rezultat?')
+      expect(within(table).getByText(first.raceName)).toBeVisible()
+      expect(server.asked.filter((one) => one.init?.method === 'DELETE')).toEqual([])
+
+      await user.click(within(table).getByRole('button', { name: `Obriši: ${first.raceName}` }))
+      await sayYes(user, 'Obriši rezultat?')
+
+      await waitFor(() => {
+        expect(within(table).queryByText(first.raceName)).toBeNull()
+      })
+      expect(server.asked.filter((one) => one.init?.method === 'DELETE').map((one) => one.path)).toEqual([
+        `/api/results/${String(first.id)}`,
+      ])
+    } finally {
+      server.stop()
+    }
+  }, SLOW)
+
+  /* CORRECTED BY ITS PENCIL, on the form of a correction that lets the climb be left out (PDL, 14.11.2026). */
+  it('open the correction of one with the climb left to be left out', async () => {
+    const { unscored } = await bothLists()
+
+    renderAt(`/sr/rezultat/novi?ispravka=${String(at(unscored, 0).id)}`, 'competitor', MEMBER)
+
+    expect(await screen.findByLabelText(/^Uspon/, undefined, { timeout: SLOW / 2 })).not.toBeRequired()
   }, SLOW)
 
   it('leave no heading behind for a member who has none', async () => {

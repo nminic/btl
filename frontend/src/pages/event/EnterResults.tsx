@@ -6,7 +6,8 @@ import { Resource } from '../../components/Resource'
 import { raceKind } from '../../data/raceKind'
 import { raceLabel } from '../../data/raceLabel'
 import { inEventOrder } from '../../data/raceOrder'
-import { combineFour, useEvents, useRaces, useResults, useRunners } from '../../data/useResource'
+import { combineFour, useEvents, useRaces, useRunners } from '../../data/useResource'
+import { useEveryResult } from '../../data/unscoredResults'
 import type { RaceKind, Result, Runner } from '../../data/types'
 import { AskedLabel } from '../../forms/AskedLabel'
 import { DatePicker } from '../../forms/DatePicker'
@@ -37,6 +38,7 @@ import {
   hintOf,
   kindOfTheRows,
   theEventPageAfter,
+  theRowsAreScored,
   typingTheEvent,
   typingTheRace,
   whatIsWrongWithTheBlock,
@@ -47,6 +49,7 @@ import {
   bodyOf,
   figuresAskedOn,
   figuresOf,
+  mayBeLeftOut,
   newLeagueRow,
   rowOf,
   runnerLabel,
@@ -108,7 +111,8 @@ function TheRows() {
   const { slug } = useParams()
   const [params] = useFilterParams()
   const today = useToday()
-  const state = combineFour(useEvents(), useRaces(), useRunners(), useResults())
+  /* Every result, so the pencil on a row of an unscored event finds its run (`useEveryResult`). */
+  const state = combineFour(useEvents(), useRaces(), useRunners(), useEveryResult())
 
   return (
     <div className="member">
@@ -145,6 +149,7 @@ function TheRows() {
               <Rows
                 heading={t('leagueResults.title', { race: raceLabel(race, run, locale) })}
                 kind={raceKind(race.kind)}
+                scored={event.kind !== 'unscored'}
                 runners={runners}
                 editing={null}
                 save={(rows, kind) =>
@@ -180,6 +185,7 @@ function TheRows() {
             <Rows
               heading={t('leagueResults.editTitle', { name })}
               kind={raceKind(race.kind)}
+              scored={event.kind !== 'unscored'}
               runners={runners}
               editing={{ result, name }}
               save={(rows, kind) => theLeagueChanged(race.id, result.id, figuresOf(theOnlyRow(rows), kind))}
@@ -201,6 +207,7 @@ function TheRows() {
 function Rows({
   heading,
   kind,
+  scored,
   runners,
   editing,
   save,
@@ -211,6 +218,9 @@ function Rows({
   heading: string
   /** Read through the one function that knows the three words (`data/raceKind.ts`) by the caller. */
   kind: RaceKind
+  /** Whether the race the rows are on is scored: at an unscored one the climb and the fall may be left
+   *  out (`mayBeLeftOut`, PDL 14.11.2026). */
+  scored: boolean
   runners: Runner[]
   editing: { result: Result; name: string } | null
   save: (rows: LeagueRow[], kind: RaceKind) => Promise<Answer>
@@ -298,7 +308,7 @@ function Rows({
   }
 
   async function send() {
-    const wrong = rows.map((one) => whatIsWrongWith(one, kind))
+    const wrong = rows.map((one) => whatIsWrongWith(one, kind, scored))
     /* Both asked on every press, so the block and the rows say what is wrong with them together. */
     const blockWrong = blockIsWrong?.() === true
 
@@ -396,7 +406,11 @@ function Rows({
                 <div className="race__row">
                   {figuresAskedOn(kind).map((figure: Figure) => (
                     <div className="field" key={figure}>
-                      <AskedLabel id={`league-row-${which}-${figure}`} className="field__label">
+                      <AskedLabel
+                        id={`league-row-${which}-${figure}`}
+                        className="field__label"
+                        asked={!mayBeLeftOut(figure, scored)}
+                      >
                         {t(`newResult.${figure}`)}
                       </AskedLabel>
                       <input
@@ -405,7 +419,7 @@ function Rows({
                         type="text"
                         inputMode={figure === 'distanceKm' ? 'decimal' : 'numeric'}
                         value={row[figure]}
-                        aria-required="true"
+                        aria-required={!mayBeLeftOut(figure, scored)}
                         aria-invalid={words !== undefined}
                         aria-describedby={said}
                         onChange={(typed) => change(at, { [figure]: typed.target.value })}
@@ -493,6 +507,17 @@ export function EnterForAnEvent() {
  * sentence („kad sačuvaš rezultate”, approved 19.10.2026) under the member's word for it.
  */
 const RACE_BOX = unosRezultata.fields.filter((one) => one.name === 'raceName')
+
+/**
+ * THE TWO KINDS A NEW EVENT OF THIS SCREEN MAY BE, a scored and an unscored race, in the order and the words
+ * of the event's own form (`admin-dogadjaj.form.json`, PDL 14.11.2026, „Bodovana trka (podrazumevano) …,
+ * Nebodovana trka"): PDL, 15.11.2026, „kad liga pravi nov događaj, bira se Bodovana ili Nebodovana trka,
+ * podrazumevano Bodovana”. A training and a gathering hold no race, so they are not offered.
+ */
+const KINDS_OF_A_NEW_EVENT = dogadjaj.fields
+  .filter((one) => one.name === 'kind')
+  .flatMap((field) => optionsFor(field, {}))
+  .filter((option) => option.value === 'race' || option.value === 'unscored')
 const EVENT_BOX = unosRezultata.fields
   .filter((one) => one.name === 'eventName')
   .map((one) => ({ ...one, hintKey: 'leagueResults.eventHint' }))
@@ -631,6 +656,22 @@ function TheBlockAndTheRows() {
               />
             ))}
           {(block.event === null || edition) &&
+            box('eventKind', t('admin.field.kind'), () => (
+              <select
+                id="league-block-eventKind"
+                className={heldControl(false)}
+                aria-required="true"
+                value={block.eventKind}
+                onChange={(chosen) => setBlock((now) => ({ ...now, eventKind: chosen.target.value }))}
+              >
+                {KINDS_OF_A_NEW_EVENT.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {t(option.labelKey)}
+                  </option>
+                ))}
+              </select>
+            ))}
+          {(block.event === null || edition) &&
             box('city', t('newResult.city'), (described) => {
               /* WHAT IS WRONG MAY BE THE COUNTRY AND NOT THE TOWN (`form.errors.countryMissing`): the field
                  has a control of its own for it, and the form of the member hands it the same four things
@@ -742,6 +783,7 @@ function TheBlockAndTheRows() {
           <Rows
             heading={t('leagueResults.forAnEvent')}
             kind={kind}
+            scored={theRowsAreScored(block, ofTheBlock)}
             runners={listed}
             editing={null}
             above={above}

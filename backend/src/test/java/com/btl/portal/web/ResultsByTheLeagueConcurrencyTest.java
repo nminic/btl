@@ -382,8 +382,8 @@ class ResultsByTheLeagueConcurrencyTest {
 	 */
 	private long aDescribedRunWaitingToBeCountedOnTheRace() {
 		long submission = db.sql("insert into result_submission (competitor_id, race_id, race_date, race_name,"
-						+ " race_kind, place_id, distance_km, ascent_m, descent_m, seconds, link, comment)"
-						+ " values (?, null, date '2026-05-01', 'Opisana istovremena', 'length',"
+						+ " race_kind, event_kind, place_id, distance_km, ascent_m, descent_m, seconds, link,"
+						+ " comment) values (?, null, date '2026-05-01', 'Opisana istovremena', 'length', 'race',"
 						+ " (select id from place where rank = 1), 10.00, 50, 50, 3500,"
 						+ " 'https://primer.rs/istovremena', '') returning id")
 				.param(member).query(Long.class).single();
@@ -572,7 +572,7 @@ class ResultsByTheLeagueConcurrencyTest {
 						.cookie(new Cookie(SessionCookie.NAME, sessions.get(email)))
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("{\"event\":{\"name\":\"" + eventName + "\",\"date\":\"" + day
-								+ "\",\"city\":\"Ohrid\",\"country\":\"MK\"},\"race\":{\"name\":"
+								+ "\",\"city\":\"Ohrid\",\"country\":\"MK\",\"kind\":\"race\"},\"race\":{\"name\":"
 								+ "\"Nova istovremena\",\"kind\":\"length\",\"distanceKm\":10.00,"
 								+ "\"ascentM\":0,\"descentM\":0},\"rows\":[{\"memberNumber\":\"" + number
 								+ "\",\"seconds\":3600}]}"))

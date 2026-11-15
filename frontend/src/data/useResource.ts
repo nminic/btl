@@ -570,7 +570,7 @@ export function combinePair<A, B>(
  * `recordsOf` moving down here, together with what an entity is, and that is a
  * change of its own rather than a line in this one.
  */
-function useLive<T>(state: ResourceState<T[]>, entity: string, idField: keyof T): ResourceState<T[]> {
+export function useLive<T>(state: ResourceState<T[]>, entity: string, idField: keyof T): ResourceState<T[]> {
   const { deletions } = useSession()
   const gone = deletions[entity]
 

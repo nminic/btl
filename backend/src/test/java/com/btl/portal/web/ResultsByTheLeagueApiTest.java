@@ -1263,7 +1263,7 @@ class ResultsByTheLeagueApiTest {
 				"2027-06-01", " ", "MK", newRace("Nova", null, "free", null, null, null, null),
 				row(VERA, "5.00", 1, 1, AN_HOUR)));
 		MockHttpServletResponse noTownAtAll = onAnEvent(RESULTS_MODERATOR, "{\"event\":{\"name\":\"Bez mesta\","
-				+ "\"date\":\"2027-06-01\"},\"race\":" + newRace("Nova", null, "free", null, null, null, null)
+				+ "\"date\":\"2027-06-01\",\"kind\":\"race\"},\"race\":" + newRace("Nova", null, "free", null, null, null, null)
 				+ ",\"rows\":[" + row(VERA, "5.00", 1, 1, AN_HOUR) + "]}");
 
 		assertThat(List.of(gone.getStatus(), notItsRace.getStatus(), noTown.getStatus(), noTownAtAll.getStatus()))
@@ -1880,9 +1880,9 @@ class ResultsByTheLeagueApiTest {
 				"{\"race\":" + free + ",\"rows\":[" + aRow + "]}",
 				"{\"event\":{\"id\":" + theEvent + "},\"rows\":[" + aRow + "]}",
 				/* A new event with no name, and with no day. */
-				"{\"event\":{\"name\":\" \",\"date\":\"2027-06-01\",\"city\":\"Ohrid\",\"country\":\"MK\"},"
+				"{\"event\":{\"name\":\" \",\"date\":\"2027-06-01\",\"city\":\"Ohrid\",\"country\":\"MK\",\"kind\":\"race\"},"
 						+ "\"race\":" + newRace("Nova", null, "free", null, null, null, null) + ",\"rows\":[" + aRow + "]}",
-				"{\"event\":{\"name\":\"Jezerska trka\",\"city\":\"Ohrid\",\"country\":\"MK\"},"
+				"{\"event\":{\"name\":\"Jezerska trka\",\"city\":\"Ohrid\",\"country\":\"MK\",\"kind\":\"race\"},"
 						+ "\"race\":" + newRace("Nova", null, "free", null, null, null, null) + ",\"rows\":[" + aRow + "]}",
 				/* A new race with no name, with no kind, and of a kind nobody has. */
 				onTheEvent(theEvent, "{\"name\":\"\",\"date\":\"2027-05-01\",\"kind\":\"free\"}", aRow),
@@ -2152,7 +2152,7 @@ class ResultsByTheLeagueApiTest {
 	private static String onANewEvent(String name, String date, String city, String country, String race,
 			String... each) {
 		return "{\"event\":{\"name\":\"" + name + "\",\"date\":\"" + date + "\",\"city\":\"" + city
-				+ "\",\"country\":\"" + country + "\"},\"race\":" + race + ",\"rows\":["
+				+ "\",\"country\":\"" + country + "\",\"kind\":\"race\"},\"race\":" + race + ",\"rows\":["
 				+ String.join(",", each) + "]}";
 	}
 
@@ -2494,5 +2494,100 @@ class ResultsByTheLeagueApiTest {
 		return db.sql("select r.points from result r join competitor c on c.id = r.competitor_id"
 						+ " where c.member_number = ? and r.race_id = ?")
 				.params(number, race).query(String.class).single();
+	}
+
+	/* ============================ a new event of the kind the league chooses (PDL, 15.11.2026)
+	 * „Na ekranu lige „Unos rezultata za događaj”, kad liga pravi nov događaj, bira se Bodovana ili Nebodovana
+	 * trka, podrazumevano Bodovana”, and the rule of every door: „Uspon i spust na netrkačkoj trci su
+	 * neobavezni (prazno znači 0)”, and a message about a run of an unscored race names no points. */
+
+	/** The event the free race of the fixture is on. */
+	private long theHillsEvent() {
+		return db.sql("select event_id from race where id = ?").param(theHill).query(Long.class).single();
+	}
+
+	private static String onANewEventOfTheKind(String name, String kind, String race, String... each) {
+		return "{\"event\":{\"name\":\"" + name + "\",\"date\":\"2027-06-01\",\"city\":\"Ohrid\","
+				+ "\"country\":\"MK\"" + (kind == null ? "" : ",\"kind\":" + kind) + "},\"race\":" + race
+				+ ",\"rows\":[" + String.join(",", each) + "]}";
+	}
+
+	/**
+	 * THE KIND OF A NEW EVENT IS THE ONE CHOSEN, AND NOTHING ELSE: a scored or an unscored race; left out, or
+	 * a training, it is a form not filled in and nothing is written; beside an event chosen by its key it is a
+	 * second answer; and a name that already answers to an event of the other kind is refused with 409.
+	 */
+	@Test
+	void aNewEventIsOfTheKindChosenAndOfNoOther() throws Exception {
+		String race = newRace("Krug", null, "free", null, null, null, null);
+		int events = howMany("btl_event");
+
+		for (String kind : new String[] {null, "null", "\"training\"", "\"length\""}) {
+			MockHttpServletResponse refused = onAnEvent(RESULTS_MODERATOR, onANewEventOfTheKind("Novo plivanje",
+					kind, race, row(VERA, "3.00", null, null, AN_HOUR)));
+
+			assertThat(refused.getStatus()).as("the kind " + kind).isEqualTo(400);
+			assertThat(reasonIn(refused)).as("the kind " + kind).isEqualTo("theFormIsNotComplete");
+		}
+
+		assertThat(howMany("btl_event")).isEqualTo(events);
+		assertThat(onAnEvent(RESULTS_MODERATOR, "{\"event\":{\"id\":" + theHillsEvent() + ",\"kind\":\"race\"},"
+				+ "\"race\":{\"id\":" + theHill + "},\"rows\":[" + row(VERA, null, null, null, AN_HOUR) + "]}")
+				.getStatus()).as("a kind beside an event chosen by its key").isEqualTo(400);
+
+		MockHttpServletResponse swim = onAnEvent(RESULTS_MODERATOR, onANewEventOfTheKind("Novo plivanje",
+				"\"unscored\"", race, row(VERA, "3.00", null, null, AN_HOUR)));
+
+		assertThat(swim.getStatus()).as(swim.getContentAsString()).isEqualTo(201);
+		assertThat(db.sql("select kind from btl_event where name = 'Novo plivanje'").query(String.class).single())
+				.isEqualTo("unscored");
+		assertThat(db.sql("select r.points || ' ' || r.ascent_m || ' ' || r.descent_m from result r"
+						+ " join race ra on ra.id = r.race_id join btl_event e on e.id = ra.event_id"
+						+ " where e.name = 'Novo plivanje'").query(String.class).single())
+				.isEqualTo("0.00 0 0");
+		assertThat(bodiesTo(VERA)).anySatisfy(body -> assertThat(body).contains("Krug").doesNotContain("bod"));
+
+		MockHttpServletResponse anotherKind = onAnEvent(RESULTS_MODERATOR, onANewEventOfTheKind("Novo plivanje",
+				"\"race\"", newRace("Drugi krug", null, "free", null, null, null, null),
+				row(VERA, "3.00", 0, 0, AN_HOUR)));
+
+		assertThat(anotherKind.getStatus()).isEqualTo(409);
+		assertThat(reasonIn(anotherKind)).isEqualTo(ResultsByTheLeagueApi.THE_EVENT_IS_OF_ANOTHER_KIND);
+
+		MockHttpServletResponse scored = onAnEvent(RESULTS_MODERATOR, onANewEventOfTheKind("Novi kros",
+				"\"race\"", race, row(VERA, "3.00", 0, 0, AN_HOUR)));
+
+		assertThat(scored.getStatus()).isEqualTo(201);
+		assertThat(db.sql("select kind from btl_event where name = 'Novi kros'").query(String.class).single())
+				.isEqualTo("race");
+	}
+
+	/**
+	 * ON THE EVENT PAGE OF AN UNSCORED EVENT THE CLIMB MAY BE LEFT OUT AND IS NOUGHT, ON THE ENTRY AND ON THE
+	 * PENCIL, AND THE LETTERS ABOUT THE ENTRY, THE CHANGE AND THE DELETION NAME NO POINTS. At a scored race the
+	 * same row is still a form not filled in.
+	 */
+	@Test
+	void atAnUnscoredRaceTheClimbMayBeLeftOutAndNoLetterNamesPoints() throws Exception {
+		long swim = race(anUnscoredEvent("plivanje-2027", "Plivanje", LocalDate.of(2027, 5, 9)), "Plivanje",
+				LocalDate.of(2027, 5, 9), "free", 0, "0", 0, 0);
+
+		assertThat(entered(RESULTS_MODERATOR, theHill, rows(row(VERA, "12.00", null, null, AN_HOUR))).getStatus())
+				.as("a scored race took a row with no climb").isEqualTo(400);
+		assertThat(entered(RESULTS_MODERATOR, swim, rows(row(VERA, "12.00", null, null, AN_HOUR))).getStatus())
+				.isEqualTo(201);
+
+		long result = db.sql("select r.id from result r join competitor c on c.id = r.competitor_id"
+				+ " where c.member_number = ? and r.race_id = ?").params(VERA, swim).query(Long.class).single();
+
+		assertThat(changed(RESULTS_MODERATOR, swim, result, figuresBody("13.00", null, 40, AN_HOUR)).getStatus())
+				.isEqualTo(204);
+		assertThat(db.sql("select ascent_m || ' ' || descent_m || ' ' || points from result where id = ?")
+				.param(result).query(String.class).single()).isEqualTo("0 40 0.00");
+		assertThat(removed(RESULTS_MODERATOR, swim, result).getStatus()).isEqualTo(204);
+
+		List<String> bodies = bodiesTo(VERA).stream().filter(body -> body.contains("Plivanje")).toList();
+
+		assertThat(bodies).hasSize(3).allSatisfy(body -> assertThat(body).doesNotContain("bod"));
 	}
 }

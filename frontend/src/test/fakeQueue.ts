@@ -350,4 +350,5 @@ const NO_RUN: WaitingRunFields = {
   link: '',
   eventId: null,
   eventName: null,
+  eventKind: null,
 }

@@ -38,8 +38,10 @@ export type Figure = (typeof FIGURES)[number]
  * asks this of the race the moderator chose, and asks all four of a race the approval makes,
  * because that race is made of them.
  */
-export function figuresAsked(kind: RaceKind): { name: Figure; field: FieldDef }[] {
-  const fields = reportForm(kind).fields
+export function figuresAsked(kind: RaceKind, scored = true): { name: Figure; field: FieldDef }[] {
+  /* At an unscored race the climb and the fall may be left out (`reportForm.ts`, PDL 14.11.2026), and an
+     empty box travels as nought (`amendedFrom`). */
+  const fields = reportForm(kind, scored).fields
 
   return FIGURES.flatMap((name) => fields.filter((one) => one.name === name).map((field) => ({ name, field })))
 }

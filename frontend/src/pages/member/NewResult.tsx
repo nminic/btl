@@ -9,8 +9,10 @@ import type { FieldError, FormValues } from '../../forms/types'
 import { fieldDate } from '../../forms/dateField'
 import { raceKind } from '../../data/raceKind'
 import type { RaceKind, Result, SentRun } from '../../data/types'
+import { useUnscoredResults } from '../../data/unscoredResults'
 import {
   combinePair,
+  combineResources,
   useEvents,
   useMyResultSubmissions,
   useRaces,
@@ -50,7 +52,35 @@ import './Member.css'
  * as a prop, and a fresh object every render is a changed prop every render. */
 const ISPRAVKA_PREBROJANOG = {
   ...unosRezultata,
-  fields: unosRezultata.fields.filter((one) => one.name !== 'raceKind' && one.name !== 'city'),
+  /* And not the kind of its event either, which is the race's (V101): a correction is the same run at the
+     same race („Menja se sve osim trke"). */
+  fields: unosRezultata.fields.filter(
+    (one) => one.name !== 'raceKind' && one.name !== 'city' && one.name !== 'eventKind',
+  ),
+}
+
+/**
+ * THE SAME FORM WHERE THE CLIMB AND THE FALL MAY BE LEFT OUT, for a run of an unscored race. PDL, 14.11.2026:
+ * „Uspon i spust na netrkačkoj trci su neobavezni (prazno znači 0)”: a box left empty travels as nothing and
+ * the server writes nought (`ResultWriteApi`). Built once per form, as the two forms above are, so the prop
+ * is not a new object at every drawing.
+ */
+function withTheClimbOptional(form: typeof unosRezultata): typeof unosRezultata {
+  return {
+    ...form,
+    fields: form.fields.map((one) =>
+      one.name === 'ascentM' || one.name === 'descentM' ? { ...one, required: false } : one,
+    ),
+  }
+}
+
+const UNOS_NEBODOVANE = withTheClimbOptional(unosRezultata)
+
+const ISPRAVKA_NEBODOVANE = withTheClimbOptional(ISPRAVKA_PREBROJANOG)
+
+/** A box of a figure the form may leave empty, read as nothing rather than as nought. */
+function aFigureOrNothing(box: unknown): number | null {
+  return box === undefined || String(box).trim() === '' ? null : Number(box)
 }
 
 /** What the form waits for on a road that names nothing: nothing, so the one place that draws
@@ -120,6 +150,9 @@ function filledFrom(one: SentRun): FormValues {
        `filledFromCounted` deliberately does not carry them: that form does not ask
        either question. */
     raceKind: one.raceKind,
+    /* And the kind of its event he sent it under (V101): on an event he typed it is his to keep or
+       change; on an event he chose the box is not drawn (`showWhenEmpty`), the kind being the event's. */
+    eventKind: one.eventKind,
     city: one.city,
     country: one.country,
     distanceKm: String(one.distanceKm),
@@ -285,7 +318,15 @@ function TheForm({ me }: { me: string }) {
   const today = useToday()
   const events = useEvents()
   const results = useResults(revision)
+  /* And the results of the races the league does not score, which a member corrects by the same road
+     (`?ispravka=`, PDL, 14.11.2026: „Unos rezultata na svim vratima: … ispravka"). Their own list, never
+     merged into the one above for anything but finding the run the address names. */
+  const unscored = useUnscoredResults()
   const races = useRaces()
+  /* THE EVENT AND ITS KIND IN THE FORM AS THEY STAND, which decide whether the climb may be left out on a
+     new run or one sent again: the kind of the event chosen from the calendar, or the box's where he
+     typed one (the box is drawn only then, `showWhenEmpty`). Nothing until the form has said anything. */
+  const [inTheBoxes, setInTheBoxes] = useState<{ eventId: string; eventKind: string; chosen: string } | null>(null)
   const sent = useMyResultSubmissions(me, revision)
   /* THE SEASONS HE MAY SEND A RUN OF, which the server says (`/api/me`): the lists offer nothing of
      any other, and the day is held to them (PDL P9, 19.10.2026). Not waited for: the form is drawn
@@ -336,7 +377,10 @@ function TheForm({ me }: { me: string }) {
   /* And the counted one this is a correction of, read against the member signed in: an
      identity out of the address opens nobody else's result. Read through the overlay, so a
      result taken back a moment ago is not offered for changing. */
-  const counted = results.status === 'ready' ? results.data : []
+  const counted = [
+    ...(results.status === 'ready' ? results.data : []),
+    ...(unscored.status === 'ready' ? unscored.data : []),
+  ]
   /* And not one that already has a correction WAITING on somebody, which is the question
      `aCorrectionWaitsOn` answers for every way in. The list offers no way in then, on either of
      its two links (`MyResults`), so the only way to try is to type the address, which is exactly
@@ -362,7 +406,17 @@ function TheForm({ me }: { me: string }) {
      the counted results and the runs sent (a correction must know whether one already waits),
      the runs sent alone, or nothing. */
   const waitFor: ResourceState<unknown> =
-    fixing !== null ? combinePair(results, sent) : again !== null ? sent : NOTHING_TO_WAIT_FOR
+    fixing !== null ? combineResources(results, unscored, sent) : again !== null ? sent : NOTHING_TO_WAIT_FOR
+  /* WHETHER THE RUN THIS FORM SENDS IS ONE OF A SCORED RACE: the counted result's own list, the kind a
+     run sent back was sent under, or the kind in the box. */
+  const kindInTheBoxes =
+    inTheBoxes === null ? null : inTheBoxes.eventId === '' ? inTheBoxes.eventKind : inTheBoxes.chosen
+  const scored =
+    fixingOne !== undefined
+      ? !(unscored.status === 'ready' && unscored.data.some((one) => one.id === fixingOne.id))
+      : kindInTheBoxes === null && correcting !== undefined
+        ? correcting.eventKind !== 'unscored'
+        : kindInTheBoxes !== 'unscored'
 
   /**
    * WHICH ROUTE TAKES IT, decided by the road in and never by what is in a box.
@@ -391,8 +445,10 @@ function TheForm({ me }: { me: string }) {
   function whereItGoes(values: FormValues): Promise<Answer> {
     const figures = {
       distanceKm: Number(values.distanceKm),
-      ascentM: Number(values.ascentM),
-      descentM: Number(values.descentM),
+      /* Left empty only where the form let it be, at an unscored race, and then it travels as nothing
+         (`aFigureOrNothing`); the server writes nought. */
+      ascentM: aFigureOrNothing(values.ascentM),
+      descentM: aFigureOrNothing(values.descentM),
       seconds: fromBoxes(values),
     }
     const proof = { link: String(values.link), comment: String(values.comment) }
@@ -422,6 +478,9 @@ function TheForm({ me }: { me: string }) {
             /* Off the box, sent again as well: what he types is the name, or the name of the run
                that was sent back where he left it. */
             eventName: String(values.eventName),
+            /* AND ITS KIND, Bodovana or Nebodovana trka (PDL, 14.11.2026, (4)), only beside a name
+               typed: an event he chose has its own, and the server refuses a second answer. */
+            eventKind: String(values.eventKind),
             /* The town by name and country, never a `placeId`: `PlaceField` writes those two
                and has no GeoNames mark to give, which is `Registration.tsx`'s own decision
                against the same rule. */
@@ -592,7 +651,26 @@ function TheForm({ me }: { me: string }) {
                back. One click on the second road drew the full form until 30.08.2026, and the
                kind the member was never asked for was theirs to set (measured in review that
                day). What decides is what the run is, not which address opened it. */
-            form={correctsACountedResult ? ISPRAVKA_PREBROJANOG : unosRezultata}
+            form={
+              correctsACountedResult
+                ? scored
+                  ? ISPRAVKA_PREBROJANOG
+                  : ISPRAVKA_NEBODOVANE
+                : scored
+                  ? unosRezultata
+                  : UNOS_NEBODOVANE
+            }
+            /* The kind in its box, as it is typed or filled, so the climb is asked for or not as it
+               changes. */
+            onChange={(values) =>
+              setInTheBoxes({
+                eventId: String(values.eventId ?? ''),
+                eventKind: String(values.eventKind ?? ''),
+                /* Filled with the key by the list of events (`eventsToOffer.ts`), and nothing where no event
+                   was chosen. */
+                chosen: String(values.kindOfTheChosenEvent ?? ''),
+              })
+            }
             /* A fresh form starts on „Dužinska" (owner, 30.08.2026), and that is done
                here rather than in the definition because a field has no notion of a
                value it starts from: `emptyValues` gives every field the empty string
@@ -604,7 +682,8 @@ function TheForm({ me }: { me: string }) {
               correcting !== undefined
                 ? filledFrom(correcting)
                 : fixingOne === undefined
-                  ? { raceKind: 'length' }
+                  ? /* And on „Bodovana trka" (PDL, 14.11.2026, (4): „podrazumevano Bodovana"). */
+                    { raceKind: 'length', eventKind: 'race' }
                   : filledFromCounted(fixingOne)
             }
             /* A COUNTED RESULT HOLDS ITS NAMES AND ITS DAY, and a run sent back holds nothing of the

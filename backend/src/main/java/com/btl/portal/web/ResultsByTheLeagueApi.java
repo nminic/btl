@@ -260,6 +260,15 @@ class ResultsByTheLeagueApi {
 	 *  kalendaru. Izaberi je ponovo ili upiši novu.” */
 	static final String THE_RACE_IS_NOT_KNOWN = "theRaceIsNotKnown";
 
+	/**
+	 * THE NEW EVENT TYPED IS ONE THE CALENDAR ALREADY HAS, and of the other kind than the one chosen beside
+	 * it: a scored race where an unscored one was chosen, or the other way round. The rows would go on that
+	 * event (the name and the year find it, PDL P9, 19.10.2026, „Isti naziv ne pravi drugi događaj"), and
+	 * so be of its kind and not of the one chosen; the kind of an event that is there is the event's, and
+	 * changing it is the administration's, not this screen's. 409.
+	 */
+	static final String THE_EVENT_IS_OF_ANOTHER_KIND = "theEventIsOfAnotherKind";
+
 	/** A new event names no town: „Upiši mesto novog događaja.” */
 	static final String THE_TOWN_IS_MISSING = "theTownIsMissing";
 
@@ -361,8 +370,16 @@ class ResultsByTheLeagueApi {
 	 * mesto” (PDL P9, owner's choice of 19.10.2026). The date is the day of its first race, which is
 	 * this one („nov događaj ima jedno polje „Datum” (isti dan kao njegova prva trka)”, approved the
 	 * same day). The town is typed, with its country, as {@code PlaceField} writes it.
+	 *
+	 * @param kind THE KIND OF A NEW EVENT, a scored race ({@code race}) or an unscored one
+	 *             ({@code unscored}). PDL, 15.11.2026, the owner on the questions of the author of steps 2b
+	 *             and 3: „Na ekranu lige „Unos rezultata za događaj”, kad liga pravi nov događaj, bira se
+	 *             Bodovana ili Nebodovana trka, podrazumevano Bodovana”. The default is the screen's; a new
+	 *             event sent without a kind is a form not filled in, never a scored race (ADL A8:
+	 *             „Izostavljeno polje nikad ne sme tiho da promeni vrednost"), and beside an event chosen
+	 *             by its key it is a second answer the calendar has given already
 	 */
-	record NamedEvent(Long id, String name, LocalDate date, String city, String country) {
+	record NamedEvent(Long id, String name, LocalDate date, String city, String country, String kind) {
 	}
 
 	/**
@@ -528,12 +545,14 @@ class ResultsByTheLeagueApi {
 		boolean newEvent = event.id() == null;
 		boolean newRace = race.id() == null;
 		boolean namedBesideTheKey = !newEvent
-				&& !nothingIn(event.name(), event.date(), event.city(), event.country());
+				&& !nothingIn(event.name(), event.date(), event.city(), event.country(), event.kind());
 		boolean raceNamedBesideTheKey = !newRace && !nothingIn(race.name(), race.date(), race.kind(),
 				race.distanceKm(), race.ascentM(), race.descentM(), race.limitSeconds());
 
 		if (namedBesideTheKey || raceNamedBesideTheKey || (newEvent && !newRace)
 				|| (newEvent && (isNothing(event.name()) || event.date() == null || race.date() != null))
+				|| (newEvent && !WhatAnEventCarries.A_RACE.equals(event.kind())
+						&& !WhatAnEventCarries.AN_UNSCORED_RACE.equals(event.kind()))
 				|| (newRace && (isNothing(race.name()) || race.kind() == null
 						|| !WhatARaceCarries.KINDS.contains(race.kind())))
 				|| (newRace && !newEvent && race.date() == null)) {
@@ -603,6 +622,11 @@ class ResultsByTheLeagueApi {
 
 		if (event.isPresent() && !WhatAnEventCarries.holdsRaces(event.get().kind())) {
 			return Done.only(notComplete());
+		}
+
+		/* A NEW EVENT TYPED THAT THE CALENDAR ALREADY HAS, OF THE OTHER KIND (THE_EVENT_IS_OF_ANOTHER_KIND). */
+		if (named.id() == null && event.isPresent() && !event.get().kind().equals(named.kind())) {
+			return Done.only(no(HttpStatus.CONFLICT, THE_EVENT_IS_OF_ANOTHER_KIND));
 		}
 
 		if (race.id() != null) {
@@ -677,7 +701,10 @@ class ResultsByTheLeagueApi {
 				WhatARaceCarries.fixesTheTime(race.kind()) ? race.limitSeconds() : 0,
 				WhatARaceCarries.fixesTheCourse(race.kind()) ? race.distanceKm() : BigDecimal.ZERO,
 				WhatARaceCarries.fixesTheCourse(race.kind()) ? race.ascentM() : 0,
-				WhatARaceCarries.fixesTheCourse(race.kind()) ? race.descentM() : 0), rows);
+				WhatARaceCarries.fixesTheCourse(race.kind()) ? race.descentM() : 0), rows,
+				/* Scored as the event it goes on is: the one there, or the new one of the kind named. */
+				WhatAnEventCarries.A_RACE.equals(event.map(TheDayOfAnEvent.Standing::kind)
+						.orElse(named.kind())));
 
 		if (judged.refused() != null) {
 			return Done.only(judged.refused());
@@ -764,7 +791,7 @@ class ResultsByTheLeagueApi {
 						+ " featured, description, link) values (?, ?, ?, null, ?, ?, ?, false, '', '')"
 						+ " on conflict (slug) do nothing returning id")
 				.params(address, named.name().strip(), named.date(), named.city().strip(), country,
-						WhatAnEventCarries.A_RACE)
+						named.kind())
 				.query(Long.class).optional();
 	}
 
@@ -832,7 +859,7 @@ class ResultsByTheLeagueApi {
 	 * transaction: the event page's save and the moderator's screen's are this one method.
 	 */
 	private Done theRows(TheRace race, List<Row> rows) {
-		Judged judged = judged(race, rows);
+		Judged judged = judged(race, rows, PointsOfARun.scored(db, race.id()));
 
 		return judged.refused() != null ? Done.only(judged.refused()) : written(race, judged);
 	}
@@ -843,7 +870,7 @@ class ResultsByTheLeagueApi {
 	 * and the race are written ({@link #theRaceAndItsRows}), so a refused row leaves nothing of the
 	 * save behind without the transaction having to take anything back.
 	 */
-	private Judged judged(TheRace race, List<Row> rows) {
+	private Judged judged(TheRace race, List<Row> rows, boolean scored) {
 		Map<String, Long> members = keysOf(rows);
 
 		/* LOCKED BEFORE ANYTHING IS JUDGED, in the order of the key so two saves cannot hold
@@ -870,8 +897,11 @@ class ResultsByTheLeagueApi {
 		for (int at = 0; at < rows.size(); at++) {
 			Row row = rows.get(at);
 			Long member = row == null ? null : members.get(row.memberNumber());
-			Figures figures = row == null ? null : WhatARaceCarries.figuresOf(race.fixes(),
-					new Figures(row.distanceKm(), row.ascentM(), row.descentM(), row.seconds()));
+			/* THE CLIMB AND THE FALL MAY BE LEFT OUT AT AN UNSCORED RACE, and are nought then
+			   (PointsOfARun#withTheClimbOptional). */
+			Figures figures = row == null ? null : PointsOfARun.withTheClimbOptional(scored,
+					WhatARaceCarries.figuresOf(race.fixes(), new Figures(row.distanceKm(), row.ascentM(),
+							row.descentM(), row.seconds())));
 			String why = member == null ? THE_MEMBER_IS_NOT_KNOWN
 					: notARun(figures) ? ResultWriteApi.THE_FORM_IS_NOT_COMPLETE
 					: times.get(member) > 1 ? THE_MEMBER_IS_NAMED_TWICE
@@ -932,8 +962,9 @@ class ResultsByTheLeagueApi {
 				return Done.only(no(HttpStatus.CONFLICT, HIS_SUBMISSION_WAITS));
 			}
 
-			Figures figures = WhatARaceCarries.figuresOf(standing.race().fixes(), new Figures(
-					typed.distanceKm(), typed.ascentM(), typed.descentM(), typed.seconds()));
+			Figures figures = PointsOfARun.withTheClimbOptional(standing.scored(),
+					WhatARaceCarries.figuresOf(standing.race().fixes(), new Figures(typed.distanceKm(),
+							typed.ascentM(), typed.descentM(), typed.seconds())));
 
 			if (notARun(figures)) {
 				return Done.only(no(HttpStatus.BAD_REQUEST, ResultWriteApi.THE_FORM_IS_NOT_COMPLETE));
@@ -946,12 +977,13 @@ class ResultsByTheLeagueApi {
 			/* THE OLD VALUE IS READ BEFORE THE ROW CHANGES, which is the whole point of the
 			   letter: afterwards there is nowhere left to read it from (PDL P9, „Mejl je dnevnik"). */
 			Run before = standing.run();
-			Run after = runOf(standing.race(), figures);
+			BigDecimal points = PointsOfARun.at(db, standing.race().id(), figures);
+			Run after = runOf(standing.race(), figures, points);
 
 			db.sql("update result set distance_km = ?, ascent_m = ?, descent_m = ?, seconds = ?,"
 							+ " points = ? where id = ?")
 					.params(after.distanceKm(), after.ascentM(), after.descentM(), after.seconds(),
-							after.points(), standing.id())
+							points, standing.id())
 					.update();
 
 			List<Letter> letters = new ArrayList<>();
@@ -1018,7 +1050,8 @@ class ResultsByTheLeagueApi {
 		int season = race.day().getYear() + 1;
 		boolean asks = asksTheCategory(race);
 		boolean wasOpen = asks && beginnersCategoryIsOpenFor(member, season);
-		Run run = runOf(race, figures);
+		BigDecimal points = PointsOfARun.at(db, race.id(), figures);
+		Run run = runOf(race, figures, points);
 
 		/* AND WHEN AND BY WHOM IT CAME IN (V97): the moment of this entry and „league”, which is what the
 		   message about a ducat this result carries him over to reads, now or at night (PDL, 12.11.2026). */
@@ -1026,7 +1059,7 @@ class ResultsByTheLeagueApi {
 						+ " ascent_m, descent_m, seconds, points, brought_at, brought_by)"
 						+ " values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) returning id")
 				.params(member, race.id(), race.day(), run.distanceKm(), run.ascentM(),
-						run.descentM(), run.seconds(), run.points(), Timestamp.from(clock.instant()),
+						run.descentM(), run.seconds(), points, Timestamp.from(clock.instant()),
 						AwardingDucats.Brought.LEAGUE.word())
 				.query(Long.class).single();
 
@@ -1226,12 +1259,16 @@ class ResultsByTheLeagueApi {
 	}
 
 	/**
-	 * The run as it is counted, with the points from the one place that answers for them, which gives
-	 * nothing at an unscored race ({@link PointsOfARun}, PDL 14.11.2026).
+	 * The run as it is counted, as its letter tells it: with the points the one place that answers for
+	 * them gave ({@link PointsOfARun}, nought at an unscored race), and with none at all where the race is
+	 * unscored, because a letter about such a run names no points ({@link PointsOfARun#toTell}).
+	 *
+	 * @param points what the row keeps, which the caller writes
 	 */
-	private Run runOf(TheRace race, Figures figures) {
+	private Run runOf(TheRace race, Figures figures, BigDecimal points) {
 		return new Run(race.name(), race.day(), figures.distanceKm(), figures.ascentM(),
-				figures.descentM(), figures.seconds(), PointsOfARun.at(db, race.id(), figures));
+				figures.descentM(), figures.seconds(),
+				PointsOfARun.toTell(PointsOfARun.scored(db, race.id()), points));
 	}
 
 	/** The moment, in the league's zone, which is the zone every season question is asked in. */
@@ -1260,7 +1297,8 @@ class ResultsByTheLeagueApi {
 	private Optional<Standing> standing(long result, long race) {
 		return db.sql("select r.id, r.competitor_id, r.distance_km, r.ascent_m, r.descent_m,"
 						+ " r.seconds, r.points, ra.id, ra.name, ra.date, ra.kind, ra.limit_seconds,"
-						+ " ra.distance_km, ra.ascent_m, ra.descent_m"
+						+ " ra.distance_km, ra.ascent_m, ra.descent_m,"
+						+ " exists(select 1 from scored_race s where s.id = ra.id)"
 						+ " from result r join race ra on ra.id = r.race_id"
 						+ " where r.id = ? and r.race_id = ? for update of r")
 				.params(result, race)
@@ -1268,7 +1306,8 @@ class ResultsByTheLeagueApi {
 						row.getBigDecimal(3), row.getInt(4), row.getInt(5), row.getInt(6),
 						row.getBigDecimal(7), new TheRace(row.getLong(8), row.getString(9),
 								row.getDate(10).toLocalDate(), row.getString(11), row.getInt(12),
-								row.getBigDecimal(13), row.getInt(14), row.getInt(15))))
+								row.getBigDecimal(13), row.getInt(14), row.getInt(15)),
+						row.getBoolean(16)))
 				.optional();
 	}
 
@@ -1285,12 +1324,18 @@ class ResultsByTheLeagueApi {
 		}
 	}
 
-	/** A result as it stands, with its race: the old value a letter carries. */
+	/**
+	 * A result as it stands, with its race: the old value a letter carries.
+	 *
+	 * @param scored whether its race is a scored one ({@code scored_race}, V99): a letter about a run of an
+	 *               unscored race names no points ({@link PointsOfARun#toTell})
+	 */
 	private record Standing(long id, long member, BigDecimal distanceKm, int ascentM, int descentM,
-			int seconds, BigDecimal points, TheRace race) {
+			int seconds, BigDecimal points, TheRace race, boolean scored) {
 
 		Run run() {
-			return new Run(race.name(), race.day(), distanceKm, ascentM, descentM, seconds, points);
+			return new Run(race.name(), race.day(), distanceKm, ascentM, descentM, seconds,
+					PointsOfARun.toTell(scored, points));
 		}
 	}
 

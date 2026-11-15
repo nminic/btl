@@ -571,6 +571,43 @@ describe('which races count towards a competition', () => {
     server.stop()
   }, SLOW)
 
+  /* AN UNSCORED RACE COUNTS IN NO LEAGUE (PDL, 14.11.2026, „ekran administracije lige ne nudi nebodovane
+     događaje i ima rečenicu za odbijanje `anUnscoredRaceIsNotInALeague`"). „Palićki triatlon" is the one
+     unscored event of the sample, of 2027 like the competition, with a race on its day, so only its kind
+     keeps it off the list; a scored race of the same season is on it. */
+  it('offers no unscored race, which counts in no competition, beside the scored ones of its season', async () => {
+    const server = serving()
+
+    await openTheBox()
+
+    const chooser = screen.getByLabelText('Događaj', {
+      selector: `#league-moderation-${ACTED}-event`,
+    })
+    const offered = [...within(chooser).getAllByRole('option')].map((one) => one.textContent)
+
+    expect(offered).toContain('Beogradski maraton')
+    expect(offered.some((one) => one?.includes('Palićki triatlon'))).toBe(false)
+
+    server.stop()
+  }, SLOW)
+
+  it('says in words that an unscored race counts in no competition where the route refuses one', async () => {
+    const server = serving(() => refused('anUnscoredRaceIsNotInALeague', 400))
+    const user = await openTheBox()
+
+    await user.selectOptions(
+      screen.getByLabelText('Događaj', { selector: `#league-moderation-${ACTED}-event` }),
+      String(A_DAY_NOBODY_COUNTS),
+    )
+    await user.click(screen.getByRole('button', { name: 'Dodaj u ligu' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Nebodovana trka se ne računa ni u jednoj ligi, pa se ne može dodati.',
+    )
+
+    server.stop()
+  }, SLOW)
+
   it('says so where the competition counts nothing yet and where its season has no days',
     async () => {
       const server = serving()

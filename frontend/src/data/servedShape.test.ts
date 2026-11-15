@@ -504,6 +504,7 @@ const aSentRunThatWaits = {
   amendsResultId: null,
   eventId: 1118,
   eventName: 'Mala Sveta gora',
+  eventKind: 'race',
 }
 
 /** A run on a race the calendar does not hold, sent back: no race, and the kind and the town
@@ -528,6 +529,7 @@ const aDescribedRunSentBack = {
   /* An event he typed: a name and no key (V66). */
   eventId: null,
   eventName: 'Palićki krug',
+  eventKind: 'race',
 }
 
 /** A correction of a counted result, sent back: the race is the counted result's, and
@@ -551,6 +553,7 @@ const aCorrectionSentBack = {
   amendsResultId: 2,
   eventId: 291,
   eventName: 'Tron polumaraton',
+  eventKind: 'race',
 }
 
 const readAsSentRunThatWaits: SentRun = aSentRunThatWaits

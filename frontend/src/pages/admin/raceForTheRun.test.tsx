@@ -88,6 +88,7 @@ const FROM_THE_BOOK: ServedPendingItem = {
   link: '',
   eventId: null,
   eventName: null,
+  eventKind: null,
 }
 
 /** Another, at a town typed in another country, sent as a race of a length. */
@@ -110,6 +111,7 @@ const TYPED: ServedPendingItem = {
   link: '',
   eventId: null,
   eventName: null,
+  eventKind: null,
 }
 
 /** A run from the calendar, which names no town. */
@@ -131,6 +133,7 @@ const FROM_THE_CALENDAR: ServedPendingItem = {
   link: '',
   eventId: null,
   eventName: null,
+  eventKind: null,
 }
 
 /** A results row naming no submission, which V10 permits: no day, no race, no figures. */
@@ -153,6 +156,7 @@ const NAMING_NO_RUN: ServedPendingItem = {
   link: '',
   eventId: null,
   eventName: null,
+  eventKind: null,
 }
 
 const RUNS = [FROM_THE_BOOK, TYPED, FROM_THE_CALENDAR, NAMING_NO_RUN]
@@ -540,6 +544,37 @@ describe('the panel that names the race', () => {
 
       expect(panel().getByLabelText(sr.newResult.raceKind)).toHaveValue('free')
       expect(panel().getByLabelText(sr.newResult.raceName)).toHaveValue('Trka uz Nišavu')
+    } finally {
+      server.stop()
+    }
+  })
+
+  /* THE KIND THE MEMBER SENT THE RUN UNDER, said on the panel as a fact and offered as no box (PDL, 15.11.2026:
+     „moderator vrstu ne menja. Vrsta je onakva kakvu je član izabrao"), and at an unscored race the climb may be
+     left out (PDL, 14.11.2026). Two runs of the two kinds, so a panel that said one constant fails on the other. */
+  it('says the kind the member sent the run under, offers no box for it, and asks no climb of an unscored one', async () => {
+    const user = setupUser()
+    const server = serverWith({
+      queue: () => [
+        { ...TYPED, eventKind: 'unscored' },
+        { ...FROM_THE_BOOK, eventKind: 'race' },
+      ],
+    })
+
+    try {
+      openTheQueue()
+
+      await openThePanelOver(user, '000060')
+
+      expect(panel().getByText(`${sr.admin.field.kind}: ${sr.event.kind.unscored}`)).toBeVisible()
+      expect(panel().queryByRole('combobox', { name: new RegExp(`^${sr.admin.field.kind}`) })).toBeNull()
+      expect(panel().getByLabelText(/^Uspon/)).toHaveAttribute('aria-required', 'false')
+
+      await user.click(panel().getByRole('button', { name: sr.review.cancel }))
+      await openThePanelOver(user, '000040')
+
+      expect(panel().getByText(`${sr.admin.field.kind}: ${sr.event.kind.race}`)).toBeVisible()
+      expect(panel().getByLabelText(/^Uspon/)).toHaveAttribute('aria-required', 'true')
     } finally {
       server.stop()
     }

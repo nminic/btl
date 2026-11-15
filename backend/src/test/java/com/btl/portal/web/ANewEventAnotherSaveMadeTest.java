@@ -347,7 +347,7 @@ class ANewEventAnotherSaveMadeTest {
 	/** The save, as a real server would answer it: an exception out of {@code perform} is the 500 it becomes. */
 	private MockHttpServletResponse theLeagueEntersOnANewEvent() {
 		String body = "{\"event\":{\"name\":\"" + THE_NAME + "\",\"date\":\"" + THE_REQUESTS_DAY
-				+ "\",\"city\":\"Ohrid\",\"country\":\"MK\"},\"race\":{\"name\":\"Desetka\","
+				+ "\",\"city\":\"Ohrid\",\"country\":\"MK\",\"kind\":\"race\"},\"race\":{\"name\":\"Desetka\","
 				+ "\"kind\":\"length\",\"distanceKm\":10.00,\"ascentM\":50,\"descentM\":40,\"limitSeconds\":null},"
 				+ "\"rows\":[{\"memberNumber\":\"" + THE_NUMBER + "\",\"seconds\":3600}]}";
 

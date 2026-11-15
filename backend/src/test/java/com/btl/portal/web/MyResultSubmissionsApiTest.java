@@ -268,6 +268,9 @@ class MyResultSubmissionsApiTest {
 		   the event of a race of the calendar that is not the race of any run beside it on that day. */
 		db.sql("update result_submission set event_name = 'Kotorski kros' where id = ?")
 				.param(waitingDescribed).update();
+		/* And sent as a run of an unscored race (V101), so the kind is not the same in every record. */
+		db.sql("update result_submission set event_kind = 'unscored' where id = ?")
+				.param(waitingDescribed).update();
 		/* The chosen one carries no town of its own (V67): it is the event's, which is answered. */
 		db.sql("update result_submission set event_id = (select event_id from race where id = ?),"
 						+ " place_id = null, city = null, country_id = null where id = ?")
@@ -461,6 +464,26 @@ class MyResultSubmissionsApiTest {
 	}
 
 	/**
+	 * EACH RUN ANSWERS WITH THE KIND OF THE EVENT IT IS ON (V101): the one he sent a described run under, an
+	 * unscored race for the typed event above and a scored one for the chosen, and the kind of its race's
+	 * event for a run from the calendar, which an unscored event makes unscored.
+	 */
+	@Test
+	void eachRunAnswersWithTheKindOfItsEvent() throws Exception {
+		db.sql("update btl_event set kind = 'unscored' where id = (select event_id from race where id = ?)")
+				.param(freeRace).update();
+
+		List<JsonNode> mine = mySix();
+
+		assertThat(mine.get(0).path("eventKind").asString()).as("the kind he typed").isEqualTo("unscored");
+		assertThat(mine.get(4).path("eventKind").asString())
+				.as("the kind he sent a run on a chosen event under, not the event's as it is now").isEqualTo("race");
+		assertThat(mine.get(2).path("eventKind").asString()).as("a run from the calendar")
+				.isEqualTo("unscored");
+		assertThat(mine.get(5).path("eventKind").asString()).isEqualTo("race");
+	}
+
+	/**
 	 * THE DAY IS THE DAY THE RACE WAS RUN, AND NEVER THE DAY THE RUN WAS SENT.
 	 */
 	@Test
@@ -555,7 +578,8 @@ class MyResultSubmissionsApiTest {
 				.as("the answer carries a name nobody decided it should, or lost one")
 				.containsExactlyInAnyOrder("id", "state", "raceId", "raceName", "raceDate",
 						"raceKind", "city", "country", "distanceKm", "ascentM", "descentM",
-						"seconds", "link", "comment", "reason", "amendsResultId", "eventId", "eventName");
+						"seconds", "link", "comment", "reason", "amendsResultId", "eventId", "eventName",
+						"eventKind");
 	}
 
 	/** NO FIELD OF IT IS THE SAME IN EVERY RECORD, so no field could be answered by a constant. */
@@ -836,9 +860,9 @@ class MyResultSubmissionsApiTest {
 	private long describedInATownOfTheBook(String member, String name, String kind, String day,
 			String km, int up, int down, int seconds, String link, String comment) {
 		return db.sql("insert into result_submission (competitor_id, race_id, race_date,"
-						+ " race_name, race_kind, place_id, distance_km, ascent_m, descent_m, seconds,"
-						+ " link, comment) values ((select id from competitor where member_number = ?),"
-						+ " null, date '" + day + "', ?, ?, (select id from place where rank = 2),"
+						+ " race_name, race_kind, event_kind, place_id, distance_km, ascent_m, descent_m,"
+						+ " seconds, link, comment) values ((select id from competitor where member_number = ?),"
+						+ " null, date '" + day + "', ?, ?, 'race', (select id from place where rank = 2),"
 						+ " cast(? as numeric), ?, ?, ?, ?, ?) returning id")
 				.params(member, name, kind, km, up, down, seconds, link, comment)
 				.query(Long.class).single();
@@ -849,9 +873,10 @@ class MyResultSubmissionsApiTest {
 			String city, String country, String km, int up, int down, int seconds, String link,
 			String comment) {
 		return db.sql("insert into result_submission (competitor_id, race_id, race_date,"
-						+ " race_name, race_kind, city, country_id, distance_km, ascent_m, descent_m,"
-						+ " seconds, link, comment) values ((select id from competitor where member_number = ?),"
-						+ " null, date '" + day + "', ?, ?, ?, (select id from country where code = ?),"
+						+ " race_name, race_kind, event_kind, city, country_id, distance_km, ascent_m,"
+						+ " descent_m, seconds, link, comment) values ((select id from competitor where"
+						+ " member_number = ?), null, date '" + day + "', ?, ?, 'race', ?,"
+						+ " (select id from country where code = ?),"
 						+ " cast(? as numeric), ?, ?, ?, ?, ?) returning id")
 				.params(member, name, kind, city, country, km, up, down, seconds, link, comment)
 				.query(Long.class).single();

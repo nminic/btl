@@ -128,8 +128,10 @@ export const WHEN_A_RESULT_IS_WRITTEN: Record<string, string> = {
 /** The four figures every body carries, whichever of the three writes it is. */
 type Figures = {
   distanceKm: number
-  ascentM: number
-  descentM: number
+  /** Nothing only at an unscored race, where the climb and the fall may be left out and the server
+   *  writes nought (PDL, 14.11.2026, „Uspon i spust na netrkačkoj trci su neobavezni (prazno znači 0)”). */
+  ascentM: number | null
+  descentM: number | null
   seconds: number
 }
 
@@ -200,8 +202,11 @@ export type ARunDescribed = Figures &
  *  none is sent, and the route refuses one beside it (`theRaceIsNamedTwice`). */
 type OnAChosenEvent = { eventId: number }
 
-/** A run on an event he typed, which names its town, as a run away from the calendar always did. */
-type OnATypedEvent = { eventName: string; city: string; country: string }
+/**
+ * A run on an event he typed, which names its town, as a run away from the calendar always did, and the
+ * kind of that event, Bodovana or Nebodovana trka (`ResultWriteApi.Ran.eventKind`, PDL 14.11.2026, (4)).
+ */
+type OnATypedEvent = { eventName: string; city: string; country: string; eventKind: string }
 
 /**
  * A CORRECTION, WHICH IS THE NUMBERS AND THE PROOF AND NOTHING ELSE.

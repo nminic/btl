@@ -13,8 +13,8 @@ import {
   dataOr,
   useEvents,
   useRaces,
-  useResults,
 } from '../../data/useResource'
+import { useEveryResult } from '../../data/unscoredResults'
 import { formatShortDate } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import { askTheServer, type Answer } from '../account/askTheServer'
@@ -216,7 +216,12 @@ export function AdminEvents() {
      administrator who holds the right is refused it for good, and the row says
      it is waiting: the same conflation this whole change is about, one row
      further in. */
-  const resultsState = useResults()
+  /* EVERY RESULT, SCORED AND UNSCORED: each of the three questions this answers (whether a kind is held,
+     what a save that takes races away takes, what a deletion takes) is about the rows of `result` under the
+     event's races, and an unscored event's are served on their own list (PDL, 14.11.2026, „pitanje pri
+     prelasku nebodovane trke u trening ili skup broji njene nebodovane rezultate”). A kind is the whole
+     event's, so one event's results are all on one of the two lists and the sum counts none twice. */
+  const resultsState = useEveryResult()
   const results = dataOr(resultsState, null)
   const today = useToday()
   /*
