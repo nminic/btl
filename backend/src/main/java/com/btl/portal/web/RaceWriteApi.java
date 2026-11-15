@@ -128,7 +128,9 @@ import java.util.Optional;
  * database by a script, which is how the calendar and the history are loaded (ADL, the
  * derivation of 20.09.2026 that historical data does not go into a migration), reaches no
  * counted run; whoever writes such a script recounts in it or sends the change through this
- * route.
+ * route. Since the owner's decision of 15.11.2026 (PDL P4: „Rezultat na trci zadate dužine
+ * uvek nosi dužinu, uspon i spust svoje trke") that holds for a race of every year, the history
+ * before 2027 and a frozen season included, and not only for a season still counted.
  * </ul>
  *
  * <p><b>Deleting is ONE statement, and that is a decision rather than an omission.</b>
@@ -330,11 +332,6 @@ class RaceWriteApi {
 	private record AsItStands(String name, LocalDate day, WhatARaceCarries.ARace fixes) {
 	}
 
-	/** One row of {@code result} at the race: whose it is, the four figures it was counted at,
-	 *  and the points they were worth. */
-	private record CountedRun(long id, long member, Figures figures, BigDecimal points) {
-	}
-
 	@PostMapping("/api/races")
 	@RightIsNeeded("entity:events")
 	ResponseEntity<?> add(@RequestBody Upsert typed) {
@@ -399,8 +396,9 @@ class RaceWriteApi {
 	 *
 	 * <p><b>The calendar may be changed backwards</b> (owner, 31.07.2026), so nothing here
 	 * refuses on what day it is. A race run in 2019 is edited exactly like one to be run next
-	 * spring. What day it is decides one thing only, and it is not whether the race may be
-	 * written: whether the runs counted at it are counted again (below).
+	 * spring. What day it is decides one thing only, and it is neither whether the race may be
+	 * written nor, since 15.11.2026, whether the runs counted at it are counted again: whether a
+	 * correction asks about the beginners' category of the members who ran it (below).
 	 *
 	 * <p><b>The results travel with it and nothing here says so.</b>
 	 * {@code result_race_fk} and {@code result_submission_race_fk} are both
@@ -418,7 +416,9 @@ class RaceWriteApi {
 	 *
 	 * <p><b>AND WHAT THE RACE FIXES TRAVELS TO EVERY RUN ALREADY COUNTED AT IT.</b> PDL P4, the
 	 * owner's decision of 20.09.2026, in his own words: „Upisao bih nule, a onda kad jednog dana
-	 * promenim, portal treba da preracuna i bodove osim ako je sezona zamrznuta." So once the
+	 * promenim, portal treba da preracuna i bodove osim ako je sezona zamrznuta." Its last
+	 * clause, „osim ako je sezona zamrznuta", no longer holds: the owner's decision of 15.11.2026
+	 * below recounts a frozen season too and keeps its tables as they froze. So once the
 	 * race is written, every row of {@code result} at it is counted again - whoever's it is, a
 	 * member whose fee has lapsed and a member with two runs at one race among them - through the
 	 * two homes every other road already uses: {@link WhatARaceCarries#figuresOf} says which
@@ -456,14 +456,22 @@ class RaceWriteApi {
 	 * race as it stands then, and the moderator may set the runner's figures himself
 	 * ({@code VerificationWriteApi}); that „odobrene rezultate" leaves the waiting ones out is
 	 * my reading.
-	 * <li><b>A race of a season that has frozen, or of a year before the first season, counts
-	 * nothing again:</b> „U zamrznutoj sezoni i u istoriji pre 2027 izmena mera trke ne menja
-	 * ništa, ni profil ni tabelu; pojedinačno se ispravlja zahtevom „Zatraži ispravku"." The
-	 * tables of a frozen season are computed live off these very rows until something writes
-	 * the snapshot V17 provides for, so this is also what keeps them still. A year before
-	 * {@link SeasonClock#FIRST_SEASON} is no season at all (PDL P12), which is why it is asked
-	 * beside {@link SeasonClock#isFrozen}: that alone would have held 2026 apart from 2025
-	 * until 1 January 2027 at 16:00.
+	 * <li><b>The second answer of 10.10.2026, that a frozen season and the history before 2027
+	 * count nothing again, was OVERTURNED by the owner on 15.11.2026</b> (PDL P4, the same
+	 * section, „[ODLUKA 15.11.2026, vlasnik, menja tačku (2)]"), in his own words: „Promenio sam
+	 * vertikalne nagibe na trci od 5km. Zasto su Kalini ostali stari parametri u rezultatu! Takva
+	 * trka vise ne postoji, ovo ne sme da se desava nikad i nigde na sajtu". In the journal's
+	 * wording: „Rezultat na trci zadate dužine uvek nosi dužinu, uspon i spust svoje trke i bodove
+	 * izračunate iz njih, i u istoriji pre 2027 i u zamrznutoj sezoni; izmena mera trke zato uvek
+	 * preračunava njene rezultate. Zamrznuta tabela i rang lista ostaju konstante kakve su
+	 * zamrznute." So the year of the race decides nothing about WHETHER its runs are counted
+	 * again. The tables stay still without asking it here: a season whose freeze has been written
+	 * down ({@code season_frozen}) is drawn from its snapshot ({@link FrozenSeasonApi}, V84) and its
+	 * threshold is read off {@code season_points_at_freeze} ({@link BestOfficialSeason}), and
+	 * nothing below writes a table whose name begins with {@code season_}. That a race to a limit
+	 * of a frozen season takes its corrected limit onto its runs too is derived from „izmena mera
+	 * trke zato uvek preračunava njene rezultate", which names no kind, and is not his sentence.
+	 * What the year still decides is whether the beginners' category is asked (the next point).
 	 * <li><b>A member whose run it counted again is told, in his inbox and never by post:</b>
 	 * „Član kome izmena trke promeni rezultat dobija red u sandučetu sa starom i novom
 	 * vrednošću, i poruku o početničkoj kategoriji kad joj preračun zatvori ili ponovo otvori
@@ -472,6 +480,14 @@ class RaceWriteApi {
 	 * changed. And one line per member whose beginners' category for the season after the
 	 * race's was open before the recount and is closed after it, or the other way round - the
 	 * line an approval writes when it closes one (27.09.2026), here in both directions.
+	 * <b>A race of a season that has frozen asks nothing about the category</b>, which is the line
+	 * {@code ResultsByTheLeagueApi#asksTheCategory} keeps for the league's entry, change and
+	 * deletion in such a season, and asked of the clock for the same reason: the right of the
+	 * season after it is counted at the freeze (PDL, owner, 30.10.2026, „Prag od 12 bodova koji
+	 * zatvara početničku broji bodove sezone u trenutku njenog zamrzavanja"), so nothing written
+	 * into the season afterwards moves it. A year before {@link SeasonClock#FIRST_SEASON} is asked
+	 * like any season not frozen and answers the same both times, since no year before the first
+	 * season counts towards the category ({@link BestOfficialSeason}).
 	 * </ul>
 	 *
 	 * <p><b>A run that is still waiting, and a submission already decided, are not rows of
@@ -680,61 +696,46 @@ class RaceWriteApi {
 		   where there is none, the two cannot be told apart and nothing here tries. */
 		int season = before.day().getYear();
 
-		/* PDL P4, the owner's answer of 10.10.2026: a frozen season and a year before the first
-		   one count nothing again, profile included. */
-		if (season < SeasonClock.FIRST_SEASON || SeasonClock.isFrozen(season, now())) {
-			return;
-		}
-
+		/* NOT ASKED WHETHER THE SEASON HAS FROZEN OR IS BEFORE THE FIRST ONE, and that is the
+		   owner's decision of 15.11.2026 (PDL P4): „Rezultat na trci zadate dužine uvek nosi dužinu,
+		   uspon i spust svoje trke i bodove izračunate iz njih, i u istoriji pre 2027 i u zamrznutoj
+		   sezoni". The season decides only whether the category is asked, below. */
 		if (!WhatARaceCarries.whatItFixesMoved(before.fixes(), after)) {
 			return;
 		}
 
-		/* EVERY ROW OF `result` AT THIS RACE AND NO OTHER, whoever's it is. The index V7 gave
-		   `(race_id, race_date)` leads with the race. A change of kind never reaches here with a
-		   row to read: {@link #change} refuses it on a race that carries one. */
-		List<CountedRun> runs = db.sql("select id, competitor_id, distance_km, ascent_m, descent_m, seconds, points from result where race_id = ? order by id")
-				.param(id)
-				.query((row, one) -> new CountedRun(row.getLong(1), row.getLong(2),
-						new Figures(row.getBigDecimal(3), row.getInt(4), row.getInt(5), row.getInt(6)),
-						row.getBigDecimal(7)))
-				.list();
+		/* EVERY ROW OF `result` AT THIS RACE AND NO OTHER, whoever's it is. A change of kind never
+		   reaches here with a row to read: {@link #change} refuses it on a race that carries one. */
+		List<TheRunsOfARace.Counted> runs = TheRunsOfARace.at(db, id);
 
 		/* WHETHER THE BEGINNERS' CATEGORY WAS OPEN TO EACH OF THEM FOR THE SEASON AFTER THE
 		   RACE'S, asked before a single row moves: the season after, never the race's own, which
 		   is the line `VerificationWriteApi` keeps for an approval and `BestOfficialSeason` says
-		   why. */
+		   why. And not at all in a season that has frozen (see {@link #change}): no member is then
+		   remembered, so no line about a category is written. */
 		int theSeasonAfter = season + 1;
 		Map<Long, Boolean> wasOpen = new LinkedHashMap<>();
 
-		for (CountedRun run : runs) {
-			wasOpen.computeIfAbsent(run.member(), member -> beginnersCategoryIsOpenFor(member, theSeasonAfter));
+		if (!SeasonClock.isFrozen(season, now())) {
+			for (TheRunsOfARace.Counted run : runs) {
+				wasOpen.computeIfAbsent(run.member(), member -> beginnersCategoryIsOpenFor(member, theSeasonAfter));
+			}
 		}
 
-		for (CountedRun run : runs) {
-			/* What the race fixes comes off the race as written, what it leaves to the runner
-			   stays the runner's: the one function every other road asks, so a run counted again
-			   is counted exactly as an approval of it today would count it. */
-			Figures counted = WhatARaceCarries.figuresOf(after, run.figures());
-			/* AND NOTHING AT AN UNSCORED RACE (PointsOfARun, PDL 14.11.2026). */
-			BigDecimal points = PointsOfARun.at(db, id, counted);
+		/* THE ROWS ARE WRITTEN OVER BY THE ONE FUNCTION THE JOB OF 15.11.2026 ASKS TOO, and what is told
+		   about each is this road's. */
+		boolean scored = PointsOfARun.scored(db, id);
+		boolean frozen = SeasonClock.isAFrozenSeasonOfTheLeague(season, now());
 
-			/* A RUN THE CORRECTION LEFT EXACTLY AS IT WAS IS NOT A RUN IT CHANGED, so nothing is
-			   written over it and its member is not told about it. */
-			if (isAsItWas(run, counted)) {
-				continue;
-			}
-
-			db.sql("update result set distance_km = ?, ascent_m = ?, descent_m = ?, seconds = ?, points = ? where id = ?")
-					.params(counted.distanceKm(), counted.ascentM(), counted.descentM(), counted.seconds(), points, run.id())
-					.update();
+		for (TheRunsOfARace.Rewritten run : TheRunsOfARace.countAgain(db, id, after, runs)) {
+			Figures was = run.was().figures();
 
 			/* AND THE LINE ABOUT IT NAMES NO POINTS AT AN UNSCORED RACE (PointsOfARun#toTell). */
-			boolean scored = PointsOfARun.scored(db, id);
-			Run was = new Run(before.name(), before.day(), run.figures().distanceKm(), run.figures().ascentM(), run.figures().descentM(), run.figures().seconds(), PointsOfARun.toTell(scored, run.points()));
-			Run is = new Run(race.name(), race.date(), counted.distanceKm(), counted.ascentM(), counted.descentM(), counted.seconds(), PointsOfARun.toTell(scored, points));
+			Run wasRun = new Run(before.name(), before.day(), was.distanceKm(), was.ascentM(), was.descentM(), was.seconds(), PointsOfARun.toTell(scored, run.was().points()));
+			Figures counted = run.figures();
+			Run is = new Run(race.name(), race.date(), counted.distanceKm(), counted.ascentM(), counted.descentM(), counted.seconds(), PointsOfARun.toTell(scored, run.points()));
 
-			tellHimHisRunWasCountedAgain(run.member(), was, is);
+			tellHimHisRunWasCountedAgain(run.was().member(), wasRun, is, frozen);
 		}
 
 		for (Map.Entry<Long, Boolean> member : wasOpen.entrySet()) {
@@ -744,38 +745,6 @@ class RaceWriteApi {
 				tellHimHisCategoryMoved(member.getKey(), theSeasonAfter, isOpen, race);
 			}
 		}
-	}
-
-	/**
-	 * WHETHER A RUN ALREADY CARRIES THE FOUR FIGURES IT WOULD BE COUNTED AT NOW, a length being
-	 * compared as a number: it is one number whatever scale it was written at.
-	 *
-	 * <p><b>THE POINTS ARE NOT ASKED, and that is a measurement and not a shortcut.</b> They are a
-	 * function of the four figures and of nothing else, and the only statements that write a figure
-	 * of {@code result} are three: the approval ({@code VerificationWriteApi}, an insert and an update
-	 * of the row), the league's own entry and change from the event page ({@code
-	 * ResultsByTheLeagueApi}, an insert and an update) and the recount below. All three work the
-	 * points out with {@link BtlScoreCalculator} from the very figures they store, no migration
-	 * inserts into the table or updates it, and {@code ResultWriteApi} only deletes from it. Every
-	 * length that reaches any of them is one the column keeps
-	 * exactly ({@link WhatARaceCarries#distanceIsKeptExactly}, asked for the race, for the member's
-	 * report and for the moderator's own figures), so the number the formula is handed is the number
-	 * the row holds. A row whose four figures are the counted ones therefore already carries the
-	 * points that would be written over it.
-	 *
-	 * <p><b>A comparison of the points stood here until 10.10.2026 and its false branch had no
-	 * case.</b> The coverage threshold found it on the head of PR 504 (the branch ratio read
-	 * 0.99), and the second round of review of that PR gave the reason: no road writes a row whose
-	 * figures agree with the course and whose points do not, so the only case that could reach the
-	 * branch is one that writes {@code result} by hand with points the formula does not give, and
-	 * that measures the fixture and not the portal. A branch no road reaches is removed, and is not
-	 * covered by a detour.
-	 */
-	private static boolean isAsItWas(CountedRun run, Figures counted) {
-		return run.figures().distanceKm().compareTo(counted.distanceKm()) == 0
-				&& run.figures().ascentM().equals(counted.ascentM())
-				&& run.figures().descentM().equals(counted.descentM())
-				&& run.figures().seconds().equals(counted.seconds());
 	}
 
 	/**
@@ -793,14 +762,24 @@ class RaceWriteApi {
 	 * it was and as it is now (PDL P4, 10.10.2026: „red u sandučetu sa starom i novom
 	 * vrednošću", and „mejl ne ide"). The run is written by
 	 * {@link WhatAResultChangeSays#inWords}, the one way a run reads in every letter about it.
+	 *
+	 * <p><b>A RUN OF A FROZEN SEASON IS TOLD THAT THE TABLE OF THAT SEASON STAYS THE SAME</b> (PDL P4,
+	 * owner, 15.11.2026, on the questions of the author of PR 739: when a correction of a race counts a
+	 * run again in a frozen season, the line in the inbox also says that the table of that season stays
+	 * the same). <b>The words are not his: they are the sentence the league's entry and an approval
+	 * already say in the same season</b> ({@code resultEnteredInAFrozenSeason} in
+	 * {@code notices/results.properties}, PDL P9, 18.10.2026), put at the end of this line. That they fit
+	 * here is my proposal and awaits his word.
 	 */
-	private void tellHimHisRunWasCountedAgain(long member, Run was, Run is) {
+	private void tellHimHisRunWasCountedAgain(long member, Run was, Run is, boolean inAFrozenSeason) {
 		tell(member, "Vaš rezultat je preračunat",
 				"Ispravljene su mere trke " + is.raceName() + " od "
 						+ WhatAResultChangeSays.asADay(is.day())
 						+ ", pa je vaš rezultat sa nje ponovo bodovan.\n\nStara vrednost:\n"
 						+ WhatAResultChangeSays.inWords(was) + "\n\nNova vrednost:\n"
-						+ WhatAResultChangeSays.inWords(is));
+						+ WhatAResultChangeSays.inWords(is) + (inAFrozenSeason
+								? "\n\nTabela zamrznute sezone " + is.day().getYear() + " ostaje ista."
+								: ""));
 	}
 
 	/**
