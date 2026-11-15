@@ -1988,8 +1988,8 @@ describe('the rulebook', () => {
     /* Owner, 14.11.2026 (PDL, "drugi krug pitanja o planu", item 7): the sentence is
        his, word for word, and it is the last item of the list under „Šta se ne
        boduje", not a line of the article before or after it (V100). The day the
-       rulebook is signed off is not moved by it: 14.11.2026 is the day V98 gave it
-       and the day V100 is expected, which the sign-off case below holds. */
+       rulebook is signed off is moved by it, to 15.11.2026, the day it reaches QA
+       (V100), which the sign-off case below holds. */
     const article = must(
       rulebook?.split('### Član 15. Šta se ne boduje')[1]?.split('### Član 16.')[0],
       'the text of Član 15',
@@ -2988,12 +2988,13 @@ describe('what the written pages say the fee buys', () => {
        owner's rewrite took out of it (V95; owner, 11.11.2026), and on to 12.11.2026 with the
        sentence that says a ducat stays for as long as the results that won it stand (V96;
        owner, 08.11.2026), and on to 14.11.2026 with the English Article 36 naming the rookie
-       category with the letter of the gender in front (V98; owner, 13.11.2026), by the same
-       rule. Written per
+       category with the letter of the gender in front (V98; owner, 13.11.2026), and on to
+       15.11.2026 with the sentence that says an unscored race is a personal record (V100;
+       owner, 14.11.2026, the day it reaches QA), by the same rule. Written per
        document and not as one day for all three, so a date moved on one of them,
        or left behind on one, is a failure that names the document. */
     const SIGNED_OFF = {
-      pravilnik: '14.11.2026',
+      pravilnik: '15.11.2026',
       'uslovi-koriscenja': '11.11.2026',
       'politika-privatnosti': '11.11.2026',
     } as const
