@@ -78,7 +78,6 @@ export type NavSection = RouteDef & {
  * which is why the decision writes the English route as /en/kalendar rather than
  * /en/calendar. One address per screen, whichever language is shown. */
 export const NAV: NavSection[] = [
-  { id: 'rules', labelKey: 'nav.rules', path: 'pravilnik', seoKey: 'rulebook' },
   { id: 'people', labelKey: 'nav.competitors', path: 'takmicari', seoKey: 'competitors' },
   { id: 'table', labelKey: 'nav.table', path: 'tabela', seoKey: 'table' },
   { id: 'boards', labelKey: 'nav.topBoards', path: 'top-liste', seoKey: 'topBoards' },
@@ -88,6 +87,9 @@ export const NAV: NavSection[] = [
      the league itself (owner, 04.08.2026). */
   { id: 'leagues', labelKey: 'nav.leagues', path: 'lige', seoKey: 'leagues' },
   { id: 'calendar', labelKey: 'nav.calendar', path: 'kalendar', seoKey: 'calendar' },
+  /* After the calendar and before administration (owner, 15.11.2026: „Neka tab Pravilnik u
+     navigaciji ne bude vise prvi, nego nakon Kalendara (a pre Administracije ako se ona prikazuje)”). */
+  { id: 'rules', labelKey: 'nav.rules', path: 'pravilnik', seoKey: 'rulebook' },
   /* The way into administration, and the only entry a visitor never sees. What
      it leads to draws nothing of its own since 06.08.2026: the navigation of two
      sectors stands down the side of every screen behind it (SectionNav), so a
