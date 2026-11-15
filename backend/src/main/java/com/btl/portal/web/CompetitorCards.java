@@ -138,7 +138,22 @@ class CompetitorCards {
 	 * address.
 	 */
 	Optional<String> addressOf(String memberNumber, WhatACardSays language) {
-		return fingerprintOf(memberNumber, language).map(name -> THE_FOLDER + name + ".jpg");
+		return shown(memberNumber, language).map(Shown::address);
+	}
+
+	/**
+	 * WHAT HIS CARD SHOWS AND THE ADDRESS IT IS ASKED FOR AT, worked out from one reading of the
+	 * portal, or nothing when a visitor may not see it. The preview of a shared profile names both
+	 * ({@link CompetitorPreviewApi}), and asked for the two separately it would read the list of
+	 * members and count his runs twice for every profile anybody opens.
+	 */
+	Optional<Shown> shown(String memberNumber, WhatACardSays language) {
+		return faceOf(memberNumber, language).map(face -> new Shown(face.card(),
+				THE_FOLDER + nameOf(memberNumber, language, face) + ".jpg"));
+	}
+
+	/** What a card shows, and the address of the picture of it. */
+	record Shown(CompetitorCard.Face face, String address) {
 	}
 
 	/** The name of his card as it stands now, which is the address without its folder and type. */
