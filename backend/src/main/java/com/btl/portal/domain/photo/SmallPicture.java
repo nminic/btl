@@ -119,6 +119,23 @@ public final class SmallPicture {
 	 */
 	public static Cut of(byte[] original, String mediaType, BigDecimal x, BigDecimal y,
 			BigDecimal diameter) throws IOException {
+		return written(square(original, mediaType, x, y, diameter, SIDE));
+	}
+
+	/**
+	 * THE SAME CIRCLE AT ANY SIDE, AND THE ONE PLACE A PORTRAIT IS DECODED FOR DRAWING.
+	 *
+	 * <p>{@link #of} asks it at {@value #SIDE} and writes what comes back; the card a profile is
+	 * shared with ({@code CompetitorCard}) asks it at the side of its own circle and draws it. Both
+	 * therefore stand on the same ceilings ({@link #AT_MOST_PIXELS}, {@link #AT_MOST_WEBP_PIXELS}),
+	 * the same turning by EXIF and the same square the member set, and a second decoder of the
+	 * member's bytes with a ceiling of its own is what this method exists to prevent.
+	 *
+	 * @param side how many pixels a side the square comes back at, upright and premultiplied
+	 * @throws IOException for the reasons {@link #of} gives
+	 */
+	public static BufferedImage square(byte[] original, String mediaType, BigDecimal x,
+			BigDecimal y, BigDecimal diameter, int side) throws IOException {
 		ImageReader reader = readerFor(mediaType);
 
 		try (ImageInputStream in = new MemoryCacheImageInputStream(
@@ -150,10 +167,10 @@ public final class SmallPicture {
 			   photograph of twelve million pixels is never held whole. */
 			ImageReadParam param = reader.getDefaultReadParam();
 			param.setSourceRegion(square);
-			int step = Math.max(1, square.width / (2 * SIDE));
+			int step = Math.max(1, square.width / (2 * side));
 			param.setSourceSubsampling(step, step, 0, 0);
 
-			return written(scaled(upright(reader.read(0, param), turn)));
+			return scaled(upright(reader.read(0, param), turn), side);
 		} finally {
 			reader.dispose();
 		}
@@ -251,18 +268,18 @@ public final class SmallPicture {
 	}
 
 	/**
-	 * Down to {@value #SIDE}, by halves while a half is still at least that big and then in
+	 * Down to the side asked for, by halves while a half is still at least that big and then in
 	 * one last step. A single bilinear step from a thousand pixels to two hundred reads one
 	 * pixel in five and throws the rest away; halving averages all of them.
 	 */
-	private static BufferedImage scaled(BufferedImage square) {
+	private static BufferedImage scaled(BufferedImage square, int side) {
 		BufferedImage now = square;
 
-		while (now.getWidth() / 2 >= SIDE) {
+		while (now.getWidth() / 2 >= side) {
 			now = drawn(now, now.getWidth() / 2, BufferedImage.TYPE_INT_ARGB_PRE);
 		}
 
-		return drawn(now, SIDE, BufferedImage.TYPE_INT_ARGB_PRE);
+		return drawn(now, side, BufferedImage.TYPE_INT_ARGB_PRE);
 	}
 
 	private static BufferedImage drawn(BufferedImage from, int side, int type) {

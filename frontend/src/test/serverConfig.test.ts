@@ -84,6 +84,37 @@ describe('what the server in front of the portal is told', () => {
   })
 
   /**
+   * AND THE CARD A PROFILE IS SHARED WITH IS LIMITED TOO, BY A ZONE OF ITS OWN.
+   *
+   * `GET /api/cards/competitor/...` is open to anybody and draws a picture of 1200 by 630 out of
+   * the list of members, so a loop over names of the right shape is a loop of work for the
+   * processor (`CompetitorCards`). The snapshot above stops the day the limit goes; this is what
+   * the deliberate act has to still satisfy: a PREFIX location for the folder every card is under
+   * (every card has its own address, so an exact match would limit none of them), carrying a
+   * `limit_req` of a zone that is declared. Comments are removed first, as above.
+   */
+  it('limits the shared cards with a zone that exists', () => {
+    const conf = readFileSync(join(process.cwd(), 'nginx.conf'), 'utf8')
+      .split(/\r?\n/)
+      .filter((line) => !line.trim().startsWith('#'))
+      .join('\n')
+    const block = /location\s+\/api\/cards\/\s*\{([^}]*)\}/.exec(conf)
+
+    expect(block, 'no prefix location for /api/cards/').not.toBeNull()
+
+    const used = /limit_req\s+zone=(\w+)\s/.exec(String(block?.[1]))
+
+    expect(used, 'the location for /api/cards/ carries no limit_req').not.toBeNull()
+    expect(used?.[1], 'the cards share a zone with something else').toBe('cards')
+    expect(
+      new RegExp(`limit_req_zone\\s+\\$binary_remote_addr\\s+zone=${String(used?.[1])}:\\d+m\\s+rate=\\d+r/m;`)
+        .test(conf),
+      `the zone ${String(used?.[1])} is not declared`,
+    ).toBe(true)
+    expect(String(block?.[1]), 'the cards never reach the backend').toContain('nginx-to-backend.conf')
+  })
+
+  /**
    * AND NOTHING IN PRODUCTION PUBLISHES A PORT.
    *
    * The sentence this holds up is in `nginx.conf`: the address of a connection is always
