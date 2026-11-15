@@ -41,17 +41,17 @@ function servedPaths(): string[] {
 
 describe('navForRole', () => {
   it('shows the seven names the owner fixed, in that order, and administration last', () => {
-    /* Owner, 04.08.2026: "samo osnovna navigacija Pravilnik / Takmičari / BTL
-       tabele / Top liste / Timovi / Lige / Kalendar". Administration is the
-       eighth and is shown to nobody else. */
+    /* Owner, 04.08.2026, the seven names, and 15.11.2026, their order: „Neka tab Pravilnik u
+       navigaciji ne bude vise prvi, nego nakon Kalendara (a pre Administracije ako se ona
+       prikazuje)". Administration is the eighth and is shown to nobody else. */
     expect(navForRole('superadmin').map((section) => section.id)).toEqual([
-      'rules',
       'people',
       'table',
       'boards',
       'teams',
       'leagues',
       'calendar',
+      'rules',
       'admin',
     ])
   })
