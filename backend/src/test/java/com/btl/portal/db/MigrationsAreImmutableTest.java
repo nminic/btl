@@ -844,6 +844,15 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   Pinned LAST, when the file was final, off this very assertion. */
 			new Applied("99", "V99__an_unscored_race_is_a_kind_of_event_and_only_a_scored_one_is_counted.sql", 1387120764),
 
+			/* V100. The rulebook says in Article 15 that an unscored race is kept on the portal as a personal record and does not count
+			   (owner, 14.11.2026, PDL 'drugi krug pitanja o planu', item 7): one line added to the end of the list of Article 15 in each
+			   language, each stopping the migration unless its old text stands exactly once. The sign-off of the rulebook moves from
+			   14.11.2026 (V98) to 15.11.2026, the day of the merge to QA, in both languages. V99 belongs to step 1 of the same increment
+			   and V101 to a later one; V100 is merged last.
+
+			   Pinned LAST, when the file was final, off this very assertion. */
+			new Applied("100", "V100__the_rulebook_says_an_unscored_race_is_a_personal_record_and_does_not_count.sql", 1281853427),
+
 			/* V101. A described run carries the kind of its event, a scored or an unscored race (owner, 14.11.2026
 			   and 15.11.2026, PDL "Ostale discipline kao lična evidencija": „Vrsta je onakva kakvu je član
 			   izabrao"): one column on result_submission, every described run already standing given the scored

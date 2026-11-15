@@ -1984,6 +1984,25 @@ describe('the rulebook', () => {
     expect(rulebook).toMatch(/kao i svi ostali ulaze i u generalni plasman/)
   })
 
+  it('says in Član 15 that an unscored race is a personal record and does not count', () => {
+    /* Owner, 14.11.2026 (PDL, "drugi krug pitanja o planu", item 7): the sentence is
+       his, word for word, and it is the last item of the list under „Šta se ne
+       boduje", not a line of the article before or after it (V100). The day the
+       rulebook is signed off is moved by it, to 15.11.2026, the day it reaches QA
+       (V100), which the sign-off case below holds. */
+    const article = must(
+      rulebook?.split('### Član 15. Šta se ne boduje')[1]?.split('### Član 16.')[0],
+      'the text of Član 15',
+    )
+    const items = article.split(NEWLINE).filter((line) => line.startsWith('- '))
+
+    expect(items).toHaveLength(5)
+    expect(items[4]).toBe(
+      '- Nebodovane trke (plivanje, biciklizam, duatlon, triatlon, akvatlon i slično) vode se na portalu samo kao lična evidencija i ne boduju se.',
+    )
+    expect(rulebook?.match(/Nebodovane trke \(/g)?.length).toBe(1)
+  })
+
   it('awards a trophy and nothing else, and says once when a trophy is not given', () => {
     /* Owner, 04.08.2026: the plaque is gone. One trophy covers the winning team,
        the first three overall in each sex, and the first three in every
@@ -2969,12 +2988,13 @@ describe('what the written pages say the fee buys', () => {
        owner's rewrite took out of it (V95; owner, 11.11.2026), and on to 12.11.2026 with the
        sentence that says a ducat stays for as long as the results that won it stand (V96;
        owner, 08.11.2026), and on to 14.11.2026 with the English Article 36 naming the rookie
-       category with the letter of the gender in front (V98; owner, 13.11.2026), by the same
-       rule. Written per
+       category with the letter of the gender in front (V98; owner, 13.11.2026), and on to
+       15.11.2026 with the sentence that says an unscored race is a personal record (V100;
+       owner, 14.11.2026, the day it reaches QA), by the same rule. Written per
        document and not as one day for all three, so a date moved on one of them,
        or left behind on one, is a failure that names the document. */
     const SIGNED_OFF = {
-      pravilnik: '14.11.2026',
+      pravilnik: '15.11.2026',
       'uslovi-koriscenja': '11.11.2026',
       'politika-privatnosti': '11.11.2026',
     } as const
