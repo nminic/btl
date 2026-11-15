@@ -635,6 +635,7 @@ export function CompetitorProfile({ memberNumber: given }: { memberNumber?: stri
                     city: competitor.city,
                   })}
                   description={t('seo.competitor.recordDescription', { name })}
+                  shareTitle={t('seo.competitor.shareTitle', { name })}
                 />
               )}
 

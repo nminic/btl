@@ -1,7 +1,31 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import type { Competitor } from '../data/types'
+import { profilePath } from '../pages/profileAddress'
 import held from './serverConfig.snapshot.json'
+
+/** A member whose address `profilePath` writes, for the location that has to match it. */
+const someone: Competitor = {
+  memberNumber: '000127',
+  firstName: 'Nikola',
+  lastName: 'Minić',
+  gender: 'M',
+  city: 'Beograd',
+  country: 'RS',
+  category: { season: 2027, ageBand: '40-54', beginner: false },
+  categories: [{ season: 2027, ageBand: '40-54', beginner: false }],
+  firstSeason: 2027,
+  membershipBasis: 'payment',
+  teamId: null,
+  teamSince: null,
+  profileHidden: false,
+  birthdayShown: 'none',
+  photo: null,
+  smallPhoto: null,
+  crop: null,
+  bio: '',
+}
 
 /**
  * WHAT THE SERVER IN FRONT OF THE PORTAL IS TOLD, HELD AS IT STANDS.
@@ -112,6 +136,101 @@ describe('what the server in front of the portal is told', () => {
       `the zone ${String(used?.[1])} is not declared`,
     ).toBe(true)
     expect(String(block?.[1]), 'the cards never reach the backend').toContain('nginx-to-backend.conf')
+  })
+
+  /**
+   * AND THE PROFILE OF A MEMBER IS SENT WITH WHAT A NETWORK SHOWS FOR IT, OR WITH THE FRONT PAGE'S.
+   *
+   * Owner, PDL P11, 15.11.2026: a profile pasted into Viber, WhatsApp or Facebook shows the member's
+   * card and the title „{ime i prezime} u Balkanskoj trkačkoj ligi”. Those networks run no script,
+   * so the page nginx sends is all they read, and three things have to hold for it to say that:
+   *
+   * 1. the location that matches the address of a profile turns SSI on, and matches exactly the
+   *    addresses `profilePath` writes and the ones the profile still opens (the number alone, a
+   *    slash on the end), and not the tabs under it;
+   * 2. `index.html` asks for the block by the variables that location captures, and names as its
+   *    stub the block the front page's own tags are written in;
+   * 3. the folder asked is `internal`, and every error on the way to it, the backend's and nginx's,
+   *    is turned into an answer with no body, because SSI uses the stub only for an EMPTY answer:
+   *    measured on nginx 1.29 on 15.11.2026, a 404 or a 500 with a body, and nginx's own 502 page
+   *    with the backend down, went into the head of the page as they were.
+   *
+   * The pattern is asked as a pattern, by JavaScript, which reads `(?<name>...)` as PCRE does.
+   * Comments are removed first, as above.
+   */
+  it('fills the profile from the backend and puts the front page back when it says nothing', () => {
+    const conf = readFileSync(join(process.cwd(), 'nginx.conf'), 'utf8')
+      .split(/\r?\n/)
+      .filter((line) => !line.trim().startsWith('#'))
+      .join('\n')
+    const page = readFileSync(join(process.cwd(), 'index.html'), 'utf8')
+
+    const profile = /location\s+~\s+"([^"]*takmicar[^"]*)"\s*\{([^}]*)\}/.exec(conf)
+
+    expect(profile, 'no location matches the address of a profile').not.toBeNull()
+    expect(String(profile?.[2]), 'the profile location does not turn SSI on').toMatch(/^\s*ssi on;/m)
+    expect(String(profile?.[2]), 'the profile location does not send index.html').toMatch(
+      /try_files \/index\.html =404;/,
+    )
+
+    const matches = new RegExp(String(profile?.[1]))
+    const read = (address: string) => {
+      const groups = matches.exec(address)?.groups
+
+      return groups === undefined ? null : Object.values(groups).join(' ')
+    }
+
+    expect(read(profilePath(someone, 'sr'))).toBe('sr 000127')
+    expect(read('/en/takmicar/000127-nikola-minic')).toBe('en 000127')
+    expect(read('/sr/takmicar/000127')).toBe('sr 000127')
+    expect(read('/sr/takmicar/000127-nikola-minic/')).toBe('sr 000127')
+    for (const elsewhere of ['/sr/takmicar/000127-nikola-minic/priznanja', '/sr/takmicar/000127/podaci',
+      '/sr/takmicar/00012', '/sr/takmicar/0001278', '/de/takmicar/000127', '/sr/takmicari',
+      '/sr/kalendar/000127']) {
+      expect(read(elsewhere), `${elsewhere} is not the address of a profile`).toBeNull()
+    }
+
+    const names = [...String(profile?.[1]).matchAll(/\(\?<(\w+)>/g)].map((one) => String(one[1]))
+    const include = /<!--# include virtual="\/api\/previews\/competitor\/\$(\w+)-\$(\w+)" stub="([\w-]+)" -->/
+      .exec(page)
+
+    expect(include, 'index.html asks for no preview').not.toBeNull()
+    expect([String(include?.[1]), String(include?.[2])], 'the include reads other variables')
+      .toEqual(['btl_preview_number', 'btl_preview_locale'])
+    expect(names.sort()).toEqual(['btl_preview_locale', 'btl_preview_number'])
+
+    const block = new RegExp(
+      `<!--# block name="${String(include?.[3])}" -->([\\s\\S]*?)<!--# endblock -->`,
+    ).exec(page)
+
+    expect(block, 'the stub names a block index.html does not define').not.toBeNull()
+    expect(String(block?.[1]), 'the stub is not the front page\'s own block').toContain(
+      '<meta property="og:image" content="https://balkanskatrkackaliga.net/icon-512.png" />',
+    )
+    expect(String(block?.[1])).toMatch(/<title>[^<]+<\/title>/)
+    expect(page.indexOf(String(include?.[0])), 'the include stands before the block it names')
+      .toBeGreaterThan(page.indexOf('<!--# endblock -->'))
+
+    const previews = /location\s+\/api\/previews\/\s*\{([^}]*)\}/.exec(conf)
+
+    expect(previews, 'no location for the previews').not.toBeNull()
+    expect(String(previews?.[1]), 'the previews can be asked for from outside').toMatch(/^\s*internal;/m)
+    expect(String(previews?.[1])).toContain('nginx-to-backend.conf')
+    expect(String(previews?.[1])).toMatch(/proxy_intercept_errors on;/)
+
+    const errors = /error_page\s+([\d\s]+)=\s*@([\w-]+);/.exec(String(previews?.[1]))
+
+    expect(errors, 'no error of the previews is turned into anything').not.toBeNull()
+    const codes = String(errors?.[1]).trim().split(/\s+/)
+
+    for (const code of ['301', '302', '400', '401', '403', '404', '500', '502', '503', '504']) {
+      expect(codes, `a ${code} would be written into the head of the page`).toContain(code)
+    }
+
+    const named = new RegExp(`location\\s+@${String(errors?.[2])}\\s*\\{([^}]*)\\}`).exec(conf)
+
+    expect(String(named?.[1]).trim(), 'an error is not turned into an answer with no body')
+      .toBe('return 204;')
   })
 
   /**

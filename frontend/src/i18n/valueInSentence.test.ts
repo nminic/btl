@@ -568,6 +568,9 @@ describe('a sentence with a value put into it', () => {
       'seo.competitor.dataTitle',
       'seo.competitor.recordDescription',
       'seo.competitor.recordTitle',
+      /* „{name} u Balkanskoj trkačkoj ligi": the name opens the sentence as its subject (owner,
+         15.11.2026), and the server writes the same sentence for a shared profile. */
+      'seo.competitor.shareTitle',
       'seo.event.recordDescription',
       /* „{name}, {date}": the race and then the day it is run, both named. */
       'seo.event.recordTitle <- formatDate',

@@ -75,15 +75,18 @@ export function useRouteChrome(): { pageTitle: string; declare: DeclareMeta } {
     document.documentElement.lang = dictionaryLocale(locale)
   }, [locale])
 
+  const shareTitle = declared?.shareTitle
+
   useEffect(() => {
     applyHead({
       title,
       description,
+      shareTitle,
       siteName: t('app.name'),
       path,
       textLocale: dictionaryLocale(locale),
     })
-  }, [title, description, path, locale, t])
+  }, [title, description, shareTitle, path, locale, t])
 
   return { pageTitle, declare: setDeclared }
 }

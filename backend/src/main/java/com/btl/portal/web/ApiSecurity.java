@@ -133,7 +133,11 @@ class ApiSecurity {
 			/* The card a profile is shared with, named by the member number and a digest of what it
 			   shows (CompetitorCardApi). Anybody, because whoever asks is a network's crawler or the
 			   phone the link was sent to, and what it draws is what a visitor is answered. */
-			CompetitorCards.ASKED_AT);
+			CompetitorCards.ASKED_AT,
+			/* What a network shows for the address of a profile, named by the member number and the
+			   language (CompetitorPreviewApi). Anybody, because nginx asks it for whoever opens the
+			   profile, and it says what a visitor is answered and the address of the card above. */
+			CompetitorPreviewApi.ASKED_AT);
 
 	/**
 	 * WHO THE SETTINGS NAME, ANSWERED ONCE FOR THE WHOLE APPLICATION AND NOT ONLY FOR THIS

@@ -35,6 +35,11 @@ export type PageHead = {
   title: string
   /** One sentence on what the page is for, at most 160 characters. */
   description: string
+  /**
+   * The title of a shared link where it is not the title of the tab (`PageMeta`). Written as it
+   * stands, with no league added after it: the profile's says the league itself.
+   */
+  shareTitle?: string | undefined
   siteName: string
   /** The path below the language, with no query and no fragment. */
   path: string
@@ -195,10 +200,18 @@ export function applyHead(head: PageHead): void {
   // Which one to offer somebody whose language is none of the above.
   linkTag('alternate', addressOf(DEFAULT_LOCALE, page), 'x-default')
 
-  /* What a shared link shows. The image is the same on every page and is set
-   * once in index.html, so it is not touched here; inventing a path to a picture
-   * that does not exist would only turn a working preview into a broken one. */
-  metaTag('property', 'og:title', title)
+  /* What a shared link shows. The image is not touched here: it is the logo in
+   * index.html on every page but the profile, whose card the server names in the
+   * page it sends for that address (nginx.conf), and a network reads the image off
+   * that page, never off what a script writes afterwards. Inventing a path to a
+   * picture here would only turn a working preview into a broken one. */
+  /* The title of a shared link is the tab's, except where the page names one of its own: the
+     profile, whose preview the owner titled himself (15.11.2026). The server sends the same
+     sentence in the page for that address, so a network that runs no script and a reader whose
+     browser did see one title. */
+  const shared = head.shareTitle ?? title
+
+  metaTag('property', 'og:title', shared)
   metaTag('property', 'og:description', head.description)
   metaTag('property', 'og:site_name', head.siteName)
   /* The canonical address, not the one being read: a link shared off /en has to
@@ -207,6 +220,6 @@ export function applyHead(head: PageHead): void {
   metaTag('property', 'og:url', canonical)
   metaTag('property', 'og:locale', OG_LOCALES[head.textLocale])
 
-  metaTag('name', 'twitter:title', title)
+  metaTag('name', 'twitter:title', shared)
   metaTag('name', 'twitter:description', head.description)
 }
