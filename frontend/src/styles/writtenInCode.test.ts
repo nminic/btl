@@ -332,6 +332,11 @@ describe('what a screen says in its own voice', () => {
       'loading',
       'look',
       'name',
+      /* HOW A DRAWING MEETS ITS BOX, 15.11.2026, and it is machinery rather than speech. It carries
+         „none", which a reader never meets: the drawing is hidden from him as a whole. Written by
+         `app/RaceInMotion.tsx` alone, on the strip of gold at the foot of the header, which is
+         stretched to any width the window has. Same kind of name as `viewBox` below. */
+      'preserveAspectRatio',
       'r',
       /* WHICH OF THE THREE READERS A MENU IS DRAWN FOR, 08.11.2026, and it is machinery: a prop of
          `app/AccountMenu.tsx` that never reaches the document. It carries „neverPaid", which a reader never

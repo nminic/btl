@@ -66,17 +66,125 @@ async function takesTheClick(control: Locator): Promise<string> {
 }
 
 /** The lanes and the runner Chrome actually draws, which is what the sheet's queries decide. */
-async function drawn(page: Page): Promise<{ lanes: number; gold: boolean; runner: boolean }> {
+async function drawn(page: Page): Promise<{ lanes: number; gold: boolean; rise: boolean; runner: boolean }> {
   return page.evaluate(() => {
     const shown = (element: Element) => getComputedStyle(element).display !== 'none'
+    const boxed = (one: Element) => shown(one) && one.getBoundingClientRect().width > 0
     const lanes = [...document.querySelectorAll('.race-header__lane')].filter(shown).length
-    const gold = [...document.querySelectorAll('.race-header__gold')].some(shown)
-    const runner = [...document.querySelectorAll('.race-header__runner')].some(
-      (one) => shown(one) && one.getBoundingClientRect().width > 0,
-    )
+    const gold = [...document.querySelectorAll('.race-header__strip')].some(boxed)
+    const rise = [...document.querySelectorAll('.race-header__rise')].some(boxed)
+    const runner = [...document.querySelectorAll('.race-header__runner')].some(boxed)
 
-    return { lanes, gold, runner }
+    return { lanes, gold, rise, runner }
   })
+}
+
+/** How close the bright gold may come to a word: the glow the sheet draws around it (0.1875rem) and
+ *  half its stroke, at the text size of the screen. */
+const CLEARANCE_REM = 0.1875 + 0.0625
+
+/**
+ * Where the bright gold and the runner touch a word of the header, if anywhere.
+ *
+ * <p>A word is every line box of every text node in the header outside the layer, read the way the
+ * browser lays it out (`Range.getClientRects`), so a word that wraps is two boxes and a hidden word is
+ * none. The gold is every visible `.race-header__gold` sampled along its length and placed on the
+ * screen through its own matrix, so the stretched strip and the climb are read where Chrome draws
+ * them and not where their numbers say. The runner is its whole box, which is stricter than its
+ * outline.
+ */
+async function touching(page: Page): Promise<{ words: number; points: number; touches: string[] }> {
+  return page.evaluate((clearanceRem) => {
+    const header = document.querySelector('header')
+    const layer = header?.querySelector('.race-header')
+
+    if (!header || !layer) {
+      return { words: 0, points: 0, touches: ['no header or no layer'] }
+    }
+
+    const clearance = clearanceRem * Number.parseFloat(getComputedStyle(document.documentElement).fontSize)
+    const words: { text: string; box: DOMRect }[] = []
+    const walker = document.createTreeWalker(header, NodeFilter.SHOW_TEXT)
+
+    for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) {
+      const text = (node.textContent ?? '').trim()
+      /* A closed menu of the header keeps its words laid out and unseen; they are no word anyone
+         reads over the gold, and when the menu opens they stand on its own opaque panel. */
+      const seen = node.parentElement?.checkVisibility({ opacityProperty: true, visibilityProperty: true }) ?? false
+
+      if (layer.contains(node) || text === '' || !seen) {
+        continue
+      }
+
+      const range = document.createRange()
+
+      range.selectNodeContents(node)
+
+      for (const box of range.getClientRects()) {
+        /* A word kept for the reader alone is clipped to a pixel, and is no word anyone sees. */
+        if (box.width > 1 && box.height > 1) {
+          words.push({ text, box })
+        }
+      }
+    }
+
+    const shown = (element: Element) => {
+      const svg = element.closest('svg')
+
+      return svg !== null && getComputedStyle(svg).display !== 'none' && svg.getBoundingClientRect().width > 0
+    }
+    const points: { x: number; y: number; from: string }[] = []
+
+    for (const path of header.querySelectorAll<SVGPathElement>('.race-header__gold')) {
+      const matrix = path.getScreenCTM()
+
+      if (!shown(path) || matrix === null) {
+        continue
+      }
+
+      const length = path.getTotalLength()
+
+      for (let step = 0; step <= 800; step += 1) {
+        const at = path.getPointAtLength((length * step) / 800).matrixTransform(matrix)
+
+        if (at.x >= 0 && at.x <= innerWidth) {
+          points.push({ x: at.x, y: at.y, from: path.closest('svg')?.getAttribute('class') ?? '' })
+        }
+      }
+    }
+
+    const touches: string[] = []
+
+    for (const { text, box } of words) {
+      for (const point of points) {
+        if (
+          point.x >= box.left - clearance &&
+          point.x <= box.right + clearance &&
+          point.y >= box.top - clearance &&
+          point.y <= box.bottom + clearance
+        ) {
+          touches.push(`${point.from} at ${Math.round(point.x)},${Math.round(point.y)} touches „${text}"`)
+          break
+        }
+      }
+
+      for (const runner of header.querySelectorAll('.race-header__runner')) {
+        const body = runner.getBoundingClientRect()
+
+        if (
+          shown(runner) &&
+          body.left < box.right &&
+          body.right > box.left &&
+          body.top < box.bottom &&
+          body.bottom > box.top
+        ) {
+          touches.push(`the runner touches „${text}"`)
+        }
+      }
+    }
+
+    return { words: words.length, points: points.length, touches }
+  }, CLEARANCE_REM)
 }
 
 for (const at of WIDTHS) {
@@ -130,7 +238,22 @@ for (const at of WIDTHS) {
 
     expect(seen.gold).toBe(true)
     expect(seen.lanes).toBe(reads >= 820 ? 4 : reads >= 560 ? 3 : 2)
+    expect(seen.rise).toBe(reads >= 1000)
     expect(seen.runner).toBe(reads >= 1000)
+  })
+
+  /* The gold line and the runner are drawn bright (owner, 15.11.2026: „lepe istaknute zlatne
+     linije"), too bright for a word to stand on them at 4,5:1. So they stand where no word does, and
+     that is asked here at every width the owner listed; `styles/raceInMotion.test.ts` measures every
+     ground a word may stand on, which is the rest. */
+  test(`the bright gold and the runner touch no text at ${label(at)}`, async ({ open }) => {
+    const { page } = await open(at, '/sr', 'header .brand', ANSWERS)
+    const seen = await touching(page)
+
+    /* The brand, the tools and, on a desktop, every link of the navigation: something was read. */
+    expect(seen.words, 'the words of the header that were read').toBeGreaterThan(3)
+    expect(seen.points, 'the points of the gold that were read').toBeGreaterThan(400)
+    expect(seen.touches).toEqual([])
   })
 }
 

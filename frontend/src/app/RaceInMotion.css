@@ -6,24 +6,31 @@
  * `styles/tokens.css` writes (light, dark by the system, dark by choice), so the theme is decided
  * once and the components below know nothing about it. Both themes are drawn: the portal has a
  * light theme a member can choose (`app/themeContext.ts`), and in it the same lines are a deep
- * blue on white, as faint against the light card as the dark ones are against the navy.
+ * blue and a deep gold on white.
  *
  * GOLD AS DECORATION, AND ONLY HERE. The head of `styles/tokens.css` says gold means achievement
- * and never decoration. The gold line in the header and the waypoints on the edges are the one
- * exception, asked for by the owner in the same task that asked for the rest of this sheet, and
- * kept so faint that nothing drawn in it reads as a mark of anything.
+ * and never decoration. The gold line and the runner in the header and the waypoints of the page
+ * are the one exception, asked for by the owner in the same task that asked for the rest of this
+ * sheet. Since 15.11.2026 the header's gold is drawn BRIGHT, on the owner's word that the faint
+ * one was too poor („lepe istaknute zlatne linije"): at least 3:1 against the header in both
+ * themes, the measure WCAG 2.2 gives a mark that is meant to be seen (SC 1.4.11). The gold of the
+ * page stays faint, because there it may lie under words.
  *
- * Every colour here is a picture under the words and never the ground they are measured against:
- * the text of the header stands on the gradient, and `styles/raceInMotion.test.ts` holds the text
- * at 4,5:1 against both of its stops and against the strongest line laid over each of them.
+ * Every colour here is a picture under the words and never the ground they are measured against.
+ * Two kinds, and `styles/raceInMotion.test.ts` holds both: what may lie under text (the lanes, the
+ * glow, the contours, the route) is faint enough that the text keeps 4,5:1 against the strongest of
+ * it at full strength; what is bright (the gold line and the runner) is drawn only where no text
+ * stands, which Chrome is asked about (`geometry/raceInMotion.geometry.ts`).
  */
 :root {
   --race-header-top: #ffffff;
   --race-header-bottom: #f2f5fb;
   --race-header-glow: #1657bd0f;
   --race-track: #1657bd2e;
-  --race-gold: #b8901f60;
-  --race-runner: #10459a33;
+  --race-gold: #8e6c12;
+  --race-gold-glow: #c9a22e59;
+  --race-runner: #8e6c12;
+  --race-runner-body: #e7edf7;
   --race-page-glow: #1657bd0d;
   --race-contour: #1657bd24;
   --race-route: #b8901f66;
@@ -35,8 +42,10 @@
     --race-header-bottom: #0c1527;
     --race-header-glow: #31517b38;
     --race-track: #31517b99;
-    --race-gold: #d9ab2e33;
-    --race-runner: #5b93ec3a;
+    --race-gold: #e3b341;
+    --race-gold-glow: #e3b34180;
+    --race-runner: #c9a24a;
+    --race-runner-body: #17243d;
     --race-page-glow: #16346940;
     --race-contour: #31517b5c;
     --race-route: #d9ab2e24;
@@ -48,8 +57,10 @@
   --race-header-bottom: #0c1527;
   --race-header-glow: #31517b38;
   --race-track: #31517b99;
-  --race-gold: #d9ab2e33;
-  --race-runner: #5b93ec3a;
+  --race-gold: #e3b341;
+  --race-gold-glow: #e3b34180;
+  --race-runner: #c9a24a;
+  --race-runner-body: #17243d;
   --race-page-glow: #16346940;
   --race-contour: #31517b5c;
   --race-route: #d9ab2e24;
@@ -87,43 +98,81 @@
   stroke-linecap: round;
 }
 
-.race-header__lane,
-.race-header__gold {
+.race-header__lane {
+  stroke: var(--race-track);
   stroke-width: 1;
   vector-effect: non-scaling-stroke;
 }
 
-.race-header__lane {
-  stroke: var(--race-track);
+/* The strip the gold is drawn in: the whole width and one rem at the foot of the header, which is
+   the padding under the last line of the bar on a telephone and under the navigation from a
+   tablet, so no word stands in it at any width or text size. Stretched across (the drawing says
+   `preserveAspectRatio="none"`), so the line spans any screen; the stroke does not stretch with it.
+   The glow is the browser's own shadow around what is drawn, so it is not stretched either. */
+.race-header__strip,
+.race-header__rise {
+  position: absolute;
+  bottom: 0;
+  overflow: visible;
+  fill: none;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 0.1875rem var(--race-gold-glow));
+}
+
+.race-header__strip {
+  left: 0;
+  width: 100%;
+  height: 1rem;
+}
+
+/* The climb, drawn in pixels from 110px left of the runner's rear foot (both are placed from the
+   middle of the header, since that is where the column of the page is centred), and cut by the
+   layer wherever the window ends. */
+.race-header__rise {
+  left: 50%;
+  translate: 8.125rem 0;
+  width: 60rem;
+  height: 5rem;
 }
 
 .race-header__gold {
   stroke: var(--race-gold);
+  stroke-width: 1.75;
+  vector-effect: non-scaling-stroke;
+}
+
+.race-header__gold--echo {
+  stroke-width: 1;
+  stroke-opacity: 0.5;
 }
 
 /* Mobile first: what a telephone does not draw is not drawn to begin with, and each wider screen
    adds to it. Nothing is taken away at a width. */
 .race-header__lane--tablet,
 .race-header__lane--desktop,
+.race-header__rise,
 .race-header__runner {
   display: none;
 }
 
-/* The runner, a few strokes and no illustration, at the right of the header and low, beside the
-   end of the navigation. Seven per cent from the right edge puts it inside the column of the page
-   on a 1000px screen, under the tools and past the last link, and just outside the column on
-   1440, where the reference draws it. */
+/* The runner, one outline with a gold rim around a body in a quiet tone (`app/RaceInMotion.tsx`),
+   with his rear foot on the gold line where it starts to climb. He stands in the one part of a
+   desktop header that is empty from top to foot: past the last link of the navigation and short of
+   the tools of the bar. The column of the page is centred, so he is placed from the middle: 15rem
+   right of it for his rear foot, which on a 1000px screen is past the last link of the longest
+   navigation (the administration's) and short of the tools, and on a 2560px one the same. */
 .race-header__runner {
   position: absolute;
-  right: 7%;
-  bottom: var(--space-8);
-  width: 4rem;
+  left: 50%;
+  translate: 14.5rem 0;
+  bottom: var(--space-20);
+  width: 3.75rem;
   height: auto;
-  fill: none;
+  fill: var(--race-runner-body);
   stroke: var(--race-runner);
-  stroke-width: 1.5;
-  stroke-linecap: round;
+  stroke-width: 1.1;
   stroke-linejoin: round;
+  filter: drop-shadow(0 0 0.0625rem var(--race-gold-glow));
 }
 
 /* THE PAGE.
@@ -131,10 +180,14 @@
  * Fixed to the window and under everything: the shell is the stacking context
  * (`app/Shell.css`, `.shell`), so this is drawn over the page colour and under every card, table
  * and chart, none of which is made any more transparent than it was. Fixed rather than as tall as
- * the page, so a short page and a page of a thousand rows see the same edges, with nothing
+ * the page, so a short page and a page of a thousand rows see the same drawing, with nothing
  * stretched and no seam.
  *
- * The glow is two soft pools of navy at two corners; the middle of the window is left as it was. */
+ * The drawing covers the whole window, the middle as well as the edges (owner, 15.11.2026: „ne ide
+ * izmedju boksova i sadrzaja u sredini, nego samo sa strana.... zaista mislis da treba tako?"), so
+ * it shows wherever the page lets it through: the gutters, and every gap between two boxes. Words
+ * that stand on the page itself may stand on a line, which is why its colours stay as faint as
+ * they are. The glow is two soft pools of navy at two corners. */
 .race-page {
   position: fixed;
   inset: 0;
@@ -146,74 +199,56 @@
     radial-gradient(ellipse 40% 45% at 100% 88%, var(--race-page-glow), transparent 70%);
 }
 
-/* One band down each outer edge, as narrow as a telephone needs and wider on larger screens. The
-   drawing in it does not grow with the band: the tile keeps its size, so a wider band shows more
-   of the contours and a narrow one only the outermost. */
-.race-page__edge {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 6rem;
-}
-
-.race-page__edge--start {
-  left: 0;
-}
-
-/* The same drawing turned over, and started lower, so the two edges are not one picture twice. */
-.race-page__edge--end {
-  right: 0;
-  transform: scaleX(-1);
-}
-
 /* The drawings are masks over a token colour, so the theme decides the colour and a tile repeats
-   down the window without a seam (each tile ends where it began). Only where the browser knows
-   masks: a browser that did not would paint the colour as a solid band. */
+   across and down the window without a seam (each line that leaves a tile comes back in at the
+   same height and the same angle). Only where the browser knows masks: a browser that did not
+   would paint the colour over the whole window. */
 @supports (mask-image: none) {
-  .race-page__edge::before,
-  .race-page__edge::after {
+  /* The gold line comes in out of nothing at the left, the way the reference's lines do. */
+  .race-header__strip {
+    mask-image: linear-gradient(90deg, transparent, black 12%);
+  }
+
+  .race-page::before,
+  .race-page::after {
     content: '';
     position: absolute;
     inset: 0;
-    mask-repeat: repeat-y;
-    mask-size: 15rem auto;
-    mask-position: left top;
+    mask-repeat: repeat;
   }
 
-  .race-page__edge::before {
+  /* The contours. One tile, laid twice at two sizes and two offsets, so the eye finds no repeat;
+     a telephone gets the smaller pair, so its narrow gaps still cross a few lines. */
+  .race-page::before {
     background-color: var(--race-contour);
-    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 560' fill='none' stroke='black' stroke-width='1'%3E%3Cpath d='M12 0C18 70 20 210 20 300S6 490 12 560'/%3E%3Cpath stroke-opacity='.85' d='M30 0C36 70 48 150 48 250S24 490 30 560'/%3E%3Cpath stroke-opacity='.7' d='M54 0C60 70 84 120 84 210S48 490 54 560'/%3E%3Cpath stroke-opacity='.55' d='M84 0C90 70 104 220 104 330S78 490 84 560'/%3E%3Cpath stroke-opacity='.4' d='M120 0C126 70 164 100 164 180S114 490 120 560'/%3E%3Cpath stroke-opacity='.35' d='M178 300C178 278 222 272 228 298C234 324 184 330 178 300Z'/%3E%3Cpath stroke-opacity='.25' d='M194 300C194 290 214 288 216 299C218 310 196 312 194 300Z'/%3E%3Cpath stroke-opacity='.3' d='M176 60C176 46 204 44 206 60C208 76 178 76 176 60Z'/%3E%3C/svg%3E");
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 480 480' fill='none' stroke='black' stroke-width='1'%3E%3Cpath stroke-opacity='.5' d='M0 34C150 58 330 10 480 34'/%3E%3Cpath stroke-opacity='.7' d='M0 56C150 84 330 28 480 56'/%3E%3Cpath stroke-opacity='.85' d='M0 80C150 114 330 46 480 80'/%3E%3Cpath stroke-opacity='1' d='M0 106C150 146 330 66 480 106'/%3E%3Cpath stroke-opacity='.9' d='M0 296C170 270 310 322 480 296'/%3E%3Cpath stroke-opacity='.75' d='M0 320C170 290 310 350 480 320'/%3E%3Cpath stroke-opacity='.6' d='M0 346C170 310 310 382 480 346'/%3E%3Cpath stroke-opacity='.45' d='M0 374C170 330 310 418 480 374'/%3E%3Cpath stroke-opacity='.8' d='M282 205C282 160 330 148 362 158C400 170 410 205 396 232C382 258 330 262 304 248C288 240 282 222 282 205Z'/%3E%3Cpath stroke-opacity='.6' d='M304 205C304 178 334 170 354 178C376 186 382 208 372 224C362 240 330 242 316 232C308 226 304 216 304 205Z'/%3E%3Cpath stroke-opacity='.45' d='M326 205C326 194 340 190 350 195C360 200 360 212 352 218C344 224 330 220 326 212C325 210 326 207 326 205Z'/%3E%3Cpath stroke-opacity='.7' d='M60 200C60 170 96 158 124 164C152 170 166 192 160 214C154 236 120 246 92 238C72 232 60 218 60 200Z'/%3E%3Cpath stroke-opacity='.5' d='M84 200C84 184 104 178 120 182C136 186 142 198 138 210C134 222 114 226 100 222C90 218 84 210 84 200Z'/%3E%3Cpath stroke-opacity='.55' d='M372 440C372 424 396 418 414 422C432 426 438 440 430 452C422 464 396 466 384 458C376 452 372 446 372 440Z'/%3E%3Cpath stroke-opacity='.4' d='M90 432C90 420 108 414 122 418C136 422 140 432 134 442C128 452 108 452 98 446C92 442 90 438 90 432Z'/%3E%3C/svg%3E"), url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 480 480' fill='none' stroke='black' stroke-width='1'%3E%3Cpath stroke-opacity='.5' d='M0 34C150 58 330 10 480 34'/%3E%3Cpath stroke-opacity='.7' d='M0 56C150 84 330 28 480 56'/%3E%3Cpath stroke-opacity='.85' d='M0 80C150 114 330 46 480 80'/%3E%3Cpath stroke-opacity='1' d='M0 106C150 146 330 66 480 106'/%3E%3Cpath stroke-opacity='.9' d='M0 296C170 270 310 322 480 296'/%3E%3Cpath stroke-opacity='.75' d='M0 320C170 290 310 350 480 320'/%3E%3Cpath stroke-opacity='.6' d='M0 346C170 310 310 382 480 346'/%3E%3Cpath stroke-opacity='.45' d='M0 374C170 330 310 418 480 374'/%3E%3Cpath stroke-opacity='.8' d='M282 205C282 160 330 148 362 158C400 170 410 205 396 232C382 258 330 262 304 248C288 240 282 222 282 205Z'/%3E%3Cpath stroke-opacity='.6' d='M304 205C304 178 334 170 354 178C376 186 382 208 372 224C362 240 330 242 316 232C308 226 304 216 304 205Z'/%3E%3Cpath stroke-opacity='.45' d='M326 205C326 194 340 190 350 195C360 200 360 212 352 218C344 224 330 220 326 212C325 210 326 207 326 205Z'/%3E%3Cpath stroke-opacity='.7' d='M60 200C60 170 96 158 124 164C152 170 166 192 160 214C154 236 120 246 92 238C72 232 60 218 60 200Z'/%3E%3Cpath stroke-opacity='.5' d='M84 200C84 184 104 178 120 182C136 186 142 198 138 210C134 222 114 226 100 222C90 218 84 210 84 200Z'/%3E%3Cpath stroke-opacity='.55' d='M372 440C372 424 396 418 414 422C432 426 438 440 430 452C422 464 396 466 384 458C376 452 372 446 372 440Z'/%3E%3Cpath stroke-opacity='.4' d='M90 432C90 420 108 414 122 418C136 422 140 432 134 442C128 452 108 452 98 446C92 442 90 438 90 432Z'/%3E%3C/svg%3E");
+    mask-size: 22rem auto, 34rem auto;
+    mask-position: left top, 9rem 17rem;
   }
 
-  /* The route and its waypoints, the only gold on the page, and not on a telephone, where the band
-     is the gutter beside a card and a gold dot in it would be the loudest thing on the screen. */
-  .race-page__edge::after {
+  /* The route and its waypoints, the only gold on the page, and not on a telephone, where every
+     gap is narrow and a gold dot in it would be the loudest thing on the screen. */
+  .race-page::after {
     display: none;
     background-color: var(--race-route);
-    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 960' fill='none' stroke='black' stroke-width='1'%3E%3Cpath stroke-opacity='.7' stroke-dasharray='3 7' d='M40 0C110 90 70 190 150 270S210 430 120 540S40 720 100 820S-30 870 40 960'/%3E%3Ccircle cx='150' cy='270' r='2.5' fill='black' stroke='none'/%3E%3Ccircle cx='150' cy='270' r='6' stroke-opacity='.5'/%3E%3Ccircle cx='100' cy='820' r='2.5' fill='black' stroke='none'/%3E%3C/svg%3E");
-  }
-
-  .race-page__edge--end::before {
-    mask-position: left 13rem;
-  }
-
-  .race-page__edge--end::after {
-    mask-position: left 29rem;
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 960 960' fill='none' stroke='black' stroke-width='1.25'%3E%3Cpath stroke-dasharray='3 8' d='M300 0C380 110 560 150 600 270C640 390 520 470 420 540C320 610 160 680 180 790C200 900 220 850 300 960'/%3E%3Ccircle cx='600' cy='270' r='3' fill='black' stroke='none'/%3E%3Ccircle cx='600' cy='270' r='7.5' stroke-opacity='.6'/%3E%3Ccircle cx='180' cy='790' r='3' fill='black' stroke='none'/%3E%3Ccircle cx='180' cy='790' r='7.5' stroke-opacity='.6'/%3E%3C/svg%3E");
+    mask-size: 56rem auto;
+    mask-position: 4rem 6rem;
   }
 }
 
-/* From where a telephone stops being one: a tablet gets the third lane, a wider band of contours,
-   and the route. */
+/* From where a telephone stops being one: a tablet gets the third lane, the larger contours and
+   the route. */
 @media (min-width: 35em) {
   .race-header__lane--tablet {
     display: inline;
   }
 
-  .race-page__edge {
-    width: 10rem;
+  .race-page::before {
+    mask-size: 30rem auto, 46rem auto;
   }
 
-  .race-page__edge::after {
+  .race-page::after {
     display: block;
   }
 }
@@ -225,14 +260,11 @@
   }
 }
 
-/* From a desktop: the runner, and the widest band of contours. */
+/* From a desktop: the runner and the slope he runs up. */
 @media (min-width: 62.5em) {
+  .race-header__rise,
   .race-header__runner {
     display: block;
-  }
-
-  .race-page__edge {
-    width: 15rem;
   }
 }
 

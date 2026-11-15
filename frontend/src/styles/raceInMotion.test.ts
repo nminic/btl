@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { at, must } from '../test/at'
 import { contrast } from '../test/contrast'
-import { bodyOf, closes, everyRule, ruleFor, ruleInMedia, unremarked } from '../test/stylesheet'
+import { bodyOf, closes, everyRule, ruleFor, ruleInMedia, rulesInMedia, unremarked } from '../test/stylesheet'
 
 /* The decoration of „Race in Motion" (owner, 14.11.2026, PDL „Vizuelno osveženje „Race in
  * Motion""), and the things about it no screen test can see.
@@ -19,6 +19,11 @@ import { bodyOf, closes, everyRule, ruleFor, ruleInMedia, unremarked } from '../
  */
 
 const FLOOR = 4.5
+
+/** What a mark meant to be seen owes its ground (WCAG 2.2 SC 1.4.11), taken here as the measure of
+ *  the owner's „istaknute" (15.11.2026): the gold line and the runner's rim stand out of the header
+ *  at least this far, in both themes. The faint gold they replaced stood at 1,45:1 and 1,39:1. */
+const MARK = 3
 
 function read(path: string): string {
   return readFileSync(join(process.cwd(), path), 'utf-8').replaceAll('\r\n', '\n')
@@ -55,14 +60,24 @@ function colour(css: string, name: string, theme: Theme, seen: string[] = []): s
 const own = (name: string, theme: Theme) => colour(decoration, name, theme)
 const portal = (name: string, theme: Theme) => colour(tokens, name, theme)
 
+/** A selector list as one line, however its lines are broken. */
+const flat = (text: string) => text.replaceAll(/\s+/g, ' ').trim()
+
 /** The one rule outside every query whose selector is this list, however its lines are broken. */
 function written(selector: string): CSSStyleDeclaration {
-  const flat = (text: string) => text.replaceAll(/\s+/g, ' ').trim()
   const found = everyRule(decoration, 'RaceInMotion.css').filter(
     (rule) => flat(rule.selectorText) === flat(selector) && rule.parentRule === null,
   )
 
   expect(found.length, `${selector} is one rule outside every query`).toBe(1)
+  return must(found[0], selector).style
+}
+
+/** The one rule of one media query whose selector is this list, however its lines are broken. */
+function writtenIn(condition: string, selector: string): CSSStyleDeclaration {
+  const found = rulesInMedia(decoration, condition, 'RaceInMotion.css').filter((rule) => flat(rule.selectorText) === flat(selector))
+
+  expect(found.length, `${selector} is one rule of ${condition}`).toBe(1)
   return must(found[0], selector).style
 }
 
@@ -87,7 +102,9 @@ describe('the colours of the decoration', () => {
     '--race-header-glow',
     '--race-track',
     '--race-gold',
+    '--race-gold-glow',
     '--race-runner',
+    '--race-runner-body',
     '--race-page-glow',
     '--race-contour',
     '--race-route',
@@ -111,10 +128,15 @@ describe('the colours of the decoration', () => {
 
 describe('the text of the header, over the decoration', () => {
   for (const theme of ['light', 'dark'] as const) {
-    it(`keeps 4,5:1 at both ends of the gradient and under the strongest line, ${theme}`, () => {
+    it(`keeps 4,5:1 at both ends of the gradient and under every line that may cross it, ${theme}`, () => {
       const stops = ['--race-header-top', '--race-header-bottom'].map((name) => own(name, theme))
       const glow = own('--race-header-glow', theme)
-      const lines = ['--race-track', '--race-gold', '--race-runner'].map((name) => own(name, theme))
+      /* The lanes are the one line that crosses the words. The gold line and the runner are bright
+         and are drawn only where no word stands, which is a question of where things are on the
+         screen and is asked of Chrome: `geometry/raceInMotion.geometry.ts`, „the bright gold and the
+         runner touch no text". Between the two guards every ground a word of the header stands on is
+         measured. */
+      const lines = ['--race-track'].map((name) => own(name, theme))
 
       /* Each stop as it is, with the glow over it, and with each line over that. */
       const grounds = stops.flatMap((stop) => {
@@ -126,6 +148,21 @@ describe('the text of the header, over the decoration', () => {
       for (const ink of ['--text', '--text-muted']) {
         for (const ground of grounds) {
           expect(contrast(portal(ink, theme), ground), `${ink} on ${ground}, ${theme}`).toBeGreaterThanOrEqual(FLOOR)
+        }
+      }
+    })
+  }
+
+  for (const theme of ['light', 'dark'] as const) {
+    it(`draws the gold line and the runner's rim to be seen, at least 3:1 on the header, ${theme}`, () => {
+      const glow = own('--race-header-glow', theme)
+      const grounds = ['--race-header-top', '--race-header-bottom'].map((name) => over(glow, own(name, theme)))
+
+      for (const mark of ['--race-gold', '--race-runner']) {
+        const ink = own(mark, theme)
+
+        for (const ground of grounds) {
+          expect(contrast(over(ink, ground), ground), `${mark} on ${ground}, ${theme}`).toBeGreaterThanOrEqual(MARK)
         }
       }
     })
@@ -190,27 +227,27 @@ describe('the layers stand out of the way', () => {
   })
 })
 
+const HIDDEN = '.race-header__lane--tablet, .race-header__lane--desktop, .race-header__rise, .race-header__runner'
+
 describe('what is drawn at which width', () => {
-  it('draws no runner on a telephone or a tablet, and draws it from 1000px', () => {
-    const hidden = written('.race-header__lane--tablet, .race-header__lane--desktop, .race-header__runner')
+  it('draws no runner and no climb on a telephone or a tablet, and draws both from 1000px', () => {
+    const hidden = written(HIDDEN)
 
     expect(hidden.getPropertyValue('display')).toBe('none')
-    expect(
-      ruleInMedia(decoration, '(min-width: 62.5em)', '.race-header__runner', 'RaceInMotion.css').getPropertyValue(
-        'display',
-      ),
-    ).toBe('block')
+    expect(writtenIn('(min-width: 62.5em)', '.race-header__rise, .race-header__runner').getPropertyValue('display')).toBe('block')
 
-    /* And it is shown nowhere else, so no narrower query can bring it back. */
-    const shown = everyRule(decoration, 'RaceInMotion.css').filter(
-      (rule) => rule.selectorText.includes('race-header__runner') && !['', 'none'].includes(rule.style.getPropertyValue('display')),
-    )
+    /* And each is shown nowhere else, so no narrower query can bring it back. */
+    for (const part of ['race-header__runner', 'race-header__rise']) {
+      const shown = everyRule(decoration, 'RaceInMotion.css').filter(
+        (rule) => rule.selectorText.includes(part) && !['', 'none'].includes(rule.style.getPropertyValue('display')),
+      )
 
-    expect(shown).toHaveLength(1)
+      expect(shown, part).toHaveLength(1)
+    }
   })
 
   it('adds a lane from a tablet and another from where the navigation unfolds, and takes none away', () => {
-    const hidden = written('.race-header__lane--tablet, .race-header__lane--desktop, .race-header__runner')
+    const hidden = written(HIDDEN)
 
     expect(hidden.getPropertyValue('display')).toBe('none')
     expect(
@@ -225,9 +262,36 @@ describe('what is drawn at which width', () => {
 
   it('keeps the gold route off a telephone', () => {
     expect(
-      ruleInMedia(decoration, '(min-width: 35em)', '.race-page__edge::after', 'RaceInMotion.css').getPropertyValue('display'),
+      ruleInMedia(decoration, '(min-width: 35em)', '.race-page::after', 'RaceInMotion.css').getPropertyValue('display'),
     ).toBe('block')
-    expect(unremarked(decoration)).toMatch(/\.race-page__edge::after \{\s*display: none;/)
+    expect(unremarked(decoration)).toMatch(/\.race-page::after \{\s*display: none;/)
+  })
+})
+
+describe('the drawing of the page', () => {
+  it('covers the whole window, the middle as well as the edges, and repeats across and down it', () => {
+    /* Owner, 15.11.2026: the drawing goes between the boxes and behind the middle of the page, and
+       not only along the two sides. So both drawings take the layer's whole box, which is the
+       window, and no rule narrows either of them to a band at any width. */
+    const drawings = everyRule(decoration, 'RaceInMotion.css').filter((rule) => /\.race-page::(before|after)/.test(rule.selectorText))
+    const both = must(
+      drawings.find((rule) => flat(rule.selectorText) === '.race-page::before, .race-page::after'),
+      'the one rule of both drawings',
+    )
+
+    /* jsdom hands `inset: 0` back as `0px`. */
+    expect(both.style.getPropertyValue('inset')).toMatch(/^0(px)?$/)
+    expect(both.style.getPropertyValue('mask-repeat')).toBe('repeat')
+
+    for (const rule of drawings) {
+      for (const narrows of ['width', 'max-width', 'left', 'right', 'inset-inline', 'transform']) {
+        expect(rule.style.getPropertyValue(narrows), `${rule.selectorText} sets ${narrows}`).toBe('')
+      }
+    }
+
+    for (const rule of drawings.filter((one) => one !== both)) {
+      expect(rule.style.getPropertyValue('mask-repeat'), `${rule.selectorText} repeats otherwise`).toBe('')
+    }
   })
 })
 

@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import { htmlElement } from '../test/at'
+import { htmlElement, must } from '../test/at'
 import { renderAt } from '../test/render'
 import { HeaderDecoration, PageBackgroundDecoration } from './RaceInMotion'
 
@@ -37,24 +37,44 @@ describe('the decoration of the header', () => {
     const { container } = render(<HeaderDecoration />)
     const drawings = everything(htmlElement(container.firstElementChild)).filter((one) => one.localName === 'svg')
 
-    /* The track and the runner. */
-    expect(drawings).toHaveLength(2)
+    /* The track, the strip of gold at the foot, the climb and the runner. */
+    expect(drawings).toHaveLength(4)
 
     for (const drawing of drawings) {
       expect(drawing).toHaveAttribute('focusable', 'false')
     }
   })
 
-  it('draws two lanes on a telephone, a third from a tablet and a fourth from a desktop, and one gold line', () => {
+  it('draws two lanes on a telephone, a third from a tablet and a fourth from a desktop, and the gold line with its companion and its climb', () => {
     const { container } = render(<HeaderDecoration />)
-    const classes = everything(htmlElement(container.firstElementChild))
-      .filter((one) => one.localName === 'path')
-      .map((one) => one.getAttribute('class'))
+    const paths = everything(htmlElement(container.firstElementChild)).filter((one) => one.localName === 'path')
+    const classes = paths.map((one) => one.getAttribute('class'))
 
     expect(classes.filter((one) => one === 'race-header__lane race-header__lane--always')).toHaveLength(2)
     expect(classes.filter((one) => one === 'race-header__lane race-header__lane--tablet')).toHaveLength(1)
     expect(classes.filter((one) => one === 'race-header__lane race-header__lane--desktop')).toHaveLength(1)
-    expect(classes.filter((one) => one === 'race-header__gold')).toHaveLength(1)
+    expect(classes.filter((one) => one === 'race-header__gold race-header__gold--echo')).toHaveLength(1)
+
+    /* The line itself in the strip at the foot, and its climb in the drawing of its own. */
+    const gold = paths.filter((one) => one.getAttribute('class') === 'race-header__gold')
+
+    expect(gold.map((one) => one.parentElement?.getAttribute('class'))).toEqual(['race-header__strip', 'race-header__rise'])
+  })
+
+  it('draws the runner as one closed outline, not as strokes', () => {
+    /* Owner, 15.11.2026, about the five strokes this replaced: „Ovaj trkac je prejadan". The sheet
+       fills it and gives it a rim; here it is one shape, closed, with nothing else in its drawing. */
+    const { container } = render(<HeaderDecoration />)
+    const runner = everything(htmlElement(container.firstElementChild)).filter((one) =>
+      one.matches('svg.race-header__runner'),
+    )
+
+    expect(runner).toHaveLength(1)
+
+    const parts = everything(must(runner[0], 'the runner')).slice(1)
+
+    expect(parts.map((one) => one.localName)).toEqual(['path'])
+    expect(parts[0]?.getAttribute('d')).toMatch(/^M[^M]+Z$/)
   })
 })
 
@@ -66,6 +86,8 @@ describe('the decoration of the page', () => {
     expect(layer).toHaveAttribute('aria-hidden', 'true')
     expect(reachable(layer)).toEqual([])
     expect(layer).toHaveTextContent('')
+    /* The drawing is the sheet's, over the whole window: nothing in the tree for it to stand in. */
+    expect(layer.children).toHaveLength(0)
   })
 })
 
