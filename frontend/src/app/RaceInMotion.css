@@ -24,7 +24,9 @@
  * Every colour here is a picture under the words and never the ground they are measured against.
  * Two kinds, and both are held: what may lie under text (the lanes, the glow, the contours, the
  * route) is faint enough that the text keeps 4,5:1 against the strongest of it at full strength
- * (`styles/raceInMotion.test.ts`); the gold line and the runner are drawn only where no text
+ * (`styles/raceInMotion.test.ts`, which measures every ink the portal's tokens name as readable on
+ * the page, among them the red star of a required field, held down in the light theme by how faint
+ * `--race-contour` and `--race-route` are); the gold line and the runner are drawn only where no text
  * stands, which Chrome is asked about (`geometry/raceInMotion.geometry.ts`).
  */
 :root {
@@ -35,8 +37,8 @@
   --race-gold: #9a7b3a;
   --race-runner: #9a7b3a73;
   --race-page-glow: #1657bd0d;
-  --race-contour: #1657bd24;
-  --race-route: #b8901f66;
+  --race-contour: #1657bd0e;
+  --race-route: #b8901f17;
 }
 
 @media (prefers-color-scheme: dark) {

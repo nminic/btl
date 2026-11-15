@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { at, must } from '../test/at'
 import { contrast } from '../test/contrast'
@@ -180,13 +180,76 @@ describe('the text of the header, over the decoration', () => {
   })
 })
 
+/** Every stylesheet the portal draws with, found by walking `src`. */
+function sheets(dir: string): string[] {
+  return readdirSync(join(process.cwd(), dir), { withFileTypes: true }).flatMap((entry) => {
+    const path = `${dir}/${entry.name}`
+
+    if (entry.isDirectory()) return sheets(path)
+    return entry.name.endsWith('.css') ? [path] : []
+  })
+}
+
+/** The tokens some rule of the portal writes text in: `color: var(--x)` and no other property. */
+const writtenInText = new Set(
+  sheets('src').flatMap((path) =>
+    [...unremarked(read(path)).matchAll(/(?:^|[\s;{])color:\s*var\((--[a-z0-9-]+)\)/g)].map((one) => at(one, 1)),
+  ),
+)
+
+/** The inks that are found by the derivation below and still do not stand on the bare page, each
+ *  with where it does stand. The list is of exceptions and so fails the safe way: an ink that is
+ *  not named here is measured, so a new one is held to 4,5:1 until someone writes why it need not
+ *  be. The gold of the text at 4,40:1 under the contours is why this one is named: it is written
+ *  on the podium, the stars, the calendar day and the member's balance, which are cards, and not
+ *  on the page itself. That is a reading of where they stand and not a measurement of it; Chrome
+ *  walking the screens is what would measure it, and is left as the boundary of this guard. */
+const NOT_ON_THE_PAGE: Record<string, string> = {
+  '--gold-text': 'the podium, the stars, the calendar day and the balance of a member, all on cards',
+}
+
+/** The colours of text that stand straight on the page, found and not listed: every token some
+ *  stylesheet of the portal writes text in (`color: var(--x)`, read from all of them) that reaches
+ *  4,5:1 on the page colour in this theme, since text that cannot be read on the page itself is
+ *  written on a card of its own and is measured there. A list written by hand was the first
+ *  guard's flaw: it named three, and the red of the star of a required field, which stands on the
+ *  page of the settings, was measured by no one and was at 3,42:1 under the route. A token that
+ *  some rule writes in tomorrow is measured without anyone remembering it. The limit is the
+ *  derivation's own and is written here: text on the page in a colour set some other way than
+ *  `color: var(--token)` is not found by it. */
+function inkOf(theme: Theme): string[] {
+  const page = portal('--bg', theme)
+
+  return [...writtenInText].filter((name) => {
+    if (name in NOT_ON_THE_PAGE) return false
+
+    /* Followed through `var()` by hand, since a token that ends at a length and not a colour is
+       not an ink and must not stop the reading the way `colour()` stops it. */
+    let value = name
+
+    for (let step = 0; step < 8 && value.startsWith('--'); step += 1) {
+      const values = given(tokens, value)
+      const written = theme === 'dark' ? values.at(-1) : values[0]
+
+      value = written ?? ''
+      value = /^var\((--[a-z0-9-]+)\)$/.exec(value)?.[1] ?? value
+    }
+
+    return /^#[0-9a-f]{6}$/.test(value) && contrast(value, page) >= FLOOR
+  })
+}
+
 describe('the text of the page, over the decoration', () => {
   for (const theme of ['light', 'dark'] as const) {
+    it(`finds the inks of the page in the tokens, the red of the star of a required field among them, ${theme}`, () => {
+      expect(inkOf(theme)).toEqual(expect.arrayContaining(['--text', '--text-muted', '--accent', '--down']))
+    })
+
     it(`keeps 4,5:1 on the page colour under the glow, the contours and the route, ${theme}`, () => {
       const glowing = over(own('--race-page-glow', theme), portal('--bg', theme))
       const grounds = [glowing, ...['--race-contour', '--race-route'].map((name) => over(own(name, theme), glowing))]
 
-      for (const ink of ['--text', '--text-muted', '--accent']) {
+      for (const ink of inkOf(theme)) {
         for (const ground of grounds) {
           expect(contrast(portal(ink, theme), ground), `${ink} on ${ground}, ${theme}`).toBeGreaterThanOrEqual(FLOOR)
         }
