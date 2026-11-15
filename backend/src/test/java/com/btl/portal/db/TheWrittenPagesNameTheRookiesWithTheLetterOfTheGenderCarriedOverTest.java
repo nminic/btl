@@ -1,5 +1,6 @@
 package com.btl.portal.db;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.postgresql.util.PSQLException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,6 +34,12 @@ class TheWrittenPagesNameTheRookiesWithTheLetterOfTheGenderCarriedOverTest exten
 
 	@Autowired
 	JdbcTemplate jdbc;
+
+	/** The text as V98 left it: V100 (owner, 14.11.2026) moves the rulebook's sign-off on, which is held by TheWrittenPagesSayThatAnUnscoredRaceIsAPersonalRecordCarriedOverTest. */
+	@BeforeEach
+	void theTextAsV98LeftIt() {
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "100");
+	}
 
 	private static int theNumberOfRowsV98Edits() {
 		return 3;
@@ -85,7 +92,6 @@ class TheWrittenPagesNameTheRookiesWithTheLetterOfTheGenderCarriedOverTest exten
 
 	/** The pages as they stood before V98, and the proof that this is so: every old text stands again. */
 	private void theTextAsItStoodBeforeV98() {
-		TheWrittenPagesBeforeV71.undoBodyEdits(db, "100");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "98");
 
 		assertThat(bodyOf("pravilnik", 8, "en"))

@@ -35,7 +35,7 @@ class TheWrittenPagesSayThatAnUnscoredRaceIsAPersonalRecordCarriedOverTest exten
 	JdbcTemplate jdbc;
 
 	private static int theNumberOfRowsV100Edits() {
-		return 2;
+		return 4;
 	}
 
 	/** Every heading and body of both tables, by page, place and language, so two readings compare row by row. */
@@ -120,8 +120,8 @@ class TheWrittenPagesSayThatAnUnscoredRaceIsAPersonalRecordCarriedOverTest exten
 
 	/**
 	 * V100 OVER THE TEXT IT FOUND GIVES THE TEXT THE PORTAL SERVES, character for character, in every heading and body of
-	 * every page in both languages, and changes exactly the sections it names and no other: section 5 of the rulebook, in
-	 * both languages. The sign-offs, the other sections and the other two pages are among the ones it leaves alone.
+	 * every page in both languages, and changes exactly the sections it names and no other: sections 5 and 19 of the rulebook,
+	 * in both languages. The sign-offs of the policy and of the terms, the other sections and the other pages are among the ones it leaves alone.
 	 */
 	@Test
 	void v100OverTheTextItFoundGivesTheTextThePortalServesAndChangesNothingElse() {
@@ -143,7 +143,7 @@ class TheWrittenPagesSayThatAnUnscoredRaceIsAPersonalRecordCarriedOverTest exten
 
 		assertThat(changed)
 				.as("V100 changed a different set of sections than the ones its edits name")
-				.containsExactlyInAnyOrder("pravilnik #5 sr", "pravilnik #5 en");
+				.containsExactlyInAnyOrder("pravilnik #5 sr", "pravilnik #5 en", "pravilnik #19 sr", "pravilnik #19 en");
 	}
 
 	/**
@@ -168,7 +168,9 @@ class TheWrittenPagesSayThatAnUnscoredRaceIsAPersonalRecordCarriedOverTest exten
 				.hasSize(theNumberOfRowsV100Edits())
 				.allMatch(line -> line.contains(": found 0 times"))
 				.contains("UNSCORED-01 article 15 @ pravilnik #5 sr: found 0 times, and its new text is already there",
-						"UNSCORED-01 article 15 @ pravilnik #5 en: found 0 times, and its new text is already there");
+						"UNSCORED-01 article 15 @ pravilnik #5 en: found 0 times, and its new text is already there",
+						"UNSCORED-02 sign-off @ pravilnik #19 sr: found 0 times, and its new text is already there",
+						"UNSCORED-02 sign-off @ pravilnik #19 en: found 0 times, and its new text is already there");
 		assertThat(everyText()).as("a refused V100 changed a page").isEqualTo(finished);
 	}
 
@@ -220,5 +222,29 @@ class TheWrittenPagesSayThatAnUnscoredRaceIsAPersonalRecordCarriedOverTest exten
 		assertThat(error.getServerErrorMessage().getMessage()).contains("1 of " + theNumberOfRowsV100Edits() + " edits");
 		assertThat(error.getServerErrorMessage().getDetail())
 				.contains("UNSCORED-01 article 15 @ pravilnik #5 en: found once, and its new text is already there");
+	}
+
+	/**
+	 * A SIGN-OFF THAT IS NOT THE ONE V98 LEFT STOPS V100 and says which language: the day moves from 14.11.2026 and from no
+	 * other, and a sign-off already on the new day beside the old one is refused like any new text that is already there.
+	 */
+	@Test
+	void aSignOffThatIsNotTheOneV98LeftStopsV100AndOneAlreadyOnTheNewDayIsRefusedToo() {
+		theTextAsItStoodBeforeV100();
+
+		setBody("pravilnik", 19, "sr", bodyOf("pravilnik", 19, "sr").replace("Poslednja izmena: 14.11.2026.", "Poslednja izmena: 12.11.2026."));
+		setBody("pravilnik", 19, "en", bodyOf("pravilnik", 19, "en") + "
+Last amended: 15.11.2026.");
+
+		jdbc.execute("savepoint before_the_refusal");
+
+		PSQLException error = v100Refused();
+
+		jdbc.execute("rollback to savepoint before_the_refusal");
+
+		assertThat(error.getServerErrorMessage().getMessage()).contains("2 of " + theNumberOfRowsV100Edits() + " edits");
+		assertThat(error.getServerErrorMessage().getDetail().lines().toList())
+				.contains("UNSCORED-02 sign-off @ pravilnik #19 sr: found 0 times",
+						"UNSCORED-02 sign-off @ pravilnik #19 en: found once, and its new text is already there");
 	}
 }
