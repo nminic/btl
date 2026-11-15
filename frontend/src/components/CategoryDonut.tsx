@@ -202,7 +202,7 @@ export function CategoryDonut({
           {chosen === undefined
             ? t('profile.racesWord', { count: total })
             : chosen.one === UNSCORED
-              ? t('profile.unscoredWord', { count: chosen.value })
+              ? t('profile.unscoredRingWord', { count: chosen.value })
               : t(`profile.categoryWord.${chosen.one}`, { count: chosen.value })}
         </text>
       </svg>

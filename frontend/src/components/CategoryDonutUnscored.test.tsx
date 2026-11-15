@@ -9,9 +9,9 @@ import { CategoryDonut } from './CategoryDonut'
    discipline kao lična evidencija"). The five before it are measured in `CategoryDonut.test.tsx`; what
    is measured here is only what the sixth adds. */
 
-function renderDonut(counts: Map<RaceCategory, number>, unscored?: number) {
+function renderDonut(counts: Map<RaceCategory, number>, unscored?: number, locale: 'sr' | 'en' = 'sr') {
   render(
-    <I18nProvider locale="sr">
+    <I18nProvider locale={locale}>
       <CategoryDonut counts={counts} unscored={unscored} caption="Trke po distanci" />
     </I18nProvider>,
   )
@@ -70,22 +70,34 @@ describe('the slice of the races the league does not score', () => {
     expect(hits.map((one) => one.textContent)).toEqual(['Kraća trka: 3', 'Nebodovane trke: 2'])
   })
 
-  /* One, two and five are the three forms: „1 nebodovana trka", „2 nebodovane trke" and „5 nebodovanih
-     trka". A test on one of them passes on a component that never declines anything. */
+  /* The middle of the ring says the adjective alone, declined with the count, and not the word for races
+     after it (owner, 15.11.2026: „Ne treba u krugu na profilu da pise nebodovanih trka nego samo
+     nebodovanih. Izbaci i races iz engleske verzije. Treba lepo da stane rec."). One, two and five are
+     the three forms; a test on one of them passes on a component that never declines anything. The
+     text is compared whole, because „nebodovanih trka" contains „nebodovanih". */
   it.each([
-    [1, 'nebodovana trka'],
-    [2, 'nebodovane trke'],
-    [5, 'nebodovanih trka'],
-    [21, 'nebodovana trka'],
-    [12, 'nebodovanih trka'],
+    [1, 'nebodovana'],
+    [2, 'nebodovane'],
+    [5, 'nebodovanih'],
+    [21, 'nebodovana'],
+    [12, 'nebodovanih'],
   ])('says %i of them as „%s" while the slice is pointed at', async (count, word) => {
     const user = setupUser()
     renderDonut(new Map<RaceCategory, number>([['short', 3]]), count)
 
     await user.hover(at(document.querySelectorAll('.donut__hit'), 1))
 
-    expect(document.querySelector('.donut__unit')).toHaveTextContent(word)
+    expect(document.querySelector('.donut__unit')?.textContent).toBe(word)
     expect(document.querySelector('.donut__total')).toHaveTextContent(String(count))
+  })
+
+  it.each([1, 2, 5])('says %i of them as „unscored" in English, without „races"', async (count) => {
+    const user = setupUser()
+    renderDonut(new Map<RaceCategory, number>([['short', 3]]), count, 'en')
+
+    await user.hover(at(document.querySelectorAll('.donut__hit'), 1))
+
+    expect(document.querySelector('.donut__unit')?.textContent).toBe('unscored')
   })
 
   it('goes back to the word for the races when the pointer leaves it', async () => {
