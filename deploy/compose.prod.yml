@@ -211,6 +211,18 @@ services:
       # shared NAME shares no value; what it buys is that one spelling works on
       # both hosts instead of a setting that is silently dead on one of them.
       BTL_SUPERADMIN_EMAIL: ${BTL_SUPERADMIN_EMAIL:-}
+      # FACEBOOK, which the server asks to read a profile again whenever its card
+      # changes (PDL P11, item 10; owner, 15.11.2026: „Evo ti odmah da"). The
+      # application "BTL page": its id and its secret, written into deploy/.env by
+      # the owner's facebook/upisi-facebook-aplikaciju.cmd, which checks the pair
+      # with Facebook first. Never in the repository.
+      #
+      # Empty by default and never `:?`, for the reason the relay's keys above
+      # give: a portal whose previews on Facebook stay as they were is a smaller
+      # failure than a portal that will not deploy. Unset, FacebookGraph is off
+      # and FacebookIsAskedToReadAChangedCard does nothing at all.
+      BTL_FACEBOOK_APP_ID: ${PROD_FACEBOOK_APP_ID:-}
+      BTL_FACEBOOK_APP_SECRET: ${PROD_FACEBOOK_APP_SECRET:-}
       # AND WHERE THE PICTURES LIVE, which is the mount right below this block.
       #
       # This stack had neither this line nor the mount until 20.09.2026, and a

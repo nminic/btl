@@ -23,6 +23,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 /**
  * THE CARD OF A PROFILE AS IT STANDS NOW: what it shows, the address it is asked for at, and the
@@ -148,8 +149,21 @@ class CompetitorCards {
 	 * members and count his runs twice for every profile anybody opens.
 	 */
 	Optional<Shown> shown(String memberNumber, WhatACardSays language) {
-		return faceOf(memberNumber, language).map(face -> new Shown(face.card(),
-				THE_FOLDER + nameOf(memberNumber, language, face) + ".jpg"));
+		return faceOf(memberNumber, language).map(face -> shown(memberNumber, language, face));
+	}
+
+	/**
+	 * EVERY CARD A VISITOR MAY SEE, AS IT STANDS NOW, in one language: what {@link #shown} answers for each member,
+	 * worked out from ONE reading of the list of members rather than one per member. It is what
+	 * {@link FacebookIsAskedToReadAChangedCard} compares with what Facebook was last asked about, and it is the same
+	 * reading as the preview's and the card's, so a member is on it exactly when his preview carries his card.
+	 */
+	List<Shown> everyShown(WhatACardSays language) {
+		return visible().map(his -> shown(his.memberNumber(), language, faceOf(his, language))).toList();
+	}
+
+	private static Shown shown(String memberNumber, WhatACardSays language, Face face) {
+		return new Shown(face.card(), THE_FOLDER + nameOf(memberNumber, language, face) + ".jpg");
 	}
 
 	/** What a card shows, and the address of the picture of it. */
@@ -217,11 +231,15 @@ class CompetitorCards {
 	 * THE CARD OF A MEMBER AS A VISITOR WOULD BE SHOWN IT, or nothing.
 	 */
 	private Optional<Face> faceOf(String memberNumber, WhatACardSays language) {
-		return competitors.competitors(null).stream()
+		return visible()
 				.filter(one -> memberNumber.equals(one.memberNumber()))
-				.filter(one -> !one.profileHidden())
 				.findFirst()
 				.map(his -> faceOf(his, language));
+	}
+
+	/** Every member a visitor is answered, less every hidden profile: the members who have a card. */
+	private Stream<CompetitorApi.Competitor> visible() {
+		return competitors.competitors(null).stream().filter(one -> !one.profileHidden());
 	}
 
 	private Face faceOf(CompetitorApi.Competitor his, WhatACardSays language) {
