@@ -73,13 +73,13 @@ describe('the shape of the navigation', () => {
        leads somewhere, so there is no panel to open and nothing behind a word
        that a reader has to guess at. */
     expect(NAV.map((section) => section.path)).toEqual([
-      'pravilnik',
       'takmicari',
       'tabela',
       'top-liste',
       'timovi',
       'lige',
       'kalendar',
+      'pravilnik',
       'administracija',
     ])
   })
