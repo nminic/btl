@@ -8,18 +8,23 @@
  * light theme a member can choose (`app/themeContext.ts`), and in it the same lines are a deep
  * blue and a deep gold on white.
  *
+ * THE HEADER IS A COPY OF THE OWNER'S REFERENCE (15.11.2026: „Moze li da se iskopira verno ovo sto
+ * sam ti dao kao primer?"). The dark colours are measured off that picture: the gold is the colour
+ * of the line's brightest pixel, a muted grey gold, and how strong it is along the line is the
+ * reference's own (`app/RaceInMotion.tsx`); the runner is the same gold at the strength of his
+ * outline there, about a quarter; the lanes are a grey blue at about a fifth, one pixel, as faint
+ * as the header's text lets them be (4,5:1 at the lighter end of the gradient).
+ *
  * GOLD AS DECORATION, AND ONLY HERE. The head of `styles/tokens.css` says gold means achievement
  * and never decoration. The gold line and the runner in the header and the waypoints of the page
  * are the one exception, asked for by the owner in the same task that asked for the rest of this
- * sheet. Since 15.11.2026 the header's gold is drawn BRIGHT, on the owner's word that the faint
- * one was too poor („lepe istaknute zlatne linije"): at least 3:1 against the header in both
- * themes, the measure WCAG 2.2 gives a mark that is meant to be seen (SC 1.4.11). The gold of the
- * page stays faint, because there it may lie under words.
+ * sheet. Where the header's line is strongest it stands at least 3:1 against the header in both
+ * themes (WCAG 2.2 SC 1.4.11, the measure of a mark meant to be seen), as the reference's does.
  *
  * Every colour here is a picture under the words and never the ground they are measured against.
- * Two kinds, and `styles/raceInMotion.test.ts` holds both: what may lie under text (the lanes, the
- * glow, the contours, the route) is faint enough that the text keeps 4,5:1 against the strongest of
- * it at full strength; what is bright (the gold line and the runner) is drawn only where no text
+ * Two kinds, and both are held: what may lie under text (the lanes, the glow, the contours, the
+ * route) is faint enough that the text keeps 4,5:1 against the strongest of it at full strength
+ * (`styles/raceInMotion.test.ts`); the gold line and the runner are drawn only where no text
  * stands, which Chrome is asked about (`geometry/raceInMotion.geometry.ts`).
  */
 :root {
@@ -27,10 +32,8 @@
   --race-header-bottom: #f2f5fb;
   --race-header-glow: #1657bd0f;
   --race-track: #1657bd2e;
-  --race-gold: #8e6c12;
-  --race-gold-glow: #c9a22e59;
-  --race-runner: #8e6c12;
-  --race-runner-body: #e7edf7;
+  --race-gold: #9a7b3a;
+  --race-runner: #9a7b3a73;
   --race-page-glow: #1657bd0d;
   --race-contour: #1657bd24;
   --race-route: #b8901f66;
@@ -41,11 +44,9 @@
     --race-header-top: #111b2f;
     --race-header-bottom: #0c1527;
     --race-header-glow: #31517b38;
-    --race-track: #31517b99;
-    --race-gold: #e3b341;
-    --race-gold-glow: #e3b34180;
-    --race-runner: #c9a24a;
-    --race-runner-body: #17243d;
+    --race-track: #8ea4c438;
+    --race-gold: #d8be84;
+    --race-runner: #d8be8442;
     --race-page-glow: #16346940;
     --race-contour: #31517b5c;
     --race-route: #d9ab2e24;
@@ -56,11 +57,9 @@
   --race-header-top: #111b2f;
   --race-header-bottom: #0c1527;
   --race-header-glow: #31517b38;
-  --race-track: #31517b99;
-  --race-gold: #e3b341;
-  --race-gold-glow: #e3b34180;
-  --race-runner: #c9a24a;
-  --race-runner-body: #17243d;
+  --race-track: #8ea4c438;
+  --race-gold: #d8be84;
+  --race-runner: #d8be8442;
   --race-page-glow: #16346940;
   --race-contour: #31517b5c;
   --race-route: #d9ab2e24;
@@ -84,95 +83,79 @@
     linear-gradient(180deg, var(--race-header-top), var(--race-header-bottom));
 }
 
-/* The track is one drawing 100rem wide, centred and never stretched: a wide screen sees all of it,
-   a telephone the gentle middle of it. Its height follows from its own proportions, and what runs
-   past the bottom of a short header is cut by the layer. */
+/* What stands beside the column of the page: the lanes, and the gold behind the logo and past the
+   navigation. The drawing is the reference's header, x from -100 to 1450 of its 1714px and y as it
+   is, placed so that the reference's middle (857) is the middle of this header, and narrowed
+   across to 0,951, the width of this portal's column against the reference's (1068 against 1123
+   between the logo and the last tool), so the gold behind the logo still ends at the logo and the
+   gold past the navigation still runs under the tools. Down it is not scaled: the two headers are
+   one height to within three pixels. A telephone sees the middle of it, which is the gentle crest
+   of the lanes. The strokes do not stretch with the drawing. */
 .race-header__track {
   position: absolute;
   top: 0;
   left: 50%;
-  width: max(100%, 100rem);
-  height: auto;
-  transform: translateX(-50%);
+  width: 92.125rem;
+  height: 8.875rem;
+  translate: -56.875rem 0;
   fill: none;
   stroke-linecap: round;
 }
 
 .race-header__lane {
-  stroke: var(--race-track);
   stroke-width: 1;
   vector-effect: non-scaling-stroke;
 }
 
-/* The strip the gold is drawn in: the whole width and one rem at the foot of the header, which is
-   the padding under the last line of the bar on a telephone and under the navigation from a
-   tablet, so no word stands in it at any width or text size. Stretched across (the drawing says
-   `preserveAspectRatio="none"`), so the line spans any screen; the stroke does not stretch with it.
-   The glow is the browser's own shadow around what is drawn, so it is not stretched either. */
-.race-header__strip,
+/* The three strengths the reference's lanes have. */
+.race-header__lane--mid {
+  opacity: 0.7;
+}
+
+.race-header__lane--faint {
+  opacity: 0.5;
+}
+
+.race-header__fade--lane stop {
+  stop-color: var(--race-track);
+}
+
+.race-header__fade--gold stop {
+  stop-color: var(--race-gold);
+}
+
+/* The line itself is as thin as the reference's, a pixel and a half and no glow: the reference
+   draws none, its pixels beside the line are darker than the ground, not lighter. Its colour is
+   the gradient the component names, so that its strength can follow the reference along it. */
+.race-header__gold {
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+
+/* What stands past the tools: the runner and the gold he runs up, in the reference's own pixels
+   (x from 1300 to 1580, where the runner's outline ends) and at its scale. Placed from the right
+   edge: as far in from it as the reference puts him from its tools, which is the gutter beside the
+   column less 145px, and never nearer the edge than a rem. The line runs on past the box to where
+   the reference lets it go, and the layer cuts it at the window. Not drawn until the gutter holds
+   him (the query at 80em below): mobile first, what a narrower screen does not draw is not drawn
+   to begin with. */
 .race-header__rise {
+  display: none;
   position: absolute;
-  bottom: 0;
+  top: 0;
+  right: max(var(--space-16), calc((100% - 1100px) / 2 - 145px));
+  width: 17.5rem;
+  height: 8.875rem;
   overflow: visible;
   fill: none;
   stroke-linecap: round;
-  filter: drop-shadow(0 0 0.1875rem var(--race-gold-glow));
 }
 
-.race-header__strip {
-  left: 0;
-  width: 100%;
-  height: 1rem;
-}
-
-/* The climb, drawn in pixels from 110px left of the runner's rear foot (both are placed from the
-   middle of the header, since that is where the column of the page is centred), and cut by the
-   layer wherever the window ends. */
-.race-header__rise {
-  left: 50%;
-  translate: 8.125rem 0;
-  width: 60rem;
-  height: 5rem;
-}
-
-.race-header__gold {
-  stroke: var(--race-gold);
-  stroke-width: 1.75;
-  vector-effect: non-scaling-stroke;
-}
-
-.race-header__gold--echo {
-  stroke-width: 1;
-  stroke-opacity: 0.5;
-}
-
-/* Mobile first: what a telephone does not draw is not drawn to begin with, and each wider screen
-   adds to it. Nothing is taken away at a width. */
-.race-header__lane--tablet,
-.race-header__lane--desktop,
-.race-header__rise,
+/* The runner, one thin outline with nothing inside it, the strength of the reference's. */
 .race-header__runner {
-  display: none;
-}
-
-/* The runner, one outline with a gold rim around a body in a quiet tone (`app/RaceInMotion.tsx`),
-   with his rear foot on the gold line where it starts to climb. He stands in the one part of a
-   desktop header that is empty from top to foot: past the last link of the navigation and short of
-   the tools of the bar. The column of the page is centred, so he is placed from the middle: 15rem
-   right of it for his rear foot, which on a 1000px screen is past the last link of the longest
-   navigation (the administration's) and short of the tools, and on a 2560px one the same. */
-.race-header__runner {
-  position: absolute;
-  left: 50%;
-  translate: 14.5rem 0;
-  bottom: var(--space-20);
-  width: 3.75rem;
-  height: auto;
-  fill: var(--race-runner-body);
   stroke: var(--race-runner);
-  stroke-width: 1.1;
+  stroke-width: 1.5;
   stroke-linejoin: round;
-  filter: drop-shadow(0 0 0.0625rem var(--race-gold-glow));
 }
 
 /* THE PAGE.
@@ -204,11 +187,6 @@
    same height and the same angle). Only where the browser knows masks: a browser that did not
    would paint the colour over the whole window. */
 @supports (mask-image: none) {
-  /* The gold line comes in out of nothing at the left, the way the reference's lines do. */
-  .race-header__strip {
-    mask-image: linear-gradient(90deg, transparent, black 12%);
-  }
-
   .race-page::before,
   .race-page::after {
     content: '';
@@ -237,13 +215,8 @@
   }
 }
 
-/* From where a telephone stops being one: a tablet gets the third lane, the larger contours and
-   the route. */
+/* From where a telephone stops being one: the larger contours and the route. */
 @media (min-width: 35em) {
-  .race-header__lane--tablet {
-    display: inline;
-  }
-
   .race-page::before {
     mask-size: 30rem auto, 46rem auto;
   }
@@ -253,17 +226,10 @@
   }
 }
 
-/* From where the navigation unfolds into a row (`app/Shell.css`): the whole track. */
-@media (min-width: 51.25em) {
-  .race-header__lane--desktop {
-    display: inline;
-  }
-}
-
-/* From a desktop: the runner and the slope he runs up. */
-@media (min-width: 62.5em) {
-  .race-header__rise,
-  .race-header__runner {
+/* From where the gutter beside the column holds the runner beside the tools, as the reference
+   draws him: at 1280px the gutter is a rem wider than he is. Narrower, he would stand on the tools. */
+@media (min-width: 80em) {
+  .race-header__rise {
     display: block;
   }
 }

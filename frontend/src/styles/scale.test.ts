@@ -73,6 +73,10 @@ const ALLOWED = new Map([
   ],
   ['components/DucatGallery.css | margin | -1px', 'a hairline pulled back over its own border'],
   ['app/Shell.css | left | -9999px', 'not a distance: the old way of putting a thing off the screen'],
+  [
+    'app/RaceInMotion.css | right | max(var(--space-16), calc((100% - 1100px) / 2 - 145px))',
+    'not a step: the runner of the reference stands as far in from the edge as the gutter beside the column (1100px, app/Shell.css) less the 145px the reference leaves between him and the last tool, owner 15.11.2026',
+  ],
   ['pages/Home.css | inset-inline-start | -0.2rem', 'a mark pulled out over the corner it sits on'],
   ['pages/Home.css | inset-block-start | -0.2rem', 'a mark pulled up over the corner it sits on'],
   [
@@ -371,6 +375,9 @@ describe('space and corners are chosen from the scale, not typed', () => {
       // Set by their own content, each said where it is written: the front page
       // at 860, the rights table and the Top liste at 900.
       860, 900, 1000,
+      // Where the gutter beside the column holds the runner of the header beside
+      // the tools, as the owner's reference draws him (app/RaceInMotion.css).
+      1280,
     ])
   })
 

@@ -21,8 +21,9 @@ import { bodyOf, closes, everyRule, ruleFor, ruleInMedia, rulesInMedia, unremark
 const FLOOR = 4.5
 
 /** What a mark meant to be seen owes its ground (WCAG 2.2 SC 1.4.11), taken here as the measure of
- *  the owner's „istaknute" (15.11.2026): the gold line and the runner's rim stand out of the header
- *  at least this far, in both themes. The faint gold they replaced stood at 1,45:1 and 1,39:1. */
+ *  the owner's „istaknute zlatne linije" (15.11.2026): where the gold line is strongest it stands
+ *  out of the header at least this far, in both themes, as the reference's does (its brightest pixel
+ *  is #d8be84 on #19212f). The faint gold of the first drawing stood at 1,45:1 and 1,39:1. */
 const MARK = 3
 
 function read(path: string): string {
@@ -102,9 +103,7 @@ describe('the colours of the decoration', () => {
     '--race-header-glow',
     '--race-track',
     '--race-gold',
-    '--race-gold-glow',
     '--race-runner',
-    '--race-runner-body',
     '--race-page-glow',
     '--race-contour',
     '--race-route',
@@ -131,11 +130,11 @@ describe('the text of the header, over the decoration', () => {
     it(`keeps 4,5:1 at both ends of the gradient and under every line that may cross it, ${theme}`, () => {
       const stops = ['--race-header-top', '--race-header-bottom'].map((name) => own(name, theme))
       const glow = own('--race-header-glow', theme)
-      /* The lanes are the one line that crosses the words. The gold line and the runner are bright
-         and are drawn only where no word stands, which is a question of where things are on the
-         screen and is asked of Chrome: `geometry/raceInMotion.geometry.ts`, „the bright gold and the
-         runner touch no text". Between the two guards every ground a word of the header stands on is
-         measured. */
+      /* The lanes are the one line that crosses the words. The gold line is bright where the
+         reference has it bright, and it and the runner are drawn only where no word stands, which is a
+         question of where things are on the screen and is asked of Chrome:
+         `geometry/raceInMotion.geometry.ts`, „the bright gold and the runner touch no text". Between
+         the two guards every ground a word of the header stands on is measured. */
       const lines = ['--race-track'].map((name) => own(name, theme))
 
       /* Each stop as it is, with the glow over it, and with each line over that. */
@@ -154,11 +153,14 @@ describe('the text of the header, over the decoration', () => {
   }
 
   for (const theme of ['light', 'dark'] as const) {
-    it(`draws the gold line and the runner's rim to be seen, at least 3:1 on the header, ${theme}`, () => {
+    it(`draws the gold line to be seen where it is strongest, at least 3:1 on the header, ${theme}`, () => {
       const glow = own('--race-header-glow', theme)
       const grounds = ['--race-header-top', '--race-header-bottom'].map((name) => over(glow, own(name, theme)))
 
-      for (const mark of ['--race-gold', '--race-runner']) {
+      /* Only the line. The runner is the reference's faint outline, at the strength measured off it
+         (about three tenths of the gold), and is not a mark meant to stand out; how he looks against
+         the reference has no floor here, it is compared by eye. */
+      for (const mark of ['--race-gold']) {
         const ink = own(mark, theme)
 
         for (const ground of grounds) {
@@ -227,37 +229,25 @@ describe('the layers stand out of the way', () => {
   })
 })
 
-const HIDDEN = '.race-header__lane--tablet, .race-header__lane--desktop, .race-header__rise, .race-header__runner'
-
 describe('what is drawn at which width', () => {
-  it('draws no runner and no climb on a telephone or a tablet, and draws both from 1000px', () => {
-    const hidden = written(HIDDEN)
+  it('draws the runner and the gold he runs up only from 1280px, where the gutter beside the column holds him', () => {
+    expect(written('.race-header__rise').getPropertyValue('display')).toBe('none')
+    expect(writtenIn('(min-width: 80em)', '.race-header__rise').getPropertyValue('display')).toBe('block')
 
-    expect(hidden.getPropertyValue('display')).toBe('none')
-    expect(writtenIn('(min-width: 62.5em)', '.race-header__rise, .race-header__runner').getPropertyValue('display')).toBe('block')
+    /* And it is shown nowhere else, so no narrower query can bring it back. */
+    const shown = everyRule(decoration, 'RaceInMotion.css').filter(
+      (rule) => /race-header__(rise|runner)/.test(rule.selectorText) && !['', 'none'].includes(rule.style.getPropertyValue('display')),
+    )
 
-    /* And each is shown nowhere else, so no narrower query can bring it back. */
-    for (const part of ['race-header__runner', 'race-header__rise']) {
-      const shown = everyRule(decoration, 'RaceInMotion.css').filter(
-        (rule) => rule.selectorText.includes(part) && !['', 'none'].includes(rule.style.getPropertyValue('display')),
-      )
-
-      expect(shown, part).toHaveLength(1)
-    }
+    expect(shown).toHaveLength(1)
   })
 
-  it('adds a lane from a tablet and another from where the navigation unfolds, and takes none away', () => {
-    const hidden = written(HIDDEN)
+  it('draws every lane and the gold beside the column at every width, the window cutting what it does not show', () => {
+    const hiding = everyRule(decoration, 'RaceInMotion.css').filter(
+      (rule) => /race-header__(track|lane|gold)/.test(rule.selectorText) && rule.style.getPropertyValue('display') !== '',
+    )
 
-    expect(hidden.getPropertyValue('display')).toBe('none')
-    expect(
-      ruleInMedia(decoration, '(min-width: 35em)', '.race-header__lane--tablet', 'RaceInMotion.css').getPropertyValue('display'),
-    ).toBe('inline')
-    expect(
-      ruleInMedia(decoration, '(min-width: 51.25em)', '.race-header__lane--desktop', 'RaceInMotion.css').getPropertyValue(
-        'display',
-      ),
-    ).toBe('inline')
+    expect(hiding.map((rule) => rule.selectorText)).toEqual([])
   })
 
   it('keeps the gold route off a telephone', () => {

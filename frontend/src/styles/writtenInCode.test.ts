@@ -328,14 +328,19 @@ describe('what a screen says in its own voice', () => {
          draws the second failure as a new element and not as the first one with its role turned
          back. A key built out of the data of a row is not a value written out and is not counted. */
       'key',
+      /* WHICH COLOUR A FADE OF THE HEADER IS DRAWN IN, 15.11.2026, and it is machinery: a prop of the
+         fades in `app/RaceInMotion.tsx` that becomes a class and never a word. It carries „gold" or
+         „lane", which a reader never meets: the drawing is hidden from him as a whole. Same kind of
+         name as `look` below. */
+      'kind',
       'leftId',
       'loading',
       'look',
       'name',
       /* HOW A DRAWING MEETS ITS BOX, 15.11.2026, and it is machinery rather than speech. It carries
          „none", which a reader never meets: the drawing is hidden from him as a whole. Written by
-         `app/RaceInMotion.tsx` alone, on the strip of gold at the foot of the header, which is
-         stretched to any width the window has. Same kind of name as `viewBox` below. */
+         `app/RaceInMotion.tsx` alone, on the lanes of the header, which are narrowed across to the
+         width of the portal's column and not down. Same kind of name as `viewBox` below. */
       'preserveAspectRatio',
       'r',
       /* WHICH OF THE THREE READERS A MENU IS DRAWN FOR, 08.11.2026, and it is machinery: a prop of

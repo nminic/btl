@@ -71,9 +71,11 @@ async function drawn(page: Page): Promise<{ lanes: number; gold: boolean; rise: 
     const shown = (element: Element) => getComputedStyle(element).display !== 'none'
     const boxed = (one: Element) => shown(one) && one.getBoundingClientRect().width > 0
     const lanes = [...document.querySelectorAll('.race-header__lane')].filter(shown).length
-    const gold = [...document.querySelectorAll('.race-header__strip')].some(boxed)
+    const gold = [...document.querySelectorAll('.race-header__track')].some(boxed)
     const rise = [...document.querySelectorAll('.race-header__rise')].some(boxed)
-    const runner = [...document.querySelectorAll('.race-header__runner')].some(boxed)
+    const runner = [...document.querySelectorAll('.race-header__runner')].some(
+      (one) => boxed(one) && one.closest('svg') !== null && shown(one.closest('svg') ?? one),
+    )
 
     return { lanes, gold, rise, runner }
   })
@@ -237,22 +239,26 @@ for (const at of WIDTHS) {
     const reads = at.width / (at.text / 100)
 
     expect(seen.gold).toBe(true)
-    expect(seen.lanes).toBe(reads >= 820 ? 4 : reads >= 560 ? 3 : 2)
-    expect(seen.rise).toBe(reads >= 1000)
-    expect(seen.runner).toBe(reads >= 1000)
+    expect(seen.lanes).toBe(5)
+    expect(seen.rise).toBe(reads >= 1280)
+    expect(seen.runner).toBe(reads >= 1280)
   })
+}
 
-  /* The gold line and the runner are drawn bright (owner, 15.11.2026: „lepe istaknute zlatne
-     linije"), too bright for a word to stand on them at 4,5:1. So they stand where no word does, and
-     that is asked here at every width the owner listed; `styles/raceInMotion.test.ts` measures every
-     ground a word may stand on, which is the rest. */
+/* The gold line is bright where the reference has it bright (owner, 15.11.2026: „lepe istaknute
+   zlatne linije"), too bright for a word to stand on it at 4,5:1, and the runner stands beside the
+   tools. So both stand where no word does, and that is asked here at every width the owner listed
+   and at 1280 at the browser's own text size, the narrowest screen the runner is drawn on;
+   `styles/raceInMotion.test.ts` measures every ground a word may stand on, which is the rest. */
+for (const at of [...WIDTHS, { width: 1280, text: 100 } satisfies At]) {
   test(`the bright gold and the runner touch no text at ${label(at)}`, async ({ open }) => {
     const { page } = await open(at, '/sr', 'header .brand', ANSWERS)
     const seen = await touching(page)
 
-    /* The brand, the tools and, on a desktop, every link of the navigation: something was read. */
+    /* The brand, the tools and, on a desktop, every link of the navigation: something was read, and
+       some of the gold is on the screen at every width. */
     expect(seen.words, 'the words of the header that were read').toBeGreaterThan(3)
-    expect(seen.points, 'the points of the gold that were read').toBeGreaterThan(400)
+    expect(seen.points, 'the points of the gold that were read').toBeGreaterThan(50)
     expect(seen.touches).toEqual([])
   })
 }

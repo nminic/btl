@@ -1,3 +1,4 @@
+import { useId } from 'react'
 import './RaceInMotion.css'
 
 /* „RACE IN MOTION" (owner, 14.11.2026, PDL „Vizuelno osveženje „Race in Motion""): running drawn
@@ -7,68 +8,89 @@ import './RaceInMotion.css'
  * Both are pictures that say nothing: hidden from the reader's tree (`aria-hidden`), never a
  * stop for the keyboard (`focusable="false"` is for the old Edge and IE, which made every SVG a
  * tab stop), and never in the way of the pointer (`pointer-events: none` in the sheet). Colour,
- * stroke and which lines are drawn at which width are the sheet's (`app/RaceInMotion.css`), so
- * the theme decides the colour once and these components know nothing about it.
+ * stroke and which part is drawn at which width are the sheet's (`app/RaceInMotion.css`), so the
+ * theme decides the colour once and these components know nothing about it.
+ *
+ * THE HEADER IS A COPY OF THE OWNER'S REFERENCE (15.11.2026: „Moze li da se iskopira verno ovo sto
+ * sam ti dao kao primer?", `btl-produkt/primeri/dizajn-race-in-motion/referenca.webp`). Every line,
+ * the runner and the strength of the gold along each line were traced out of that picture, so all
+ * numbers below are the reference's own pixels: x across its 1714px header, y down from its top. The
+ * sheet places them: what stands beside the column of the page (the lanes and the gold behind the
+ * logo and past the navigation) is drawn from the middle of the header, at the column's own scale,
+ * and what stands past the tools (the runner and the gold he runs up) is drawn from the right edge.
  */
 
-type Lane = { d: string; from: 'always' | 'tablet' | 'desktop' }
+type Span = { d: string; stops: readonly (readonly [number, number])[] }
 
-/** The lanes of a running track, drawn across the header. Mobile first: the two that are always
- *  drawn come first, the third joins from a tablet and the fourth from where the navigation
- *  unfolds, so a telephone gets two lines and the gold one and not the desktop scaled down. */
-const LANES: readonly Lane[] = [
-  { d: 'M-20 70C300 52 640 46 920 64S1400 122 1640 108', from: 'always' },
-  { d: 'M-20 82C320 64 660 58 940 76S1410 132 1640 120', from: 'always' },
-  { d: 'M-20 58C300 40 620 34 900 52S1400 112 1640 96', from: 'tablet' },
-  { d: 'M-20 94C340 76 680 70 960 88S1420 142 1640 132', from: 'desktop' },
+/** The faint blue lanes, two beside the logo and three past the navigation, in three strengths. */
+const LANES: readonly { d: string; strength: 'full' | 'mid' | 'faint' }[] = [
+  { d: 'M0 90.9C7.3 89.9 29.3 86.6 44 84.8C58.7 82.9 74 81.1 88 79.9C102 78.7 114.7 77.9 128 77.5C141.3 77.1 154.7 77.1 168 77.5C181.3 77.9 194.7 78.7 208 79.9C221.3 81 235.3 83 248 84.5C260.7 86 278 88.2 284 89', strength: 'mid' },
+  { d: 'M20 101.1C26.7 100.2 46.7 97.1 60 95.4C73.3 93.7 86.7 91.9 100 90.7C113.3 89.6 126.7 88.9 140 88.5C153.3 88.1 166.7 88 180 88.3C193.3 88.6 206 89.1 220 90.1C234 91.1 252.7 93.3 264 94.4C275.3 95.4 284 96 288 96.3', strength: 'faint' },
+  { d: 'M594 89.8C600.7 89.7 620.7 89.4 634 88.9C647.3 88.4 660.7 87.6 674 86.8C687.3 85.9 700.7 85 714 83.9C727.3 82.8 740.7 81.4 754 80.1C767.3 78.7 780.7 77.3 794 75.8C807.3 74.3 820.7 72.8 834 71.1C847.3 69.4 860.7 67.4 874 65.7C887.3 63.9 900.7 62.1 914 60.6C927.3 59 940.7 57.8 954 56.4C967.3 54.9 980.7 52.8 994 51.8C1007.3 50.9 1020.7 50.8 1034 50.6C1047.3 50.5 1060.7 50.4 1074 50.8C1087.3 51.1 1100.7 51.6 1114 52.5C1127.3 53.4 1140.7 54.6 1154 56.2C1167.3 57.8 1180.7 59.7 1194 62.1C1207.3 64.5 1220.7 67.5 1234 70.5C1247.3 73.5 1260.7 77 1274 79.9C1287.3 82.7 1300.7 85.5 1314 87.8C1327.3 90 1340.7 91.7 1354 93.3C1367.3 94.9 1384.7 96.5 1394 97.4C1403.3 98.2 1407.3 98.2 1410 98.3', strength: 'full' },
+  { d: 'M830 88.1C839.3 87.4 869.3 85.6 886 84.4C902.7 83.1 916 81.6 930 80.3C944 79.1 956.7 77.7 970 76.7C983.3 75.7 996.7 74.9 1010 74.3C1023.3 73.7 1036.7 73.1 1050 73C1063.3 72.8 1076.7 73 1090 73.5C1103.3 74.1 1116.7 74.8 1130 76.1C1143.3 77.4 1156.7 78.9 1170 81.3C1183.3 83.6 1193 86.2 1210 90.1C1227 94.1 1257 101.7 1272 105.1C1287 108.5 1295.3 109.5 1300 110.4', strength: 'mid' },
+  { d: 'M1286 97.6C1293.3 98.6 1315.3 101.6 1330 103.4C1344.7 105.2 1362 107.4 1374 108.5C1386 109.7 1397.3 110.1 1402 110.4', strength: 'faint' },
 ]
 
-/** The gold line (owner, 15.11.2026: „lepe istaknute zlatne linije"), bright, and for that reason
- *  drawn only where no word of the header stands. On every screen it runs along the foot of the
- *  header, in a strip 1rem tall stretched to the whole width, whose units across are thousandths of
- *  the width and whose units down are sixteenths of a rem: between a quarter and three quarters of a
- *  rem above the foot, which is the padding under the last line of the bar on a telephone and under
- *  the navigation from a tablet. Over the middle of a desktop it lies at about ten pixels up, where
- *  the runner's rear foot comes down on it. `geometry/raceInMotion.geometry.ts` holds that it
- *  touches no text at any width. */
-const GOLD = 'M-10 12C150 10.5 300 8.5 450 8S560 6.4 640 6.2S820 6 880 7.4S960 10.4 1010 10.6'
+/** A lane comes in out of nothing and goes back into it. */
+const LANE_FADE: Span['stops'] = [
+  [0, 0],
+  [0.15, 1],
+  [0.85, 1],
+  [1, 0],
+]
 
-/** A thinner companion beside it, crossing it twice, the way the reference draws its lines in
- *  pairs. Drawn at half the strength of the line it follows. */
-const GOLD_ECHO = 'M-10 9C200 12.2 420 13 620 11.2S860 8.4 1010 9.8'
+/** The one gold line, where the reference lets it be seen: behind the logo, over the end of the
+ *  navigation, and up under the runner. Between those it fades to nothing, so it is drawn as the
+ *  three spans it is seen in, each with the strength it has in the reference at every tenth of its
+ *  length. */
+const GOLD_LOGO: Span = { d: 'M66 68.8C70 68.5 82 67.5 90 66.9C98 66.4 106 65.9 114 65.6C122 65.3 130 64.9 138 64.8C146 64.8 154 64.8 162 65.1C170 65.3 178 65.9 186 66.4C194 67 202 67.6 210 68.4C218 69.2 226 70.2 234 71.3C242 72.4 250 73.6 258 74.9C266 76.2 274 77.7 282 79.2C290 80.8 300 83 306 84.2C312 85.4 316 86 318 86.3', stops: [[0, 0], [0.1, 0.28], [0.2, 0.43], [0.3, 0.71], [0.4, 0.85], [0.5, 0.85], [0.6, 0.85], [0.7, 0.68], [0.8, 0.43], [0.9, 0.23], [1, 0]] }
+const GOLD_NAVIGATION: Span = { d: 'M982 63.9C986 63.8 998 63.2 1006 62.9C1014 62.7 1022 62.6 1030 62.5C1038 62.4 1046 62.4 1054 62.4C1062 62.5 1070 62.5 1078 62.7C1086 63 1094 63.5 1102 64C1110 64.5 1118 65 1126 65.8C1134 66.5 1142 67.4 1150 68.4C1158 69.3 1166 70.4 1174 71.7C1182 73 1190 74.4 1198 76C1206 77.5 1214.5 79.5 1222 81.1C1229.5 82.7 1239.5 84.8 1243 85.6', stops: [[0, 0], [0.1, 0.33], [0.2, 0.55], [0.3, 0.82], [0.4, 1], [0.5, 1], [0.6, 1], [0.7, 0.92], [0.8, 0.58], [0.9, 0.33], [1, 0]] }
+const GOLD_RUNNER: Span = { d: 'M1394 128.7C1398 128.4 1410 127.6 1418 126.8C1426 125.9 1434 124.8 1442 123.6C1450 122.4 1458 121.1 1466 119.6C1474 118.1 1482 116.4 1490 114.6C1498 112.8 1506 110.8 1514 108.8C1522 106.8 1530 104.6 1538 102.7C1546 100.7 1554 98.8 1562 97.1C1570 95.4 1578 93.9 1586 92.5C1594 91.2 1602 90.1 1610 89.2C1618 88.3 1626 87.5 1634 87.1C1642 86.6 1650 86.5 1658 86.6C1666 86.6 1674 87 1682 87.4C1690 87.8 1701 88.8 1706 89.2C1711 89.6 1711 89.5 1712 89.6', stops: [[0, 0], [0.1, 0.18], [0.2, 0.35], [0.3, 0.58], [0.4, 0.85], [0.5, 0.85], [0.6, 0.85], [0.7, 0.66], [0.8, 0.54], [0.9, 0.29], [1, 0]] }
 
-/** Where the line climbs, from a desktop: the reference's runner runs up a gold slope, and so does
- *  this one. Drawn in pixels and never stretched, leaving the line above at its own height, climbing
- *  under the runner (his rear foot at 110 across, 22 up) and on into the empty corner under the
- *  tools of the bar, never higher than five rem above the foot of the header, which is below the
- *  tools at every width it is drawn at. */
-const GOLD_RISE = 'M0 70C40 70 70 66 120 56S240 30 360 21S640 11 960 9'
+/** The runner, one thin outline and nothing inside it, traced from the reference. */
+const RUNNER = 'M1557.9 21.5C1557.2 21.6 1556.4 21.9 1555.7 22.1C1554.9 22.4 1554.2 22.5 1553.6 22.9C1553 23.3 1552.6 24 1552 24.6C1551.4 25.1 1550.6 25.8 1550.1 26.2C1549.6 26.7 1548.9 26.9 1548.7 27.5C1548.5 28.1 1549.5 29.2 1549.1 30C1548.8 30.7 1547.6 31.7 1546.7 32.1C1545.9 32.5 1544.8 32.2 1543.9 32.3C1543 32.3 1542.2 32.3 1541.4 32.2C1540.5 32.2 1539.7 32.2 1538.9 32.2C1538.1 32.3 1537.2 32.1 1536.5 32.3C1535.8 32.4 1535.1 32.5 1534.6 32.9C1534 33.3 1533.6 33.9 1533.2 34.5C1532.7 35.1 1532.2 35.9 1531.8 36.6C1531.4 37.2 1530.9 37.9 1530.6 38.6C1530.2 39.4 1529.8 40.1 1529.5 40.8C1529.1 41.6 1528.8 42.3 1528.4 43.1C1528.1 43.9 1527.9 44.8 1527.5 45.6C1527 46.3 1526.1 46.9 1525.6 47.5C1525.1 48 1524.5 48.4 1524.3 48.9C1524.2 49.4 1524.5 50.1 1524.8 50.7C1525.1 51.2 1525.4 51.9 1525.9 52.2C1526.4 52.5 1527.1 52.5 1527.6 52.5C1528.2 52.4 1528.9 52.1 1529.2 51.7C1529.6 51.2 1529.5 50.4 1529.7 49.7C1529.9 48.9 1530 48 1530.4 47.2C1530.7 46.3 1531.2 45.5 1531.7 44.8C1532.2 44.1 1532.9 43.5 1533.4 42.8C1533.9 42.2 1534.2 41.4 1534.8 40.7C1535.5 40 1536.2 39.1 1537.1 38.8C1538 38.5 1539.5 38.5 1540.4 39C1541.2 39.5 1541.9 40.8 1542.1 41.7C1542.3 42.7 1541.8 43.7 1541.6 44.6C1541.4 45.5 1541.1 46.2 1540.8 47C1540.6 47.8 1540.4 48.6 1540.2 49.4C1540 50.2 1539.8 51.1 1539.4 51.9C1539 52.7 1538.6 53.7 1538.1 54.4C1537.5 55.1 1536.6 55.6 1536 56.1C1535.3 56.6 1534.6 56.9 1534 57.4C1533.5 57.9 1533.1 58.6 1532.8 59.3C1532.4 59.9 1532 60.6 1531.7 61.3C1531.5 62.1 1531.4 62.8 1531.2 63.6C1531.1 64.5 1531 65.4 1530.7 66.2C1530.4 67 1529.9 67.9 1529.5 68.6C1529 69.4 1528.5 70 1528.1 70.7C1527.6 71.4 1527.3 72.2 1526.9 72.9C1526.5 73.6 1526 74.2 1525.6 75C1525.2 75.7 1525.1 76.6 1524.6 77.4C1524.1 78.1 1523.4 78.9 1522.7 79.4C1521.9 80 1521.1 80.3 1520.4 80.7C1519.6 81.2 1518.9 81.6 1518.3 82C1517.6 82.5 1516.9 82.9 1516.3 83.4C1515.7 83.9 1515.1 84.5 1514.5 85C1514 85.6 1513.5 86.2 1513 86.8C1512.5 87.5 1512.1 88.1 1511.6 88.8C1511.2 89.5 1510.8 90.2 1510.4 91C1509.9 91.7 1509.6 92.5 1509 93.2C1508.4 93.9 1507.7 94.7 1507 95.2C1506.2 95.7 1505.2 95.9 1504.4 96.2C1503.6 96.4 1502.7 96.2 1502.2 96.5C1501.7 96.8 1501.4 97.3 1501.3 97.9C1501.2 98.5 1501.4 99.2 1501.5 100C1501.6 100.7 1502.1 101.6 1502.2 102.4C1502.3 103.3 1502.2 104.2 1502.2 105.1C1502.3 105.9 1502.3 106.8 1502.3 107.7C1502.2 108.5 1502 109.5 1501.8 110.2C1501.6 110.9 1501.1 111.7 1501.3 111.9C1501.4 112.2 1501.9 112 1502.5 111.9C1503.1 111.8 1504 111.6 1504.7 111.4C1505.5 111.3 1506.4 111 1507.1 110.8C1507.9 110.5 1508.7 110.4 1509.3 110.2C1509.8 110 1510.5 109.7 1510.4 109.5C1510.3 109.2 1509.4 109.3 1508.8 108.8C1508.2 108.4 1507.1 107.6 1506.8 106.7C1506.5 105.9 1506.6 104.6 1506.8 103.6C1507.1 102.7 1507.7 102 1508.1 101.2C1508.6 100.4 1509.1 99.8 1509.5 99.1C1510 98.3 1510.4 97.5 1510.9 96.9C1511.5 96.2 1512.1 95.5 1512.8 95C1513.5 94.4 1514.2 94 1514.9 93.5C1515.6 93 1516.2 92.5 1516.9 92C1517.5 91.5 1518.2 91.1 1518.8 90.5C1519.4 90 1520 89.4 1520.6 88.8C1521.2 88.2 1521.8 87.5 1522.5 87C1523.2 86.5 1524.1 86.2 1524.8 85.8C1525.6 85.4 1526.3 85 1527 84.6C1527.6 84.2 1528.3 83.8 1528.9 83.3C1529.5 82.8 1530 82.1 1530.6 81.5C1531.2 80.9 1531.9 80.4 1532.5 79.8C1533.1 79.3 1533.7 78.7 1534.3 78.1C1534.9 77.5 1535.5 76.9 1536 76.3C1536.6 75.7 1537.2 75.2 1537.7 74.6C1538.3 73.9 1538.7 73.1 1539.4 72.5C1540.1 71.9 1541.1 71.3 1542 71.1C1542.9 71 1543.8 71.5 1544.7 71.6C1545.6 71.7 1546.4 71.5 1547.3 71.7C1548.2 71.9 1549.5 72.2 1550.1 72.9C1550.8 73.6 1551.2 74.9 1551.2 75.8C1551.3 76.8 1550.8 77.7 1550.6 78.6C1550.4 79.4 1550.1 80.2 1549.8 81C1549.6 81.8 1549.3 82.6 1549 83.4C1548.7 84.2 1548.5 85.1 1548 85.9C1547.6 86.7 1547 87.4 1546.4 88C1545.9 88.7 1545.2 89.1 1544.8 89.7C1544.4 90.3 1544.3 91 1544.3 91.6C1544.2 92.3 1544.2 93 1544.5 93.5C1544.9 94.1 1545.9 94.4 1546.4 95.1C1546.8 95.9 1547.2 97.3 1547.1 98.2C1546.9 99 1545.8 99.7 1545.5 100.2C1545.3 100.7 1545.2 101.2 1545.5 101.3C1545.8 101.4 1546.5 100.9 1547.2 100.7C1547.9 100.5 1548.8 100.3 1549.6 100.2C1550.5 100 1551.2 99.8 1552.1 99.6C1552.9 99.4 1553.7 99 1554.5 98.9C1555.3 98.7 1556.2 98.9 1556.7 98.7C1557.2 98.5 1557.6 98.1 1557.5 97.8C1557.5 97.4 1556.9 97 1556.4 96.6C1555.8 96.1 1555 95.6 1554.4 95.1C1553.8 94.5 1553.1 93.8 1552.6 93C1552.1 92.2 1551.5 91.3 1551.4 90.4C1551.2 89.5 1551.2 88.3 1551.5 87.4C1551.8 86.6 1552.6 85.9 1553.1 85.2C1553.6 84.5 1554 83.8 1554.5 83.1C1555 82.4 1555.6 81.8 1556.1 81.2C1556.6 80.5 1557 79.8 1557.5 79.1C1558 78.4 1558.6 77.8 1559.1 77.2C1559.6 76.5 1560 75.8 1560.5 75.1C1560.9 74.5 1561.5 73.8 1561.8 73.1C1562.2 72.5 1562.5 71.8 1562.6 71.1C1562.7 70.5 1562.6 69.8 1562.4 69.2C1562.1 68.6 1561.5 68.1 1561 67.5C1560.5 67 1559.9 66.5 1559.2 66.1C1558.6 65.7 1557.8 65.4 1557.1 65C1556.4 64.6 1555.6 64.3 1554.9 63.9C1554.1 63.5 1553.4 63.2 1552.6 62.8C1551.8 62.3 1550.8 62.1 1550.2 61.4C1549.5 60.6 1548.7 59.5 1548.7 58.5C1548.7 57.6 1549.6 56.1 1550.4 55.6C1551.2 55.1 1552.5 55.3 1553.4 55.3C1554.3 55.3 1555.1 55.6 1555.9 55.6C1556.7 55.7 1557.4 55.7 1558.1 55.6C1558.9 55.4 1559.6 55 1560.3 54.8C1561.1 54.5 1561.9 54.1 1562.6 53.8C1563.4 53.5 1564.2 53.2 1565 52.9C1565.7 52.6 1566.5 52.2 1567.3 51.9C1568.1 51.6 1568.9 51.4 1569.7 51.1C1570.4 50.9 1571.2 50.8 1571.7 50.4C1572.2 50 1572.5 49.4 1572.6 48.9C1572.7 48.3 1572.6 47.6 1572.3 47.1C1572.1 46.5 1571.6 45.9 1571.1 45.7C1570.6 45.5 1570 45.6 1569.4 45.7C1568.8 45.9 1568.1 46.5 1567.5 46.9C1566.8 47.3 1566.1 47.9 1565.3 48.3C1564.4 48.7 1563.4 49.3 1562.5 49.2C1561.5 49.2 1560.1 48.8 1559.5 48.1C1558.8 47.4 1558.8 46.1 1558.6 45.1C1558.5 44.2 1558.6 43.4 1558.6 42.5C1558.6 41.6 1558.5 40.8 1558.6 39.9C1558.8 39 1558.9 37.9 1559.3 37.1C1559.7 36.3 1560.6 35.8 1561.1 35.2C1561.6 34.5 1562 33.8 1562.3 33.2C1562.7 32.5 1563.1 31.8 1563.3 31.1C1563.5 30.4 1563.5 29.6 1563.6 28.8C1563.6 28.1 1563.7 27.3 1563.6 26.5C1563.5 25.8 1563.3 25.2 1563 24.6C1562.6 24 1562 23.5 1561.4 23C1560.9 22.5 1560.4 21.8 1559.8 21.6C1559.2 21.3 1558.6 21.4 1557.9 21.5Z'
 
-/** The runner (owner, 15.11.2026: „nema veze sa trkacem koji sam ti dao kao primer"): a figure in a
- *  sprint, leaning into the run, the rear arm swung back and the front knee up, drawn as ONE closed
- *  outline in the reference's manner, a gold rim around a body in a quiet tone, never as strokes.
- *  Built from tapered limbs joined into one silhouette and traced; the box is cut to the figure, so
- *  its foot is the bottom of the drawing less two units. */
-const RUNNER =
-  'M66.9 5.8C67.7 5.6 68.5 5.8 69.2 6.1C69.9 6.4 70.6 7 71.1 7.6C71.6 8.2 71.8 8.8 72 9.4C72.2 10.1 72.4 10.7 72.2 11.5C72 12.3 71.8 13.4 71.1 14.4C70.4 15.4 68.9 15.8 67.9 17.4C66.9 19 65.5 22.1 65 23.8C64.5 25.5 64.8 26.1 64.9 27.6C65 29.1 65.3 31.8 65.6 32.8C65.8 33.8 66.1 33.5 66.4 33.6C66.7 33.7 66 34.3 67.3 33.5C68.6 32.7 72.9 29.6 74.3 29C75.7 28.4 75.6 29.4 75.9 29.8C76.2 30.2 76.2 30.8 76.1 31.2C76 31.6 77.2 30.8 75.3 32.4C73.3 33.9 66.5 39.2 64.4 40.5C62.3 41.8 63.2 40.6 62.6 40C62 39.4 61.5 37.4 61.1 36.8C60.7 36.2 60.6 36.3 60.4 36.2C60.2 36.1 60.6 35.1 59.7 36.4C58.8 37.6 55.8 42.2 54.9 43.7C54 45.2 54.4 44.6 54.6 45.1C54.8 45.6 54.1 45.6 55.9 46.5C57.7 47.4 63.5 49.7 65.4 50.7C67.3 51.8 67.2 52 67.5 52.8C67.8 53.6 68.4 52 67.5 55.3C66.6 58.5 63 69.2 62.1 72.3C61.2 75.4 61.5 73.1 62.4 73.9C63.2 74.8 66.4 76.6 67.2 77.4C68 78.2 67.5 78.6 67.3 78.9C67.1 79.2 66.8 79.6 65.8 79.4C64.8 79.2 62.7 77.9 61.5 77.6C60.3 77.3 59.4 77.9 58.6 77.7C57.9 77.5 57 77.5 57 76.3C57 75.1 58.4 72 58.6 70.3C58.8 68.6 58.2 68.3 58.4 66.3C58.6 64.3 59.5 60.1 59.7 58.5C59.9 56.9 59.9 57.2 59.4 56.7C58.9 56.2 58.7 56.1 57 55.7C55.3 55.3 50.6 54.4 49 54.4C47.4 54.4 49.4 53.2 47.2 55.7C45.1 58.2 40.5 64.4 36.1 69.3C31.7 74.2 23.2 82.1 20.6 85C18 87.9 19.9 85.6 20.3 86.8C20.7 88 22.5 91.1 22.8 92.3C23.1 93.5 22.6 93.5 22.3 93.7C22 93.9 21.6 94.4 20.9 93.7C20.1 93 18.7 90.4 17.8 89.3C16.9 88.2 15.9 87.8 15.4 87.1C14.9 86.4 14 87.1 15.1 85.4C16.2 83.7 20.2 79.5 22.2 76.8C24.2 74.1 25.6 71.3 26.9 69.5C28.2 67.7 27.9 69.9 30.2 66.2C32.5 62.5 38.4 51 40.8 47.1C43.2 43.2 42.8 45.7 44.4 43.1C46 40.5 49.3 33.5 50.3 31.3C51.3 29.1 50.4 30.5 50.2 30.2C50 29.9 50.3 29.6 49.3 29.7C48.3 29.8 46.2 28.9 44.2 30.7C42.2 32.5 38.8 38.8 37.3 40.3C35.8 41.8 35.6 39.9 35.2 39.6C34.8 39.3 34.7 39 34.7 38.5C34.7 38 33.8 38.9 35 36.9C36.2 34.9 38.7 28.9 41.8 26.7C44.9 24.5 51 24.4 53.4 23.5C55.8 22.6 55.3 21.9 56.4 21.3C57.5 20.7 58.8 20.8 59.9 19.8C61 18.8 62.6 16.6 63 15.3C63.4 14 62.5 13 62.5 11.9C62.5 10.8 62.7 9.7 63 8.9C63.3 8.1 63.8 7.5 64.4 7C65.1 6.5 66.1 6 66.9 5.8Z'
+function Fade({ id, stops, kind }: { id: string; stops: Span['stops']; kind: 'gold' | 'lane' }) {
+  return (
+    <linearGradient id={id} className={`race-header__fade race-header__fade--${kind}`}>
+      {stops.map(([offset, opacity]) => (
+        <stop key={offset} offset={offset} stopOpacity={opacity} />
+      ))}
+    </linearGradient>
+  )
+}
 
 export function HeaderDecoration() {
+  /* The gradients are named, and a name in a document has to be one: React's own id, with the
+     characters a URL fragment would have to escape taken out. */
+  const id = useId().replaceAll(/[^a-zA-Z0-9]/g, '')
+  const at = (name: string) => `race-${id}-${name}`
+
   return (
     <div className="race-header" aria-hidden="true">
-      <svg className="race-header__track" viewBox="0 0 1600 160" focusable="false">
+      <svg className="race-header__track" viewBox="-100 0 1550 142" preserveAspectRatio="none" focusable="false">
+        <defs>
+          <Fade id={at('lane')} stops={LANE_FADE} kind="lane" />
+          <Fade id={at('logo')} stops={GOLD_LOGO.stops} kind="gold" />
+          <Fade id={at('navigation')} stops={GOLD_NAVIGATION.stops} kind="gold" />
+        </defs>
         {LANES.map((lane) => (
-          <path key={lane.d} className={`race-header__lane race-header__lane--${lane.from}`} d={lane.d} />
+          <path
+            key={lane.d}
+            className={`race-header__lane race-header__lane--${lane.strength}`}
+            stroke={`url(#${at('lane')})`}
+            d={lane.d}
+          />
         ))}
+        <path className="race-header__gold" stroke={`url(#${at('logo')})`} d={GOLD_LOGO.d} />
+        <path className="race-header__gold" stroke={`url(#${at('navigation')})`} d={GOLD_NAVIGATION.d} />
       </svg>
-      <svg className="race-header__strip" viewBox="0 0 1000 16" preserveAspectRatio="none" focusable="false">
-        <path className="race-header__gold race-header__gold--echo" d={GOLD_ECHO} />
-        <path className="race-header__gold" d={GOLD} />
-      </svg>
-      <svg className="race-header__rise" viewBox="0 0 960 80" focusable="false">
-        <path className="race-header__gold" d={GOLD_RISE} />
-      </svg>
-      <svg className="race-header__runner" viewBox="13 4 66 92" focusable="false">
-        <path d={RUNNER} />
+      <svg className="race-header__rise" viewBox="1300 0 280 142" focusable="false">
+        <defs>
+          <Fade id={at('runner')} stops={GOLD_RUNNER.stops} kind="gold" />
+        </defs>
+        <path className="race-header__gold" stroke={`url(#${at('runner')})`} d={GOLD_RUNNER.d} />
+        <path className="race-header__runner" d={RUNNER} />
       </svg>
     </div>
   )
