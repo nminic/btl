@@ -120,14 +120,14 @@ class TheWrittenPagesNameTheRookiesWithTheLetterOfTheGenderTest extends Database
 	 * two documents keep the day of their own last change, and the day V96 gave the rulebook stands on it nowhere.
 	 */
 	@Test
-	void theRulebookIsSignedOffOnTheFourteenthOfNovemberAndTheOtherTwoKeepTheirDays() {
+	void theRulebookIsSignedOffOnTheFifteenthOfNovemberAndTheOtherTwoKeepTheirDays() {
 		for (String language : List.of("sr", "en")) {
 			boolean serbian = language.equals("sr");
 			String mark = serbian ? "Poslednja izmena: " : "Last amended: ";
 
 			assertThat(bodyOf(RULEBOOK, 19, language)).as("the %s rulebook ends with its sign-off", language)
-					.endsWith(mark + "14.11.2026.")
-					.containsOnlyOnce(mark).doesNotContain("12.11.2026").doesNotContain("11.11.2026");
+					.endsWith(mark + "15.11.2026.")
+					.containsOnlyOnce(mark).doesNotContain("14.11.2026").doesNotContain("12.11.2026").doesNotContain("11.11.2026");
 			assertThat(bodyOf("politika-privatnosti", 7, language)).as("the %s policy keeps its day", language)
 					.endsWith(mark + "11.11.2026.");
 			assertThat(bodyOf("uslovi-koriscenja", 11, language)).as("the %s terms keep their day", language)
