@@ -235,7 +235,12 @@ public final class WhatARaceCarries {
 	 * <p><b>PDL P4, the owner's decision of 20.09.2026, in his own words:</b> „Upisao bih nule, a
 	 * onda kad jednog dana promenim, portal treba da preracuna i bodove osim ako je sezona
 	 * zamrznuta." The journal names the climb and the fall, and adds in its own wording that the
-	 * recount „mora da proveri da li je sezona zamrznuta pre nego što išta promeni".
+	 * recount „mora da proveri da li je sezona zamrznuta pre nego što išta promeni". Both of those
+	 * frozen clauses were overturned by the owner on 15.11.2026 (PDL P4, „[ODLUKA 15.11.2026,
+	 * vlasnik, menja tačku (2)]"): „Rezultat na trci zadate dužine uvek nosi dužinu, uspon i spust
+	 * svoje trke i bodove izračunate iz njih, i u istoriji pre 2027 i u zamrznutoj sezoni", while
+	 * „Zamrznuta tabela i rang lista ostaju konstante kakve su zamrznute". This method was never
+	 * where the season was asked; {@code RaceWriteApi} says what the season still decides.
 	 *
 	 * <p><b>That every OTHER figure a race fixes recounts too is derived and not his
 	 * sentence</b> - the length on a race of a length and the limit on a race to a limit. It is

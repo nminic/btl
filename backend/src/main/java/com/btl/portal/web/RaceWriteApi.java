@@ -128,7 +128,9 @@ import java.util.Optional;
  * database by a script, which is how the calendar and the history are loaded (ADL, the
  * derivation of 20.09.2026 that historical data does not go into a migration), reaches no
  * counted run; whoever writes such a script recounts in it or sends the change through this
- * route.
+ * route. Since the owner's decision of 15.11.2026 (PDL P4: „Rezultat na trci zadate dužine
+ * uvek nosi dužinu, uspon i spust svoje trke") that holds for a race of every year, the history
+ * before 2027 and a frozen season included, and not only for a season still counted.
  * </ul>
  *
  * <p><b>Deleting is ONE statement, and that is a decision rather than an omission.</b>
@@ -399,8 +401,9 @@ class RaceWriteApi {
 	 *
 	 * <p><b>The calendar may be changed backwards</b> (owner, 31.07.2026), so nothing here
 	 * refuses on what day it is. A race run in 2019 is edited exactly like one to be run next
-	 * spring. What day it is decides one thing only, and it is not whether the race may be
-	 * written: whether the runs counted at it are counted again (below).
+	 * spring. What day it is decides one thing only, and it is neither whether the race may be
+	 * written nor, since 15.11.2026, whether the runs counted at it are counted again: whether a
+	 * correction asks about the beginners' category of the members who ran it (below).
 	 *
 	 * <p><b>The results travel with it and nothing here says so.</b>
 	 * {@code result_race_fk} and {@code result_submission_race_fk} are both
@@ -418,7 +421,9 @@ class RaceWriteApi {
 	 *
 	 * <p><b>AND WHAT THE RACE FIXES TRAVELS TO EVERY RUN ALREADY COUNTED AT IT.</b> PDL P4, the
 	 * owner's decision of 20.09.2026, in his own words: „Upisao bih nule, a onda kad jednog dana
-	 * promenim, portal treba da preracuna i bodove osim ako je sezona zamrznuta." So once the
+	 * promenim, portal treba da preracuna i bodove osim ako je sezona zamrznuta." Its last
+	 * clause, „osim ako je sezona zamrznuta", no longer holds: the owner's decision of 15.11.2026
+	 * below recounts a frozen season too and keeps its tables as they froze. So once the
 	 * race is written, every row of {@code result} at it is counted again - whoever's it is, a
 	 * member whose fee has lapsed and a member with two runs at one race among them - through the
 	 * two homes every other road already uses: {@link WhatARaceCarries#figuresOf} says which
@@ -456,14 +461,22 @@ class RaceWriteApi {
 	 * race as it stands then, and the moderator may set the runner's figures himself
 	 * ({@code VerificationWriteApi}); that „odobrene rezultate" leaves the waiting ones out is
 	 * my reading.
-	 * <li><b>A race of a season that has frozen, or of a year before the first season, counts
-	 * nothing again:</b> „U zamrznutoj sezoni i u istoriji pre 2027 izmena mera trke ne menja
-	 * ništa, ni profil ni tabelu; pojedinačno se ispravlja zahtevom „Zatraži ispravku"." The
-	 * tables of a frozen season are computed live off these very rows until something writes
-	 * the snapshot V17 provides for, so this is also what keeps them still. A year before
-	 * {@link SeasonClock#FIRST_SEASON} is no season at all (PDL P12), which is why it is asked
-	 * beside {@link SeasonClock#isFrozen}: that alone would have held 2026 apart from 2025
-	 * until 1 January 2027 at 16:00.
+	 * <li><b>The second answer of 10.10.2026, that a frozen season and the history before 2027
+	 * count nothing again, was OVERTURNED by the owner on 15.11.2026</b> (PDL P4, the same
+	 * section, „[ODLUKA 15.11.2026, vlasnik, menja tačku (2)]"), in his own words: „Promenio sam
+	 * vertikalne nagibe na trci od 5km. Zasto su Kalini ostali stari parametri u rezultatu! Takva
+	 * trka vise ne postoji, ovo ne sme da se desava nikad i nigde na sajtu". In the journal's
+	 * wording: „Rezultat na trci zadate dužine uvek nosi dužinu, uspon i spust svoje trke i bodove
+	 * izračunate iz njih, i u istoriji pre 2027 i u zamrznutoj sezoni; izmena mera trke zato uvek
+	 * preračunava njene rezultate. Zamrznuta tabela i rang lista ostaju konstante kakve su
+	 * zamrznute." So the year of the race decides nothing about WHETHER its runs are counted
+	 * again. The tables stay still without asking it here: a season whose freeze has been written
+	 * down ({@code season_frozen}) is drawn from its snapshot ({@link FrozenSeasonApi}, V84) and its
+	 * threshold is read off {@code season_points_at_freeze} ({@link BestOfficialSeason}), and
+	 * nothing below writes a table whose name begins with {@code season_}. That a race to a limit
+	 * of a frozen season takes its corrected limit onto its runs too is derived from „izmena mera
+	 * trke zato uvek preračunava njene rezultate", which names no kind, and is not his sentence.
+	 * What the year still decides is whether the beginners' category is asked (the next point).
 	 * <li><b>A member whose run it counted again is told, in his inbox and never by post:</b>
 	 * „Član kome izmena trke promeni rezultat dobija red u sandučetu sa starom i novom
 	 * vrednošću, i poruku o početničkoj kategoriji kad joj preračun zatvori ili ponovo otvori
@@ -472,6 +485,14 @@ class RaceWriteApi {
 	 * changed. And one line per member whose beginners' category for the season after the
 	 * race's was open before the recount and is closed after it, or the other way round - the
 	 * line an approval writes when it closes one (27.09.2026), here in both directions.
+	 * <b>A race of a season that has frozen asks nothing about the category</b>, which is the line
+	 * {@code ResultsByTheLeagueApi#asksTheCategory} keeps for the league's entry, change and
+	 * deletion in such a season, and asked of the clock for the same reason: the right of the
+	 * season after it is counted at the freeze (PDL, owner, 30.10.2026, „Prag od 12 bodova koji
+	 * zatvara početničku broji bodove sezone u trenutku njenog zamrzavanja"), so nothing written
+	 * into the season afterwards moves it. A year before {@link SeasonClock#FIRST_SEASON} is asked
+	 * like any season not frozen and answers the same both times, since no year before the first
+	 * season counts towards the category ({@link BestOfficialSeason}).
 	 * </ul>
 	 *
 	 * <p><b>A run that is still waiting, and a submission already decided, are not rows of
@@ -680,12 +701,10 @@ class RaceWriteApi {
 		   where there is none, the two cannot be told apart and nothing here tries. */
 		int season = before.day().getYear();
 
-		/* PDL P4, the owner's answer of 10.10.2026: a frozen season and a year before the first
-		   one count nothing again, profile included. */
-		if (season < SeasonClock.FIRST_SEASON || SeasonClock.isFrozen(season, now())) {
-			return;
-		}
-
+		/* NOT ASKED WHETHER THE SEASON HAS FROZEN OR IS BEFORE THE FIRST ONE, and that is the
+		   owner's decision of 15.11.2026 (PDL P4): „Rezultat na trci zadate dužine uvek nosi dužinu,
+		   uspon i spust svoje trke i bodove izračunate iz njih, i u istoriji pre 2027 i u zamrznutoj
+		   sezoni". The season decides only whether the category is asked, below. */
 		if (!WhatARaceCarries.whatItFixesMoved(before.fixes(), after)) {
 			return;
 		}
@@ -703,12 +722,15 @@ class RaceWriteApi {
 		/* WHETHER THE BEGINNERS' CATEGORY WAS OPEN TO EACH OF THEM FOR THE SEASON AFTER THE
 		   RACE'S, asked before a single row moves: the season after, never the race's own, which
 		   is the line `VerificationWriteApi` keeps for an approval and `BestOfficialSeason` says
-		   why. */
+		   why. And not at all in a season that has frozen (see {@link #change}): no member is then
+		   remembered, so no line about a category is written. */
 		int theSeasonAfter = season + 1;
 		Map<Long, Boolean> wasOpen = new LinkedHashMap<>();
 
-		for (CountedRun run : runs) {
-			wasOpen.computeIfAbsent(run.member(), member -> beginnersCategoryIsOpenFor(member, theSeasonAfter));
+		if (!SeasonClock.isFrozen(season, now())) {
+			for (CountedRun run : runs) {
+				wasOpen.computeIfAbsent(run.member(), member -> beginnersCategoryIsOpenFor(member, theSeasonAfter));
+			}
 		}
 
 		for (CountedRun run : runs) {
