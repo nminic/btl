@@ -1,18 +1,24 @@
 package com.btl.portal.db;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.nio.ByteBuffer;
+import java.nio.charset.CodingErrorAction;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * A citation of the product/architecture journal that names a LINE NUMBER goes stale the
@@ -136,7 +142,7 @@ class JournalCitationsDoNotNameALineTest {
 			List<String> guilty = tree
 					.filter(Files::isRegularFile)
 					.filter(path -> !path.startsWith(migrations))
-					.flatMap(path -> citations(readable(path)).stream()
+					.flatMap(path -> citations(readable(path).orElse("")).stream()
 							.map(cited -> sources.relativize(path) + ": " + cited))
 					.sorted()
 					.toList();
@@ -232,12 +238,102 @@ class JournalCitationsDoNotNameALineTest {
 		return found;
 	}
 
-	private static String readable(Path path) {
+	/**
+	 * THE TEXT OF A FILE, OR NOTHING WHEN THE FILE IS NOT TEXT AT ALL.
+	 *
+	 * <p>The tree under {@code backend/src} holds files that are not text: the two Roboto fonts
+	 * under {@code main/resources/fonts} (PDL P11, 15.11.2026) are TrueType, and read as UTF-8 they
+	 * are a {@code MalformedInputException}. What is not text is not asked about a citation, and
+	 * "not text" is the question git itself asks of a file: it holds a zero byte. A text in a
+	 * legible encoding never does, and every font, image and archive does within its first
+	 * bytes. No list of extensions stands in for that question, so a binary of a kind this
+	 * portal has not yet met is passed over without anybody having to name it, and the floor
+	 * below ({@link #aSourceIsNeverPassedOverAsBinary()}) is what lets the rule be this wide.
+	 *
+	 * <p><b>What is passed over is the whole of the exception, and it is closed on both
+	 * sides.</b> A file that is not binary is read strictly as UTF-8, and a byte that is not
+	 * UTF-8 fails the walk with the file's name, as it did before; it is never replaced with a
+	 * character and never skipped. A {@code .java} file is read the same strict way WHETHER OR NOT
+	 * it holds a zero byte, so a source cannot leave the walk by being damaged into looking
+	 * binary.
+	 */
+	private static Optional<String> readable(Path path) {
 		try {
-			return Files.readString(path);
+			byte[] bytes = Files.readAllBytes(path);
+
+			if (!path.getFileName().toString().endsWith(".java") && holdsAZeroByte(bytes)) {
+				return Optional.empty();
+			}
+
+			return Optional.of(StandardCharsets.UTF_8.newDecoder()
+					.onMalformedInput(CodingErrorAction.REPORT)
+					.onUnmappableCharacter(CodingErrorAction.REPORT)
+					.decode(ByteBuffer.wrap(bytes))
+					.toString());
 		}
 		catch (IOException problem) {
-			throw new UncheckedIOException(problem);
+			throw new UncheckedIOException(path + " is neither a binary file nor UTF-8 text", problem);
 		}
+	}
+
+	private static boolean holdsAZeroByte(byte[] bytes) {
+		for (byte one : bytes) {
+			if (one == 0) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * THE FLOOR UNDER THE WALK ABOVE: WHAT IT PASSES OVER, AND WHAT IT MUST NOT.
+	 *
+	 * <p>Asked of the real tree and not of a sample: no file the walk passes over is a
+	 * {@code .java}, and the fonts are among them, so a walk that began passing over everything
+	 * would fail here instead of looking like an empty, green sweep.
+	 */
+	@Test
+	void aSourceIsNeverPassedOverAsBinary() throws IOException {
+		Path sources = DatabaseTest.repositoryRoot().resolve("backend/src");
+
+		try (Stream<Path> tree = Files.walk(sources)) {
+			List<Path> files = tree.filter(Files::isRegularFile).toList();
+			List<String> passedOver = files.stream()
+					.filter(path -> readable(path).isEmpty())
+					.map(path -> sources.relativize(path).toString().replace('\\', '/'))
+					.sorted()
+					.toList();
+
+			assertThat(passedOver)
+					.as("a file passed over as binary that is a Java source, or a walk that passes over"
+							+ " nothing, the fonts included")
+					.noneMatch(name -> name.endsWith(".java"))
+					.contains("main/resources/fonts/Roboto-Regular.ttf", "main/resources/fonts/Roboto-Bold.ttf");
+			assertThat(files.size() - passedOver.size())
+					.as("the walk reads the text of the tree and not nothing")
+					.isGreaterThan(500);
+		}
+	}
+
+	/**
+	 * A file of bytes is passed over, a file of damaged text is NOT, and a damaged source is not
+	 * passed over however it is damaged. Proven on files made for the purpose, because the real
+	 * tree holds none of the damaged kind and a floor that cannot fail proves nothing.
+	 */
+	@Test
+	void aBinaryIsPassedOverAndDamagedTextIsNeitherPassedOverNorRead(@TempDir Path folder)
+			throws IOException {
+		Path font = Files.write(folder.resolve("Some.ttf"), new byte[] {0, 1, 0, 0, (byte) 0xFF, 0});
+		Path damagedText = Files.write(folder.resolve("notes.txt"), new byte[] {'a', (byte) 0xC3, '(', 'b'});
+		Path damagedSource = Files.write(folder.resolve("Some.java"), new byte[] {'a', (byte) 0xC3, '(', 'b'});
+		Path sourceWithAZeroByte = Files.write(folder.resolve("Other.java"), new byte[] {'a', 0, 'b'});
+		Path fine = Files.writeString(folder.resolve("fine.properties"), "a=b");
+
+		assertThat(readable(font)).isEmpty();
+		assertThat(readable(fine)).contains("a=b");
+		assertThatThrownBy(() -> readable(damagedText)).isInstanceOf(UncheckedIOException.class);
+		assertThatThrownBy(() -> readable(damagedSource)).isInstanceOf(UncheckedIOException.class);
+		assertThat(readable(sourceWithAZeroByte)).isPresent();
 	}
 }

@@ -343,8 +343,14 @@ class PhotoApi {
 	 * <p>Private rather than public, and the security round of 20.09.2026 that measured why is at
 	 * the head of this class: this is the only caching answer in the portal and the only one that
 	 * sets a cookie.
+	 *
+	 * <p><b>Since 15.11.2026 there is a second answer kept under it, and it is kept under THIS
+	 * constant rather than a copy</b>: the card a profile is shared with ({@link CompetitorCardApi})
+	 * is a picture of public facts at an address derived from them, it is answered behind the same
+	 * chain and therefore with the same cookie, and the day it should be a withdrawal of the profile
+	 * is what a day here bounds. One header for both, so a change to the reasoning above moves both.
 	 */
-	private static final CacheControl FOR_A_DAY_PRIVATELY =
+	static final CacheControl FOR_A_DAY_PRIVATELY =
 			CacheControl.maxAge(FOR_A_DAY).cachePrivate();
 
 	/**
@@ -1184,7 +1190,7 @@ class PhotoApi {
 	 * whose file has gone, a queue right the caller has not got and a picture that is
 	 * somebody else's are indistinguishable from outside.
 	 */
-	private static ResponseEntity<byte[]> nothingIsHere(HttpServletResponse response)
+	static ResponseEntity<byte[]> nothingIsHere(HttpServletResponse response)
 			throws IOException {
 		response.sendError(HttpStatus.NOT_FOUND.value());
 		return null;

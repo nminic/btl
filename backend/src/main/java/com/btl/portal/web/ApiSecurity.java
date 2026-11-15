@@ -129,7 +129,11 @@ class ApiSecurity {
 			"/api/frozen-tables/{season}",
 			/* The ducats one member holds, named by his number (DucatAwardApi says why it is anybody's:
 			   the profile drew them from /api/results, which is). */
-			"/api/ducat-awards/{memberNumber}");
+			"/api/ducat-awards/{memberNumber}",
+			/* The card a profile is shared with, named by the member number and a digest of what it
+			   shows (CompetitorCardApi). Anybody, because whoever asks is a network's crawler or the
+			   phone the link was sent to, and what it draws is what a visitor is answered. */
+			CompetitorCards.ASKED_AT);
 
 	/**
 	 * WHO THE SETTINGS NAME, ANSWERED ONCE FOR THE WHOLE APPLICATION AND NOT ONLY FOR THIS

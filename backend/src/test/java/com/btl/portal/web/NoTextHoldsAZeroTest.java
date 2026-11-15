@@ -170,6 +170,11 @@ class NoTextHoldsAZeroTest {
 					"a zero in a path is a 400 before any handler is reached"),
 			Map.entry("PhotoApi#small:circle (path)",
 					"a zero in a path is a 400 before any handler is reached"),
+			Map.entry("CompetitorCardApi#card:card (path)",
+					"a zero in a path is a 400 before any route is chosen, and the name is strictly shaped (six"
+							+ " digits, the language, the version of the drawing and sixteen hexadecimal digits) and"
+							+ " matched whole before anything is read off it, so a name of the wrong shape is the"
+							+ " same 404 as a card nobody holds"),
 			Map.entry("PricingWriteApi#change:key (path)",
 					"a zero in a path is a 400 before any handler is reached"),
 			Map.entry("CompetitorWriteApi#remove:account (parameter)",
