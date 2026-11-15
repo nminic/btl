@@ -332,11 +332,6 @@ class RaceWriteApi {
 	private record AsItStands(String name, LocalDate day, WhatARaceCarries.ARace fixes) {
 	}
 
-	/** One row of {@code result} at the race: whose it is, the four figures it was counted at,
-	 *  and the points they were worth. */
-	private record CountedRun(long id, long member, Figures figures, BigDecimal points) {
-	}
-
 	@PostMapping("/api/races")
 	@RightIsNeeded("entity:events")
 	ResponseEntity<?> add(@RequestBody Upsert typed) {
@@ -709,15 +704,9 @@ class RaceWriteApi {
 			return;
 		}
 
-		/* EVERY ROW OF `result` AT THIS RACE AND NO OTHER, whoever's it is. The index V7 gave
-		   `(race_id, race_date)` leads with the race. A change of kind never reaches here with a
-		   row to read: {@link #change} refuses it on a race that carries one. */
-		List<CountedRun> runs = db.sql("select id, competitor_id, distance_km, ascent_m, descent_m, seconds, points from result where race_id = ? order by id")
-				.param(id)
-				.query((row, one) -> new CountedRun(row.getLong(1), row.getLong(2),
-						new Figures(row.getBigDecimal(3), row.getInt(4), row.getInt(5), row.getInt(6)),
-						row.getBigDecimal(7)))
-				.list();
+		/* EVERY ROW OF `result` AT THIS RACE AND NO OTHER, whoever's it is. A change of kind never
+		   reaches here with a row to read: {@link #change} refuses it on a race that carries one. */
+		List<TheRunsOfARace.Counted> runs = TheRunsOfARace.at(db, id);
 
 		/* WHETHER THE BEGINNERS' CATEGORY WAS OPEN TO EACH OF THEM FOR THE SEASON AFTER THE
 		   RACE'S, asked before a single row moves: the season after, never the race's own, which
@@ -728,35 +717,25 @@ class RaceWriteApi {
 		Map<Long, Boolean> wasOpen = new LinkedHashMap<>();
 
 		if (!SeasonClock.isFrozen(season, now())) {
-			for (CountedRun run : runs) {
+			for (TheRunsOfARace.Counted run : runs) {
 				wasOpen.computeIfAbsent(run.member(), member -> beginnersCategoryIsOpenFor(member, theSeasonAfter));
 			}
 		}
 
-		for (CountedRun run : runs) {
-			/* What the race fixes comes off the race as written, what it leaves to the runner
-			   stays the runner's: the one function every other road asks, so a run counted again
-			   is counted exactly as an approval of it today would count it. */
-			Figures counted = WhatARaceCarries.figuresOf(after, run.figures());
-			/* AND NOTHING AT AN UNSCORED RACE (PointsOfARun, PDL 14.11.2026). */
-			BigDecimal points = PointsOfARun.at(db, id, counted);
+		/* THE ROWS ARE WRITTEN OVER BY THE ONE FUNCTION THE JOB OF 15.11.2026 ASKS TOO, and what is told
+		   about each is this road's. */
+		boolean scored = PointsOfARun.scored(db, id);
+		boolean frozen = SeasonClock.isAFrozenSeasonOfTheLeague(season, now());
 
-			/* A RUN THE CORRECTION LEFT EXACTLY AS IT WAS IS NOT A RUN IT CHANGED, so nothing is
-			   written over it and its member is not told about it. */
-			if (isAsItWas(run, counted)) {
-				continue;
-			}
-
-			db.sql("update result set distance_km = ?, ascent_m = ?, descent_m = ?, seconds = ?, points = ? where id = ?")
-					.params(counted.distanceKm(), counted.ascentM(), counted.descentM(), counted.seconds(), points, run.id())
-					.update();
+		for (TheRunsOfARace.Rewritten run : TheRunsOfARace.countAgain(db, id, after, runs)) {
+			Figures was = run.was().figures();
 
 			/* AND THE LINE ABOUT IT NAMES NO POINTS AT AN UNSCORED RACE (PointsOfARun#toTell). */
-			boolean scored = PointsOfARun.scored(db, id);
-			Run was = new Run(before.name(), before.day(), run.figures().distanceKm(), run.figures().ascentM(), run.figures().descentM(), run.figures().seconds(), PointsOfARun.toTell(scored, run.points()));
-			Run is = new Run(race.name(), race.date(), counted.distanceKm(), counted.ascentM(), counted.descentM(), counted.seconds(), PointsOfARun.toTell(scored, points));
+			Run wasRun = new Run(before.name(), before.day(), was.distanceKm(), was.ascentM(), was.descentM(), was.seconds(), PointsOfARun.toTell(scored, run.was().points()));
+			Figures counted = run.figures();
+			Run is = new Run(race.name(), race.date(), counted.distanceKm(), counted.ascentM(), counted.descentM(), counted.seconds(), PointsOfARun.toTell(scored, run.points()));
 
-			tellHimHisRunWasCountedAgain(run.member(), was, is);
+			tellHimHisRunWasCountedAgain(run.was().member(), wasRun, is, frozen);
 		}
 
 		for (Map.Entry<Long, Boolean> member : wasOpen.entrySet()) {
@@ -766,38 +745,6 @@ class RaceWriteApi {
 				tellHimHisCategoryMoved(member.getKey(), theSeasonAfter, isOpen, race);
 			}
 		}
-	}
-
-	/**
-	 * WHETHER A RUN ALREADY CARRIES THE FOUR FIGURES IT WOULD BE COUNTED AT NOW, a length being
-	 * compared as a number: it is one number whatever scale it was written at.
-	 *
-	 * <p><b>THE POINTS ARE NOT ASKED, and that is a measurement and not a shortcut.</b> They are a
-	 * function of the four figures and of nothing else, and the only statements that write a figure
-	 * of {@code result} are three: the approval ({@code VerificationWriteApi}, an insert and an update
-	 * of the row), the league's own entry and change from the event page ({@code
-	 * ResultsByTheLeagueApi}, an insert and an update) and the recount below. All three work the
-	 * points out with {@link BtlScoreCalculator} from the very figures they store, no migration
-	 * inserts into the table or updates it, and {@code ResultWriteApi} only deletes from it. Every
-	 * length that reaches any of them is one the column keeps
-	 * exactly ({@link WhatARaceCarries#distanceIsKeptExactly}, asked for the race, for the member's
-	 * report and for the moderator's own figures), so the number the formula is handed is the number
-	 * the row holds. A row whose four figures are the counted ones therefore already carries the
-	 * points that would be written over it.
-	 *
-	 * <p><b>A comparison of the points stood here until 10.10.2026 and its false branch had no
-	 * case.</b> The coverage threshold found it on the head of PR 504 (the branch ratio read
-	 * 0.99), and the second round of review of that PR gave the reason: no road writes a row whose
-	 * figures agree with the course and whose points do not, so the only case that could reach the
-	 * branch is one that writes {@code result} by hand with points the formula does not give, and
-	 * that measures the fixture and not the portal. A branch no road reaches is removed, and is not
-	 * covered by a detour.
-	 */
-	private static boolean isAsItWas(CountedRun run, Figures counted) {
-		return run.figures().distanceKm().compareTo(counted.distanceKm()) == 0
-				&& run.figures().ascentM().equals(counted.ascentM())
-				&& run.figures().descentM().equals(counted.descentM())
-				&& run.figures().seconds().equals(counted.seconds());
 	}
 
 	/**
@@ -815,14 +762,24 @@ class RaceWriteApi {
 	 * it was and as it is now (PDL P4, 10.10.2026: „red u sandučetu sa starom i novom
 	 * vrednošću", and „mejl ne ide"). The run is written by
 	 * {@link WhatAResultChangeSays#inWords}, the one way a run reads in every letter about it.
+	 *
+	 * <p><b>A RUN OF A FROZEN SEASON IS TOLD THAT THE TABLE OF THAT SEASON STAYS THE SAME</b> (PDL P4,
+	 * owner, 15.11.2026, on the questions of the author of PR 739: when a correction of a race counts a
+	 * run again in a frozen season, the line in the inbox also says that the table of that season stays
+	 * the same). <b>The words are not his: they are the sentence the league's entry and an approval
+	 * already say in the same season</b> ({@code resultEnteredInAFrozenSeason} in
+	 * {@code notices/results.properties}, PDL P9, 18.10.2026), put at the end of this line. That they fit
+	 * here is my proposal and awaits his word.
 	 */
-	private void tellHimHisRunWasCountedAgain(long member, Run was, Run is) {
+	private void tellHimHisRunWasCountedAgain(long member, Run was, Run is, boolean inAFrozenSeason) {
 		tell(member, "Vaš rezultat je preračunat",
 				"Ispravljene su mere trke " + is.raceName() + " od "
 						+ WhatAResultChangeSays.asADay(is.day())
 						+ ", pa je vaš rezultat sa nje ponovo bodovan.\n\nStara vrednost:\n"
 						+ WhatAResultChangeSays.inWords(was) + "\n\nNova vrednost:\n"
-						+ WhatAResultChangeSays.inWords(is));
+						+ WhatAResultChangeSays.inWords(is) + (inAFrozenSeason
+								? "\n\nTabela zamrznute sezone " + is.day().getYear() + " ostaje ista."
+								: ""));
 	}
 
 	/**
