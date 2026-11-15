@@ -506,12 +506,11 @@ class VerificationWriteApi {
 	 * tačnom vrstom." Putting the run on an event of the other kind would change it all the same, so it is
 	 * refused, whichever of the three ways the answer names one: a race of the calendar, an event chosen,
 	 * or a name typed that the event of that name already answers to in the year of the run. 409 for the
-	 * reason the head of this class gives. <b>The words are a proposal of the author of step 3</b> and go
-	 * to the owner with the pull request.
+	 * reason the head of this class gives. <b>The words are the owner's</b> (PDL, 15.11.2026, after the
+	 * review of PR 733, (2)): they replaced a proposal of the author of step 3.
 	 */
-	private static final String THE_KIND_IS_THE_MEMBERS = "Ovaj događaj nije iste vrste kao trka koju"
-			+ " je član prijavio, a vrsta ostaje onakva kakvu je on izabrao. Ako je pogrešio, odbij prijavu"
-			+ " uz razlog, pa će je poslati ponovo sa tačnom vrstom.";
+	private static final String THE_KIND_IS_THE_MEMBERS = "Član je ovu trku prijavio kao drugu vrstu"
+			+ " od ovog događaja. Ako je pogrešio, odbij prijavu uz razlog, pa će je poslati ponovo.";
 
 	/**
 	 * THE RACE WOULD MOVE ITS EVENT TO AN ADDRESS ANOTHER EVENT HOLDS.

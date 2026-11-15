@@ -153,6 +153,11 @@ function filledFrom(one: SentRun): FormValues {
     /* And the kind of its event he sent it under (V101): on an event he typed it is his to keep or
        change; on an event he chose the box is not drawn (`showWhenEmpty`), the kind being the event's. */
     eventKind: one.eventKind,
+    /* And the same kind where the event is one he chose, which is where the form reads it from
+       (`kindInTheBoxes`, `eventsToOffer.ts`): choosing from the list fills it and nothing else does, so
+       a run sent again on a chosen event opened with none and the first keystroke turned an unscored race
+       into one that asks the climb. It travels with the key, as it does there: no key, no kind. */
+    kindOfTheChosenEvent: one.eventName !== null && one.eventId !== null ? one.eventKind : '',
     city: one.city,
     country: one.country,
     distanceKm: String(one.distanceKm),

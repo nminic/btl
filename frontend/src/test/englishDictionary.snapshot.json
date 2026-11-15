@@ -1959,7 +1959,7 @@
       "theGroupIsTooBig": "Too many rows for one save. Split them into two saves.",
       "theEventIsNotKnown": "That event is no longer in the calendar. Choose it again or enter a new one.",
       "theRaceIsNotKnown": "That race is no longer in the calendar. Choose it again or enter a new one.",
-      "theEventIsOfAnotherKind": "An event of that name is already in the calendar, but it is of another kind than the one you chose. Choose it from the list, or change the kind or the name.",
+      "theEventIsOfAnotherKind": "An event of that name is already in the calendar, but it is of another kind. Choose it from the list or change the name.",
       "theTownIsMissing": "Enter the place of the new event.",
       "theEventWouldMoveOntoAnother": "The race would move the event into a year in which an event with the same name already exists. Choose that event.",
       "theDayIsNotInTheEventsYear": "The day of the race is not in the year of the chosen event.",
