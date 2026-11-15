@@ -188,6 +188,15 @@ class ARaceCorrectedRecountsItsRunsTest {
 	/** What a line in the inbox about a run counted again is called. */
 	private static final String RECOUNTED = "Vaš rezultat je preračunat";
 
+	/** What a line about a run of a season that has frozen ends with (PDL P4, owner, 15.11.2026, decision
+	 *  (c) of the answers on PR 739), in the words of {@code resultEnteredInAFrozenSeason}. The sentence
+	 *  is the dictionary's and the case spells it out, so a word changed there fails here. */
+	private static final String THE_TABLE_STAYS_THE_SAME_IN_2027 =
+			"\n\nTabela zamrznute sezone 2027 ostaje ista.";
+
+	/** The words that make a line about a frozen season, whatever the season. */
+	private static final String THE_TABLE_STAYS_THE_SAME = "ostaje ista";
+
 	/** A member who runs the marathon, and the half and six hours as well. */
 	private static final String RUNNER = "000901";
 
@@ -537,6 +546,8 @@ class ARaceCorrectedRecountsItsRunsTest {
 		assertThat(linesTo(runner)).as("the runner reads one line for his run")
 				.extracting(Line::subject).containsExactly(RECOUNTED);
 		assertThat(linesTo(runner).get(0).body()).endsWith(asItWasAndAsItIs(12600));
+		assertThat(newLines()).as("a season still running is told nothing of a frozen table")
+				.allSatisfy(line -> assertThat(line.body()).doesNotContain(THE_TABLE_STAYS_THE_SAME));
 		assertThat(linesTo(secondRunner)).as("the second runner reads one line for his run")
 				.extracting(Line::subject).containsExactly(RECOUNTED);
 		assertThat(linesTo(secondRunner).get(0).body()).endsWith(asItWasAndAsItIs(13800));
@@ -998,6 +1009,19 @@ class ARaceCorrectedRecountsItsRunsTest {
 		assertThat(linesTo(runner)).extracting(Line::subject).containsExactly(RECOUNTED);
 		assertThat(linesTo(secondRunner)).extracting(Line::subject).containsExactly(RECOUNTED);
 		assertThat(linesTo(lapsed)).extracting(Line::subject).containsExactly(RECOUNTED);
+		assertThat(linesTo(runner).get(0).body()).as("a run of a frozen season is told its table stays")
+				.endsWith(THE_TABLE_STAYS_THE_SAME_IN_2027);
+		assertThat(linesTo(secondRunner).get(0).body()).endsWith(THE_TABLE_STAYS_THE_SAME_IN_2027);
+		assertThat(linesTo(lapsed).get(0).body()).endsWith(THE_TABLE_STAYS_THE_SAME_IN_2027);
+		assertThat(linesTo(rookie).get(0).body()).as("the ten of the frozen season")
+				.endsWith(THE_TABLE_STAYS_THE_SAME_IN_2027);
+		assertThat(linesTo(third)).as("his run at the ten of 2027 is told, his run of New Year's Day of 2028 is not")
+				.filteredOn(line -> line.body().contains(THE_TABLE_STAYS_THE_SAME))
+				.singleElement().satisfies(line -> assertThat(line.body())
+						.contains("trke Desetka ").endsWith(THE_TABLE_STAYS_THE_SAME_IN_2027));
+		assertThat(linesTo(third)).filteredOn(line -> line.body().contains("Novogodisnja"))
+				.singleElement().satisfies(line -> assertThat(line.body())
+						.doesNotContain(THE_TABLE_STAYS_THE_SAME));
 		assertThat(linesTo(alreadyThere)).as("a line about a run the correction did not move").isEmpty();
 		assertThat(linesTo(rookie)).as("a frozen season asked about the category")
 				.extracting(Line::subject).containsExactly(RECOUNTED);
@@ -1054,7 +1078,8 @@ class ARaceCorrectedRecountsItsRunsTest {
 		assertThat(linesTo(runner)).extracting(Line::subject).containsExactly(RECOUNTED);
 		assertThat(linesTo(secondRunner)).extracting(Line::subject).containsExactly(RECOUNTED);
 		assertThat(linesTo(lapsed)).extracting(Line::subject).containsExactly(RECOUNTED);
-		assertThat(newLines()).hasSize(3).allSatisfy(line -> assertThat(line.to()).isNotNull());
+		assertThat(newLines()).hasSize(3).allSatisfy(line -> assertThat(line.to()).isNotNull())
+				.allSatisfy(line -> assertThat(line.body()).endsWith(THE_TABLE_STAYS_THE_SAME_IN_2027));
 	}
 
 	/**
@@ -1156,7 +1181,8 @@ class ARaceCorrectedRecountsItsRunsTest {
 		assertThat(rowOf(runOfHistory)).as("a run of history kept the figures of a race that no longer exists")
 				.isEqualTo(countedAt("21.1", 150, 120, 6300, "half"));
 		assertThat(linesTo(runner)).extracting(Line::subject).containsExactly(RECOUNTED);
-		assertThat(newLines()).hasSize(1);
+		assertThat(newLines()).hasSize(1).allSatisfy(line -> assertThat(line.body())
+				.doesNotContain(THE_TABLE_STAYS_THE_SAME));
 	}
 
 	/**
@@ -1185,7 +1211,9 @@ class ARaceCorrectedRecountsItsRunsTest {
 		assertThat(rowOf(hisRun)).as("the run stayed a marathon at a race of 42,202 km")
 				.isEqualTo(countedAt("42.202", 500, 500, 14400, "ultra"));
 		assertThat(linesTo(runner)).extracting(Line::subject).containsExactly(RECOUNTED);
-		assertThat(newLines()).hasSize(1);
+		assertThat(newLines()).as("the clock holds 2015 frozen and the league never ran it: no frozen table to keep")
+				.hasSize(1).allSatisfy(line -> assertThat(line.body())
+						.doesNotContain(THE_TABLE_STAYS_THE_SAME));
 	}
 
 	/** What the formula gives for a marathon's three runs, before and after, and with the climb
