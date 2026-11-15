@@ -1,5 +1,5 @@
 import { screen, waitFor, within } from '@testing-library/react'
-import { sayYes } from '../../test/deleteSheet'
+import { sayNo, sayYes } from '../../test/deleteSheet'
 import { setupUser } from '../../test/user'
 import { at, must } from '../../test/at'
 import { renderAt } from '../../test/render'
@@ -139,6 +139,12 @@ describe('the races the league does not score, in „Moji rezultati"', () => {
       const table = await screen.findByRole('table', { name: 'Nebodovane trke' }, { timeout: SLOW / 2 })
       const { unscored } = await bothLists()
       const first = at(unscored, 0)
+
+      /* Kept first, which sends nothing and leaves the row, then taken back. */
+      await user.click(within(table).getByRole('button', { name: `Obriši: ${first.raceName}` }))
+      await sayNo(user, 'Obriši rezultat?')
+      expect(within(table).getByText(first.raceName)).toBeVisible()
+      expect(server.asked.filter((one) => one.init?.method === 'DELETE')).toEqual([])
 
       await user.click(within(table).getByRole('button', { name: `Obriši: ${first.raceName}` }))
       await sayYes(user, 'Obriši rezultat?')
