@@ -172,6 +172,7 @@
       "description": "Trke, bodovi i statistika jednog takmičara Balkanske trkačke lige.",
       "recordTitle": "{name}, {city}",
       "recordDescription": "{name}: sve trke, bodovi i statistika u Balkanskoj trkačkoj ligi.",
+      "shareTitle": "{name} u Balkanskoj trkačkoj ligi",
       "awardsTitle": "{name}, priznanja",
       "awardsDescription": "{name}: pehari i dukati osvojeni u Balkanskoj trkačkoj ligi.",
       "dataTitle": "{name}, podaci"

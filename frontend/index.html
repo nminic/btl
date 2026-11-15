@@ -23,12 +23,24 @@
          are what a reader sees in the tab in the meantime, and what a client that
          runs no JavaScript ends up with.
 
+         EXCEPT ON THE PROFILE OF A MEMBER, and the two lines of SSI around the
+         block are why. For that one address nginx turns SSI on (nginx.conf, the
+         location over `takmicar`) and puts in place of this block what the server
+         says of that profile (CompetitorPreviewApi): the owner's title and the card
+         of the member (PDL P11, 15.11.2026), because Facebook and Viber run no
+         JavaScript and read this file as it is sent. When the server has nothing to
+         say - a hidden profile, a lapsed member, a deleted one, a number nobody
+         holds - or does not answer, nginx puts this very block back, so all of
+         those read as the front page and as one another. On every other address
+         SSI is off and both lines are comments nobody reads.
+
          There is deliberately no canonical and no og:url here. This one file is
          served for every address on the portal, so a fixed canonical in it would
          tell a crawler that has not run our JavaScript that all fifty screens are
          copies of the home page, and a fixed og:url would make a shared link to a
          profile open the home page instead. Absent, both fall back to the address
          actually being read, which is right on every one of them. -->
+    <!--# block name="front-page" -->
     <title>Balkanska trkačka liga - svaka trka se broji!</title>
     <meta
       name="description"
@@ -63,6 +75,8 @@
     />
     <meta name="twitter:image" content="https://balkanskatrkackaliga.net/icon-512.png" />
     <meta name="twitter:image:alt" content="Logo Balkanske trkačke lige" />
+    <!--# endblock -->
+    <!--# include virtual="/api/previews/competitor/$btl_preview_number-$btl_preview_locale" stub="front-page" -->
 
     <!-- Applies the theme before the first paint. React sets the same attribute,
          but it does so after mounting, which is one flash too late.

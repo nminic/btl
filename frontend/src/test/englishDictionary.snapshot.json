@@ -158,6 +158,7 @@
       "description": "The races, the points and the statistics of one BTL competitor.",
       "recordTitle": "{name}, {city}",
       "recordDescription": "{name}: every race, the points and the statistics in BTL.",
+      "shareTitle": "{name} in the Balkan Running League",
       "awardsTitle": "{name}, awards",
       "awardsDescription": "{name}: the trophies and the ducats won in BTL.",
       "dataTitle": "{name}, details"
