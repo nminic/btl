@@ -64,7 +64,7 @@
      whole width it filled the second row, and the buttons fell to a third with
      the second track collapsed to nothing, which is the very arrangement this
      block was written to prevent. */
-  .rankings--tooled > *:not(h1):not(.rankings__head-tool):not(.comments__mark) {
+  .rankings--tooled > *:not(h1):not(.rankings__head-tool):not(.comments__mark):not(.rankings__propose--button) {
     grid-column: 1 / -1;
   }
 
@@ -163,6 +163,60 @@
   gap: var(--space-12);
   align-items: start;
   margin-bottom: var(--space-12);
+}
+
+/* WHAT THE TEAMS OFFER A MEMBER WITH NO TEAM, OUT OF THE ROW OF THE CARDS (16.11.2026): there it moved
+   them, 59px down at 360px and 260px to the right at 1280px with the text at 200% (review of PR 752,
+   against ADL A7, „navigacija se ne sme pomerati tokom klikova"). It comes after the row of the cards in
+   the markup and in the order of the keyboard, so in the flow it is the first thing under them and moves
+   nothing above them. That is where it stands unless it stands beside the heading.
+
+   The button „Predloži tim" stands beside the heading (owner, 16.11.2026, chosen between offered
+   outcomes) where the row of the heading is a grid with room for it beside the words: from 820px with
+   the text as the browser sets it, where the wide layout begins and the navigation stops folding away.
+   Below that it stands under the cards. Measured with it lifted everywhere: with the text at 200% it
+   covered the heading on a telephone, hung over the cards at 768px (it is taller than the line of the
+   heading) and covered the heading at 1280px, where the column of the heading is narrower than the
+   words and the button together. The width is in `em`, so a larger text moves it with it. The sentence
+   that stands in its place while the window is shut is never beside the heading. Held, cell by cell, by
+   `geometry/tableCards.geometry.ts`. */
+.rankings__propose {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.rankings--tooled > .rankings__propose + * {
+  margin-block-start: var(--space-16);
+}
+
+@media (min-width: 35em) {
+  /* Under the cards where the row is a grid, across both columns like everything under the heading. */
+  .rankings--tooled > .rankings__propose--button {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Beside the heading: in the heading's own cell, at its end. Every one of the three is placed, because
+   an item placed by name is laid before the ones that are not, and the heading would otherwise be put in
+   the first free cell, the second one. */
+@media (min-width: 51.25em) {
+  .rankings--tooled:has(> .rankings__propose--button) > h1 {
+    grid-row: 1;
+    grid-column: 1;
+  }
+
+  .rankings--tooled:has(> .rankings__propose--button) > .rankings__head-tool {
+    grid-row: 1;
+    grid-column: 2;
+  }
+
+  .rankings--tooled > .rankings__propose--button {
+    grid-row: 1;
+    grid-column: 1;
+    justify-self: end;
+    margin-block: 0 var(--head-end);
+  }
 }
 
 /* Wrapping, and from the right like the row it stands in, since the tables carry three cards
