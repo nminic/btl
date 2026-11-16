@@ -15,7 +15,10 @@ import { bodyOf, closes, everyRule, ruleFor, ruleInMedia, rulesInMedia, unremark
  * The owner's own condition is the one measured hardest: the decoration must never reduce the
  * readability of text. So every colour the layers paint is laid over the ground it is painted on,
  * at its full strength, and the text of that ground is held at 4,5:1 against the result (WCAG 2.2
- * SC 1.4.3), in both themes.
+ * SC 1.4.3), in both themes. On the page that is four grounds: the page under its glow, a contour over it,
+ * the route over it, and the place where a contour and the route cross, both at full strength (the weakest
+ * ground there is). The header's own text is measured under the glow and the lanes. A ground the layers can make
+ * and this does not measure is not measured at all.
  */
 
 const FLOOR = 4.5
@@ -245,9 +248,15 @@ describe('the text of the page, over the decoration', () => {
       expect(inkOf(theme)).toEqual(expect.arrayContaining(['--text', '--text-muted', '--accent', '--down']))
     })
 
-    it(`keeps 4,5:1 on the page colour under the glow, the contours and the route, ${theme}`, () => {
+    it(`keeps 4,5:1 on the page colour under the glow, the contours, the route, and where a contour crosses the route, ${theme}`, () => {
       const glowing = over(own('--race-page-glow', theme), portal('--bg', theme))
-      const grounds = [glowing, ...['--race-contour', '--race-route'].map((name) => over(own(name, theme), glowing))]
+      const contour = over(own('--race-contour', theme), glowing)
+      /* The two layers are two pseudo-elements one over the other (`.race-page::before` and `::after`), so where a
+         contour and the route cross a word stands on both at once, each at its full strength: that is the last
+         ground, and the weakest one (PR 736 review, 15.11.2026; the owner's choice of 16.11.2026 was to keep the
+         lines as they are and to give the inks that fell short colours that clear 4,5:1 on it). */
+      const crossing = over(own('--race-route', theme), contour)
+      const grounds = [glowing, contour, over(own('--race-route', theme), glowing), crossing]
 
       for (const ink of inkOf(theme)) {
         for (const ground of grounds) {

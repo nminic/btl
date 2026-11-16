@@ -420,8 +420,8 @@ function TheForm({ me }: { me: string }) {
      run waited or was sent back (allowed, a run is no result) would have the form ask the climb the server does
      not, or leave it out where the server asks for it, and be answered `theFormIsNotComplete` with no box named
      (review of PR 734, 15.11.2026). The snapshot stays the answer only where the calendar has not been read or
-     does not hold the event, which is the form's old reading. Mine, not the owner's: no sentence of his says
-     which of the two a run sent back is judged by. */
+     does not hold the event, which is the form's old reading. The owner decided this on 16.11.2026, chosen among
+     the outcomes offered, on the coordinator's recommendation. */
   const kindNow = (eventId: string, fallback: string) =>
     (events.status === 'ready' ? events.data.find((one) => String(one.id) === eventId)?.kind : undefined) ?? fallback
   const kindInTheBoxes =
