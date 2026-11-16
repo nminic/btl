@@ -64,6 +64,10 @@ const VALUE = /(-?\d*\.?\d+)(rem|px|em|ch)/g
 const ALLOWED = new Map([
   ['index.css | margin | -1px', 'a hairline pulled back over its own border'],
   [
+    'pages/Rankings.css | margin-block | -1em calc(var(--head-end) - 1em)',
+    'not a space: what the button „Predloži tim" beside the heading takes off what it asks of the row, so that it is never the tallest thing there and the cards the row centres do not move (ADL A7); in em because the button grows with the text, and split so its box keeps the centre the heading keeps',
+  ],
+  [
     'pages/TopBoards.css | margin | -1px',
     'not a space: the recipe that takes a surname off the screen without taking it out of the page, written out because a container query switches whether it applies and cannot put a class on anything',
   ],

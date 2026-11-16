@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { expect } from '@playwright/test'
 import type { Page } from '@playwright/test'
+import { THE_OTHER_DAY_THE_SUITE_IS_READ_AS } from '../src/test/theDay.ts'
 import { label, notMeasured, test } from './support/harness.ts'
 import type { Answers, At } from './support/harness.ts'
 
@@ -108,6 +109,11 @@ const READERS: [name: string, answers: Answers][] = [
   ['a member in a team', { ...DATA, ...signedInAs(IN_A_TEAM) }],
 ]
 
+/* The widths and text sizes the cards are held at. The first six are the portal's three widths at both
+   text sizes. The rest are where the second review of PR 752 found the cards moving and the button over
+   the heading, because the column of the content stops at 1100px while the window goes on: 150% from
+   1280px, 175% at 1920px, 200% from 1640px; and two where the button does fit beside the heading at a
+   larger text, so that the guard holds that side of the line too. */
 const WIDTHS: At[] = [
   { width: 360, text: 100 },
   { width: 360, text: 200 },
@@ -115,7 +121,25 @@ const WIDTHS: At[] = [
   { width: 768, text: 200 },
   { width: 1280, text: 100 },
   { width: 1280, text: 200 },
+  /* Wide enough for the button beside the heading, and narrower than 820px, the owner's line. */
+  { width: 810, text: 100 },
+  { width: 1920, text: 100 },
+  { width: 1440, text: 125 },
+  { width: 1280, text: 150 },
+  { width: 1366, text: 150 },
+  { width: 1440, text: 150 },
+  { width: 1920, text: 150 },
+  { width: 1920, text: 175 },
+  { width: 1640, text: 200 },
+  { width: 1920, text: 200 },
+  { width: 2560, text: 200 },
 ]
+
+/* WHERE THE BUTTON STANDS BESIDE THE HEADING, written out cell by cell and not read off the page: from
+   820px (owner, 16.11.2026, chosen with my recommendation), and only where the cell of the heading holds
+   the words, the button and a gap, beside the cards and the season. Every cell not named here has the
+   button under the row of the cards. */
+const BESIDE = new Set(['1280/100', '1920/100', '1440/125', '1280/150', '1366/150', '1440/150', '1920/150'])
 
 const CARDS = '[role="group"][aria-label="BTL tabele"]'
 
@@ -165,29 +189,34 @@ for (const [reader, answers] of READERS) {
     })
   }
 
-  /* AND WHAT THE TEAMS OFFER A MEMBER WITH NO TEAM STANDS ON THE SCREEN, CLEAR OF THE HEADING AND OF THE
-     CARDS, WHERE THIS TABLE SAYS. The button „Predloži tim" stands beside the heading (owner, 16.11.2026)
-     where the row of the heading is a grid with room for it beside the words: from 820px with the text as
-     the browser sets it, so at 1280px. Everywhere else it stands first under the row of the cards, because
-     beside the heading it would cover the words, hang over the cards or push them (ADL A7). The sentence that stands in its place while
-     the transfer window is shut is always under the cards. Measured only where there is something there. */
+  /* AND WHAT THE TEAMS OFFER A MEMBER WITH NO TEAM STANDS WHERE `BESIDE` SAYS, ON THE SCREEN AND CLEAR OF
+     THE HEADING AND OF THE CARDS. Found by what a reader meets, the link „Predloži tim" or the sentence
+     that stands in its place while the transfer window is shut, and never by a class: the class is what
+     places it, so an expectation read from it would agree with whatever the class did. Nobody else is
+     offered anything, and that is asked too. */
   for (const at of WIDTHS) {
-    test(`what the teams offer a member with no team stands where it should, for ${reader}, ${label(at)}`, async ({ open }) => {
+    test(`what the teams offer a member with no team stands where it should, for ${reader}, ${label(at)}`, async ({ open, theDay }) => {
       const { page } = await open(at, '/sr/timovi', CARDS, answers)
-      const offered = page.locator('.rankings__propose')
+      const button = page.getByRole('link', { name: 'Predloži tim', exact: true })
+      const sentence = page.getByText('Tim se osniva u prelaznom roku', { exact: false })
 
-      if ((await offered.count()) === 0) {
-        test.skip(true, 'nothing is offered to this reader on this day')
+      if (reader !== 'a member with no team') {
+        expect(await button.count(), 'somebody who is not a member with no team is offered the button').toBe(0)
+        expect(await sentence.count(), 'somebody who is not a member with no team is told when to found one').toBe(0)
         return
       }
 
-      const seen = await page.evaluate(() => {
+      const windowOpen = theDay === THE_OTHER_DAY_THE_SUITE_IS_READ_AS
+      const offered = windowOpen ? button : sentence
+
+      expect(await offered.count(), windowOpen ? 'the button is not offered' : 'the sentence is not drawn').toBe(1)
+
+      const seen = await offered.evaluate((element) => {
         const heading = document.querySelector('h1')
-        const propose = document.querySelector('.rankings__propose')
         const cards = document.querySelector('[role="group"][aria-label="BTL tabele"]')
 
-        if (heading === null || propose === null || cards === null) {
-          throw new Error('NOT MEASURED: no heading, nothing offered, or no cards')
+        if (heading === null || cards === null) {
+          throw new Error('NOT MEASURED: no heading or no cards')
         }
 
         const words = document.createRange()
@@ -195,36 +224,41 @@ for (const [reader, answers] of READERS) {
         words.selectNodeContents(heading)
 
         const text = words.getBoundingClientRect()
-        const box = propose.getBoundingClientRect()
+        const box = element.getBoundingClientRect()
         const row = cards.getBoundingClientRect()
         const apart = (a: DOMRect, b: DOMRect) =>
           a.right <= b.left || b.right <= a.left || a.bottom <= b.top || b.bottom <= a.top
 
         return {
-          button: propose.classList.contains('rankings__propose--button'),
           left: box.left,
           right: box.right,
           width: document.documentElement.clientWidth,
           clearOfTheHeading: apart(text, box),
           clearOfTheCards: apart(row, box),
-          besideTheHeading: box.top < text.bottom && box.bottom > text.top,
+          levelWithTheHeading: box.top < text.bottom && box.bottom > text.top,
+          rightOfTheWords: box.left >= text.right,
+          leftOfTheCards: box.right <= row.left,
           underTheCards: box.top >= row.bottom,
         }
       })
-      const beside = seen.button && at.text === 100 && at.width === 1280
+      const beside = windowOpen && BESIDE.has(`${String(at.width)}/${String(at.text)}`)
 
       expect(seen.left, 'it starts left of the screen').toBeGreaterThanOrEqual(0)
       expect(seen.right, 'it runs off the right edge of the screen').toBeLessThanOrEqual(seen.width)
       expect(seen.clearOfTheHeading, 'it is drawn over the words of the heading').toBe(true)
       expect(seen.clearOfTheCards, 'it is drawn over the cards').toBe(true)
-      expect(seen.besideTheHeading, beside ? 'it is not level with the heading' : 'it is level with the heading').toBe(beside)
-      expect(seen.underTheCards, beside ? 'it is under the cards' : 'it is not under the cards').toBe(!beside)
 
-      const link = offered.getByRole('link')
+      if (beside) {
+        expect(seen.levelWithTheHeading, 'it is not level with the heading').toBe(true)
+        expect(seen.rightOfTheWords, 'it is not to the right of the words of the heading').toBe(true)
+        expect(seen.leftOfTheCards, 'it is not to the left of the cards').toBe(true)
+      } else {
+        expect(seen.underTheCards, 'it is not under the row of the cards').toBe(true)
+      }
 
-      if ((await link.count()) > 0) {
-        await link.focus()
-        expect(await link.evaluate((one) => one === document.activeElement), 'the button takes no focus').toBe(true)
+      if (windowOpen) {
+        await button.focus()
+        expect(await button.evaluate((one) => one === document.activeElement), 'the button takes no focus').toBe(true)
       }
     })
   }

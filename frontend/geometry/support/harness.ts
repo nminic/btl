@@ -63,8 +63,9 @@ export const DIST = fileURLToPath(new URL('../../dist/', import.meta.url))
 /** Half a pixel, because a box is measured in fractions of one (the hand-run script's slack). */
 export const SLACK = 0.5
 
-/** The text size a guard is read at: the browser's own, or the reader's 200%. */
-export type Text = 100 | 200
+/** The text size a guard is read at: the browser's own, the reader's 200%, or a step between, which a
+ *  guard asks for where a width turns over with the text (`tableCards.geometry.ts`). */
+export type Text = 100 | 125 | 150 | 175 | 200
 
 /** One screen to measure: how wide, at what text size, and in which theme. */
 export type At = { width: number; text: Text; theme?: 'light' | 'dark' }
@@ -212,7 +213,9 @@ export const test = base.extend<Geometry, Worker>({
         const devtools = await context.newCDPSession(page)
 
         await devtools.send('Page.setFontSizes', {
-          fontSizes: { standard: (16 * at.text) / 100, fixed: (13 * at.text) / 100 },
+          /* Whole pixels, which is all the protocol takes: 13 at 125, 150 or 175 per cent is not one,
+             and nothing on the portal is drawn in the monospace this sets. */
+          fontSizes: { standard: (16 * at.text) / 100, fixed: Math.round((13 * at.text) / 100) },
         })
       }
 
@@ -220,8 +223,9 @@ export const test = base.extend<Geometry, Worker>({
       await page.goto(`${portal}${path}`)
       await settle(page, ready)
 
-      const seen = await page.evaluate((width) => {
+      const seen = await page.evaluate(({ width, text }) => {
         const root = document.documentElement
+        const em = (16 * text) / 100
 
         return {
           innerWidth,
@@ -232,18 +236,28 @@ export const test = base.extend<Geometry, Worker>({
              over it at 32px, so one text size cannot be read as the other at any width (the
              hand-run script's `probeAt`). */
           emQuery: matchMedia(`(min-width: ${width / 24}em)`).matches,
+          /* And the same question for any text size, since the guards read 125, 150 and 175 too: a
+             query a tenth under this width at this text size answers yes and one a tenth over answers
+             no, which no neighbour a quarter away can do. */
+          emUnder: matchMedia(`(min-width: ${width / (em * 1.1)}em)`).matches,
+          emOver: matchMedia(`(min-width: ${width / (em * 0.9)}em)`).matches,
           day: new Date().toISOString().slice(0, 10),
           dark: matchMedia('(prefers-color-scheme: dark)').matches,
         }
-      }, at.width)
+      }, { width: at.width, text: at.text })
 
       if (seen.innerWidth < at.width) {
         throw notMeasured(`the browser was asked for ${at.width}px and gave ${seen.innerWidth}px`)
       }
 
-      if (seen.rootFont !== (16 * at.text) / 100 || seen.emQuery !== (at.text === 100)) {
+      if (
+        seen.rootFont !== (16 * at.text) / 100 ||
+        ((at.text === 100 || at.text === 200) && seen.emQuery !== (at.text === 100)) ||
+        !seen.emUnder ||
+        seen.emOver
+      ) {
         throw notMeasured(
-          `asked for text at ${at.text}%, the page draws its root at ${seen.rootFont}px and a query in em answers ${seen.emQuery}; a text size that did not take is not a measurement`,
+          `asked for text at ${at.text}%, the page draws its root at ${seen.rootFont}px and queries in em answer ${String(seen.emQuery)}, ${String(seen.emUnder)} and ${String(seen.emOver)}; a text size that did not take is not a measurement`,
         )
       }
 
