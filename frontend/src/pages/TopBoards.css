@@ -122,6 +122,27 @@
   }
 }
 
+/* **Every cell of a row on the middle of it, and not at the top** (owner, 16.11.2026, from a screenshot
+   of „Najbolji pojedinačni rezultati": „Zasto se ovde raspada vertikalni alignment?"). `styles/table.css`
+   sets `.table th, .table td { vertical-align: top }` for every table on the portal, deliberately: a
+   table is read across, and top keeps every column on one shared line while nothing in a row is taller
+   than a line of text. A row here is the one place that stops being true, because the circle beside the
+   name is about 35px and the row is as tall as it, so the place and the figures stood a few pixels above
+   the middle and the name of the race, one line of 0.85rem, stood highest of all (measured at 1280px:
+   the centres of the cells of one row 7,6px apart, the race at the top of its cell).
+
+   Written against this table by name and on the body only: the head is a line of words per column and
+   stays where the shared rule puts it. The precedents are `.rankings__table tbody td` (`Rankings.css`,
+   owner, 28.09.2026) and `.table--results tbody td` (`Profile.css`, owner, 20.10.2026), and the weight
+   is the same arithmetic as theirs: one class and two elements, `(0,2,2)`, against `.table td` at
+   `(0,1,1)`, so it wins wherever the bundler leaves this sheet (`styles/cellSpecificity.test.ts` weighs
+   a selector the same way). It is every board that is a table, not the one of the screenshot: they are
+   one markup (`Drawn` in `TopBoards.tsx`) and the pairs, whose cells carry a second line
+   (`.boards__under`), are centred as a whole, as the figure over it is. */
+.boards .table tbody td {
+  vertical-align: middle;
+}
+
 /* Every column that is not the event is a figure. The shared table pushes its
    first three columns to the left, which is right for a name and wrong for a
    number, so the figures say so for themselves. Tabular figures come from the
