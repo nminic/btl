@@ -886,7 +886,15 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 
 			   Pinned LAST, when the file was final, off this very assertion. */
 			new Applied("104", "V104__facebook_is_asked_first_about_the_address_it_was_asked_about_longest_ago.sql",
-					1569969929));
+					1569969929),
+
+			/* V105. An imported result says it was imported and when (owner, 16.11.2026, PDL „dukati iz uvoza”,
+			   „Mešovit slučaj od 2027: tiho, uvoz se označi”): result_brought_by_known written again under its own
+			   name with a third word, 'import', and nothing already standing touched. 105 and no other: main stood
+			   at V104 when it was written.
+
+			   Pinned LAST, when the file was final, off this very assertion. */
+			new Applied("105", "V105__an_imported_result_says_it_was_imported_and_when.sql", 267399578));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {

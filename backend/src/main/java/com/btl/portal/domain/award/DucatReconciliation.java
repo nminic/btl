@@ -180,6 +180,34 @@ public final class DucatReconciliation {
 		return Optional.of(new Crossing(carried.resultId(), carried.race().on(), reached));
 	}
 
+	/**
+	 * THE RESULTS COUNTED UP TO THE CROSSING: his runs inside the instance's period, in the order the races were
+	 * run, up to and including the one that carried him over, and of those only the ones that move the quantity on
+	 * their own (a ten kilometre race is inside a month of „Maratoni” but no marathon, and so not counted towards
+	 * it). Owner, PDL, 16.11.2026: a ducat is told only when „nijedan uvezen rezultat među prebrojanim nije stigao
+	 * posle njega”, and this is that „prebrojani”. The membership a ducat of a season asks for is not asked again:
+	 * a crossing exists only where it was met.
+	 */
+	public static List<Run> counted(Instance instance, Crossing crossing, List<Run> runs) {
+		List<Run> inside = runs.stream()
+				.filter(one -> one.race().inside(instance.from(), instance.to()))
+				.sorted(IN_THE_ORDER_THEY_WERE_RUN)
+				.toList();
+		List<Run> counted = new ArrayList<>();
+
+		for (Run one : inside) {
+			if (instance.kind().over(List.of(one.race())).signum() > 0) {
+				counted.add(one);
+			}
+
+			if (one.resultId() == crossing.resultId()) {
+				return List.copyOf(counted);
+			}
+		}
+
+		throw new IllegalArgumentException("result " + crossing.resultId() + " is not a run inside this period");
+	}
+
 	private static boolean saysTheSame(Held one, Crossing now) {
 		return Objects.equals(one.resultId(), now.resultId()) && now.on().equals(one.wonOn())
 				&& now.reached().compareTo(one.reached()) == 0;
