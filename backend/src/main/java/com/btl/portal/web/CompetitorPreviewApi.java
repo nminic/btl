@@ -2,15 +2,18 @@ package com.btl.portal.web;
 
 import com.btl.portal.domain.card.CompetitorCard;
 import com.btl.portal.domain.card.WhatACardSays;
+import com.btl.portal.domain.card.WhatFacebookIsAskedAgain.Key;
 import com.btl.portal.domain.event.EventAddress;
 import com.btl.portal.domain.mail.WhatTheMessageSays.Portal;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.CacheControl;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.util.HtmlUtils;
 
@@ -124,16 +127,24 @@ class CompetitorPreviewApi {
 
 	private final CompetitorCards cards;
 	private final Portal portal;
+	private final WhatFacebookHasRead facebookHasRead;
 
-	CompetitorPreviewApi(CompetitorCards cards, @Value("${btl.portal.address}") String portal) {
+	CompetitorPreviewApi(CompetitorCards cards, @Value("${btl.portal.address}") String portal,
+			WhatFacebookHasRead facebookHasRead) {
 		this.cards = cards;
 		this.portal = new Portal(portal);
+		this.facebookHasRead = facebookHasRead;
 	}
 
+	/**
+	 * @param reader the {@code User-Agent} of whoever opened the profile, which nginx's subrequest carries as it came
+	 *               ({@link WhatFacebookHasRead}); when it is Facebook's crawler, the page it is given is written down
+	 */
 	@GetMapping(ASKED_AT)
-	ResponseEntity<byte[]> preview(@PathVariable String page, HttpServletResponse response)
+	ResponseEntity<byte[]> preview(@PathVariable String page,
+			@RequestHeader(name = HttpHeaders.USER_AGENT, required = false) String reader, HttpServletResponse response)
 			throws IOException {
-		Optional<String> block = blockFor(page);
+		Optional<String> block = blockFor(page, reader);
 
 		if (block.isEmpty()) {
 			return PhotoApi.nothingIsHere(response);
@@ -145,8 +156,12 @@ class CompetitorPreviewApi {
 				.body(block.get().getBytes(StandardCharsets.UTF_8));
 	}
 
-	/** The block for a page, or nothing when a visitor may not see the profile. */
-	Optional<String> blockFor(String page) {
+	/**
+	 * The block for a page, or nothing when a visitor may not see the profile; and when the reader is Facebook, what it
+	 * is given is written down (owner, PDL P11, 16.11.2026, item 14), only for a profile it is shown, because at any
+	 * other it gets the front page's preview and holds nothing of the member.
+	 */
+	Optional<String> blockFor(String page, String reader) {
 		Matcher spelt = A_PAGE.matcher(page);
 
 		if (!spelt.matches()) {
@@ -156,7 +171,11 @@ class CompetitorPreviewApi {
 		String number = spelt.group(1);
 		Words words = Words.of(WhatACardSays.of(spelt.group(2)).orElseThrow());
 
-		return cards.shown(number, words.card).map(shown -> block(number, words, shown));
+		return cards.shown(number, words.card).map(shown -> {
+			facebookHasRead.read(reader, new Key(number, words.code()), WhatFacebookHasRead.pageOf(number, words, shown));
+
+			return block(number, words, shown);
+		});
 	}
 
 	private String block(String number, Words words, CompetitorCards.Shown shown) {

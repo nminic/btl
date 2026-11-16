@@ -314,7 +314,7 @@ class CompetitorPreviewApiTest {
 	@Test
 	void theCardIsNamedAtTheSizeItIsDrawn() {
 		assertThat(List.of(CompetitorCard.WIDTH, CompetitorCard.HEIGHT)).containsExactly(1200, 630);
-		assertThat(previews.blockFor(ASKED + "-sr").orElseThrow())
+		assertThat(previews.blockFor(ASKED + "-sr", null).orElseThrow())
 				.contains("content=\"" + CompetitorCard.WIDTH + "\"", "content=\"" + CompetitorCard.HEIGHT + "\"");
 	}
 

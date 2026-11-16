@@ -18,7 +18,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 /**
- * EVERY FIVE MINUTES, FACEBOOK IS ASKED TO READ AGAIN EVERY PROFILE WHOSE CARD IS NOT WHAT IT WAS LAST ASKED ABOUT.
+ * EVERY FIVE MINUTES, FACEBOOK IS ASKED TO READ AGAIN EVERY PROFILE IT HAS READ WHOSE CARD IS NOT THE ONE IT HOLDS.
  *
  * <p>Owner, PDL P11, 15.11.2026, item 10, chosen with the assistant's recommendation: „Facebook se osvežava sa
  * servera: posle svake promene koja menja karticu server traži od Facebooka da ponovo pročita profil." Facebook
@@ -32,8 +32,8 @@ import java.util.concurrent.TimeUnit;
  * carries. A call from each road is a list, and a list misses the road written tomorrow and cannot see the one that
  * is only time. So nothing here is told what happened. It reads every card as a visitor would be shown it,
  * through the very reading the card and the preview are drawn from ({@link CompetitorCards#everyShown}), and
- * compares it with what Facebook was last asked about ({@link WhatFacebookIsAskedAgain}, which says what is asked
- * and why). The address of a card carries a digest of everything the card draws, so a change that leaves the
+ * compares it with what Facebook holds of the profiles it has read ({@link WhatFacebookIsAskedAgain}, which says
+ * what is asked and why). The address of a card carries a digest of everything the card draws, so a change that leaves the
  * card as it is asks nothing, and one that changes anything on it asks.
  *
  * <p><b>WHAT IT CANNOT SLOW OR STOP, BY HOW IT RUNS.</b> It runs on its own, on the scheduler, and reads what has
@@ -51,11 +51,14 @@ import java.util.concurrent.TimeUnit;
  * <p><b>WITHOUT FACEBOOK IT DOES NOTHING AT ALL</b> ({@link FacebookGraph#isOn}): no reading, no writing, no
  * request. That is QA, a developer's machine and the test suite.
  *
- * <p><b>WHAT IS WRITTEN DOWN</b> is {@code shared_card} (V103): for each profile a visitor is shown, in each
- * language, the address of its card and of its page as Facebook was last asked about them. It holds what is public
- * and nothing else, and it holds it only while it is: a profile that stops being shown is forgotten the run it is
- * asked about, and a member who is deleted takes his rows with him (the key to {@code competitor} cascades), so his
- * name, which the address of his page carries, does not outlive him here.
+ * <p><b>ONLY WHAT FACEBOOK HAS READ.</b> Owner, PDL P11, 16.11.2026, item 14, chosen with the assistant's
+ * recommendation: the server remembers the profiles Facebook's crawler has already opened and asks Facebook to
+ * refresh only those. So {@code shared_card} (V103) gets a row when Facebook's crawler reads a shown profile
+ * ({@link WhatFacebookHasRead#read}) and never from here: this run only UPDATES the rows it finds, to what Facebook
+ * will hold once it has read them again, and a profile Facebook has never read asks nothing, however it changes. A
+ * profile that stops being shown keeps its row, written down as the front page's preview, so that it is asked again
+ * when it is shown again. A member who is deleted takes his rows with him (the key to {@code competitor} cascades),
+ * and the deletion asks Facebook about them first, after its commit ({@link WhatFacebookHasRead#forgetWhenGone}).
  */
 @Component
 class FacebookIsAskedToReadAChangedCard {
@@ -90,25 +93,21 @@ class FacebookIsAskedToReadAChangedCard {
 	}
 
 	/**
-	 * ONE RUN: what is shown compared with what was asked, the pages written down as they stand, and the requests
-	 * sent. Returns the requests, which a case waits on and the scheduler does not.
+	 * ONE RUN: what is shown compared with what Facebook holds, the pages written down as it will hold them, and the
+	 * requests sent. Returns the requests, which a case waits on and the scheduler does not.
 	 */
 	List<CompletableFuture<Void>> askAgain() {
 		if (!facebook.isOn()) {
 			return List.of();
 		}
 
-		Plan plan = WhatFacebookIsAskedAgain.plan(asked(), shownNow(), atMost);
+		Plan plan = WhatFacebookIsAskedAgain.plan(read(), shownNow(), atMost);
 
-		for (Key gone : plan.forgotten()) {
-			db.sql("delete from shared_card where member_number = ? and language = ?")
-					.params(gone.memberNumber(), gone.language()).update();
-		}
-
-		plan.written().forEach((page, now) -> db.sql("insert into shared_card (member_number, language, card, address)"
-						+ " values (?, ?, ?, ?) on conflict (member_number, language)"
-						+ " do update set card = excluded.card, address = excluded.address")
-				.params(page.memberNumber(), page.language(), now.card(), now.address()).update());
+		/* An update and never an insert: a row is Facebook having read the page, which only its crawler writes, and a
+		   member deleted since the reading took his rows, so there is nothing to update and nothing comes back. */
+		plan.written().forEach((page, now) -> db.sql("update shared_card set card = ?, address = ?"
+						+ " where member_number = ? and language = ?")
+				.params(now.card(), now.address(), page.memberNumber(), page.language()).update());
 
 		return plan.addresses().stream().map(address -> facebook.readAgain(portal.address() + address)).toList();
 	}
@@ -122,22 +121,21 @@ class FacebookIsAskedToReadAChangedCard {
 			for (CompetitorCards.Shown shown : cards.everyShown(language)) {
 				String number = shown.face().chip();
 
-				now.put(new Key(number, language.code()), new Page(shown.address(),
-						CompetitorPreviewApi.profilePath(number, shown.face().name(), words)));
+				now.put(new Key(number, language.code()), WhatFacebookHasRead.pageOf(number, words, shown));
 			}
 		}
 
 		return now;
 	}
 
-	private Map<Key, Page> asked() {
-		Map<Key, Page> asked = new HashMap<>();
+	private Map<Key, Page> read() {
+		Map<Key, Page> read = new HashMap<>();
 
 		db.sql("select member_number, language, card, address from shared_card")
 				.query(row -> {
-					asked.put(new Key(row.getString(1), row.getString(2)), new Page(row.getString(3), row.getString(4)));
+					read.put(new Key(row.getString(1), row.getString(2)), new Page(row.getString(3), row.getString(4)));
 				});
 
-		return asked;
+		return read;
 	}
 }

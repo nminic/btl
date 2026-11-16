@@ -11,7 +11,7 @@ import java.util.Set;
 import java.util.TreeSet;
 
 /**
- * WHICH PROFILES FACEBOOK IS ASKED TO READ AGAIN, worked out from what it was last asked about and what the
+ * WHICH PROFILES FACEBOOK IS ASKED TO READ AGAIN, worked out from what Facebook has read of each profile and what the
  * portal shows now, and nothing else.
  *
  * <p>Owner, PDL P11, 15.11.2026, item 10, chosen with the assistant's recommendation: „Facebook se osvežava sa
@@ -19,29 +19,35 @@ import java.util.TreeSet;
  * question „did the card change" is answered here by comparing two states and never by being told about an
  * event, so there is no list of the roads that change a card for a road to be missing from: a result approved,
  * a picture withdrawn, a team left, a fee that lapsed at midnight with nobody doing anything, a profile hidden,
- * all of them are a page whose card or address is not what Facebook was last asked about.
+ * all of them are a page whose card or address is not what Facebook holds.
+ *
+ * <p><b>ONLY A PAGE FACEBOOK HAS READ IS EVER ASKED ABOUT.</b> Owner, PDL P11, 16.11.2026, item 14, chosen between
+ * the two ways offered, with the assistant's recommendation: the server remembers the profiles Facebook's crawler
+ * has already opened and asks Facebook to refresh only those; a profile Facebook has never read is not asked about,
+ * because Facebook reads it fresh the first time somebody pastes it. So the plan walks the pages of {@code read} and
+ * nothing else: a page that is shown and that Facebook has never read is not in it and asks nothing, however much
+ * it changes. That is also why there is no first time here: what Facebook has read is written down when it reads it
+ * ({@code WhatFacebookHasRead}), never by this plan.
  *
  * <p><b>A PAGE IS ONE PROFILE IN ONE LANGUAGE</b> ({@link Key}), because the two languages are two addresses
  * ({@code /sr/takmicar/...} and {@code /en/takmicar/...}) and two pictures, and Facebook keeps each address on
  * its own. What is compared for a page is {@link Page}: the address of its card, which carries a digest of
  * everything the card draws, and the address of the profile, which carries the name. The two are everything
- * the preview of a pasted profile is made of (the title is the name, the picture is the card).
+ * the preview of a pasted profile is made of (the title is the name, the picture is the card). A page written
+ * down as {@linkplain Page#frontPage the front page's} is one where Facebook holds the front page's preview,
+ * because the last it was given there was a profile a visitor is not shown.
  *
- * <p><b>WHAT IS ASKED, by the four ways a page can stand:</b>
+ * <p><b>WHAT IS ASKED, by the ways a page Facebook has read can stand:</b>
  * <ul>
- * <li>the same as last time: nothing;</li>
- * <li>shown now and not last time, which is a member whose fee was paid or whose profile came out of hiding:
- * its address, because Facebook may hold the preview of the front page for it from the time it was not shown;</li>
- * <li>shown last time and not now (hidden, lapsed): the address Facebook was last asked about, once, so that it
- * reads the page a visitor now gets, which is the front page's preview, and stops showing the card; and after
- * that nothing, for as long as it stays that way;</li>
- * <li>shown both times and different: the address it has now, and, when the name changed and the address with
- * it, the old address too, because that is the one people pasted.</li>
+ * <li>as Facebook holds it: nothing;</li>
+ * <li>Facebook holds a card and the profile is no longer shown (hidden, lapsed): the address Facebook holds, once,
+ * so that it reads the page a visitor now gets, which is the front page's preview, and stops showing the card;
+ * the page is then written down as the front page's, and nothing is asked for as long as it stays so;</li>
+ * <li>Facebook holds the front page's preview and the profile is shown again (a fee paid, out of hiding): its
+ * address, and the one Facebook holds too when the name has moved it;</li>
+ * <li>shown, and not the card Facebook holds: the address it has now, and, when the name changed and the address
+ * with it, the old address too, because that is the one people pasted.</li>
  * </ul>
- *
- * <p><b>THE FIRST TIME, NOTHING IS ASKED</b> and everything is written down: with nothing written down yet there
- * is no way to tell a card that changed from a card Facebook has never been asked about, and asking about every
- * profile at once is what the limit below is there to prevent.
  *
  * <p><b>AT MOST {@code atMost} ADDRESSES A TIME</b>, pages in the order of their member number and then the
  * language. A page that does not fit is not written down, so the next time it is still different and is asked
@@ -60,25 +66,31 @@ public final class WhatFacebookIsAskedAgain {
 		}
 	}
 
-	/** What a page shows: the address of its card and the address of the profile, both without the host. */
+	/**
+	 * What a page shows, or what Facebook holds of it: the address of its card and the address of the profile, both
+	 * without the host. The card is {@code null} for {@linkplain #frontPage the front page's preview}.
+	 */
 	public record Page(String card, String address) {
 
 		public Page {
-			Objects.requireNonNull(card);
 			Objects.requireNonNull(address);
+		}
+
+		/** The front page's preview at this address, which is what Facebook reads at a profile nobody is shown. */
+		public static Page frontPage(String address) {
+			return new Page(null, address);
 		}
 	}
 
 	/**
-	 * What one time comes to: the addresses to ask about, in order and each once, the pages to write down as
-	 * they stand now, and the pages to forget because they are no longer shown.
+	 * What one time comes to: the addresses to ask about, in order and each once, and the pages to write down as
+	 * Facebook will hold them once it has read them again.
 	 */
-	public record Plan(List<String> addresses, Map<Key, Page> written, Set<Key> forgotten) {
+	public record Plan(List<String> addresses, Map<Key, Page> written) {
 
 		public Plan {
 			addresses = List.copyOf(addresses);
 			written = Map.copyOf(written);
-			forgotten = Set.copyOf(forgotten);
 		}
 	}
 
@@ -89,32 +101,27 @@ public final class WhatFacebookIsAskedAgain {
 	}
 
 	/**
-	 * @param asked  every page as Facebook was last asked about it
+	 * @param read   every page Facebook has read, as it holds it
 	 * @param now    every page a visitor is shown now
 	 * @param atMost how many addresses may be asked about this time, at least one
 	 */
-	public static Plan plan(Map<Key, Page> asked, Map<Key, Page> now, int atMost) {
+	public static Plan plan(Map<Key, Page> read, Map<Key, Page> now, int atMost) {
 		if (atMost < 1) {
 			throw new IllegalArgumentException("at least one address must be asked at a time, not " + atMost);
 		}
 
-		if (asked.isEmpty()) {
-			return new Plan(List.of(), now, Set.of());
-		}
-
 		Set<Key> every = new TreeSet<>(IN_ORDER);
-		every.addAll(asked.keySet());
-		every.addAll(now.keySet());
+		every.addAll(read.keySet());
 
 		Set<String> addresses = new LinkedHashSet<>();
 		Map<Key, Page> written = new LinkedHashMap<>();
-		Set<Key> forgotten = new LinkedHashSet<>();
 
 		for (Key page : every) {
-			Page before = asked.get(page);
+			Page before = read.get(page);
 			Page after = now.get(page);
+			Page becomes = after != null ? after : Page.frontPage(before.address());
 
-			if (Objects.equals(before, after)) {
+			if (before.equals(becomes)) {
 				continue;
 			}
 
@@ -124,7 +131,7 @@ public final class WhatFacebookIsAskedAgain {
 				these.add(after.address());
 			}
 
-			if (before != null && (after == null || !before.address().equals(after.address()))) {
+			if (after == null || !before.address().equals(after.address())) {
 				these.add(before.address());
 			}
 
@@ -133,14 +140,9 @@ public final class WhatFacebookIsAskedAgain {
 			}
 
 			addresses.addAll(these);
-
-			if (after == null) {
-				forgotten.add(page);
-			} else {
-				written.put(page, after);
-			}
+			written.put(page, becomes);
 		}
 
-		return new Plan(new ArrayList<>(addresses), written, forgotten);
+		return new Plan(new ArrayList<>(addresses), written);
 	}
 }

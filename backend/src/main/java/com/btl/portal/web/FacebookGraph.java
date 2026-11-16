@@ -36,9 +36,10 @@ import java.util.concurrent.CompletableFuture;
  * pass), a developer's machine has none, and neither has the test suite unless a case gives it one. Half a pair,
  * an id without its secret, is off too, and says so once at start.
  *
- * <p><b>NOTHING HERE CAN SLOW OR STOP ANYBODY.</b> It is called only by {@link FacebookIsAskedToReadAChangedCard},
- * which runs on its own and never inside the request of a member or an administrator; the request is sent without
- * waiting for it ({@link HttpClient#sendAsync}), it has a term ({@code btl.facebook.wait-millis}), and what goes wrong,
+ * <p><b>NOTHING HERE CAN SLOW OR STOP ANYBODY.</b> It is called by {@link FacebookIsAskedToReadAChangedCard}, which
+ * runs on its own, and by {@link WhatFacebookHasRead} after a deletion has committed (owner, PDL P11, 16.11.2026,
+ * item 14), when the member or the administrator has nothing left to wait for and nothing left to fail; the request
+ * is sent without waiting for it ({@link HttpClient#sendAsync}), it has a term ({@code btl.facebook.wait-millis}), and what goes wrong,
  * an answer that is not a success, a term run out or a connection refused, is logged and goes no further. The
  * future it returns never fails, so nothing that waits on it can be thrown at.
  */
@@ -49,6 +50,9 @@ class FacebookGraph {
 
 	/** How much of an answer that is not a success is logged. */
 	private static final int AT_MOST_LOGGED = 300;
+
+	/** What the log calls the page of a member who has just been deleted, in place of its address. */
+	static final String A_DELETED_MEMBERS_PAGE = "the page of a deleted member";
 
 	private final String secret;
 	private final String token;
@@ -91,6 +95,22 @@ class FacebookGraph {
 	 * @param address the whole address of a page of the portal, host included
 	 */
 	CompletableFuture<Void> readAgain(String address) {
+		return asked(address, address, true);
+	}
+
+	/**
+	 * THE SAME REQUEST FOR THE PAGE OF A MEMBER WHO HAS JUST BEEN DELETED, AND THE LOG NAMES NEITHER THE PAGE NOR WHAT
+	 * FACEBOOK ANSWERED. The address carries his name, and the owner, PDL P11, 16.11.2026, item 14: the name is kept
+	 * not a minute after the deletion, which a line of the log is a place to keep it in; what Facebook answers to a
+	 * page it could not read may name the page too. So the log says what happened, and to a deleted member's page.
+	 *
+	 * @param address the whole address of a page of the portal, host included
+	 */
+	CompletableFuture<Void> readAgainUnnamed(String address) {
+		return asked(address, A_DELETED_MEMBERS_PAGE, false);
+	}
+
+	private CompletableFuture<Void> asked(String address, String named, boolean answerLogged) {
 		if (!isOn()) {
 			return CompletableFuture.completedFuture(null);
 		}
@@ -105,12 +125,12 @@ class FacebookGraph {
 		return client.sendAsync(request, HttpResponse.BodyHandlers.ofString())
 				.handle((answer, failed) -> {
 					if (failed != null) {
-						LOG.warn("Facebook was not reached to read {} again: {}", address, scrubbed(failed.toString()));
+						LOG.warn("Facebook was not reached to read {} again: {}", named, scrubbed(failed.toString()));
 					} else if (answer.statusCode() / 100 != 2) {
-						LOG.warn("Facebook did not read {} again: {} {}", address, answer.statusCode(),
-								scrubbed(answer.body()));
+						LOG.warn("Facebook did not read {} again: {} {}", named, answer.statusCode(),
+								answerLogged ? scrubbed(answer.body()) : "");
 					} else {
-						LOG.info("Facebook read {} again", address);
+						LOG.info("Facebook read {} again", named);
 					}
 
 					return null;

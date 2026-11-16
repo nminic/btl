@@ -253,6 +253,9 @@ class CompetitorWriteApi {
 	 */
 	private final Portal portal;
 
+	/** What Facebook holds of his profile, which a deletion asks Facebook to read again (PDL P11, 16.11.2026, item 14). */
+	private final WhatFacebookHasRead facebookHasRead;
+
 	/**
 	 * @param folder the same setting {@link MePhotoApi} and {@link PhotoApi} read, for his own
 	 *               picture's file, so that this class and theirs never carry two folders the
@@ -265,7 +268,7 @@ class CompetitorWriteApi {
 			TransactionTemplate inOneTransaction, TheNamedSuperadmin namedSuperadmin,
 			Postman postman, Clock clock, ATownFromTheCodebookOrTyped towns,
 			@Value("${btl.photos.folder}") String folder,
-			@Value("${btl.portal.address}") String address) {
+			@Value("${btl.portal.address}") String address, WhatFacebookHasRead facebookHasRead) {
 
 		this.db = db;
 		this.emptyTeams = emptyTeams;
@@ -276,6 +279,7 @@ class CompetitorWriteApi {
 		this.towns = towns;
 		this.folder = Path.of(folder);
 		this.portal = new Portal(address);
+		this.facebookHasRead = facebookHasRead;
 	}
 
 	record Refused(String reason) {
@@ -397,6 +401,14 @@ class CompetitorWriteApi {
 		   the partners above are read the same way, by the caller, before this line. */
 		List<Long> teams = emptyTeams.teamsOf(gone);
 		Optional<Long> photo = photoOf(gone);
+
+		/* AND WHAT FACEBOOK HOLDS OF HIS PROFILE, read here for the same reason: `shared_card` is
+		   `on delete cascade` (V103). The owner, PDL P11, 16.11.2026, item 14, with my recommendation: the server asks Facebook at once to
+		   read his addresses again, so that it gets the front page's preview, and keeps the name not a minute after.
+		   Here, because every road that deletes a member is this one: the administration's, the twelve months, the five
+		   years and the unconfirmed registration. Sent after the commit, so a deletion that rolls back asks nothing and
+		   a Facebook that is slow or refusing cannot hold up or fail the deletion. */
+		facebookHasRead.forgetWhenGone(gone);
 
 		/* TOLD BESIDE THE READING THAT FOUND THEM, which is `PairWriteApi.end`'s own
 		   arrangement, and it does not matter whether it happens before or after the

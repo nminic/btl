@@ -51,7 +51,6 @@ class WhatFacebookIsAskedAgainTest {
 
 		assertThat(plan.addresses()).isEmpty();
 		assertThat(plan.written()).isEmpty();
-		assertThat(plan.forgotten()).isEmpty();
 	}
 
 	/** The card changed and the name did not: its one address is asked, and the page is written as it stands now. */
@@ -65,7 +64,6 @@ class WhatFacebookIsAskedAgainTest {
 
 		assertThat(plan.addresses()).containsExactly("/sr/takmicar/000002-nikola-minic");
 		assertThat(plan.written()).containsExactly(Map.entry(MOVED, after));
-		assertThat(plan.forgotten()).isEmpty();
 	}
 
 	/** A renamed member: the new address, which the preview now names, and the old one, which people pasted. */
@@ -83,34 +81,48 @@ class WhatFacebookIsAskedAgainTest {
 	}
 
 	/**
-	 * A page no longer shown (hidden, lapsed): the address Facebook was last asked about, so that it reads the front
-	 * page's preview there, and the page is forgotten; and asked again the next time it is not.
+	 * A page no longer shown (hidden, lapsed): the address Facebook holds, so that it reads the front page's preview
+	 * there, and the page is written down as the front page's; and nothing the next time, while it stays so.
 	 */
 	@Test
-	void aPageNoLongerShownIsAskedOnceAndForgotten() {
+	void aPageNoLongerShownIsAskedOnceAndWrittenAsTheFrontPage() {
 		Page before = page("000002", "sr", "bbbbbbbbbbbbbbbb", "nikola-minic");
 
 		Plan plan = WhatFacebookIsAskedAgain.plan(pages(STILL, STILL_PAGE, MOVED, before),
 				pages(STILL, STILL_PAGE), 10);
 
 		assertThat(plan.addresses()).containsExactly("/sr/takmicar/000002-nikola-minic");
-		assertThat(plan.written()).isEmpty();
-		assertThat(plan.forgotten()).containsExactly(MOVED);
+		assertThat(plan.written()).containsExactly(Map.entry(MOVED, Page.frontPage("/sr/takmicar/000002-nikola-minic")));
 
-		Plan after = WhatFacebookIsAskedAgain.plan(pages(STILL, STILL_PAGE), pages(STILL, STILL_PAGE), 10);
+		Plan after = WhatFacebookIsAskedAgain.plan(pages(STILL, STILL_PAGE, MOVED, plan.written().get(MOVED)),
+				pages(STILL, STILL_PAGE), 10);
 
 		assertThat(after.addresses()).as("a page that stays hidden is asked about again").isEmpty();
+		assertThat(after.written()).isEmpty();
 	}
 
-	/** A page shown now and not before (a fee paid, a profile out of hiding): its address, because Facebook may hold the front page there. */
+	/**
+	 * A page Facebook holds as the front page's and shown again (a fee paid, a profile out of hiding): its address,
+	 * and when the name moved it while it was hidden, the address Facebook holds too.
+	 */
 	@Test
 	void aPageShownAgainIsAsked() {
-		Page after = page("000002", "sr", "bbbbbbbbbbbbbbbb", "nikola-minic");
+		Page hidden = Page.frontPage("/sr/takmicar/000002-nikola-minic");
+		Page same = page("000002", "sr", "bbbbbbbbbbbbbbbb", "nikola-minic");
+		Page renamed = page("000002", "sr", "bbbbbbbbbbbbbbbb", "nikola-petrovic");
 
-		Plan plan = WhatFacebookIsAskedAgain.plan(pages(STILL, STILL_PAGE), pages(STILL, STILL_PAGE, MOVED, after), 10);
+		Plan plan = WhatFacebookIsAskedAgain.plan(pages(STILL, STILL_PAGE, MOVED, hidden),
+				pages(STILL, STILL_PAGE, MOVED, same), 10);
 
 		assertThat(plan.addresses()).containsExactly("/sr/takmicar/000002-nikola-minic");
-		assertThat(plan.written()).containsExactly(Map.entry(MOVED, after));
+		assertThat(plan.written()).containsExactly(Map.entry(MOVED, same));
+
+		Plan moved = WhatFacebookIsAskedAgain.plan(pages(STILL, STILL_PAGE, MOVED, hidden),
+				pages(STILL, STILL_PAGE, MOVED, renamed), 10);
+
+		assertThat(moved.addresses()).containsExactly("/sr/takmicar/000002-nikola-petrovic",
+				"/sr/takmicar/000002-nikola-minic");
+		assertThat(moved.written()).containsExactly(Map.entry(MOVED, renamed));
 	}
 
 	/** Two languages are two pages, two addresses and two pictures, and each is asked on its own. */
@@ -127,16 +139,26 @@ class WhatFacebookIsAskedAgainTest {
 		assertThat(plan.written()).containsExactly(Map.entry(MOVED_IN_ENGLISH, englishAfter));
 	}
 
-	/** With nothing written down there is nothing to compare with: everything is written and nothing is asked. */
+	/**
+	 * A PAGE FACEBOOK HAS NEVER READ IS NEVER ASKED ABOUT AND NEVER WRITTEN DOWN (owner, PDL P11, 16.11.2026, item 14),
+	 * however it changes, shown or hidden: beside a page Facebook has read and that changed too, so a plan that asked
+	 * about every changed page asks two addresses and not one. And with nothing read at all, nothing at all.
+	 */
 	@Test
-	void theFirstTimeAsksNothingAndWritesEverything() {
-		Map<Key, Page> now = pages(STILL, STILL_PAGE, MOVED, page("000002", "sr", "bbbbbbbbbbbbbbbb", "nikola-minic"));
+	void aPageFacebookHasNeverReadIsNeverAskedAbout() {
+		Page stillAfter = page("000001", "sr", "ffffffffffffffff", "ana-prva");
+		Page neverRead = page("000002", "sr", "bbbbbbbbbbbbbbbb", "nikola-minic");
 
-		Plan plan = WhatFacebookIsAskedAgain.plan(Map.of(), now, 10);
+		Plan plan = WhatFacebookIsAskedAgain.plan(pages(STILL, STILL_PAGE),
+				pages(STILL, stillAfter, MOVED, neverRead, MOVED_IN_ENGLISH, page("000002", "en", "c", "x")), 10);
 
-		assertThat(plan.addresses()).isEmpty();
-		assertThat(plan.written()).isEqualTo(now);
-		assertThat(plan.forgotten()).isEmpty();
+		assertThat(plan.addresses()).containsExactly("/sr/takmicar/000001-ana-prva");
+		assertThat(plan.written()).containsExactly(Map.entry(STILL, stillAfter));
+
+		Plan nothingRead = WhatFacebookIsAskedAgain.plan(Map.of(), pages(STILL, stillAfter, MOVED, neverRead), 10);
+
+		assertThat(nothingRead.addresses()).isEmpty();
+		assertThat(nothingRead.written()).isEmpty();
 	}
 
 	/**
@@ -194,7 +216,7 @@ class WhatFacebookIsAskedAgainTest {
 	void aKeyAndAPageAreNeverHalfMade() {
 		assertThatThrownBy(() -> new Key(null, "sr")).isInstanceOf(NullPointerException.class);
 		assertThatThrownBy(() -> new Key("000001", null)).isInstanceOf(NullPointerException.class);
-		assertThatThrownBy(() -> new Page(null, "/sr/takmicar/000001")).isInstanceOf(NullPointerException.class);
 		assertThatThrownBy(() -> new Page("/api/cards/competitor/x.jpg", null)).isInstanceOf(NullPointerException.class);
+		assertThat(Page.frontPage("/sr/takmicar/000001")).isEqualTo(new Page(null, "/sr/takmicar/000001"));
 	}
 }

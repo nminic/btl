@@ -47,7 +47,7 @@ class SharedCardConstraintsTest extends DatabaseTest {
 		return "insert into shared_card (member_number, language, card, address) values (" + values + ")";
 	}
 
-	/** One member, and his Serbian page as Facebook was last asked about it. */
+	/** One member, and his Serbian page as Facebook holds it. */
 	@BeforeEach
 	void probe() {
 		db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date, place_id,"
@@ -71,8 +71,6 @@ class SharedCardConstraintsTest extends DatabaseTest {
 						row("null, 'en', " + CARD + ", '/en/takmicar/001130'")),
 				Violation.notNull("shared_card_language_not_null", "language",
 						row("'001130', null, " + CARD + ", '/en/takmicar/001130'")),
-				Violation.notNull("shared_card_card_not_null", "card",
-						row("'001130', 'en', null, '/en/takmicar/001130'")),
 				Violation.notNull("shared_card_address_not_null", "address", row("'001130', 'en', " + CARD + ", null")));
 	}
 
@@ -104,6 +102,15 @@ class SharedCardConstraintsTest extends DatabaseTest {
 
 		assertThat(declared).isNotEmpty();
 		assertThat(covered).containsExactlyInAnyOrderElementsOf(declared);
+	}
+
+	/**
+	 * A ROW WITHOUT A CARD is a page where Facebook holds the front page's preview (V103): a profile it read that is no
+	 * longer shown, and that stays written down so that it is asked again when it is shown again.
+	 */
+	@Test
+	void aPageWhereFacebookHoldsTheFrontPageHasNoCard() {
+		assertThat(db.sql(row("'001130', 'en', null, '/en/takmicar/001130-probni-podeljeni'")).update()).isOne();
 	}
 
 	/** The other language of the same member is a row of its own. */

@@ -5,6 +5,8 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import com.btl.portal.TestcontainersConfiguration;
+import com.btl.portal.domain.card.WhatACardSays;
+import com.btl.portal.domain.card.WhatFacebookIsAskedAgain.Page;
 import com.btl.portal.domain.season.SeasonClock;
 import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.AfterEach;
@@ -61,6 +63,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * <p><b>WHAT IS CHANGED IS THE STATE AND NOT A ROAD</b>, because that is what the job reads: every case writes the
  * rows a road would have written (a name, a team, a result, a picture, a square of it, a birth date, the switch that
  * hides a profile) or moves the clock, which no road does, and asks the job what it now asks Facebook.
+ *
+ * <p><b>WHAT FACEBOOK HAS READ IS WRITTEN BY THE CASE</b>, as the crawler's reading writes it (owner, PDL P11,
+ * 16.11.2026, item 14: only a profile Facebook has read is ever asked about), because the job reads those rows and
+ * never adds one; that the preview writes them so is {@code WhatFacebookHasReadTest}'s.
  *
  * <p><b>Nothing in the setting is the only one of its kind</b> (the rule in {@code CLAUDE.md} about two sources of
  * one value). The member whose card changes is never first in the order, and beside him stand a member whose card
@@ -270,6 +276,9 @@ class FacebookIsAskedToReadAChangedCardTest {
 	@Test
 	void withoutTheKeyNothingIsReadWrittenOrSent() throws Exception {
 		assertThat(theOneTheContextBuilt.isOn()).as("the suite's own Facebook is switched on").isFalse();
+		facebookRead(STILL, MOVES);
+
+		List<String> read = rows();
 
 		for (FacebookGraph off : List.of(graph("", "", facebook.address()), graph(APP_ID, "", facebook.address()),
 				graph("", APP_SECRET, facebook.address()), graph("  ", "  ", facebook.address()))) {
@@ -281,7 +290,7 @@ class FacebookIsAskedToReadAChangedCardTest {
 			assertThat(off.readAgain(portal + "/sr/takmicar/" + MOVES).get(5, TimeUnit.SECONDS)).isNull();
 		}
 
-		assertThat(rows()).as("a job without Facebook wrote something down").isEmpty();
+		assertThat(rows()).as("a job without Facebook wrote something down").isEqualTo(read);
 		assertThat(facebook.asked).as("a job without Facebook sent something").isEmpty();
 	}
 
@@ -300,19 +309,25 @@ class FacebookIsAskedToReadAChangedCardTest {
 	/* What is asked                                                                                               */
 	/* ---------------------------------------------------------------------------------------------------------- */
 
-	/** The first run writes every card a visitor is shown down, in both languages, and asks nothing. */
+	/**
+	 * A PROFILE FACEBOOK HAS NEVER READ IS NEVER ASKED ABOUT (owner, PDL P11, 16.11.2026, item 14), however it changes,
+	 * and a run never writes it down: only the crawler does. Beside it a profile Facebook has read changes too, so a run
+	 * that asked about every changed profile asks four addresses and not two. And with nothing read, nothing at all.
+	 */
 	@Test
-	void theFirstRunWritesEveryShownCardDownAndAsksNothing() throws Exception {
-		assertThat(run()).isEmpty();
-		assertThat(rows()).containsExactly(
-				STILL + " en " + cards.addressOf(STILL, com.btl.portal.domain.card.WhatACardSays.ENGLISH).orElseThrow()
-						+ " /en/takmicar/" + STILL + "-ana-prva",
-				STILL + " sr " + cards.addressOf(STILL, com.btl.portal.domain.card.WhatACardSays.SERBIAN).orElseThrow()
-						+ " /sr/takmicar/" + STILL + "-ana-prva",
-				MOVES + " en " + cards.addressOf(MOVES, com.btl.portal.domain.card.WhatACardSays.ENGLISH).orElseThrow()
-						+ " /en/takmicar/" + MOVES + "-nikola-minic",
-				MOVES + " sr " + cards.addressOf(MOVES, com.btl.portal.domain.card.WhatACardSays.SERBIAN).orElseThrow()
-						+ " /sr/takmicar/" + MOVES + "-nikola-minic");
+	void aProfileFacebookHasNeverReadIsNeverAskedAbout() throws Exception {
+		assertThat(run()).as("a run with nothing read").isEmpty();
+		assertThat(rows()).as("a run wrote down a profile Facebook never read").isEmpty();
+
+		facebookRead(STILL);
+		db.sql("update competitor set birth_date = date '1960-05-05' where member_number in (?, ?)")
+				.params(STILL, MOVES).update();
+		rename(MOVES, "Petar");
+
+		assertThat(run()).containsExactly(portal + "/en/takmicar/" + STILL + "-ana-prva",
+				portal + "/sr/takmicar/" + STILL + "-ana-prva");
+		assertThat(rows()).as("a run wrote down a profile Facebook never read").allMatch(row -> row.startsWith(STILL))
+				.hasSize(2);
 		assertThat(run()).as("the second run with nothing changed").isEmpty();
 	}
 
@@ -322,7 +337,7 @@ class FacebookIsAskedToReadAChangedCardTest {
 	 */
 	@Test
 	void aChangeThatLeavesTheCardAsItIsAsksNothing() throws Exception {
-		run();
+		facebookRead(STILL, MOVES);
 
 		db.sql("update competitor set bio = 'Trčim od 2010.', city = 'Novi Sad', place_id = null,"
 				+ " country_id = (select id from country where code = 'RS'), shirt_size = 'XL',"
@@ -340,7 +355,7 @@ class FacebookIsAskedToReadAChangedCardTest {
 	/** A new name is a new card and a new address in each language, so both addresses are asked in both. */
 	@Test
 	void aNameAsksTheNewAddressAndTheOldOneInBothLanguages() throws Exception {
-		run();
+		facebookRead(STILL, MOVES);
 		rename(MOVES, "Petar");
 
 		assertThat(run()).containsExactly(
@@ -380,7 +395,7 @@ class FacebookIsAskedToReadAChangedCardTest {
 		changes.put("a team left", () -> db.sql("delete from team_membership where competitor_id ="
 						+ " (select id from competitor where member_number = ?)").param(MOVES).update());
 
-		run();
+		facebookRead(STILL, MOVES);
 
 		for (Map.Entry<String, Runnable> change : changes.entrySet()) {
 			change.getValue().run();
@@ -393,23 +408,28 @@ class FacebookIsAskedToReadAChangedCardTest {
 	/**
 	 * A HIDDEN PROFILE IS ASKED ABOUT ONCE, THE RUN IT IS HIDDEN, and then never while it stays hidden: Facebook reads
 	 * the front page's preview at its address, which is what a visitor gets there now, and stops showing the card.
-	 * Its rows go. Shown again, it is asked again.
+	 * Its rows stay, written down as the front page's, because Facebook has read that profile. Shown again under a
+	 * name it got while hidden, it is asked at the new address and at the one Facebook holds.
 	 */
 	@Test
 	void aProfileHiddenIsAskedOnceAndThenNotUntilItIsShownAgain() throws Exception {
-		run();
+		facebookRead(STILL, MOVES);
 		db.sql("update competitor set profile_hidden = true where member_number = ?").param(MOVES).update();
 
 		assertThat(run()).containsExactly(portal + "/en/takmicar/" + MOVES + "-nikola-minic",
 				portal + "/sr/takmicar/" + MOVES + "-nikola-minic");
-		assertThat(rows()).noneMatch(row -> row.startsWith(MOVES));
+		assertThat(rows()).filteredOn(row -> row.startsWith(MOVES)).containsExactly(
+				MOVES + " en null /en/takmicar/" + MOVES + "-nikola-minic",
+				MOVES + " sr null /sr/takmicar/" + MOVES + "-nikola-minic");
 
 		rename(MOVES, "Petar");
 		assertThat(run()).as("a profile that stays hidden is asked about").isEmpty();
 
 		db.sql("update competitor set profile_hidden = false where member_number = ?").param(MOVES).update();
-		assertThat(run()).containsExactly(portal + "/en/takmicar/" + MOVES + "-petar-minic",
+		assertThat(run()).containsExactly(portal + "/en/takmicar/" + MOVES + "-nikola-minic",
+				portal + "/en/takmicar/" + MOVES + "-petar-minic", portal + "/sr/takmicar/" + MOVES + "-nikola-minic",
 				portal + "/sr/takmicar/" + MOVES + "-petar-minic");
+		assertThat(run()).as("asked once, not on every run").isEmpty();
 	}
 
 	/**
@@ -419,21 +439,23 @@ class FacebookIsAskedToReadAChangedCardTest {
 	 */
 	@Test
 	void aFeeThatLapsesByTheClockAloneIsAskedAbout() throws Exception {
-		run();
+		facebookRead(STILL, MOVES);
 		clock.moveTo(FEBRUARY_2029);
 
 		assertThat(run()).containsExactly(portal + "/en/takmicar/" + MOVES + "-nikola-minic",
 				portal + "/sr/takmicar/" + MOVES + "-nikola-minic");
-		assertThat(rows()).allMatch(row -> row.startsWith(STILL)).hasSize(2);
+		assertThat(rows()).filteredOn(row -> row.startsWith(MOVES))
+				.allMatch(row -> row.contains(" null /")).hasSize(2);
 	}
 
 	/**
 	 * A MEMBER DELETED TAKES HIS ROWS WITH HIM, in the statement that deletes him, so the name his address carries does
-	 * not outlive him here; and the price, named in V103, is that Facebook is not asked about him.
+	 * not outlive him here, and no run asks about him after: what the deletion asks Facebook it asks itself, at once
+	 * ({@link WhatFacebookHasRead#forgetWhenGone}, measured in {@code WhatFacebookHasReadTest}).
 	 */
 	@Test
-	void aDeletedMemberTakesHisRowsAndIsNotAskedAbout() throws Exception {
-		run();
+	void aDeletedMemberTakesHisRowsAndNoRunAsksAboutHim() throws Exception {
+		facebookRead(STILL, MOVES);
 		db.sql("delete from membership where competitor_id = (select id from competitor where member_number = ?)")
 				.param(MOVES).update();
 		db.sql("delete from competitor where member_number = ?").param(MOVES).update();
@@ -445,7 +467,7 @@ class FacebookIsAskedToReadAChangedCardTest {
 	/** Ten changes to one profile between two runs are one request per address. */
 	@Test
 	void manyChangesBetweenTwoRunsAreOneRequest() throws Exception {
-		run();
+		facebookRead(STILL, MOVES);
 
 		for (String name : List.of("Petar", "Pavle", "Marko", "Nikola")) {
 			rename(MOVES, name);
@@ -461,7 +483,7 @@ class FacebookIsAskedToReadAChangedCardTest {
 	void theLimitSpreadsARunOverTheNextOnes() throws Exception {
 		FacebookIsAskedToReadAChangedCard one = jobAsking(facebook.address(), 1, 2000);
 
-		one.askAgain();
+		facebookRead(STILL, MOVES);
 		db.sql("update competitor set birth_date = date '1960-05-05' where member_number in (?, ?)")
 				.params(STILL, MOVES).update();
 
@@ -489,9 +511,9 @@ class FacebookIsAskedToReadAChangedCardTest {
 	 */
 	@Test
 	void theRequestIsAPostWithTheTokenInItsBody() throws Exception {
-		run();
+		facebookRead(STILL, MOVES);
 		db.sql("update competitor set birth_date = date '1960-05-05' where member_number = ?").param(MOVES).update();
-		run();
+		assertThat(run()).hasSize(2);
 
 		assertThat(facebook.asked).hasSize(2).allSatisfy(one -> {
 			assertThat(one.method()).isEqualTo("POST");
@@ -515,7 +537,7 @@ class FacebookIsAskedToReadAChangedCardTest {
 		facebook.status = 400;
 		facebook.body = "{\"error\":{\"message\":\"bad token " + APP_ID + "|" + APP_SECRET + "\"," + "\"x\":\""
 				+ "y".repeat(400) + "\"}}";
-		run();
+		facebookRead(STILL, MOVES);
 		db.sql("update competitor set birth_date = date '1960-05-05' where member_number = ?").param(MOVES).update();
 
 		List<ILoggingEvent> heard = heardWhile(FacebookGraph.class, () -> assertThat(run()).hasSize(2));
@@ -534,7 +556,7 @@ class FacebookIsAskedToReadAChangedCardTest {
 		facebook.waitMillis = 3000;
 		FacebookIsAskedToReadAChangedCard impatient = jobAsking(facebook.address(), 10, 200);
 
-		impatient.askAgain();
+		facebookRead(STILL, MOVES);
 		db.sql("update competitor set birth_date = date '1960-05-05' where member_number = ?").param(MOVES).update();
 
 		List<CompletableFuture<Void>> sent = new ArrayList<>();
@@ -565,7 +587,7 @@ class FacebookIsAskedToReadAChangedCardTest {
 		facebook.waitMillis = 3000;
 		FacebookIsAskedToReadAChangedCard patient = jobAsking(facebook.address(), 10, 20_000);
 
-		patient.askAgain();
+		facebookRead(STILL, MOVES);
 		db.sql("update competitor set birth_date = date '1960-05-05' where member_number = ?").param(MOVES).update();
 
 		long started = System.nanoTime();
@@ -589,7 +611,7 @@ class FacebookIsAskedToReadAChangedCardTest {
 
 		FacebookIsAskedToReadAChangedCard nowhere = jobAsking("http://127.0.0.1:" + nobody, 10, 2000);
 
-		nowhere.askAgain();
+		facebookRead(STILL, MOVES);
 		rename(MOVES, "Petar");
 
 		List<CompletableFuture<Void>> sent = new ArrayList<>();
@@ -607,7 +629,7 @@ class FacebookIsAskedToReadAChangedCardTest {
 	/** An answer that is a success is logged once a page, at the level that is not a warning. */
 	@Test
 	void aSuccessIsLoggedAsInformation() throws Exception {
-		run();
+		facebookRead(STILL, MOVES);
 		db.sql("update competitor set birth_date = date '1960-05-05' where member_number = ?").param(MOVES).update();
 
 		List<ILoggingEvent> heard = heardWhile(FacebookGraph.class, () -> run());
@@ -640,6 +662,7 @@ class FacebookIsAskedToReadAChangedCardTest {
 		assertThat(((FixedDelayTask) tasks.get(0).getTask()).getIntervalDuration()).isEqualTo(Duration.ofMinutes(5));
 		assertThat(((FixedDelayTask) tasks.get(0).getTask()).getInitialDelayDuration()).isEqualTo(Duration.ofMinutes(5));
 
+		facebookRead(STILL, MOVES);
 		job.pass();
 		db.sql("update competitor set birth_date = date '1960-05-05' where member_number = ?").param(MOVES).update();
 		job.pass();
@@ -698,8 +721,26 @@ class FacebookIsAskedToReadAChangedCardTest {
 		return new FacebookGraph(id, secret, address, 2000);
 	}
 
+	/**
+	 * THE PROFILES FACEBOOK'S CRAWLER HAS READ, in both languages, as the preview writes them down when the crawler
+	 * reads them: the page through {@link WhatFacebookHasRead#pageOf}, the one spelling the preview and the job share.
+	 * That the preview really writes them so is {@code WhatFacebookHasReadTest}'s.
+	 */
+	private void facebookRead(String... numbers) {
+		for (String number : numbers) {
+			for (WhatACardSays language : WhatACardSays.values()) {
+				CompetitorCards.Shown shown = cards.shown(number, language).orElseThrow();
+				Page page = WhatFacebookHasRead.pageOf(number, CompetitorPreviewApi.Words.of(language), shown);
+
+				db.sql("insert into shared_card (member_number, language, card, address) values (?, ?, ?, ?)")
+						.params(number, language.code(), page.card(), page.address()).update();
+			}
+		}
+	}
+
 	private List<String> rows() {
-		return db.sql("select member_number || ' ' || language || ' ' || card || ' ' || address from shared_card"
+		return db.sql("select member_number || ' ' || language || ' ' || coalesce(card, 'null') || ' ' || address"
+				+ " from shared_card"
 				+ " order by member_number, language").query(String.class).list();
 	}
 
