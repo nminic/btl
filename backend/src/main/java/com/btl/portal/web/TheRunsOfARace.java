@@ -7,20 +7,15 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
- * THE RUNS AT A RACE AND THE ONE WAY THEY ARE COUNTED AGAIN AT IT, for every road that does it.
+ * THE RUNS AT A RACE AND THE ONE WAY THEY ARE COUNTED AGAIN AT IT.
  *
  * <p>PDL P4, owner, 15.11.2026: „Rezultat na trci zadate dužine uvek nosi dužinu, uspon i spust svoje
- * trke i bodove izračunate iz njih". Two roads write a run so that it carries its race: an
- * administrator correcting the race ({@link RaceWriteApi}, which tells each member whose run moved)
- * and the one-off job that brings three results written before that rule into line
- * ({@link RunsFollowTheirRace}, which tells nobody: owner, 15.11.2026, „TIHO, bez reda u sandučetu").
- * What a run is counted at, and whether it needs writing at all, is answered here once, so the two
- * cannot come to count a run differently; what each of them tells, and whom, stays theirs.
+ * trke i bodove izračunate iz njih". Every change of a race that moves what the race fixes counts its
+ * runs again ({@link RaceWriteApi}, which tells each member whose run moved), and what a run is
+ * counted at, and whether it needs writing at all, is answered here once.
  *
  * <p><b>Nothing here asks the season, the inbox or the ducats.</b> A frozen season is not asked
  * about either, on purpose: the rule is the same before 2027, in a season that has frozen and in
@@ -55,20 +50,6 @@ final class TheRunsOfARace {
 				.list();
 	}
 
-	/** Every row of {@code result} there is, by the race it is at: one statement for the job that looks
-	 *  at all of them, and the same rows {@link #at} reads. */
-	static Map<Long, List<Counted>> byRace(JdbcClient db) {
-		Map<Long, List<Counted>> byRace = new LinkedHashMap<>();
-
-		db.sql("select race_id, " + THE_COLUMNS + " from result order by race_id, id")
-				.query((row, one) -> byRace.computeIfAbsent(row.getLong(1), race -> new ArrayList<>())
-						.add(counted(row.getLong(2), row.getLong(3), row.getBigDecimal(4),
-								row.getInt(5), row.getInt(6), row.getInt(7), row.getBigDecimal(8))))
-				.list();
-
-		return byRace;
-	}
-
 	private static Counted counted(long id, long member, BigDecimal km, int ascent, int descent,
 			int seconds, BigDecimal points) {
 		return new Counted(id, member, new Figures(km, ascent, descent, seconds), points);
@@ -82,11 +63,6 @@ final class TheRunsOfARace {
 	 */
 	private static Figures countedAt(ARace race, Counted run) {
 		return WhatARaceCarries.figuresOf(race, run.figures());
-	}
-
-	/** Whether any run at the race carries figures other than the race gives it. */
-	static boolean anyDisagrees(ARace race, List<Counted> runs) {
-		return runs.stream().anyMatch(run -> !isAsItWas(run, countedAt(race, run)));
 	}
 
 	/**

@@ -722,7 +722,7 @@ class RaceWriteApi {
 			}
 		}
 
-		/* THE ROWS ARE WRITTEN OVER BY THE ONE FUNCTION THE JOB OF 15.11.2026 ASKS TOO, and what is told
+		/* THE ROWS ARE WRITTEN OVER BY THE ONE FUNCTION THAT COUNTS A RUN AGAIN, and what is told
 		   about each is this road's. */
 		boolean scored = PointsOfARun.scored(db, id);
 		boolean frozen = SeasonClock.isAFrozenSeasonOfTheLeague(season, now());
