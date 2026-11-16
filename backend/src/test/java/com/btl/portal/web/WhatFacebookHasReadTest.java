@@ -640,6 +640,24 @@ class WhatFacebookHasReadTest {
 		assertThat(job.askAgain()).as("the next pass asked again").isEmpty();
 	}
 
+	/**
+	 * A RENAME UNDONE BEFORE THE PASS leaves a page equal to what the row holds, which the plan skips, and the address the
+	 * crawler read in between is asked all the same: Facebook saw it, and the name sits there.
+	 */
+	@Test
+	void aRenameUndoneBeforeThePassStillAsksTheAddressTheCrawlerReadInBetween() throws Exception {
+		readByFacebook(GOES);
+		db.sql("update competitor set first_name = 'Petar' where member_number = ?").param(GOES).update();
+		previewOf(GOES + "-sr", THE_CRAWLER);
+		db.sql("update competitor set first_name = 'Nikola' where member_number = ?").param(GOES).update();
+
+		CompletableFuture.allOf(job.askAgain().toArray(CompletableFuture[]::new)).get(10, TimeUnit.SECONDS);
+
+		assertThat(FACEBOOK.askedOnce(1)).extracting(Asked::id)
+				.containsExactly(portal + "/sr/takmicar/" + GOES + "-petar-minic");
+		assertThat(alsoRead()).isEmpty();
+	}
+
 	/** Both languages read by Facebook's crawler, through the preview. */
 	private void readByFacebook(String number) throws Exception {
 		assertThat(previewOf(number + "-sr", THE_CRAWLER).getStatus()).isEqualTo(200);
