@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import type { Competitor } from '../data/types'
+import { CARD_MARK } from '../pages/profile/cardMark'
 import { profilePath } from '../pages/profileAddress'
 import held from './serverConfig.snapshot.json'
 
@@ -188,6 +189,33 @@ describe('what the server in front of the portal is told', () => {
       '/sr/takmicar/00012', '/sr/takmicar/0001278', '/de/takmicar/000127', '/sr/takmicari',
       '/sr/kalendar/000127']) {
       expect(read(elsewhere), `${elsewhere} is not the address of a profile`).toBeNull()
+    }
+
+    /* AND THE MARK OF HIS CARD IN THE ADDRESS OF HIS OWN PROFILE CHANGES NOTHING HERE (owner, PDL P11,
+       16.11.2026, point 15: `?k=268f`, `pages/profile/cardMark.ts`). nginx matches a location against
+       the path of a request and never its query, so the marked address is this location as the clean
+       one is; measured on nginx 1.29 on 16.11.2026, with a backend that echoed what it was asked: the
+       address with `?k=268f&sezona=2027&duzina=half` asked for `/api/previews/competitor/000127-sr`
+       with no query, to the character the clean address did. What could still carry the query into
+       the page is a variable, so none of the three texts that build it may name one: the location,
+       the include in index.html and the folder it asks. */
+    const marked = new URL(`${profilePath(someone, 'sr')}?${CARD_MARK}=268f&sezona=2027`, 'https://balkanskatrkackaliga.net')
+
+    expect(read(marked.pathname)).toBe('sr 000127')
+    expect(marked.searchParams.get(CARD_MARK)).toBe('268f')
+
+    const theQuery = /\$(?:args|arg_\w+|query_string|request_uri|is_args)\b/
+    const previewsBlock = /location\s+\/api\/previews\/\s*\{([^}]*)\}/.exec(conf)
+    const asking = /<!--# include virtual="[^"]*"[^>]*-->/.exec(page)
+
+    expect(previewsBlock, 'no location for the previews').not.toBeNull()
+    expect(asking, 'index.html asks for no preview').not.toBeNull()
+    for (const [what, text] of [
+      ['the location of a profile', String(profile?.[0])],
+      ['the include in index.html', String(asking?.[0])],
+      ['the folder of the previews', String(previewsBlock?.[1])],
+    ]) {
+      expect(text, `${what} reads the query of the address`).not.toMatch(theQuery)
     }
 
     const names = [...String(profile?.[1]).matchAll(/\(\?<(\w+)>/g)].map((one) => String(one[1]))
