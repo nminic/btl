@@ -206,6 +206,14 @@ services:
       # more line in deploy/.env before QA can show a picture, and one more row in
       # the table WhatEachStackRequiresTest holds.
       BTL_PHOTOS_FOLDER: /var/lib/btl/photos
+      # AND NO FACEBOOK, written out as nothing and not taken from the environment.
+      # QA sits behind a password Facebook cannot pass, so asking it to read a
+      # page here would only teach it the password page; and a key pasted into
+      # this stack's deploy/.env by mistake must not switch it on. With both empty,
+      # FacebookGraph is off and FacebookIsAskedToReadAChangedCard does nothing at
+      # all: no reading, no writing, no request (FacebookIsAskedToReadAChangedCardTest).
+      BTL_FACEBOOK_APP_ID: ""
+      BTL_FACEBOOK_APP_SECRET: ""
       # The JVM sizes the heap from the cgroup limit below, not from the host's
       # 3.7 GB, so this is what keeps it from taking a quarter of the machine.
       # SerialGC is what a 2 vCPU box would pick anyway and costs the least in

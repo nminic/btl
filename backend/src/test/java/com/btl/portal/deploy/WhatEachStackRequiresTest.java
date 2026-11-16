@@ -206,7 +206,13 @@ class WhatEachStackRequiresTest {
 				Map.entry("PROD_BACKUP_R2_BUCKET", asked(Asking.DEPLOYS_WITHOUT_IT, 1)),
 				Map.entry("PROD_BACKUP_R2_ACCESS_KEY_ID", asked(Asking.DEPLOYS_WITHOUT_IT, 1)),
 				Map.entry("PROD_BACKUP_R2_SECRET_ACCESS_KEY", asked(Asking.DEPLOYS_WITHOUT_IT, 1)),
-				Map.entry("PROD_BACKUP_PASSPHRASE", asked(Asking.DEPLOYS_WITHOUT_IT, 1))));
+				Map.entry("PROD_BACKUP_PASSPHRASE", asked(Asking.DEPLOYS_WITHOUT_IT, 1)),
+				/* THE FACEBOOK APPLICATION'S PAIR (PDL P11, item 10), each reaching only the backend, and each
+				   deploying without a value on purpose, for the relay's reason: a portal whose previews on
+				   Facebook stay as they were is a smaller failure than one that will not come up. Without
+				   either, FacebookGraph is off and nothing is ever sent. */
+				Map.entry("PROD_FACEBOOK_APP_ID", asked(Asking.DEPLOYS_WITHOUT_IT, 1)),
+				Map.entry("PROD_FACEBOOK_APP_SECRET", asked(Asking.DEPLOYS_WITHOUT_IT, 1))));
 
 		table.put("compose.qa.yml", Map.of(
 				"QA_POSTGRES_DB", asked(Asking.DEPLOYS_WITHOUT_IT, 3),

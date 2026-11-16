@@ -742,6 +742,8 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 				"season_team_length.season_team_length_team_fk cascade",
 				"season_team_member.season_team_member_competitor_fk set null",
 				"season_team_member.season_team_member_team_fk cascade",
+				/* V103. What Facebook was last asked about a profile carries his name in the address, and goes with him. */
+				"shared_card.shared_card_member_fk cascade",
 				/* V24. Both CASCADE: nothing writes to this table yet (no page uses `includes`
 				   today), and a page that takes another in, or is taken in, is not a person -
 				   deleting either side of the relation is the administrator deleting a page,

@@ -202,7 +202,9 @@ class NoTextHoldsAZeroTest {
 			Map.entry("PasswordResetApi#reset:" + SessionCookie.NAME + " (cookie)",
 					"hashed before it is compared with the sessions the reset deletes"),
 			Map.entry("SignOutApi#signOut:" + SessionCookie.NAME + " (cookie)",
-					"hashed before it is used"));
+					"hashed before it is used"),
+			Map.entry("CompetitorPreviewApi#preview:User-Agent (header)",
+					"only asked whether it carries the name of Facebook's crawler, and never written anywhere"));
 
 	@Autowired
 	private ObjectMapper mapper;
@@ -715,8 +717,8 @@ class NoTextHoldsAZeroTest {
 				.startsWith("REFUSED");
 		assertThat(found.stream().map(one -> one.substring(one.lastIndexOf('(')))
 				.distinct().toList())
-				.as("all three ways a text arrives are among the texts this class accounts for")
-				.containsExactlyInAnyOrder("(path)", "(parameter)", "(cookie)");
+				.as("all four ways a text arrives are among the texts this class accounts for")
+				.containsExactlyInAnyOrder("(path)", "(parameter)", "(cookie)", "(header)");
 	}
 
 	private static String nameOfTheParameter(MethodParameter parameter) {

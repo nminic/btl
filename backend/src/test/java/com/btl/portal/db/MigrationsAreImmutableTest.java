@@ -860,7 +860,24 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   increment, merged last (PR 727).
 
 			   Pinned LAST, when the file was final, off this very assertion. */
-			new Applied("101", "V101__a_described_run_carries_the_kind_of_its_event.sql", 411634573));
+			new Applied("101", "V101__a_described_run_carries_the_kind_of_its_event.sql", 411634573),
+
+			/* V102. The privacy policy says in section 3 what a network shows when somebody shares the link of his
+			   profile (owner, 16.11.2026, PDL „Profil ima deljivu sliku za društvene mreže (OG sliku)", item 12): one
+			   paragraph in each language, the owner's sentence in Serbian and the assistant's translation in English,
+			   and the policy's sign-off moves from 11.11.2026 (V95) to 16.11.2026 in both.
+
+			   Pinned LAST, when the file was final, off this very assertion. */
+			new Applied("102", "V102__the_privacy_policy_says_what_a_shared_profile_shows.sql", 1391585080),
+
+			/* V103. What Facebook holds at every address of a profile its crawler has read (owner, 15.11.2026 and
+			   16.11.2026, the same entry, items 10, 14 and 16): one table, one row per address, keyed by the member
+			   number and the address, whose rows go with the member they name, and whose card is empty where Facebook
+			   holds the front page. Changed in place three times on 16.11.2026, before the merge, while applied
+			   nowhere.
+
+			   Pinned LAST, when the file was final, off this very assertion. */
+			new Applied("103", "V103__facebook_remembers_which_card_it_was_last_asked_about.sql", 156348676));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {

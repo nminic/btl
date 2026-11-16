@@ -204,6 +204,7 @@ class TheWrittenPagesSayTheDateOfBirthIsNotShownToOthersTest extends DatabaseTes
 	@Test
 	void thePolicyIsSignedOffOnTheTwentyNinthAndNoEarlierDayStandsAnywhereAnyMore() {
 		/* The text as V94 left it: V95 (owner, 11.11.2026) moved the sign-offs of all three pages and took sentences out of them, which is held by TheWrittenPagesStateTheFactCarriedOverTest. */
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "102");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "100");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "98");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "96");
@@ -308,6 +309,7 @@ class TheWrittenPagesSayTheDateOfBirthIsNotShownToOthersTest extends DatabaseTes
 		/* V77 (29.10.2026) cut the cell, the heading and the sign-off this file reverts by hand, so the pages are first put
 		   back to how they stood before V77, read out of V77 itself (V80 of 30.10.2026 moved the rulebook's sign-off on
 		   from the day V77 gave it, so it is undone first). */
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "102");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "100");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "98");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "96");
@@ -390,6 +392,7 @@ class TheWrittenPagesSayTheDateOfBirthIsNotShownToOthersTest extends DatabaseTes
 	@Test
 	void v73RunAgainOverTheFinishedTextStopsAndSaysTheWordIsAlreadyThere() {
 		/* The text V73 finished, which is the text before V77 cut parts of it (29.10.2026). */
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "102");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "100");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "98");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "96");
@@ -548,6 +551,7 @@ class TheWrittenPagesSayTheDateOfBirthIsNotShownToOthersTest extends DatabaseTes
 		   out of V90 itself, and what is held here is the words V73 wrote; what stands now is held by
 		   TheWrittenPagesSayMojiPodaciWhereTheySaidTheCardTest. */
 		/* The text as V94 left it: V95 (owner, 11.11.2026) moved the sign-offs of all three pages and took sentences out of them, which is held by TheWrittenPagesStateTheFactCarriedOverTest. */
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "102");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "100");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "98");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "96");

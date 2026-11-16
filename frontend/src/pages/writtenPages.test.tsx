@@ -912,6 +912,29 @@ describe('the privacy policy', () => {
     expect(policy).toContain('Drugog skladišta, niti analitike, nema.')
   })
 
+  it('says what a network shows of a shared profile, right after what is public', () => {
+    /* Owner, 16.11.2026 (PDL, „Profil ima deljivu sliku za društvene mreže (OG sliku)",
+       item 12): the sentence is his, word for word, and stands once in the policy (V102).
+       Its place is a paragraph of its own between the list under „Javno se prikazuje" and
+       the next heading, which is the assistant's choice: the owner named the document, not
+       the section. The day the policy is signed off is moved by it, to 16.11.2026, which
+       the sign-off case below holds. */
+    const sentence =
+      'Kad podelite link svog profila, društvene mreže i aplikacije za poruke prikazuju njegov pregled sa vašim imenom, odobrenom slikom i brojem trka i kilometara.'
+    const publicPart = must(
+      sectionOf('politika-privatnosti', /### Javno se prikazuje/)
+        .split('### Javno se prikazuje')[1]
+        ?.split('### Podaci koji nisu javni')[0],
+      'the part of the policy under „Javno se prikazuje"',
+    )
+    const paragraphs = publicPart.split(NEWLINE + NEWLINE).map((each) => each.trim()).filter(Boolean)
+
+    expect(paragraphs).toHaveLength(2)
+    expect(paragraphs[0]).toMatch(/^Ime i prezime, članski broj, .* i linkovi koje sami dodate\.$/)
+    expect(paragraphs[1]).toBe(sentence)
+    expect(whole('politika-privatnosti').split(sentence)).toHaveLength(2)
+  })
+
   it('promises no way to withdraw a consent it never asks for', () => {
     /* The table of rights offered „saglasnost za kolačiće menjate u podnožju
        svake strane", and there is no such control in the footer; there never
@@ -2990,13 +3013,15 @@ describe('what the written pages say the fee buys', () => {
        owner, 08.11.2026), and on to 14.11.2026 with the English Article 36 naming the rookie
        category with the letter of the gender in front (V98; owner, 13.11.2026), and on to
        15.11.2026 with the sentence that says an unscored race is a personal record (V100;
-       owner, 14.11.2026, the day it reaches QA), by the same rule. Written per
+       owner, 14.11.2026, the day it reaches QA), by the same rule. The policy moved on to
+       16.11.2026 with the sentence that says what a network shows of a shared profile (V102;
+       owner, 16.11.2026). Written per
        document and not as one day for all three, so a date moved on one of them,
        or left behind on one, is a failure that names the document. */
     const SIGNED_OFF = {
       pravilnik: '15.11.2026',
       'uslovi-koriscenja': '11.11.2026',
-      'politika-privatnosti': '11.11.2026',
+      'politika-privatnosti': '16.11.2026',
     } as const
 
     for (const slug of ['pravilnik', 'uslovi-koriscenja', 'politika-privatnosti'] as const) {
