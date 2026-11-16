@@ -85,6 +85,22 @@ const ANSWERS: Answers = {
 }
 
 /**
+ * The same members with the longest names a family has, as `resultsRow.geometry.ts` does: the name of this
+ * grid breaks over as many lines as it needs, so the row is tall at 360px as well, where the names of the
+ * sample leave it only seven pixels taller than a line of figures (measured 16.11.2026: a row of 50px with
+ * a figure of 21px, and a cell at the top is then 2,5px from the middle, under what the guard can tell).
+ * Without this case the telephone would pass a stylesheet that put every cell back at the top.
+ */
+const LONG: Answers = {
+  ...ANSWERS,
+  '/api/competitors': COMPETITORS.map((one) => ({
+    ...one,
+    firstName: 'Aleksandar Konstantin',
+    lastName: 'Papadopulos-Karamanlis',
+  })),
+}
+
+/**
  * Two pixels, as on the top boards (`topBoardsRow.geometry.ts`): the box the browser reports for a range
  * of two lines of two sizes is not the middle of the lines. Before the repair the same rows read about as
  * far apart as the name is taller than a line.
@@ -97,10 +113,14 @@ const WIDTHS: At[] = [360, 768, 1280].flatMap((width): At[] => [
 ])
 
 for (const at of WIDTHS) {
-  test(`every cell of a row of the standing of a competition shares one vertical centre, at ${label(at)}`, async ({
-    open,
-  }) => {
-    const { page, probe } = await open(at, '/sr/liga/runtrace-2027', '.league__grid tbody tr', ANSWERS)
+  for (const [what, answers] of [
+    ['the names of the sample', ANSWERS],
+    ['long names', LONG],
+  ] as const) {
+    test(`every cell of a row of the standing of a competition shares one vertical centre, with ${what}, at ${label(at)}`, async ({
+      open,
+    }) => {
+    const { page, probe } = await open(at, '/sr/liga/runtrace-2027', '.league__grid tbody tr', answers)
 
     const seen = await page.evaluate(() => {
       const table = document.querySelector('.league__grid')
@@ -146,5 +166,6 @@ for (const at of WIDTHS) {
        than a telephone), so what is asked of it is only that the page does not move, above. */
     expect(seen.inside).toBeGreaterThan(0)
     expect(seen.outside).toBeGreaterThan(0)
-  })
+    })
+  }
 }
