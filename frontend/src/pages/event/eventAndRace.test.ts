@@ -12,6 +12,7 @@ import {
   hintOf,
   kindOfTheRows,
   theEventPageAfter,
+  theRowsAreScored,
   theNameHasOneEdition,
   typingTheEvent,
   whatIsWrongWithTheBlock,
@@ -482,5 +483,69 @@ describe('where the screen goes once the save is written', () => {
   it('finds the help of a box where a definition declares it, and none where it does not', () => {
     expect(hintOf([{ name: 'a', type: 'text', labelKey: 'x' }, { name: 'b', type: 'text', labelKey: 'y', hintKey: 'z' }])).toBe('z')
     expect(hintOf([{ name: 'a', type: 'text', labelKey: 'x' }])).toBeUndefined()
+  })
+})
+
+/**
+ * A NEW EDITION OF AN UNSCORED EVENT IS AN UNSCORED EVENT (PDL, 14.11.2026, „sve trke događaja su iste vrste", and the
+ * 15.11.2026 answer that the league screen asks the kind of a NEW event it makes). The edition travels as the new event
+ * it is (`eventAndRaceOf`), so its kind is the one the block carries, and the block carries the linked event's: the
+ * calendar's event is of 2027 and the edition's day is of 2028, so the two events are two records and only the block
+ * says what the second one is.
+ *
+ * <p>The axes: the kind of the event chosen (unscored, scored, and the block's own default, which is scored, so an
+ * unscored event is the one state in which the kind linked and the kind the box starts with differ); where the rows
+ * stand (on the event as it is, on a new edition of it); and which of the two the rows' rule reads.
+ */
+describe('an unscored event of the calendar', () => {
+  const UNSCORED: BtlEvent = { ...AN_EVENT, id: 9511, slug: 'plivacki-maraton-2027', name: 'Plivački maraton', kind: 'unscored' }
+  const THE_ENTRY = { id: String(UNSCORED.id), value: UNSCORED.name, said: UNSCORED.name, fills: {} }
+  const ASKED_OF_IT: TheBlockIsAsked = { open: [2028], offered: [THE_ENTRY] }
+  const chosenAs = (event: BtlEvent, date: string): TheBlock => ({
+    ...choosingTheEvent(
+      emptyBlock(),
+      { id: String(event.id), value: event.name, said: event.name, fills: {} },
+      [event],
+    ),
+    date,
+    raceName: 'Nova',
+    distanceKm: '10',
+    ascentM: '0',
+    descentM: '0',
+  })
+
+  it('takes its kind into the block it is chosen into, and a scored event takes its own', () => {
+    expect(chosenAs(UNSCORED, '01/06/2027').eventKind).toBe('unscored')
+    expect(chosenAs(AN_EVENT, '01/06/2027').eventKind).toBe('race')
+    expect(emptyBlock().eventKind).toBe('race')
+  })
+
+  it('sends a new edition of it as an unscored event, and a new edition of a scored one as a scored one', () => {
+    const edition = chosenAs(UNSCORED, '01/02/2028')
+
+    expect(aNewEditionOf(edition, ASKED_OF_IT)).toBe(true)
+    expect(eventAndRaceOf({ ...edition, city: 'Ohrid', country: 'MK' }, ASKED_OF_IT).event).toEqual({
+      name: UNSCORED.name,
+      date: '2028-02-01',
+      city: 'Ohrid',
+      country: 'MK',
+      kind: 'unscored',
+    })
+    expect(
+      eventAndRaceOf(
+        { ...chosenAs(AN_EVENT, '01/02/2028'), city: 'Ohrid', country: 'MK' },
+        { open: [2028], offered: OFFERED },
+      ).event,
+    ).toMatchObject({ kind: 'race' })
+  })
+
+  it('asks the rows of the event as it is by its kind, and the rows of a new edition by the kind the block carries', () => {
+    expect(theRowsAreScored(chosenAs(UNSCORED, '01/06/2027'), ASKED_OF_IT)).toBe(false)
+    expect(theRowsAreScored(chosenAs(UNSCORED, '01/02/2028'), ASKED_OF_IT)).toBe(false)
+    expect(theRowsAreScored(chosenAs(AN_EVENT, '01/06/2027'), ASKED)).toBe(true)
+    expect(theRowsAreScored(chosenAs(AN_EVENT, '01/02/2028'), { open: [2028], offered: OFFERED })).toBe(true)
+    /* A new event the block makes is asked by the kind in its own box. */
+    expect(theRowsAreScored(filled({ eventKind: 'unscored' }), ASKED)).toBe(false)
+    expect(theRowsAreScored(filled(), ASKED)).toBe(true)
   })
 })

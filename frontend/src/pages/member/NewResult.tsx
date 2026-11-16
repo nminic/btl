@@ -414,13 +414,33 @@ function TheForm({ me }: { me: string }) {
     fixing !== null ? combineResources(results, unscored, sent) : again !== null ? sent : NOTHING_TO_WAIT_FOR
   /* WHETHER THE RUN THIS FORM SENDS IS ONE OF A SCORED RACE: the counted result's own list, the kind a
      run sent back was sent under, or the kind in the box. */
+  /* **ON AN EVENT OF THE CALENDAR THE KIND IS THE EVENT'S KIND AS IT STANDS NOW**, which is what the server
+     judges the run by (`ResultWriteApi.described`: the chosen event's own kind, read at the moment of the
+     save). The kind a run carried when it was sent is a snapshot, and an event whose kind was changed while the
+     run waited or was sent back (allowed, a run is no result) would have the form ask the climb the server does
+     not, or leave it out where the server asks for it, and be answered `theFormIsNotComplete` with no box named
+     (review of PR 734, 15.11.2026). The snapshot stays the answer only where the calendar has not been read or
+     does not hold the event, which is the form's old reading. Mine, not the owner's: no sentence of his says
+     which of the two a run sent back is judged by. */
+  const kindNow = (eventId: string, fallback: string) =>
+    (events.status === 'ready' ? events.data.find((one) => String(one.id) === eventId)?.kind : undefined) ?? fallback
   const kindInTheBoxes =
-    inTheBoxes === null ? null : inTheBoxes.eventId === '' ? inTheBoxes.eventKind : inTheBoxes.chosen
+    inTheBoxes === null
+      ? null
+      : inTheBoxes.eventId === ''
+        ? inTheBoxes.eventKind
+        : kindNow(inTheBoxes.eventId, inTheBoxes.chosen)
+  const kindSentBack =
+    correcting === undefined
+      ? null
+      : correcting.eventName !== null && correcting.eventId !== null
+        ? kindNow(String(correcting.eventId), correcting.eventKind)
+        : correcting.eventKind
   const scored =
     fixingOne !== undefined
       ? !(unscored.status === 'ready' && unscored.data.some((one) => one.id === fixingOne.id))
-      : kindInTheBoxes === null && correcting !== undefined
-        ? correcting.eventKind !== 'unscored'
+      : kindInTheBoxes === null && kindSentBack !== null
+        ? kindSentBack !== 'unscored'
         : kindInTheBoxes !== 'unscored'
 
   /**
