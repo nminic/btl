@@ -523,10 +523,12 @@ describe('Rankings', () => {
 
     await user.click(screen.getByRole('link', { name: pressed }))
 
-    expect(await screen.findByRole('link', { name: marked, current: 'page' })).toBeVisible()
+    /* Half the clock of the case, so a card that never arrives fails on this line and not on the
+       clock (CLAUDE.md, section 25). */
+    expect(await screen.findByRole('link', { name: marked, current: 'page' }, { timeout: SLOW / 2 })).toBeVisible()
     expect(screen.getByLabelText('Sezona')).toHaveValue('2027')
     expect(new URLSearchParams(router.state.location.search).get('sezona')).toBeNull()
-  })
+  }, SLOW)
 
   it('narrows by category, and lets it go again', async () => {
     const user = setupUser()
