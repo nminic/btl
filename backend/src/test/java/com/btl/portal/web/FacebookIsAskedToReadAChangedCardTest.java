@@ -25,6 +25,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.scheduling.config.FixedDelayTask;
 import org.springframework.scheduling.config.ScheduledTask;
 import org.springframework.scheduling.config.ScheduledTaskHolder;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -158,6 +159,12 @@ class FacebookIsAskedToReadAChangedCardTest {
 		private final Map<String, Integer> statusAt = new ConcurrentHashMap<>();
 		private volatile String body = "{\"id\":\"x\",\"title\":\"t\"}";
 		private volatile long waitMillis;
+		/**
+		 * What happens while Facebook holds the request about one address (the whole address, host included), before
+		 * it answers, once: what the real Facebook's crawler does while the request is on its way, which is reading the
+		 * page.
+		 */
+		private final Map<String, Runnable> whileAsked = new ConcurrentHashMap<>();
 
 		AFacebookOfItsOwn() throws IOException {
 			server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
@@ -174,6 +181,8 @@ class FacebookIsAskedToReadAChangedCardTest {
 
 					asked.add(one);
 					answeredWith = statusAt.getOrDefault(one.form().get("id"), status);
+					whileAsked.getOrDefault(one.form().get("id"), () -> { }).run();
+					whileAsked.remove(one.form().get("id"));
 				}
 
 				if (waitMillis > 0) {
@@ -234,6 +243,9 @@ class FacebookIsAskedToReadAChangedCardTest {
 
 	@Autowired
 	private FacebookGraph theOneTheContextBuilt;
+
+	@Autowired
+	private TransactionTemplate inOneTransaction;
 
 	@Autowired
 	private AClockTheCaseMoves clock;
@@ -713,6 +725,83 @@ class FacebookIsAskedToReadAChangedCardTest {
 		assertThat(rows()).filteredOn(row -> row.startsWith(MOVES)).containsExactly(
 				MOVES + " " + asked + " /en/takmicar/" + MOVES + "-nikola-minic",
 				MOVES + " " + newer + " /sr/takmicar/" + MOVES + "-nikola-minic");
+	}
+
+	/**
+	 * A READING OF THE CRAWLER WHILE THE REQUEST IS ON ITS WAY IS NOT WRITTEN OVER EVEN WHEN IT WROTE THE VERY CARD THE
+	 * ROW HELD (PR 744, fourth round). The profile is hidden, so both addresses are asked and would be written as the
+	 * front page. While Facebook holds the request about the Serbian one, the profile is shown again and the crawler
+	 * reads that page, through {@link WhatFacebookHasRead#read}, and is given the card the row held before the hiding:
+	 * the same value, which a comparison of values cannot tell from no reading at all. Facebook accepts. The Serbian row
+	 * keeps the card, because that is what Facebook holds, so a deletion now would still ask about that address
+	 * ({@link WhatFacebookHasRead#forgetWhenGone} asks only where a card is held); the English row, which nobody read
+	 * meanwhile, is written as the front page. Nothing here waits on a clock: the reading happens inside Facebook's
+	 * handling of the request, before it answers.
+	 */
+	@Test
+	void aReadingWhileTheRequestIsOnItsWayIsNotWrittenOverEvenWhenItWroteTheSameCard() throws Exception {
+		facebookRead(STILL, MOVES);
+		String serbian = "/sr/takmicar/" + MOVES + "-nikola-minic";
+		String english = "/en/takmicar/" + MOVES + "-nikola-minic";
+		String held = cardsAt().get(serbian);
+		WhatFacebookHasRead crawler = new WhatFacebookHasRead(db, inOneTransaction,
+				graph(APP_ID, APP_SECRET, facebook.address()), portal);
+		List<String> givenToTheCrawler = new CopyOnWriteArrayList<>();
+
+		db.sql("update competitor set profile_hidden = true where member_number = ?").param(MOVES).update();
+		facebook.whileAsked.put(portal + serbian, () -> {
+			db.sql("update competitor set profile_hidden = false where member_number = ?").param(MOVES).update();
+			CompetitorCards.Shown shown = cards.shown(MOVES, WhatACardSays.SERBIAN).orElseThrow();
+			givenToTheCrawler.add(shown.address());
+			crawler.read("facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)",
+					WhatFacebookHasRead.rowOf(MOVES, CompetitorPreviewApi.Words.of(WhatACardSays.SERBIAN), shown));
+		});
+
+		assertThat(run()).containsExactly(portal + english, portal + serbian);
+		assertThat(givenToTheCrawler).as("the crawler was given another card than the row held, so the case measures"
+				+ " a newer card and not the same one").containsExactly(held);
+		assertThat(cardsAt()).as("an accepted request wrote over the crawler's reading of the same card")
+				.containsEntry(serbian, held).containsEntry(english, null);
+		assertThat(run()).as("the address Facebook holds the card at is asked again, or the one it does not is not")
+				.containsExactly(portal + english);
+	}
+
+	/**
+	 * AN ADDRESS FACEBOOK KEEPS REFUSING GOES TO THE BACK, SO THE ONES BEHIND IT ARE ASKED (PR 744, fourth round). One
+	 * address a run, and the two addresses first in the order of the member and the address are refused every time:
+	 * the four are asked one each in four runs, the two accepted are written as Facebook holds them, and then the two
+	 * refused are asked again in turn, because an address is marked as refreshed only when Facebook accepts (owner,
+	 * PDL P11, 16.11.2026, item 16).
+	 */
+	@Test
+	void anAddressFacebookKeepsRefusingGoesBehindTheOnesNotYetAsked() throws Exception {
+		FacebookIsAskedToReadAChangedCard one = jobAsking(facebook.address(), 1, 2000);
+
+		facebookRead(STILL, MOVES);
+		db.sql("update competitor set birth_date = date '1960-05-05' where member_number in (?, ?)")
+				.params(STILL, MOVES).update();
+		Map<String, String> held = cardsAt();
+
+		String stillEn = "/en/takmicar/" + STILL + "-ana-prva";
+		String stillSr = "/sr/takmicar/" + STILL + "-ana-prva";
+		String movesEn = "/en/takmicar/" + MOVES + "-nikola-minic";
+		String movesSr = "/sr/takmicar/" + MOVES + "-nikola-minic";
+
+		facebook.statusAt.put(portal + stillEn, 400);
+		facebook.statusAt.put(portal + stillSr, 400);
+
+		List<String> asked = new ArrayList<>();
+
+		for (int run = 0; run < 6; run++) {
+			asked.addAll(waitedFor(one.askAgain()));
+		}
+
+		assertThat(asked).containsExactly(portal + stillEn, portal + stillSr, portal + movesEn, portal + movesSr,
+				portal + stillEn, portal + stillSr);
+		assertThat(cardsAt().get(movesEn)).as("an accepted address was not written down").isNotEqualTo(held.get(movesEn));
+		assertThat(cardsAt().get(movesSr)).as("an accepted address was not written down").isNotEqualTo(held.get(movesSr));
+		assertThat(cardsAt().get(stillEn)).as("a refused address was written down").isEqualTo(held.get(stillEn));
+		assertThat(cardsAt().get(stillSr)).as("a refused address was written down").isEqualTo(held.get(stillSr));
 	}
 
 	/** A Facebook that does not answer in time is given up on, logged, and the run is not held up by it. */
