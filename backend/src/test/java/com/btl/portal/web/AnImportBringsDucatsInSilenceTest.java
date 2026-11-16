@@ -97,6 +97,24 @@ class AnImportBringsDucatsInSilenceTest {
 		assertThat(messages()).isEmpty();
 	}
 
+	/**
+	 * ONLY AN IMPORT SILENCES: the league entered her run of the 10th, which carried her over, and her older run
+	 * of the 3rd was approved an hour LATER. It is counted and it came in after, and it is no import, so the ducat
+	 * is told, in the league's words. The other member's older run is the one imported.
+	 */
+	@Test
+	void anOlderRaceApprovedAfterTheLeaguesEntryThatCarriedHerOverIsNoImportSoTheEntryIsTold() {
+		february();
+		broughtIn(OTHER, "Uvoz-prva", APPROVED.plusSeconds(3600), "import");
+		broughtIn(ANA, "Uvoz-druga", APPROVED, "league");
+		broughtIn(ANA, "Uvoz-prva", APPROVED.plusSeconds(3600), "approval");
+
+		assertThat(codes(at().reconcile(id(ANA)))).containsExactly("duk-mesecni-km");
+		assertThat(messages()).containsExactly(id(ANA) + " | Osvojili ste dukat | Liga vam je unela rezultat sa"
+				+ " trke Uvoz-druga od 10.02.2028, i njime ste osvojili dukat \"Mesečni kilometri\" za februar 2028."
+				+ " Dukat stoji na vašem profilu.");
+	}
+
 	@Test
 	void anImportOfAnOlderRaceBeforeTheApprovalDidNotCarryHerOverSoTheApprovalIsTold() {
 		february();

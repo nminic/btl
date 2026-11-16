@@ -93,6 +93,16 @@ class WhetherADucatIsToldTest {
 		assertThat(february(imported(LATER), HISTORY)).isFalse();
 	}
 
+	/**
+	 * ONLY AN IMPORT SILENCES: an older race APPROVED strictly after the result that carried him over is counted
+	 * and came in later, and it is no import, so the ducat is told. The two moments are two different values.
+	 */
+	@Test
+	void anOlderRaceApprovedAfterTheCrossingIsCountedAndCameLaterAndIsNoImportSoTheDucatIsTold() {
+		assertThat(LATER).isAfter(APPROVED);
+		assertThat(february(approved(LATER), HISTORY)).isTrue();
+	}
+
 	@Test
 	void anImportOfAnOlderRaceThatCameBeforeTheApprovalDidNotCarryHimOverSoTheApprovalIsTold() {
 		assertThat(february(imported(EARLIER), HISTORY)).isTrue();
