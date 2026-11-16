@@ -10,6 +10,8 @@ import com.btl.portal.domain.award.DucatReconciliation.Plan;
 import com.btl.portal.domain.award.DucatReconciliation.Rewrite;
 import com.btl.portal.domain.award.DucatReconciliation.Run;
 import com.btl.portal.domain.award.RaceDone;
+import com.btl.portal.domain.award.WhetherADucatIsTold;
+import com.btl.portal.domain.award.WhetherADucatIsTold.Arrival;
 import com.btl.portal.domain.mail.WhatAResultChangeSays;
 import com.btl.portal.domain.season.SeasonClock;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -80,8 +82,11 @@ import java.util.TreeMap;
  * posle odobrenja. Tiho ostaje samo ono što dolazi iz rezultata odobrenih pre početka dodele.” So whether
  * a ducat is announced is a fact about the ducat and not about the act that ran the reconciliation: it is
  * announced when the result that carried him over its threshold ({@code ducat_award.result_id}, V91) was
- * brought in at or after {@link #AWARDING_BEGAN} ({@code result.brought_at}, V97), and written in silence
- * otherwise. The step after an approval and the job at night call the same {@link #forMember}, so the
+ * approved or entered at or after {@link #AWARDING_BEGAN} ({@code result.brought_at}, V97) and no imported
+ * result counted towards it came in after it, and written in silence otherwise. That is
+ * {@link WhetherADucatIsTold}'s to decide, in the domain (owner, 16.11.2026: the ducats of an import are
+ * „Potpuno tiho”, and an import of older races that only now carries an approved result over is silent too).
+ * The step after an approval and the job at night call the same {@link #forMember}, so the
  * message has this one home, and either the ducat and its message both stand or neither does: a message
  * that fails takes the ducat back with it, and the next run writes both.
  *
@@ -126,11 +131,13 @@ class AwardingDucats {
 
 	/**
 	 * How a result came in: the word {@code result.brought_by} holds for it ({@code result_brought_by_known},
-	 * V97), and the beginning of the sentence that tells of a ducat it brought.
+	 * V97 and V105), and the beginning of the sentence that tells of a ducat it brought. An import has no such
+	 * sentence, because a ducat it carries over is never told (owner, 16.11.2026, „Potpuno tiho”).
 	 */
 	enum Brought {
 		APPROVAL("approval", "Odobren vam je rezultat sa trke "),
-		LEAGUE("league", "Liga vam je unela rezultat sa trke ");
+		LEAGUE("league", "Liga vam je unela rezultat sa trke "),
+		IMPORT("import", null);
 
 		private final String word;
 
@@ -194,8 +201,10 @@ class AwardingDucats {
 		}
 
 		Instant now = clock.instant();
-		Plan plan = DucatReconciliation.of(families(), held(competitorId), runs(competitorId),
-				seasonsHeld(competitorId), now.atZone(SeasonClock.ZONE).toLocalDate());
+		Map<Long, Arrival> arrivals = new HashMap<>();
+		List<Run> runs = runs(competitorId, arrivals);
+		Plan plan = DucatReconciliation.of(families(), held(competitorId), runs, seasonsHeld(competitorId),
+				now.atZone(SeasonClock.ZONE).toLocalDate());
 
 		for (long id : plan.toTakeAway()) {
 			db.sql("delete from ducat_award a where a.id = ? and" + A_PERIOD_STILL_OPEN).param(id).update();
@@ -210,6 +219,7 @@ class AwardingDucats {
 		}
 
 		List<Won> written = new ArrayList<>();
+		List<Won> toTell = new ArrayList<>();
 
 		for (Award one : plan.toWrite()) {
 			db.sql("insert into ducat_award (competitor_id, ducat_id, awarded_at, kind, threshold, reached,"
@@ -234,35 +244,43 @@ class AwardingDucats {
 					.param("result", one.crossing().resultId())
 					.query(Long.class)
 					.optional()
-					.ifPresent(id -> written.add(new Won(id, one.instance().code(), one.instance().threshold(),
-							one.instance().season(), one.instance().month(), one.instance().tier(),
-							one.crossing().resultId())));
+					.ifPresent(id -> {
+						Won won = new Won(id, one.instance().code(), one.instance().threshold(),
+								one.instance().season(), one.instance().month(), one.instance().tier(),
+								one.crossing().resultId());
+						written.add(won);
+
+						if (WhetherADucatIsTold.told(one.instance(), one.crossing(), runs, arrivals, AWARDING_BEGAN)) {
+							toTell.add(won);
+						}
+					});
 		}
 
-		announce(competitorId, written);
+		announce(competitorId, toTell);
 
 		return List.copyOf(written);
 	}
 
 	/**
-	 * WHAT IT WROTE, TOLD IN THIS SAME TRANSACTION: one message for each result that carried him over and was
-	 * brought in from the start of awarding, in the order of the results' keys; nothing for the rest.
+	 * WHAT IT WROTE AND {@link WhetherADucatIsTold} TELLS, TOLD IN THIS SAME TRANSACTION: one message for each
+	 * result that carried him over, in the order of the results' keys, listing the ducats of it that are told.
 	 */
-	private void announce(long competitorId, List<Won> written) {
+	private void announce(long competitorId, List<Won> toTell) {
 		Map<Long, List<Won>> byResult = new TreeMap<>();
 
-		for (Won one : written) {
+		for (Won one : toTell) {
 			byResult.computeIfAbsent(one.resultId(), any -> new ArrayList<>()).add(one);
 		}
 
 		for (Map.Entry<Long, List<Won>> one : byResult.entrySet()) {
-			db.sql("select r.brought_by, race.name, r.race_date from result r join race on race.id = r.race_id"
-							+ " where r.id = ? and r.brought_at >= ?")
-					.params(one.getKey(), Timestamp.from(AWARDING_BEGAN))
+			Carried carried = db.sql("select r.brought_by, race.name, r.race_date from result r"
+							+ " join race on race.id = r.race_id where r.id = ?")
+					.param(one.getKey())
 					.query((row, any) -> new Carried(Brought.named(row.getString(1)), row.getString(2),
 							row.getDate(3).toLocalDate()))
-					.optional()
-					.ifPresent(carried -> tell(competitorId, carried, one.getValue()));
+					.single();
+
+			tell(competitorId, carried, one.getValue());
 		}
 	}
 
@@ -336,11 +354,12 @@ class AwardingDucats {
 	 * names a country for every event (V7, the pair of checks on {@code btl_event}), so the case
 	 * {@link DucatKind#COUNTRY_COUNT} refuses to count is not one this can produce.
 	 */
-	private List<Run> runs(long competitorId) {
+	private List<Run> runs(long competitorId, Map<Long, Arrival> arrivals) {
 		/* ONLY A SCORED RUN, joined to `scored_race` (V99): PDL, 14.11.2026, a run of an unscored race „ne
-		   ulazi ni u šta što liga računa (..., dukati, bedž sa brojem trka, ...)". */
+		   ulazi ni u šta što liga računa (..., dukati, bedž sa brojem trka, ...)". And how each came in, read
+		   off the same row, so the arrivals are exactly the runs' (V97 and V105). */
 		return db.sql("select r.id, r.race_date, r.category, coalesce(town_country.code, typed_country.code),"
-						+ " r.distance_km, r.ascent_m, r.seconds, r.points"
+						+ " r.distance_km, r.ascent_m, r.seconds, r.points, r.brought_by, r.brought_at"
 						+ " from result r join scored_race s on s.id = r.race_id"
 						+ " join race on race.id = r.race_id"
 						+ " join btl_event e on e.id = race.event_id"
@@ -349,9 +368,15 @@ class AwardingDucats {
 						+ " left join country typed_country on typed_country.id = e.country_id"
 						+ " where r.competitor_id = ?")
 				.param(competitorId)
-				.query((row, one) -> new Run(row.getLong(1), new RaceDone(row.getDate(2).toLocalDate(),
-						row.getString(3), row.getString(4), row.getBigDecimal(5), row.getInt(6), row.getLong(7),
-						row.getBigDecimal(8))))
+				.query((row, one) -> {
+					Timestamp at = row.getTimestamp(10);
+					arrivals.put(row.getLong(1), new Arrival(Brought.IMPORT.word().equals(row.getString(9)),
+							at == null ? null : at.toInstant()));
+
+					return new Run(row.getLong(1), new RaceDone(row.getDate(2).toLocalDate(), row.getString(3),
+							row.getString(4), row.getBigDecimal(5), row.getInt(6), row.getLong(7),
+							row.getBigDecimal(8)));
+				})
 				.list();
 	}
 

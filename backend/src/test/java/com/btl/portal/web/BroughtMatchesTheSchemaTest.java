@@ -19,9 +19,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 /**
  * THE WAYS {@link AwardingDucats.Brought} KNOWS A RESULT COMES IN ARE THE WAYS THE SCHEMA HOLDS, both ways.
  *
- * <p>{@code result_brought_by_known} (V97) names two words and {@link AwardingDucats.Brought} reads them back
- * into the opening of the message about a ducat. A word added to the rule and not to the enum would be a
- * result whose ducat the message cannot open; a word the enum knows and the rule refuses would be an approval
+ * <p>{@code result_brought_by_known} (V97, and V105 for {@code import}) names three words and
+ * {@link AwardingDucats.Brought} reads them back into the opening of the message about a ducat. A word added to
+ * the rule and not to the enum would be a result whose ducat the message cannot open, and a reconciliation that
+ * fails on reading it; a word the enum knows and the rule refuses would be an approval
  * that fails at its insert. The words are read off the rule as PostgreSQL hands it back, the shape of
  * {@code MembershipBasisMatchesTheSchemaTest}.
  */
@@ -56,7 +57,7 @@ class BroughtMatchesTheSchemaTest {
 			assertThat(AwardingDucats.Brought.named(one.word())).isSameAs(one);
 		}
 
-		assertThatThrownBy(() -> AwardingDucats.Brought.named("import"))
-				.isInstanceOf(IllegalArgumentException.class).hasMessageContaining("import");
+		assertThatThrownBy(() -> AwardingDucats.Brought.named("guess"))
+				.isInstanceOf(IllegalArgumentException.class).hasMessageContaining("guess");
 	}
 }
