@@ -128,8 +128,8 @@ class TheWrittenPagesNameTheRookiesWithTheLetterOfTheGenderTest extends Database
 			assertThat(bodyOf(RULEBOOK, 19, language)).as("the %s rulebook ends with its sign-off", language)
 					.endsWith(mark + "15.11.2026.")
 					.containsOnlyOnce(mark).doesNotContain("14.11.2026").doesNotContain("12.11.2026").doesNotContain("11.11.2026");
-			assertThat(bodyOf("politika-privatnosti", 7, language)).as("the %s policy keeps its day", language)
-					.endsWith(mark + "11.11.2026.");
+			assertThat(bodyOf("politika-privatnosti", 7, language)).as("the %s policy reads the day V102 gave it", language)
+					.endsWith(mark + "16.11.2026.");
 			assertThat(bodyOf("uslovi-koriscenja", 11, language)).as("the %s terms keep their day", language)
 					.endsWith(mark + "11.11.2026.");
 		}

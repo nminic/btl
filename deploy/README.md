@@ -230,7 +230,7 @@ chose. Confirming proves somebody READS that mailbox, not that whoever holds the
 owns it.
 
 
-Thirteen names, and no value of any of them belongs in this repository or in any
+Fifteen names, and no value of any of them belongs in this repository or in any
 message:
 
 | name | what it is | required |
@@ -248,6 +248,8 @@ message:
 | `PROD_BACKUP_R2_ACCESS_KEY_ID` | R2 key for that bucket only | not to START; the backup refuses without it |
 | `PROD_BACKUP_R2_SECRET_ACCESS_KEY` | its secret, shown once | not to START; the backup refuses without it |
 | `PROD_BACKUP_PASSPHRASE` | what every copy is encrypted with; ALSO in the owner's password manager | not to START; the backup refuses without it |
+| `PROD_FACEBOOK_APP_ID` | id of the Facebook application "BTL page", which the server uses to ask Facebook to read a changed profile again (PDL P11) | not to START; without it nothing is sent to Facebook |
+| `PROD_FACEBOOK_APP_SECRET` | that application's secret; written by the owner's `facebook/upisi-facebook-aplikaciju.cmd` | not to START; without it nothing is sent to Facebook |
 
 **The two mail variables are the pair that fails quietly.** They are empty by default ON PURPOSE:
 a missing relay key must never keep the public site down, so the stack starts without them. What it

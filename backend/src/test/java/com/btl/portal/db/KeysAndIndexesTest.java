@@ -331,6 +331,8 @@ class KeysAndIndexesTest extends DatabaseTest {
 			new Key("season_award_pk", false, "a surrogate key nothing outside the portal sees"),
 			/* V85. One count per length of one frozen team, written once by the freeze. */
 			new Key("season_team_length_pk", false, "one count per length of one frozen team, written once"),
+			/* V103. One page of one profile as Facebook was last asked about it, written by one job at a time. */
+			new Key("shared_card_pk", false, "one page of one profile, written by the one job that reads it"),
 			/* V18. Nijedan se ne odlaze: sesija se trazi po otisku na svakom zahtevu, pa se
 			   sudar mora znati odmah; a pravo u matrici je jedan red i nema sta da ceka. */
 			new Key("account_session_pk", false, "one session, looked up by its own number"),

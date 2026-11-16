@@ -860,7 +860,22 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   increment, merged last (PR 727).
 
 			   Pinned LAST, when the file was final, off this very assertion. */
-			new Applied("101", "V101__a_described_run_carries_the_kind_of_its_event.sql", 411634573));
+			new Applied("101", "V101__a_described_run_carries_the_kind_of_its_event.sql", 411634573),
+
+			/* V102. The privacy policy says in section 3 what a network shows when somebody shares the link of his
+			   profile (owner, 16.11.2026, PDL „Profil ima deljivu sliku za društvene mreže (OG sliku)", item 12): one
+			   paragraph in each language, the owner's sentence in Serbian and the assistant's translation in English,
+			   and the policy's sign-off moves from 11.11.2026 (V95) to 16.11.2026 in both.
+
+			   Pinned LAST, when the file was final, off this very assertion. */
+			new Applied("102", "V102__the_privacy_policy_says_what_a_shared_profile_shows.sql", 1391585080),
+
+			/* V103. What Facebook was last asked to read for every profile a visitor is shown, in each language
+			   (owner, 15.11.2026, the same entry, item 10): one table, keyed by the member number and the language,
+			   whose rows go with the member they name.
+
+			   Pinned LAST, when the file was final, off this very assertion. */
+			new Applied("103", "V103__facebook_remembers_which_card_it_was_last_asked_about.sql", -180102558));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {
