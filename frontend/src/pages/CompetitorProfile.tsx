@@ -528,11 +528,11 @@ function emptyText(
  * for separately (`profile/HisOwnRecord.tsx`) and the page is drawn from it exactly as it is from a
  * row of the list: `profile/visible.ts` says when, and what it says is `his`.
  */
-export function CompetitorProfile({ memberNumber: given }: { memberNumber?: string } = {}) {
+export function CompetitorProfile() {
   const { locale, t } = useI18n()
   const params = useParams()
   const { search } = useLocation()
-  const memberNumber = given ?? memberNumberIn(params.memberNumber)
+  const memberNumber = memberNumberIn(params.memberNumber)
   const {
     memberNumber: readerNumber,
     signedIn,
@@ -608,11 +608,10 @@ export function CompetitorProfile({ memberNumber: given }: { memberNumber?: stri
              number alone, or by a bookmark made before the name was in the
              address, is moved to the one this profile lives at rather than being
              left on a second one. In place, so the way back is not doubled.
-           *
-             Not inside „moj profil", where the address belongs to the member area
-             and names no competitor at all. */
-          const elsewhere =
-            given === undefined ? redirectTo(competitor, params.memberNumber, locale) : null
+
+             „Moj profil" is one of the ways in since 16.11.2026: it sends a member here by his
+             number (`member/MyProfile.tsx`), and this is what moves him on to his one address. */
+          const elsewhere = redirectTo(competitor, params.memberNumber, locale)
 
           if (elsewhere !== null) {
             return <Navigate to={`${elsewhere}${search}`} replace />
@@ -624,21 +623,15 @@ export function CompetitorProfile({ memberNumber: given }: { memberNumber?: stri
                   search result and the shared link carry the person rather than
                   the words "profil takmičara". Profiles are indexed unless the
                   member says otherwise (PDL P29); the date of birth is not part of
-                  any of this, because it is never shown (PDL P23).
-
-                  Not when the profile is the one inside "moj profil": there the
-                  address belongs to the member area, and its own name fits the tab
-                  better than the member's own name does. */}
-              {given === undefined && (
-                <PageMeta
-                  title={t('seo.competitor.recordTitle', {
-                    name,
-                    city: competitor.city,
-                  })}
-                  description={t('seo.competitor.recordDescription', { name })}
-                  shareTitle={t('seo.competitor.shareTitle', { name })}
-                />
-              )}
+                  any of this, because it is never shown (PDL P23). */}
+              <PageMeta
+                title={t('seo.competitor.recordTitle', {
+                  name,
+                  city: competitor.city,
+                })}
+                description={t('seo.competitor.recordDescription', { name })}
+                shareTitle={t('seo.competitor.shareTitle', { name })}
+              />
 
               {/* HIS OWN PAGE CARRIES THE MARK OF HIS CARD IN ITS ADDRESS (owner, PDL P11, 16.11.2026,
                   point 15: „pusti ispravku iz tačke 2 odmah"), so the link he copies after his card has
@@ -646,7 +639,7 @@ export function CompetitorProfile({ memberNumber: given }: { memberNumber?: stri
                   is the one a network draws a preview for, and only for the member the session names:
                   nobody else's page is touched. Keyed by the member and the language, so a mark of one
                   card is never written into the address of another (`profile/CardMarkInTheAddress.tsx`). */}
-              {given === undefined && readerNumber === competitor.memberNumber && (
+              {readerNumber === competitor.memberNumber && (
                 <CardMarkInTheAddress
                   key={`${competitor.memberNumber}-${locale}`}
                   memberNumber={competitor.memberNumber}

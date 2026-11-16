@@ -10,6 +10,7 @@ import { Dropdown } from './Dropdown'
 import { initialsOf, monogramFor } from './monogram'
 import { Portrait } from '../components/Portrait'
 import { useHisProfileIsFinished } from '../pages/profile/finishTheProfile'
+import { profilePath } from '../pages/profileAddress'
 import { accountMenuFor, type MenuReader, type RouteDef } from './routes'
 
 /* The picture, and behind it everything that belongs to one person: the member
@@ -90,13 +91,15 @@ function MenuOfSomebodyWhoHasNotPaid({ account }: { account: number }) {
         </span>
       }
     >
-      {(close) => <Entries who={name} reader="neverPaid" standing={null} opens={0} close={close} />}
+      {(close) => (
+        <Entries who={name} reader="neverPaid" standing={null} hisProfile={null} opens={0} close={close} />
+      )}
     </Dropdown>
   )
 }
 
 function MenuOfAMemberOrAnAccount({ signedIn }: { signedIn: Exclude<SignedIn, { as: 'neverPaid' }> }) {
-  const { t } = useI18n()
+  const { locale, t } = useI18n()
   const competitors = useCompetitors()
 
   /* Asked only where there is a member number to ask about. An account has none, so
@@ -105,6 +108,16 @@ function MenuOfAMemberOrAnAccount({ signedIn }: { signedIn: Exclude<SignedIn, { 
     signedIn.as === 'member' && competitors.status === 'ready'
       ? competitors.data.find((one) => one.memberNumber === signedIn.memberNumber)
       : undefined
+
+  /* WHERE „MOJ PROFIL" LEADS: HIS PUBLIC PROFILE, the address he can share (owner, 16.11.2026, PDL P11,
+     „Moj profil vodi na javnu adresu člana”). Spelt by `profilePath` once his record is here, and by his
+     number until then or where the list does not carry him (a member whose fee has lapsed is on no row of
+     it), which the profile page moves on to the same address itself. An account has no profile, and is
+     drawn no such entry (`accountMenuFor`). */
+  const hisProfile =
+    signedIn.as === 'member'
+      ? (member === undefined ? `/${locale}/takmicar/${signedIn.memberNumber}` : profilePath(member, locale))
+      : null
 
   /* The one string this menu has to call somebody by, worked out once so the picture
      and the line under it can never disagree about who is signed in. */
@@ -176,8 +189,9 @@ function MenuOfAMemberOrAnAccount({ signedIn }: { signedIn: Exclude<SignedIn, { 
       {(close, opens) => (
         <Entries
           who={who}
-          reader={signedIn.as === 'member' && !signedIn.feeStands ? 'lapsed' : 'anybodyElse'}
+          reader={signedIn.as === 'account' ? 'account' : signedIn.feeStands ? 'standing' : 'lapsed'}
           standing={signedIn.as === 'member' ? signedIn.memberNumber : null}
+          hisProfile={hisProfile}
           opens={opens}
           close={close}
         />
@@ -189,23 +203,28 @@ function MenuOfAMemberOrAnAccount({ signedIn }: { signedIn: Exclude<SignedIn, { 
 /**
  * What stands in the panel behind the picture: who it is, the entries that are his, and the way out.
  *
- * <p>One list for the three kinds of reader (`accountMenuFor`) and one sign out, so the two menus
+ * <p>One list for the four kinds of reader (`accountMenuFor`) and one sign out, so the two menus
  * cannot sign out in two ways.
  *
  * <p>`standing` is the member number of a member, and nobody else's: he is the one reader an entry may be
  * named for by what his profile lacks (`RouteDef.unfinishedLabelKey`). A member whose fee has lapsed is
  * drawn no such entry (`accountMenuFor`), so it is asked only for a member whose fee stands.
+ *
+ * <p>`hisProfile` is the address of his public profile, where the entry that is his profile leads
+ * (`RouteDef.hisPublicProfile`), and `null` for a reader who has none and is drawn no such entry.
  */
 function Entries({
   who,
   reader,
   standing,
+  hisProfile,
   opens,
   close,
 }: {
   who: string | undefined
   reader: MenuReader
   standing: string | null
+  hisProfile: string | null
   opens: number
   close: () => void
 }) {
@@ -235,7 +254,7 @@ function Entries({
           <Link
             key={route.path}
             className="account__link"
-            to={`/${locale}/${route.path}`}
+            to={route.hisPublicProfile === true && hisProfile !== null ? hisProfile : `/${locale}/${route.path}`}
             onClick={close}
           >
             {t(route.labelKey)}

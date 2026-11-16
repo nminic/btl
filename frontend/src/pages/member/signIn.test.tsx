@@ -342,6 +342,46 @@ describe('where a sign in that went through lands', () => {
     expect(screen.queryByLabelText('Lozinka')).not.toBeInTheDocument()
   })
 
+  /* A MEMBER LANDS ON HIS PUBLIC PROFILE, the address he can share, with the mark of his card in it
+     (owner, 16.11.2026, PDL P11, „Moj profil vodi na javnu adresu člana”): „Moj profil" is where the form
+     sends him when nothing asked for the sign in, and it leads on to that address. The data is the
+     portal's own files here, so the address can carry his name; a member who is not the first of the
+     file, so an address spelt off the first row is not his. */
+  it('is a member\'s public profile, with the mark of his card, when he has a number', async () => {
+    let signedIn = false
+
+    server = serverThat((path) => {
+      if (path === '/api/me') {
+        return signedIn
+          ? new Response(JSON.stringify({ role: 'competitor', account: 7, member: { memberNumber: '000012' } }), {
+              status: 200,
+              headers: { 'content-type': 'application/json' },
+            })
+          : answeredWith(401)
+      }
+
+      if (path === '/api/sign-in') {
+        signedIn = true
+
+        return did()
+      }
+
+      return path.startsWith('/api/cards/marks/')
+        ? new Response(JSON.stringify({ mark: 'a1b2' }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          })
+        : null
+    })
+    const { router } = openSignIn()
+
+    await signIn()
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Jovana Tomašević' })).toBeVisible()
+    await waitFor(() => expect(router.state.location.search).toBe('?k=a1b2'))
+    expect(router.state.location.pathname).toBe('/sr/takmicar/000012-jovana-tomasevic')
+  }, SLOW)
+
   it('stays where it is when the server refused, and goes nowhere at all', async () => {
     /* THE OTHER HALF OF THE SAME AXIS. Without it the row above is satisfied by a form
        that navigates whatever the server said, which is the fault it looks like. */
@@ -642,6 +682,10 @@ describe('what the session is left holding', () => {
 
     await signIn()
     expect(await screen.findByTestId('signed-in')).toHaveTextContent('member')
+    /* Where the sign in sent him has finished moving him: „Moj profil" leads a member on to his
+       profile (owner, 16.11.2026, PDL P11, „Moj profil vodi na javnu adresu člana”), and a move still
+       on its way lands after the one below and takes the form away. */
+    await waitFor(() => expect(router.state.location.pathname).toMatch(/^\/sr\/takmicar\/000012/))
 
     /* The same visit and the same session, with somebody else at the keyboard: the
        server now answers an account that races for nobody. */

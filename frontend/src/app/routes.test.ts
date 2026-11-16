@@ -149,14 +149,31 @@ describe('ACCOUNT_ROUTES', () => {
 
   /* **IN THE ORDER THE OWNER NAMES THEM** (07.11.2026, PDL „Član svojim podacima pristupa iz glavnog
      menija”: „Moj profil”, „Moji podaci”, „Moji rezultati”, „Moja članarina”), and without the inbox. */
-  it('draws everybody else „Moji podaci" second, under „Moj profil", and never the inbox', () => {
-    expect(accountMenuFor('anybodyElse').map((route) => route.path)).toEqual([
+  it('draws a member whose fee stands „Moji podaci" second, under „Moj profil", and never the inbox', () => {
+    expect(accountMenuFor('standing').map((route) => route.path)).toEqual([
       'moj-profil',
       'moji-podaci',
       'moji-rezultati',
       'moja-clanarina',
       'podesavanja',
     ])
+  })
+
+  /* Owner, 16.11.2026 (PDL P11, „Moj profil vodi na javnu adresu člana”), on a superadmin or a moderator
+     with no competitor record: „Moj profil" leads to his public profile, and he has none. */
+  it('draws an account with no competitor record the same list without „Moj profil"', () => {
+    expect(accountMenuFor('account').map((route) => route.path)).toEqual([
+      'moji-podaci',
+      'moji-rezultati',
+      'moja-clanarina',
+      'podesavanja',
+    ])
+  })
+
+  it('makes „Moj profil" the one entry that leads to his public profile', () => {
+    expect(
+      ACCOUNT_ROUTES.filter((route) => route.hisPublicProfile === true).map((route) => route.path),
+    ).toEqual(['moj-profil'])
   })
 
   /* Owner, 07.11.2026 (PDL, „nema stavku „Moji podaci” u meniju”): „Član kome je istekla članarina nema

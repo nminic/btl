@@ -117,6 +117,58 @@ describe('the mark of his card in the address of his own profile', () => {
     expect(namedAsItsOwn()).toEqual([`${ORIGIN}${HIS_PAGE}`, `${ORIGIN}${HIS_PAGE}`])
   }, SLOW)
 
+  /* „MOJ PROFIL" LEADS HERE, and with the mark (owner, 16.11.2026, PDL P11, „Moj profil vodi na javnu
+     adresu člana”: „uvek otvori onu koju moze lako da share-uje drugima kako smo danas vec napravili").
+     Until that day his profile was drawn at `/moj-profil` itself and the mark was never written there. He
+     is not the first member of the file, so an address spelt off the first row is not his. */
+  it('is written when he arrives by „Moj profil", on his own address, in place', async () => {
+    const asked = marks((page) => json({ mark: page === '000009-sr' ? 'b7e2' : '0000' }))
+    const { router } = renderAt('/sr/moj-profil', 'competitor', HIM.memberNumber)
+
+    await waitFor(() => {
+      expect(router.state.location.search).toBe('?k=b7e2')
+    })
+
+    expect(FILE[0]?.memberNumber, 'he is not the first row of the file').not.toBe(HIM.memberNumber)
+    expect(router.state.location.pathname).toBe(HIS_PAGE)
+    expect(askedForAMark(asked)).toEqual(['/api/cards/marks/000009-sr'])
+  }, SLOW)
+
+  /* AND „MOJ PROFIL" IS NOT LEFT BEHIND HIM: one step back from his profile is where he came from, not
+     the address that sends him to it again. Read by walking back, because every later move on the way
+     (the canonical address, the mark) is in place as well, so the kind of the last move cannot say
+     which of them was. */
+  it('leaves nothing between his profile and where he came from', async () => {
+    marks(() => json({ mark: 'b7e2' }))
+    const { router } = renderAt('/sr/kalendar', 'competitor', HIM.memberNumber)
+
+    await act(async () => {
+      await router.navigate('/sr/moj-profil')
+    })
+    await waitFor(() => {
+      expect(router.state.location.search).toBe('?k=b7e2')
+    })
+    expect(router.state.location.pathname).toBe(HIS_PAGE)
+
+    await act(async () => {
+      await router.navigate(-1)
+    })
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/sr/kalendar')
+    })
+  }, SLOW)
+
+  it('carries what the address of „Moj profil" asked for, beside the mark', async () => {
+    marks(() => json({ mark: 'b7e2' }))
+    const { router } = renderAt('/sr/moj-profil?sezona=2019', 'competitor', HIM.memberNumber)
+
+    await waitFor(() => {
+      expect(new URLSearchParams(router.state.location.search).get('k')).toBe('b7e2')
+    })
+    expect(router.state.location.pathname).toBe(HIS_PAGE)
+    expect(new URLSearchParams(router.state.location.search).get('sezona')).toBe('2019')
+  }, SLOW)
+
   it('is the English card\'s on the English page', async () => {
     const asked = marks((page) => json({ mark: page === '000009-en' ? '4c19' : '0000' }))
     const { router } = renderAt(profilePath(HIM, 'en'), 'competitor', HIM.memberNumber)
@@ -286,9 +338,6 @@ describe('and on every other page', () => {
     ['another member\'s profile, read by a member', profilePath(OTHER, 'sr'), 'competitor', HIM.memberNumber],
     ['his profile, read by a visitor', HIS_PAGE, 'visitor', null],
     ['another member\'s profile, read by a visitor', profilePath(OTHER, 'sr'), 'visitor', null],
-    /* His own profile, drawn inside „Moj profil": an address that names no profile, so no network
-       draws a preview of it and there is nothing for the mark to renew. */
-    ['his own profile inside „Moj profil"', '/sr/moj-profil', 'competitor', HIM.memberNumber],
   ] as const)('nothing is asked and nothing is written: %s', async (_, page, role, reader) => {
     const asked = marks(() => json({ mark: 'b7e2' }))
     const { router } = renderAt(page, role, reader)

@@ -273,9 +273,10 @@ describe('a member looking at their own profile', () => {
        treba da stoji selektovana prva opcija Pregled kao što stoji kad u nečiji
        profil uđem sa strane takmičara."
 
-       The screen is drawn by the very component that draws everybody else's, but at
-       `/moj-profil`, while the parts are built from the record's own address. The two
-       never matched, so no part was marked at all. */
+       Arrived at by „Moj profil", the way he reaches his own page. The page was drawn at
+       `/moj-profil` itself until 16.11.2026, while the parts are built from the record's own
+       address, and the two never matched until a part answered both; „Moj profil" leads to
+       that address now (owner, PDL P11, „Moj profil vodi na javnu adresu člana”). */
     renderAt('/sr/moj-profil', 'competitor', '000007')
 
     const parts = within(await screen.findByRole('navigation', { name: 'Delovi profila' }))
@@ -396,15 +397,23 @@ describe('my profile', () => {
        say: „Dopuni podatke" while it lacks a picture or words (`profile/finishTheProfile.test.tsx`). */
     const links = menu.getAllByRole('link').map((one) => one.getAttribute('href'))
 
-    expect(links).toEqual(['/sr/moj-profil', '/sr/moji-podaci', '/sr/moji-rezultati', '/sr/moja-clanarina', '/sr/podesavanja'])
+    expect(links).toEqual([
+      '/sr/takmicar/000007-strahinja-vukicevic',
+      '/sr/moji-podaci',
+      '/sr/moji-rezultati',
+      '/sr/moja-clanarina',
+      '/sr/podesavanja',
+    ])
     expect(menu.getByRole('button', { name: 'Odjavi se' })).toBeVisible()
   })
 
   it('signs out from behind the picture, which is the only place that can', async () => {
     const user = setupUser()
-    renderAt('/sr/moj-profil', 'competitor', '000007')
+    /* From a screen of the member area, which is what a sign out changes: his profile is public and
+       stays drawn after it (`/moj-profil` leads to it since 16.11.2026). */
+    renderAt('/sr/moji-rezultati', 'competitor', '000007')
 
-    await screen.findByRole('table', { name: 'Rezultati' })
+    await screen.findByRole('heading', { level: 1, name: 'Moji rezultati' })
 
     const menu = within(await openAccount(user))
 
