@@ -624,14 +624,23 @@ class FacebookIsAskedToReadAChangedCardTest {
 		facebookRead(STILL, MOVES);
 		db.sql("update competitor set birth_date = date '1960-05-05' where member_number = ?").param(MOVES).update();
 		String asked = cards.addressOf(MOVES, WhatACardSays.ENGLISH).orElseThrow();
+		String askedInSerbian = cards.addressOf(MOVES, WhatACardSays.SERBIAN).orElseThrow();
 		facebook.waitMillis = 1000;
 
 		List<CompletableFuture<Void>> sent = job.askAgain();
 
-		db.sql("update competitor set birth_date = date '1970-05-05' where member_number = ?").param(MOVES).update();
+		/* A team joined, which is on the card for certain (a birth date one decade on may stay in the category). */
+		db.sql("insert into team_membership (competitor_id, team_id, season_from, season_to, left_reason) values"
+				+ " ((select id from competitor where member_number = ?), (select id from team where slug = 'prvi-tim'),"
+				+ " 2028, null, null)").param(MOVES).update();
 		String newer = cards.addressOf(MOVES, WhatACardSays.SERBIAN).orElseThrow();
 		db.sql("update shared_card set card = ? where address = ?")
 				.params(newer, "/sr/takmicar/" + MOVES + "-nikola-minic").update();
+
+		assertThat(newer).as("the newer card is the one the request was sent for, so the case measures nothing")
+				.isNotEqualTo(askedInSerbian);
+		assertThat(sent).as("Facebook answered before the crawler wrote, so the case measures nothing")
+				.noneMatch(CompletableFuture::isDone);
 		waitedFor(sent);
 
 		assertThat(rows()).filteredOn(row -> row.startsWith(MOVES)).containsExactly(
