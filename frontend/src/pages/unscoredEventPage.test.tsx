@@ -19,12 +19,13 @@ import { SLOW } from '../test/slow'
  * <p><b>THE AXES.</b> The list the rows come from (the unscored one, where the runs of „Palićki triatlon" are,
  * and never the scored one, which holds none of them); the order (the race in the event's order, a race of a
  * length before a free one, and the time inside it: the rows are served in neither order, so the server's order
- * and an order by points, all nought, both fail); the points („–" and never „0,00"); and whose run it is (a member
+ * and an order by points, all nought, both fail, and the three races stand in an order by the event's rule that is
+ * neither their order by number nor their order by name, so a page that sorted by either fails too); the points („–" and never „0,00"); and whose run it is (a member
  * whose only run here is unscored may rate the event).
  *
  * <p><b>THE SAMPLE.</b> „Palićki triatlon" (event 1168, 18.07.2027) is the one unscored event of the sample, with
- * one race of a length (1613). The case gives it a free race of its own (99001) and three runs, served on
- * `/api/unscored-results` in the order 3, 1, 2 of the page.
+ * one race of a length (1613). The case gives it a free race of its own (99001) and a shorter race of a length
+ * (99002), and four runs, served on `/api/unscored-results` in an order the page does not give.
  */
 
 const SLUG = 'palicki-triatlon-2027'
@@ -54,10 +55,12 @@ const aRun = (id: number, raceId: number, raceName: string, memberNumber: string
   inItsStanding: false,
 })
 
-/** Served in the order 3, 1, 2 of the page: the swim first, then the two runs of the race of a length, the
- *  slower of them first. */
+/** Served in no order of the page: the swim first, the short race of a length, then the two runs of the long
+ *  race of a length, the slower of them first. The page puts the long race of a length first, then the short one,
+ *  then the free one (`data/raceOrder.ts`), and inside a race the faster run first. */
 const RUNS: Result[] = [
   aRun(9902, 99001, 'Plivanje', '000002', 1500),
+  aRun(9904, 99002, 'Kratka trka', '000005', 3000),
   aRun(9901, 1613, 'Palićki triatlon', '000021', 9000),
   aRun(9903, 1613, 'Palićki triatlon', '000004', 8000),
 ]
@@ -83,7 +86,14 @@ describe('the page of an unscored event', () => {
           .then((races: Race[]) => {
             const [one] = races.filter((race) => race.id === 1613)
 
-            return json([...races, { ...one, id: 99001, name: 'Plivanje', kind: 'free', distanceKm: 0 }])
+            /* Three races whose order by the event's own rule (the long race of a length, the short one, the free
+               one) is not their order by number (the swim, 99001, before the short one, 99002) and not their order
+               by name („Kratka trka”, „Palićki triatlon”, „Plivanje”), so a page that sorted by either shows it. */
+            return json([
+              ...races,
+              { ...one, id: 99001, name: 'Plivanje', kind: 'free', distanceKm: 0 },
+              { ...one, id: 99002, name: 'Kratka trka', kind: 'length', distanceKm: 10 },
+            ])
           })
       }
 
@@ -104,6 +114,7 @@ describe('the page of an unscored event', () => {
     expect(rows.map((row) => at(within(row).getAllByRole('cell'), 5).textContent)).toEqual([
       '2:13:20',
       '2:30:00',
+      '50:00',
       '25:00',
     ])
     expect(rows.map((row) => at(within(row).getAllByRole('cell'), 6).textContent)).toEqual(
@@ -145,13 +156,13 @@ describe('the page of an unscored event', () => {
 
     const table = await screen.findByRole('table', { name: sr.event.results }, { timeout: SLOW / 2 })
 
-    expect(within(table).getAllByRole('row')).toHaveLength(4)
+    expect(within(table).getAllByRole('row')).toHaveLength(5)
 
     await user.click(at(within(table).getAllByRole('button', { name: /^Obriši/ }), 0))
     await sayYes(user, sr.results.deleteAsk)
 
     await waitFor(() => {
-      expect(within(table).getAllByRole('row')).toHaveLength(3)
+      expect(within(table).getAllByRole('row')).toHaveLength(4)
     })
     expect(server.asked.filter((one) => one.init?.method === 'DELETE').map((one) => one.path)).toEqual([
       '/api/races/1613/results/9903',

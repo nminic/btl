@@ -331,7 +331,7 @@ describe('the buttons one answer is chosen from', () => {
     /* The four numbers as they stand today, so a retuning is a decision somebody
        takes rather than a drift nobody sees. Measured, not chosen. */
     expect(contrast('#ffffff', '#10459a')).toBeCloseTo(8.97, 2)
-    expect(contrast('#101a2e', '#5b93ec')).toBeCloseTo(5.65, 2)
-    expect(contrast('#06214a', '#5b93ec')).toBeCloseTo(5.16, 2)
+    expect(contrast('#101a2e', '#7aa8f0')).toBeCloseTo(7.18, 2)
+    expect(contrast('#06214a', '#7aa8f0')).toBeCloseTo(6.56, 2)
   })
 })
