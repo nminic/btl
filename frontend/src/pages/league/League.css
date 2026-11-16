@@ -135,6 +135,25 @@
   font-weight: 400;
 }
 
+/* **Every cell of a row on the middle of it, and not at the top** (owner, 16.11.2026, asked after the same
+   repair on the top boards: „Da, ispravi”). `styles/table.css` sets `.table th, .table td { vertical-align:
+   top }` for every table on the portal, deliberately: a table is read across, and top keeps one shared line
+   while nothing in a row is taller than a line of text. A row here is the one place that stops being true:
+   the name is a circle with two lines beside it (`OverTwoLines`), taller than the single line of every
+   figure, so the total and the points of every race stood at the top of a row the name made tall
+   (`LeagueResults.tsx`, the cells of the body; measured in Chrome on the built portal, 16.11.2026, in the
+   guard `geometry/leagueGridRow.geometry.ts`).
+
+   The body only, the heading is a line of words per column and stays where the shared rule puts it. The
+   weight is one class and two elements, `(0,1,2)`, against `.table td` at `(0,1,1)`, so it wins wherever the
+   bundler leaves this sheet, and `th` is named as well as `td` because the name is a row heading
+   (`th scope="row"`). Same shape as `.rankings__table tbody td` (`Rankings.css`) and `.boards .table tbody
+   td` (`TopBoards.css`); the shared rule in `table.css` is not touched. */
+.league__grid tbody th,
+.league__grid tbody td {
+  vertical-align: middle;
+}
+
 .league__total {
   inset-inline-start: 11rem;
 }
