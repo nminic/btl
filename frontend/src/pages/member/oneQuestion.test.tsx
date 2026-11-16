@@ -615,14 +615,25 @@ describe('the member number the screens read', () => {
 
        Here the server says the account races for nobody and a number is handed in
        beside it. Written the careful way, the number survives and this screen draws
-       Vladan Đurišić to somebody the server has just said is not him. */
+       Vladan Đurišić to somebody the server has just said is not him.
+
+       And since 16.11.2026 this address leads a member on to his profile (owner, PDL P11, „Moj
+       profil vodi na javnu adresu člana”), so the number handed in must not move him there either
+       before the answer has taken it away: a move is made once and stays made. Read off the address
+       as well as off the heading, and the wait is given half of the case, so a screen that went to
+       Vladan's profile ends the case with these words and not with its clock (CLAUDE.md section 25). */
     aSignedInAccount()
-    renderAt('/sr/moj-profil', 'competitor', '000001')
+    const { router } = renderAt('/sr/moj-profil', 'competitor', '000001')
 
     expect(
-      await screen.findByRole('heading', { level: 1, name: 'Ovaj deo je za takmičare' }),
+      await screen.findByRole(
+        'heading',
+        { level: 1, name: 'Ovaj deo je za takmičare' },
+        { timeout: SLOW / 2 },
+      ),
     ).toBeVisible()
-  })
+    expect(router.state.location.pathname).toBe('/sr/moj-profil')
+  }, SLOW)
 
   /**
    * AND A RECORD WITH NO NUMBER IN IT IS NOT A MEMBER, which is a state of the server's

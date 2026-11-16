@@ -49,14 +49,28 @@ export type RouteDef = Address & {
    * sebi, a posle toga „Moji podaci”").
    */
   unfinishedLabelKey?: string
+  /**
+   * THE ENTRY IS HIS OWN PUBLIC PROFILE, the address he can share (owner, 16.11.2026, PDL P11, „Moj
+   * profil vodi na javnu adresu člana”): „Ne treba mi da postoji moj-profil adresa, nego da uvek otvori
+   * onu koju moze lako da share-uje drugima”. So the menu links it to `/takmicar/<number>-<name>`
+   * rather than to its own path, and draws it only to a reader the league keeps a competitor record
+   * for: an account of the administration with none has no profile for it to lead to (`accountMenuFor`).
+   *
+   * Its own path stays an address the router serves, and only leads on to that profile
+   * (`member/MyProfile.tsx`).
+   */
+  hisPublicProfile?: true
 }
 
 /**
- * The three readers the menu behind the account picture tells apart: somebody who registered and has
- * not paid, a member whose fee has lapsed, and everybody else (a member whose fee stands, and an
- * account of the administration that races for nobody).
+ * The four readers the menu behind the account picture tells apart: somebody who registered and has
+ * not paid, a member whose fee has lapsed, a member whose fee stands, and an account of the
+ * administration that races for nobody and so has no competitor record (PDL P21).
+ *
+ * The last two were one reader, `anybodyElse`, until 16.11.2026, when „Moj profil" became a link to
+ * his public profile: an account with no record has none (`hisPublicProfile`).
  */
-export type MenuReader = 'neverPaid' | 'lapsed' | 'anybodyElse'
+export type MenuReader = 'neverPaid' | 'lapsed' | 'standing' | 'account'
 
 /* One entry in the top navigation: one word, one screen. Order here is the order
  * on screen.
@@ -149,7 +163,9 @@ export function unnumberedDataPath(locale: string, competitorId: number): string
  * (owner, 22.10.2026: „Neka ima u navigaciji stranu Moji Podaci dok nije odobren koja je iznad Moja
  * Članarina."). */
 export const ACCOUNT_ROUTES: RouteDef[] = [
-  { path: 'moj-profil', labelKey: 'nav.myProfile', seoKey: 'myProfile' },
+  /* Linked to his public profile and not to this path, and drawn only to a reader who has one
+     (`hisPublicProfile`). */
+  { path: 'moj-profil', labelKey: 'nav.myProfile', seoKey: 'myProfile', hisPublicProfile: true },
   /* Drawn to every reader but a member whose fee has lapsed, and named „Dopuni podatke" to a member
      whose profile lacks the picture or the words (`AccountMenu.tsx` asks which). */
   {
@@ -188,15 +204,19 @@ export const ACCOUNT_ROUTES: RouteDef[] = [
  * Somebody who registered and has not paid is drawn two of them, „Moji podaci" and then „Moja
  * članarina", and nothing else (owner, 22.10.2026: „Sve opcije koje mu nisu dostupne privremeno
  * (dakle sve osim Članarine) ne treba da mu uopšte budu dostupne"). A member whose fee has lapsed is
- * drawn the list without „Moji podaci" (owner, 07.11.2026). Everybody else is drawn the whole list,
- * without the entries that have a shorter way in of their own. The sign out button is not in this
- * list for any of them and stays for all.
+ * drawn the list without „Moji podaci" (owner, 07.11.2026). An account with no competitor record is
+ * drawn the list without „Moj profil", which would lead to a profile he does not have (owner,
+ * 16.11.2026, PDL P11, „Moj profil vodi na javnu adresu člana”). A member whose fee stands is drawn the
+ * whole list. Nobody is drawn the entries that have a shorter way in of their own. The sign out button
+ * is not in this list for any of them and stays for all.
  */
 export function accountMenuFor(reader: MenuReader): RouteDef[] {
   return ACCOUNT_ROUTES.filter((route) =>
     reader === 'neverPaid'
       ? route.unpaidToo === true
-      : route.notInMenu !== true && !(reader === 'lapsed' && route.notToTheLapsed === true),
+      : route.notInMenu !== true &&
+        !(reader === 'lapsed' && route.notToTheLapsed === true) &&
+        !(reader === 'account' && route.hisPublicProfile === true),
   )
 }
 

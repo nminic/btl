@@ -176,12 +176,15 @@ describe('a member whose fee has lapsed, on his own page', () => {
     asked = stand(hisPageAsServed()).asked
   })
 
-  it('opens at moj-profil, drawn from his own record, and is not sent anywhere', async () => {
+  /* „Moj profil" leads him to his public address since 16.11.2026 (owner, PDL P11, „Moj profil vodi na
+     javnu adresu člana”), and that address is drawn from his own record and keeps him: it is not the
+     front page a hidden profile sends everybody else to. */
+  it('leads from moj-profil to his own address, drawn from his own record, and no further', async () => {
     const user = setupUser()
     const { router } = renderAt('/sr/moj-profil', 'competitor', '000032')
 
     expect(await screen.findByRole('heading', { level: 1, name: HIS_NAME })).toBeVisible()
-    expect(router.state.location.pathname).toBe('/sr/moj-profil')
+    await waitFor(() => expect(router.state.location.pathname).toBe(HIS_ADDRESS))
 
     /* Every fact of the line under the name is his, and none of them is a value another member
        here carries: the number, the category worked out from his band and his gender, the town,
@@ -238,7 +241,7 @@ describe('a member whose fee has lapsed, on his own page', () => {
     const { router } = renderAt('/sr/moj-profil', 'competitor', '000032')
 
     expect(await screen.findByRole('heading', { level: 1, name: HIS_NAME })).toBeVisible()
-    expect(router.state.location.pathname).toBe('/sr/moj-profil')
+    await waitFor(() => expect(router.state.location.pathname).toBe(HIS_ADDRESS))
     expect(screen.getByText('Trčim sam i pišem o tome.')).toBeVisible()
     expect(screen.getByRole('link', { name: String(TEAMS[0]?.name) })).toBeVisible()
   }, SLOW)
@@ -545,7 +548,9 @@ describe('his own page, when his record cannot be had', () => {
   const itSaysSo = async (router: { state: { location: { pathname: string } } }) => {
     expect(await screen.findByText('Podaci se ne mogu učitati.')).toBeVisible()
     expect(screen.getByRole('button', { name: 'Pokušaj ponovo' })).toBeVisible()
-    expect(router.state.location.pathname).toBe('/sr/moj-profil')
+    /* At the address of his number, where „Moj profil" sent him: without his record the page cannot
+       spell the one with his name, and it sends him nowhere else either. */
+    expect(router.state.location.pathname).toBe('/sr/takmicar/000032')
     expect(screen.queryByRole('heading', { level: 1 })).toBeNull()
   }
 
@@ -650,7 +655,7 @@ describe('his own page, when the reader changes inside one visit', () => {
       ),
     )
     const user = setupUser()
-    renderAt(
+    const { router } = renderAt(
       '/sr/moj-profil',
       'competitor',
       '000032',
@@ -663,6 +668,12 @@ describe('his own page, when the reader changes inside one visit', () => {
 
     current = second
     await user.click(screen.getByRole('button', { name: 'prijavi drugog' }))
+    /* And he goes to his own profile the way the second man would, by „Moj profil", which leads to the
+       address of whoever is reading now (owner, 16.11.2026, PDL P11, „Moj profil vodi na javnu adresu
+       člana”). */
+    await act(async () => {
+      await router.navigate('/sr/moj-profil')
+    })
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Ana Anić' })).toBeVisible()
     expect(screen.queryByText(HIS_NAME)).toBeNull()

@@ -255,12 +255,6 @@ function TheParts({ competitor, data }: { competitor: Competitor; data: string |
         {
           to: base,
           end: true,
-          /* The same screen is reached at `/moj-profil` too, by the same component
-             (member/MyProfile.tsx), and the nav is built from the record's own
-             address. Without this the reader who opened their own profile saw a row
-             of parts with **nothing** marked, while the same screen entered from the
-             list of competitors marks it (owner, 23.08.2026, when it was still called „Pregled"). */
-          also: `/${locale}/moj-profil`,
           label: t('profile.parts.overview'),
         },
         { to: `${base}/priznanja`, label: t('profile.parts.awards') },
