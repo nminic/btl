@@ -103,9 +103,16 @@ class WhatFacebookHasRead {
 		try {
 			inOneTransaction.executeWithoutResult(writing -> {
 				db.sql("set local statement_timeout = '" + AT_MOST + "'").update();
+				/* THE ADDRESS A ROW HOLDS IS NEVER OVERWRITTEN BY A READING: a reading at another address (the member was
+				   renamed since) is appended to also_read and the row keeps the address and the card Facebook was first
+				   given, so that neither the one people pasted nor the one just read is lost; the job takes it from there. */
 				db.sql("insert into shared_card (member_number, language, card, address) values (?, ?, ?, ?)"
-								+ " on conflict (member_number, language)"
-								+ " do update set card = excluded.card, address = excluded.address")
+								+ " on conflict (member_number, language) do update set"
+								+ " card = case when shared_card.address = excluded.address then excluded.card"
+								+ " else shared_card.card end,"
+								+ " also_read = case when shared_card.address = excluded.address"
+								+ " or excluded.address = any(shared_card.also_read) then shared_card.also_read"
+								+ " else array_append(shared_card.also_read, excluded.address) end")
 						.params(key.memberNumber(), key.language(), page.card(), page.address()).update();
 			});
 		} catch (RuntimeException failed) {
@@ -130,8 +137,12 @@ class WhatFacebookHasRead {
 			return;
 		}
 
-		List<String> addresses = db.sql("select s.address from shared_card s join competitor c"
-						+ " on c.member_number = s.member_number where c.id = ? and s.card is not null order by s.language")
+		/* The address a row holds, where Facebook holds a card, and every other address the crawler read it at: it
+		   read those with a card, because it reads only a profile that is shown. */
+		List<String> addresses = db.sql("select a.address from shared_card s join competitor c"
+						+ " on c.member_number = s.member_number cross join lateral ("
+						+ " select s.address as address where s.card is not null"
+						+ " union all select unnest(s.also_read)) a where c.id = ? order by a.address")
 				.param(member).query(String.class).list();
 
 		TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {

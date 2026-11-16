@@ -71,7 +71,10 @@ class SharedCardConstraintsTest extends DatabaseTest {
 						row("null, 'en', " + CARD + ", '/en/takmicar/001130'")),
 				Violation.notNull("shared_card_language_not_null", "language",
 						row("'001130', null, " + CARD + ", '/en/takmicar/001130'")),
-				Violation.notNull("shared_card_address_not_null", "address", row("'001130', 'en', " + CARD + ", null")));
+				Violation.notNull("shared_card_address_not_null", "address", row("'001130', 'en', " + CARD + ", null")),
+				Violation.notNull("shared_card_also_read_not_null", "also_read",
+						"insert into shared_card (member_number, language, card, address, also_read) values ('001130', 'en', "
+								+ CARD + ", '/en/takmicar/001130-probni-podeljeni', null)"));
 	}
 
 	@ParameterizedTest

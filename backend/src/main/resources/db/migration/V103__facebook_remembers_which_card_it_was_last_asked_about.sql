@@ -31,18 +31,29 @@
  * the rows go with him. The key also follows a member number that changes, so the row stays his and the next run sees
  * an address that moved.
  *
+ * `also_read` IS THE ADDRESSES FACEBOOK HAS READ A PROFILE AT THAT ARE NOT `address` (owner, PDL P11, 16.11.2026, item 14,
+ * which asks that a rename refresh the address Facebook saw and a deletion leave no name behind): a member is renamed,
+ * the crawler opens the profile at its new address before the job has run, and a row that kept one address would lose
+ * either the old one (which people pasted) or the new one (which Facebook read). The row keeps the address and the
+ * card Facebook was first given; the crawler appends the address it was given now. The job asks about them with the
+ * rest and takes out what it asked about; a deletion asks about all of them. Empty for a profile read at one address.
+ *
  * No `id`: the pair is the key, and nothing points at a row.
  *
  * CHANGED IN PLACE ON 16.11.2026, before the merge: the first version wrote every shown profile down on the job's
  * first run, held `card` NOT NULL and deleted the row of a profile no longer shown. That was the condition named in
  * ADL A2 for a change in place is that the file is applied on no database, and PR 744, which brings it, was not merged
  * when it was changed.
+ *
+ * CHANGED IN PLACE AGAIN ON 16.11.2026, for `also_read`, on the same condition: the file is applied on no database
+ * (the highest version on production and on QA was measured on 16.11.2026 to be 101) and PR 744 is not merged.
  */
 create table shared_card (
     member_number text not null,
     language      text not null,
     card          text,
     address       text not null,
+    also_read     text[] not null default '{}',
 
     constraint shared_card_pk primary key (member_number, language),
     constraint shared_card_member_fk foreign key (member_number) references competitor (member_number)

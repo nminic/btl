@@ -12,8 +12,10 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
@@ -101,7 +103,8 @@ class FacebookIsAskedToReadAChangedCard {
 			return List.of();
 		}
 
-		Plan plan = WhatFacebookIsAskedAgain.plan(read(), shownNow(), atMost);
+		Map<Key, List<String>> alsoRead = new HashMap<>();
+		Plan plan = WhatFacebookIsAskedAgain.plan(read(alsoRead), shownNow(), atMost);
 
 		/* An update and never an insert: a row is Facebook having read the page, which only its crawler writes, and a
 		   member deleted since the reading took his rows, so there is nothing to update and nothing comes back. */
@@ -109,7 +112,19 @@ class FacebookIsAskedToReadAChangedCard {
 						+ " where member_number = ? and language = ?")
 				.params(now.card(), now.address(), page.memberNumber(), page.language()).update());
 
-		return plan.addresses().stream().map(address -> facebook.readAgain(portal.address() + address)).toList();
+		/* The addresses the crawler read besides the one a row holds are asked about once and taken out, whether or
+		   not the page changed: Facebook read them, and a name may sit at any of them. Only what was seen above is
+		   taken out, so a reading that came in meanwhile stays for the next pass. */
+		Set<String> asking = new LinkedHashSet<>(plan.addresses());
+
+		alsoRead.forEach((page, addresses) -> addresses.forEach(address -> {
+			asking.add(address);
+			db.sql("update shared_card set also_read = array_remove(also_read, ?)"
+					+ " where member_number = ? and language = ?")
+					.params(address, page.memberNumber(), page.language()).update();
+		}));
+
+		return asking.stream().map(address -> facebook.readAgain(portal.address() + address)).toList();
 	}
 
 	private Map<Key, Page> shownNow() {
@@ -128,12 +143,20 @@ class FacebookIsAskedToReadAChangedCard {
 		return now;
 	}
 
-	private Map<Key, Page> read() {
+	private Map<Key, Page> read(Map<Key, List<String>> alsoRead) {
 		Map<Key, Page> read = new HashMap<>();
 
-		db.sql("select member_number, language, card, address from shared_card")
+		db.sql("select member_number, language, card, address, also_read from shared_card")
 				.query(row -> {
-					read.put(new Key(row.getString(1), row.getString(2)), new Page(row.getString(3), row.getString(4)));
+					Key key = new Key(row.getString(1), row.getString(2));
+
+					read.put(key, new Page(row.getString(3), row.getString(4)));
+
+					List<String> others = List.of((String[]) row.getArray(5).getArray());
+
+					if (!others.isEmpty()) {
+						alsoRead.put(key, others);
+					}
 				});
 
 		return read;

@@ -305,17 +305,37 @@ class WhatFacebookHasReadTest {
 						+ "-nikola-minic");
 	}
 
-	/** Read again after the card changed, the row is the page as Facebook was given it this time. */
+	/**
+	 * Read again at the SAME address after the card changed, the row is the page as Facebook was given it this time.
+	 */
 	@Test
 	void readAgainTheRowIsWhatItWasGivenThisTime() throws Exception {
 		previewOf(GOES + "-sr", THE_CRAWLER);
 		String before = cards.addressOf(GOES, WhatACardSays.SERBIAN).orElseThrow();
 
-		db.sql("update competitor set first_name = 'Petar' where member_number = ?").param(GOES).update();
+		db.sql("update competitor set birth_date = date '1960-05-05' where member_number = ?").param(GOES).update();
 		previewOf(GOES + "-sr", THE_CRAWLER);
 
 		assertThat(rows()).containsExactly(GOES + " sr " + cards.addressOf(GOES, WhatACardSays.SERBIAN).orElseThrow()
-				+ " /sr/takmicar/" + GOES + "-petar-minic").noneMatch(row -> row.contains(before));
+				+ " /sr/takmicar/" + GOES + "-nikola-minic").noneMatch(row -> row.contains(before));
+		assertThat(alsoRead()).as("a reading at the address the row holds appended it to the others").isEmpty();
+	}
+
+	/**
+	 * Read at ANOTHER address (the member was renamed), the row keeps the address and the card Facebook was first given,
+	 * and the address of this reading is written beside it, once however often the crawler comes.
+	 */
+	@Test
+	void readAtAnotherAddressTheRowKeepsWhatItHeldAndWritesTheNewOneBesideIt() throws Exception {
+		previewOf(GOES + "-sr", THE_CRAWLER);
+		String before = cards.addressOf(GOES, WhatACardSays.SERBIAN).orElseThrow();
+
+		db.sql("update competitor set first_name = 'Petar' where member_number = ?").param(GOES).update();
+		previewOf(GOES + "-sr", THE_CRAWLER);
+		previewOf(GOES + "-sr", THE_CRAWLER);
+
+		assertThat(rows()).containsExactly(GOES + " sr " + before + " /sr/takmicar/" + GOES + "-nikola-minic");
+		assertThat(alsoRead()).containsExactly(GOES + " {/sr/takmicar/" + GOES + "-petar-minic}");
 	}
 
 	/**
@@ -513,6 +533,113 @@ class WhatFacebookHasReadTest {
 		return http.perform(reader == null ? asking : asking.header("User-Agent", reader)).andReturn().getResponse();
 	}
 
+	/* ---------------------------------------------------------------------------------------------------------- */
+	/* A member renamed after Facebook read him: no address Facebook saw is ever lost                              */
+	/* ---------------------------------------------------------------------------------------------------------- */
+
+	/** The two addresses, one per language, at which a member of this name is shown. */
+	private List<String> bothAddressesOf(String name) {
+		return List.of(portal + "/sr/takmicar/" + GOES + "-" + name, portal + "/en/takmicar/" + GOES + "-" + name);
+	}
+
+	/**
+	 * THE CRAWLER OPENING THE NEW ADDRESS BEFORE THE JOB HAS RUN LOSES NO ADDRESS. Owner, PDL P11, 16.11.2026, item 14:
+	 * a rename moves the address of the profile, Facebook saw the old one, so the old one is refreshed, and the job does
+	 * it for the old and the new. The crawler opens the Serbian page at its NEW address before the next pass; the old
+	 * address, the one people pasted, is still asked, in both languages.
+	 */
+	@Test
+	void aRenameThatTheCrawlerOpenedBeforeThePassStillAsksTheOldAddress() throws Exception {
+		readByFacebook(GOES);
+		db.sql("update competitor set first_name = 'Petar' where member_number = ?").param(GOES).update();
+		previewOf(GOES + "-sr", THE_CRAWLER);
+
+		CompletableFuture.allOf(job.askAgain().toArray(CompletableFuture[]::new)).get(10, TimeUnit.SECONDS);
+
+		List<String> expected = new ArrayList<>(bothAddressesOf("nikola-minic"));
+		expected.addAll(bothAddressesOf("petar-minic"));
+		assertThat(FACEBOOK.askedOnce(4)).extracting(Asked::id).containsExactlyInAnyOrderElementsOf(expected);
+	}
+
+	/** The control: nobody opened the new address, and all four are asked, as they always were. */
+	@Test
+	void aRenameThatNobodyOpenedAsksAllFourAddresses() throws Exception {
+		readByFacebook(GOES);
+		db.sql("update competitor set first_name = 'Petar' where member_number = ?").param(GOES).update();
+
+		CompletableFuture.allOf(job.askAgain().toArray(CompletableFuture[]::new)).get(10, TimeUnit.SECONDS);
+
+		List<String> expected = new ArrayList<>(bothAddressesOf("nikola-minic"));
+		expected.addAll(bothAddressesOf("petar-minic"));
+		assertThat(FACEBOOK.askedOnce(4)).extracting(Asked::id).containsExactlyInAnyOrderElementsOf(expected);
+	}
+
+	/**
+	 * A DELETION AFTER A RENAME THE CRAWLER OPENED asks every address Facebook saw, the old ones and the new ones: the
+	 * name is kept not a minute after the deletion, at either spelling.
+	 */
+	@Test
+	void aDeletionAfterARenameTheCrawlerOpenedAsksTheOldAndTheNewAddresses() throws Exception {
+		readByFacebook(GOES);
+		db.sql("update competitor set first_name = 'Petar' where member_number = ?").param(GOES).update();
+		readByFacebook(GOES);
+
+		assertThat(deleted(GOES).getStatus()).isEqualTo(204);
+
+		List<String> expected = new ArrayList<>(bothAddressesOf("nikola-minic"));
+		expected.addAll(bothAddressesOf("petar-minic"));
+		assertThat(FACEBOOK.askedOnce(4)).extracting(Asked::id).containsExactlyInAnyOrderElementsOf(expected);
+	}
+
+	/** A deletion after a rename that nobody opened asks the two addresses Facebook saw, and not the ones it never did. */
+	@Test
+	void aDeletionAfterARenameNobodyOpenedAsksOnlyTheOldAddresses() throws Exception {
+		readByFacebook(GOES);
+		db.sql("update competitor set first_name = 'Petar' where member_number = ?").param(GOES).update();
+
+		assertThat(deleted(GOES).getStatus()).isEqualTo(204);
+
+		assertThat(FACEBOOK.askedOnce(2)).extracting(Asked::id)
+				.containsExactlyInAnyOrderElementsOf(bothAddressesOf("nikola-minic"));
+	}
+
+	/**
+	 * TWO RENAMES BEFORE THE PASS, the crawler opening the page between them: the middle address is one Facebook saw,
+	 * and it is asked all the same.
+	 */
+	@Test
+	void twoRenamesWithTheCrawlerBetweenThemLoseTheMiddleAddressNowhere() throws Exception {
+		readByFacebook(GOES);
+		db.sql("update competitor set first_name = 'Petar' where member_number = ?").param(GOES).update();
+		previewOf(GOES + "-sr", THE_CRAWLER);
+		db.sql("update competitor set first_name = 'Marko' where member_number = ?").param(GOES).update();
+		previewOf(GOES + "-sr", THE_CRAWLER);
+
+		assertThat(deleted(GOES).getStatus()).isEqualTo(204);
+
+		assertThat(FACEBOOK.askedOnce(4)).extracting(Asked::id).containsExactlyInAnyOrder(
+				portal + "/sr/takmicar/" + GOES + "-nikola-minic", portal + "/en/takmicar/" + GOES + "-nikola-minic",
+				portal + "/sr/takmicar/" + GOES + "-petar-minic", portal + "/sr/takmicar/" + GOES + "-marko-minic");
+	}
+
+	/**
+	 * WHAT THE JOB ASKED ABOUT IS TAKEN OUT, so that the next pass asks nothing: the extra address was asked once, and
+	 * the row holds the page as it is shown now.
+	 */
+	@Test
+	void theAddressTheJobAskedAboutIsTakenOutAndTheNextPassAsksNothing() throws Exception {
+		readByFacebook(GOES);
+		db.sql("update competitor set first_name = 'Petar' where member_number = ?").param(GOES).update();
+		previewOf(GOES + "-sr", THE_CRAWLER);
+		assertThat(alsoRead()).hasSize(1);
+
+		CompletableFuture.allOf(job.askAgain().toArray(CompletableFuture[]::new)).get(10, TimeUnit.SECONDS);
+		FACEBOOK.askedOnce(4);
+
+		assertThat(alsoRead()).as("an address the job asked about stayed written down").isEmpty();
+		assertThat(job.askAgain()).as("the next pass asked again").isEmpty();
+	}
+
 	/** Both languages read by Facebook's crawler, through the preview. */
 	private void readByFacebook(String number) throws Exception {
 		assertThat(previewOf(number + "-sr", THE_CRAWLER).getStatus()).isEqualTo(200);
@@ -527,6 +654,12 @@ class WhatFacebookHasReadTest {
 	private Long id(String number) {
 		return db.sql("select id from competitor where member_number = ?").param(number).query(Long.class)
 				.optional().orElse(null);
+	}
+
+	private List<String> alsoRead() {
+		return db.sql("select member_number || ' ' || also_read::text from shared_card"
+				+ " where member_number in (?, ?, ?) and cardinality(also_read) > 0 order by member_number, language")
+				.params(STAYS, GOES, UNREAD).query(String.class).list();
 	}
 
 	private List<String> rows() {

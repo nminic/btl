@@ -873,10 +873,10 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			/* V103. What Facebook holds of every profile its crawler has read, in each language (owner, 15.11.2026
 			   and 16.11.2026, the same entry, items 10 and 14): one table, keyed by the member number and the
 			   language, whose rows go with the member they name, and whose card is empty where Facebook holds the
-			   front page. Changed in place on 16.11.2026, before the merge, while applied nowhere.
+			   front page, and whose row lists the other addresses the crawler read the profile at. Changed in place twice on 16.11.2026, before the merge, while applied nowhere.
 
 			   Pinned LAST, when the file was final, off this very assertion. */
-			new Applied("103", "V103__facebook_remembers_which_card_it_was_last_asked_about.sql", 145983924));
+			new Applied("103", "V103__facebook_remembers_which_card_it_was_last_asked_about.sql", 313350612));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {
