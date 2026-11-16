@@ -447,20 +447,18 @@ describe('Rankings', () => {
   })
 
   it('keeps men and women apart', async () => {
-    /* Each read at its own address, because since 16.11.2026 the card is a link that opens the running
-       season (owner, answer 10), so pressing „Žene" here would compare two seasons and not two halves
-       of one field. */
+    const user = setupUser()
     renderAt(`/sr/tabela?sezona=${String(inLeague(2020))}`)
 
     const men = within(await screen.findByRole('table')).getAllByRole('row').length
-
-    cleanup()
-    renderAt(`/sr/tabela?sezona=${String(inLeague(2020))}&pol=z`)
-
-    const women = within(await screen.findByRole('table')).getAllByRole('row').length
+    await user.click(screen.getByRole('link', { name: 'Žene' }))
+    expect(await screen.findByRole('link', { name: 'Žene', current: 'page' })).toBeVisible()
+    const women = within(screen.getByRole('table')).getAllByRole('row').length
 
     expect(women).not.toBe(men)
-    expect(screen.getByRole('link', { name: 'Žene' })).toHaveAttribute('aria-current', 'page')
+    /* The same season, so the two counts are two halves of one field (owner, 16.11.2026: „Moze svuda
+       da se cuva sezona"). */
+    expect(screen.getByLabelText('Sezona')).toHaveValue(String(inLeague(2020)))
   })
 
   it('goes back to the men after the women, and changes the season', async () => {
@@ -506,28 +504,49 @@ describe('Rankings', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'BTL tabele' })).toBeVisible()
   })
 
-  /* NO CARD TAKES THE SEASON WITH IT (owner, 16.11.2026, answer 10: „Default svakako treba da bude
-     trenutna sezona"). Read from a season that is NOT the one the screens open on, so that a card which
-     carried the season and a card which did not would draw different screens; from the running season
-     the two are the same screen. */
-  it.each([
-    [`/sr/tabela?sezona=${String(inLeague(2019))}`, 'Žene', 'Žene'],
-    [`/sr/tabela?sezona=${String(inLeague(2019))}&pol=z`, 'Muškarci', 'Muškarci'],
-    [`/sr/tabela?sezona=${String(inLeague(2019))}`, 'Timovi', 'Timovi'],
-  ])('opens the running season from %s when %s is pressed', async (address, pressed, marked) => {
-    const user = setupUser()
-    const { router } = renderAt(address, 'visitor', null, undefined, '2027-06-01')
+  /* THE SEASON GOES WITH THE CARD, BUT A FUTURE SEASON OF THE TEAMS DOES NOT (owner, 16.11.2026, his own
+     words: „Moze svuda da se cuva sezona, osim kad se iz buduce sezone timova prelazi na M ili Z, onda se
+     prebacuje na aktuelnu."). Read on a day after every season of the moved history, so that a season the
+     history holds is a past one, as it is on the portal: `RUNNING` is the season every card opens on,
+     `PAST` is one the history holds and is not `RUNNING`, and `NEXT` is the one that has not begun, which
+     the teams offer all year and the tables only in the transfer window. The season chosen is never the one a
+     card would open on by itself, so a card that carried it and a card that did not draw different
+     screens. And the age category, which the tables carry and the other gender cannot read, goes. */
+  const PAST = String(inLeague(2019))
+  const RUNNING = '2043'
+  const NEXT = '2044'
 
-    await screen.findByRole('table')
-    expect(screen.getByLabelText('Sezona')).toHaveValue(String(inLeague(2019)))
+  it.each([
+    ['Muškarci → Žene', `/sr/tabela?sezona=${PAST}&kategorija=M40-54`, 'Žene', '2043-06-01', PAST, PAST],
+    ['Žene → Muškarci', `/sr/tabela?sezona=${PAST}&pol=z`, 'Muškarci', '2043-06-01', PAST, PAST],
+    ['Muškarci → Timovi', `/sr/tabela?sezona=${PAST}`, 'Timovi', '2043-06-01', PAST, PAST],
+    ['Timovi → Muškarci', `/sr/timovi?sezona=${PAST}`, 'Muškarci', '2043-06-01', PAST, PAST],
+    ['Timovi → Žene', `/sr/timovi?sezona=${PAST}`, 'Žene', '2043-06-01', PAST, PAST],
+    /* The exception: the next season of the teams, on a day the tables do not offer it. */
+    ['Timovi, naredna sezona → Muškarci', `/sr/timovi?sezona=${NEXT}`, 'Muškarci', '2043-06-01', NEXT, null],
+    ['Timovi, naredna sezona → Žene', `/sr/timovi?sezona=${NEXT}`, 'Žene', '2043-06-01', NEXT, null],
+    /* And on a day the tables offer it too, in the transfer window: then it is carried, because the other card
+       offers it as well (derived, PDL „Pravilnik prelazi u podnožje"). */
+    ['Timovi, naredna sezona u prelaznom roku → Muškarci', `/sr/timovi?sezona=${NEXT}`, 'Muškarci', '2043-12-01', NEXT, NEXT],
+  ])('keeps the season on %s', async (_name, address, pressed, day, before, after) => {
+    const user = setupUser()
+    const { router } = renderAt(address, 'visitor', null, undefined, day)
+
+    await screen.findByRole('group', { name: 'BTL tabele' }, { timeout: SLOW / 2 })
+    /* The setting, before anything is pressed: the season chosen is not the one a card opens on. */
+    expect(screen.getByLabelText('Sezona')).toHaveValue(before)
+    expect(before).not.toBe(RUNNING)
 
     await user.click(screen.getByRole('link', { name: pressed }))
 
     /* Half the clock of the case, so a card that never arrives fails on this line and not on the
        clock (CLAUDE.md, section 25). */
-    expect(await screen.findByRole('link', { name: marked, current: 'page' }, { timeout: SLOW / 2 })).toBeVisible()
-    expect(screen.getByLabelText('Sezona')).toHaveValue('2027')
-    expect(new URLSearchParams(router.state.location.search).get('sezona')).toBeNull()
+    expect(await screen.findByRole('link', { name: pressed, current: 'page' }, { timeout: SLOW / 2 })).toBeVisible()
+    expect(screen.getByLabelText('Sezona')).toHaveValue(after ?? RUNNING)
+    const asked = new URLSearchParams(router.state.location.search)
+
+    expect(asked.get('sezona')).toBe(after)
+    expect(asked.get('kategorija')).toBeNull()
   }, SLOW)
 
   it('narrows by category, and lets it go again', async () => {

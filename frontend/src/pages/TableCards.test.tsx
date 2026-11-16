@@ -3,27 +3,32 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { MemoryRouter } from 'react-router'
 import { describe, expect, it } from 'vitest'
+import { ClockContext } from '../clock/context'
 import { I18nProvider } from '../i18n/I18nProvider'
 import { must } from '../test/at'
 import { unconditionalRules } from '../test/stylesheet'
 import { TableCards, type TableCard } from './TableCards'
 
-function drawn(current: TableCard, locale: 'sr' | 'en' = 'sr') {
+function drawn(current: TableCard, locale: 'sr' | 'en' = 'sr', at = '/', today = '2027-06-01') {
   render(
-    <MemoryRouter>
-      <I18nProvider locale={locale}>
-        <TableCards current={current} />
-      </I18nProvider>
+    <MemoryRouter initialEntries={[at]}>
+      <ClockContext.Provider value={{ today, simulated: null, simulate: () => undefined }}>
+        <I18nProvider locale={locale}>
+          <TableCards current={current} />
+        </I18nProvider>
+      </ClockContext.Provider>
     </MemoryRouter>,
   )
 
   return within(screen.getByRole('group', { name: locale === 'sr' ? 'BTL tabele' : 'BTL tables' }))
 }
 
+const hrefs = (cards: ReturnType<typeof drawn>) => cards.getAllByRole('link').map((one) => one.getAttribute('href'))
+
 describe('the three cards of the tables', () => {
   /* Owner, 16.11.2026: „Timovi prelazi BTL tabele kao treća ravnopravna opcija koja se otvara klikom na
      Timovi (nakon dugmeta Žene, a pre izbora godine iz dropdown)", and answer 8: Muškarci on `/tabela`,
-     Žene on `/tabela?pol=z`, Timovi on `/timovi`. No address carries a season (answer 10). */
+     Žene on `/tabela?pol=z`, Timovi on `/timovi`. With no season in the address, none is carried. */
   it('draws Muškarci, Žene and Timovi in that order, each a link to its card and to nothing more', () => {
     const cards = drawn('men')
 
@@ -43,6 +48,21 @@ describe('the three cards of the tables', () => {
       '/en/tabela?pol=z',
       '/en/timovi',
     ])
+  })
+
+  /* THE SEASON OF THE ADDRESS GOES WITH EVERY CARD, EXCEPT A FUTURE SEASON OF THE TEAMS TO THE MEN OR THE
+     WOMEN (owner, 16.11.2026: „Moze svuda da se cuva sezona, osim kad se iz buduce sezone timova prelazi
+     na M ili Z, onda se prebacuje na aktuelnu."). On 1 June 2027 the running season is 2027 and 2028 has
+     not begun, and the tables do not offer it; on 1 December they do. The age category is never carried. */
+  it.each([
+    ['men', '/sr/tabela?sezona=2030&kategorija=M40-54', '2027-06-01', ['/sr/tabela?sezona=2030', '/sr/tabela?pol=z&sezona=2030', '/sr/timovi?sezona=2030']],
+    ['women', '/sr/tabela?pol=z&sezona=2027', '2030-06-01', ['/sr/tabela?sezona=2027', '/sr/tabela?pol=z&sezona=2027', '/sr/timovi?sezona=2027']],
+    ['teams', '/sr/timovi?sezona=2027', '2030-06-01', ['/sr/tabela?sezona=2027', '/sr/tabela?pol=z&sezona=2027', '/sr/timovi?sezona=2027']],
+    ['teams', '/sr/timovi?sezona=2028', '2027-06-01', ['/sr/tabela', '/sr/tabela?pol=z', '/sr/timovi?sezona=2028']],
+    ['teams', '/sr/timovi?sezona=2028', '2027-12-01', ['/sr/tabela?sezona=2028', '/sr/tabela?pol=z&sezona=2028', '/sr/timovi?sezona=2028']],
+    ['teams', '/sr/timovi?sezona=2029', '2027-12-01', ['/sr/tabela', '/sr/tabela?pol=z', '/sr/timovi?sezona=2029']],
+  ] as const)('carries the season of the address from the card %s at %s on %s', (current, at, today, wanted) => {
+    expect(hrefs(drawn(current, 'sr', at, today))).toEqual(wanted)
   })
 
   /* One card marked, the one the screen says it is, and every one of the three can be it. */

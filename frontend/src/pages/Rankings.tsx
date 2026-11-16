@@ -135,9 +135,9 @@ function Standing({
           belongs with the name of the screen and not among the filters. */}
       <div className="rankings__head-tool">
         {/* Muškarci, Žene and Timovi, since 16.11.2026 (`TableCards`). Each is the address of its
-            card and nothing more, so the age category goes with a change of card as it went with a
-            change of gender before (the bands of one gender are not the bands of the other), and so
-            does the season (owner, answer 10). */}
+            card with the season being read, so the season stays with a change of card and the age
+            category goes, as it went with a change of gender before (the bands of one gender are not
+            the bands of the other). */}
         <TableCards current={gender === 'F' ? 'women' : 'men'} />
 
         {/* Beside them and to their right, in the shape it has on the top boards
