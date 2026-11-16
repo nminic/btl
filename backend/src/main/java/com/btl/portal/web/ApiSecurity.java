@@ -137,7 +137,12 @@ class ApiSecurity {
 			/* What a network shows for the address of a profile, named by the member number and the
 			   language (CompetitorPreviewApi). Anybody, because nginx asks it for whoever opens the
 			   profile, and it says what a visitor is answered and the address of the card above. */
-			CompetitorPreviewApi.ASKED_AT);
+			CompetitorPreviewApi.ASKED_AT,
+			/* The short mark of the state of a card, which the address of a member's own profile carries
+			   (CompetitorCardMarkApi, PDL P11, 16.11.2026). Anybody, because it is a piece of the digest the
+			   address of the card above already carries in the head of every profile, and it is there
+			   exactly when that card is. */
+			CompetitorCardMarkApi.ASKED_AT);
 
 	/**
 	 * WHO THE SETTINGS NAME, ANSWERED ONCE FOR THE WHOLE APPLICATION AND NOT ONLY FOR THIS

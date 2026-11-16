@@ -1,3 +1,4 @@
+import { CardMarkInTheAddress } from './profile/CardMarkInTheAddress'
 import { HisOwnRecord } from './profile/HisOwnRecord'
 import { InvitesToHim } from './profile/InvitesToHim'
 import { memberNumberIn, redirectTo } from './profileAddress'
@@ -636,6 +637,20 @@ export function CompetitorProfile({ memberNumber: given }: { memberNumber?: stri
                   })}
                   description={t('seo.competitor.recordDescription', { name })}
                   shareTitle={t('seo.competitor.shareTitle', { name })}
+                />
+              )}
+
+              {/* HIS OWN PAGE CARRIES THE MARK OF HIS CARD IN ITS ADDRESS (owner, PDL P11, 16.11.2026,
+                  point 15: „pusti ispravku iz tačke 2 odmah"), so the link he copies after his card has
+                  changed is a new one to Viber and WhatsApp. Only at the address of the profile, which
+                  is the one a network draws a preview for, and only for the member the session names:
+                  nobody else's page is touched. Keyed by the member and the language, so a mark of one
+                  card is never written into the address of another (`profile/CardMarkInTheAddress.tsx`). */}
+              {given === undefined && readerNumber === competitor.memberNumber && (
+                <CardMarkInTheAddress
+                  key={`${competitor.memberNumber}-${locale}`}
+                  memberNumber={competitor.memberNumber}
+                  locale={locale}
                 />
               )}
 
