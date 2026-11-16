@@ -1784,18 +1784,21 @@ describe('the kind of event a result is sent under', () => {
 describe('a run sent back on an event of the calendar', () => {
   const POOL = shaped({ id: 9150, eventId: 9001, name: 'Gradska liga, plivanje', renamed: true, date: '2027-03-01', kind: 'free', distanceKm: 3 })
 
-  /** The calendar with the league as the kind given (or without it, for none), and a race of it that fixes no climb. */
+  /** The calendar with the league as the kind given, without it (`null`), or not readable at all
+   *  (`'unreadable'`), and a race of it that fixes no climb. */
   function theLeagueIs(kind: string | null): { stop: () => void } {
     const answer = (body: unknown) =>
       new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } })
 
     return serverThat((path) =>
       path === '/api/events'
-        ? answer(
-            kind === null
-              ? CALENDAR.filter((one) => one.id !== LEAGUE.id)
-              : CALENDAR.map((one) => (one.id === LEAGUE.id ? { ...one, kind } : one)),
-          )
+        ? kind === 'unreadable'
+          ? new Response(null, { status: 500 })
+          : answer(
+              kind === null
+                ? CALENDAR.filter((one) => one.id !== LEAGUE.id)
+                : CALENDAR.map((one) => (one.id === LEAGUE.id ? { ...one, kind } : one)),
+            )
         : path === '/api/races'
           ? answer([...RACES, POOL])
           : null,
@@ -1881,9 +1884,12 @@ describe('a run sent back on an event of the calendar', () => {
 
   /* The kind the run was sent under is the answer only where the calendar does not hold the event it names: the
      form reads what it has, as it did before the calendar was asked, and the first keystroke changes nothing. */
-  it('keeps the kind the run was sent under where the calendar does not hold its event', async () => {
+  it.each([
+    ['does not hold its event', null],
+    ['could not be read', 'unreadable'],
+  ] as const)('keeps the kind the run was sent under where the calendar %s', async (_, served) => {
     const user = setupUser()
-    const league = theLeagueIs(null)
+    const league = theLeagueIs(served)
     const route = recording([sentBackOn('event', 'unscored')])
 
     try {
