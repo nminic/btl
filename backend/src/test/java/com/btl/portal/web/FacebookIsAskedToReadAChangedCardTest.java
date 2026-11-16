@@ -555,6 +555,29 @@ class FacebookIsAskedToReadAChangedCardTest {
 				.doesNotContain(APP_SECRET));
 	}
 
+	/**
+	 * THE RUN DOES NOT WAIT FOR FACEBOOK AT ALL, which is what keeps the scheduler's one thread, shared with every other
+	 * job, free of it: with a Facebook that takes three seconds and a term far longer than that, the run is back while
+	 * every request is still on its way, and they finish after it.
+	 */
+	@Test
+	void theRunIsBackBeforeFacebookHasAnswered() throws Exception {
+		facebook.waitMillis = 3000;
+		FacebookIsAskedToReadAChangedCard patient = jobAsking(facebook.address(), 10, 20_000);
+
+		patient.askAgain();
+		db.sql("update competitor set birth_date = date '1960-05-05' where member_number = ?").param(MOVES).update();
+
+		long started = System.nanoTime();
+		List<CompletableFuture<Void>> sent = patient.askAgain();
+
+		assertThat(Duration.ofNanos(System.nanoTime() - started)).as("the run waited for Facebook")
+				.isLessThan(Duration.ofMillis(2000));
+		assertThat(sent).hasSize(2).noneMatch(CompletableFuture::isDone);
+
+		waitedFor(sent);
+	}
+
 	/** And one that is not there at all is the same: logged, and nothing is thrown at anybody. */
 	@Test
 	void aFacebookThatIsNotThereIsLogged() throws Exception {
