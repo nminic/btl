@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -206,6 +207,42 @@ class WhatFacebookIsAskedAgainTest {
 					"/sr/takmicar/000012-ime", "/sr/takmicar/000012-zoran", "/sr/takmicar/000013-ime",
 					"/sr/takmicar/000014-ime");
 		}
+	}
+
+	/**
+	 * A ROW ASKED ABOUT BEFORE GOES BEHIND EVERY ROW NEVER ASKED, AND THE ONE ASKED LONGEST AGO COMES FIRST AMONG THEM
+	 * (V104). Five rows differ, and the order of the member and the address is the opposite of the order of the asking:
+	 * the first two members were asked about, the second of them before the first, and the three after them never were.
+	 * So the three never asked go first, in the order of the member, and then the one asked longest ago; and a row
+	 * that does not differ is not asked whenever it was asked before.
+	 */
+	@Test
+	void theRowsNeverAskedComeFirstAndThenTheOnesAskedLongestAgo() {
+		Instant earlier = Instant.parse("2026-11-16T10:00:00Z");
+		Instant later = Instant.parse("2026-11-16T10:05:00Z");
+		List<Row> rows = new ArrayList<>();
+		Map<Key, String> now = new HashMap<>();
+
+		for (String number : List.of("000021", "000022", "000023", "000024", "000025")) {
+			Instant asked = switch (number) {
+				case "000021" -> later;
+				case "000022" -> earlier;
+				default -> null;
+			};
+
+			rows.add(new Row(number, "/sr/takmicar/" + number + "-ime", card(number, "sr", "1".repeat(16)), asked));
+			now.put(new Key(number, "sr"), card(number, "sr", "2".repeat(16)));
+		}
+
+		rows.add(new Row("000020", "/sr/takmicar/000020-ime", card("000020", "sr", "3".repeat(16)), earlier));
+		now.put(new Key("000020", "sr"), card("000020", "sr", "3".repeat(16)));
+
+		assertThat(WhatFacebookIsAskedAgain.plan(rows, now, 10).addresses()).containsExactly("/sr/takmicar/000023-ime",
+				"/sr/takmicar/000024-ime", "/sr/takmicar/000025-ime", "/sr/takmicar/000022-ime",
+				"/sr/takmicar/000021-ime");
+		assertThat(WhatFacebookIsAskedAgain.plan(rows, now, 4).addresses()).containsExactly("/sr/takmicar/000023-ime",
+				"/sr/takmicar/000024-ime", "/sr/takmicar/000025-ime", "/sr/takmicar/000022-ime");
+		assertThat(new Row("000001", "/sr/takmicar/000001", null).askedAt()).as("a row the crawler writes").isNull();
 	}
 
 	/** Two members' rows at one address (a number that moved to another) are one request, however many rows. */

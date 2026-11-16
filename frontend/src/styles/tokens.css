@@ -264,6 +264,11 @@
      pill is made of, so a heading and the figures under it belong together. */
   --heading: var(--blue-900);
   --gold-text: var(--gold-600);
+  /* The gold of a figure written on the page itself (the mark of an event's comments): the step of the scale it was,
+     and in the dark theme the lighter one that clears 4,5:1 where a contour crosses the route
+     (`styles/raceInMotion.test.ts`; owner, 16.11.2026). The step itself stays one colour in both themes, because
+     the gold band is painted from it (`styles/goldBand.test.ts`). */
+  --gold-figure: var(--gold-500);
   /* A gold disc carrying an icon. Both halves flip with the theme, because the
      disc is the only edge the control has and it has to clear 3:1 against the
      card behind it (WCAG 2.2 SC 1.4.11), while the icon inside has to clear 3:1
@@ -288,11 +293,11 @@
      2,14:1. */
   --gold-band-ink: #3a2a02;
   --up: #1a7f4b;
-  --down: #b3402f;
+  --down: #a93b2b;
   /* Removing something. The same values as --down, which is a fall in the
      table, and a separate name because the two are not the same idea and must
      be free to move apart. Both clear 4.5:1 on their own surface. */
-  --danger: #b3402f;
+  --danger: #a93b2b;
 
   /* What lies over the part of a picture a crop throws away.
      Owner, 12.08.2026: „zatamnjen ali dovoljno vidljiv ostatak". Both halves of
@@ -426,7 +431,7 @@
     --text-muted: #a3b0c4;
     --border: #26364f;
     --control-border: #5a6c8f;
-    --accent: #5b93ec;
+    --accent: #7aa8f0;
     /* See the light theme above. Darker rather than lighter here, because on a
        near black card the way to be quiet is to come nearer to it. */
     --bar-quiet: #2168b8;
@@ -451,7 +456,8 @@
     --kind-unscored-ink: #fbdcec;
     --kind-unscored-face: #46162f;
     --kind-unscored-edge: #e48ab8;
-    --accent-hover: #7aa8f0;
+    --accent-hover: #93b8f4;
+    --gold-figure: #c9a23a;
     --accent-contrast: #06214a;
     --heading: var(--white);
     --gold-text: var(--gold-300);
@@ -475,7 +481,7 @@
   --text-muted: #a3b0c4;
   --border: #26364f;
   --control-border: #5a6c8f;
-  --accent: #5b93ec;
+  --accent: #7aa8f0;
   /* See the light theme above. Darker rather than lighter here, because on a
      near black card the way to be quiet is to come nearer to it. */
   --bar-quiet: #2168b8;
@@ -500,7 +506,8 @@
   --kind-unscored-ink: #fbdcec;
   --kind-unscored-face: #46162f;
   --kind-unscored-edge: #e48ab8;
-  --accent-hover: #7aa8f0;
+  --accent-hover: #93b8f4;
+  --gold-figure: #c9a23a;
   --accent-contrast: #06214a;
   --heading: var(--white);
   --gold-text: var(--gold-300);

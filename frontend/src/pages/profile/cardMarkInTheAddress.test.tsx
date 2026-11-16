@@ -172,6 +172,34 @@ describe('the mark of his card in the address of his own profile', () => {
     expect(askedForAMark(asked)).toHaveLength(2)
   }, SLOW)
 
+  /* „PONIŠTI FILTERE" EMPTIES THE ADDRESS, and the mark is written back at once, in place: the one control of the
+     profile that does not copy the address over (`CardMarkInTheAddress`, „The one control that empties the
+     address"). Without it the member who cleared his filters would copy a link with no mark, and a network would
+     read the old preview. He has no run of „ultra", so the button is on the screen. The address is opened with an
+     old mark (`0000`) and the server says another, so the mark written after the press is the server's and not
+     what the address carried before. */
+  it('writes the mark back, in place, into an address that „Poništi filtere" has emptied', async () => {
+    const asked = marks(() => json({ mark: 'b7e2' }))
+    const user = setupUser()
+    const { router } = renderAt(`${HIS_PAGE}?duzina=ultra&k=0000`, 'competitor', HIM.memberNumber)
+
+    await waitFor(() => {
+      expect(router.state.location.search).toBe('?duzina=ultra&k=b7e2')
+    })
+
+    await user.click(await screen.findByRole('button', { name: 'Poništi filtere' }))
+
+    await waitFor(() => {
+      expect(router.state.location.search).toBe('?k=b7e2')
+    })
+    await everyAnswerRead()
+
+    expect(router.state.location.search, 'the address was left without the mark').toBe('?k=b7e2')
+    expect(router.state.historyAction, 'the mark came back as a new entry in the history').toBe('REPLACE')
+    expect(askedForAMark(asked), 'the mark was asked for again').toEqual(['/api/cards/marks/000009-sr'])
+    expect(screen.queryByRole('button', { name: 'Poništi filtere' })).toBeNull()
+  }, SLOW)
+
   it.each([
     ['there is no card for him (a hidden profile, a lapsed member)', () => new Response(null, { status: 404 })],
     ['the answer is not a mark', () => json({ mark: 'NOT A MARK' })],
