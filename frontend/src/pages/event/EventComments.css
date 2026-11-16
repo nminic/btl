@@ -100,7 +100,7 @@
   font-size: 1.15rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  color: var(--gold-500);
+  color: var(--gold-figure);
 }
 
 .comments__mark-count {

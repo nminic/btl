@@ -26,7 +26,11 @@
  * route) is faint enough that the text keeps 4,5:1 against the strongest of it at full strength
  * (`styles/raceInMotion.test.ts`, which measures every ink the portal's tokens name as readable on
  * the page, among them the red star of a required field, held down in the light theme by how faint
- * `--race-contour` and `--race-route` are); the gold line and the runner are drawn only where no text
+ * `--race-contour` and `--race-route` are). The grounds measured are the page under its glow, a
+ * contour, the route, and the place where a contour crosses the route with both at full strength; the
+ * last is the weakest, and it is why `--accent`, `--accent-hover` and `--gold-500` in the dark theme and
+ * `--down` and `--danger` in the light one are the colours they are (owner, 16.11.2026: the lines stay
+ * as they were and the text moves). The gold line and the runner are drawn only where no text
  * stands, which Chrome is asked about (`geometry/raceInMotion.geometry.ts`).
  */
 :root {

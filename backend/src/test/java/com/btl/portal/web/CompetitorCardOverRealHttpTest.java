@@ -113,11 +113,24 @@ class CompetitorCardOverRealHttpTest {
 		return "/api/cards/competitor/" + number + "-sr1-0123456789abcdef.jpg";
 	}
 
-	/** The value of {@code Date}, the {@code timestamp} and the path, which three are what may differ. */
+	/**
+	 * The value of {@code Date}, the {@code timestamp} and the path, which three are what may differ.
+	 *
+	 * <p>The line of {@code Date} is matched WITH its {@code \r\n}, the shape {@link RightsOverRealHttpTest}
+	 * uses: in Java {@code .} does not take the {@code \r}, and {@code $} does not stand between the {@code \r}
+	 * and the {@code \n} of one line ending, so {@code ^Date: .*\r$} never matched a header line, the value was
+	 * never replaced, and the comparison failed whenever the second changed between two requests. That the value
+	 * WAS replaced is asserted here, so a pattern that matches nothing fails every time and not only on a second
+	 * that turns over.
+	 */
 	private static String withoutTheClock(String answer, String path) {
-		return answer.replaceAll("(?m)^Date: .*\r$", "Date: AT SOME MOMENT\r")
+		String masked = answer.replaceAll("(?m)^Date: .*\r\n", "Date: AT SOME MOMENT\r\n")
 				.replaceAll("\"timestamp\":\"[^\"]*\"", "\"timestamp\":\"AT SOME MOMENT\"")
 				.replace(path, "THE ADDRESS THAT WAS ASKED FOR");
+
+		assertThat(masked).as("the value of Date was not replaced").contains("\r\nDate: AT SOME MOMENT\r\n");
+
+		return masked;
 	}
 
 	private static List<String> headerNamesOf(String answer) {

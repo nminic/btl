@@ -348,6 +348,86 @@ class CompetitorCardApiTest {
 				.isEqualTo("Dunavski trkači");
 	}
 
+	/**
+	 * THE KILOMETRES ARE THE RUNS' OWN AND NOT THE LENGTH OF THEIR RACE. Every other run of the setting covers
+	 * exactly the length of its race, so the two sums are one number there; a free race fixes no length (the
+	 * race carries 0) and each runner covers what he covers, so here they part, at a scored race and at an
+	 * unscored one. Owner, 15.11.2026: „Trke, km, broje se SVE trke, ne samo bodovane."
+	 */
+	@Test
+	void theKilometresAreWhatEachRunCoveredAndNotTheLengthOfItsRace() throws Exception {
+		long scoredFree = db.sql("insert into race (event_id, name, renamed, date, kind, limit_seconds,"
+						+ " distance_km, ascent_m, descent_m) values (?, 'Slobodna', false, date '2028-04-04', 'free',"
+						+ " 0, 0, 0, 0) returning id").param(scoredEvent).query(Long.class).single();
+		long unscoredFree = db.sql("insert into race (event_id, name, renamed, date, kind, limit_seconds,"
+						+ " distance_km, ascent_m, descent_m) values (?, 'Slobodno plivanje', false,"
+						+ " date '2028-06-06', 'free', 0, 0, 0, 0) returning id")
+				.param(event("plivanje-2028", "2028-06-06", "unscored")).query(Long.class).single();
+
+		run(ASKED, scoredFree, "7.3");
+		run(ASKED, unscoredFree, "4.2");
+
+		assertThat(db.sql("select count(*) from result r join race ra on ra.id = r.race_id join competitor c"
+						+ " on c.id = r.competitor_id where c.member_number = ? and r.distance_km <> ra.distance_km")
+				.param(ASKED).query(Integer.class).single())
+				.as("two runs whose kilometres are not their race's, so the case parts the two sums").isEqualTo(2);
+		/* 101.80 of the runs the setting already gives him, and 7.30 and 4.20 of the two free races. */
+		assertThat(cards.faceShown(ASKED, WhatACardSays.SERBIAN).orElseThrow().kilometresFigure())
+				.isEqualTo("113,30");
+	}
+
+	/**
+	 * A TEAM HE HAS LEFT IS NOT HIS TEAM, AND THEN NOTHING IS WRITTEN. Owner, 15.11.2026: „ako nema tima kojem
+	 * trkač pripada, ne ispisuje se ništa, a ne "nema tim" i sl.” The member left a team in 2027 and is in none
+	 * now, so the line under his name is his category alone, as for a member who was never in one; the member
+	 * whose membership has not ended keeps his team.
+	 */
+	@Test
+	void aTeamHeHasLeftIsNotOnTheCard() {
+		db.sql("insert into team (slug, name, bio, link, place_id, city, country_id, logo_id, first_season,"
+				+ " admin_id) values ('napusteni', 'Napušteni tim', '', '', (select id from place where rank = 1),"
+				+ " null, null, null, 2027, null)").update();
+		db.sql("insert into team_membership (competitor_id, team_id, season_from, season_to, left_reason)"
+				+ " values ((select id from competitor where member_number = ?),"
+				+ " (select id from team where slug = 'napusteni'), 2027, 2027, 'Prešao u drugi grad')")
+				.param(NONE).update();
+
+		CompetitorApi.Competitor his = competitors.competitors(null).stream()
+				.filter(one -> NONE.equals(one.memberNumber())).findFirst().orElseThrow();
+
+		assertThat(his.teamId()).as("the public answer gives him no team, so the case measures that state").isNull();
+		assertThat(cards.faceShown(NONE, WhatACardSays.SERBIAN).orElseThrow().underName())
+				.isEqualTo(WhatACardSays.SERBIAN.category(his.gender(), his.category().ageBand(),
+						his.category().beginner()))
+				.doesNotContain("Napušteni").doesNotContain("·");
+		assertThat(cards.faceShown(ASKED, WhatACardSays.SERBIAN).orElseThrow().underName())
+				.endsWith(" · Dunavski trkači");
+	}
+
+	/**
+	 * THE CATEGORY ON THE CARD IS THE ONE OF THE SEASON THAT IS RUNNING, NOT OF HIS FIRST SEASON. PDL, owner,
+	 * 30.10.2026: „dok traje trenutna sezona, prikazuje se kategorija u trenutnoj sezoni ... a prethodna sezona
+	 * ostaje zamrznuta sa njegovom starom kategorijom." Born in 1973, he was 54 in 2027 and is 55 in 2028, which
+	 * the clock stands in, so the two seasons he holds are two bands; every other member of the setting holds one
+	 * season, where the first and the running category are one.
+	 */
+	@Test
+	void theCategoryIsTheRunningSeasonsAndNotTheFirstSeasonsHeHeld() {
+		db.sql("update competitor set birth_date = date '1973-05-05' where member_number = ?").param(NONE).update();
+		memberOf(NONE, 2027);
+
+		CompetitorApi.Competitor his = competitors.competitors(null).stream()
+				.filter(one -> NONE.equals(one.memberNumber())).findFirst().orElseThrow();
+		String running = WhatACardSays.SERBIAN.category(his.gender(), his.category().ageBand(),
+				his.category().beginner());
+
+		assertThat(his.categories()).as("he stands in the tables of two seasons").hasSize(2);
+		assertThat(WhatACardSays.SERBIAN.category(his.gender(), his.categories().get(0).ageBand(),
+				his.categories().get(0).beginner()))
+				.as("his first season's category is another one, so the case parts the two").isNotEqualTo(running);
+		assertThat(cards.faceShown(NONE, WhatACardSays.SERBIAN).orElseThrow().underName()).isEqualTo(running);
+	}
+
 	@Test
 	void theAddressMovesWhenARaceIsAddedAndTheOldOneAnswersTheNewCard() throws Exception {
 		String before = cards.addressOf(ASKED, WhatACardSays.SERBIAN).orElseThrow();

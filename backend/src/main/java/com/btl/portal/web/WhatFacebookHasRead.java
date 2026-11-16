@@ -44,7 +44,9 @@ import java.util.Locale;
  *
  * <p><b>WHAT IS WRITTEN DOWN IS WHAT THE JOB NEEDS AND NOTHING MORE</b>: one row per address the crawler read the
  * profile at, with the address of the card it was given there ({@code shared_card}, V103). The card is what tells
- * the job that Facebook holds something that has since changed; no moment is kept, because nothing reads one.
+ * the job that Facebook holds something that has since changed; the moment of a reading is not kept, because nothing
+ * reads one. The one moment the row carries is the job's own, when it last asked Facebook about the address
+ * ({@code asked_at}, V104), which a reading neither writes nor clears.
  *
  * <p><b>A READING TOUCHES ITS OWN ROW AND NO OTHER</b>: it adds the row of the address it read, or gives that row the
  * card it was given now. It never writes another address, takes one out or overwrites one, so no reading can lose an

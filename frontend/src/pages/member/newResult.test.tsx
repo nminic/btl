@@ -1778,18 +1778,27 @@ describe('the kind of event a result is sent under', () => {
 
    THE AXES: the road to the event (the event chosen, a race of the calendar, which sets the same key); the kind of the
    event (unscored, scored); the moment (before any keystroke, after one); and where the kind comes from (the run sent
-   back, the calendar - each served a kind the other does not, so the one read is the one named). */
+   back, the calendar - each served a kind the other does not, so the one read is the one named: the calendar's, the
+   event's kind as it stands now, which is what the server judges the run by; the run's own only where the calendar
+   does not hold the event). */
 describe('a run sent back on an event of the calendar', () => {
   const POOL = shaped({ id: 9150, eventId: 9001, name: 'Gradska liga, plivanje', renamed: true, date: '2027-03-01', kind: 'free', distanceKm: 3 })
 
-  /** The calendar with the league as the kind given, and a race of it that fixes no climb. */
-  function theLeagueIs(kind: string): { stop: () => void } {
+  /** The calendar with the league as the kind given, without it (`null`), or not readable at all
+   *  (`'unreadable'`), and a race of it that fixes no climb. */
+  function theLeagueIs(kind: string | null): { stop: () => void } {
     const answer = (body: unknown) =>
       new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } })
 
     return serverThat((path) =>
       path === '/api/events'
-        ? answer(CALENDAR.map((one) => (one.id === LEAGUE.id ? { ...one, kind } : one)))
+        ? kind === 'unreadable'
+          ? new Response(null, { status: 500 })
+          : answer(
+              kind === null
+                ? CALENDAR.filter((one) => one.id !== LEAGUE.id)
+                : CALENDAR.map((one) => (one.id === LEAGUE.id ? { ...one, kind } : one)),
+            )
         : path === '/api/races'
           ? answer([...RACES, POOL])
           : null,
@@ -1827,9 +1836,11 @@ describe('a run sent back on an event of the calendar', () => {
     'asks no climb of an unscored race, on the road of the %s, after the form has been asked',
     async (road) => {
       const user = setupUser()
-      /* The calendar says SCORED while the run says UNSCORED, so a form that read the calendar would ask the climb. */
-      const league = theLeagueIs('race')
-      const route = recording([sentBackOn(road, 'unscored')])
+      /* The calendar says UNSCORED while the run was sent as SCORED, which is how an event the administration
+         changed while the run waited looks (the review of PR 734, 15.11.2026): the server judges the run by the
+         kind the event has now, so a form that read the run's old kind would ask the climb the server does not. */
+      const league = theLeagueIs('unscored')
+      const route = recording([sentBackOn(road, 'race')])
 
       try {
         await sendItWithTheClimbLeftOut(user)
@@ -1854,9 +1865,9 @@ describe('a run sent back on an event of the calendar', () => {
     'still asks the climb of a scored race, on the road of the %s',
     async (road) => {
       const user = setupUser()
-      /* And the other way round: the calendar says UNSCORED, the run says SCORED. */
-      const league = theLeagueIs('unscored')
-      const route = recording([sentBackOn(road, 'race')])
+      /* And the other way round: the calendar says SCORED, the run was sent as UNSCORED. */
+      const league = theLeagueIs('race')
+      const route = recording([sentBackOn(road, 'unscored')])
 
       try {
         await sendItWithTheClimbLeftOut(user)
@@ -1870,4 +1881,25 @@ describe('a run sent back on an event of the calendar', () => {
     },
     SLOW,
   )
+
+  /* The kind the run was sent under is the answer only where the calendar does not hold the event it names: the
+     form reads what it has, as it did before the calendar was asked, and the first keystroke changes nothing. */
+  it.each([
+    ['does not hold its event', null],
+    ['could not be read', 'unreadable'],
+  ] as const)('keeps the kind the run was sent under where the calendar %s', async (_, served) => {
+    const user = setupUser()
+    const league = theLeagueIs(served)
+    const route = recording([sentBackOn('event', 'unscored')])
+
+    try {
+      await sendItWithTheClimbLeftOut(user)
+      await screen.findByRole('heading', { name: 'Rezultat je poslat' }, SOON)
+
+      expect(must(route.sent()[0], 'what was sent').ascentM).toBeNull()
+    } finally {
+      route.stop()
+      league.stop()
+    }
+  }, SLOW)
 })

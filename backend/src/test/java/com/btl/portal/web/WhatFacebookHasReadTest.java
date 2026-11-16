@@ -31,6 +31,8 @@ import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.io.IOException;
@@ -492,6 +494,76 @@ class WhatFacebookHasReadTest {
 			assertThat(one.getLevel()).isEqualTo(Level.WARN);
 			assertThat(one.getFormattedMessage()).isEqualTo("Facebook did not read the page of a deleted member again: 500 ");
 		});
+	}
+
+	/**
+	 * A FACEBOOK THAT DOES NOT ANSWER IN TIME IS LOGGED WITHOUT THE PAGE TOO, the third way a request about a deleted
+	 * member's page ends beside a success and a refusal (the two cases above), and the line {@link FacebookGraph} writes
+	 * for a Facebook not reached, which is also the line of a connection refused. Through the deletion itself, with
+	 * Facebook taking longer than the two seconds this class gives a request.
+	 */
+	@Test
+	void aFacebookThatDoesNotAnswerInTimeIsLoggedWithoutTheDeletedMembersPage() throws Exception {
+		readByFacebook(GOES);
+		FACEBOOK.waitMillis = 3000;
+
+		List<ILoggingEvent> heard = heardWhile(FacebookGraph.class, () -> {
+			assertThat(deleted(GOES).getStatus()).isEqualTo(204);
+			FACEBOOK.askedOnce(2);
+			Thread.sleep(2500);
+		});
+
+		assertThat(FACEBOOK.asked).as("the deletion did not ask both its addresses").hasSize(2);
+		assertThat(heard).hasSize(2).allSatisfy(one -> {
+			assertThat(one.getLevel()).isEqualTo(Level.WARN);
+			assertThat(one.getFormattedMessage())
+					.startsWith("Facebook was not reached to read the page of a deleted member again: ")
+					.contains("HttpTimeoutException")
+					.doesNotContain(GOES).doesNotContainIgnoringCase("nikola").doesNotContain("takmicar");
+		});
+	}
+
+	/**
+	 * THE REQUESTS ARE HANDED TO FACEBOOK ONLY AFTER THE COMMIT, NEVER BEFORE IT, and this is told by the order Spring
+	 * keeps and not by a race. Owner, PDL P11, 16.11.2026, item 14: the name is kept not a minute after the deletion,
+	 * and a request that went before the commit would have Facebook read the page while the member still stands, so it
+	 * could keep his name. The case's own synchronization counts the requests handed over at {@code beforeCompletion},
+	 * which Spring calls after every {@code beforeCommit} and before the commit itself, so a request sent at
+	 * {@code beforeCommit} is counted there every time; and after the commit both addresses have been handed over. The
+	 * Facebook here is a {@link FacebookGraph} that counts what it is handed as it is handed, so no request on its way
+	 * stands between the asking and the counting (the server of this class records a request only once it has
+	 * arrived, which is what let the order hold only by a race, PR 744, second round).
+	 */
+	@Test
+	void theRequestsAreHandedToFacebookAfterTheCommitAndNeverBeforeIt() throws Exception {
+		readByFacebook(GOES);
+		List<String> handed = new CopyOnWriteArrayList<>();
+		FacebookGraph counting = new FacebookGraph("1234567890", "case0secret0of0the0reading0class",
+				FACEBOOK.address(), 2000) {
+
+			@Override
+			CompletableFuture<Boolean> readAgainUnnamed(String address) {
+				handed.add(address);
+				return CompletableFuture.completedFuture(true);
+			}
+		};
+		WhatFacebookHasRead reading = new WhatFacebookHasRead(db, inOneTransaction, counting, portal);
+		List<Integer> handedBeforeTheCommit = new ArrayList<>();
+
+		inOneTransaction.executeWithoutResult(t -> {
+			reading.forgetWhenGone(id(GOES));
+			TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+
+				@Override
+				public void beforeCompletion() {
+					handedBeforeTheCommit.add(handed.size());
+				}
+			});
+		});
+
+		assertThat(handedBeforeTheCommit).as("a request was handed to Facebook before the commit").containsExactly(0);
+		assertThat(handed).containsExactlyInAnyOrder(portal + "/en/takmicar/" + GOES + "-nikola-minic",
+				portal + "/sr/takmicar/" + GOES + "-nikola-minic");
 	}
 
 	/**

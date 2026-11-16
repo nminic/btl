@@ -12,9 +12,11 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import java.time.OffsetDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
@@ -46,7 +48,9 @@ import java.util.concurrent.TimeUnit;
  * difference and one request per address. <b>AND AGAIN UNTIL FACEBOOK ACCEPTS IT</b> (owner, PDL P11, 16.11.2026, item
  * 16, chosen with the assistant's recommendation): a row is written down as refreshed only from Facebook's answer,
  * when that answer is a success ({@link #refreshed}); a request that was refused, not answered in time or not
- * reached leaves the row as it was, so the next run asks it again. The limit is what keeps a Facebook that keeps
+ * reached leaves the card as it was, so the next run asks it again; it is stamped as asked about all the same
+ * ({@code asked_at}, V104), so the next run takes the rows never asked about and the ones asked longest ago first
+ * ({@link #stamped}), and rows Facebook keeps refusing cannot hold the head of every run. The limit is what keeps a Facebook that keeps
  * refusing from being flooded: {@code btl.facebook.per-pass} rows a run, ten by default, so at most a hundred and
  * twenty an hour, retries included; a row is one address, so the limit holds without an exception.
  *
@@ -104,11 +108,12 @@ class FacebookIsAskedToReadAChangedCard {
 		}
 
 		Plan plan = WhatFacebookIsAskedAgain.plan(read(), shownNow(), atMost);
+		List<Sent> sent = plan.asked().stream().flatMap(one -> stamped(one).stream()).toList();
 
-		return plan.addresses().stream()
+		return sent.stream().map(one -> one.asked().row().address()).distinct()
 				.map(address -> facebook.readAgain(portal.address() + address).thenAccept(accepted -> {
 					if (accepted) {
-						plan.asked().stream().filter(one -> one.row().address().equals(address))
+						sent.stream().filter(one -> one.asked().row().address().equals(address))
 								.forEach(this::refreshed);
 					}
 				}))
@@ -116,17 +121,44 @@ class FacebookIsAskedToReadAChangedCard {
 	}
 
 	/**
-	 * THE ROW OF AN ADDRESS FACEBOOK HAS ACCEPTED TO READ AGAIN, written as Facebook now holds it, and only then
-	 * (owner, PDL P11, 16.11.2026, item 16): a request refused or not answered leaves the row as it was, so the next
-	 * pass asks it again. By the row's own key, and only while the row still holds the card it held when the request
-	 * went: a reading of the crawler that wrote a newer card in the meantime is what Facebook holds since, and is not
-	 * written over. An update and never an insert: a row is Facebook having read the address, which only its crawler
-	 * writes, and a member deleted in the meantime took his rows, so there is nothing to update.
+	 * A ROW AS IT STOOD WHEN THE REQUEST ABOUT IT WENT: what was asked, and the version of the row the stamp below
+	 * wrote, which is PostgreSQL's {@code xmin}, the transaction that wrote the row as it now stands.
 	 */
-	private void refreshed(Asked one) {
+	private record Sent(Asked asked, String version) {
+	}
+
+	/**
+	 * THE ROW IS STAMPED AS ASKED ABOUT NOW, BEFORE THE REQUEST GOES, whatever Facebook answers (V104), so the next run
+	 * takes first the rows asked about longest ago and a row Facebook keeps refusing goes behind them. And the stamp
+	 * says which version of the row the request was sent about. Nothing for a row that is no longer there (its member
+	 * was deleted since this run read it), which is then not asked about at all: the deletion asks Facebook itself,
+	 * without naming the page ({@link WhatFacebookHasRead#forgetWhenGone}).
+	 */
+	private Optional<Sent> stamped(Asked one) {
+		return db.sql("update shared_card set asked_at = now() where member_number = ? and address = ?"
+						+ " returning xmin::text")
+				.params(one.row().memberNumber(), one.row().address()).query(String.class).optional()
+				.map(version -> new Sent(one, version));
+	}
+
+	/**
+	 * THE ROW OF AN ADDRESS FACEBOOK HAS ACCEPTED TO READ AGAIN, written as Facebook now holds it, and only then
+	 * (owner, PDL P11, 16.11.2026, item 16): a request refused or not answered leaves the card as it was, so the next
+	 * pass asks it again. By the row's own key, and only while the row is still the very version the request was sent
+	 * about. Any write since is newer than what this answer says, and the one that matters is the crawler's: Facebook
+	 * reads the page to answer the request, and its reading writes the card it was given
+	 * ({@link WhatFacebookHasRead#read}). That reading is not written over, EVEN WHEN IT WROTE THE SAME CARD THE ROW HELD
+	 * BEFORE (a hidden profile shown again while the request was on its way, PR 744, fourth round): a comparison of the
+	 * card could not tell that reading from none and would write the front page over the card Facebook holds, and then
+	 * a deletion would not ask about that address. The version tells it, because every write of a row makes a new one,
+	 * the same values or not. An update and never an insert: a row is Facebook having read the address, which only its
+	 * crawler writes, and a member deleted in the meantime took his rows, so there is nothing to update.
+	 */
+	private void refreshed(Sent one) {
 		db.sql("update shared_card set card = cast(? as text) where member_number = ? and address = ?"
-						+ " and card is not distinct from cast(? as text)")
-				.params(one.serves(), one.row().memberNumber(), one.row().address(), one.row().card()).update();
+						+ " and xmin = cast(? as xid)")
+				.params(one.asked().serves(), one.asked().row().memberNumber(), one.asked().row().address(),
+						one.version()).update();
 	}
 
 	private Map<Key, String> shownNow() {
@@ -142,7 +174,10 @@ class FacebookIsAskedToReadAChangedCard {
 	}
 
 	private List<Row> read() {
-		return db.sql("select member_number, address, card from shared_card")
-				.query((row, at) -> new Row(row.getString(1), row.getString(2), row.getString(3))).list();
+		return db.sql("select member_number, address, card, asked_at from shared_card")
+				.query((row, at) -> new Row(row.getString(1), row.getString(2), row.getString(3),
+						Optional.ofNullable(row.getObject(4, OffsetDateTime.class)).map(OffsetDateTime::toInstant)
+								.orElse(null)))
+				.list();
 	}
 }

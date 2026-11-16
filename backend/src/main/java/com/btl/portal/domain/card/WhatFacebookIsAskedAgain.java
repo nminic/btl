@@ -1,5 +1,6 @@
 package com.btl.portal.domain.card;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -49,10 +50,15 @@ import java.util.regex.Pattern;
  * tries again, so an address is marked as refreshed only when Facebook accepts. A row that was not is still different
  * the next time, and is asked then, within the limit like any other.
  *
- * <p><b>AT MOST {@code atMost} ROWS A TIME</b>, in the order of the member number and then the address. A row that
- * does not fit is not asked and not written, so the next time it is still different and is asked then: a day the whole portal
- * changes (a new drawing of the card changes every digest) is spread over as many times as it takes, in a fixed
- * order, and none is lost. A row is one address, so there is nothing to split and nothing that may go past the limit.
+ * <p><b>AT MOST {@code atMost} ROWS A TIME</b>, the rows never asked about first, then the ones asked about longest ago
+ * ({@link Row#askedAt}), and among rows asked at the same moment, or never, in the order of the member number and then
+ * the address. A row that does not fit is not asked and not written, so the next time it is still different and is
+ * asked then: a day the whole portal changes (a new drawing of the card changes every digest) is spread over as many
+ * times as it takes, and none is lost. A row Facebook refuses goes behind every row that has not been asked since, so
+ * rows it keeps refusing cannot hold the head of every time and keep the rows behind them from ever being asked (the
+ * review of PR 744, fourth round, measured exactly that while the order was the member and the address alone), and
+ * they are still asked in their turn. A row is one address, so there is nothing to split and nothing that may go past
+ * the limit.
  */
 public final class WhatFacebookIsAskedAgain {
 
@@ -75,14 +81,21 @@ public final class WhatFacebookIsAskedAgain {
 	}
 
 	/**
-	 * One address Facebook's crawler has read the profile of a member at, without the host, and the card Facebook was
-	 * last given there, which is {@code null} for the front page's preview.
+	 * One address Facebook's crawler has read the profile of a member at, without the host, the card Facebook was last
+	 * given there, which is {@code null} for the front page's preview, and when Facebook was last asked to read the
+	 * address again, accepted or not, which is {@code null} for a row never asked about (V104). The moment decides only
+	 * the order of a time; whether the row is refreshed is its card alone.
 	 */
-	public record Row(String memberNumber, String address, String card) {
+	public record Row(String memberNumber, String address, String card, Instant askedAt) {
 
 		public Row {
 			Objects.requireNonNull(memberNumber);
 			Objects.requireNonNull(address);
+		}
+
+		/** A row never asked about, which is every row the crawler writes. */
+		public Row(String memberNumber, String address, String card) {
+			this(memberNumber, address, card, null);
 		}
 	}
 
@@ -116,7 +129,8 @@ public final class WhatFacebookIsAskedAgain {
 	}
 
 	private static final Comparator<Row> IN_ORDER =
-			Comparator.comparing(Row::memberNumber).thenComparing(Row::address);
+			Comparator.comparing(Row::askedAt, Comparator.nullsFirst(Comparator.<Instant>naturalOrder()))
+					.thenComparing(Row::memberNumber).thenComparing(Row::address);
 
 	private WhatFacebookIsAskedAgain() {
 	}

@@ -877,7 +877,16 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   nowhere.
 
 			   Pinned LAST, when the file was final, off this very assertion. */
-			new Applied("103", "V103__facebook_remembers_which_card_it_was_last_asked_about.sql", 156348676));
+			new Applied("103", "V103__facebook_remembers_which_card_it_was_last_asked_about.sql", 156348676),
+
+			/* V104. When the server last asked Facebook about an address (owner, 16.11.2026, the same entry, item 16;
+			   the review of PR 744, fourth round): one empty column on shared_card, which decides only the order a run
+			   takes the rows in, so rows Facebook keeps refusing go behind the others instead of holding the head of
+			   every run.
+
+			   Pinned LAST, when the file was final, off this very assertion. */
+			new Applied("104", "V104__facebook_is_asked_first_about_the_address_it_was_asked_about_longest_ago.sql",
+					1569969929));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {

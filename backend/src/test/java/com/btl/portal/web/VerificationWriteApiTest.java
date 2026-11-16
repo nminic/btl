@@ -5914,6 +5914,34 @@ class VerificationWriteApiTest {
 	}
 
 	/**
+	 * AND A RACE OF THE CALENDAR IS REFUSED IN THE OTHER DIRECTION TOO: a run sent as a SCORED one is not put on a race
+	 * of an UNSCORED event, where the case above puts an unscored run on a scored race. The same run then goes on a
+	 * scored race of the calendar, so the refusal is about the kind and about nothing else of the run.
+	 */
+	@Test
+	void anApprovalPutsNoScoredRunOnARaceOfAnUnscoredEventOfTheCalendar() throws Exception {
+		long unscoredRace = freeRace(anUnscoredEvent("plivanje-na-adi-2027", "Plivanje na Adi",
+				LocalDate.of(2027, 3, 1)), "Plivanje", THE_DAY_HE_RAN);
+		long scoredRace = freeRace(event("kros-na-adi-2027", "Kros na Adi", LocalDate.of(2027, 3, 1)), "Kros",
+				THE_DAY_HE_RAN);
+		long scored = describedRun(ANA, "Ada", "length", THE_DAY_HE_RAN, "6.0000", 10, 10, 1700);
+		int races = howManyRaces();
+
+		MockHttpServletResponse ontoTheUnscoredRace = decideWith(THE_SUPERADMIN, scored, onTheRace(unscoredRace, null));
+
+		assertThat(ontoTheUnscoredRace.getStatus()).isEqualTo(409);
+		assertThat(reasonOf(ontoTheUnscoredRace))
+				.startsWith("Član je ovu trku prijavio kao drugu vrstu od ovog događaja.");
+		assertThat(db.sql("select count(*) from result r join competitor c on c.id = r.competitor_id"
+				+ " where c.member_number = ?").param(ANA).query(Integer.class).single()).isZero();
+
+		assertThat(decideWith(THE_SUPERADMIN, scored, onTheRace(scoredRace, null)).getStatus()).isEqualTo(200);
+		assertThat(howManyRaces()).isEqualTo(races);
+		assertThat(db.sql("select r.race_id from result r join competitor c on c.id = r.competitor_id"
+				+ " where c.member_number = ?").param(ANA).query(Long.class).single()).isEqualTo(scoredRace);
+	}
+
+	/**
 	 * AND A RUN SENT AS AN UNSCORED ONE, ON A NAME THE CALENDAR DOES NOT HAVE, MAKES AN UNSCORED EVENT: the
 	 * kind is the member's, the run keeps no points, a climb the moderator leaves out is nought, and the letter
 	 * names no points. A run sent as a scored one makes a scored event, as it always did.
