@@ -430,17 +430,11 @@ function TheForm({ me }: { me: string }) {
       : inTheBoxes.eventId === ''
         ? inTheBoxes.eventKind
         : kindNow(inTheBoxes.eventId, inTheBoxes.chosen)
-  const kindSentBack =
-    correcting === undefined
-      ? null
-      : correcting.eventName !== null && correcting.eventId !== null
-        ? kindNow(String(correcting.eventId), correcting.eventKind)
-        : correcting.eventKind
   const scored =
     fixingOne !== undefined
       ? !(unscored.status === 'ready' && unscored.data.some((one) => one.id === fixingOne.id))
-      : kindInTheBoxes === null && kindSentBack !== null
-        ? kindSentBack !== 'unscored'
+      : kindInTheBoxes === null && correcting !== undefined
+        ? correcting.eventKind !== 'unscored'
         : kindInTheBoxes !== 'unscored'
 
   /**

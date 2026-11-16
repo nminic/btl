@@ -544,6 +544,10 @@ describe('an unscored event of the calendar', () => {
     expect(theRowsAreScored(chosenAs(UNSCORED, '01/02/2028'), ASKED_OF_IT)).toBe(false)
     expect(theRowsAreScored(chosenAs(AN_EVENT, '01/06/2027'), ASKED)).toBe(true)
     expect(theRowsAreScored(chosenAs(AN_EVENT, '01/02/2028'), { open: [2028], offered: OFFERED })).toBe(true)
+    /* An event of the calendar the day is back in the year of (no longer an edition) is asked by its own kind, and not
+       by what the box held while it was an edition: the box is drawn then, so it may have been changed. */
+    expect(theRowsAreScored({ ...chosenAs(AN_EVENT, '01/06/2027'), eventKind: 'unscored' }, ASKED)).toBe(true)
+    expect(theRowsAreScored({ ...chosenAs(UNSCORED, '01/06/2027'), eventKind: 'race' }, ASKED_OF_IT)).toBe(false)
     /* A new event the block makes is asked by the kind in its own box. */
     expect(theRowsAreScored(filled({ eventKind: 'unscored' }), ASKED)).toBe(false)
     expect(theRowsAreScored(filled(), ASKED)).toBe(true)
