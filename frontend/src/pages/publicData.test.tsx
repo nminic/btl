@@ -4,7 +4,7 @@ import { DEFAULT_LOCALE } from '../i18n/config'
 import { QUEUES } from './admin/queues'
 import type { Role } from '../roles/context'
 import { beginsWith, metSaid } from '../test/met'
-import { BEHIND, BEHIND_DAY, DAY, PUBLIC, WITH_ROWS } from '../test/addresses'
+import { BEHIND, BEHIND_DAY, DAY, PUBLIC, WITH_ROWS, type Part } from '../test/addresses'
 import { playTheHistoryAsLeagueSeasons } from '../test/leagueSeasons'
 import { renderAt } from '../test/render'
 import { SLOW } from '../test/slow'
@@ -122,8 +122,18 @@ function watch(): string[] {
 
 /** The part of a screen that is being read, where two parts share one heading.
  *  The screen marks it, so it is asked for the way a reader meets it. */
-function expectPart(part: string | undefined): void {
+function expectPart(part: Part | undefined): void {
   if (part === undefined) {
+    return
+  }
+
+  /* A card of the tables (`pages/TableCards.tsx`), which the screen marks itself and the address does
+     not: the standing of the people drawn on `/timovi` would mark „Muškarci". Exactly one card is
+     marked, so a row of cards that marks two is not read as the one it names. */
+  if (typeof part === 'object') {
+    const cards = within(screen.getByRole('group', { name: 'BTL tabele' }))
+
+    expect(cards.getAllByRole('link', { current: 'page' }).map((one) => one.textContent)).toEqual([part.card])
     return
   }
 

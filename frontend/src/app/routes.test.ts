@@ -12,6 +12,8 @@ import {
   navForRole,
   ROUTES,
   seoKeyFor,
+  TABLE_ADDRESS,
+  TEAMS_ADDRESS,
 } from './routes'
 
 /**
@@ -40,20 +42,31 @@ function servedPaths(): string[] {
 }
 
 describe('navForRole', () => {
-  it('shows the seven names the owner fixed, in that order, and administration last', () => {
-    /* Owner, 04.08.2026, the seven names, and 15.11.2026, their order: „Neka tab Pravilnik u
-       navigaciji ne bude vise prvi, nego nakon Kalendara (a pre Administracije ako se ona
-       prikazuje)". Administration is the eighth and is shown to nobody else. */
+  it('shows the five names the owner left, in that order, and administration last', () => {
+    /* Owner, 16.11.2026: „Dakle ostaje 7 opcija ulogovanim članovima (Takmičari, BTL tabele, Top
+       liste, Lige, Kalendar, koverta, logo), 8 opcija ulogovanim adminima (sve to, plus
+       administracija)". The envelope and the picture are the header's own, not entries of this
+       list; the rulebook went to the footer and the teams to the tables. Administration is the
+       sixth and is shown to nobody else. */
     expect(navForRole('superadmin').map((section) => section.id)).toEqual([
       'people',
       'table',
       'boards',
-      'teams',
       'leagues',
       'calendar',
-      'rules',
       'admin',
     ])
+  })
+
+  it('marks „BTL tabele" on the teams, its third card, and no other entry on anything else', () => {
+    /* Owner, 16.11.2026, answer 8: „BTL tabele" in the navigation lights on all three cards. The
+       other way round too: an entry marked on an address that is not its card would light two
+       entries at once. */
+    expect(NAV.filter((section) => section.alsoMarkedOn !== undefined).map((section) => [
+      section.path,
+      section.alsoMarkedOn,
+    ])).toEqual([[TABLE_ADDRESS, [TEAMS_ADDRESS]]])
+    expect([TABLE_ADDRESS, TEAMS_ADDRESS]).toEqual(['tabela', 'timovi'])
   })
 
   it('hides administration from everyone who is not staff', () => {
@@ -76,12 +89,22 @@ describe('the shape of the navigation', () => {
       'takmicari',
       'tabela',
       'top-liste',
-      'timovi',
       'lige',
       'kalendar',
-      'pravilnik',
       'administracija',
     ])
+  })
+
+  it('still serves the rulebook and the teams, at the addresses they always had', () => {
+    /* Off the navigation on 16.11.2026 and not off the portal: the rulebook is in the footer and the
+       teams are the third card of the tables, both at their own address (owner, answer 8), so a link
+       shared before that day still opens them. Read off the router table, which is what is served. */
+    const served = servedPaths()
+
+    expect(served).toContain('pravilnik')
+    expect(served).toContain('timovi')
+    expect(NAV.map((section) => section.path)).not.toContain('pravilnik')
+    expect(NAV.map((section) => section.path)).not.toContain('timovi')
   })
 
   it('serves no address twice, and none of the three that were deleted', () => {
@@ -185,7 +208,10 @@ describe('ROUTES', () => {
 
   it('has no screen for contact, because contact is an address', () => {
     expect(ROUTES.map((route) => route.path)).not.toContain('kontakt')
+    /* The rulebook first, before the privacy policy (owner, 16.11.2026: „Pravilnik prelazi na dno,
+       footer, pre Politike privatnosti"). */
     expect(FOOTER_ROUTES.map((route) => route.path)).toEqual([
+      'pravilnik',
       'politika-privatnosti',
       'uslovi-koriscenja',
     ])

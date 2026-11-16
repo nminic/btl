@@ -293,6 +293,11 @@ describe('what a screen says in its own voice', () => {
       'autoComplete',
       'className',
       'counted',
+      /* WHICH CARD OF THE TABLES IS BEING READ, 16.11.2026, and it is machinery rather than speech. It
+         carries the word „teams" and a reader never meets it: what he meets is the card „Timovi" marked
+         as the page he is on, which the browser tells him in his own language. `pages/Teams.tsx` is the
+         only thing that writes it (`pages/TableCards.tsx`). */
+      'current',
       'cx',
       'cy',
       'd',

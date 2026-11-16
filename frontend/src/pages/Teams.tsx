@@ -19,6 +19,7 @@ import { teamWasDeleted } from './teamDeleted'
 import { MEMBERS, recordsOf, TEAMS } from './admin/entityForms'
 import { useOverlay } from './admin/overlay'
 import { mineIn, rowClass } from '../components/mine'
+import { TableCards } from './TableCards'
 import './Rankings.css'
 
 /**
@@ -118,7 +119,10 @@ export function Teams() {
 
   return (
     <div className="rankings rankings--tooled">
-      <h1>{t('teams.title')}</h1>
+      {/* „BTL tabele", the name of the entry that opens this card, on all three cards (owner,
+          16.11.2026, answer 9, chosen with my recommendation). The tab of the browser still says
+          „BTL timovi" (`seo.teams`), and the table itself is still called „Timovi". */}
+      <h1>{t('rankings.title')}</h1>
 
       {/* „Tim je obrisan.", for whoever was brought here by the deletion of a team from its own page (PDL, 24.10.2026).
           DRAWN ONLY WHILE THERE IS SOMETHING TO SAY, unlike the lists of the administration: the sentence is here from the
@@ -173,13 +177,24 @@ export function Teams() {
 
           const drawn = (rows: Shown[]) => (
             <>
+              {/* The three cards before the season, alone in the row beside the heading, as on the
+                  other two cards: so they and the season stand on the same pixel on all three and do
+                  not move under the pointer when a card is pressed (ADL A7). Held by
+                  `geometry/tableCards.geometry.ts`, for a visitor, a member with a team and one with
+                  none. */}
               <div className="rankings__head-tool">
-                {/* A team is put forward by whoever wants to run in it, and
-                    decided on by a moderator in the queue that has been waiting
-                    for one since it was written (owner, 03.08.2026; PDL P22).
-                    Beside the season rather than under the table: it is
-                    something to do with this screen, and the foot of a standing
-                    of forty is not where anybody looks for it. */}
+                <TableCards current="teams" />
+                <SeasonPicker seasons={seasons} season={season} fallback={running} />
+              </div>
+
+              {/* A team is put forward by whoever wants to run in it, and decided on by a moderator in
+                  the queue that has been waiting for one since it was written (owner, 03.08.2026; PDL
+                  P22). Not in the row of the cards since 16.11.2026: there it moved them. Beside the
+                  heading (owner, 16.11.2026, chosen between offered outcomes), where the row of the
+                  heading has room for it; where it has none, first under the row of the cards
+                  (`Rankings.css`, `.rankings__propose`). */}
+              {memberNumber !== null && myTeam === null && (
+                <div className={inYearlyWindow(today) ? 'rankings__propose rankings__propose--button' : 'rankings__propose'}>
                 {/* And only to a member who is not in a team today (owner,
                     04.09.2026: „samo na strani Timovi ULOGOVANOG ČLANA KOJI
                     TRENUTNO NEMA TIM U KOJEM SE NALAZI"). Until then every
@@ -193,9 +208,7 @@ export function Teams() {
                     mark cannot disagree. Nothing at all there — a signed-in
                     person with no competitor record — is also not in a team,
                     and reads the same way. */}
-                {memberNumber !== null &&
-                  myTeam === null &&
-                  (inYearlyWindow(today) ? (
+                {inYearlyWindow(today) ? (
                     <Link className="button button--secondary" to={`/${locale}/novi-tim`}>
                       {t('teams.propose')}
                     </Link>
@@ -206,9 +219,9 @@ export function Teams() {
                        change of team is asked in, and the membership screen already
                        speaks of it in those words. */
                     <p className="rankings__empty">{t('teams.proposeShut')}</p>
-                  ))}
-                <SeasonPicker seasons={seasons} season={season} fallback={running} />
-              </div>
+                  )}
+                </div>
+              )}
 
               {rows.length === 0 ? (
                 <p className="rankings__empty">{t('teams.empty')}</p>

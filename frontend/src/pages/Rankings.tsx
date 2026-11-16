@@ -3,7 +3,7 @@ import { useEffect, useMemo, type ReactNode } from 'react'
 import { useToday } from '../clock/useClock'
 import { CompetitorName } from '../components/CompetitorName'
 import { NamePlate } from '../components/NamePlate'
-import { GenderTabs } from '../components/GenderTabs'
+import { TableCards } from './TableCards'
 import { Resource } from '../components/Resource'
 import { SeasonPicker } from '../components/SeasonPicker'
 import {
@@ -134,13 +134,11 @@ function Standing({
           that says which table is being read rather than narrowing it, so it
           belongs with the name of the screen and not among the filters. */}
       <div className="rankings__head-tool">
-        {/* The age category goes with it: the bands of one gender are not the bands of the
-            other, so a category chosen for the men names nothing among the women. */}
-        <GenderTabs
-          gender={gender}
-          label={t('rankings.title')}
-          onChange={(next) => onChange({ pol: next === 'M' ? 'm' : 'z', kategorija: '' })}
-        />
+        {/* Muškarci, Žene and Timovi, since 16.11.2026 (`TableCards`). Each is the address of its
+            card with the season being read, so the season stays with a change of card and the age
+            category goes, as it went with a change of gender before (the bands of one gender are not
+            the bands of the other). */}
+        <TableCards current={gender === 'F' ? 'women' : 'men'} />
 
         {/* Beside them and to their right, in the shape it has on the top boards
             and on the teams (owner, 23.08.2026: „Sezona dropdown 2026 treba da
