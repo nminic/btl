@@ -408,6 +408,9 @@ describe('a sentence with a value put into it', () => {
          chosen out of two keys until 16.10.2026, the other one „Sezona {season}, probni
          podaci", and so stood among the calls whose key is not written out. */
       'home.season',
+      /* The name of the button of the language (16.11.2026): „Jezik, {code}“. The value is the code of the
+         language in use, SR or EN, after a comma, so it has no case to be wrong in. */
+      'language.button',
       /* THE LEAGUE'S OWN ENTRY OF RESULTS ON THE EVENT PAGE (19.10.2026). Every value stands after a
          colon or as a figure, so none has a case to be wrong in: „Unos rezultata: {race}" and
          „Izmena rezultata: {name}" name a race and a member in the nominative, „Izmeni rezultat:

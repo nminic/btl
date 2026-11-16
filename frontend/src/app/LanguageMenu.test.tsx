@@ -8,7 +8,7 @@ describe('LanguageMenu', () => {
     const user = setupUser()
     renderAt('/sr')
 
-    const button = await screen.findByRole('button', { name: 'Jezik' })
+    const button = await screen.findByRole('button', { name: 'Jezik, SR' })
     expect(button).toHaveAttribute('aria-expanded', 'false')
 
     await user.click(button)
@@ -22,7 +22,7 @@ describe('LanguageMenu', () => {
     const user = setupUser()
     renderAt('/sr')
 
-    await user.click(await screen.findByRole('button', { name: 'Jezik' }))
+    await user.click(await screen.findByRole('button', { name: 'Jezik, SR' }))
 
     expect(screen.getByRole('option', { name: 'Srpski' })).toHaveAttribute('aria-selected', 'true')
     expect(screen.getByRole('option', { name: 'English' })).toHaveAttribute('aria-selected', 'false')
@@ -35,7 +35,7 @@ describe('LanguageMenu', () => {
     const user = setupUser()
     renderAt('/sr')
 
-    const button = await screen.findByRole('button', { name: 'Jezik' })
+    const button = await screen.findByRole('button', { name: 'Jezik, SR' })
     await user.click(button)
     screen.getByRole('option', { name: 'English' }).focus()
 
@@ -51,7 +51,7 @@ describe('LanguageMenu', () => {
     const user = setupUser()
     renderAt('/sr')
 
-    const button = await screen.findByRole('button', { name: 'Jezik' })
+    const button = await screen.findByRole('button', { name: 'Jezik, SR' })
     await user.click(button)
     expect(button).toHaveFocus()
 
@@ -66,7 +66,7 @@ describe('LanguageMenu', () => {
     const user = setupUser()
     renderAt('/sr')
 
-    const button = await screen.findByRole('button', { name: 'Jezik' })
+    const button = await screen.findByRole('button', { name: 'Jezik, SR' })
     await user.click(button)
 
     await user.tab()
@@ -87,7 +87,7 @@ describe('LanguageMenu', () => {
     const user = setupUser()
     renderAt('/sr')
 
-    const button = await screen.findByRole('button', { name: 'Jezik' })
+    const button = await screen.findByRole('button', { name: 'Jezik, SR' })
     await user.click(button)
     expect(button).toHaveFocus()
 
@@ -103,7 +103,7 @@ describe('LanguageMenu', () => {
     const user = setupUser()
     renderAt('/sr')
 
-    const button = await screen.findByRole('button', { name: 'Jezik' })
+    const button = await screen.findByRole('button', { name: 'Jezik, SR' })
     await user.click(button)
     await user.keyboard('{Escape}')
 
@@ -114,7 +114,7 @@ describe('LanguageMenu', () => {
     const user = setupUser()
     renderAt('/sr')
 
-    const button = await screen.findByRole('button', { name: 'Jezik' })
+    const button = await screen.findByRole('button', { name: 'Jezik, SR' })
     await user.click(button)
     await user.click(screen.getByRole('main'))
 
@@ -125,7 +125,7 @@ describe('LanguageMenu', () => {
     const user = setupUser()
     renderAt('/sr/timovi')
 
-    await user.click(await screen.findByRole('button', { name: 'Jezik' }))
+    await user.click(await screen.findByRole('button', { name: 'Jezik, SR' }))
     screen.getByRole('option', { name: 'English' }).focus()
     await user.keyboard('{Enter}')
 
@@ -136,7 +136,7 @@ describe('LanguageMenu', () => {
     const user = setupUser()
     renderAt('/sr')
 
-    await user.click(await screen.findByRole('button', { name: 'Jezik' }))
+    await user.click(await screen.findByRole('button', { name: 'Jezik, SR' }))
     screen.getByRole('option', { name: 'English' }).focus()
     await user.keyboard('{ArrowDown}')
 

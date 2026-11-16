@@ -313,7 +313,7 @@ describe('the address of a page', () => {
 
     await waitFor(() => expect(href('canonical')).toBe(`${SITE_ORIGIN}/sr/top-liste`))
 
-    await user.click(screen.getByRole('button', { name: sr.language.label }))
+    await user.click(screen.getByRole('button', { name: 'Jezik, SR' }))
     await user.click(screen.getByRole('option', { name: 'English' }))
 
     /* The canonical follows the switch, because there are English words now. Before

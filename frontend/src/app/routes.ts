@@ -1,4 +1,5 @@
 import { isStaff, type Role } from '../roles/context'
+import { NAV_SYMBOL, type NavSymbol } from './navSymbol'
 
 export type Address = {
   /** Path relative to the locale segment, so "kalendar" becomes /sr/kalendar. */
@@ -95,6 +96,12 @@ export type NavSection = RouteDef & {
    * and no longer an entry of their own.
    */
   alsoMarkedOn?: string[]
+  /**
+   * What the entry is drawn as on a telephone, where the header has a row of symbols and no words
+   * (owner, 16.11.2026, answers 5 and 6; `app/navSymbol.ts`). Asked of every entry, so an entry that
+   * comes without a symbol is refused by the compiler and not found on a telephone.
+   */
+  symbol: NavSymbol
 }
 
 /* WHERE THE STANDING OF THE TEAMS IS SERVED, as a name: the third card of the tables links to it and
@@ -110,14 +117,21 @@ export const TABLE_ADDRESS = 'tabela'
  * which is why the decision writes the English route as /en/kalendar rather than
  * /en/calendar. One address per screen, whichever language is shown. */
 export const NAV: NavSection[] = [
-  { id: 'people', labelKey: 'nav.competitors', path: 'takmicari', seoKey: 'competitors' },
-  { id: 'table', labelKey: 'nav.table', path: TABLE_ADDRESS, seoKey: 'table', alsoMarkedOn: [TEAMS_ADDRESS] },
-  { id: 'boards', labelKey: 'nav.topBoards', path: 'top-liste', seoKey: 'topBoards' },
+  { id: 'people', labelKey: 'nav.competitors', path: 'takmicari', seoKey: 'competitors', symbol: NAV_SYMBOL.people },
+  {
+    id: 'table',
+    labelKey: 'nav.table',
+    path: TABLE_ADDRESS,
+    seoKey: 'table',
+    alsoMarkedOn: [TEAMS_ADDRESS],
+    symbol: NAV_SYMBOL.ranking,
+  },
+  { id: 'boards', labelKey: 'nav.topBoards', path: 'top-liste', seoKey: 'topBoards', symbol: NAV_SYMBOL.steps },
   /* "Lige", which is what they are. They were called "Takmičenja" while they sat
      inside a group named for ranking, where the plain word would have read as
      the league itself (owner, 04.08.2026). */
-  { id: 'leagues', labelKey: 'nav.leagues', path: 'lige', seoKey: 'leagues' },
-  { id: 'calendar', labelKey: 'nav.calendar', path: 'kalendar', seoKey: 'calendar' },
+  { id: 'leagues', labelKey: 'nav.leagues', path: 'lige', seoKey: 'leagues', symbol: NAV_SYMBOL.trophy },
+  { id: 'calendar', labelKey: 'nav.calendar', path: 'kalendar', seoKey: 'calendar', symbol: NAV_SYMBOL.calendar },
   /* The rulebook and the teams are not here since 16.11.2026, on any width (owner: „1. Pravilnik
      prelazi na dno, footer, pre Politike privatnosti” and „2. Timovi prelazi BTL tabele kao treća
      ravnopravna opcija koja se otvara klikom na Timovi”): the rulebook is the first link of the
@@ -126,7 +140,14 @@ export const NAV: NavSection[] = [
      it leads to draws nothing of its own since 06.08.2026: the navigation of two
      sectors stands down the side of every screen behind it (SectionNav), so a
      landing page listing the same entries was the list said twice. */
-  { id: 'admin', labelKey: 'nav.admin', staffOnly: true, path: 'administracija', seoKey: 'admin' },
+  {
+    id: 'admin',
+    labelKey: 'nav.admin',
+    staffOnly: true,
+    path: 'administracija',
+    seoKey: 'admin',
+    symbol: NAV_SYMBOL.sliders,
+  },
 ]
 
 /* WHERE A MEMBER PAYS AND CHOOSES HIS CATEGORY, as a name and not only as a row of the list

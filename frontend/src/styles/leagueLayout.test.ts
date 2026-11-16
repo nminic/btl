@@ -202,8 +202,10 @@ const REACHED_FROM = [
      until then, which is why the picture the owner approved on QA never arrived there
      although he had named that very place: „gornjem desnom zaglavlju ulogovanog korisnika"
      (PDL P28f). An account that is NOT a member keeps its own mark and is not here.
-     `components/oneFace.test.ts` is what holds the move, by the import graph. */
-  'app/Shell.css: portrait x2',
+     `components/oneFace.test.ts` is what holds the move, by the import graph. The third is the
+     header of a telephone (16.11.2026), where the circle is the last cell of the row of symbols and
+     is kept to the width of its cell, so that with the text at 200% it does not grow past it. */
+  'app/Shell.css: portrait x3',
   'components/ColumnChart.css: portrait x9',
   /* AND THE ONE ENTRY HERE THAT IS NOT A WIDGET DRESSING A CIRCLE: `Crop.css` DEFINES
      `crop-fitted`, which joined `PLATE_CLASSES` on 27.09.2026 because the plate's circle now
