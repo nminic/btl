@@ -2560,6 +2560,20 @@ class ResultsByTheLeagueApiTest {
 		assertThat(scored.getStatus()).isEqualTo(201);
 		assertThat(db.sql("select kind from btl_event where name = 'Novi kros'").query(String.class).single())
 				.isEqualTo("race");
+
+		/* AND IN THE OTHER DIRECTION: the name of a scored event typed as a new unscored one is refused as well, and
+		   nothing is written. Above it was the name of an unscored event typed as a scored one. */
+		int eventsBefore = howMany("btl_event");
+		int resultsBefore = howMany("result");
+		MockHttpServletResponse anotherKindTheOtherWay = onAnEvent(RESULTS_MODERATOR, onANewEventOfTheKind(
+				"Novi kros", "\"unscored\"", newRace("Treci krug", null, "free", null, null, null, null),
+				row(VERA, "3.00", 0, 0, AN_HOUR)));
+
+		assertThat(anotherKindTheOtherWay.getStatus()).isEqualTo(409);
+		assertThat(reasonIn(anotherKindTheOtherWay)).isEqualTo(ResultsByTheLeagueApi.THE_EVENT_IS_OF_ANOTHER_KIND);
+		assertThat(List.of(howMany("btl_event"), howMany("result"))).containsExactly(eventsBefore, resultsBefore);
+		assertThat(db.sql("select kind from btl_event where name = 'Novi kros'").query(String.class).single())
+				.isEqualTo("race");
 	}
 
 	/**

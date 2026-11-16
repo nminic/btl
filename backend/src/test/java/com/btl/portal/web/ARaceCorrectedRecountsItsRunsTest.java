@@ -1541,5 +1541,19 @@ class ARaceCorrectedRecountsItsRunsTest {
 		assertThat(rowOf(swum).ascentM()).as("the run was not counted again at all").isEqualTo(400);
 		assertThat(rowOf(swum).points()).as("the run counted again was given points").isEqualByComparingTo("0.00");
 		assertThat(rowOf(runAtTheTen).points()).isEqualByComparingTo(counted("10", 400, 380, 2700));
+
+		/* AND THE LINE IN HIS INBOX NAMES NO POINTS, as it was nor as it is (PointsOfARun#toTell), where the line
+		   about the scored ten, corrected the same way in the same case, names them on both. The row above is the
+		   column; this is the letter, which a road that counted the row right could still write wrong. */
+		assertThat(linesTo(secondRunner)).filteredOn(line -> line.body().contains("Plivanje"))
+				.singleElement().satisfies(line -> {
+					assertThat(line.subject()).isEqualTo(RECOUNTED);
+					assertThat(line.body()).contains("Stara vrednost:\nPlivanje,").contains("Nova vrednost:\nPlivanje,")
+							.doesNotContainPattern("[0-9] bodova");
+				});
+		assertThat(linesTo(third)).filteredOn(line -> line.body().contains("Desetka"))
+				.singleElement().satisfies(line -> assertThat(line.body())
+						.containsPattern("Stara vrednost:\\nDesetka,[^\\n]*[0-9] bodova\\n")
+						.containsPattern("Nova vrednost:\\nDesetka,[^\\n]*[0-9] bodova"));
 	}
 }
