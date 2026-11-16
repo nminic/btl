@@ -165,8 +165,15 @@
   margin-bottom: var(--space-12);
 }
 
+/* Wrapping, and from the right like the row it stands in, since the tables carry three cards
+   (16.11.2026). Measured at 360px with the text at 200%, which is what WCAG 2.2 SC 1.4.4 asks for:
+   on one line the three ask about 490px, the row is pushed to the right, and „Muškarci" started
+   160px off the left edge of the screen, out of reach for good. Wrapped, every card stays on the
+   screen; at normal size nothing wraps and nothing moves. */
 .rankings__tabs {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: var(--space-4);
 }
 

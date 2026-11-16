@@ -81,4 +81,19 @@ describe('the three cards of the tables', () => {
     ])
     expect(marked.style.background).toBe('var(--accent)')
   })
+
+  /* THE ROW WRAPS, FROM THE RIGHT. Measured in a browser at 360px with the text at 200% (WCAG 2.2 SC
+     1.4.4): on one line the three cards ask about 490px, and the row, pushed to the right, sent
+     „Muškarci" 160px off the left edge of the screen. jsdom lays nothing out, so what is held is the
+     rule that cures it. */
+  it('lets the row of cards wrap, from the right, so text at twice its size keeps every card on screen', () => {
+    const css = readFileSync(join(process.cwd(), 'src/pages/Rankings.css'), 'utf8')
+    const row = must(
+      unconditionalRules(css, 'Rankings.css').find((rule) => rule.selectorText === '.rankings__tabs'),
+      'the row of cards',
+    )
+
+    expect(row.style.flexWrap).toBe('wrap')
+    expect(row.style.justifyContent).toBe('flex-end')
+  })
 })
