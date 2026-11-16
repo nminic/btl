@@ -31,9 +31,9 @@ import static org.mockito.Mockito.verify;
  *
  * <p><b>THE AXES.</b>
  * <ul>
- * <li><b>What a race is found by.</b> The day, the name, the climb and the fall, all four. Four decoys
- * each differ from the Bokeški polumaraton in exactly one of them (the climb and the fall already
- * corrected, the day, the name) and the same for the Dubrovnik race, and each carries a run whose
+ * <li><b>What a race is found by.</b> The day, the name, the climb and the fall, all four. Decoys
+ * differ from the Bokeški polumaraton in exactly one of them (the day, the name, the climb alone, the
+ * fall alone) and one stands already corrected, and the same for the Dubrovnik race, and each carries a run whose
  * points the formula would not give, so a decoy that was touched shows in its row, in the place of the
  * row ({@code ctid}) and in the points.
  * <li><b>Two different sources of a figure.</b> The run of a member at a corrected race carries the
@@ -88,6 +88,14 @@ class TwoRacesAreCorrectedTest {
 
 	private long dubrovnikOtherName;
 
+	private long bokaOtherClimb;
+
+	private long bokaOtherFall;
+
+	private long dubrovnikOtherClimb;
+
+	private long dubrovnikOtherFall;
+
 	private long milica;
 
 	private long dejan;
@@ -118,6 +126,10 @@ class TwoRacesAreCorrectedTest {
 		event("lukavi-2026", "Lukavi 2026", THE_DUBROVNIK_DAY);
 		event("lukavi-2022", "Lukavi 2022", THE_BOKA_DAY.plusYears(1));
 		event("lukavi-2025", "Lukavi 2025", THE_DUBROVNIK_DAY.minusYears(1));
+		event("lukavi-a", "Lukavi A", THE_BOKA_DAY);
+		event("lukavi-b", "Lukavi B", THE_BOKA_DAY);
+		event("lukavi-c", "Lukavi C", THE_DUBROVNIK_DAY);
+		event("lukavi-d", "Lukavi D", THE_DUBROVNIK_DAY);
 
 		boka = race("bokeski-2021", "Bokeški polumaraton", THE_BOKA_DAY, 78, 0);
 		dubrovnik = race("du-2026", "DU Motion Dubrovnik", THE_DUBROVNIK_DAY, 0, 0);
@@ -129,6 +141,12 @@ class TwoRacesAreCorrectedTest {
 		dubrovnikOtherCourse = race("lukavi-2026", "DU Motion Dubrovnik", THE_DUBROVNIK_DAY, 5, 5);
 		dubrovnikOtherDay = race("lukavi-2025", "DU Motion Dubrovnik", THE_DUBROVNIK_DAY.minusYears(1), 0, 0);
 		dubrovnikOtherName = race("lukavi-2026", "Dubrovnik 21", THE_DUBROVNIK_DAY, 0, 0);
+
+		/* and four that differ in the climb only or the fall only, so each of the two is asked alone */
+		bokaOtherClimb = race("lukavi-a", "Bokeški polumaraton", THE_BOKA_DAY, 79, 0);
+		bokaOtherFall = race("lukavi-b", "Bokeški polumaraton", THE_BOKA_DAY, 78, 1);
+		dubrovnikOtherClimb = race("lukavi-c", "DU Motion Dubrovnik", THE_DUBROVNIK_DAY, 1, 0);
+		dubrovnikOtherFall = race("lukavi-d", "DU Motion Dubrovnik", THE_DUBROVNIK_DAY, 0, 1);
 
 		milica = competitor("000941", "0011223344557741");
 		dejan = competitor("000942", "0011223344557742");
@@ -148,11 +166,15 @@ class TwoRacesAreCorrectedTest {
 		result(fourth, dubrovnikOtherCourse, 5, 5, 7003);
 		result(fourth, dubrovnikOtherDay, 0, 0, 7004);
 		result(fourth, dubrovnikOtherName, 0, 0, 7005);
+		result(fourth, bokaOtherClimb, 79, 0, 7006);
+		result(fourth, bokaOtherFall, 78, 1, 7007);
+		result(fourth, dubrovnikOtherClimb, 1, 0, 7008);
+		result(fourth, dubrovnikOtherFall, 0, 1, 7009);
 		db.sql("update result set points = 1.23 where competitor_id = ?").param(fourth).update();
 
 		decoyRows = rowsAsWritten("select ctid::text || ' ' || to_jsonb(r)::text from race r where id = ?",
 				bokaAlreadyRight, bokaOtherDay, bokaOtherName, dubrovnikOtherCourse, dubrovnikOtherDay,
-				dubrovnikOtherName);
+				dubrovnikOtherName, bokaOtherClimb, bokaOtherFall, dubrovnikOtherClimb, dubrovnikOtherFall);
 		decoyRows.putAll(rowsAsWritten("select string_agg(ctid::text || ' ' || to_jsonb(r)::text, ',' order by id) from result r where competitor_id = ?",
 				fourth));
 
@@ -197,7 +219,7 @@ class TwoRacesAreCorrectedTest {
 
 		Map<Long, String> after = rowsAsWritten("select ctid::text || ' ' || to_jsonb(r)::text from race r where id = ?",
 				bokaAlreadyRight, bokaOtherDay, bokaOtherName, dubrovnikOtherCourse, dubrovnikOtherDay,
-				dubrovnikOtherName);
+				dubrovnikOtherName, bokaOtherClimb, bokaOtherFall, dubrovnikOtherClimb, dubrovnikOtherFall);
 		after.putAll(rowsAsWritten("select string_agg(ctid::text || ' ' || to_jsonb(r)::text, ',' order by id) from result r where competitor_id = ?",
 				fourth));
 
