@@ -49,7 +49,7 @@
     },
     "myProfile": {
       "title": "My BTL profile",
-      "description": "A member's profile as the whole portal sees it, with the actions only the owner of the account can take."
+      "description": "A member's profile, at the public address they can share with others."
     },
     "myResults": {
       "title": "My racing results",

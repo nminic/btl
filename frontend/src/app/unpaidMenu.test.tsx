@@ -354,21 +354,27 @@ describe('the same menu for everybody else', () => {
     expect(button).toHaveTextContent('11')
     await user.click(button)
     expect(within(panelOf(button)).getByText('Nalog 11')).toBeVisible()
-    /* AND THE WHOLE LIST, „Moji podaci" among it, the way it is drawn the other entries of a member's area
-       that tell an account with no record what every screen of that area tells it (`NotRacing`): derived
-       07.11.2026, the owner's decision of that day names the members and not the accounts. Never
-       „Dopuni podatke": an account has no picture and no words to lack. */
+    /* AND THE WHOLE LIST BUT „MOJ PROFIL", „Moji podaci" among it, the way it is drawn the other entries of
+       a member's area that tell an account with no record what every screen of that area tells it
+       (`NotRacing`): derived 07.11.2026, the owner's decision of that day names the members and not the
+       accounts. Never „Dopuni podatke": an account has no picture and no words to lack. And no „Moj
+       profil" since 16.11.2026 (owner, PDL P11, „Moj profil vodi na javnu adresu člana”): it leads to his
+       public profile, and an account of the administration with no record has none. */
     expect(
       within(panelOf(button))
         .getAllByRole('link')
         .map((one) => one.textContent),
-    ).toEqual(['Moj profil', 'Moji podaci', 'Moji rezultati', 'Moja članarina', 'Podešavanja'])
+    ).toEqual(['Moji podaci', 'Moji rezultati', 'Moja članarina', 'Podešavanja'])
   }, SLOW)
 
   /* „MOJI PODACI" UNDER „MOJ PROFIL", in the order the owner names them (07.11.2026, PDL „Član svojim
      podacima pristupa iz glavnog menija”). Read by where each leads rather than by its words, because the
-     name of the second is the member's profile's to say (`profile/finishTheProfile.test.tsx`). */
-  it('draws a member the entries it always had, and „Moji podaci" second', async () => {
+     name of the second is the member's profile's to say (`profile/finishTheProfile.test.tsx`).
+
+     „Moj profil" leads to HIS PUBLIC PROFILE since 16.11.2026 (owner, PDL P11, „Moj profil vodi na javnu
+     adresu člana”: „uvek otvori onu koju moze lako da share-uje drugima"), the address with his name in
+     it, and not to an address of the member area. */
+  it('draws a member the entries it always had, „Moji podaci" second, and „Moj profil" to his profile', async () => {
     const user = setupUser()
 
     renderAt('/sr', 'competitor', '000007')
@@ -377,11 +383,37 @@ describe('the same menu for everybody else', () => {
 
     await user.click(button)
 
-    expect(
-      within(panelOf(button))
-        .getAllByRole('link')
-        .map((one) => one.getAttribute('href')),
-    ).toEqual(['/sr/moj-profil', '/sr/moji-podaci', '/sr/moji-rezultati', '/sr/moja-clanarina', '/sr/podesavanja'])
+    await waitFor(() =>
+      expect(
+        within(panelOf(button))
+          .getAllByRole('link')
+          .map((one) => one.getAttribute('href')),
+      ).toEqual([
+        '/sr/takmicar/000007-strahinja-vukicevic',
+        '/sr/moji-podaci',
+        '/sr/moji-rezultati',
+        '/sr/moja-clanarina',
+        '/sr/podesavanja',
+      ]),
+    )
+  }, SLOW)
+
+  /* AND BY HIS NUMBER WHERE THE LIST DOES NOT CARRY HIM, or not yet: the profile page moves him on to
+     the address with his name itself. A number nobody on the list has, so the address cannot have been
+     spelt off somebody else's row. */
+  it('leads „Moj profil" by his number to his profile while the list has no row of his', async () => {
+    const user = setupUser()
+
+    renderAt('/sr', 'competitor', '000999')
+
+    const button = await screen.findByRole('button', { name: 'Otvori nalog' })
+
+    await user.click(button)
+
+    expect(within(panelOf(button)).getByRole('link', { name: 'Moj profil' })).toHaveAttribute(
+      'href',
+      '/sr/takmicar/000999',
+    )
   }, SLOW)
 })
 
@@ -434,7 +466,12 @@ describe('the menu of a member whose fee has lapsed', () => {
         within(panelOf(button))
           .getAllByRole('link')
           .map((one) => one.getAttribute('href')),
-      ).toEqual(['/sr/moj-profil', '/sr/moji-rezultati', '/sr/moja-clanarina', '/sr/podesavanja']),
+      ).toEqual([
+        '/sr/takmicar/000032-vojislav-antonijevic',
+        '/sr/moji-rezultati',
+        '/sr/moja-clanarina',
+        '/sr/podesavanja',
+      ]),
     )
   }, SLOW)
 })
@@ -465,7 +502,7 @@ describe('the menu, when his fee is recorded', () => {
 
     expect(await panel.findByText('Ksenija Vasiljević')).toBeVisible()
     expect(panel.getAllByRole('link').map((one) => one.getAttribute('href'))).toEqual([
-      '/sr/moj-profil',
+      '/sr/takmicar/000021-ksenija-vasiljevic',
       '/sr/moji-podaci',
       '/sr/moji-rezultati',
       '/sr/moja-clanarina',

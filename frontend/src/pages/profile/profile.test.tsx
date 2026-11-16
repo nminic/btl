@@ -1139,6 +1139,9 @@ describe('the head of my own profile', () => {
        a size of its own that outweighs `.profile__name`. Measured at 360px: 26px
        here against 28px on anybody else's profile, on every text size.
 
+       Since 16.11.2026 „Moj profil" leads to his public profile and draws nothing of its own
+       (owner, PDL P11, „Moj profil vodi na javnu adresu člana”), so this holds the way there.
+
        Held as „the same classes", because that is what decides which rule wins.
        jsdom applies no stylesheet (ADL A18), so the size itself is a question for a
        browser; what can be asked here is whether the two heads are the same thing. */

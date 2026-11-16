@@ -163,6 +163,8 @@ export const PUBLIC: [address: string, asVisitor: string, asMember: string, part
      sentence under the heading, which `pages/account` reads case by case. */
   ['/sr/nova-lozinka?token=nesto', 'Nova lozinka', 'Nova lozinka'],
   ['/sr/potvrda-adrese?token=nesto', 'Potvrda adrese', 'Potvrda adrese'],
+  /* Headed by his name because it leads the member on to his public profile (owner, 16.11.2026, PDL P11,
+     „Moj profil vodi na javnu adresu člana”), and the sweep reads that page. */
   ['/sr/moj-profil', 'Za ovo treba prijava', 'Ksenija Vasiljević'],
   /* „Moji podaci" (PDL 07.11.2026) is where the member these walks sign in as changes his data, his
      picture and his words; somebody who has not paid is drawn it in `pages/member/myData.test.tsx`. */

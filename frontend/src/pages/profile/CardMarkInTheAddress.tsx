@@ -8,8 +8,8 @@ import { CARD_MARK, markOf } from './cardMark'
  * Owner, PDL P11, 16.11.2026, point 15: the member „i dalje samo kopira link iz pregledača", and after
  * every change of his card that is a new link (`profile/cardMark.ts` says why and where the mark comes
  * from). The profile mounts this only on the member's own page at its own address
- * (`pages/CompetitorProfile.tsx`), never on another member's and never inside „moj profil", whose
- * address names no profile and so has no preview a network could keep.
+ * (`pages/CompetitorProfile.tsx`), never on another member's. „Moj profil" leads him to that address
+ * since 16.11.2026 (owner, PDL P11, „Moj profil vodi na javnu adresu člana”), so it is written there too.
  *
  * **In place, never as a new entry in the history.** The mark is not a step the member took: written
  * as one, the back button would first walk him from his profile to his profile. So it is a `replace`,

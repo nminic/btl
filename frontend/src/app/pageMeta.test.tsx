@@ -97,27 +97,26 @@ describe('the name of a page', () => {
     await waitFor(() => expect(document.title).toBe(`${sr.seo.teams.title} · ${LEAGUE}`))
   })
 
-  it('leaves the member area its own name where it shows somebody a profile', async () => {
-    renderAt('/sr/moj-profil', 'competitor', '000007')
+  /* „MOJ PROFIL" NAMES NO PAGE OF ITS OWN since 16.11.2026 (owner, PDL P11, „Moj profil vodi na javnu
+     adresu člana”): it leads a member on to his public profile, and the tab there is the one his profile
+     has for everybody, his name. It kept the member area's own name until that day, when the profile was
+     drawn at that address too. */
+  it('names the member on his profile when he arrives by „Moj profil", and not the member area', async () => {
+    const { router } = renderAt('/sr/moj-profil', 'competitor', '000007')
 
-    // The same profile, on an address that belongs to the member area rather
-    // than to the person.
     await screen.findByRole('heading', { level: 1, name: /Strahinja Vukićević/ })
-    await waitFor(() => expect(document.title).toBe(`${sr.seo.myProfile.title} · ${LEAGUE}`))
+    await waitFor(() => expect(router.state.location.pathname).toBe('/sr/takmicar/000007-strahinja-vukicevic'))
+    await waitFor(() => expect(document.title).toContain('Strahinja Vukićević'))
 
-    /* And it stays that, which is the half `waitFor` cannot say on its own: it
-       settles on the first tick where the title is right, and the title is right
-       before the profile has declared anything at all. A review took the guard
-       off the declaration and this test passed while the tab read „Strahinja
-       Vukićević, Banja Luka". Given a turn of the loop, the wrong name has
-       arrived if it is coming. */
+    /* And it stays that: given a turn of the loop, a name declared later has arrived if it is coming. */
     await act(async () => {
       await new Promise((settled) => {
         setTimeout(settled, 0)
       })
     })
 
-    expect(document.title).toBe(`${sr.seo.myProfile.title} · ${LEAGUE}`)
+    expect(document.title).toContain('Strahinja Vukićević')
+    expect(document.title).not.toContain(sr.seo.myProfile.title)
   })
 
   it('never puts the subject or the body of a message in the name (PDL P23)', async () => {

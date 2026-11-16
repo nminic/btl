@@ -49,7 +49,7 @@
     },
     "myProfile": {
       "title": "Moj BTL profil",
-      "description": "Profil člana kako ga vidi ceo portal, sa radnjama koje su dostupne samo vlasniku naloga."
+      "description": "Profil člana, na javnoj adresi koju može da podeli sa drugima."
     },
     "myResults": {
       "title": "Moji trkački rezultati",

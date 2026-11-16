@@ -308,7 +308,9 @@ describe('the account menu', () => {
 
   it('signs out from the menu', async () => {
     const user = setupUser()
-    renderAt('/sr/moj-profil', 'competitor', '000007')
+    /* On a screen of the member area, which is what tells a sign out apart: his profile is public and
+       stays drawn after it. It was „Moj profil" until 16.11.2026, which leads to that profile now. */
+    renderAt('/sr/moji-rezultati', 'competitor', '000007')
 
     await user.click(await screen.findByRole('button', { name: 'Otvori nalog' }))
     await user.click(panelOf('Otvori nalog').getByRole('button', { name: 'Odjavi se' }))

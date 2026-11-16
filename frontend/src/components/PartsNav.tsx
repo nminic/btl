@@ -6,18 +6,6 @@ export type Part = {
   to: string
   /** Whether this is the one that answers the bare address of the record. */
   end?: boolean
-  /**
-   * A second address this part also answers, where the same screen is reached by
-   * two of them.
-   *
-   * A member's own profile is drawn at `/moj-profil` by the very component that
-   * draws everybody else's, and the nav is built from the record's own address, so
-   * `NavLink` compared two addresses that never match and **no part was marked at
-   * all**: the reader saw a row of parts with nothing current on it, while the same
-   * screen entered from the list of competitors marks „Rezultati" (owner,
-   * 23.08.2026).
-   */
-  also?: string
   label: string
 }
 
@@ -38,7 +26,7 @@ export type Part = {
  * (ADL A7).
  */
 export function PartsNav({ parts, label }: { parts: Part[]; label: string }) {
-  const { search, pathname } = useLocation()
+  const { search } = useLocation()
 
   return (
     <nav className="parts" aria-label={label}>
@@ -46,18 +34,11 @@ export function PartsNav({ parts, label }: { parts: Part[]; label: string }) {
         <NavLink
           key={part.to}
           end={part.end}
-          /* Pointed at the address the reader is **at** when that is the second one
-             this part answers to. Two things follow from it, and both are the reason
-             it is done this way rather than by marking the link by hand: `NavLink`
-             then matches on its own, so „which part is open" keeps **one** home, and
-             the link of the open part leads where the reader already is, which is
-             what a current tab should do.
-
-             Marking it by hand does not work, and that is measured rather than
-             assumed: `NavLink` writes `aria-current` itself, after whatever it is
-             handed, so an attribute passed in is overwritten by its `undefined` and
-             no part is marked at all. */
-          to={{ pathname: part.also === pathname ? part.also : part.to, search }}
+          /* ONE ADDRESS PER PART, and `NavLink` marks the open one on its own. A part answered a
+             second address until 16.11.2026, `/moj-profil`, where a member's own profile was drawn
+             too; that address only leads to his profile now (`member/MyProfile.tsx`), so every
+             screen these parts belong to is reached at the address they are built from. */
+          to={{ pathname: part.to, search }}
           className="parts__item"
         >
           {part.label}
