@@ -170,7 +170,12 @@
   gap: var(--space-4);
 }
 
-.rankings__tabs button {
+/* One face for the two kinds of control that wear it: the buttons Muškarci and Žene of a single
+   league (`components/GenderTabs.tsx`) and the links of the three cards of the tables
+   (`pages/TableCards.tsx`, since 16.11.2026), so the row beside the heading looks the same on both.
+   A link has no underline here, because it is drawn as a button and the box says it can be pressed. */
+.rankings__tabs button,
+.rankings__tabs a {
   font: inherit;
   font-weight: 600;
   padding: var(--space-8) var(--space-14);
@@ -179,10 +184,12 @@
   background: var(--surface);
   border: 1px solid var(--control-border);
   border-radius: var(--radius-8);
+  text-decoration: none;
   transition: background var(--fast);
 }
 
-.rankings__tabs button[aria-pressed='true'] {
+.rankings__tabs button[aria-pressed='true'],
+.rankings__tabs a[aria-current='page'] {
   background: var(--accent);
   border-color: var(--accent);
   color: var(--accent-contrast);

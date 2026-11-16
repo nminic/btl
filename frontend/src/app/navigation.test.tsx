@@ -48,19 +48,21 @@ describe('navigation', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Kalendar' })).toBeVisible()
   })
 
-  it('opens every one of the seven from the header, in one click each', async () => {
+  it('opens every one of the five from the header, in one click each, and nothing else', async () => {
     /* Owner, 04.08.2026. The groups are gone, so nothing in the navigation is
        two clicks away and nothing opens onto a panel. Walked end to end rather
-       than sampled: the point of the change is that all seven behave alike. */
+       than sampled: the point of the change is that all of them behave alike.
+
+       Five since 16.11.2026 (owner: „Takmičari, BTL tabele, Top liste, Lige, Kalendar"): the
+       rulebook is in the footer and the teams are the third card of the tables. Held as the whole
+       list of links, so an entry put back is a failure here and not only a name that is still found. */
     const user = setupUser()
     renderAt('/sr')
 
     const wanted: [string, string][] = [
-      ['Pravilnik', 'Opšti pravilnik Balkanske trkačke lige za sezonu 2027'],
       ['Takmičari', 'Takmičari'],
       ['BTL tabele', 'BTL tabele'],
       ['Top liste', 'Top liste'],
-      ['Timovi', 'Timovi'],
       ['Lige', 'Lige'],
       ['Kalendar', 'Kalendar'],
     ]
@@ -68,11 +70,56 @@ describe('navigation', () => {
     const menu = within(await screen.findByRole('navigation', { name: 'Glavna navigacija' }))
 
     expect(menu.queryAllByRole('button')).toEqual([])
+    expect(menu.getAllByRole('link').map((one) => one.textContent)).toEqual(wanted.map(([entry]) => entry))
 
     for (const [entry, heading] of wanted) {
       await user.click(menu.getByRole('link', { name: entry }))
       expect(await screen.findByRole('heading', { level: 1, name: heading })).toBeVisible()
     }
+  })
+
+  it('opens the rulebook from the footer, in one click', async () => {
+    /* Owner, 16.11.2026: „Pravilnik prelazi na dno, footer, pre Politike privatnosti". */
+    const user = setupUser()
+    renderAt('/sr')
+
+    const footer = within(await screen.findByRole('navigation', { name: 'Uslovi i pravila' }))
+
+    await user.click(footer.getByRole('link', { name: 'Pravilnik' }))
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Opšti pravilnik Balkanske trkačke lige za sezonu 2027' }),
+    ).toBeVisible()
+  })
+
+  /* „BTL tabele" lights on all three cards (owner, 16.11.2026, answer 8), and only „BTL tabele":
+     asked of every link of the navigation, so a second entry lit beside it fails as well. The
+     teams are where it is not a `NavLink`'s own doing, and the top boards are the address next to
+     it that must stay dark. */
+  it.each([
+    ['/sr/tabela', ['BTL tabele']],
+    ['/sr/tabela?pol=z', ['BTL tabele']],
+    ['/sr/timovi', ['BTL tabele']],
+    ['/sr/top-liste', ['Top liste']],
+    ['/sr/pravilnik', []],
+  ])('marks the entry of the screen being read on %s', async (address, lit) => {
+    renderAt(address)
+
+    const menu = within(await screen.findByRole('navigation', { name: 'Glavna navigacija' }))
+
+    await screen.findByRole('heading', { level: 1 })
+    expect(
+      menu
+        .getAllByRole('link')
+        .filter((one) => one.getAttribute('aria-current') === 'page')
+        .map((one) => one.textContent),
+    ).toEqual(lit)
+    /* And painted the way the others are, which is the class the stylesheet reads. */
+    expect(
+      menu
+        .getAllByRole('link')
+        .filter((one) => one.classList.contains('active'))
+        .map((one) => one.textContent),
+    ).toEqual(lit)
   })
 
   /* Every address in the navigation has a screen of its own since the ducats
@@ -450,7 +497,10 @@ const STATUTE = '/BTL%20Statut.pdf'
     expect(screen.getByRole('main')).toHaveAttribute('id', 'content')
   })
 
-  it('carries three links in the footer and nothing else', async () => {
+  it('carries four links in the footer, the rulebook first, and nothing else', async () => {
+    /* The rulebook since 16.11.2026, before the privacy policy (owner: „Pravilnik prelazi na dno,
+       footer, pre Politike privatnosti"). What follows was written for three, and holds the same of
+       four. */
     /* „Portal je u izradi. Sve što ovde vidiš su probni podaci." stood under
        them until 22.08.2026. Owner: „Ovo obriši da se više ne prikazuje, znam do
        kada su podaci probni a kad će postati stvarni."
@@ -475,7 +525,7 @@ const STATUTE = '/BTL%20Statut.pdf'
       .getAllByRole('link')
       .map((one) => one.textContent?.trim())
 
-    expect(links).toEqual(['Politika privatnosti', 'Uslovi korišćenja', 'Kontakt'])
+    expect(links).toEqual(['Pravilnik', 'Politika privatnosti', 'Uslovi korišćenja', 'Kontakt'])
     /* „Nothing else" counted in elements and not only in text, which catches what
        is put beside the navigation rather than inside it and **carries no text of
        its own**: a link carrying an icon and an `aria-label`, a sponsor's image, a
@@ -496,8 +546,8 @@ const STATUTE = '/BTL%20Statut.pdf'
        role="navigation">`, which is the same landmark under another tag and is
        what `getByRole` above already found. The element itself answers both.
      *
-       A fourth link inside the navigation was caught before this line and still
-       is, by the three names above; a bare line of text anywhere in the footer is
+       A fifth link inside the navigation was caught before this line and still
+       is, by the four names above; a bare line of text anywhere in the footer is
        caught by the line under this one. Said plainly because the comment here
        claimed the fourth link, which was the one case that needed nothing new.
      *

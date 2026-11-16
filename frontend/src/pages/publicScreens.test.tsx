@@ -447,28 +447,85 @@ describe('Rankings', () => {
   })
 
   it('keeps men and women apart', async () => {
-    const user = setupUser()
+    /* Each read at its own address, because since 16.11.2026 the card is a link that opens the running
+       season (owner, answer 10), so pressing „Žene" here would compare two seasons and not two halves
+       of one field. */
     renderAt(`/sr/tabela?sezona=${String(inLeague(2020))}`)
 
     const men = within(await screen.findByRole('table')).getAllByRole('row').length
-    await user.click(screen.getByRole('button', { name: 'Žene' }))
-    const women = within(screen.getByRole('table')).getAllByRole('row').length
+
+    cleanup()
+    renderAt(`/sr/tabela?sezona=${String(inLeague(2020))}&pol=z`)
+
+    const women = within(await screen.findByRole('table')).getAllByRole('row').length
 
     expect(women).not.toBe(men)
-    expect(screen.getByRole('button', { name: 'Žene' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('link', { name: 'Žene' })).toHaveAttribute('aria-current', 'page')
   })
 
   it('goes back to the men after the women, and changes the season', async () => {
     const user = setupUser()
-    renderAt(`/sr/tabela?sezona=${String(inLeague(2020))}`)
+    renderAt('/sr/tabela')
 
     await screen.findByRole('table')
-    await user.click(screen.getByRole('button', { name: 'Žene' }))
-    await user.click(screen.getByRole('button', { name: 'Muškarci' }))
-    expect(screen.getByRole('button', { name: 'Muškarci' })).toHaveAttribute('aria-pressed', 'true')
+    await user.click(screen.getByRole('link', { name: 'Žene' }))
+    expect(await screen.findByRole('link', { name: 'Žene', current: 'page' })).toBeVisible()
+    await user.click(screen.getByRole('link', { name: 'Muškarci' }))
+    expect(await screen.findByRole('link', { name: 'Muškarci', current: 'page' })).toBeVisible()
+    expect(screen.getByRole('link', { name: 'Žene' })).not.toHaveAttribute('aria-current')
 
     await user.selectOptions(screen.getByLabelText('Sezona'), String(inLeague(2019)))
     expect(screen.getByLabelText('Sezona')).toHaveValue(String(inLeague(2019)))
+  })
+
+  /* THE THREE CARDS, IN THE ORDER THE OWNER NAMED THEM, BEFORE THE SEASON (16.11.2026: „Timovi prelazi
+     BTL tabele kao treća ravnopravna opcija koja se otvara klikom na Timovi (nakon dugmeta Žene, a pre
+     izbora godine iz dropdown)"), and each one the address of its card (answer 8). Asked on both
+     screens that draw them, because each draws its own row. */
+  it.each([
+    ['/sr/tabela', 'Muškarci'],
+    ['/sr/timovi', 'Timovi'],
+  ])('draws Muškarci, Žene and Timovi before the season on %s, and marks %s', async (address, marked) => {
+    renderAt(address)
+
+    const cards = await screen.findByRole('group', { name: 'BTL tabele' })
+    const links = within(cards).getAllByRole('link')
+
+    expect(links.map((one) => [one.textContent, one.getAttribute('href')])).toEqual([
+      ['Muškarci', '/sr/tabela'],
+      ['Žene', '/sr/tabela?pol=z'],
+      ['Timovi', '/sr/timovi'],
+    ])
+    expect(within(cards).getAllByRole('link', { current: 'page' }).map((one) => one.textContent)).toEqual([marked])
+    /* Before the season and in the same row, which is the row beside the heading. */
+    const season = screen.getByLabelText('Sezona')
+
+    expect(cards.parentElement).toBe(season.closest('.rankings__head-tool'))
+    expect(cards.compareDocumentPosition(season) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(cards.contains(season)).toBe(false)
+    expect(screen.getByRole('heading', { level: 1, name: 'BTL tabele' })).toBeVisible()
+  })
+
+  /* NO CARD TAKES THE SEASON WITH IT (owner, 16.11.2026, answer 10: „Default svakako treba da bude
+     trenutna sezona"). Read from a season that is NOT the one the screens open on, so that a card which
+     carried the season and a card which did not would draw different screens; from the running season
+     the two are the same screen. */
+  it.each([
+    [`/sr/tabela?sezona=${String(inLeague(2019))}`, 'Žene', 'Žene'],
+    [`/sr/tabela?sezona=${String(inLeague(2019))}&pol=z`, 'Muškarci', 'Muškarci'],
+    [`/sr/tabela?sezona=${String(inLeague(2019))}`, 'Timovi', 'Timovi'],
+  ])('opens the running season from %s when %s is pressed', async (address, pressed, marked) => {
+    const user = setupUser()
+    const { router } = renderAt(address, 'visitor', null, undefined, '2027-06-01')
+
+    await screen.findByRole('table')
+    expect(screen.getByLabelText('Sezona')).toHaveValue(String(inLeague(2019)))
+
+    await user.click(screen.getByRole('link', { name: pressed }))
+
+    expect(await screen.findByRole('link', { name: marked, current: 'page' })).toBeVisible()
+    expect(screen.getByLabelText('Sezona')).toHaveValue('2027')
+    expect(new URLSearchParams(router.state.location.search).get('sezona')).toBeNull()
   })
 
   it('narrows by category, and lets it go again', async () => {
@@ -2758,6 +2815,22 @@ describe('Teams', () => {
     await user.selectOptions(season, String(inLeague(2019)))
     expect(selectElement(screen.getByLabelText('Sezona')).value).toBe(String(inLeague(2019)))
     expect(await points()).not.toEqual(before)
+  })
+
+  /* THE RUNNING SEASON, AND THE NEXT ONE ON OFFER (owner, 16.11.2026, his own words: „Default svakako
+     treba da bude trenutna sezona, a clan na timovima moze odabrati narednu ako pozeli"). Read on a day
+     on which the two are different seasons, the transfer window of 2027: on a day of 2026 the running
+     one is shown as 2027 and the next one is 2027 as well, so a card that opened on the next season
+     would draw the same screen as this one. */
+  it('opens on the running season and offers the next one, on a day on which the two differ', async () => {
+    renderAt('/sr/timovi', 'visitor', null, undefined, '2027-11-20')
+
+    await standing()
+
+    const season = selectElement(screen.getByLabelText('Sezona'))
+
+    expect(season.value).toBe('2027')
+    expect(within(season).getByRole('option', { name: '2028' })).toBeInTheDocument()
   })
 
   it('says so plainly when there is no team at all', async () => {

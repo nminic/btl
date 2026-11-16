@@ -19,6 +19,7 @@ import { teamWasDeleted } from './teamDeleted'
 import { MEMBERS, recordsOf, TEAMS } from './admin/entityForms'
 import { useOverlay } from './admin/overlay'
 import { mineIn, rowClass } from '../components/mine'
+import { TableCards } from './TableCards'
 import './Rankings.css'
 
 /**
@@ -118,7 +119,10 @@ export function Teams() {
 
   return (
     <div className="rankings rankings--tooled">
-      <h1>{t('teams.title')}</h1>
+      {/* „BTL tabele", the name of the entry that opens this card, on all three cards (owner,
+          16.11.2026, answer 9, chosen with my recommendation). The tab of the browser still says
+          „BTL timovi" (`seo.teams`), and the table itself is still called „Timovi". */}
+      <h1>{t('rankings.title')}</h1>
 
       {/* „Tim je obrisan.", for whoever was brought here by the deletion of a team from its own page (PDL, 24.10.2026).
           DRAWN ONLY WHILE THERE IS SOMETHING TO SAY, unlike the lists of the administration: the sentence is here from the
@@ -207,6 +211,10 @@ export function Teams() {
                        speaks of it in those words. */
                     <p className="rankings__empty">{t('teams.proposeShut')}</p>
                   ))}
+                {/* The three cards after the button and before the season (owner, 16.11.2026), so
+                    that they and the season stand where they stand on the other two cards and do not
+                    move under the pointer when a card is pressed. */}
+                <TableCards current="teams" />
                 <SeasonPicker seasons={seasons} season={season} fallback={running} />
               </div>
 

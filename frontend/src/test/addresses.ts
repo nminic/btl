@@ -52,8 +52,14 @@ export const DAY = '2026-08-07'
  * heading, so the heading alone cannot tell them apart: swapping the awards for
  * the overview left the sweep green. Those four name the part they are, which
  * the screen marks as the one being read.
+ *
+ * And two are cards of one screen since 16.11.2026: the standing of the people and the standing of the
+ * teams both carry the heading „BTL tabele" (owner, answer 9). They have no heading of a part to tell
+ * them apart, so they name the card the screen marks as the one being read (`pages/TableCards.tsx`).
  */
-export const PUBLIC: [address: string, asVisitor: string, asMember: string, part?: string][] = [
+export type Part = string | { card: string }
+
+export const PUBLIC: [address: string, asVisitor: string, asMember: string, part?: Part][] = [
   ['/sr', 'Balkanska trkačka liga', 'Balkanska trkačka liga'],
   ['/sr/kalendar', 'Kalendar', 'Kalendar'],
   ['/sr/kalendar/dan/2027-05-08', 'Trke, 8. maj 2027.', 'Trke, 8. maj 2027.'],
@@ -96,7 +102,7 @@ export const PUBLIC: [address: string, asVisitor: string, asMember: string, part
      part is asked of both readers and the visitor is drawn the front page; the card itself is read by
      `profile/competitorData.test.tsx`. */
   ['/sr/takmicar/000021/podaci', 'Balkanska trkačka liga', 'Moji podaci'],
-  ['/sr/timovi', 'Timovi', 'Timovi'],
+  ['/sr/timovi', 'BTL tabele', 'BTL tabele', { card: 'Timovi' }],
   ['/sr/tim/dunavski-trkaci', 'Dunavski trkači', 'Dunavski trkači'],
   /* The front page, to a member, and that is the screen this address answers with
      for them: `ME` has a team and `DAY` is outside the transfer window, and either
@@ -115,7 +121,7 @@ export const PUBLIC: [address: string, asVisitor: string, asMember: string, part
      The form's own heading is read by `member/editTeam.test.tsx`, which signs in as
      the member who does administer it. */
   ['/sr/tim/dunavski-trkaci/izmena', 'Za ovo treba prijava', 'Balkanska trkačka liga'],
-  ['/sr/tabela', 'BTL tabele', 'BTL tabele'],
+  ['/sr/tabela', 'BTL tabele', 'BTL tabele', { card: 'Muškarci' }],
   ['/sr/top-liste', 'Top liste', 'Top liste'],
   ['/sr/lige', 'Lige', 'Lige'],
   /* One address since 07.09.2026, and no part to name. It was two, and the second

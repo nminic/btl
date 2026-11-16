@@ -128,7 +128,8 @@ describe('a whole screen whose read failed', () => {
     renderAt('/sr/timovi')
 
     expect(await screen.findByRole('alert')).toHaveTextContent(sr.data.error)
-    expect(screen.getByRole('heading', { level: 1, name: sr.teams.title })).toBeVisible()
+    /* „BTL tabele" since 16.11.2026, the name of the entry that opens this card (owner, answer 9). */
+    expect(screen.getByRole('heading', { level: 1, name: sr.rankings.title })).toBeVisible()
     expect(screen.queryByText(sr.teams.empty), 'a failed read of the teams was drawn as a standing with no team').toBeNull()
 
     answers.set('/api/teams', () => null)

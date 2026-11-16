@@ -148,12 +148,48 @@ function AdminLink({ label, onNavigate }: { label: string; onNavigate: () => voi
   )
 }
 
+/* AN ENTRY MARKED ON ADDRESSES BEYOND ITS OWN (`NavSection.alsoMarkedOn`): „BTL tabele" on the teams,
+ * its third card (owner, 16.11.2026, answer 8). A `NavLink` marks its own address and the ones below it
+ * and takes no say from outside, so the mark is worked out here the way it works it out (the address
+ * or one below it, in any case of letters) and written the way it writes it: the class `active` and
+ * `aria-current="page"`, which is what the stylesheet and a screen reader each read. */
+function MarkedAlsoOn({
+  section,
+  also,
+  label,
+  onNavigate,
+}: {
+  section: NavSection
+  also: string[]
+  label: string
+  onNavigate: () => void
+}) {
+  const { locale } = useI18n()
+  const below = useLocation().pathname.split('/').slice(2).join('/').toLowerCase()
+  const marked = [section.path, ...also].some((path) => below === path || below.startsWith(`${path}/`))
+
+  return (
+    <Link
+      to={`/${locale}/${section.path}`}
+      className={marked ? 'shell__link active' : 'shell__link'}
+      aria-current={marked ? 'page' : undefined}
+      onClick={onNavigate}
+    >
+      {label}
+    </Link>
+  )
+}
+
 function NavEntry({ section, onNavigate }: { section: NavSection; onNavigate: () => void }) {
   const { locale, t } = useI18n()
   const label = t(section.labelKey)
 
   if (section.path === ADMIN) {
     return <AdminLink label={label} onNavigate={onNavigate} />
+  }
+
+  if (section.alsoMarkedOn !== undefined) {
+    return <MarkedAlsoOn section={section} also={section.alsoMarkedOn} label={label} onNavigate={onNavigate} />
   }
 
   return (

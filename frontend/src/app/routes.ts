@@ -71,7 +71,25 @@ export type NavSection = RouteDef & {
   /** Stable id, so a test and a stylesheet can name an entry without its words. */
   id: string
   staffOnly?: boolean
+  /**
+   * Other addresses on which this entry is the one marked as the screen being read, beside its own
+   * and the ones below it.
+   *
+   * „BTL tabele" is marked on the teams as well (owner, 16.11.2026, PDL „Pravilnik prelazi u
+   * podnožje, a Timovi postaju treća kartica BTL tabela", answer 8, chosen with my recommendation:
+   * „BTL tabele" in the navigation lights on all three cards), because the teams are its third card
+   * and no longer an entry of their own.
+   */
+  alsoMarkedOn?: string[]
 }
+
+/* WHERE THE STANDING OF THE TEAMS IS SERVED, as a name: the third card of the tables links to it and
+ * the entry of the tables is marked on it, and a second spelling of an address is the first thing a
+ * rename leaves behind. Its own address, as it always was (owner, 16.11.2026, answer 8). */
+export const TEAMS_ADDRESS = 'timovi'
+
+/** Where the standing of the people is served, which is the first two cards of the tables. */
+export const TABLE_ADDRESS = 'tabela'
 
 /* The slugs stay Serbian in every language
  * (PDL P18, „Adrese nose **jezički prefiks za sve jezike, uključujući srpski**"),
@@ -79,17 +97,17 @@ export type NavSection = RouteDef & {
  * /en/calendar. One address per screen, whichever language is shown. */
 export const NAV: NavSection[] = [
   { id: 'people', labelKey: 'nav.competitors', path: 'takmicari', seoKey: 'competitors' },
-  { id: 'table', labelKey: 'nav.table', path: 'tabela', seoKey: 'table' },
+  { id: 'table', labelKey: 'nav.table', path: TABLE_ADDRESS, seoKey: 'table', alsoMarkedOn: [TEAMS_ADDRESS] },
   { id: 'boards', labelKey: 'nav.topBoards', path: 'top-liste', seoKey: 'topBoards' },
-  { id: 'teams', labelKey: 'nav.teams', path: 'timovi', seoKey: 'teams' },
   /* "Lige", which is what they are. They were called "Takmičenja" while they sat
      inside a group named for ranking, where the plain word would have read as
      the league itself (owner, 04.08.2026). */
   { id: 'leagues', labelKey: 'nav.leagues', path: 'lige', seoKey: 'leagues' },
   { id: 'calendar', labelKey: 'nav.calendar', path: 'kalendar', seoKey: 'calendar' },
-  /* After the calendar and before administration (owner, 15.11.2026: „Neka tab Pravilnik u
-     navigaciji ne bude vise prvi, nego nakon Kalendara (a pre Administracije ako se ona prikazuje)”). */
-  { id: 'rules', labelKey: 'nav.rules', path: 'pravilnik', seoKey: 'rulebook' },
+  /* The rulebook and the teams are not here since 16.11.2026, on any width (owner: „1. Pravilnik
+     prelazi na dno, footer, pre Politike privatnosti” and „2. Timovi prelazi BTL tabele kao treća
+     ravnopravna opcija koja se otvara klikom na Timovi”): the rulebook is the first link of the
+     footer, and the teams are the third card of the tables (`pages/TableCards.tsx`). */
   /* The way into administration, and the only entry a visitor never sees. What
      it leads to draws nothing of its own since 06.08.2026: the navigation of two
      sectors stands down the side of every screen behind it (SectionNav), so a
@@ -152,7 +170,9 @@ export const ACCOUNT_ROUTES: RouteDef[] = [
   { path: 'podesavanja', labelKey: 'nav.settings', seoKey: 'settings' },
 ]
 
-/** Only these three, and Contact is a mailto rather than a screen (PDL P28a).
+/** The rulebook, the privacy policy and the terms, and Contact is a mailto rather than a screen
+ *  (PDL P28a). The rulebook is the first of them since 16.11.2026 (owner: „Pravilnik prelazi na
+ *  dno, footer, pre Politike privatnosti”), on every width.
  *
  *  The statute is not among them and it is not in the footer at all. It was a page of
  *  twenty sections until 20.08.2026, when the owner asked that it not be put in front of
@@ -181,6 +201,7 @@ export function accountMenuFor(reader: MenuReader): RouteDef[] {
 }
 
 export const FOOTER_ROUTES: RouteDef[] = [
+  { path: 'pravilnik', labelKey: 'nav.rules', seoKey: 'rulebook' },
   { path: 'politika-privatnosti', labelKey: 'nav.privacy', seoKey: 'privacy' },
   { path: 'uslovi-koriscenja', labelKey: 'nav.terms', seoKey: 'terms' },
 ]
@@ -190,6 +211,10 @@ export const CONTACT_ADDRESS = 'info@balkanskatrkackaliga.net'
 /* Screens that have an address but no navigation entry: reached from a button,
  * a link inside a page, or the login symbol. */
 const UNLISTED_ROUTES: RouteDef[] = [
+  /* The standing of the teams, reached from the third card of the tables since 16.11.2026. Its name
+     is still „Timovi", which is what the portal says aloud when the screen opens and what the card
+     is called; the heading on the screen is „BTL tabele" (owner, 16.11.2026, answer 9). */
+  { path: TEAMS_ADDRESS, labelKey: 'nav.teams', seoKey: 'teams' },
   { path: 'registracija', labelKey: 'nav.register', seoKey: 'register' },
   { path: 'prijava', labelKey: 'nav.login', seoKey: 'signIn' },
   /* The two addresses the SERVER writes, and the only two on this list that are
