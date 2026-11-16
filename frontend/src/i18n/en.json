@@ -221,8 +221,6 @@
   "shell": {
     "waiting": "{count} waiting",
     "skipToContent": "Skip to content",
-    "openMenu": "Open the menu",
-    "closeMenu": "Close the menu",
     "mainNavigation": "Main navigation",
     "footerNavigation": "Terms and rules",
     "messages": "Messages",
@@ -276,6 +274,7 @@
   },
   "language": {
     "label": "Language",
+    "button": "Language, {code}",
     "sr": "Srpski",
     "en": "English"
   },

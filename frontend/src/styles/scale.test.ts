@@ -116,6 +116,10 @@ const ALLOWED = new Map([
     'not a space and not chosen here at all: it is one of the declarations `.visually-hidden` carries (index.css), repeated on a rule inside a media query because a class cannot be added by one. `ADL.md` A7 (31.07.2026) says hiding by width is done with „ista pravila koja nosi `visually-hidden`", so the value is that rule\'s and a case holds the two to each other (pages/calendarStyle.test.ts)',
   ],
   [
+    'app/Shell.css | margin | -1px',
+    'not a space and not chosen here at all: it is one of the declarations `.visually-hidden` carries (index.css), repeated on the word of a cell and the code of the language in the header of a telephone, because a class cannot be given by the shape of the header. `ADL.md` A7 (31.07.2026) says hiding by width is done with „ista pravila koja nosi `visually-hidden`", so the value is that rule\'s and a case holds the two to each other (app/phoneHeaderStyle.test.ts)',
+  ],
+  [
     'pages/Calendar.css | margin-inline-start | calc(-3 * var(--space-8) - 2px)',
     'not a step: how far a piece of a multi-day bar reaches back into the day before it, which is three gaps of the grid and TWO BORDERS OF ONE PIXEL. The three gaps are the token; the two pixels are `border: 1px` on `.day` and there is no token for a hairline, so they are the same kind of value as the `+ 4px` the floor of a day is measured with. Written in `rem` alone the reach is right at exactly one size of text, and wrong at every other: too short leaves a seam through the bar, too long hangs it over the day before',
   ],
@@ -434,7 +438,6 @@ describe('space and corners are chosen from the scale, not typed', () => {
 
     /* Read as `sheet selector`, each with why it costs the reader nothing. */
     const ALLOWED_TO_HIDE = new Map([
-      ['app/Shell.css .shell__menu-button', 'the button that opens the navigation, which is now on the screen'],
       ['pages/admin/SectionNav.css .adminsection__toggle', 'the control that opens a panel that is now open'],
       ['pages/admin/Verification.css .pending__toggle', 'the same, on the queue of things to verify'],
       ['pages/Rulebook.css .rulebook__toggle', 'the same, on the table of contents'],

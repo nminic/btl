@@ -221,8 +221,6 @@
   "shell": {
     "waiting": "{count} na čekanju",
     "skipToContent": "Preskoči na sadržaj",
-    "openMenu": "Otvori meni",
-    "closeMenu": "Zatvori meni",
     "mainNavigation": "Glavna navigacija",
     "footerNavigation": "Uslovi i pravila",
     "messages": "Poruke",
@@ -276,6 +274,7 @@
   },
   "language": {
     "label": "Jezik",
+    "button": "Jezik, {code}",
     "sr": "Srpski",
     "en": "English"
   },

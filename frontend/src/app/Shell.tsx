@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useRef, type ReactNode } from 'react'
 import { Link, NavLink, Outlet, ScrollRestoration, useLocation } from 'react-router'
 import { dataOr, usePaymentsDue } from '../data/useResource'
 import { DEV_TOOLS_IN_THIS_BUILD, loadTheDevControls } from '../dev/tools'
@@ -16,6 +16,9 @@ import { ErrorBoundary } from './ErrorBoundary'
 import { LanguageMenu } from './LanguageMenu'
 import { MessagesMenu } from './MessagesMenu'
 import { PageMetaContext } from './pageMetaContext'
+import { NavSymbolIcon } from './icons'
+import { NAV_SYMBOL, type NavSymbol } from './navSymbol'
+import { usePhoneHeader } from './phoneHeader'
 import { HeaderDecoration, PageBackgroundDecoration } from './RaceInMotion'
 import { CONTACT_ADDRESS, FOOTER_ROUTES, navForRole, type NavSection } from './routes'
 import { useNewScreen } from './useNewScreen'
@@ -127,7 +130,7 @@ function useNavSections(): NavSection[] {
  * replaces everything inside the element: a counter described by nothing is a
  * counter a screen reader never reads out. The inbox in MessagesMenu does the
  * same. Nothing at all is shown while nothing is waiting. */
-function AdminLink({ label, onNavigate }: { label: string; onNavigate: () => void }) {
+function AdminLink({ label, face }: { label: string; face: ReactNode }) {
   const { locale, t } = useI18n()
   const waiting = useWaiting()
 
@@ -136,9 +139,8 @@ function AdminLink({ label, onNavigate }: { label: string; onNavigate: () => voi
       to={`/${locale}/${ADMIN}`}
       className="shell__link"
       aria-label={waiting === 0 ? undefined : `${label}, ${t('shell.waiting', { count: waiting })}`}
-      onClick={onNavigate}
     >
-      {label}
+      {face}
       {waiting > 0 && (
         <span className="shell__waiting" aria-hidden="true">
           {waiting}
@@ -153,17 +155,7 @@ function AdminLink({ label, onNavigate }: { label: string; onNavigate: () => voi
  * and takes no say from outside, so the mark is worked out here the way it works it out (the address
  * or one below it, in any case of letters) and written the way it writes it: the class `active` and
  * `aria-current="page"`, which is what the stylesheet and a screen reader each read. */
-function MarkedAlsoOn({
-  section,
-  also,
-  label,
-  onNavigate,
-}: {
-  section: NavSection
-  also: string[]
-  label: string
-  onNavigate: () => void
-}) {
+function MarkedAlsoOn({ section, also, face }: { section: NavSection; also: string[]; face: ReactNode }) {
   const { locale } = useI18n()
   const below = useLocation().pathname.split('/').slice(2).join('/').toLowerCase()
   const marked = [section.path, ...also].some((path) => below === path || below.startsWith(`${path}/`))
@@ -173,28 +165,47 @@ function MarkedAlsoOn({
       to={`/${locale}/${section.path}`}
       className={marked ? 'shell__link active' : 'shell__link'}
       aria-current={marked ? 'page' : undefined}
-      onClick={onNavigate}
     >
-      {label}
+      {face}
     </Link>
   )
 }
 
-function NavEntry({ section, onNavigate }: { section: NavSection; onNavigate: () => void }) {
+/**
+ * What a link of the header shows: its word, or on a telephone its symbol with the word kept for the
+ * reader alone (owner, 16.11.2026, answer 5: „Na telefonu stoji samo simbol, bez reči ispod; reč ostaje
+ * ime za čitač ekrana”). The word is moved out of sight and never taken away (`app/Shell.css`,
+ * `.shell__word`), so the name of the link is the same word at every width (ADL A7, „Kontrola koja
+ * menja natpis po širini ekrana mora zadržati oba natpisa u pristupačnom stablu"), and the symbol
+ * carries no name of its own (`NavSymbolIcon`).
+ */
+function Face({ symbol, word, phone }: { symbol: NavSymbol; word: string; phone: boolean }) {
+  return phone ? (
+    <>
+      <NavSymbolIcon of={symbol} className="shell__symbol" />
+      <span className="shell__word">{word}</span>
+    </>
+  ) : (
+    word
+  )
+}
+
+function NavEntry({ section, phone }: { section: NavSection; phone: boolean }) {
   const { locale, t } = useI18n()
   const label = t(section.labelKey)
+  const face = <Face symbol={section.symbol} word={label} phone={phone} />
 
   if (section.path === ADMIN) {
-    return <AdminLink label={label} onNavigate={onNavigate} />
+    return <AdminLink label={label} face={face} />
   }
 
   if (section.alsoMarkedOn !== undefined) {
-    return <MarkedAlsoOn section={section} also={section.alsoMarkedOn} label={label} onNavigate={onNavigate} />
+    return <MarkedAlsoOn section={section} also={section.alsoMarkedOn} face={face} />
   }
 
   return (
-    <NavLink to={`/${locale}/${section.path}`} className="shell__link" onClick={onNavigate}>
-      {label}
+    <NavLink to={`/${locale}/${section.path}`} className="shell__link">
+      {face}
     </NavLink>
   )
 }
@@ -215,8 +226,7 @@ export function Shell() {
   const sections = useNavSections()
   const rest = useRestOfPath()
   const { pageTitle, declare } = useRouteChrome()
-  const [menuOpen, setMenuOpen] = useState(false)
-  const closeMenu = () => setMenuOpen(false)
+  const phone = usePhoneHeader()
 
   useNewScreen(main)
   /* Signing out has to empty the header. This used to read the role, which the
@@ -230,6 +240,90 @@ export function Shell() {
      portal would not know it. */
   useTheServersSession()
 
+  /* The two development controls, side by side and gone together in
+     production (src/dev/tools.ts): who is at the keyboard, and what
+     day the portal is being read as.
+
+     THE CONSTANT IS ASKED HERE AS WELL AS THE LOADER'S ANSWER, and it reads as one
+     question asked twice. It is two. `DEV_CONTROLS` is a variable, so the bundler
+     cannot know it is `null` where it is read, and the branch stayed in the
+     production package with the names of both switches in it: the two properties
+     read off the object are not shortened. Measured 09.10.2026 on Vite 8.1.5, by
+     `grep -a -o -F` over the production `dist/`: `DateSwitch` once and `RoleSwitch`
+     once with the loader's answer alone, and none of either with the constant in
+     front of it: the bundler knows the constant, so it drops the whole branch. A15
+     looks for exactly those words, and `dev/productionPackage.test.ts` counts
+     them. */
+  const devControls =
+    DEV_TOOLS_IN_THIS_BUILD && DEV_CONTROLS !== null ? (
+      <>
+        <DEV_CONTROLS.RoleSwitch />
+        <DEV_CONTROLS.DateSwitch />
+      </>
+    ) : null
+
+  /* Signed in: the inbox, then the picture whose menu holds settings
+     and signing out. That is where nearly every portal keeps them,
+     and a separate cog would be a second door to the same room.
+
+     Signed out: the two things a visitor is here to do, with joining
+     as the loud one. It is the only control on this page that brings
+     the league any money. */
+  const personal =
+    signedIn !== null ? (
+      <>
+        {/* NOT DRAWN TO SOMEBODY WHO REGISTERED AND HAS NOT PAID (owner, 24.10.2026, chosen between
+            offered outcomes with the recommendation: „Neplaćenom članu se koverta sa porukama u
+            zaglavlju sakriva dok ne plati"). It was drawn to him with an empty panel since
+            16.10.2026, and its „Sve poruke" led to a page that sends him on to the fee. */}
+        {signedIn.as !== 'neverPaid' && <MessagesMenu />}
+        <AccountMenu signedIn={signedIn} />
+      </>
+    ) : (
+      <>
+        {/* UNTIL THE SERVER HAS SAID WHO IS READING, THE TWO ARE THERE AND ARE NOT OFFERED (owner,
+            10.10.2026, PDL P26, „nevidljiva i nedostupna, pa se ništa ne pomera i ništa se ne
+            izgovara"). Offered, they tell a member whose cookie nobody has asked about yet to
+            sign in and to join. Taken out, the row of tools would shrink and grow back under
+            his pointer when the answer lands; hidden, the row keeps its width and nothing
+            moves. `visibility` takes a link out of the tab order and the reader's tree in one
+            word, and the three attributes say the same where a stylesheet is not applied
+            (`app/Shell.css`, `shell__guest--waiting`). A dead server ends the wait like any
+            answer and they appear, as they always did for a visitor. */}
+        <Link
+          className={waitingFor('button button--secondary button--compact', asking)}
+          to={`/${locale}/prijava`}
+          {...(asking ? NOT_OFFERED : {})}
+        >
+          <Face symbol={NAV_SYMBOL.signIn} word={t('shell.signIn')} phone={phone} />
+        </Link>
+        <Link
+          className={waitingFor('button--cta', asking)}
+          to={`/${locale}/registracija`}
+          {...(asking ? NOT_OFFERED : {})}
+        >
+          <Face symbol={NAV_SYMBOL.join} word={t('shell.join')} phone={phone} />
+        </Link>
+      </>
+    )
+
+  /* ONE CELL PER ENTRY ON A TELEPHONE, AND EVERY CELL AS WIDE AS THE NEXT (owner, 16.11.2026: „u donjem
+     redu 7 ili 8 jednakih dugmića po širini ekrana”). The row is one grid (`app/Shell.css`,
+     `.shell__cells`) and the navigation spans as many of its columns as it holds links, which is told to
+     the stylesheet here from the very list that is drawn, so the count cannot be one the reader does not
+     see: an entry this person may not open is not in `sections`, and so not in the count either. */
+  const navigation = (
+    <nav
+      className="shell__nav"
+      aria-label={t('shell.mainNavigation')}
+      style={phone ? { '--cells': sections.length } : undefined}
+    >
+      {sections.map((section) => (
+        <NavEntry key={section.id} section={section} phone={phone} />
+      ))}
+    </nav>
+  )
+
   return (
     <div className="shell">
       <a className="shell__skip" href="#content">
@@ -240,98 +334,36 @@ export function Shell() {
           once here so that no screen carries a copy (app/RaceInMotion.tsx). */}
       <PageBackgroundDecoration />
 
-      <header className="shell__header">
+      <header className={phone ? 'shell__header shell__header--phone' : 'shell__header'}>
         <HeaderDecoration />
         <div className="shell__bar">
-          <Brand onNavigate={closeMenu} />
+          <Brand />
 
           <div className="shell__tools">
-            {/* The two development controls, side by side and gone together in
-                production (src/dev/tools.ts): who is at the keyboard, and what
-                day the portal is being read as.
-
-                THE CONSTANT IS ASKED HERE AS WELL AS THE LOADER'S ANSWER, and it reads as one
-                question asked twice. It is two. `DEV_CONTROLS` is a variable, so the bundler
-                cannot know it is `null` where it is read, and the branch stayed in the
-                production package with the names of both switches in it: the two properties
-                read off the object are not shortened. Measured 09.10.2026 on Vite 8.1.5, by
-                `grep -a -o -F` over the production `dist/`: `DateSwitch` once and `RoleSwitch`
-                once with the loader's answer alone, and none of either with the constant in
-                front of it: the bundler knows the constant, so it drops the whole branch. A15
-                looks for exactly those words, and `dev/productionPackage.test.ts` counts
-                them. */}
-            {DEV_TOOLS_IN_THIS_BUILD && DEV_CONTROLS !== null && (
-              <>
-                <DEV_CONTROLS.RoleSwitch />
-                <DEV_CONTROLS.DateSwitch />
-              </>
-            )}
+            {!phone && devControls}
             <LanguageMenu restOfPath={rest} />
-
-            {/* Signed in: the inbox, then the picture whose menu holds settings
-                and signing out. That is where nearly every portal keeps them,
-                and a separate cog would be a second door to the same room.
-
-                Signed out: the two things a visitor is here to do, with joining
-                as the loud one. It is the only control on this page that brings
-                the league any money. */}
-            {signedIn !== null ? (
-              <>
-                {/* NOT DRAWN TO SOMEBODY WHO REGISTERED AND HAS NOT PAID (owner, 24.10.2026, chosen between
-                    offered outcomes with the recommendation: „Neplaćenom članu se koverta sa porukama u
-                    zaglavlju sakriva dok ne plati"). It was drawn to him with an empty panel since
-                    16.10.2026, and its „Sve poruke" led to a page that sends him on to the fee. */}
-                {signedIn.as !== 'neverPaid' && <MessagesMenu />}
-                <AccountMenu signedIn={signedIn} />
-              </>
-            ) : (
-              <>
-                {/* UNTIL THE SERVER HAS SAID WHO IS READING, THE TWO ARE THERE AND ARE NOT OFFERED (owner,
-                    10.10.2026, PDL P26, „nevidljiva i nedostupna, pa se ništa ne pomera i ništa se ne
-                    izgovara"). Offered, they tell a member whose cookie nobody has asked about yet to
-                    sign in and to join. Taken out, the row of tools would shrink and grow back under
-                    his pointer when the answer lands; hidden, the row keeps its width and nothing
-                    moves. `visibility` takes a link out of the tab order and the reader's tree in one
-                    word, and the three attributes say the same where a stylesheet is not applied
-                    (`app/Shell.css`, `shell__guest--waiting`). A dead server ends the wait like any
-                    answer and they appear, as they always did for a visitor. */}
-                <Link
-                  className={waitingFor('button button--secondary button--compact', asking)}
-                  to={`/${locale}/prijava`}
-                  {...(asking ? NOT_OFFERED : {})}
-                >
-                  {t('shell.signIn')}
-                </Link>
-                <Link
-                  className={waitingFor('button--cta', asking)}
-                  to={`/${locale}/registracija`}
-                  {...(asking ? NOT_OFFERED : {})}
-                >
-                  {t('shell.join')}
-                </Link>
-              </>
-            )}
-            <button
-              type="button"
-              className="shell__icon-button shell__menu-button"
-              aria-expanded={menuOpen}
-              aria-controls="main-navigation"
-              onClick={() => setMenuOpen((open) => !open)}
-            >
-              {menuOpen ? t('shell.closeMenu') : t('shell.openMenu')}
-            </button>
+            {!phone && personal}
           </div>
         </div>
 
-        <nav
-          id="main-navigation"
-          className={menuOpen ? 'shell__nav shell__nav--open' : 'shell__nav'}
-          aria-label={t('shell.mainNavigation')}
-        >
-          {sections.map((section) => (
-            <NavEntry key={section.id} section={section} onNavigate={closeMenu} />
-          ))}
-        </nav>
+        {/* ON A TELEPHONE THE FIRST ROW IS THE MARK AND THE LANGUAGE, AND NOTHING ELSE (owner, 16.11.2026: „u
+            prvom redu ide logo BTL sa tekstom i motoom, a pored izbor jezika”). The two development controls,
+            which only QA draws, stand in a row of their own under it, in the order they are read; the
+            envelope and the picture, or the two links of a visitor, are the last cells of the second row,
+            the picture the very last (owner: „poslednja stavka je sličica ulogovanog korisnika, ukoliko
+            postoji”). On a desktop the header is the one it was: everything after the language in the
+            first row, and the words in the second (`app/phoneHeader.ts` says why the two are two orders of
+            the document and not one moved by a stylesheet). */}
+        {phone && devControls !== null && <div className="shell__dev">{devControls}</div>}
+
+        {phone ? (
+          <div className="shell__cells">
+            {navigation}
+            {personal}
+          </div>
+        ) : (
+          navigation
+        )}
       </header>
 
       {/* Back to the top on a new screen, and back where it was on the way back.
@@ -379,7 +411,6 @@ export function Shell() {
               key={route.path}
               to={`/${locale}/${route.path}`}
               className="shell__link"
-              onClick={closeMenu}
             >
               {t(route.labelKey)}
             </NavLink>

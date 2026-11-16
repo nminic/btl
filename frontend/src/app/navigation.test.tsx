@@ -145,7 +145,7 @@ describe('navigation', () => {
     const user = setupUser()
     renderAt('/sr/top-liste')
 
-    await user.click(screen.getByRole('button', { name: 'Jezik' }))
+    await user.click(screen.getByRole('button', { name: 'Jezik, SR' }))
     await user.click(screen.getByRole('option', { name: 'English' }))
 
     await waitFor(() =>
@@ -167,7 +167,7 @@ describe('navigation', () => {
     const user = setupUser()
     renderAt('/sr')
 
-    await user.click(await screen.findByRole('button', { name: 'Jezik' }))
+    await user.click(await screen.findByRole('button', { name: 'Jezik, SR' }))
     await user.click(screen.getByRole('option', { name: 'English' }))
 
     /* English words, so `lang="en"`. Until 26.09.2026 this had to stay „sr": /en drew
@@ -241,33 +241,6 @@ describe('navigation', () => {
     // And it opens administration, whose navigation carries the two sectors.
     expect(await screen.findByRole('button', { name: 'Verifikacija' })).toBeVisible()
     expect(screen.getByRole('button', { name: 'Podaci' })).toBeVisible()
-  })
-
-  it('opens and closes the mobile menu', async () => {
-    const user = setupUser()
-    renderAt('/sr')
-
-    const button = await screen.findByRole('button', { name: 'Otvori meni' })
-    await user.click(button)
-
-    const close = screen.getByRole('button', { name: 'Zatvori meni' })
-    expect(close).toHaveAttribute('aria-expanded', 'true')
-
-    await user.click(close)
-    expect(screen.getByRole('button', { name: 'Otvori meni' })).toHaveAttribute(
-      'aria-expanded',
-      'false',
-    )
-  })
-
-  it('closes the menu after following a link out of it', async () => {
-    const user = setupUser()
-    renderAt('/sr')
-
-    await user.click(await screen.findByRole('button', { name: 'Otvori meni' }))
-    await user.click(screen.getByRole('link', { name: 'Kalendar' }))
-
-    expect(screen.getByRole('button', { name: 'Otvori meni' })).toBeInTheDocument()
   })
 
   it('no longer switches the theme from the header, and sends the cog to settings', async () => {

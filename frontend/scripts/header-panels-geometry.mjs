@@ -306,7 +306,9 @@ const STATES = [
  *  when `GET /api/me` is answered, and the row of tools stands somewhere else in each. */
 const DRAWN = {
   member: 'button[aria-controls="account-menu"]',
-  visitor: '.shell__tools a[href$="/prijava"]',
+  /* In the header and not in its row of tools: under 700px the link of a visitor is a cell of the second
+     row (16.11.2026, `app/Shell.tsx`), and above it it stands among the tools as it always did. */
+  visitor: 'header a[href$="/prijava"]',
 }
 
 const PANELS = {

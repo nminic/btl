@@ -101,7 +101,13 @@ export function LanguageMenu({ restOfPath }: { restOfPath: string }) {
         className="lang__btn"
         aria-haspopup="listbox"
         aria-expanded={open}
-        aria-label={t('language.label')}
+        /* THE CODE OF THE LANGUAGE IN USE IS PART OF THE NAME (owner, 16.11.2026, PDL „Pravilnik prelazi u
+           podnožje, a Timovi postaju treća kartica BTL tabela”, answer 2: „oznaka jezika ostaje u imenu
+           dugmeta za čitač ekrana”). On a telephone the button shows the flag alone and the code is kept
+           for the reader (`app/Shell.css`, `.shell__header--phone .lang__code`). The name was the word
+           „Jezik" alone until that day, so the „SR" the button shows on a desktop was not in its name
+           either (WCAG 2.2 SC 2.5.3), and a reader on a telephone would have heard no code at all. */
+        aria-label={t('language.button', { code: CODES[locale] })}
         onClick={() => setOpen((was) => !was)}
       >
         <span className="lang__btnflag">

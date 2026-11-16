@@ -41,7 +41,7 @@ describe('the header of a build whose development controls cannot be loaded (PEN
 
     /* The row the two would stand in, drawn: a blank page has no language menu, and that is
        what this build showed before the failure was answered. */
-    expect(await screen.findByRole('button', { name: 'Jezik' })).toBeVisible()
+    expect(await screen.findByRole('button', { name: 'Jezik, SR' })).toBeVisible()
     expect(screen.queryByLabelText('Uloga')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Današnji datum')).not.toBeInTheDocument()
 

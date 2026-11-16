@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { expect } from '@playwright/test'
 import type { Locator, Page } from '@playwright/test'
-import { label, settle, test } from './support/harness.ts'
+import { label, test } from './support/harness.ts'
 import type { Answers, At } from './support/harness.ts'
 
 /**
@@ -126,8 +126,18 @@ async function touching(page: Page): Promise<{ words: number; points: number; to
 
       range.selectNodeContents(node)
 
+      /* A word kept for the reader alone is clipped to a pixel, and is no word anyone sees. THE PIXEL IS
+         THE BOX OF THE ELEMENT IT STANDS IN, and not the boxes of its lines: `.visually-hidden` and the
+         rules that repeat it shrink the element to 1px and cut what overflows it, and the lines of the text
+         inside keep their whole width. Read off the lines alone, the code of the language a telephone keeps
+         for the reader (16.11.2026, `app/Shell.css`) was a word the gold touched at 600px. */
+      const holder = node.parentElement?.getBoundingClientRect()
+
+      if (holder === undefined || holder.width <= 1 || holder.height <= 1) {
+        continue
+      }
+
       for (const box of range.getClientRects()) {
-        /* A word kept for the reader alone is clipped to a pixel, and is no word anyone sees. */
         if (box.width > 1 && box.height > 1) {
           words.push({ text, box })
         }
@@ -217,19 +227,18 @@ for (const at of WIDTHS) {
 
     const controls = [
       page.getByRole('link', { name: 'Naslovna strana' }),
-      page.getByRole('button', { name: 'Jezik' }),
+      page.getByRole('button', { name: 'Jezik, SR' }),
       page.getByRole('button', { name: /^Otvori poruke/ }),
       page.getByRole('button', { name: 'Otvori nalog' }),
     ]
+    /* The navigation is on the screen at every width since 16.11.2026: words from 700px up and a row of
+       symbols under it, where it was folded behind „Otvori meni" under 820px (owner, 16.11.2026, PDL
+       „Pravilnik prelazi u podnožje, a Timovi postaju treća kartica BTL tabela”). */
     const navigation = page.getByRole('navigation', { name: 'Glavna navigacija' })
 
-    if (await navigation.isVisible()) {
-      controls.push(...(await navigation.getByRole('link').all()))
-    } else {
-      controls.push(page.getByRole('button', { name: 'Otvori meni' }))
-    }
+    controls.push(...(await navigation.getByRole('link').all()))
 
-    expect(controls.length).toBeGreaterThan(4)
+    expect(controls.length).toBeGreaterThan(9)
 
     for (const control of controls) {
       expect(await takesTheClick(control), `${await control.textContent()} at ${label(at)}`).toBe('the control')
@@ -267,42 +276,11 @@ for (const at of [...WIDTHS, { width: 1280, text: 100 } satisfies At]) {
   })
 }
 
-/**
- * THE SAME QUESTION WITH THE MENU OPEN, which the loop above never asks: `touching` skips every word that is not
- * seen, and on a telephone the words of the navigation are not seen until the button is pressed. The navigation
- * folds into a button under 51.25em of the width the queries read (`app/Shell.css`), which at 200% text is half the
- * window, so the screens are the owner's widths under that, the two between the telephone and the tablet, and the
- * three desktops and the wide one whose text at 200% is read as a tablet (review of PR 736: the gold moved under
- * „Pravilnik" in the open menu, from 336 to 819px, survived 30 of 30).
- *
- * <p>Pressed and waited on until the page stops moving, then the same words and the same gold: the open menu's
- * words have to be among the ones read, or the case asks about the closed menu again and says so.
- */
-const WITH_THE_MENU_FOLDED: At[] = [
-  ...WIDTHS.filter((at) => at.width / (at.text / 100) < 820),
-  { width: 1000, text: 200 },
-  { width: 1440, text: 200 },
-  { width: 1600, text: 200 },
-]
-
-for (const at of WITH_THE_MENU_FOLDED) {
-  test(`the bright gold and the runner touch no text with the menu open at ${label(at)}`, async ({ open }) => {
-    const { page } = await open(at, '/sr', 'header .brand', ANSWERS)
-    const closed = await touching(page)
-    const button = page.getByRole('button', { name: 'Otvori meni' })
-
-    await expect(button, `the navigation is a button at ${label(at)}`).toBeVisible()
-    await button.click()
-    await expect(page.getByRole('button', { name: 'Zatvori meni' })).toBeVisible()
-    await settle(page, 'header .brand')
-
-    const opened = await touching(page)
-
-    expect(opened.words, 'the words of the open menu are among the ones read').toBeGreaterThan(closed.words)
-    expect(opened.points, 'the points of the gold that were read').toBeGreaterThan(50)
-    expect(opened.touches).toEqual([])
-  })
-}
+/* THE SAME QUESTION WITH THE MENU OPEN stood here until 16.11.2026, at every width where the navigation
+   folded into „Otvori meni" (review of PR 736: the gold moved under „Pravilnik" in the open menu). There is
+   no folded menu since: the words stand on the screen from 700px up and under it the entries are symbols
+   whose words are kept for the reader alone, so every word of the header is among the ones the loop above
+   reads. */
 
 /**
  * How far each of the runner's feet stands off the gold line he runs up, in pixels on the screen.

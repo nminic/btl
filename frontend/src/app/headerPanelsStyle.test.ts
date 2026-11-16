@@ -210,7 +210,7 @@ const ON_THE_LANGUAGE_BUTTON: Pinned = { ...NOTHING, anchored: ['anchor-name'] }
  * the ones the other finds on the page (a fact with two homes drifts, and a guard over a class
  * nobody wears holds nothing).
  */
-const LANGUAGE_BUTTON = 'Jezik'
+const LANGUAGE_BUTTON = 'Jezik, SR'
 
 const HEADER_PANELS = [
   {

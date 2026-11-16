@@ -19,7 +19,7 @@ describe('the header of a production bundle', () => {
     renderAt('/sr')
 
     /* The row the two would stand in, drawn: an empty row is not the same as no header. */
-    expect(await screen.findByRole('button', { name: 'Jezik' })).toBeVisible()
+    expect(await screen.findByRole('button', { name: 'Jezik, SR' })).toBeVisible()
 
     expect(screen.queryByLabelText('Uloga')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Današnji datum')).not.toBeInTheDocument()

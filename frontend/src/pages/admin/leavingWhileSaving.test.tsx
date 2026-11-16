@@ -299,11 +299,11 @@ describe('an event whose save is out cannot be left', () => {
       const { user, router } = await theCopyOpen('alone')
 
       await press(user)
-      await user.click(screen.getByRole('button', { name: 'Jezik' }))
+      await user.click(screen.getByRole('button', { name: 'Jezik, SR' }))
       await user.click(screen.getByRole('option', { name: /English/ }))
       expectOnTheForm(router)
       await finishTheCopy()
-      await user.click(screen.getByRole('button', { name: 'Jezik' }))
+      await user.click(screen.getByRole('button', { name: 'Jezik, SR' }))
       await user.click(screen.getByRole('option', { name: /English/ }))
       expect(where(router)).toBe(`/en/administracija/dogadjaji?kopija=32`)
     }, SLOW)
