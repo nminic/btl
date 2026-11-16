@@ -6,7 +6,7 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import com.btl.portal.TestcontainersConfiguration;
 import com.btl.portal.domain.card.WhatACardSays;
-import com.btl.portal.domain.card.WhatFacebookIsAskedAgain.Page;
+import com.btl.portal.domain.card.WhatFacebookIsAskedAgain.Row;
 import com.btl.portal.domain.season.SeasonClock;
 import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.AfterEach;
@@ -25,7 +25,6 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.scheduling.config.FixedDelayTask;
 import org.springframework.scheduling.config.ScheduledTask;
 import org.springframework.scheduling.config.ScheduledTaskHolder;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -72,10 +71,13 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * one value). The member whose card changes is never first in the order, and beside him stand a member whose card
  * does not change, a member of a later season too, and a hidden profile, so a job that asked about every profile,
  * or about the first one, or about the hidden one, asks other addresses than the case expects.
+ *
+ * <p><b>REAL COMMITS AND NOT A TRANSACTION THAT ROLLS BACK</b>, because a row is written as refreshed from Facebook's
+ * answer (owner, PDL P11, 16.11.2026, item 16), on the thread that answer comes back on, with a connection of its own,
+ * which sees nothing a case's own transaction has not committed. So every row a case makes is deleted after it.
  */
 @SpringBootTest
 @Import({TestcontainersConfiguration.class, FacebookIsAskedToReadAChangedCardTest.TheClockThisFileUses.class})
-@Transactional
 class FacebookIsAskedToReadAChangedCardTest {
 
 	private static final ZoneId BELGRADE = SeasonClock.ZONE;
@@ -92,6 +94,9 @@ class FacebookIsAskedToReadAChangedCardTest {
 
 	/** A hidden profile, whose fee stands. */
 	private static final String HIDDEN = "000803";
+
+	/** The number {@link #MOVES} is given in the case where his number moves, which nobody else holds. */
+	private static final String MOVED_TO = "000809";
 
 	private static final String APP_ID = "1234567890";
 
@@ -233,8 +238,11 @@ class FacebookIsAskedToReadAChangedCardTest {
 
 	private AFacebookOfItsOwn facebook;
 
-	/** How many pictures the case has made, so that each has a digest of its own. */
-	private long photos;
+	/** How many pictures the case has made, so that each has a digest of its own, far from any other case's. */
+	private long photos = 0xFACEB00C0000L;
+
+	/** Every picture the case has made, which it deletes after itself. */
+	private final List<Long> pictures = new ArrayList<>();
 
 	private FacebookIsAskedToReadAChangedCard job;
 
@@ -259,9 +267,23 @@ class FacebookIsAskedToReadAChangedCardTest {
 	}
 
 	@AfterEach
-	void facebookGoes() {
+	void facebookGoesAndNothingIsLeftBehind() {
 		facebook.close();
 		clock.moveTo(OCTOBER_2028);
+
+		String members = "select id from competitor where member_number in ('" + STILL + "', '" + MOVES + "', '"
+				+ HIDDEN + "', '" + MOVED_TO + "')";
+
+		for (String table : List.of("verification", "result", "team_membership", "membership")) {
+			db.sql("delete from " + table + " where competitor_id in (" + members + ")").update();
+		}
+
+		db.sql("delete from competitor where id in (" + members + ")").update();
+		db.sql("delete from race where event_id in (select id from btl_event where slug in"
+				+ " ('prolece-2028', 'triatlon-2028'))").update();
+		db.sql("delete from btl_event where slug in ('prolece-2028', 'triatlon-2028')").update();
+		db.sql("delete from team where slug = 'prvi-tim'").update();
+		pictures.forEach(id -> db.sql("delete from photo where id = ?").param(id).update());
 	}
 
 	/* ---------------------------------------------------------------------------------------------------------- */
@@ -287,7 +309,7 @@ class FacebookIsAskedToReadAChangedCardTest {
 			assertThat(idle.askAgain()).isEmpty();
 			rename(MOVES, "Petar");
 			assertThat(idle.askAgain()).isEmpty();
-			assertThat(off.readAgain(portal + "/sr/takmicar/" + MOVES).get(5, TimeUnit.SECONDS)).isNull();
+			assertThat(off.readAgain(portal + "/sr/takmicar/" + MOVES).get(5, TimeUnit.SECONDS)).isFalse();
 		}
 
 		assertThat(rows()).as("a job without Facebook wrote something down").isEqualTo(read);
@@ -352,15 +374,42 @@ class FacebookIsAskedToReadAChangedCardTest {
 		assertThat(facebook.asked).isEmpty();
 	}
 
-	/** A new name is a new card and a new address in each language, so both addresses are asked in both. */
+	/**
+	 * A NEW NAME IS A NEW CARD, and the addresses Facebook read, which carry the old name, serve it: nginx reads the
+	 * number and not the name. So they are asked, in both languages, and the new addresses are not, because Facebook
+	 * never read them (owner, PDL P11, 16.11.2026, item 14: only what the crawler opened). The rows keep the old
+	 * addresses and get the new card, and no row is added.
+	 */
 	@Test
-	void aNameAsksTheNewAddressAndTheOldOneInBothLanguages() throws Exception {
+	void aNameAsksTheAddressesFacebookReadAndNotTheNewOnes() throws Exception {
 		facebookRead(STILL, MOVES);
 		rename(MOVES, "Petar");
 
-		assertThat(run()).containsExactly(
-				portal + "/en/takmicar/" + MOVES + "-nikola-minic", portal + "/en/takmicar/" + MOVES + "-petar-minic",
-				portal + "/sr/takmicar/" + MOVES + "-nikola-minic", portal + "/sr/takmicar/" + MOVES + "-petar-minic");
+		assertThat(run()).containsExactly(portal + "/en/takmicar/" + MOVES + "-nikola-minic",
+				portal + "/sr/takmicar/" + MOVES + "-nikola-minic");
+		assertThat(rows()).filteredOn(row -> row.startsWith(MOVES)).containsExactly(
+				MOVES + " " + cards.addressOf(MOVES, WhatACardSays.ENGLISH).orElseThrow() + " /en/takmicar/" + MOVES
+						+ "-nikola-minic",
+				MOVES + " " + cards.addressOf(MOVES, WhatACardSays.SERBIAN).orElseThrow() + " /sr/takmicar/" + MOVES
+						+ "-nikola-minic");
+		assertThat(run()).as("asked once, not on every run").isEmpty();
+	}
+
+	/**
+	 * A MEMBER NUMBER THAT MOVES (a number granted in place of another) leaves the address Facebook read with the old
+	 * number in it, and nginx serves that address by its number, which nobody is shown under now: the front page's
+	 * preview. So it is asked once and written so, though the member himself is shown as before under his new number.
+	 */
+	@Test
+	void anAddressWhoseNumberMovedServesTheFrontPage() throws Exception {
+		facebookRead(STILL, MOVES);
+		db.sql("update competitor set member_number = ? where member_number = ?").params(MOVED_TO, MOVES).update();
+
+		assertThat(run()).containsExactly(portal + "/en/takmicar/" + MOVES + "-nikola-minic",
+				portal + "/sr/takmicar/" + MOVES + "-nikola-minic");
+		assertThat(rows()).filteredOn(row -> row.startsWith(MOVED_TO)).containsExactly(
+				MOVED_TO + " null /en/takmicar/" + MOVES + "-nikola-minic",
+				MOVED_TO + " null /sr/takmicar/" + MOVES + "-nikola-minic");
 		assertThat(run()).as("asked once, not on every run").isEmpty();
 	}
 
@@ -409,7 +458,7 @@ class FacebookIsAskedToReadAChangedCardTest {
 	 * A HIDDEN PROFILE IS ASKED ABOUT ONCE, THE RUN IT IS HIDDEN, and then never while it stays hidden: Facebook reads
 	 * the front page's preview at its address, which is what a visitor gets there now, and stops showing the card.
 	 * Its rows stay, written down as the front page's, because Facebook has read that profile. Shown again under a
-	 * name it got while hidden, it is asked at the new address and at the one Facebook holds.
+	 * name it got while hidden, it is asked at the addresses Facebook read, which serve its card again.
 	 */
 	@Test
 	void aProfileHiddenIsAskedOnceAndThenNotUntilItIsShownAgain() throws Exception {
@@ -419,16 +468,15 @@ class FacebookIsAskedToReadAChangedCardTest {
 		assertThat(run()).containsExactly(portal + "/en/takmicar/" + MOVES + "-nikola-minic",
 				portal + "/sr/takmicar/" + MOVES + "-nikola-minic");
 		assertThat(rows()).filteredOn(row -> row.startsWith(MOVES)).containsExactly(
-				MOVES + " en null /en/takmicar/" + MOVES + "-nikola-minic",
-				MOVES + " sr null /sr/takmicar/" + MOVES + "-nikola-minic");
+				MOVES + " null /en/takmicar/" + MOVES + "-nikola-minic",
+				MOVES + " null /sr/takmicar/" + MOVES + "-nikola-minic");
 
 		rename(MOVES, "Petar");
 		assertThat(run()).as("a profile that stays hidden is asked about").isEmpty();
 
 		db.sql("update competitor set profile_hidden = false where member_number = ?").param(MOVES).update();
 		assertThat(run()).containsExactly(portal + "/en/takmicar/" + MOVES + "-nikola-minic",
-				portal + "/en/takmicar/" + MOVES + "-petar-minic", portal + "/sr/takmicar/" + MOVES + "-nikola-minic",
-				portal + "/sr/takmicar/" + MOVES + "-petar-minic");
+				portal + "/sr/takmicar/" + MOVES + "-nikola-minic");
 		assertThat(run()).as("asked once, not on every run").isEmpty();
 	}
 
@@ -529,15 +577,18 @@ class FacebookIsAskedToReadAChangedCardTest {
 	}
 
 	/**
-	 * FACEBOOK REFUSING IS LOGGED AND GOES NO FURTHER, and the log never carries the secret, even when Facebook's
-	 * answer does. The page is written down as asked, so it is not asked again on every run.
+	 * FACEBOOK REFUSING IS LOGGED, WITHOUT THE SECRET EVEN WHEN ITS ANSWER CARRIES IT, AND THE ADDRESS IS ASKED AGAIN
+	 * (owner, PDL P11, 16.11.2026, item 16: an address is marked as refreshed only when Facebook accepts the request).
+	 * The rows stay as they were through every refusal, the next run asks the same addresses, and once Facebook accepts
+	 * they are written as it now holds them and nothing more is asked.
 	 */
 	@Test
-	void aRefusalIsLoggedWithoutTheSecretAndNotRepeated() throws Exception {
+	void aRefusalIsLoggedWithoutTheSecretAndAskedAgainUntilFacebookAccepts() throws Exception {
 		facebook.status = 400;
 		facebook.body = "{\"error\":{\"message\":\"bad token " + APP_ID + "|" + APP_SECRET + "\"," + "\"x\":\""
 				+ "y".repeat(400) + "\"}}";
 		facebookRead(STILL, MOVES);
+		List<String> before = rows();
 		db.sql("update competitor set birth_date = date '1960-05-05' where member_number = ?").param(MOVES).update();
 
 		List<ILoggingEvent> heard = heardWhile(FacebookGraph.class, () -> assertThat(run()).hasSize(2));
@@ -547,7 +598,45 @@ class FacebookIsAskedToReadAChangedCardTest {
 			assertThat(one.getFormattedMessage()).startsWith("Facebook did not read " + portal + "/")
 					.contains(" again: 400 ").contains("[secret]").doesNotContain(APP_SECRET).endsWith("...");
 		});
-		assertThat(run()).as("a refused page is asked again on the next run").isEmpty();
+		assertThat(rows()).as("a refused address was written down as refreshed").isEqualTo(before);
+
+		List<String> again = List.of(portal + "/en/takmicar/" + MOVES + "-nikola-minic",
+				portal + "/sr/takmicar/" + MOVES + "-nikola-minic");
+
+		assertThat(run()).as("the next run did not ask the refused addresses again").isEqualTo(again);
+
+		facebook.status = 200;
+		facebook.body = "{\"id\":\"x\"}";
+
+		assertThat(run()).as("the run Facebook accepts").isEqualTo(again);
+		assertThat(rows()).as("an accepted address was not written down").isNotEqualTo(before);
+		assertThat(run()).as("an accepted address was asked again").isEmpty();
+	}
+
+	/**
+	 * THE ROW IS WRITTEN FROM FACEBOOK'S ANSWER AND NOT OVER A NEWER ONE. While Facebook takes its time, the crawler
+	 * reads the Serbian page anew after the card changed once more, and writes the card it was given; Facebook's
+	 * acceptance of the request sent before does not write the older card over it. The English row, which nobody
+	 * read in the meantime, is written from the answer.
+	 */
+	@Test
+	void anAcceptedRequestDoesNotWriteOverACardTheCrawlerWroteMeanwhile() throws Exception {
+		facebookRead(STILL, MOVES);
+		db.sql("update competitor set birth_date = date '1960-05-05' where member_number = ?").param(MOVES).update();
+		String asked = cards.addressOf(MOVES, WhatACardSays.ENGLISH).orElseThrow();
+		facebook.waitMillis = 1000;
+
+		List<CompletableFuture<Void>> sent = job.askAgain();
+
+		db.sql("update competitor set birth_date = date '1970-05-05' where member_number = ?").param(MOVES).update();
+		String newer = cards.addressOf(MOVES, WhatACardSays.SERBIAN).orElseThrow();
+		db.sql("update shared_card set card = ? where address = ?")
+				.params(newer, "/sr/takmicar/" + MOVES + "-nikola-minic").update();
+		waitedFor(sent);
+
+		assertThat(rows()).filteredOn(row -> row.startsWith(MOVES)).containsExactly(
+				MOVES + " " + asked + " /en/takmicar/" + MOVES + "-nikola-minic",
+				MOVES + " " + newer + " /sr/takmicar/" + MOVES + "-nikola-minic");
 	}
 
 	/** A Facebook that does not answer in time is given up on, logged, and the run is not held up by it. */
@@ -588,6 +677,7 @@ class FacebookIsAskedToReadAChangedCardTest {
 		FacebookIsAskedToReadAChangedCard patient = jobAsking(facebook.address(), 10, 20_000);
 
 		facebookRead(STILL, MOVES);
+		List<String> before = rows();
 		db.sql("update competitor set birth_date = date '1960-05-05' where member_number = ?").param(MOVES).update();
 
 		long started = System.nanoTime();
@@ -596,8 +686,11 @@ class FacebookIsAskedToReadAChangedCardTest {
 		assertThat(Duration.ofNanos(System.nanoTime() - started)).as("the run waited for Facebook")
 				.isLessThan(Duration.ofMillis(2000));
 		assertThat(sent).hasSize(2).noneMatch(CompletableFuture::isDone);
+		assertThat(rows()).as("a row was written as refreshed before Facebook answered").isEqualTo(before);
 
 		waitedFor(sent);
+
+		assertThat(rows()).as("the answer did not write the rows").isNotEqualTo(before);
 	}
 
 	/** And one that is not there at all is the same: logged, and nothing is thrown at anybody. */
@@ -620,9 +713,9 @@ class FacebookIsAskedToReadAChangedCardTest {
 			waitedFor(sent);
 		});
 
-		assertThat(sent).as("the requests the run made").hasSize(4);
+		assertThat(sent).as("the requests the run made").hasSize(2);
 		assertThat(facebook.asked).as("a request reached a Facebook it was not sent to").isEmpty();
-		assertThat(heard).hasSize(4).allSatisfy(one -> assertThat(one.getFormattedMessage())
+		assertThat(heard).hasSize(2).allSatisfy(one -> assertThat(one.getFormattedMessage())
 				.startsWith("Facebook was not reached to read ").contains("ConnectException"));
 	}
 
@@ -723,25 +816,24 @@ class FacebookIsAskedToReadAChangedCardTest {
 
 	/**
 	 * THE PROFILES FACEBOOK'S CRAWLER HAS READ, in both languages, as the preview writes them down when the crawler
-	 * reads them: the page through {@link WhatFacebookHasRead#pageOf}, the one spelling the preview and the job share.
-	 * That the preview really writes them so is {@code WhatFacebookHasReadTest}'s.
+	 * reads them: the row through {@link WhatFacebookHasRead#rowOf}, the one spelling the preview writes down. That the
+	 * preview really writes them so is {@code WhatFacebookHasReadTest}'s.
 	 */
 	private void facebookRead(String... numbers) {
 		for (String number : numbers) {
 			for (WhatACardSays language : WhatACardSays.values()) {
 				CompetitorCards.Shown shown = cards.shown(number, language).orElseThrow();
-				Page page = WhatFacebookHasRead.pageOf(number, CompetitorPreviewApi.Words.of(language), shown);
+				Row row = WhatFacebookHasRead.rowOf(number, CompetitorPreviewApi.Words.of(language), shown);
 
-				db.sql("insert into shared_card (member_number, language, card, address) values (?, ?, ?, ?)")
-						.params(number, language.code(), page.card(), page.address()).update();
+				db.sql("insert into shared_card (member_number, address, card) values (?, ?, ?)")
+						.params(row.memberNumber(), row.address(), row.card()).update();
 			}
 		}
 	}
 
 	private List<String> rows() {
-		return db.sql("select member_number || ' ' || language || ' ' || coalesce(card, 'null') || ' ' || address"
-				+ " from shared_card"
-				+ " order by member_number, language").query(String.class).list();
+		return db.sql("select member_number || ' ' || coalesce(card, 'null') || ' ' || address from shared_card"
+				+ " order by member_number, address").query(String.class).list();
 	}
 
 	/** Something a case does while the log is listened to, which may throw what a case throws. */
@@ -814,9 +906,13 @@ class FacebookIsAskedToReadAChangedCardTest {
 	}
 
 	private long photo(double x, double y, double size) {
-		return db.sql("insert into photo (media_type, byte_size, digest, crop_x, crop_y, crop_diameter)"
+		long made = db.sql("insert into photo (media_type, byte_size, digest, crop_x, crop_y, crop_diameter)"
 						+ " values ('image/jpeg', 10, ?, ?, ?, ?) returning id")
 				.params("%064x".formatted(++photos), x, y, size)
 				.query(Long.class).single();
+
+		pictures.add(made);
+
+		return made;
 	}
 }

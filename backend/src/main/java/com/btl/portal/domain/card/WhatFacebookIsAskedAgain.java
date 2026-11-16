@@ -2,62 +2,70 @@ package com.btl.portal.domain.card;
 
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
-import java.util.TreeSet;
+import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
- * WHICH PROFILES FACEBOOK IS ASKED TO READ AGAIN, worked out from what Facebook has read of each profile and what the
- * portal shows now, and nothing else.
+ * WHICH ADDRESSES FACEBOOK IS ASKED TO READ AGAIN, worked out from what Facebook was last given at each address its
+ * crawler has read and what that address serves now, and nothing else.
  *
  * <p>Owner, PDL P11, 15.11.2026, item 10, chosen with the assistant's recommendation: „Facebook se osvežava sa
  * servera: posle svake promene koja menja karticu server traži od Facebooka da ponovo pročita profil." The
  * question „did the card change" is answered here by comparing two states and never by being told about an
  * event, so there is no list of the roads that change a card for a road to be missing from: a result approved,
- * a picture withdrawn, a team left, a fee that lapsed at midnight with nobody doing anything, a profile hidden,
- * all of them are a page whose card or address is not what Facebook holds.
+ * a picture withdrawn, a team left, a fee that lapsed at midnight with nobody doing anything, a profile hidden, a
+ * name changed, all of them are an address that no longer serves what Facebook was given there.
  *
- * <p><b>ONLY A PAGE FACEBOOK HAS READ IS EVER ASKED ABOUT.</b> Owner, PDL P11, 16.11.2026, item 14, chosen between
+ * <p><b>ONLY AN ADDRESS FACEBOOK HAS READ IS EVER ASKED ABOUT.</b> Owner, PDL P11, 16.11.2026, item 14, chosen between
  * the two ways offered, with the assistant's recommendation: the server remembers the profiles Facebook's crawler
- * has already opened and asks Facebook to refresh only those; a profile Facebook has never read is not asked about,
- * because Facebook reads it fresh the first time somebody pastes it. So the plan walks the pages of {@code read} and
- * nothing else: a page that is shown and that Facebook has never read is not in it and asks nothing, however much
- * it changes. That is also why there is no first time here: what Facebook has read is written down when it reads it
- * ({@code WhatFacebookHasRead}), never by this plan.
+ * has already opened and asks Facebook to refresh only those. So the plan walks the {@link Row rows} it is handed,
+ * which are the addresses the crawler read, and nothing else: a profile shown at an address Facebook never read asks
+ * nothing, however much it changes, and that includes the new address of a renamed member until the crawler reads
+ * it. What Facebook has read is written down when it reads it ({@code WhatFacebookHasRead}), never by this plan.
  *
- * <p><b>A PAGE IS ONE PROFILE IN ONE LANGUAGE</b> ({@link Key}), because the two languages are two addresses
- * ({@code /sr/takmicar/...} and {@code /en/takmicar/...}) and two pictures, and Facebook keeps each address on
- * its own. What is compared for a page is {@link Page}: the address of its card, which carries a digest of
- * everything the card draws, and the address of the profile, which carries the name. The two are everything
- * the preview of a pasted profile is made of (the title is the name, the picture is the card). A page written
- * down as {@linkplain Page#frontPage the front page's} is one where Facebook holds the front page's preview,
- * because the last it was given there was a profile a visitor is not shown.
+ * <p><b>ONE ROW IS ONE ADDRESS, AND THAT IS THE WHOLE SHAPE.</b> A row is an address the crawler read the profile of
+ * a member at, and the card Facebook was last given there ({@code null} for the front page's preview). Nothing in a
+ * row is ever another address, so nothing that is done to a row can lose an address: the crawler adds a row or gives
+ * one a new card, this plan gives one a new card, and a row goes only with its member. Three readings of PR 744 lost
+ * an address because one record held two (an address the crawler overwrote; an address kept on the side that the
+ * plan took out without asking); there is no second address to lose here.
  *
- * <p><b>WHAT IS ASKED, by the ways a page Facebook has read can stand:</b>
- * <ul>
- * <li>as Facebook holds it: nothing;</li>
- * <li>Facebook holds a card and the profile is no longer shown (hidden, lapsed): the address Facebook holds, once,
- * so that it reads the page a visitor now gets, which is the front page's preview, and stops showing the card;
- * the page is then written down as the front page's, and nothing is asked for as long as it stays so;</li>
- * <li>Facebook holds the front page's preview and the profile is shown again (a fee paid, out of hiding): its
- * address, and the one Facebook holds too when the name has moved it;</li>
- * <li>shown, and not the card Facebook holds: the address it has now, and, when the name changed and the address
- * with it, the old address too, because that is the one people pasted.</li>
- * </ul>
+ * <p><b>WHAT AN ADDRESS SERVES IS A QUESTION OF THE ADDRESS ALONE</b> ({@link #profileAt}), because that is how nginx
+ * answers it: {@code frontend/nginx.conf} matches the language and the member number in the address and ignores the
+ * name after them, so an old address of a renamed member serves his card as it is today, and an address whose number
+ * nobody shows (a hidden profile, a lapsed fee, a number that moved, a deleted member) serves the front page's
+ * preview. {@code WhatFacebookIsAskedAgainTest} holds the pattern here to the one in {@code nginx.conf}. The card's
+ * address carries a digest of everything the preview is made of (the name, which is the title, among it), so two
+ * equal card addresses are two equal previews.
  *
- * <p><b>AT MOST {@code atMost} ADDRESSES A TIME</b>, pages in the order of their member number and then the
- * language. A page that does not fit is not written down, so the next time it is still different and is asked
- * then: a day the whole portal changes (a new drawing of the card changes every digest) is spread over as many
- * times as it takes, in a fixed order, and none is lost. A page is never split, so a renamed one asks its two
- * addresses together or waits.
+ * <p><b>WHAT IS ASKED:</b> every row whose card is not what its address serves now, once a time. The row is written
+ * as Facebook will hold it after reading the address again ({@link Asked#refreshed}: the card it serves, or the front
+ * page's preview) only once Facebook has accepted the request, which is not this plan's to know: owner, PDL P11,
+ * 16.11.2026, item 16, chosen with the assistant's recommendation, when Facebook refuses or does not answer the server
+ * tries again, so an address is marked as refreshed only when Facebook accepts. A row that was not is still different
+ * the next time, and is asked then, within the limit like any other.
+ *
+ * <p><b>AT MOST {@code atMost} ROWS A TIME</b>, in the order of the member number and then the address. A row that
+ * does not fit is not asked and not written, so the next time it is still different and is asked then: a day the whole portal
+ * changes (a new drawing of the card changes every digest) is spread over as many times as it takes, in a fixed
+ * order, and none is lost. A row is one address, so there is nothing to split and nothing that may go past the limit.
  */
 public final class WhatFacebookIsAskedAgain {
 
-	/** One profile in one language. */
+	/**
+	 * THE ADDRESS OF A PROFILE AS NGINX MATCHES IT, the location of {@code frontend/nginx.conf} that writes the
+	 * preview in, without its names for the two groups (Java allows no underscore in a group's name):
+	 * the language, the member number, and anything after a dash, which is the name and which nothing reads.
+	 */
+	public static final String A_PROFILE = "^/(sr|en)/takmicar/([0-9]{6})(?:-[^/]*)?/?$";
+
+	private static final Pattern A_PROFILE_SPELT = Pattern.compile(A_PROFILE);
+
+	/** One profile in one language, which is what a card is drawn for. */
 	public record Key(String memberNumber, String language) {
 
 		public Key {
@@ -67,82 +75,88 @@ public final class WhatFacebookIsAskedAgain {
 	}
 
 	/**
-	 * What a page shows, or what Facebook holds of it: the address of its card and the address of the profile, both
-	 * without the host. The card is {@code null} for {@linkplain #frontPage the front page's preview}.
+	 * One address Facebook's crawler has read the profile of a member at, without the host, and the card Facebook was
+	 * last given there, which is {@code null} for the front page's preview.
 	 */
-	public record Page(String card, String address) {
+	public record Row(String memberNumber, String address, String card) {
 
-		public Page {
+		public Row {
+			Objects.requireNonNull(memberNumber);
 			Objects.requireNonNull(address);
-		}
-
-		/** The front page's preview at this address, which is what Facebook reads at a profile nobody is shown. */
-		public static Page frontPage(String address) {
-			return new Page(null, address);
 		}
 	}
 
 	/**
-	 * What one time comes to: the addresses to ask about, in order and each once, and the pages to write down as
-	 * Facebook will hold them once it has read them again.
+	 * One row to ask about: the row as it stands, and the card its address serves now, which is what Facebook will
+	 * hold there once it has read the address again ({@code null} for the front page's preview).
 	 */
-	public record Plan(List<String> addresses, Map<Key, Page> written) {
+	public record Asked(Row row, String serves) {
 
-		public Plan {
-			addresses = List.copyOf(addresses);
-			written = Map.copyOf(written);
+		public Asked {
+			Objects.requireNonNull(row);
+		}
+
+		/** The row as it is written once Facebook has accepted the request. */
+		public Row refreshed() {
+			return new Row(row.memberNumber(), row.address(), serves);
 		}
 	}
 
-	private static final Comparator<Key> IN_ORDER =
-			Comparator.comparing(Key::memberNumber).thenComparing(Key::language);
+	/** What one time comes to: the rows to ask about, in order. */
+	public record Plan(List<Asked> asked) {
+
+		public Plan {
+			asked = List.copyOf(asked);
+		}
+
+		/** The addresses to send, in order and each once, however many members' rows name one. */
+		public List<String> addresses() {
+			return asked.stream().map(one -> one.row().address()).distinct().toList();
+		}
+	}
+
+	private static final Comparator<Row> IN_ORDER =
+			Comparator.comparing(Row::memberNumber).thenComparing(Row::address);
 
 	private WhatFacebookIsAskedAgain() {
 	}
 
 	/**
-	 * @param read   every page Facebook has read, as it holds it
-	 * @param now    every page a visitor is shown now
-	 * @param atMost how many addresses may be asked about this time, at least one
+	 * The profile an address shows, by the language and the number in it, as nginx reads them; nothing for an address
+	 * nginx does not write a preview into.
 	 */
-	public static Plan plan(Map<Key, Page> read, Map<Key, Page> now, int atMost) {
+	public static Optional<Key> profileAt(String address) {
+		Matcher spelt = A_PROFILE_SPELT.matcher(address);
+
+		return spelt.matches() ? Optional.of(new Key(spelt.group(2), spelt.group(1))) : Optional.empty();
+	}
+
+	/**
+	 * @param read   every row: an address Facebook has read and the card it was last given there
+	 * @param shown  the address of the card of every profile a visitor is shown now
+	 * @param atMost how many rows may be asked about this time, at least one
+	 */
+	public static Plan plan(List<Row> read, Map<Key, String> shown, int atMost) {
 		if (atMost < 1) {
 			throw new IllegalArgumentException("at least one address must be asked at a time, not " + atMost);
 		}
 
-		Set<Key> every = new TreeSet<>(IN_ORDER);
-		every.addAll(read.keySet());
+		List<Asked> asked = new ArrayList<>();
 
-		Set<String> addresses = new LinkedHashSet<>();
-		Map<Key, Page> written = new LinkedHashMap<>();
+		for (Row row : read.stream().sorted(IN_ORDER).toList()) {
+			String serves = profileAt(row.address()).map(shown::get).orElse(null);
 
-		for (Key page : every) {
-			Page before = read.get(page);
-			Page after = now.get(page);
-			Page becomes = after != null ? after : Page.frontPage(before.address());
-
-			if (before.equals(becomes)) {
+			if (Objects.equals(row.card(), serves)) {
 				continue;
 			}
 
-			List<String> these = new ArrayList<>(2);
-
-			if (after != null) {
-				these.add(after.address());
-			}
-
-			if (after == null || !before.address().equals(after.address())) {
-				these.add(before.address());
-			}
-
-			if (addresses.size() + these.size() > atMost) {
+			if (asked.size() == atMost) {
 				break;
 			}
 
-			addresses.addAll(these);
-			written.put(page, becomes);
+			asked.add(new Asked(row, serves));
 		}
 
-		return new Plan(new ArrayList<>(addresses), written);
+		return new Plan(asked);
 	}
 }

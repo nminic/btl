@@ -2,9 +2,10 @@ package com.btl.portal.web;
 
 import com.btl.portal.domain.card.WhatACardSays;
 import com.btl.portal.domain.card.WhatFacebookIsAskedAgain;
+import com.btl.portal.domain.card.WhatFacebookIsAskedAgain.Asked;
 import com.btl.portal.domain.card.WhatFacebookIsAskedAgain.Key;
-import com.btl.portal.domain.card.WhatFacebookIsAskedAgain.Page;
 import com.btl.portal.domain.card.WhatFacebookIsAskedAgain.Plan;
+import com.btl.portal.domain.card.WhatFacebookIsAskedAgain.Row;
 import com.btl.portal.domain.mail.WhatTheMessageSays.Portal;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -12,15 +13,13 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 /**
- * EVERY FIVE MINUTES, FACEBOOK IS ASKED TO READ AGAIN EVERY PROFILE IT HAS READ WHOSE CARD IS NOT THE ONE IT HOLDS.
+ * EVERY FIVE MINUTES, FACEBOOK IS ASKED TO READ AGAIN EVERY ADDRESS IT HAS READ THAT NO LONGER SERVES WHAT IT HOLDS.
  *
  * <p>Owner, PDL P11, 15.11.2026, item 10, chosen with the assistant's recommendation: „Facebook se osvežava sa
  * servera: posle svake promene koja menja karticu server traži od Facebooka da ponovo pročita profil." Facebook
@@ -34,9 +33,8 @@ import java.util.concurrent.TimeUnit;
  * carries. A call from each road is a list, and a list misses the road written tomorrow and cannot see the one that
  * is only time. So nothing here is told what happened. It reads every card as a visitor would be shown it,
  * through the very reading the card and the preview are drawn from ({@link CompetitorCards#everyShown}), and
- * compares it with what Facebook holds of the profiles it has read ({@link WhatFacebookIsAskedAgain}, which says
- * what is asked and why). The address of a card carries a digest of everything the card draws, so a change that leaves the
- * card as it is asks nothing, and one that changes anything on it asks.
+ * compares it with what Facebook was last given at every address it has read ({@link WhatFacebookIsAskedAgain},
+ * which says what is asked and why).
  *
  * <p><b>WHAT IT CANNOT SLOW OR STOP, BY HOW IT RUNS.</b> It runs on its own, on the scheduler, and reads what has
  * been committed: a road that changes a card commits and answers and has nothing to do with Facebook at all, so a
@@ -44,23 +42,24 @@ import java.util.concurrent.TimeUnit;
  * sent without waiting ({@link FacebookGraph#readAgain}), so not even the scheduler's one thread, which the other
  * jobs share (see {@code WhatRunsWithoutBeingAsked}), waits on Facebook.
  *
- * <p><b>ONCE PER PROFILE, HOWEVER MANY TIMES IT CHANGED.</b> Ten changes to one profile between two runs are one
- * difference and one request. A page is written down as asked the moment its request is sent, whatever Facebook
- * answers: a request that failed is logged and not repeated, because one repeated every five minutes against a
- * Facebook that keeps refusing it would be the very flood the limit is for. The limit is {@code btl.facebook.per-pass}
- * addresses a run, ten by default, so at most a hundred and twenty an hour.
+ * <p><b>ONCE PER ADDRESS, HOWEVER MANY TIMES IT CHANGED.</b> Ten changes to one profile between two runs are one
+ * difference and one request per address. <b>AND AGAIN UNTIL FACEBOOK ACCEPTS IT</b> (owner, PDL P11, 16.11.2026, item
+ * 16, chosen with the assistant's recommendation): a row is written down as refreshed only from Facebook's answer,
+ * when that answer is a success ({@link #refreshed}); a request that was refused, not answered in time or not
+ * reached leaves the row as it was, so the next run asks it again. The limit is what keeps a Facebook that keeps
+ * refusing from being flooded: {@code btl.facebook.per-pass} rows a run, ten by default, so at most a hundred and
+ * twenty an hour, retries included; a row is one address, so the limit holds without an exception.
  *
  * <p><b>WITHOUT FACEBOOK IT DOES NOTHING AT ALL</b> ({@link FacebookGraph#isOn}): no reading, no writing, no
  * request. That is QA, a developer's machine and the test suite.
  *
- * <p><b>ONLY WHAT FACEBOOK HAS READ.</b> Owner, PDL P11, 16.11.2026, item 14, chosen with the assistant's
- * recommendation: the server remembers the profiles Facebook's crawler has already opened and asks Facebook to
- * refresh only those. So {@code shared_card} (V103) gets a row when Facebook's crawler reads a shown profile
- * ({@link WhatFacebookHasRead#read}) and never from here: this run only UPDATES the rows it finds, to what Facebook
- * will hold once it has read them again, and a profile Facebook has never read asks nothing, however it changes. A
- * profile that stops being shown keeps its row, written down as the front page's preview, so that it is asked again
- * when it is shown again. A member who is deleted takes his rows with him (the key to {@code competitor} cascades),
- * and the deletion asks Facebook about them first, after its commit ({@link WhatFacebookHasRead#forgetWhenGone}).
+ * <p><b>ONLY WHAT FACEBOOK HAS READ, AND NOTHING OF IT IS EVER TAKEN OUT HERE.</b> Owner, PDL P11, 16.11.2026, item 14,
+ * chosen with the assistant's recommendation: the server remembers the profiles Facebook's crawler has already opened
+ * and asks Facebook to refresh only those. So {@code shared_card} (V103) gets a row when Facebook's crawler reads a
+ * shown profile ({@link WhatFacebookHasRead#read}) and never from here: this run gives a row it asked about the card
+ * Facebook will hold there, by the row's own key, and adds, moves or deletes none. A member who is deleted takes his
+ * rows with him (the key to {@code competitor} cascades), and the deletion asks Facebook about them first, after its
+ * commit ({@link WhatFacebookHasRead#forgetWhenGone}).
  */
 @Component
 class FacebookIsAskedToReadAChangedCard {
@@ -95,70 +94,55 @@ class FacebookIsAskedToReadAChangedCard {
 	}
 
 	/**
-	 * ONE RUN: what is shown compared with what Facebook holds, the pages written down as it will hold them, and the
-	 * requests sent. Returns the requests, which a case waits on and the scheduler does not.
+	 * ONE RUN: what every address serves compared with what Facebook holds there, and the requests sent. Returns the
+	 * requests, each finished once Facebook has answered and, when it accepted, its rows are written down; a case waits
+	 * on them and the scheduler does not.
 	 */
 	List<CompletableFuture<Void>> askAgain() {
 		if (!facebook.isOn()) {
 			return List.of();
 		}
 
-		Map<Key, List<String>> alsoRead = new HashMap<>();
-		Plan plan = WhatFacebookIsAskedAgain.plan(read(alsoRead), shownNow(), atMost);
+		Plan plan = WhatFacebookIsAskedAgain.plan(read(), shownNow(), atMost);
 
-		/* An update and never an insert: a row is Facebook having read the page, which only its crawler writes, and a
-		   member deleted since the reading took his rows, so there is nothing to update and nothing comes back. */
-		plan.written().forEach((page, now) -> db.sql("update shared_card set card = ?, address = ?"
-						+ " where member_number = ? and language = ?")
-				.params(now.card(), now.address(), page.memberNumber(), page.language()).update());
-
-		/* The addresses the crawler read besides the one a row holds are asked about once and taken out, whether or
-		   not the page changed: Facebook read them, and a name may sit at any of them. Only what was seen above is
-		   taken out, so a reading that came in meanwhile stays for the next pass. */
-		Set<String> asking = new LinkedHashSet<>(plan.addresses());
-
-		alsoRead.forEach((page, addresses) -> addresses.forEach(address -> {
-			asking.add(address);
-			db.sql("update shared_card set also_read = array_remove(also_read, ?)"
-					+ " where member_number = ? and language = ?")
-					.params(address, page.memberNumber(), page.language()).update();
-		}));
-
-		return asking.stream().map(address -> facebook.readAgain(portal.address() + address)).toList();
+		return plan.addresses().stream()
+				.map(address -> facebook.readAgain(portal.address() + address).thenAccept(accepted -> {
+					if (accepted) {
+						plan.asked().stream().filter(one -> one.row().address().equals(address))
+								.forEach(this::refreshed);
+					}
+				}))
+				.toList();
 	}
 
-	private Map<Key, Page> shownNow() {
-		Map<Key, Page> now = new HashMap<>();
+	/**
+	 * THE ROW OF AN ADDRESS FACEBOOK HAS ACCEPTED TO READ AGAIN, written as Facebook now holds it, and only then
+	 * (owner, PDL P11, 16.11.2026, item 16): a request refused or not answered leaves the row as it was, so the next
+	 * pass asks it again. By the row's own key, and only while the row still holds the card it held when the request
+	 * went: a reading of the crawler that wrote a newer card in the meantime is what Facebook holds since, and is not
+	 * written over. An update and never an insert: a row is Facebook having read the address, which only its crawler
+	 * writes, and a member deleted in the meantime took his rows, so there is nothing to update.
+	 */
+	private void refreshed(Asked one) {
+		db.sql("update shared_card set card = cast(? as text) where member_number = ? and address = ?"
+						+ " and card is not distinct from cast(? as text)")
+				.params(one.serves(), one.row().memberNumber(), one.row().address(), one.row().card()).update();
+	}
+
+	private Map<Key, String> shownNow() {
+		Map<Key, String> now = new HashMap<>();
 
 		for (WhatACardSays language : WhatACardSays.values()) {
-			CompetitorPreviewApi.Words words = CompetitorPreviewApi.Words.of(language);
-
 			for (CompetitorCards.Shown shown : cards.everyShown(language)) {
-				String number = shown.face().chip();
-
-				now.put(new Key(number, language.code()), WhatFacebookHasRead.pageOf(number, words, shown));
+				now.put(new Key(shown.face().chip(), language.code()), shown.address());
 			}
 		}
 
 		return now;
 	}
 
-	private Map<Key, Page> read(Map<Key, List<String>> alsoRead) {
-		Map<Key, Page> read = new HashMap<>();
-
-		db.sql("select member_number, language, card, address, also_read from shared_card")
-				.query(row -> {
-					Key key = new Key(row.getString(1), row.getString(2));
-
-					read.put(key, new Page(row.getString(3), row.getString(4)));
-
-					List<String> others = List.of((String[]) row.getArray(5).getArray());
-
-					if (!others.isEmpty()) {
-						alsoRead.put(key, others);
-					}
-				});
-
-		return read;
+	private List<Row> read() {
+		return db.sql("select member_number, address, card from shared_card")
+				.query((row, at) -> new Row(row.getString(1), row.getString(2), row.getString(3))).list();
 	}
 }

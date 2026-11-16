@@ -1,7 +1,6 @@
 package com.btl.portal.web;
 
-import com.btl.portal.domain.card.WhatFacebookIsAskedAgain.Key;
-import com.btl.portal.domain.card.WhatFacebookIsAskedAgain.Page;
+import com.btl.portal.domain.card.WhatFacebookIsAskedAgain.Row;
 import com.btl.portal.domain.mail.WhatTheMessageSays.Portal;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,9 +42,19 @@ import java.util.Locale;
  * crawlers (for search, advertising and training) keep no preview, so they are not what this is about. So a reader
  * whose {@code User-Agent} carries that word, in any case, is Facebook ({@link #isFacebook}).
  *
- * <p><b>WHAT IS WRITTEN DOWN IS WHAT THE JOB NEEDS AND NOTHING MORE</b>: the page's two addresses, of the profile and
- * of the card Facebook was given ({@code shared_card}, V103). The card is what tells the job that Facebook holds
- * something that has since changed; no moment is kept, because nothing reads one.
+ * <p><b>WHAT IS WRITTEN DOWN IS WHAT THE JOB NEEDS AND NOTHING MORE</b>: one row per address the crawler read the
+ * profile at, with the address of the card it was given there ({@code shared_card}, V103). The card is what tells
+ * the job that Facebook holds something that has since changed; no moment is kept, because nothing reads one.
+ *
+ * <p><b>A READING TOUCHES ITS OWN ROW AND NO OTHER</b>: it adds the row of the address it read, or gives that row the
+ * card it was given now. It never writes another address, takes one out or overwrites one, so no reading can lose an
+ * address Facebook read before.
+ *
+ * <p><b>THE ADDRESS WRITTEN DOWN IS THE ONE THE PREVIEW NAMES AS THE PROFILE'S</b> ({@code og:url}), because the
+ * subrequest carries the number and the language and not the name the reader came by: a profile opened at an old
+ * spelling of its name, or at the number alone, is written at the address it is known by today. That rests on
+ * Facebook keeping a page under its {@code og:url}, which cannot be measured without the real Facebook, and is a
+ * limit of this and not a measured fact.
  *
  * <p><b>WRITING IT DOWN CANNOT COST THE PAGE.</b> It happens only for Facebook's crawler, never for a person; in a
  * transaction of its own with a term of {@value #AT_MOST}, so a write held up behind a lock gives up long before the
@@ -83,19 +92,19 @@ class WhatFacebookHasRead {
 	}
 
 	/**
-	 * THE PAGE AS A VISITOR IS SHOWN IT, which is what the preview gives a reader and what the job compares with: the
-	 * address of the card and of the profile. One home, so that what is written down and what is compared with it
-	 * cannot be two spellings of one page.
+	 * THE ROW A READING OF A SHOWN PROFILE IS WRITTEN AS: the address the preview names as the profile's, and the
+	 * address of the card the preview carries. One home, so that what is written down and what is served cannot be two
+	 * spellings of one page.
 	 */
-	static Page pageOf(String number, CompetitorPreviewApi.Words words, CompetitorCards.Shown shown) {
-		return new Page(shown.address(), CompetitorPreviewApi.profilePath(number, shown.face().name(), words));
+	static Row rowOf(String number, CompetitorPreviewApi.Words words, CompetitorCards.Shown shown) {
+		return new Row(number, CompetitorPreviewApi.profilePath(number, shown.face().name(), words), shown.address());
 	}
 
 	/**
-	 * Writes the page down as Facebook has just been given it, when the reader is Facebook and Facebook is on at
+	 * Writes the row down as Facebook has just been given it, when the reader is Facebook and Facebook is on at
 	 * all; otherwise nothing.
 	 */
-	void read(String reader, Key key, Page page) {
+	void read(String reader, Row row) {
 		if (!facebook.isOn() || !isFacebook(reader)) {
 			return;
 		}
@@ -103,17 +112,11 @@ class WhatFacebookHasRead {
 		try {
 			inOneTransaction.executeWithoutResult(writing -> {
 				db.sql("set local statement_timeout = '" + AT_MOST + "'").update();
-				/* THE ADDRESS A ROW HOLDS IS NEVER OVERWRITTEN BY A READING: a reading at another address (the member was
-				   renamed since) is appended to also_read and the row keeps the address and the card Facebook was first
-				   given, so that neither the one people pasted nor the one just read is lost; the job takes it from there. */
-				db.sql("insert into shared_card (member_number, language, card, address) values (?, ?, ?, ?)"
-								+ " on conflict (member_number, language) do update set"
-								+ " card = case when shared_card.address = excluded.address then excluded.card"
-								+ " else shared_card.card end,"
-								+ " also_read = case when shared_card.address = excluded.address"
-								+ " or excluded.address = any(shared_card.also_read) then shared_card.also_read"
-								+ " else array_append(shared_card.also_read, excluded.address) end")
-						.params(key.memberNumber(), key.language(), page.card(), page.address()).update();
+				/* ITS OWN ROW AND NO OTHER: the key is the member and the address, so a reading at another address is
+				   another row, and every row the crawler wrote before stays as it was. */
+				db.sql("insert into shared_card (member_number, address, card) values (?, ?, ?)"
+								+ " on conflict (member_number, address) do update set card = excluded.card")
+						.params(row.memberNumber(), row.address(), row.card()).update();
 			});
 		} catch (RuntimeException failed) {
 			/* Neither the number nor the address, which carries the name: what went wrong, and that it went no further. */
@@ -122,13 +125,19 @@ class WhatFacebookHasRead {
 	}
 
 	/**
-	 * THE DELETION OF A MEMBER, called in its transaction BEFORE he is deleted, because his rows go with him: the
-	 * addresses at which Facebook holds his card are read now and handed to Facebook AFTER THE COMMIT, without waiting
-	 * for it, so that a deletion that rolls back asks nothing and a Facebook that is slow or refusing cannot hold up or
-	 * fail a deletion that has already happened. An address where Facebook holds the front page's preview already is
-	 * not asked again, and a profile Facebook never read has no address here at all. Nothing of it is written
-	 * anywhere: the addresses live in this transaction's memory until the requests are sent, and the log does not
-	 * name them ({@link FacebookGraph#readAgainUnnamed}).
+	 * THE DELETION OF A MEMBER, called in its transaction BEFORE he is deleted, because his rows go with him: every
+	 * address of his at which Facebook holds a card is read now, one a row however many there are, and handed to
+	 * Facebook AFTER THE COMMIT, without waiting for it, so that a deletion that rolls back asks nothing and a Facebook
+	 * that is slow or refusing cannot hold up or fail a deletion that has already happened. An address where Facebook
+	 * holds the front page's preview already is not asked again, and a profile Facebook never read has no row at all.
+	 * Nothing of it is written anywhere: the addresses live in this transaction's memory until the requests are sent,
+	 * and the log does not name them ({@link FacebookGraph#readAgainUnnamed}).
+	 *
+	 * <p><b>A LIMIT, WRITTEN DOWN AS ONE: A DELETION ASKS ONCE AND IS NOT TRIED AGAIN.</b> The job tries again until
+	 * Facebook accepts (owner, PDL P11, 16.11.2026, item 16), because the row that says what to ask stays until then.
+	 * Here the rows go with the member in the very commit after which the requests are sent, so a request Facebook
+	 * refuses or does not answer is logged and nothing is left to ask it again by: keeping the addresses to try again
+	 * would be keeping the name after the deletion, which item 14 rules out.
 	 *
 	 * @param member the {@code competitor.id} of the member about to be deleted
 	 */
@@ -137,12 +146,9 @@ class WhatFacebookHasRead {
 			return;
 		}
 
-		/* The address a row holds, where Facebook holds a card, and every other address the crawler read it at: it
-		   read those with a card, because it reads only a profile that is shown. */
-		List<String> addresses = db.sql("select a.address from shared_card s join competitor c"
-						+ " on c.member_number = s.member_number cross join lateral ("
-						+ " select s.address as address where s.card is not null"
-						+ " union all select unnest(s.also_read)) a where c.id = ? order by a.address")
+		List<String> addresses = db.sql("select s.address from shared_card s join competitor c"
+						+ " on c.member_number = s.member_number where c.id = ? and s.card is not null"
+						+ " order by s.address")
 				.param(member).query(String.class).list();
 
 		TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {

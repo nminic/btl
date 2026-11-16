@@ -41,7 +41,9 @@ import java.util.concurrent.CompletableFuture;
  * item 14), when the member or the administrator has nothing left to wait for and nothing left to fail; the request
  * is sent without waiting for it ({@link HttpClient#sendAsync}), it has a term ({@code btl.facebook.wait-millis}), and what goes wrong,
  * an answer that is not a success, a term run out or a connection refused, is logged and goes no further. The
- * future it returns never fails, so nothing that waits on it can be thrown at.
+ * future it returns never fails, so nothing that waits on it can be thrown at; it says whether Facebook ACCEPTED
+ * the request, which is what the job writes an address down as refreshed by (owner, PDL P11, 16.11.2026, item 16:
+ * an address is marked as refreshed only when Facebook accepts the request, so the next pass asks it again).
  */
 @Component
 class FacebookGraph {
@@ -90,11 +92,13 @@ class FacebookGraph {
 
 	/**
 	 * ASKS FACEBOOK TO READ THIS ADDRESS AGAIN, without waiting for the answer. Off, it sends nothing. The future
-	 * completes when Facebook has answered or the term has run out, and it never completes with a failure.
+	 * completes when Facebook has answered or the term has run out, and it never completes with a failure: it is
+	 * {@code true} when Facebook answered with a success, and {@code false} when it refused, was not reached, ran out
+	 * of time, or nothing was sent.
 	 *
 	 * @param address the whole address of a page of the portal, host included
 	 */
-	CompletableFuture<Void> readAgain(String address) {
+	CompletableFuture<Boolean> readAgain(String address) {
 		return asked(address, address, true);
 	}
 
@@ -106,13 +110,13 @@ class FacebookGraph {
 	 *
 	 * @param address the whole address of a page of the portal, host included
 	 */
-	CompletableFuture<Void> readAgainUnnamed(String address) {
+	CompletableFuture<Boolean> readAgainUnnamed(String address) {
 		return asked(address, A_DELETED_MEMBERS_PAGE, false);
 	}
 
-	private CompletableFuture<Void> asked(String address, String named, boolean answerLogged) {
+	private CompletableFuture<Boolean> asked(String address, String named, boolean answerLogged) {
 		if (!isOn()) {
-			return CompletableFuture.completedFuture(null);
+			return CompletableFuture.completedFuture(false);
 		}
 
 		HttpRequest request = HttpRequest.newBuilder(graph)
@@ -126,14 +130,17 @@ class FacebookGraph {
 				.handle((answer, failed) -> {
 					if (failed != null) {
 						LOG.warn("Facebook was not reached to read {} again: {}", named, scrubbed(failed.toString()));
-					} else if (answer.statusCode() / 100 != 2) {
-						LOG.warn("Facebook did not read {} again: {} {}", named, answer.statusCode(),
-								answerLogged ? scrubbed(answer.body()) : "");
-					} else {
-						LOG.info("Facebook read {} again", named);
+						return false;
 					}
 
-					return null;
+					if (answer.statusCode() / 100 != 2) {
+						LOG.warn("Facebook did not read {} again: {} {}", named, answer.statusCode(),
+								answerLogged ? scrubbed(answer.body()) : "");
+						return false;
+					}
+
+					LOG.info("Facebook read {} again", named);
+					return true;
 				});
 	}
 

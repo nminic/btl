@@ -2,7 +2,6 @@ package com.btl.portal.web;
 
 import com.btl.portal.domain.card.CompetitorCard;
 import com.btl.portal.domain.card.WhatACardSays;
-import com.btl.portal.domain.card.WhatFacebookIsAskedAgain.Key;
 import com.btl.portal.domain.event.EventAddress;
 import com.btl.portal.domain.mail.WhatTheMessageSays.Portal;
 import jakarta.servlet.http.HttpServletResponse;
@@ -172,7 +171,7 @@ class CompetitorPreviewApi {
 		Words words = Words.of(WhatACardSays.of(spelt.group(2)).orElseThrow());
 
 		return cards.shown(number, words.card).map(shown -> {
-			facebookHasRead.read(reader, new Key(number, words.code()), WhatFacebookHasRead.pageOf(number, words, shown));
+			facebookHasRead.read(reader, WhatFacebookHasRead.rowOf(number, words, shown));
 
 			return block(number, words, shown);
 		});
