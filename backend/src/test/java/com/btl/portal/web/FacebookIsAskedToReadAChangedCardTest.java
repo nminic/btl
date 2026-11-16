@@ -44,6 +44,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -153,6 +154,8 @@ class FacebookIsAskedToReadAChangedCardTest {
 		private final ExecutorService answering = Executors.newCachedThreadPool();
 		private final List<Asked> asked = new CopyOnWriteArrayList<>();
 		private volatile int status = 200;
+		/** What Facebook answers to a request about one address (the whole address, host included), instead of {@link #status}. */
+		private final Map<String, Integer> statusAt = new ConcurrentHashMap<>();
 		private volatile String body = "{\"id\":\"x\",\"title\":\"t\"}";
 		private volatile long waitMillis;
 
@@ -160,12 +163,17 @@ class FacebookIsAskedToReadAChangedCardTest {
 			server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
 			server.setExecutor(answering);
 			server.createContext("/", exchange -> {
+				int answeredWith;
+
 				try (InputStream in = exchange.getRequestBody()) {
 					String sent = new String(in.readAllBytes(), StandardCharsets.UTF_8);
 
-					asked.add(new Asked(exchange.getRequestMethod(), exchange.getRequestURI().getPath(),
+					Asked one = new Asked(exchange.getRequestMethod(), exchange.getRequestURI().getPath(),
 							exchange.getRequestURI().getRawQuery(),
-							exchange.getRequestHeaders().getFirst("Content-Type"), formOf(sent)));
+							exchange.getRequestHeaders().getFirst("Content-Type"), formOf(sent));
+
+					asked.add(one);
+					answeredWith = statusAt.getOrDefault(one.form().get("id"), status);
 				}
 
 				if (waitMillis > 0) {
@@ -177,7 +185,7 @@ class FacebookIsAskedToReadAChangedCardTest {
 				}
 
 				byte[] answer = body.getBytes(StandardCharsets.UTF_8);
-				exchange.sendResponseHeaders(status, answer.length);
+				exchange.sendResponseHeaders(answeredWith, answer.length);
 
 				try (OutputStream out = exchange.getResponseBody()) {
 					out.write(answer);
@@ -614,6 +622,65 @@ class FacebookIsAskedToReadAChangedCardTest {
 	}
 
 	/**
+	 * THE ANSWER FOR ONE ADDRESS MARKS THAT ADDRESS AND NO OTHER (owner, PDL P11, 16.11.2026, item 16: "adresa se
+	 * oznacava kao osvezena tek kad Facebook prihvati zahtev, pa je sledeci prolaz pita ponovo"). Four addresses are
+	 * asked in one run, two members' pages in both languages, and Facebook accepts two of them and refuses the other
+	 * two, so that the fate of an address is told by the answer for it and by neither of its neighbours: its own
+	 * language's twin and the other member's page are each answered the other way. The accepted are written as
+	 * Facebook holds them, the refused are not, and the next run asks exactly the refused. Then the answers are
+	 * turned round, so no ordering of the addresses can make a job that marks the first, the last or all of them
+	 * right.
+	 */
+	@Test
+	void theAnswerForOneAddressMarksThatAddressAndNoOther() throws Exception {
+		facebookRead(STILL, MOVES);
+		db.sql("update competitor set birth_date = date '1960-05-05' where member_number in (?, ?)")
+				.params(STILL, MOVES).update();
+
+		String stillEn = "/en/takmicar/" + STILL + "-ana-prva";
+		String stillSr = "/sr/takmicar/" + STILL + "-ana-prva";
+		String movesEn = "/en/takmicar/" + MOVES + "-nikola-minic";
+		String movesSr = "/sr/takmicar/" + MOVES + "-nikola-minic";
+		Map<String, String> held = cardsAt();
+
+		assertThat(held).as("the case reads four addresses").hasSize(4);
+
+		for (String address : List.of(stillSr, movesEn)) {
+			facebook.statusAt.put(portal + address, 400);
+		}
+
+		assertThat(run()).as("the first run asks all four").containsExactly(portal + stillEn, portal + movesEn,
+				portal + stillSr, portal + movesSr);
+
+		Map<String, String> afterTheFirst = cardsAt();
+
+		assertThat(afterTheFirst.get(stillEn)).as("an accepted address was not written down").isNotEqualTo(held.get(stillEn));
+		assertThat(afterTheFirst.get(movesSr)).as("an accepted address was not written down").isNotEqualTo(held.get(movesSr));
+		assertThat(afterTheFirst.get(stillSr)).as("a refused address was written down as refreshed")
+				.isEqualTo(held.get(stillSr));
+		assertThat(afterTheFirst.get(movesEn)).as("a refused address was written down as refreshed")
+				.isEqualTo(held.get(movesEn));
+		assertThat(run()).as("the next run asks the refused two and only them").containsExactly(portal + movesEn,
+				portal + stillSr);
+		assertThat(cardsAt()).as("a refusal changed a row").isEqualTo(afterTheFirst);
+
+		facebook.statusAt.clear();
+		facebook.statusAt.put(portal + movesEn, 200);
+		facebook.statusAt.put(portal + stillSr, 500);
+
+		assertThat(run()).containsExactly(portal + movesEn, portal + stillSr);
+		assertThat(cardsAt().get(movesEn)).as("the address Facebook now accepted").isNotEqualTo(held.get(movesEn));
+		assertThat(cardsAt().get(stillSr)).as("the address Facebook still refused").isEqualTo(held.get(stillSr));
+		assertThat(run()).as("only the one still refused is asked").containsExactly(portal + stillSr);
+
+		facebook.statusAt.clear();
+
+		assertThat(run()).containsExactly(portal + stillSr);
+		assertThat(cardsAt().get(stillSr)).isNotEqualTo(held.get(stillSr));
+		assertThat(run()).isEmpty();
+	}
+
+	/**
 	 * THE ROW IS WRITTEN FROM FACEBOOK'S ANSWER AND NOT OVER A NEWER ONE. While Facebook takes its time, the crawler
 	 * reads the Serbian page anew after the card changed once more, and writes the card it was given; Facebook's
 	 * acceptance of the request sent before does not write the older card over it. The English row, which nobody
@@ -655,6 +722,7 @@ class FacebookIsAskedToReadAChangedCardTest {
 		FacebookIsAskedToReadAChangedCard impatient = jobAsking(facebook.address(), 10, 200);
 
 		facebookRead(STILL, MOVES);
+		List<String> before = rows();
 		db.sql("update competitor set birth_date = date '1960-05-05' where member_number = ?").param(MOVES).update();
 
 		List<CompletableFuture<Void>> sent = new ArrayList<>();
@@ -673,6 +741,14 @@ class FacebookIsAskedToReadAChangedCardTest {
 		assertThat(heard).hasSize(2).allSatisfy(one -> assertThat(one.getFormattedMessage())
 				.startsWith("Facebook was not reached to read " + portal + "/").contains("HttpTimeoutException")
 				.doesNotContain(APP_SECRET));
+		assertThat(rows()).as("an address Facebook did not answer in time was written down as refreshed")
+				.isEqualTo(before);
+
+		facebook.waitMillis = 0;
+
+		assertThat(run()).as("the next run did not ask the addresses Facebook did not answer again").containsExactly(
+				portal + "/en/takmicar/" + MOVES + "-nikola-minic", portal + "/sr/takmicar/" + MOVES + "-nikola-minic");
+		assertThat(rows()).as("the answer that came in time did not write the rows").isNotEqualTo(before);
 	}
 
 	/**
@@ -714,6 +790,7 @@ class FacebookIsAskedToReadAChangedCardTest {
 		FacebookIsAskedToReadAChangedCard nowhere = jobAsking("http://127.0.0.1:" + nobody, 10, 2000);
 
 		facebookRead(STILL, MOVES);
+		List<String> before = rows();
 		rename(MOVES, "Petar");
 
 		List<CompletableFuture<Void>> sent = new ArrayList<>();
@@ -726,6 +803,11 @@ class FacebookIsAskedToReadAChangedCardTest {
 		assertThat(facebook.asked).as("a request reached a Facebook it was not sent to").isEmpty();
 		assertThat(heard).hasSize(2).allSatisfy(one -> assertThat(one.getFormattedMessage())
 				.startsWith("Facebook was not reached to read ").contains("ConnectException"));
+		assertThat(rows()).as("an address Facebook was not reached for was written down as refreshed")
+				.isEqualTo(before);
+		assertThat(run()).as("the next run did not ask the addresses that were not reached again").containsExactly(
+				portal + "/en/takmicar/" + MOVES + "-nikola-minic", portal + "/sr/takmicar/" + MOVES + "-nikola-minic");
+		assertThat(rows()).as("the answer that came did not write the rows").isNotEqualTo(before);
 	}
 
 	/** An answer that is a success is logged once a page, at the level that is not a warning. */
@@ -838,6 +920,16 @@ class FacebookIsAskedToReadAChangedCardTest {
 						.params(row.memberNumber(), row.address(), row.card()).update();
 			}
 		}
+	}
+
+	/** The card Facebook is written down as holding at every address, by address. */
+	private Map<String, String> cardsAt() {
+		Map<String, String> held = new LinkedHashMap<>();
+
+		db.sql("select address, card from shared_card order by address")
+				.query((row, at) -> held.put(row.getString(1), row.getString(2))).list();
+
+		return held;
 	}
 
 	private List<String> rows() {
