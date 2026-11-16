@@ -78,13 +78,18 @@ const ANSWERS: Answers = {
 }
 
 /**
- * Two pixels, which is what „agree" means for the words of a row. Not one, as on the row of a result
- * (`resultsRow.geometry.ts`), and the number is measured: the pairs board draws a second line of smaller
- * words (`.boards__under`) under the figure, and the box the browser reports for a range of two lines of
- * two sizes is not the middle of the lines, so a row that is exactly centred reads 1,4px apart there
- * (measured 16.11.2026, at all three widths). Before the repair the same rows read 5 to 8px apart.
+ * One pixel, which is what „agree" means in the owner's report: the centres of the cells of a row.
+ *
+ * It was two for one commit, and the reason it is not is measured. The centre of a cell was read off the box
+ * of a range over its words, which is the box of the glyphs and not of the lines, so a cell of two lines of
+ * two sizes (the pairs board draws a second line of smaller words, `.boards__under`) reads off the middle of
+ * its lines by a fraction that depends on the font: 1,40px on the machine this was written on and 2,40px on
+ * the CI runner (the log of the run of PR 749 after the branch was updated from main, which brought nothing
+ * of the frontend: two deleted backend files). A tolerance that grows with the font of the machine is a
+ * tolerance for everything, so the centre is now read off the lines themselves (below) and the tolerance is
+ * the pixel that a box of a fraction of a pixel needs.
  */
-const AGREE = 2
+const AGREE = 1
 
 const WIDTHS: At[] = [360, 768, 1280].flatMap((width): At[] => [
   { width, text: 100, theme: 'light' },
@@ -116,15 +121,18 @@ for (const at of WIDTHS) {
               continue
             }
 
-            /* The words of the cell as the browser set them, the lines they stand on and not the box of
-               the cell they stand in; in the cell of the name that includes the circle beside them. */
-            const range = document.createRange()
+            /* The lines of the cell and not the glyphs on them: its content is put in one block of its own, whose
+               box is exactly the lines the browser set (a block in a cell changes no line, and the cell stays
+               where `vertical-align` puts its content), and the middle of that box is the middle of the cell's
+               content whatever sizes the lines are set in. In the cell of the name that includes the circle. */
+            const block = document.createElement('div')
 
-            range.selectNodeContents(cell)
+            block.append(...cell.childNodes)
+            cell.append(block)
 
-            const { top, height } = range.getBoundingClientRect()
+            const { top, height } = block.getBoundingClientRect()
 
-            centres.push({ what: (cell.textContent ?? '').trim(), centre: top + height / 2 })
+            centres.push({ what: (block.textContent ?? '').trim(), centre: top + height / 2 })
           }
 
           return centres
