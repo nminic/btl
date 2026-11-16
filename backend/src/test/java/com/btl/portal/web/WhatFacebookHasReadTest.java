@@ -67,8 +67,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * <p><b>REAL COMMITS AND NOT A TRANSACTION THAT ROLLS BACK</b>, because what a deletion owes Facebook is sent after
  * its commit, and a case inside a transaction of its own never commits. So every row a case makes is deleted after
  * it. Facebook is a server of this case's own on this machine, which records each request and, at the moment it is
- * asked, whether the member it is asked about is still in the database as another connection reads it: a request
- * sent before the commit finds him there.
+ * asked, whether the member it is asked about is still in the database as another connection reads it. That second
+ * half is a signal and not the proof: a request sent before the commit is sent without waiting, and measured on
+ * 16.11.2026 it reached this server after the commit all the same. What holds the order is
+ * {@link #aDeletionThatRollsBackAsksNothing}: asked before the commit, a deletion that rolls back has asked.
  *
  * <p><b>No member is the only one of his kind</b> (the rule in {@code CLAUDE.md} about two sources of one value):
  * beside the member who is read and deleted stand a member Facebook has read who stays, and a member Facebook has
