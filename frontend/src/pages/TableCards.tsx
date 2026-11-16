@@ -1,4 +1,4 @@
-import { Link, useSearchParams } from 'react-router'
+import { Link, useLocation } from 'react-router'
 import { TABLE_ADDRESS, TEAMS_ADDRESS } from '../app/routes'
 import { useToday } from '../clock/useClock'
 import { nextSeasonOnOffer, seasonShown } from '../data/season'
@@ -47,8 +47,9 @@ function readOnTheTables(season: number, today: string): boolean {
 export function TableCards({ current }: { current: TableCard }) {
   const { locale, t } = useI18n()
   const today = useToday()
-  const [params] = useSearchParams()
-  const asked = params.get('sezona')
+  /* Read off the location and not through `useSearchParams`: these cards write nothing into the address,
+     and a hook that can write a filter goes through `app/useFilterParams.ts` (`app/filterParams.test.ts`). */
+  const asked = new URLSearchParams(useLocation().search).get('sezona')
   const toTeams = asked
   const toTables = asked !== null && (current !== 'teams' || readOnTheTables(Number(asked), today)) ? asked : null
   const address = (path: string, season: string | null, gender?: string) => {

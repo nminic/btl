@@ -131,7 +131,7 @@ for (const at of WIDTHS) {
       ['women', /^F Rookies$/, 'Women'],
     ] as const) {
       if (gender === 'women') {
-        await page.getByRole('button', { name: tab, exact: true }).click()
+        await page.getByRole('link', { name: tab, exact: true }).click()
         await page.waitForFunction(
           () => [...document.querySelectorAll('.table__category')].some((one) => /^F Rookies$/.test(one.textContent ?? '')),
           undefined,
