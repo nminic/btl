@@ -128,8 +128,9 @@
    table is read across, and top keeps every column on one shared line while nothing in a row is taller
    than a line of text. A row here is the one place that stops being true, because the circle beside the
    name is about 35px and the row is as tall as it, so the place and the figures stood a few pixels above
-   the middle and the name of the race, one line of 0.85rem, stood highest of all (measured at 1280px:
-   the centres of the cells of one row 7,6px apart, the race at the top of its cell).
+   the middle and the name of the race, one line of 0.85rem, stood highest of all (measured in Chrome
+   on the built portal at 1280px: the race 5,1px above the name in a row of the best races, and 7,6px
+   between the cells of a row of the kilometres board, at every width).
 
    Written against this table by name and on the body only: the head is a line of words per column and
    stays where the shared rule puts it. The precedents are `.rankings__table tbody td` (`Rankings.css`,
