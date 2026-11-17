@@ -142,7 +142,12 @@ describe('navigation', () => {
       const { router } = renderAt('/sr/top-liste')
       const menu = within(await screen.findByRole('navigation', { name: 'Glavna navigacija' }))
 
-      await user.click(menu.getByRole('link', { name: 'BTL tabele' }))
+      const entry = menu.getByRole('link', { name: 'BTL tabele' })
+
+      /* Asked of the link before it is pressed, so a link to another address fails on this line and not
+         on a wait for a table that never comes (`btl/CLAUDE.md`, odeljak 25). */
+      expect(entry).toHaveAttribute('href', '/sr/timovi')
+      await user.click(entry)
       expect(await screen.findByRole('table', { name: 'Timovi' })).toBeVisible()
       expect(router.state.location.pathname).toBe('/sr/timovi')
     } finally {
