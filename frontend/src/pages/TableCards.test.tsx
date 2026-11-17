@@ -4,6 +4,8 @@ import { join } from 'node:path'
 import { MemoryRouter } from 'react-router'
 import { afterEach, describe, expect, it } from 'vitest'
 import { ClockContext } from '../clock/context'
+import en from '../i18n/en.json'
+import sr from '../i18n/sr.json'
 import { I18nProvider } from '../i18n/I18nProvider'
 import { PHONE_HEADER } from '../app/phoneHeader'
 import { must } from '../test/at'
@@ -161,14 +163,18 @@ function head(current: TableCard, offered: boolean, locale: 'sr' | 'en' = 'sr') 
   }
 }
 
+/* The words of the button as a reader is told them and as text is found: with the white space collapsed.
+   jsdom's naming keeps the line break the dictionary carries, a browser does not (measured in Chrome on a
+   telephone and a desktop, `geometry/tableCards.geometry.ts`), so the name is asked as a pattern here. */
 const WORDS = { sr: 'Prijavi tim', en: 'Register a team' } as const
+const NAMED = { sr: /^Prijavi\s+tim$/, en: /^Register\s+a team$/ } as const
 
 describe('the row of the heading of the tables', () => {
   /* Owner, 17.11.2026, answer 1: „Samo na timovima i treba da se zove dugme zapravo Prijavi tim". First
      in the row, right before Timovi, and the season after the cards. */
   it.each(['sr', 'en'] as const)('offers the button on the teams, first, as a link to the form (%s)', (locale) => {
     const { cards, season } = head('teams', true, locale)
-    const button = screen.getByRole('link', { name: WORDS[locale] })
+    const button = screen.getByRole('link', { name: NAMED[locale] })
 
     expect(button).toHaveAttribute('href', `/${locale}/novi-tim`)
     expect(button.nextElementSibling).toBe(cards)
@@ -190,7 +196,7 @@ describe('the row of the heading of the tables', () => {
   ] as const)('holds the place of the button on the card %s with its words in its box, out of reach (%s)', (current, locale) => {
     head('teams', true, locale)
 
-    const button = screen.getByRole('link', { name: WORDS[locale] })
+    const button = screen.getByRole('link', { name: NAMED[locale] })
     const words = button.textContent
     const box = button.className
 
@@ -199,7 +205,7 @@ describe('the row of the heading of the tables', () => {
     const { cards } = head(current, true, locale)
     const held = screen.getByText(WORDS[locale])
 
-    expect(screen.queryByRole('link', { name: WORDS[locale] })).toBeNull()
+    expect(screen.queryByRole('link', { name: NAMED[locale] })).toBeNull()
     expect(held.textContent).toBe(words)
     expect(held.className).toBe(`${box} rankings__held`)
     expect(held.nextElementSibling).toBe(cards)
@@ -209,6 +215,28 @@ describe('the row of the heading of the tables', () => {
     expect(held).not.toHaveAttribute('tabindex')
     held.focus()
     expect(document.activeElement).not.toBe(held)
+  })
+
+  /* THE BREAK IS THE OWNER'S AND IT IS WRITTEN IN THE DICTIONARY (17.11.2026): „Prijavi” over „tim”, and
+     „Register prvi red u dugmetu na mobilnom, a team drugi”. One break each, and only there. */
+  it('carries the line break of a telephone where the owner put it, in both dictionaries', () => {
+    expect([sr.teams.registerTeam, en.teams.registerTeam]).toEqual(['Prijavi\ntim', 'Register\na team'])
+  })
+
+  /* And only the shape of a telephone keeps it: everywhere else the break collapses into the space it
+     stands for. Asked of the stylesheet because jsdom draws no lines; that the lines are drawn is the
+     geometry's (`geometry/tableCards.geometry.ts`). */
+  it('keeps the break only in the shape of a telephone', () => {
+    const css = readFileSync(join(process.cwd(), 'src/pages/Rankings.css'), 'utf8')
+    /* Every rule of the sheet that keeps a line break of the text, whatever it names: a second one, on a
+       box the button stands in or on the button itself, would draw the two lines on a wide screen too. */
+    const keeping = unconditionalRules(css, 'Rankings.css').filter((rule) =>
+      ['pre', 'pre-line', 'pre-wrap', 'break-spaces'].includes(rule.style.whiteSpace),
+    )
+
+    expect(keeping.map((rule) => [rule.selectorText, rule.style.whiteSpace])).toEqual([
+      ['.rankings__cards--phone > .button', 'pre-line'],
+    ])
   })
 
   it('hides the place by visibility and nothing else, so it keeps the width of the box', () => {
@@ -238,7 +266,7 @@ describe('the row of the heading of the tables', () => {
 
     const { cards, season } = head('teams', true)
     const row = must(cards.parentElement, 'the row of the cards')
-    const button = screen.getByRole('link', { name: WORDS.sr })
+    const button = screen.getByRole('link', { name: NAMED.sr })
 
     expect(row.contains(button)).toBe(true)
     expect(row.contains(season)).toBe(false)

@@ -108,6 +108,11 @@ export function TableCards({ current }: { current: TableCard }) {
  * not in the reader's tree. `aria-hidden` and `inert` say the same to whoever does not read the sheet.
  * A `span` and not a link, so it has no address to follow and nothing in it to focus.
  *
+ * **On a telephone the words are drawn in two lines, smaller** (owner, 17.11.2026: „Moze li Prijavi tim
+ * da bude u dva reda sitnijim fontom unutar dugmeta, pa da stane u jedan red?”), at the line break the
+ * dictionary carries („Prijavi” / „tim”, „Register” / „a team”), which only that shape keeps
+ * (`Rankings.css`); the place takes the same two lines because it is the same words in the same box.
+ *
  * **Only for the reader the teams offer the button** (`offered`, which is `whatTheTeamsOffer`): to
  * anybody else the teams offer no button, so there is nothing for the place to hold, and the cards stand
  * on the same pixel without it.

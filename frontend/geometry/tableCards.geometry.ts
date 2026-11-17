@@ -133,6 +133,14 @@ const READERS: [name: string, answers: Answers][] = [
 const WIDTHS: At[] = [
   { width: 360, text: 100 },
   { width: 360, text: 200 },
+  /* The four telephones the owner's two lines are measured on (17.11.2026), at 100 and 150 per cent. */
+  { width: 320, text: 100 },
+  { width: 320, text: 150 },
+  { width: 360, text: 150 },
+  { width: 375, text: 100 },
+  { width: 375, text: 150 },
+  { width: 414, text: 100 },
+  { width: 414, text: 150 },
   { width: 768, text: 100 },
   { width: 768, text: 200 },
   { width: 1280, text: 100 },
@@ -156,7 +164,24 @@ const WIDTHS: At[] = [
    not read off the page: there the season goes to a line of its own, at the right, still above the row
    of the cards (`Rankings.css`), instead of being drawn over the heading. Everywhere else on a telephone
    it is level with the heading, as the owner asked. */
-const SEASON_UNDER_THE_HEADING = new Set(['360/200'])
+const SEASON_UNDER_THE_HEADING = new Set(['360/200', '320/150', '360/150', '375/150'])
+
+/* WHERE „PRIJAVI TIM” AND THE THREE CARDS DO NOT FIT ONE LINE EVEN IN TWO LINES OF SMALLER TYPE, by
+   language, width and text, written out cell by cell and not read off the page. There, and only there,
+   the button stands on a line of its own above the cards, and on the men and the women its place leaves
+   that line empty (owner, 17.11.2026, the shape that stays where the two lines do not help). */
+const ON_A_LINE_OF_ITS_OWN = new Set([
+  'sr/320/150',
+  'sr/360/150',
+  'sr/375/150',
+  'sr/414/150',
+  'sr/360/200',
+  'en/320/150',
+  'en/360/150',
+  'en/375/150',
+  'en/414/150',
+  'en/360/200',
+])
 
 /** The words a reader meets, by language. */
 const WORDS = {
@@ -176,6 +201,8 @@ type Standing = {
   season: Box
   /** What stands before the cards in their row: the button, the place held for it, or nothing. */
   before: Box | null
+  /** How many lines the words before the cards are drawn in, by the boxes of their own text. */
+  lines: number
 }
 
 /** Where the cards, the season and whatever stands before the cards are, read off the page as drawn. */
@@ -196,7 +223,18 @@ async function whereTheyStand(page: Page, locale: Locale): Promise<Standing> {
 
       const before = group.previousElementSibling
 
-      return { cards: [...group.querySelectorAll('a')].map(box), season: box(season), before: before === null ? null : box(before) }
+      const words = document.createRange()
+
+      if (before !== null) {
+        words.selectNodeContents(before)
+      }
+
+      return {
+        cards: [...group.querySelectorAll('a')].map(box),
+        season: box(season),
+        before: before === null ? null : box(before),
+        lines: before === null ? 0 : new Set([...words.getClientRects()].map((one) => Math.round(one.top))).size,
+      }
     },
     [cardsOf(locale), WORDS[locale].season] as const,
   )
@@ -239,6 +277,35 @@ for (const [reader, answers] of READERS) {
 
         for (const [address, standing] of rest) {
           expect(standing, `${address} against ${first[0]}`).toEqual(first[1])
+        }
+
+        /* Every card can be pressed: no target under 24 by 24 (WCAG 2.2 SC 2.5.8). */
+        for (const card of first[1].cards) {
+          expect(Math.min(card.width, card.height), 'a card is smaller than 24 by 24').toBeGreaterThanOrEqual(24)
+        }
+
+        const button = first[1].before
+
+        if (button === null) {
+          continue
+        }
+
+        /* THE BUTTON: TWO LINES ON A TELEPHONE, ONE ELSEWHERE, AND ON THE LINE OF THE CARDS WHERE IT FITS
+           (owner, 17.11.2026). Two lines where the header has the shape of a telephone, which is under
+           700px of the reader's text, and one everywhere else; the place held on the men and the women is
+           held to the same box above, so its lines are its lines. */
+        const phone = (at.width * 100) / at.text < 700
+        const cell = `${locale}/${String(at.width)}/${String(at.text)}`
+        const level = first[1].cards.every((card) => card.y < button.y + button.height && button.y < card.y + card.height)
+
+        expect(first[1].lines, `${cell}: the lines of the button`).toBe(phone ? 2 : 1)
+        expect(Math.min(button.width, button.height), 'the button is smaller than 24 by 24').toBeGreaterThanOrEqual(24)
+        expect(level, `${cell}: the button and the three cards are on one line`).toBe(!ON_A_LINE_OF_ITS_OWN.has(cell))
+
+        if (!level) {
+          const top = Math.min(...first[1].cards.map((card) => card.y))
+
+          expect(button.y + button.height, `${cell}: the button is not on a line of its own above the cards`).toBeLessThanOrEqual(top + SLACK)
         }
       }
     })
@@ -405,11 +472,40 @@ for (const at of [WIDTHS[0], WIDTHS[4], WIDTHS[5]]) {
         return
       }
 
-      expect(held.words, `${path}: the place does not carry the button's words`).toBe(WORDS.sr.button)
+      /* Read with its white space collapsed, as a name is: the break between the two lines is a space. */
+      expect(held.words?.replace(/\s+/g, ' '), `${path}: the place does not carry the button's words`).toBe(WORDS.sr.button)
       expect(held.width, `${path}: the place has no width`).toBeGreaterThan(0)
       expect(held.painted, `${path}: the place is painted`).toBe(false)
       expect(held.pressed, `${path}: a press lands on the place`).toBe(false)
       expect(held.focused, `${path}: the place takes the focus`).toBe(false)
+    }
+  })
+}
+
+/* THE NAME OF THE BUTTON HAS NO BREAK IN IT, in either shape (17.11.2026): asked of Chrome's own tree of
+   accessibility, which is what a screen reader is given, and not of a library that computes it again. On
+   a telephone the words are drawn in two lines and the name is still „Prijavi tim”. */
+for (const at of [WIDTHS[0], WIDTHS[4]]) {
+  if (at === undefined) {
+    throw notMeasured('no width')
+  }
+
+  test(`the button is named without a break, ${label(at)}`, async ({ open, theDay }) => {
+    if (theDay !== THE_OTHER_DAY_THE_SUITE_IS_READ_AS) {
+      return
+    }
+
+    for (const locale of ['sr', 'en'] as const) {
+      const { page } = await open(at, `/${locale}/timovi`, cardsOf(locale), { ...DATA, ...signedInAs(WITHOUT_A_TEAM) })
+      const tree = await page.context().newCDPSession(page)
+      const { root } = await tree.send('DOM.getDocument', { depth: -1 })
+      const { nodeId } = await tree.send('DOM.querySelector', { nodeId: root.nodeId, selector: `a[href="/${locale}/novi-tim"]` })
+
+      expect(nodeId, `${locale}: the teams drew no button`).not.toBe(0)
+
+      const { nodes } = await tree.send('Accessibility.getPartialAXTree', { nodeId, fetchRelatives: false })
+
+      expect(nodes.map((one) => one.name?.value), `${locale}: the name of the button`).toEqual([WORDS[locale].button])
     }
   })
 }

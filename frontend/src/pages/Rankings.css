@@ -207,7 +207,7 @@
 
    The row of the heading gives up its own box (`display: contents`), so the season and the row of the
    cards are laid by the screen beside the heading. A flex row that wraps and not a grid of two tracks:
-   where the heading and the season do not fit on one line, which is 360px with the text at 200%, the
+   where the heading and the season do not fit on one line (320 to 375px with the text at 150%, 360px at 200%), the
    season goes to a line of its own at the right instead of being drawn over the heading. Everything
    after the head takes a whole line and comes after it, the sentence about the window included. */
 .rankings--tooled:has(> .rankings__head-tool > .rankings__cards--phone) {
@@ -245,6 +245,34 @@
   flex: 1 1 100%;
   order: 0;
   margin-block-end: var(--head-end);
+  gap: var(--space-4);
+}
+
+/* „PRIJAVI” / „TIM” ON A TELEPHONE, in two lines of smaller type, so that the button and the three cards
+   fit one line (owner, 17.11.2026: „Moze li Prijavi tim da bude u dva reda sitnijim fontom unutar
+   dugmeta, pa da stane u jedan red? kad se suze dugmad i kartice?”, and of the English „Register prvi
+   red u dugmetu na mobilnom, a team drugi”).
+
+   **The break is the dictionary's, not the width's**: the words carry a line break where the owner put
+   it (`teams.registerTeam`), and only this shape keeps it (`pre-line`); everywhere else white space
+   collapses and the break reads as the space it stands for, so a wide screen draws one line. The name a
+   reader is told is the same words either way, because a name is read with its white space collapsed.
+   The place held on the men and the women wears the same class and the same words, so it takes the
+   same two lines and the same width.
+
+   0.75rem, the size of the word „Sezona” beside it (`.rankings__field`), and above the smallest small
+   print the portal sets, the heads of its tables at 0.7rem (`styles/table.css`, `.table th`). */
+.rankings__cards--phone > .button {
+  white-space: pre-line;
+  font-size: 0.75rem;
+  line-height: 1.2;
+  text-align: center;
+  padding: var(--space-4) var(--space-8);
+}
+
+/* And the cards a little narrower beside it, by their padding and not their type. */
+.rankings__cards--phone .rankings__tabs a {
+  padding-inline: var(--space-10);
 }
 
 /* Wrapping, and from the right like the row it stands in, since the tables carry three cards
