@@ -292,11 +292,11 @@ for (const [reader, answers] of READERS) {
 
         expect(readBefore(teams, men) && readBefore(men, women), 'the cards are not read Timovi, Muškarci, Žene').toBe(true)
 
-        if (offered) {
-          if (seen.before === null) {
-            throw notMeasured('nothing stands before the cards for a member the teams offer the button')
-          }
+        /* A fault and not a measurement that failed, so it is an assertion: nothing before the cards
+           where the teams offer the button is exactly what a place read off the wrong reader draws. */
+        expect(seen.before !== null, `${path}: something stands before the cards`).toBe(offered)
 
+        if (seen.before !== null) {
           expect(readBefore(seen.before, teams), 'the button is not before Timovi').toBe(true)
         }
 
@@ -373,10 +373,16 @@ for (const at of [WIDTHS[0], WIDTHS[4], WIDTHS[5]]) {
       const { page } = await open(at, path, cardsOf('sr'), { ...DATA, ...signedInAs(WITHOUT_A_TEAM) })
       const held = await page.evaluate((selector) => {
         const group = document.querySelector(selector)
-        const place = group?.previousElementSibling
 
-        if (place === null || place === undefined || !(place instanceof HTMLElement)) {
-          throw new Error('NOT MEASURED: nothing holds the place of the button')
+        if (group === null) {
+          throw new Error('NOT MEASURED: the screen drew no cards')
+        }
+
+        const place = group.previousElementSibling
+
+        /* No place is a fault, answered as one and asserted below. */
+        if (!(place instanceof HTMLElement)) {
+          return null
         }
 
         const box = place.getBoundingClientRect()
@@ -392,6 +398,12 @@ for (const at of [WIDTHS[0], WIDTHS[4], WIDTHS[5]]) {
           focused: document.activeElement === place,
         }
       }, cardsOf('sr'))
+
+      expect(held, `${path}: nothing holds the place of the button`).not.toBeNull()
+
+      if (held === null) {
+        return
+      }
 
       expect(held.words, `${path}: the place does not carry the button's words`).toBe(WORDS.sr.button)
       expect(held.width, `${path}: the place has no width`).toBeGreaterThan(0)
