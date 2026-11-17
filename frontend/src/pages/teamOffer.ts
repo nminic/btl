@@ -11,11 +11,10 @@ import { inYearlyWindow } from '../data/season'
  * window and the sentence outside it** (owner, 05.09.2026), the window every other change of team is
  * asked in.
  *
- * **One place, because two screens ask it** (17.11.2026): the teams draw the button, and the men and the
- * women draw an invisible place of its width for the same reader, so the cards stand on the same pixel
- * on all three (owner, 17.11.2026, answer 3, chosen with my recommendation, from ADL A7: „navigacija se
- * ne sme pomerati tokom klikova, boksovi i naslovi moraju da se gađaju u piksel”). Asked in two places,
- * the place and the button could disagree, and the cards would move under the pointer.
+ * **A function of its own so that its axes are asked one by one** (`teamOffer.test.ts`): the reader and
+ * not the first row of the list, a member in a team and one in none, inside the window and outside it.
+ * Its one caller is the standing of the teams (`Teams.tsx`), which draws the button or the sentence under
+ * its table.
  *
  * `members` is the list as the session holds it (`recordsOf(MEMBERS, …)`): a member who founded a team
  * this visit has it on his record there and nowhere else.
