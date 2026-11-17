@@ -184,28 +184,11 @@ export function Teams() {
                   card is pressed (ADL A7). Held by `geometry/tableCards.geometry.ts`, for a visitor, a
                   member with a team and one with none. */}
               <div className="rankings__head-tool">
-                {/* A team is put forward by whoever wants to run in it, and decided on by a moderator
-                    in the queue that has been waiting for one since it was written (owner, 03.08.2026;
-                    PDL P22). „Prijavi tim” stands first in the row of the cards, before Timovi (owner,
-                    17.11.2026), and the men and the women hold its place for the same reader, so the
-                    cards do not move (`TablesHead`). Offered only to a member who is not in a team
-                    today (`whatTheTeamsOffer`), read off the same records that mark his row, so the
-                    button and the mark cannot disagree. */}
                 <TablesHead
                   current="teams"
-                  offered={offer === 'button'}
                   seasonPicker={<SeasonPicker seasons={seasons} season={season} fallback={running} />}
                 />
               </div>
-
-              {/* Outside the window there is nothing to press and a sentence saying when there will
-                  be (owner, 05.09.2026), the window every other change of team is asked in. Under the
-                  row of the cards, where it moves nothing above it. */}
-              {offer === 'sentence' && (
-                <div className="rankings__propose">
-                  <p className="rankings__empty">{t('teams.proposeShut')}</p>
-                </div>
-              )}
 
               {rows.length === 0 ? (
                 <p className="rankings__empty">{t('teams.empty')}</p>
@@ -275,6 +258,30 @@ export function Teams() {
                 </table>
               </div>
               )}
+
+              {/* „PRIJAVI TIM”, UNDER THE TABLE OF ALL THE TEAMS (owner, 17.11.2026: „Dugme Prijavi tim ne
+                  treba da se nadje gde se trenutno nalazi, nego ispod tabele sa svim timovima, ukoliko clan
+                  ima pravo da vidi to dugme. To uproscava i navigaciju, i konzistentnije je sa svim.”), as
+                  wide as its words and in one line („Samo dovoljne sirine da se ispise labela u njemu.”).
+                  A team is put forward by whoever wants to run in it and decided on by a moderator (owner,
+                  03.08.2026; PDL P22); the screen it opens is still „Predlog tima”. Offered only to a member
+                  who is not in a team today, inside the transfer window (`whatTheTeamsOffer`), read off the
+                  same records that mark his row, so the button and the mark cannot disagree.
+
+                  Outside the window, in its place, the sentence that says when a team is founded (owner,
+                  05.09.2026; and its place under the table 17.11.2026, chosen with my recommendation).
+
+                  From the left edge, under the table, as an action under the content of a screen stands on
+                  the portal (`pages/member/ProfileBio.tsx`, `member__actions`, derived). The button and the
+                  sentence are the same shape of box, so the one replaces the other in place. */}
+              {offer === 'button' && (
+                <p className="rankings__propose">
+                  <Link className="button button--secondary" to={`/${locale}/novi-tim`}>
+                    {t('teams.registerTeam')}
+                  </Link>
+                </p>
+              )}
+              {offer === 'sentence' && <p className="rankings__propose rankings__empty">{t('teams.proposeShut')}</p>}
             </>
           )
 

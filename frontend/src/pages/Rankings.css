@@ -165,52 +165,27 @@
   margin-bottom: var(--space-12);
 }
 
-/* THE SENTENCE THE TEAMS SAY TO A MEMBER WITH NO TEAM WHILE THE TRANSFER WINDOW IS SHUT, under the row
-   of the cards (16.11.2026). It comes after that row in the markup and in the order of the keyboard, so
-   in the flow it is the first thing under the cards and moves nothing above them. The button it stands
-   in for while the window is open is in the row of the cards since 17.11.2026 (`.rankings__cards`). */
+/* WHAT THE TEAMS OFFER A MEMBER WITH NO TEAM, UNDER THE TABLE OF ALL THE TEAMS (owner, 17.11.2026: „Dugme
+   Prijavi tim ne treba da se nadje gde se trenutno nalazi, nego ispod tabele sa svim timovima”): the
+   button „Prijavi tim” in the transfer window, as wide as its words, and outside it the sentence that
+   says when a team is founded, in the same place. From the left edge, as an action under the content of
+   a screen stands on the portal (`pages/member/ProfileBio.tsx`, `member__actions`, derived). Nothing of
+   it stands above the cards any more, so nothing of it can move them. */
 .rankings__propose {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
+  margin-block: var(--space-16) 0;
 }
 
-.rankings--tooled > .rankings__propose + * {
-  margin-block-start: var(--space-16);
-}
-
-/* THE ROW OF THE CARDS OF THE TABLES: „Prijavi tim” or the place held for it, then Timovi, Muškarci and
-   Žene (owner, 17.11.2026; `pages/TableCards.tsx`, `TablesHead`). One box, so the button and the cards
-   stay together when the season has to go to a line of its own, and wrapping, from the right, like the
-   row it stands in: what wraps is the same on all three cards for one reader, because the place on the
-   men and the women is as wide as the button on the teams. */
-.rankings__cards {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  align-items: center;
-  gap: var(--space-12);
-}
-
-/* THE PLACE OF „PRIJAVI TIM” ON THE MEN AND THE WOMEN (owner, 17.11.2026, answer 3). `visibility` and
-   not `display`, and that is the whole rule, as with `.shell__guest--waiting`: the box keeps the width
-   the button's own words give it in the button's own class, and a box that is not visible is not
-   painted, is not hit by a press and is not in the reader's tree. */
-.rankings__held {
-  visibility: hidden;
-}
-
-/* THE SHAPE OF A TELEPHONE, asked by the class `TablesHead` writes where the header has that shape
-   (`app/phoneHeader.ts`), never by a width of its own, so the two cannot disagree about where the
-   telephone ends (owner, 17.11.2026: „u gornjem redu naslov BTL tabele levo i dropdown sezone desno, a
-   u jednom redu ispod Predlozi tim ako postoji, Timovi (default), Muskarci, Zene”).
+/* THE SHAPE OF A TELEPHONE, asked by the class `TablesHead` writes on the row of the cards where the
+   header has that shape (`app/phoneHeader.ts`), never by a width of its own, so the two cannot disagree
+   about where the telephone ends (owner, 17.11.2026: „u gornjem redu naslov BTL tabele levo i dropdown
+   sezone desno, a u jednom redu ispod [...] Muskarci, Zene”).
 
    The row of the heading gives up its own box (`display: contents`), so the season and the row of the
    cards are laid by the screen beside the heading. A flex row that wraps and not a grid of two tracks:
-   where the heading and the season do not fit on one line (320 to 375px with the text at 150%, 360px at 200%), the
-   season goes to a line of its own at the right instead of being drawn over the heading. Everything
-   after the head takes a whole line and comes after it, the sentence about the window included. */
-.rankings--tooled:has(> .rankings__head-tool > .rankings__cards--phone) {
+   where the heading and the season do not fit on one line (320 to 375px with the text at 150%, 360px at
+   200%), the season goes to a line of its own at the right instead of being drawn over the heading.
+   Everything after the head takes a whole line and comes after it. */
+.rankings--tooled:has(> .rankings__head-tool > .rankings__tabs--phone) {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -219,60 +194,32 @@
 
 /* `min-inline-size: 0`, because a flex item will not shrink below its content: without it the table
    of the men, which scrolls inside its own box, pushed the page 90px sideways at 360px (measured). */
-.rankings--tooled:has(> .rankings__head-tool > .rankings__cards--phone) > * {
+.rankings--tooled:has(> .rankings__head-tool > .rankings__tabs--phone) > * {
   flex: 1 1 100%;
   order: 1;
   min-inline-size: 0;
 }
 
-.rankings--tooled:has(> .rankings__head-tool > .rankings__cards--phone) > h1 {
+.rankings--tooled:has(> .rankings__head-tool > .rankings__tabs--phone) > h1 {
   flex: 1 1 auto;
   order: 0;
   margin-block-end: var(--head-end);
 }
 
-.rankings__head-tool:has(> .rankings__cards--phone) {
+.rankings__head-tool:has(> .rankings__tabs--phone) {
   display: contents;
 }
 
-.rankings__head-tool:has(> .rankings__cards--phone) > .rankings__field {
+.rankings__head-tool:has(> .rankings__tabs--phone) > .rankings__field {
   order: 0;
   margin-inline-start: auto;
   margin-block-end: var(--head-end);
 }
 
-.rankings__cards--phone {
+.rankings__tabs--phone {
   flex: 1 1 100%;
   order: 0;
   margin-block-end: var(--head-end);
-  gap: var(--space-4);
-}
-
-/* „PRIJAVI” / „TIM” ON A TELEPHONE, in two lines of smaller type, so that the button and the three cards
-   fit one line (owner, 17.11.2026: „Moze li Prijavi tim da bude u dva reda sitnijim fontom unutar
-   dugmeta, pa da stane u jedan red? kad se suze dugmad i kartice?”, and of the English „Register prvi
-   red u dugmetu na mobilnom, a team drugi”).
-
-   **The break is the dictionary's, not the width's**: the words carry a line break where the owner put
-   it (`teams.registerTeam`), and only this shape keeps it (`pre-line`); everywhere else white space
-   collapses and the break reads as the space it stands for, so a wide screen draws one line. The name a
-   reader is told is the same words either way, because a name is read with its white space collapsed.
-   The place held on the men and the women wears the same class and the same words, so it takes the
-   same two lines and the same width.
-
-   0.75rem, the size of the word „Sezona” beside it (`.rankings__field`), and above the smallest small
-   print the portal sets, the heads of its tables at 0.7rem (`styles/table.css`, `.table th`). */
-.rankings__cards--phone > .button {
-  white-space: pre-line;
-  font-size: 0.75rem;
-  line-height: 1.2;
-  text-align: center;
-  padding: var(--space-4) var(--space-8);
-}
-
-/* And the cards a little narrower beside it, by their padding and not their type. */
-.rankings__cards--phone .rankings__tabs a {
-  padding-inline: var(--space-10);
 }
 
 /* Wrapping, and from the right like the row it stands in, since the tables carry three cards

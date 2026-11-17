@@ -87,38 +87,24 @@ export type NavSection = RouteDef & {
   id: string
   staffOnly?: boolean
   /**
+   * Other addresses on which this entry is the one marked as the screen being read, beside its own
+   * and the ones below it.
+   *
+   * „BTL tabele" is marked on the teams as well (owner, 16.11.2026, PDL „Pravilnik prelazi u
+   * podnožje, a Timovi postaju treća kartica BTL tabela", answer 8, chosen with my recommendation:
+   * „BTL tabele" in the navigation lights on all three cards), because the teams are its third card
+   * and no longer an entry of their own.
+   */
+  alsoMarkedOn?: string[]
+  /**
    * What the entry is drawn as on a telephone, where the header has a row of symbols and no words
    * (owner, 16.11.2026, answers 5 and 6; `app/navSymbol.ts`). Asked of every entry, so an entry that
    * comes without a symbol is refused by the compiler and not found on a telephone.
    */
   symbol: NavSymbol
-} & (
-    | { alsoMarkedOn?: undefined; opens?: undefined }
-    | {
-        /**
-         * Other addresses on which this entry is the one marked as the screen being read, beside its
-         * own and the ones below it.
-         *
-         * „BTL tabele" is marked on the teams as well (owner, 16.11.2026, PDL „Pravilnik prelazi u
-         * podnožje, a Timovi postaju treća kartica BTL tabela", answer 8, chosen with my
-         * recommendation: „BTL tabele" in the navigation lights on all three cards), because the teams
-         * are one of its cards and no longer an entry of their own.
-         */
-        alsoMarkedOn: string[]
-        /**
-         * The address the entry opens, asked of every entry that is marked beyond its own address, so
-         * the compiler refuses one that forgets to say. Its own `path` stays the address it is the
-         * entry of, and the router serves it as before.
-         *
-         * „BTL tabele" opens the teams (owner, 17.11.2026, answer 2, chosen with my recommendation:
-         * „BTL tabele” u navigaciji otvara Timove, `/timovi`), the first of its cards since that day,
-         * and `/tabela` and `/tabela?pol=z` stay the addresses of the men and the women.
-         */
-        opens: string
-      }
-  )
+}
 
-/* WHERE THE STANDING OF THE TEAMS IS SERVED, as a name: a card of the tables links to it and
+/* WHERE THE STANDING OF THE TEAMS IS SERVED, as a name: the third card of the tables links to it and
  * the entry of the tables is marked on it, and a second spelling of an address is the first thing a
  * rename leaves behind. Its own address, as it always was (owner, 16.11.2026, answer 8). */
 export const TEAMS_ADDRESS = 'timovi'
@@ -138,7 +124,6 @@ export const NAV: NavSection[] = [
     path: TABLE_ADDRESS,
     seoKey: 'table',
     alsoMarkedOn: [TEAMS_ADDRESS],
-    opens: TEAMS_ADDRESS,
     symbol: NAV_SYMBOL.ranking,
   },
   { id: 'boards', labelKey: 'nav.topBoards', path: 'top-liste', seoKey: 'topBoards', symbol: NAV_SYMBOL.steps },
@@ -150,7 +135,7 @@ export const NAV: NavSection[] = [
   /* The rulebook and the teams are not here since 16.11.2026, on any width (owner: „1. Pravilnik
      prelazi na dno, footer, pre Politike privatnosti” and „2. Timovi prelazi BTL tabele kao treća
      ravnopravna opcija koja se otvara klikom na Timovi”): the rulebook is the first link of the
-     footer, and the teams are a card of the tables (`pages/TableCards.tsx`). */
+     footer, and the teams are the third card of the tables (`pages/TableCards.tsx`). */
   /* The way into administration, and the only entry a visitor never sees. What
      it leads to draws nothing of its own since 06.08.2026: the navigation of two
      sectors stands down the side of every screen behind it (SectionNav), so a
@@ -267,7 +252,7 @@ export const CONTACT_ADDRESS = 'info@balkanskatrkackaliga.net'
 /* Screens that have an address but no navigation entry: reached from a button,
  * a link inside a page, or the login symbol. */
 const UNLISTED_ROUTES: RouteDef[] = [
-  /* The standing of the teams, reached from a card of the tables since 16.11.2026. Its name
+  /* The standing of the teams, reached from the third card of the tables since 16.11.2026. Its name
      is still „Timovi", which is what the portal says aloud when the screen opens and what the card
      is called; the heading on the screen is „BTL tabele" (owner, 16.11.2026, answer 9). */
   { path: TEAMS_ADDRESS, labelKey: 'nav.teams', seoKey: 'teams' },

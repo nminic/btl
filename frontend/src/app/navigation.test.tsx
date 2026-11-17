@@ -56,7 +56,7 @@ describe('navigation', () => {
        than sampled: the point of the change is that all of them behave alike.
 
        Five since 16.11.2026 (owner: „Takmičari, BTL tabele, Top liste, Lige, Kalendar"): the
-       rulebook is in the footer and the teams are a card of the tables. Held as the whole
+       rulebook is in the footer and the teams are the third card of the tables. Held as the whole
        list of links, so an entry put back is a failure here and not only a name that is still found. */
     const user = setupUser()
     renderAt('/sr')
@@ -124,15 +124,13 @@ describe('navigation', () => {
     ).toEqual(lit)
   })
 
-  /* „BTL TABELE" OPENS THE TEAMS, its first card (owner, 17.11.2026, answer 2, chosen with my
-     recommendation: „BTL tabele” u navigaciji otvara Timove, `/timovi`), on a desktop and from the row of
-     symbols on a telephone alike. Pressed from a screen that is none of the three cards, so the screen it
-     lands on is its doing, and the teams are known by their own table, which the men and the women do
-     not draw. The men and the women keep their addresses, and still answer on them. */
+  /* „BTL TABELE" OPENS THE MEN, the first card (owner, 17.11.2026: „Muskarci ponovo treba da postanu
+     default”), on a desktop and from the row of symbols on a telephone alike. Asked of the link before it
+     is pressed, so a link to another address fails on that line and not on a wait for a table. */
   it.each([
     ['a desktop', false],
     ['a telephone', true],
-  ])('opens the teams from „BTL tabele" on %s', async (_where, phone) => {
+  ])('opens the men from „BTL tabele" on %s', async (_where, phone) => {
     const real = window.matchMedia
 
     window.matchMedia = matchingMedia((query) => phone && query === PHONE_HEADER)
@@ -141,29 +139,18 @@ describe('navigation', () => {
       const user = setupUser()
       const { router } = renderAt('/sr/top-liste')
       const menu = within(await screen.findByRole('navigation', { name: 'Glavna navigacija' }))
-
       const entry = menu.getByRole('link', { name: 'BTL tabele' })
 
-      /* Asked of the link before it is pressed, so a link to another address fails on this line and not
-         on a wait for a table that never comes (`btl/CLAUDE.md`, odeljak 25). */
-      expect(entry).toHaveAttribute('href', '/sr/timovi')
+      expect(entry).toHaveAttribute('href', '/sr/tabela')
       await user.click(entry)
-      expect(await screen.findByRole('table', { name: 'Timovi' })).toBeVisible()
-      expect(router.state.location.pathname).toBe('/sr/timovi')
+
+      const cards = within(await screen.findByRole('group', { name: 'BTL tabele' }))
+
+      expect(cards.getAllByRole('link', { current: 'page' }).map((one) => one.textContent)).toEqual(['Muškarci'])
+      expect(router.state.location.pathname).toBe('/sr/tabela')
     } finally {
       window.matchMedia = real
     }
-  })
-
-  it.each([
-    ['/sr/tabela', 'Muškarci'],
-    ['/sr/tabela?pol=z', 'Žene'],
-  ])('still answers %s with its own card', async (address, card) => {
-    renderAt(address)
-
-    const cards = within(await screen.findByRole('group', { name: 'BTL tabele' }))
-
-    expect(cards.getAllByRole('link', { current: 'page' }).map((one) => one.textContent)).toEqual([card])
   })
 
   /* Every address in the navigation has a screen of its own since the ducats

@@ -151,31 +151,18 @@ function AdminLink({ label, face }: { label: string; face: ReactNode }) {
 }
 
 /* AN ENTRY MARKED ON ADDRESSES BEYOND ITS OWN (`NavSection.alsoMarkedOn`): „BTL tabele" on the teams,
- * one of its cards (owner, 16.11.2026, answer 8). A `NavLink` marks its own address and the ones below it
+ * its third card (owner, 16.11.2026, answer 8). A `NavLink` marks its own address and the ones below it
  * and takes no say from outside, so the mark is worked out here the way it works it out (the address
  * or one below it, in any case of letters) and written the way it writes it: the class `active` and
  * `aria-current="page"`, which is what the stylesheet and a screen reader each read. */
-function MarkedAlsoOn({
-  section,
-  also,
-  opens,
-  face,
-}: {
-  section: NavSection
-  also: string[]
-  opens: string
-  face: ReactNode
-}) {
+function MarkedAlsoOn({ section, also, face }: { section: NavSection; also: string[]; face: ReactNode }) {
   const { locale } = useI18n()
   const below = useLocation().pathname.split('/').slice(2).join('/').toLowerCase()
   const marked = [section.path, ...also].some((path) => below === path || below.startsWith(`${path}/`))
 
-  /* To the address the entry opens (`NavSection.opens`): „BTL tabele" opens the teams, its first card
-     since 17.11.2026 (owner, answer 2). The same link on a desktop and in the row of symbols on a
-     telephone, because both are this one. */
   return (
     <Link
-      to={`/${locale}/${opens}`}
+      to={`/${locale}/${section.path}`}
       className={marked ? 'shell__link active' : 'shell__link'}
       aria-current={marked ? 'page' : undefined}
     >
@@ -213,7 +200,7 @@ function NavEntry({ section, phone }: { section: NavSection; phone: boolean }) {
   }
 
   if (section.alsoMarkedOn !== undefined) {
-    return <MarkedAlsoOn section={section} also={section.alsoMarkedOn} opens={section.opens} face={face} />
+    return <MarkedAlsoOn section={section} also={section.alsoMarkedOn} face={face} />
   }
 
   return (

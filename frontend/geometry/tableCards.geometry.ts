@@ -8,23 +8,23 @@ import { label, notMeasured, SLACK, test } from './support/harness.ts'
 import type { Answers, At } from './support/harness.ts'
 
 /**
- * THE CARDS OF THE TABLES, THE SEASON AND THE PLACE OF „PRIJAVI TIM” STAND ON THE SAME PIXEL ON ALL THREE
- * CARDS, IN THE ORDER THE OWNER NAMED.
+ * THE CARDS OF THE TABLES AND THE SEASON STAND ON THE SAME PIXEL ON ALL THREE CARDS, IN THE ORDER THE
+ * OWNER NAMED, AND „PRIJAVI TIM” STANDS UNDER THE TABLE OF THE TEAMS.
  *
  * Owner, 31.07.2026 (ADL A7): „navigacija se ne sme pomerati tokom klikova, boksovi i naslovi moraju da
- * se gađaju u piksel". The cards Timovi, Muškarci and Žene are the navigation between three screens
+ * se gađaju u piksel". The cards Muškarci, Žene and Timovi are the navigation between three screens
  * (`src/pages/TableCards.tsx`), so pressing one must not move the row under the pointer.
  *
- * Owner, 17.11.2026: „Zelim da se zameni redosled dugmica na BTL tabele tako da uvek idu Predlozi tim
- * (ako postoji), pa Timovi (default), pa Muskarci, pa Zene, pa drop down godine. Ukoliko se otvara na
- * mobilnom, u gornjem redu naslov BTL tabele levo i dropdown sezone desno, a u jednom redu ispod Predlozi
- * tim ako postoji, Timovi (default), Muskarci, Zene.” The button is „Prijavi tim” and only on the teams
- * (answer 1), and on the men and the women an invisible place of its width stands where it stands
- * (answer 3), which is what keeps the cards on the same pixel when the row wraps.
+ * Owner, 17.11.2026: on a telephone „u gornjem redu naslov BTL tabele levo i dropdown sezone desno, a u
+ * jednom redu ispod [...] Muskarci, Zene”; „Dugme Prijavi tim ne treba da se nadje gde se trenutno nalazi,
+ * nego ispod tabele sa svim timovima”; and „Timovi dugme treba da bude na kraju, nakon Muskarci i Zene, a
+ * Muskarci ponovo treba da postanu default.” Nothing changeable stands above the cards any more, so they
+ * stand on the same pixel by themselves; what is held is that it stays so, and that the button is under
+ * the table and not above it.
  *
  * Asked of every reader the teams draw differently: a visitor, a member with a team and a member with
  * none, on both days of the suite. On one of them the transfer window is shut and a member with no team
- * is told when he may found one, under the cards; on the other it is open and he is offered the button.
+ * is told when he may found one; on the other it is open and he is offered the button.
  * **Everything here is found by what a reader meets or by where it stands in the row, never by a class**:
  * the class is what places it, so an expectation read from it would agree with whatever the class did.
  */
@@ -133,7 +133,6 @@ const READERS: [name: string, answers: Answers][] = [
 const WIDTHS: At[] = [
   { width: 360, text: 100 },
   { width: 360, text: 200 },
-  /* The four telephones the owner's two lines are measured on (17.11.2026), at 100 and 150 per cent. */
   { width: 320, text: 100 },
   { width: 320, text: 150 },
   { width: 360, text: 150 },
@@ -166,78 +165,27 @@ const WIDTHS: At[] = [
    it is level with the heading, as the owner asked. */
 const SEASON_UNDER_THE_HEADING = new Set(['360/200', '320/150', '360/150', '375/150'])
 
-/* WHERE „PRIJAVI TIM” AND THE THREE CARDS DO NOT FIT ONE LINE EVEN IN TWO LINES OF SMALLER TYPE, by
-   language, width and text, written out cell by cell and not read off the page. There, and only there,
-   the button stands on a line of its own above the cards, and on the men and the women its place leaves
-   that line empty (owner, 17.11.2026, the shape that stays where the two lines do not help). */
-const ON_A_LINE_OF_ITS_OWN = new Set([
-  'sr/320/150',
-  'sr/360/150',
-  'sr/375/150',
-  'sr/414/150',
-  'sr/360/200',
-  'en/320/150',
-  'en/360/150',
-  'en/375/150',
-  'en/414/150',
-  'en/360/200',
-])
-
-/** The words a reader meets, by language. */
-const WORDS = {
-  sr: { cards: 'BTL tabele', season: 'Sezona', button: 'Prijavi tim', teams: 'Timovi', men: 'Muškarci', women: 'Žene' },
-  en: { cards: 'BTL tables', season: 'Season', button: 'Register a team', teams: 'Teams', men: 'Men', women: 'Women' },
-} as const
-
-type Locale = keyof typeof WORDS
-
-const cardsOf = (locale: Locale) => `[role="group"][aria-label="${WORDS[locale].cards}"]`
+const CARDS = '[role="group"][aria-label="BTL tabele"]'
 
 type Box = { x: number; y: number; width: number; height: number }
 
-type Standing = {
-  /** The three cards, in the order they are drawn. */
-  cards: Box[]
-  season: Box
-  /** What stands before the cards in their row: the button, the place held for it, or nothing. */
-  before: Box | null
-  /** How many lines the words before the cards are drawn in, by the boxes of their own text. */
-  lines: number
-}
+/** Where the three cards and the season stand, read off the page as it was drawn. */
+async function whereTheyStand(page: Page): Promise<{ cards: Box[]; season: Box }> {
+  return page.evaluate((selector) => {
+    const box = (element: Element): Box => {
+      const { x, y, width, height } = element.getBoundingClientRect()
 
-/** Where the cards, the season and whatever stands before the cards are, read off the page as drawn. */
-async function whereTheyStand(page: Page, locale: Locale): Promise<Standing> {
-  return page.evaluate(
-    ([selector, seasonWord]) => {
-      const box = (element: Element): Box => {
-        const { x, y, width, height } = element.getBoundingClientRect()
+      return { x: x + scrollX, y: y + scrollY, width, height }
+    }
+    const group = document.querySelector(selector)
+    const season = [...document.querySelectorAll('label')].find((one) => one.textContent?.startsWith('Sezona'))
 
-        return { x: x + scrollX, y: y + scrollY, width, height }
-      }
-      const group = document.querySelector(selector)
-      const season = [...document.querySelectorAll('label')].find((one) => one.textContent?.startsWith(seasonWord))
+    if (group === null || season === undefined) {
+      throw new Error('NOT MEASURED: the screen drew no cards or no season')
+    }
 
-      if (group === null || season === undefined) {
-        throw new Error('NOT MEASURED: the screen drew no cards or no season')
-      }
-
-      const before = group.previousElementSibling
-
-      const words = document.createRange()
-
-      if (before !== null) {
-        words.selectNodeContents(before)
-      }
-
-      return {
-        cards: [...group.querySelectorAll('a')].map(box),
-        season: box(season),
-        before: before === null ? null : box(before),
-        lines: before === null ? 0 : new Set([...words.getClientRects()].map((one) => Math.round(one.top))).size,
-      }
-    },
-    [cardsOf(locale), WORDS[locale].season] as const,
-  )
+    return { cards: [...group.querySelectorAll('a')].map(box), season: box(season) }
+  }, CARDS)
 }
 
 /* Read in the order of reading: on the same line, from the left; on a later line, below. */
@@ -246,81 +194,41 @@ const readBefore = (a: Box, b: Box) =>
 
 for (const [reader, answers] of READERS) {
   for (const at of WIDTHS) {
-    test(`the row does not move from card to card, for ${reader}, ${label(at)}`, async ({ open, theDay }) => {
-      const offered = reader === WITH_NO_TEAM && theDay === THE_OTHER_DAY_THE_SUITE_IS_READ_AS
-      /* English too for the one reader who has a place held, because the place is as wide as the
-         button's words and those are other words in English. */
-      const locales: Locale[] = reader === WITH_NO_TEAM ? ['sr', 'en'] : ['sr']
+    test(`the cards and the season do not move from card to card, for ${reader}, ${label(at)}`, async ({ open }) => {
+      const seen: [string, { cards: Box[]; season: Box }][] = []
 
-      for (const locale of locales) {
-        const seen: [string, Standing][] = []
+      for (const path of ['/sr/tabela', '/sr/tabela?pol=z', '/sr/timovi']) {
+        const { page, probe } = await open(at, path, CARDS, answers)
 
-        for (const path of ['/timovi', '/tabela', '/tabela?pol=z']) {
-          const address = `/${locale}${path}`
-          const { page, probe } = await open(at, address, cardsOf(locale), answers)
+        expect(probe.sideways, `${path} scrolls sideways`).toBe(0)
+        expect(probe.widened, `${path} was widened by something running off its right edge`).toBe(0)
+        seen.push([path, await whereTheyStand(page)])
+      }
 
-          expect(probe.sideways, `${address} scrolls sideways`).toBe(0)
-          expect(probe.widened, `${address} was widened by something running off its right edge`).toBe(0)
-          seen.push([address, await whereTheyStand(page, locale)])
-        }
+      const [first, ...rest] = seen
 
-        const [first, ...rest] = seen
+      if (first === undefined || first[1].cards.length !== 3) {
+        throw notMeasured('the tables drew no three cards')
+      }
 
-        if (first === undefined || first[1].cards.length !== 3) {
-          throw notMeasured('the tables drew no three cards')
-        }
+      for (const [path, standing] of rest) {
+        expect(standing, `${path} against ${first[0]}`).toEqual(first[1])
+      }
 
-        /* Something stands before the cards exactly where the teams offer the button. */
-        for (const [address, standing] of seen) {
-          expect(standing.before === null, `${address}: what stands before the cards`).toBe(!offered)
-        }
-
-        for (const [address, standing] of rest) {
-          expect(standing, `${address} against ${first[0]}`).toEqual(first[1])
-        }
-
-        /* Every card can be pressed: no target under 24 by 24 (WCAG 2.2 SC 2.5.8). */
-        for (const card of first[1].cards) {
-          expect(Math.min(card.width, card.height), 'a card is smaller than 24 by 24').toBeGreaterThanOrEqual(24)
-        }
-
-        const button = first[1].before
-
-        if (button === null) {
-          continue
-        }
-
-        /* THE BUTTON: TWO LINES ON A TELEPHONE, ONE ELSEWHERE, AND ON THE LINE OF THE CARDS WHERE IT FITS
-           (owner, 17.11.2026). Two lines where the header has the shape of a telephone, which is under
-           700px of the reader's text, and one everywhere else; the place held on the men and the women is
-           held to the same box above, so its lines are its lines. */
-        const phone = (at.width * 100) / at.text < 700
-        const cell = `${locale}/${String(at.width)}/${String(at.text)}`
-        const level = first[1].cards.every((card) => card.y < button.y + button.height && button.y < card.y + card.height)
-
-        expect(first[1].lines, `${cell}: the lines of the button`).toBe(phone ? 2 : 1)
-        expect(Math.min(button.width, button.height), 'the button is smaller than 24 by 24').toBeGreaterThanOrEqual(24)
-        expect(level, `${cell}: the button and the three cards are on one line`).toBe(!ON_A_LINE_OF_ITS_OWN.has(cell))
-
-        if (!level) {
-          const top = Math.min(...first[1].cards.map((card) => card.y))
-
-          expect(button.y + button.height, `${cell}: the button is not on a line of its own above the cards`).toBeLessThanOrEqual(top + SLACK)
-        }
+      /* Every card can be pressed: no target under 24 by 24 (WCAG 2.2 SC 2.5.8). */
+      for (const card of first[1].cards) {
+        expect(Math.min(card.width, card.height), 'a card is smaller than 24 by 24').toBeGreaterThanOrEqual(24)
       }
     })
   }
 
-  /* AND EACH THING STANDS WHERE THE OWNER PUT IT: the button or its place first, then Timovi, Muškarci
-     and Žene, and the season after them on a wide screen and beside the heading on a telephone, with the
-     row of the cards under it. Asked on the screen the button is on and on one that holds its place. */
+  /* AND EACH THING STANDS WHERE THE OWNER PUT IT: Muškarci, Žene and Timovi, the season after them on a wide
+     screen and beside the heading on a telephone, with the row of the cards under it; and on the teams,
+     „Prijavi tim” or the sentence of a shut window UNDER THE TABLE, never above it. */
   for (const at of WIDTHS) {
-    test(`the row stands in the owner's order, for ${reader}, ${label(at)}`, async ({ open, theDay }) => {
-      const windowOpen = theDay === THE_OTHER_DAY_THE_SUITE_IS_READ_AS
-      const offered = reader === WITH_NO_TEAM && windowOpen
-
-      for (const path of ['/sr/timovi', '/sr/tabela']) {
-        const { page } = await open(at, path, cardsOf('sr'), answers)
+    test(`the row and the button stand in the owner's order, for ${reader}, ${label(at)}`, async ({ open, theDay }) => {
+      for (const path of ['/sr/tabela', '/sr/timovi']) {
+        const { page } = await open(at, path, CARDS, answers)
         const phone = await page.evaluate((query) => matchMedia(query).matches, PHONE_HEADER)
 
         /* The shape is the header's, and the header's is a telephone under 700px of the reader's text. */
@@ -345,39 +253,30 @@ for (const [reader, answers] of READERS) {
             words: rect(words.getBoundingClientRect()),
             season: rect(season.getBoundingClientRect()),
             cards: [...group.querySelectorAll('a')].map((one) => [one.textContent, rect(one.getBoundingClientRect())] as const),
-            before: group.previousElementSibling === null ? null : rect(group.previousElementSibling.getBoundingClientRect()),
           }
-        }, cardsOf('sr'))
+        }, CARDS)
 
-        expect(seen.cards.map(([name]) => name), 'the order of the cards').toEqual([WORDS.sr.teams, WORDS.sr.men, WORDS.sr.women])
+        expect(seen.cards.map(([name]) => name), 'the order of the cards').toEqual(['Muškarci', 'Žene', 'Timovi'])
 
-        const [teams, men, women] = seen.cards.map(([, box]) => box)
+        const [men, women, teams] = seen.cards.map(([, box]) => box)
 
         if (teams === undefined || men === undefined || women === undefined) {
           throw notMeasured('the tables drew no three cards')
         }
 
-        expect(readBefore(teams, men) && readBefore(men, women), 'the cards are not read Timovi, Muškarci, Žene').toBe(true)
+        expect(readBefore(men, women) && readBefore(women, teams), 'the cards are not read Muškarci, Žene, Timovi').toBe(true)
 
-        /* A fault and not a measurement that failed, so it is an assertion: nothing before the cards
-           where the teams offer the button is exactly what a place read off the wrong reader draws. */
-        expect(seen.before !== null, `${path}: something stands before the cards`).toBe(offered)
-
-        if (seen.before !== null) {
-          expect(readBefore(seen.before, teams), 'the button is not before Timovi').toBe(true)
-        }
-
-        const overlap = (a: typeof teams, b: typeof teams) =>
+        const overlap = (a: Box, b: Box) =>
           a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height
 
-        for (const one of [teams, men, women, seen.season, ...(seen.before === null ? [] : [seen.before])]) {
+        for (const one of [men, women, teams, seen.season]) {
           expect(overlap(one, seen.words), 'something of the row is drawn over the heading').toBe(false)
         }
 
         if (phone) {
-          const top = Math.min(teams.y, men.y, women.y, ...(seen.before === null ? [] : [seen.before.y]))
-
-          expect(seen.season.y + seen.season.height, 'the season is not above the row of the cards').toBeLessThanOrEqual(top + SLACK)
+          expect(seen.season.y + seen.season.height, 'the season is not above the row of the cards').toBeLessThanOrEqual(
+            Math.min(men.y, women.y, teams.y) + SLACK,
+          )
 
           const level = seen.season.y < seen.words.y + seen.words.height && seen.words.y < seen.season.y + seen.season.height
 
@@ -387,125 +286,52 @@ for (const [reader, answers] of READERS) {
             expect(seen.season.x, 'the season is not right of the heading').toBeGreaterThanOrEqual(seen.words.x + seen.words.width)
           }
         } else {
-          expect(readBefore(women, seen.season), 'the season is not after Žene').toBe(true)
+          expect(readBefore(teams, seen.season), 'the season is not after Timovi').toBe(true)
         }
       }
 
-      /* THE SENTENCE OF A SHUT WINDOW STANDS UNDER THE CARDS, AND THE BUTTON TAKES THE KEYBOARD. */
-      if (reader !== WITH_NO_TEAM) {
-        return
-      }
-
-      const { page } = await open(at, '/sr/timovi', cardsOf('sr'), answers)
-      const button = page.getByRole('link', { name: WORDS.sr.button, exact: true })
+      /* „PRIJAVI TIM”, OR THE SENTENCE OF A SHUT WINDOW, UNDER THE TABLE OF THE TEAMS, on the screen, and to
+         nobody but a member with no team. Found by what a reader meets, never by a class. */
+      const windowOpen = theDay === THE_OTHER_DAY_THE_SUITE_IS_READ_AS
+      const { page } = await open(at, '/sr/timovi', CARDS, answers)
+      const button = page.getByRole('link', { name: 'Prijavi tim', exact: true })
       const sentence = page.getByText('Tim se osniva u prelaznom roku', { exact: false })
+      const offered = reader === WITH_NO_TEAM
 
-      expect(await button.count(), 'the button').toBe(windowOpen ? 1 : 0)
-      expect(await sentence.count(), 'the sentence').toBe(windowOpen ? 0 : 1)
+      expect(await button.count(), 'the button').toBe(offered && windowOpen ? 1 : 0)
+      expect(await sentence.count(), 'the sentence').toBe(offered && !windowOpen ? 1 : 0)
 
-      if (windowOpen) {
-        expect(await button.evaluate((one) => one.tabIndex), 'the button is out of the order of the keyboard').toBe(0)
+      if (!offered) {
         return
       }
 
-      const under = await sentence.evaluate((element) => {
-        const cards = document.querySelector('[role="group"][aria-label="BTL tabele"]')
+      const where = await (windowOpen ? button : sentence).evaluate((element) => {
+        const table = document.querySelector('table')
 
-        if (cards === null) {
-          throw new Error('NOT MEASURED: no cards')
+        if (table === null) {
+          throw new Error('NOT MEASURED: the teams drew no table')
         }
 
-        return element.getBoundingClientRect().top >= cards.getBoundingClientRect().bottom
-      })
-
-      expect(under, 'the sentence is not under the cards').toBe(true)
-    })
-  }
-}
-
-/* THE PLACE HELD ON THE MEN AND THE WOMEN IS NOTHING ANYBODY CAN MEET: not painted, not under a press,
-   not reached by the keyboard. Asked of the page and not of the markup, because `visibility` is what the
-   stylesheet does with it. */
-for (const at of [WIDTHS[0], WIDTHS[4], WIDTHS[5]]) {
-  if (at === undefined) {
-    throw notMeasured('no width')
-  }
-
-  test(`the place of the button is out of reach on the men and the women, ${label(at)}`, async ({ open, theDay }) => {
-    if (theDay !== THE_OTHER_DAY_THE_SUITE_IS_READ_AS) {
-      return
-    }
-
-    for (const path of ['/sr/tabela', '/sr/tabela?pol=z']) {
-      const { page } = await open(at, path, cardsOf('sr'), { ...DATA, ...signedInAs(WITHOUT_A_TEAM) })
-      const held = await page.evaluate((selector) => {
-        const group = document.querySelector(selector)
-
-        if (group === null) {
-          throw new Error('NOT MEASURED: the screen drew no cards')
-        }
-
-        const place = group.previousElementSibling
-
-        /* No place is a fault, answered as one and asserted below. */
-        if (!(place instanceof HTMLElement)) {
-          return null
-        }
-
-        const box = place.getBoundingClientRect()
-        const hit = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2)
-
-        place.focus()
+        const box = element.getBoundingClientRect()
 
         return {
-          words: place.textContent,
-          width: box.width,
-          painted: place.checkVisibility({ visibilityProperty: true }),
-          pressed: hit !== null && (hit === place || place.contains(hit)),
-          focused: document.activeElement === place,
+          underTheTable: box.top >= table.getBoundingClientRect().bottom,
+          left: box.left,
+          right: box.right,
+          width: document.documentElement.clientWidth,
+          height: box.height,
+          boxWidth: box.width,
         }
-      }, cardsOf('sr'))
+      })
 
-      expect(held, `${path}: nothing holds the place of the button`).not.toBeNull()
+      expect(where.underTheTable, 'it is not under the table').toBe(true)
+      expect(where.left, 'it starts left of the screen').toBeGreaterThanOrEqual(0)
+      expect(where.right, 'it runs off the right edge of the screen').toBeLessThanOrEqual(where.width)
 
-      if (held === null) {
-        return
+      if (windowOpen) {
+        expect(Math.min(where.height, where.boxWidth), 'the button is smaller than 24 by 24').toBeGreaterThanOrEqual(24)
+        expect(await button.evaluate((one) => one.tabIndex), 'the button is out of the order of the keyboard').toBe(0)
       }
-
-      /* Read with its white space collapsed, as a name is: the break between the two lines is a space. */
-      expect(held.words?.replace(/\s+/g, ' '), `${path}: the place does not carry the button's words`).toBe(WORDS.sr.button)
-      expect(held.width, `${path}: the place has no width`).toBeGreaterThan(0)
-      expect(held.painted, `${path}: the place is painted`).toBe(false)
-      expect(held.pressed, `${path}: a press lands on the place`).toBe(false)
-      expect(held.focused, `${path}: the place takes the focus`).toBe(false)
-    }
-  })
-}
-
-/* THE NAME OF THE BUTTON HAS NO BREAK IN IT, in either shape (17.11.2026): asked of Chrome's own tree of
-   accessibility, which is what a screen reader is given, and not of a library that computes it again. On
-   a telephone the words are drawn in two lines and the name is still „Prijavi tim”. */
-for (const at of [WIDTHS[0], WIDTHS[4]]) {
-  if (at === undefined) {
-    throw notMeasured('no width')
+    })
   }
-
-  test(`the button is named without a break, ${label(at)}`, async ({ open, theDay }) => {
-    if (theDay !== THE_OTHER_DAY_THE_SUITE_IS_READ_AS) {
-      return
-    }
-
-    for (const locale of ['sr', 'en'] as const) {
-      const { page } = await open(at, `/${locale}/timovi`, cardsOf(locale), { ...DATA, ...signedInAs(WITHOUT_A_TEAM) })
-      const tree = await page.context().newCDPSession(page)
-      const { root } = await tree.send('DOM.getDocument', { depth: -1 })
-      const { nodeId } = await tree.send('DOM.querySelector', { nodeId: root.nodeId, selector: `a[href="/${locale}/novi-tim"]` })
-
-      expect(nodeId, `${locale}: the teams drew no button`).not.toBe(0)
-
-      const { nodes } = await tree.send('Accessibility.getPartialAXTree', { nodeId, fetchRelatives: false })
-
-      expect(nodes.map((one) => one.name?.value), `${locale}: the name of the button`).toEqual([WORDS[locale].button])
-    }
-  })
 }

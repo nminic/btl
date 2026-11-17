@@ -72,29 +72,32 @@ describe('the way to propose a team', () => {
     expect(await screen.findByRole('link', { name: /^Prijavi\s+tim$/ })).toBeVisible()
   })
 
-  /* AND ITS PLACE IS HELD ON THE MEN AND THE WOMEN FOR HIM, AND FOR NOBODY ELSE (owner, 17.11.2026,
-     answer 3): the same words, out of the reader's tree, before the cards, so the cards stand where they
-     stand on the teams. Asked of the reader the teams offer it to and of two they do not, a member in a
-     team and a visitor, so a place read off anybody but the reader is wrong for one of them. */
+  /* UNDER THE TABLE OF ALL THE TEAMS, AND ITS SENTENCE IN THE SAME PLACE (owner, 17.11.2026: „Dugme Prijavi
+     tim ne treba da se nadje gde se trenutno nalazi, nego ispod tabele sa svim timovima”, and the sentence of
+     a shut window there too, chosen with my recommendation). After the table in the document and not in
+     it, and after the cards: nothing of it stands above them. On a day in the window and on one out of it. */
   it.each([
-    ['/sr/tabela', 'competitor', '000002', true],
-    ['/sr/tabela?pol=z', 'competitor', '000002', true],
-    ['/sr/tabela', 'competitor', '000007', false],
-    ['/sr/tabela', 'visitor', null, false],
-  ] as const)('holds its place on %s for %s %s: %s', async (address, role, member, held) => {
-    renderAt(address, role, member, undefined, DAY)
+    ['in the window', DAY, /^Prijavi tim$/],
+    ['out of it', '2027-06-01', /^Tim se osniva u prelaznom roku/],
+  ] as const)('stands under the table of the teams, %s', async (_when, day, words) => {
+    renderAt('/sr/timovi', 'competitor', '000002', undefined, day)
 
-    const cards = await screen.findByRole('group', { name: 'BTL tabele' })
+    const table = await screen.findByRole('table', { name: 'Timovi' })
+    const cards = screen.getByRole('group', { name: 'BTL tabele' })
+    const offered = screen.getByText(words)
+
+    expect(table.contains(offered)).toBe(false)
+    expect(table.compareDocumentPosition(offered) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(cards.compareDocumentPosition(offered) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  /* And only on the teams: the men and the women offer neither, to the same member on the same day. */
+  it.each(['/sr/tabela', '/sr/tabela?pol=z'])('is offered nowhere on %s', async (address) => {
+    renderAt(address, 'competitor', '000002', undefined, DAY)
 
     await screen.findByRole('table')
-    expect(screen.queryByRole('link', { name: /^Prijavi\s+tim$/ })).toBeNull()
-
-    const place = screen.queryByText('Prijavi tim')
-
-    expect(place === null ? null : place.nextElementSibling).toBe(held ? cards : null)
-    if (place !== null) {
-      expect(place).toHaveAttribute('aria-hidden', 'true')
-    }
+    expect(screen.queryByText('Prijavi tim')).toBeNull()
+    expect(screen.queryByText(/^Tim se osniva u prelaznom roku/)).toBeNull()
   })
 
   it('is not offered to a member who already has one', async () => {

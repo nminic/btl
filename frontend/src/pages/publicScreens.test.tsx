@@ -476,31 +476,29 @@ describe('Rankings', () => {
     expect(screen.getByLabelText('Sezona')).toHaveValue(String(inLeague(2019)))
   })
 
-  /* THE THREE CARDS, IN THE ORDER THE OWNER NAMED THEM, BEFORE THE SEASON (17.11.2026: „Zelim da se
-     zameni redosled dugmica na BTL tabele tako da uvek idu Predlozi tim (ako postoji), pa Timovi
-     (default), pa Muskarci, pa Zene, pa drop down godine."), and each one the address of its card
-     (answer 8 of 16.11.2026). Asked on all three screens, because each draws its own row. */
+  /* THE THREE CARDS, IN THE ORDER THE OWNER NAMED THEM, BEFORE THE SEASON (16.11.2026: „Timovi prelazi
+     BTL tabele kao treća ravnopravna opcija koja se otvara klikom na Timovi (nakon dugmeta Žene, a pre
+     izbora godine iz dropdown)"), and each one the address of its card (answer 8). Asked on both
+     screens that draw them, because each draws its own row. */
   it.each([
     ['/sr/tabela', 'Muškarci'],
-    ['/sr/tabela?pol=z', 'Žene'],
     ['/sr/timovi', 'Timovi'],
-  ])('draws Timovi, Muškarci and Žene before the season on %s, and marks %s', async (address, marked) => {
+  ])('draws Muškarci, Žene and Timovi before the season on %s, and marks %s', async (address, marked) => {
     renderAt(address)
 
     const cards = await screen.findByRole('group', { name: 'BTL tabele' })
     const links = within(cards).getAllByRole('link')
 
     expect(links.map((one) => [one.textContent, one.getAttribute('href')])).toEqual([
-      ['Timovi', '/sr/timovi'],
       ['Muškarci', '/sr/tabela'],
       ['Žene', '/sr/tabela?pol=z'],
+      ['Timovi', '/sr/timovi'],
     ])
     expect(within(cards).getAllByRole('link', { current: 'page' }).map((one) => one.textContent)).toEqual([marked])
-    /* Before the season and in the same row, which is the row beside the heading: the cards stand in
-       the row of the cards (`TablesHead`), and that row and the season are both in the row of controls. */
+    /* Before the season and in the same row, which is the row beside the heading. */
     const season = screen.getByLabelText('Sezona')
 
-    expect(cards.parentElement?.parentElement).toBe(season.closest('.rankings__head-tool'))
+    expect(cards.parentElement).toBe(season.closest('.rankings__head-tool'))
     expect(cards.compareDocumentPosition(season) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(cards.contains(season)).toBe(false)
     expect(screen.getByRole('heading', { level: 1, name: 'BTL tabele' })).toBeVisible()
@@ -1015,12 +1013,9 @@ describe('what the filters are called', () => {
     const genders = screen.getByRole('group', { name: 'BTL tabele' })
     const season = must(screen.getByLabelText('Sezona').closest('label'), 'the season field')
     const categories = screen.getByRole('group', { name: 'Kategorija' })
-    const cardRow = must(genders.parentElement, 'the row of the cards')
-    const head = must(cardRow.parentElement, 'what holds the gender buttons')
+    const head = must(genders.parentElement, 'what holds the gender buttons')
 
-    /* A visitor: the teams offer him no button, so the row of the cards holds the cards alone. */
-    expect([...cardRow.children]).toEqual([genders])
-    expect([...head.children]).toEqual([cardRow, season])
+    expect([...head.children]).toEqual([genders, season])
     expect(head.contains(categories)).toBe(false)
 
     const row = must(document.querySelector('.rankings__filters'), 'the row of filters')

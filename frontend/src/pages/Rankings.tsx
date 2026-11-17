@@ -4,7 +4,6 @@ import { useToday } from '../clock/useClock'
 import { CompetitorName } from '../components/CompetitorName'
 import { NamePlate } from '../components/NamePlate'
 import { TablesHead } from './TableCards'
-import { whatTheTeamsOffer } from './teamOffer'
 import { Resource } from '../components/Resource'
 import { SeasonPicker } from '../components/SeasonPicker'
 import {
@@ -135,11 +134,9 @@ function Standing({
           that says which table is being read rather than narrowing it, so it
           belongs with the name of the screen and not among the filters. */}
       <div className="rankings__head-tool">
-        {/* Timovi, Muškarci and Žene, since 17.11.2026 (`TableCards`). Each is the address of its
-            card with the season being read, so the season stays with a change of card and the age
-            category goes, as it went with a change of gender before (the bands of one gender are not
-            the bands of the other). Before them the place of „Prijavi tim”, for the reader the teams
-            offer it to, so the cards stand where they stand on the teams (`TablesHead`).
+        {/* Muškarci, Žene and Timovi (`TableCards`). Each is the address of its card with the season
+            being read, so the season stays with a change of card and the age category goes, as it went
+            with a change of gender before (the bands of one gender are not the bands of the other).
 
             The season beside them and to their right, in the shape it has on the top boards and on
             the teams (owner, 23.08.2026: „Sezona dropdown 2026 treba da stoji identicno kao na strani
@@ -148,7 +145,6 @@ function Standing({
             and left the categories starting behind it rather than at the edge of the screen. */}
         <TablesHead
           current={gender === 'F' ? 'women' : 'men'}
-          offered={whatTheTeamsOffer(mine, competitors, today) === 'button'}
           seasonPicker={<SeasonPicker seasons={seasons} season={String(season)} fallback={String(fallback)} />}
         />
       </div>
