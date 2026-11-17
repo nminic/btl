@@ -1,7 +1,9 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { screen, waitFor, within } from '@testing-library/react'
+import { matchingMedia } from '../test/media'
 import { expectFrontPage, renderAt } from '../test/render'
+import { PHONE_HEADER } from './phoneHeader'
 import { setupUser } from '../test/user'
 import WRITTEN from '../test/mock/pages.json'
 import en from '../i18n/en.json'
@@ -120,6 +122,35 @@ describe('navigation', () => {
         .filter((one) => one.classList.contains('active'))
         .map((one) => one.textContent),
     ).toEqual(lit)
+  })
+
+  /* „BTL TABELE" OPENS THE MEN, the first card (owner, 17.11.2026: „Muskarci ponovo treba da postanu
+     default”), on a desktop and from the row of symbols on a telephone alike. Asked of the link before it
+     is pressed, so a link to another address fails on that line and not on a wait for a table. */
+  it.each([
+    ['a desktop', false],
+    ['a telephone', true],
+  ])('opens the men from „BTL tabele" on %s', async (_where, phone) => {
+    const real = window.matchMedia
+
+    window.matchMedia = matchingMedia((query) => phone && query === PHONE_HEADER)
+
+    try {
+      const user = setupUser()
+      const { router } = renderAt('/sr/top-liste')
+      const menu = within(await screen.findByRole('navigation', { name: 'Glavna navigacija' }))
+      const entry = menu.getByRole('link', { name: 'BTL tabele' })
+
+      expect(entry).toHaveAttribute('href', '/sr/tabela')
+      await user.click(entry)
+
+      const cards = within(await screen.findByRole('group', { name: 'BTL tabele' }))
+
+      expect(cards.getAllByRole('link', { current: 'page' }).map((one) => one.textContent)).toEqual(['Muškarci'])
+      expect(router.state.location.pathname).toBe('/sr/tabela')
+    } finally {
+      window.matchMedia = real
+    }
   })
 
   /* Every address in the navigation has a screen of its own since the ducats

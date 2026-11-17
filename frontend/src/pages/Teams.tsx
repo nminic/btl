@@ -5,7 +5,7 @@ import { Resource } from '../components/Resource'
 import { SeasonPicker } from '../components/SeasonPicker'
 import { offeredSeason, useSeason } from '../components/season'
 import { rankTeams, seasonOf, seasonsOnOffer, teamOf } from '../data/derive'
-import { inYearlyWindow, seasonShown, transfersTakeEffect } from '../data/season'
+import { seasonShown, transfersTakeEffect } from '../data/season'
 import type { Placed, TeamRow } from '../data/derive'
 import type { Team } from '../data/types'
 import { combineFour, useCompetitors, useFrozenSeasons, useResults, useTeams } from '../data/useResource'
@@ -19,7 +19,8 @@ import { teamWasDeleted } from './teamDeleted'
 import { MEMBERS, recordsOf, TEAMS } from './admin/entityForms'
 import { useOverlay } from './admin/overlay'
 import { mineIn, rowClass } from '../components/mine'
-import { TableCards } from './TableCards'
+import { TablesHead } from './TableCards'
+import { whatTheTeamsOffer } from './teamOffer'
 import './Rankings.css'
 
 /**
@@ -174,54 +175,20 @@ export function Teams() {
              else, and read from the file alone the button above went on offering
              them a second one (review). */
           const myTeam = teamOf(members.find((one) => one.memberNumber === memberNumber))
+          const offer = whatTheTeamsOffer(memberNumber, members, today)
 
           const drawn = (rows: Shown[]) => (
             <>
-              {/* The three cards before the season, alone in the row beside the heading, as on the
-                  other two cards: so they and the season stand on the same pixel on all three and do
-                  not move under the pointer when a card is pressed (ADL A7). Held by
-                  `geometry/tableCards.geometry.ts`, for a visitor, a member with a team and one with
-                  none. */}
+              {/* The cards and the season, in the row beside the heading, as on the other two cards:
+                  so they stand on the same pixel on all three and do not move under the pointer when a
+                  card is pressed (ADL A7). Held by `geometry/tableCards.geometry.ts`, for a visitor, a
+                  member with a team and one with none. */}
               <div className="rankings__head-tool">
-                <TableCards current="teams" />
-                <SeasonPicker seasons={seasons} season={season} fallback={running} />
+                <TablesHead
+                  current="teams"
+                  seasonPicker={<SeasonPicker seasons={seasons} season={season} fallback={running} />}
+                />
               </div>
-
-              {/* A team is put forward by whoever wants to run in it, and decided on by a moderator in
-                  the queue that has been waiting for one since it was written (owner, 03.08.2026; PDL
-                  P22). Not in the row of the cards since 16.11.2026: there it moved them. Beside the
-                  heading (owner, 16.11.2026, chosen between offered outcomes), where the row of the
-                  heading has room for it; where it has none, first under the row of the cards
-                  (`Rankings.css`, `.rankings__propose`). */}
-              {memberNumber !== null && myTeam === null && (
-                <div className={inYearlyWindow(today) ? 'rankings__propose rankings__propose--button' : 'rankings__propose'}>
-                {/* And only to a member who is not in a team today (owner,
-                    04.09.2026: „samo na strani Timovi ULOGOVANOG ČLANA KOJI
-                    TRENUTNO NEMA TIM U KOJEM SE NALAZI"). Until then every
-                    signed-in member saw it, so this takes it away from half of
-                    them rather than only adding a condition: a member of Dunav
-                    has a team, and what they can do with it is on that team's
-                    own page.
-
-                    `myTeam` is read off the member's own record just above,
-                    which is also what marks their row, so the button and the
-                    mark cannot disagree. Nothing at all there — a signed-in
-                    person with no competitor record — is also not in a team,
-                    and reads the same way. */}
-                {inYearlyWindow(today) ? (
-                    <Link className="button button--secondary" to={`/${locale}/novi-tim`}>
-                      {t('teams.propose')}
-                    </Link>
-                  ) : (
-                    /* Outside the window there is nothing to press and a sentence
-                       saying when there will be. A team is founded from 15 October to
-                       31 December (owner, 05.09.2026), the same window every other
-                       change of team is asked in, and the membership screen already
-                       speaks of it in those words. */
-                    <p className="rankings__empty">{t('teams.proposeShut')}</p>
-                  )}
-                </div>
-              )}
 
               {rows.length === 0 ? (
                 <p className="rankings__empty">{t('teams.empty')}</p>
@@ -291,6 +258,30 @@ export function Teams() {
                 </table>
               </div>
               )}
+
+              {/* „PRIJAVI TIM”, UNDER THE TABLE OF ALL THE TEAMS (owner, 17.11.2026: „Dugme Prijavi tim ne
+                  treba da se nadje gde se trenutno nalazi, nego ispod tabele sa svim timovima, ukoliko clan
+                  ima pravo da vidi to dugme. To uproscava i navigaciju, i konzistentnije je sa svim.”), as
+                  wide as its words and in one line („Samo dovoljne sirine da se ispise labela u njemu.”).
+                  A team is put forward by whoever wants to run in it and decided on by a moderator (owner,
+                  03.08.2026; PDL P22); the screen it opens is still „Predlog tima”. Offered only to a member
+                  who is not in a team today, inside the transfer window (`whatTheTeamsOffer`), read off the
+                  same records that mark his row, so the button and the mark cannot disagree.
+
+                  Outside the window, in its place, the sentence that says when a team is founded (owner,
+                  05.09.2026; and its place under the table 17.11.2026, chosen with my recommendation).
+
+                  From the left edge, under the table, as an action under the content of a screen stands on
+                  the portal (`pages/member/ProfileBio.tsx`, `member__actions`, derived). The button and the
+                  sentence are the same shape of box, so the one replaces the other in place. */}
+              {offer === 'button' && (
+                <p className="rankings__propose">
+                  <Link className="button button--secondary" to={`/${locale}/novi-tim`}>
+                    {t('teams.registerTeam')}
+                  </Link>
+                </p>
+              )}
+              {offer === 'sentence' && <p className="rankings__propose rankings__empty">{t('teams.proposeShut')}</p>}
             </>
           )
 

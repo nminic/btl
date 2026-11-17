@@ -340,7 +340,6 @@ export function Shell() {
           <Brand />
 
           <div className="shell__tools">
-            {!phone && devControls}
             <LanguageMenu restOfPath={rest} />
             {!phone && personal}
           </div>
@@ -351,10 +350,19 @@ export function Shell() {
             which only QA draws, stand in a row of their own under it, in the order they are read; the
             envelope and the picture, or the two links of a visitor, are the last cells of the second row,
             the picture the very last (owner: „poslednja stavka je sličica ulogovanog korisnika, ukoliko
-            postoji”). On a desktop the header is the one it was: everything after the language in the
-            first row, and the words in the second (`app/phoneHeader.ts` says why the two are two orders of
-            the document and not one moved by a stylesheet). */}
-        {phone && devControls !== null && <div className="shell__dev">{devControls}</div>}
+            postoji”). On a desktop the language, the envelope and the picture, or the two links of a
+            visitor, stand in the first row beside the mark, and the words in the second (`app/phoneHeader.ts`
+            says why the two are two orders of the document and not one moved by a stylesheet).
+
+            THE DEVELOPMENT CONTROLS HAVE A ROW OF THEIR OWN ON A DESKTOP AS WELL (owner, 17.11.2026: „na
+            tablet verziji izbor jezika, koverta i profilna slicica treba da ostanu u redu gde je logo, posto
+            se dole reci ispisuju cele za navigaciju.”). In the first row, before the language, they asked
+            278px of the row on QA, and took the language, the envelope and the picture down with them into
+            a row of their own (measured on a build with `VITE_DEV_TOOLS=1`, 17.11.2026: at 700, 768 and
+            820px for every reader, at 900px for all but one who has not paid, at 1024px for a visitor, and
+            at 1280px with the text at 150% for everyone). A build for the league has no such controls, and
+            there nothing moves. */}
+        {devControls !== null && <div className="shell__dev">{devControls}</div>}
 
         {phone ? (
           <div className="shell__cells">

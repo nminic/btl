@@ -69,7 +69,35 @@ describe('the way to propose a team', () => {
        own team's page (owner, 04.09.2026). */
     renderAt('/sr/timovi', 'competitor', '000002', undefined, DAY)
 
-    expect(await screen.findByRole('link', { name: 'Predloži tim' })).toBeVisible()
+    expect(await screen.findByRole('link', { name: /^Prijavi\s+tim$/ })).toBeVisible()
+  })
+
+  /* UNDER THE TABLE OF ALL THE TEAMS, AND ITS SENTENCE IN THE SAME PLACE (owner, 17.11.2026: „Dugme Prijavi
+     tim ne treba da se nadje gde se trenutno nalazi, nego ispod tabele sa svim timovima”, and the sentence of
+     a shut window there too, chosen with my recommendation). After the table in the document and not in
+     it, and after the cards: nothing of it stands above them. On a day in the window and on one out of it. */
+  it.each([
+    ['in the window', DAY, /^Prijavi tim$/],
+    ['out of it', '2027-06-01', /^Tim se osniva u prelaznom roku/],
+  ] as const)('stands under the table of the teams, %s', async (_when, day, words) => {
+    renderAt('/sr/timovi', 'competitor', '000002', undefined, day)
+
+    const table = await screen.findByRole('table', { name: 'Timovi' })
+    const cards = screen.getByRole('group', { name: 'BTL tabele' })
+    const offered = screen.getByText(words)
+
+    expect(table.contains(offered)).toBe(false)
+    expect(table.compareDocumentPosition(offered) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(cards.compareDocumentPosition(offered) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  /* And only on the teams: the men and the women offer neither, to the same member on the same day. */
+  it.each(['/sr/tabela', '/sr/tabela?pol=z'])('is offered nowhere on %s', async (address) => {
+    renderAt(address, 'competitor', '000002', undefined, DAY)
+
+    await screen.findByRole('table')
+    expect(screen.queryByText('Prijavi tim')).toBeNull()
+    expect(screen.queryByText(/^Tim se osniva u prelaznom roku/)).toBeNull()
   })
 
   it('is not offered to a member who already has one', async () => {
@@ -80,14 +108,14 @@ describe('the way to propose a team', () => {
     renderAt('/sr/timovi', 'competitor', '000007', undefined, DAY)
 
     await screen.findByRole('table', { name: 'Timovi' })
-    expect(screen.queryByRole('link', { name: 'Predloži tim' })).toBeNull()
+    expect(screen.queryByRole('link', { name: /^Prijavi\s+tim$/ })).toBeNull()
   })
 
   it('is not offered to somebody who is not signed in', async () => {
     renderAt('/sr/timovi')
 
     await screen.findByRole('table', { name: 'Timovi' })
-    expect(screen.queryByRole('link', { name: 'Predloži tim' })).toBeNull()
+    expect(screen.queryByRole('link', { name: /^Prijavi\s+tim$/ })).toBeNull()
   })
 
   it('sends a member who already has a team to the front page', async () => {
@@ -130,7 +158,7 @@ describe('the way to propose a team', () => {
     await router.navigate('/sr/timovi')
     await screen.findByRole('table', { name: 'Timovi' })
 
-    expect(screen.queryByRole('link', { name: 'Predloži tim' })).toBeNull()
+    expect(screen.queryByRole('link', { name: /^Prijavi\s+tim$/ })).toBeNull()
   })
 
   it('refuses them on a day two seasons before their team begins, too', async () => {
@@ -160,7 +188,7 @@ describe('the way to propose a team', () => {
 
     await screen.findByRole('table', { name: 'Timovi' })
 
-    expect(screen.queryByRole('link', { name: 'Predloži tim' })).toBeNull()
+    expect(screen.queryByRole('link', { name: /^Prijavi\s+tim$/ })).toBeNull()
     expect(screen.getByText(/od 21. novembra do 31. decembra/)).toBeVisible()
 
     await router.navigate('/sr/novi-tim')
@@ -182,7 +210,7 @@ describe('the way to propose a team', () => {
     await screen.findByRole('table', { name: 'Timovi' })
 
     expect(screen.queryByText(/od 21. novembra do 31. decembra/)).toBeNull()
-    expect(screen.queryByRole('link', { name: 'Predloži tim' })).toBeNull()
+    expect(screen.queryByRole('link', { name: /^Prijavi\s+tim$/ })).toBeNull()
   })
 
   it('offers the season that has not begun, where every team stands on nought', async () => {
@@ -968,7 +996,7 @@ describe('a member who has founded one team', () => {
     await router.navigate('/sr/timovi')
     await screen.findByRole('table', { name: 'Timovi' })
 
-    expect(screen.queryByRole('link', { name: 'Predloži tim' })).toBeNull()
+    expect(screen.queryByRole('link', { name: /^Prijavi\s+tim$/ })).toBeNull()
 
     await router.navigate('/sr/novi-tim')
 

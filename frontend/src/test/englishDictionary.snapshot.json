@@ -865,6 +865,7 @@
     "notFound": "There is no such team.",
     "name": "Team",
     "propose": "Propose a team",
+    "registerTeam": "Register a team",
     "proposeTitle": "A team proposal",
     "proposeSubmit": "Send the proposal",
     "proposeSending": "Sending",

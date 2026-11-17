@@ -2,12 +2,14 @@ import { render, screen, within } from '@testing-library/react'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { MemoryRouter } from 'react-router'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
+import { PHONE_HEADER } from '../app/phoneHeader'
 import { ClockContext } from '../clock/context'
 import { I18nProvider } from '../i18n/I18nProvider'
 import { must } from '../test/at'
+import { matchingMedia } from '../test/media'
 import { unconditionalRules } from '../test/stylesheet'
-import { TableCards, type TableCard } from './TableCards'
+import { TableCards, TablesHead, type TableCard } from './TableCards'
 
 function drawn(current: TableCard, locale: 'sr' | 'en' = 'sr', at = '/', today = '2027-06-01') {
   render(
@@ -115,5 +117,54 @@ describe('the three cards of the tables', () => {
 
     expect(row.style.flexWrap).toBe('wrap')
     expect(row.style.justifyContent).toBe('flex-end')
+  })
+})
+
+const realMatchMedia = window.matchMedia
+
+afterEach(() => {
+  window.matchMedia = realMatchMedia
+})
+
+/* ON A TELEPHONE THE SEASON COMES FIRST, beside the heading, and the cards in the row under it (owner,
+   17.11.2026: „u gornjem redu naslov BTL tabele levo i dropdown sezone desno, a u jednom redu ispod
+   [...] Muskarci, Zene”), in the document as well, so the keyboard goes the way the eye does. The shape is
+   asked of the same question the header asks, and told to the stylesheet by the class. And nothing but
+   the cards and the season stands in the row: „Prijavi tim” is under the table of the teams. */
+describe('the row of the heading of the tables', () => {
+  it.each([
+    ['a telephone', true],
+    ['a desktop', false],
+  ] as const)('puts the season where it stands on %s', (_where, phone) => {
+    window.matchMedia = matchingMedia((query) => phone && query === PHONE_HEADER)
+
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <ClockContext.Provider value={{ today: '2027-12-01', simulated: null, simulate: () => undefined }}>
+          <I18nProvider locale="sr">
+            <div>
+              <TablesHead
+                current="teams"
+                seasonPicker={
+                  <label>
+                    Sezona
+                    <select defaultValue="2027">
+                      <option value="2027">2027</option>
+                    </select>
+                  </label>
+                }
+              />
+            </div>
+          </I18nProvider>
+        </ClockContext.Provider>
+      </MemoryRouter>,
+    )
+
+    const cards = screen.getByRole('group', { name: 'BTL tabele' })
+    const season = must(screen.getByLabelText('Sezona').closest('label'), 'the season')
+
+    expect([...must(cards.parentElement, 'the row').children]).toEqual(phone ? [season, cards] : [cards, season])
+    expect(cards.classList.contains('rankings__tabs--phone')).toBe(phone)
+    expect(screen.getAllByRole('link').map((one) => one.textContent)).toEqual(['Muškarci', 'Žene', 'Timovi'])
   })
 })

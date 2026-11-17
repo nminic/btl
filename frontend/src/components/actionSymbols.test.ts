@@ -209,7 +209,9 @@ const STAYS_A_WORD = new Map([
   ['teams.invite', LISTED],
   ['teams.join', LISTED],
   ['teams.joinWithdraw', LISTED],
-  ['teams.propose', NOT_AN_ACTION],
+  /* „Prijavi tim" since 17.11.2026 (owner: „treba da se zove dugme zapravo Prijavi tim"), the same way into
+     the form „Predlog tima" that `teams.propose` was; that key still names the address of the form. */
+  ['teams.registerTeam', NOT_AN_ACTION],
   /* The administration's buttons under the picture and the words of a member (PDL 06.11.2026): each saves
      the box it stands under, the same kind of button as `picture.send` and `bio.send` on his own card. */
   ['theirBoxes.pictureSave', FORM],
