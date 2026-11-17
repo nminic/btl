@@ -276,6 +276,48 @@ for (const at of ON_A_DESKTOP) {
   })
 }
 
+/* ON A TABLET THE LANGUAGE, THE ENVELOPE AND THE PICTURE STAND IN THE ROW OF THE MARK (owner, 17.11.2026: „na
+   tablet verziji izbor jezika, koverta i profilna slicica treba da ostanu u redu gde je logo, posto se dole
+   reci ispisuju cele za navigaciju.”), or the language and the two links of a visitor, for every reader, at
+   the widths of a tablet and at the first width of a desktop. In the row of the mark means level with it:
+   each control's box and the mark's share a band of height, and every word of the navigation is below both.
+   On QA the two development controls have a row of their own so that they do not take these with them
+   (`app/Shell.tsx`; their place is vitest's, `app/phoneHeaderOnQa.test.tsx`, because this build has none). */
+for (const at of [
+  { width: 700, text: 100 },
+  { width: 768, text: 100 },
+  { width: 820, text: 100 },
+  { width: 1024, text: 100 },
+] satisfies At[]) {
+  for (const reader of READERS) {
+    test(`a tablet keeps the language and the controls of ${reader.who} in the row of the mark at ${label(at)}`, async ({ open }) => {
+      const { page } = await open(at, '/sr/kalendar', 'header .brand', reader.answers)
+
+      await expect(reader.last(page)).toBeVisible()
+
+      const mark = await boxOf(page.locator('header .brand'))
+      const words = await page.getByRole('navigation', { name: 'Glavna navigacija' }).getByRole('link').all()
+      /* The reader's own controls are what `cellsOf` finds after the words: the envelope and the picture,
+         the picture alone, or the two links of a visitor. */
+      const own = (await cellsOf(page)).slice(words.length)
+      const controls = [page.getByRole('button', { name: 'Jezik, SR' }), ...own]
+
+      expect(own.length, `the controls of ${reader.who}`).toBe(reader.who === 'somebody who has not paid' ? 1 : 2)
+
+      for (const control of controls) {
+        const box = await boxOf(control)
+        const name = await control.evaluate((element) => element.getAttribute('aria-label') ?? element.textContent)
+
+        expect(box.top < mark.bottom && mark.top < box.bottom, `${String(name)} is not in the row of the mark`).toBe(true)
+
+        for (const word of words) {
+          expect((await boxOf(word)).top, `${String(name)} is not above the words`).toBeGreaterThanOrEqual(box.bottom - SLACK)
+        }
+      }
+    })
+  }
+}
+
 /* The panels hang from the row (`app/Shell.css`, `.shell__cells`), so they keep to the column wherever the row
    is drawn: at 360px, where the row and the header are one box, and at 1280px with the text at 200%, where the
    column is the middle 1100px of the window and a panel hung from the header stood 82px past it
