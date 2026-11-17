@@ -72,6 +72,31 @@ describe('the way to propose a team', () => {
     expect(await screen.findByRole('link', { name: 'Prijavi tim' })).toBeVisible()
   })
 
+  /* AND ITS PLACE IS HELD ON THE MEN AND THE WOMEN FOR HIM, AND FOR NOBODY ELSE (owner, 17.11.2026,
+     answer 3): the same words, out of the reader's tree, before the cards, so the cards stand where they
+     stand on the teams. Asked of the reader the teams offer it to and of two they do not, a member in a
+     team and a visitor, so a place read off anybody but the reader is wrong for one of them. */
+  it.each([
+    ['/sr/tabela', 'competitor', '000002', true],
+    ['/sr/tabela?pol=z', 'competitor', '000002', true],
+    ['/sr/tabela', 'competitor', '000007', false],
+    ['/sr/tabela', 'visitor', null, false],
+  ] as const)('holds its place on %s for %s %s: %s', async (address, role, member, held) => {
+    renderAt(address, role, member, undefined, DAY)
+
+    const cards = await screen.findByRole('group', { name: 'BTL tabele' })
+
+    await screen.findByRole('table')
+    expect(screen.queryByRole('link', { name: 'Prijavi tim' })).toBeNull()
+
+    const place = screen.queryByText('Prijavi tim')
+
+    expect(place === null ? null : place.nextElementSibling).toBe(held ? cards : null)
+    if (place !== null) {
+      expect(place).toHaveAttribute('aria-hidden', 'true')
+    }
+  })
+
   it('is not offered to a member who already has one', async () => {
     /* The half of the same decision that takes something away: 000007 is in Dunav,
        and until 04.09.2026 every signed-in member saw this. Named by the member and
