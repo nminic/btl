@@ -64,7 +64,7 @@
      whole width it filled the second row, and the buttons fell to a third with
      the second track collapsed to nothing, which is the very arrangement this
      block was written to prevent. */
-  .rankings--tooled > *:not(h1):not(.rankings__head-tool):not(.comments__mark):not(.rankings__propose--button) {
+  .rankings--tooled > *:not(h1):not(.rankings__head-tool):not(.comments__mark) {
     grid-column: 1 / -1;
   }
 
@@ -165,25 +165,10 @@
   margin-bottom: var(--space-12);
 }
 
-/* WHAT THE TEAMS OFFER A MEMBER WITH NO TEAM, OUT OF THE ROW OF THE CARDS (16.11.2026): there it moved
-   them, 59px down at 360px and 260px to the right at 1280px with the text at 200% (review of PR 752,
-   against ADL A7, „navigacija se ne sme pomerati tokom klikova"). It comes after the row of the cards in
-   the markup and in the order of the keyboard, so in the flow it is the first thing under them and moves
-   nothing above them. That is where it stands unless it stands beside the heading.
-
-   The button „Predloži tim" stands beside the heading from 820px (owner, 16.11.2026, chosen with my
-   recommendation), and only where it really fits there: the cell of the heading has to hold the words of
-   the heading, the button and a gap between them, beside the cards and the season. That is a question
-   about the head of the screen and not about the window, because the column of the content stops at
-   1100px: asked of the window alone, in `em`, the button covered the heading and pushed the cards
-   28.8px down at 1640px and wider with the text at 200% (second review of PR 752). So the head is a
-   container and the query asks its width, in two parts that are both measured: the words of the
-   heading, which are drawn in pixels (at most about 188px at 40px), and everything else, which grows with
-   the text (the button about 8.1em, the cards and the season about 24.3em, the gaps 1.75em, and room for
-   „Propose a team", which is longer). Not a place where the portal changes shape, so not on the closed
-   list of widths in `styles/scale.test.ts`, for the reason `.rankings__scroll` below gives. The sentence
-   that stands in the button's place while the window is shut is never beside the heading. Held, cell by
-   cell, by `geometry/tableCards.geometry.ts`. */
+/* THE SENTENCE THE TEAMS SAY TO A MEMBER WITH NO TEAM WHILE THE TRANSFER WINDOW IS SHUT, under the row
+   of the cards (16.11.2026). It comes after that row in the markup and in the order of the keyboard, so
+   in the flow it is the first thing under the cards and moves nothing above them. The button it stands
+   in for while the window is open is in the row of the cards since 17.11.2026 (`.rankings__cards`). */
 .rankings__propose {
   display: flex;
   justify-content: flex-end;
@@ -194,47 +179,72 @@
   margin-block-start: var(--space-16);
 }
 
-.rankings--tooled:has(> .rankings__propose--button) {
-  container-type: inline-size;
-  container-name: table-head;
+/* THE ROW OF THE CARDS OF THE TABLES: „Prijavi tim” or the place held for it, then Timovi, Muškarci and
+   Žene (owner, 17.11.2026; `pages/TableCards.tsx`, `TablesHead`). One box, so the button and the cards
+   stay together when the season has to go to a line of its own, and wrapping, from the right, like the
+   row it stands in: what wraps is the same on all three cards for one reader, because the place on the
+   men and the women is as wide as the button on the teams. */
+.rankings__cards {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: var(--space-12);
 }
 
-@media (min-width: 35em) {
-  /* Under the cards where the row is a grid, across both columns like everything under the heading. */
-  .rankings--tooled > .rankings__propose--button {
-    grid-column: 1 / -1;
-  }
+/* THE PLACE OF „PRIJAVI TIM” ON THE MEN AND THE WOMEN (owner, 17.11.2026, answer 3). `visibility` and
+   not `display`, and that is the whole rule, as with `.shell__guest--waiting`: the box keeps the width
+   the button's own words give it in the button's own class, and a box that is not visible is not
+   painted, is not hit by a press and is not in the reader's tree. */
+.rankings__held {
+  visibility: hidden;
 }
 
-/* Beside the heading: in the heading's own cell, at its end. Every one of the three is placed, because
-   an item placed by name is laid before the ones that are not, and the heading would otherwise be put in
-   the first free cell, the second one.
+/* THE SHAPE OF A TELEPHONE, asked by the class `TablesHead` writes where the header has that shape
+   (`app/phoneHeader.ts`), never by a width of its own, so the two cannot disagree about where the
+   telephone ends (owner, 17.11.2026: „u gornjem redu naslov BTL tabele levo i dropdown sezone desno, a
+   u jednom redu ispod Predlozi tim ako postoji, Timovi (default), Muskarci, Zene”).
 
-   **And it takes no height from the row.** It is taller than the cards (about 2.9em against 2.7em), so
-   at a larger text it would be the tallest thing in the row, and the row, which centres the cards,
-   would grow and move them (3px at 150%, measured). The negative margins take 2em off what it asks of
-   the row; they are split so that its box sits on the same centre the heading's does, which carries
-   `--head-end` under it as well. */
-@media (min-width: 51.25em) {
-  @container table-head (min-width: calc(200px + 35.5em)) {
-    .rankings--tooled:has(> .rankings__propose--button) > h1 {
-      grid-row: 1;
-      grid-column: 1;
-    }
+   The row of the heading gives up its own box (`display: contents`), so the season and the row of the
+   cards are laid by the screen beside the heading. A flex row that wraps and not a grid of two tracks:
+   where the heading and the season do not fit on one line, which is 360px with the text at 200%, the
+   season goes to a line of its own at the right instead of being drawn over the heading. Everything
+   after the head takes a whole line and comes after it, the sentence about the window included. */
+.rankings--tooled:has(> .rankings__head-tool > .rankings__cards--phone) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: var(--tool-gap);
+}
 
-    .rankings--tooled:has(> .rankings__propose--button) > .rankings__head-tool {
-      grid-row: 1;
-      grid-column: 2;
-    }
+/* `min-inline-size: 0`, because a flex item will not shrink below its content: without it the table
+   of the men, which scrolls inside its own box, pushed the page 90px sideways at 360px (measured). */
+.rankings--tooled:has(> .rankings__head-tool > .rankings__cards--phone) > * {
+  flex: 1 1 100%;
+  order: 1;
+  min-inline-size: 0;
+}
 
-    .rankings--tooled > .rankings__propose--button {
-      grid-row: 1;
-      grid-column: 1;
-      justify-self: end;
-      align-self: center;
-      margin-block: -1em calc(var(--head-end) - 1em);
-    }
-  }
+.rankings--tooled:has(> .rankings__head-tool > .rankings__cards--phone) > h1 {
+  flex: 1 1 auto;
+  order: 0;
+  margin-block-end: var(--head-end);
+}
+
+.rankings__head-tool:has(> .rankings__cards--phone) {
+  display: contents;
+}
+
+.rankings__head-tool:has(> .rankings__cards--phone) > .rankings__field {
+  order: 0;
+  margin-inline-start: auto;
+  margin-block-end: var(--head-end);
+}
+
+.rankings__cards--phone {
+  flex: 1 1 100%;
+  order: 0;
+  margin-block-end: var(--head-end);
 }
 
 /* Wrapping, and from the right like the row it stands in, since the tables carry three cards

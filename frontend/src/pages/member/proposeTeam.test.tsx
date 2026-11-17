@@ -69,7 +69,7 @@ describe('the way to propose a team', () => {
        own team's page (owner, 04.09.2026). */
     renderAt('/sr/timovi', 'competitor', '000002', undefined, DAY)
 
-    expect(await screen.findByRole('link', { name: 'Predloži tim' })).toBeVisible()
+    expect(await screen.findByRole('link', { name: 'Prijavi tim' })).toBeVisible()
   })
 
   it('is not offered to a member who already has one', async () => {
@@ -80,14 +80,14 @@ describe('the way to propose a team', () => {
     renderAt('/sr/timovi', 'competitor', '000007', undefined, DAY)
 
     await screen.findByRole('table', { name: 'Timovi' })
-    expect(screen.queryByRole('link', { name: 'Predloži tim' })).toBeNull()
+    expect(screen.queryByRole('link', { name: 'Prijavi tim' })).toBeNull()
   })
 
   it('is not offered to somebody who is not signed in', async () => {
     renderAt('/sr/timovi')
 
     await screen.findByRole('table', { name: 'Timovi' })
-    expect(screen.queryByRole('link', { name: 'Predloži tim' })).toBeNull()
+    expect(screen.queryByRole('link', { name: 'Prijavi tim' })).toBeNull()
   })
 
   it('sends a member who already has a team to the front page', async () => {
@@ -130,7 +130,7 @@ describe('the way to propose a team', () => {
     await router.navigate('/sr/timovi')
     await screen.findByRole('table', { name: 'Timovi' })
 
-    expect(screen.queryByRole('link', { name: 'Predloži tim' })).toBeNull()
+    expect(screen.queryByRole('link', { name: 'Prijavi tim' })).toBeNull()
   })
 
   it('refuses them on a day two seasons before their team begins, too', async () => {
@@ -160,7 +160,7 @@ describe('the way to propose a team', () => {
 
     await screen.findByRole('table', { name: 'Timovi' })
 
-    expect(screen.queryByRole('link', { name: 'Predloži tim' })).toBeNull()
+    expect(screen.queryByRole('link', { name: 'Prijavi tim' })).toBeNull()
     expect(screen.getByText(/od 21. novembra do 31. decembra/)).toBeVisible()
 
     await router.navigate('/sr/novi-tim')
@@ -182,7 +182,7 @@ describe('the way to propose a team', () => {
     await screen.findByRole('table', { name: 'Timovi' })
 
     expect(screen.queryByText(/od 21. novembra do 31. decembra/)).toBeNull()
-    expect(screen.queryByRole('link', { name: 'Predloži tim' })).toBeNull()
+    expect(screen.queryByRole('link', { name: 'Prijavi tim' })).toBeNull()
   })
 
   it('offers the season that has not begun, where every team stands on nought', async () => {
@@ -968,7 +968,7 @@ describe('a member who has founded one team', () => {
     await router.navigate('/sr/timovi')
     await screen.findByRole('table', { name: 'Timovi' })
 
-    expect(screen.queryByRole('link', { name: 'Predloži tim' })).toBeNull()
+    expect(screen.queryByRole('link', { name: 'Prijavi tim' })).toBeNull()
 
     await router.navigate('/sr/novi-tim')
 

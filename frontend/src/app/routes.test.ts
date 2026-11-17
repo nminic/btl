@@ -58,14 +58,17 @@ describe('navForRole', () => {
     ])
   })
 
-  it('marks „BTL tabele" on the teams, its third card, and no other entry on anything else', () => {
+  it('marks „BTL tabele" on the teams, one of its cards, and no other entry on anything else', () => {
     /* Owner, 16.11.2026, answer 8: „BTL tabele" in the navigation lights on all three cards. The
        other way round too: an entry marked on an address that is not its card would light two
        entries at once. */
+    /* And it opens the teams, its first card since 17.11.2026 (owner, answer 2), which is one of the
+       addresses it is marked on, so the screen it opens lights it. */
     expect(NAV.filter((section) => section.alsoMarkedOn !== undefined).map((section) => [
       section.path,
       section.alsoMarkedOn,
-    ])).toEqual([[TABLE_ADDRESS, [TEAMS_ADDRESS]]])
+      section.opens,
+    ])).toEqual([[TABLE_ADDRESS, [TEAMS_ADDRESS], TEAMS_ADDRESS]])
     expect([TABLE_ADDRESS, TEAMS_ADDRESS]).toEqual(['tabela', 'timovi'])
   })
 
@@ -97,7 +100,7 @@ describe('the shape of the navigation', () => {
 
   it('still serves the rulebook and the teams, at the addresses they always had', () => {
     /* Off the navigation on 16.11.2026 and not off the portal: the rulebook is in the footer and the
-       teams are the third card of the tables, both at their own address (owner, answer 8), so a link
+       teams are a card of the tables, both at their own address (owner, answer 8), so a link
        shared before that day still opens them. Read off the router table, which is what is served. */
     const served = servedPaths()
 

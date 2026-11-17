@@ -5,7 +5,7 @@ import { Resource } from '../components/Resource'
 import { SeasonPicker } from '../components/SeasonPicker'
 import { offeredSeason, useSeason } from '../components/season'
 import { rankTeams, seasonOf, seasonsOnOffer, teamOf } from '../data/derive'
-import { inYearlyWindow, seasonShown, transfersTakeEffect } from '../data/season'
+import { seasonShown, transfersTakeEffect } from '../data/season'
 import type { Placed, TeamRow } from '../data/derive'
 import type { Team } from '../data/types'
 import { combineFour, useCompetitors, useFrozenSeasons, useResults, useTeams } from '../data/useResource'
@@ -19,7 +19,8 @@ import { teamWasDeleted } from './teamDeleted'
 import { MEMBERS, recordsOf, TEAMS } from './admin/entityForms'
 import { useOverlay } from './admin/overlay'
 import { mineIn, rowClass } from '../components/mine'
-import { TableCards } from './TableCards'
+import { TablesHead } from './TableCards'
+import { whatTheTeamsOffer } from './teamOffer'
 import './Rankings.css'
 
 /**
@@ -174,52 +175,35 @@ export function Teams() {
              else, and read from the file alone the button above went on offering
              them a second one (review). */
           const myTeam = teamOf(members.find((one) => one.memberNumber === memberNumber))
+          const offer = whatTheTeamsOffer(memberNumber, members, today)
 
           const drawn = (rows: Shown[]) => (
             <>
-              {/* The three cards before the season, alone in the row beside the heading, as on the
-                  other two cards: so they and the season stand on the same pixel on all three and do
-                  not move under the pointer when a card is pressed (ADL A7). Held by
-                  `geometry/tableCards.geometry.ts`, for a visitor, a member with a team and one with
-                  none. */}
+              {/* The cards and the season, in the row beside the heading, as on the other two cards:
+                  so they stand on the same pixel on all three and do not move under the pointer when a
+                  card is pressed (ADL A7). Held by `geometry/tableCards.geometry.ts`, for a visitor, a
+                  member with a team and one with none. */}
               <div className="rankings__head-tool">
-                <TableCards current="teams" />
-                <SeasonPicker seasons={seasons} season={season} fallback={running} />
+                {/* A team is put forward by whoever wants to run in it, and decided on by a moderator
+                    in the queue that has been waiting for one since it was written (owner, 03.08.2026;
+                    PDL P22). „Prijavi tim” stands first in the row of the cards, before Timovi (owner,
+                    17.11.2026), and the men and the women hold its place for the same reader, so the
+                    cards do not move (`TablesHead`). Offered only to a member who is not in a team
+                    today (`whatTheTeamsOffer`), read off the same records that mark his row, so the
+                    button and the mark cannot disagree. */}
+                <TablesHead
+                  current="teams"
+                  offered={offer === 'button'}
+                  seasonPicker={<SeasonPicker seasons={seasons} season={season} fallback={running} />}
+                />
               </div>
 
-              {/* A team is put forward by whoever wants to run in it, and decided on by a moderator in
-                  the queue that has been waiting for one since it was written (owner, 03.08.2026; PDL
-                  P22). Not in the row of the cards since 16.11.2026: there it moved them. Beside the
-                  heading (owner, 16.11.2026, chosen between offered outcomes), where the row of the
-                  heading has room for it; where it has none, first under the row of the cards
-                  (`Rankings.css`, `.rankings__propose`). */}
-              {memberNumber !== null && myTeam === null && (
-                <div className={inYearlyWindow(today) ? 'rankings__propose rankings__propose--button' : 'rankings__propose'}>
-                {/* And only to a member who is not in a team today (owner,
-                    04.09.2026: „samo na strani Timovi ULOGOVANOG ČLANA KOJI
-                    TRENUTNO NEMA TIM U KOJEM SE NALAZI"). Until then every
-                    signed-in member saw it, so this takes it away from half of
-                    them rather than only adding a condition: a member of Dunav
-                    has a team, and what they can do with it is on that team's
-                    own page.
-
-                    `myTeam` is read off the member's own record just above,
-                    which is also what marks their row, so the button and the
-                    mark cannot disagree. Nothing at all there — a signed-in
-                    person with no competitor record — is also not in a team,
-                    and reads the same way. */}
-                {inYearlyWindow(today) ? (
-                    <Link className="button button--secondary" to={`/${locale}/novi-tim`}>
-                      {t('teams.propose')}
-                    </Link>
-                  ) : (
-                    /* Outside the window there is nothing to press and a sentence
-                       saying when there will be. A team is founded from 15 October to
-                       31 December (owner, 05.09.2026), the same window every other
-                       change of team is asked in, and the membership screen already
-                       speaks of it in those words. */
-                    <p className="rankings__empty">{t('teams.proposeShut')}</p>
-                  )}
+              {/* Outside the window there is nothing to press and a sentence saying when there will
+                  be (owner, 05.09.2026), the window every other change of team is asked in. Under the
+                  row of the cards, where it moves nothing above it. */}
+              {offer === 'sentence' && (
+                <div className="rankings__propose">
+                  <p className="rankings__empty">{t('teams.proposeShut')}</p>
                 </div>
               )}
 

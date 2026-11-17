@@ -235,7 +235,7 @@ describe('a team its administrator takes down', () => {
        function is asked about an empty string on its own (`data/derive.test.ts`).
        Asked here as well it would be the same measurement twice, once cheaply and
        once through a screen. */
-    expect(await screen.findByRole('link', { name: 'Predloži tim' })).toBeVisible()
+    expect(await screen.findByRole('link', { name: 'Prijavi tim' })).toBeVisible()
 
     /* And the address answers the same way, which is where the rule really lives: a
        hidden control is not a rule, and that was a finding once already (04.09.2026).
@@ -296,7 +296,7 @@ describe('a team its administrator takes down', () => {
 
     /* The same answer the team's own page gives: nobody is left in a team that is gone,
        so the way to found one opens again. */
-    expect(await screen.findByRole('link', { name: 'Predloži tim' })).toBeVisible()
+    expect(await screen.findByRole('link', { name: 'Prijavi tim' })).toBeVisible()
 
     server.stop()
   }, SLOW)
@@ -331,7 +331,7 @@ describe('a team its administrator takes down', () => {
     )
 
     /* **The state before the deletion, said out loud, because the founder is free at the
-       start of this walk too.** 000004 has no team in the file, so „Predloži tim" is
+       start of this walk too.** 000004 has no team in the file, so „Prijavi tim" is
        offered from the first moment and the assertion at the end would hold without
        anything here happening at all (review, 05.09.2026). What says the approval landed
        is the roster this screen counts: one member, and it is counted through the same
@@ -356,7 +356,7 @@ describe('a team its administrator takes down', () => {
 
     /* The founder is free again, which is the whole of what the roster being taken along
        means to the person it happened to. */
-    expect(await screen.findByRole('link', { name: 'Predloži tim' })).toBeVisible()
+    expect(await screen.findByRole('link', { name: 'Prijavi tim' })).toBeVisible()
   }, SLOW)
 
   it('is not offered to a member of the team who does not administer it', async () => {
@@ -625,7 +625,7 @@ describe('a team its administrator takes down', () => {
 
         /* And the founder is free again, which is what the roster being taken along by hand
            means to the person it happened to. */
-        expect(await screen.findByRole('link', { name: 'Predloži tim' })).toBeVisible()
+        expect(await screen.findByRole('link', { name: 'Prijavi tim' })).toBeVisible()
 
         /* AND NOBODY OUTSIDE THE TEAM LOST THEIRS WITH IT. Handing this half the whole list
            of members instead of this team's would pass every assertion above and leave the
