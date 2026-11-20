@@ -1,3 +1,4 @@
+import { useRef } from 'react'
 import { Link } from 'react-router'
 import { dotsAt, upcomingSeries } from '../../data/derive'
 import type { BtlEvent, Race } from '../../data/types'
@@ -13,8 +14,7 @@ import { useI18n } from '../../i18n/useI18n'
    it is written down as open (ADL A7) rather than fixed here, since only
    table.css is read by the test that keeps this honest. */
 import '../../styles/table.css'
-
-const ROWS = 6
+import { useRowsThatFit } from './rowsThatFit'
 
 /* "Priprema, pozor, SAD!" The calendar is the main reason people come, so what
  * is next stands high on the page.
@@ -31,18 +31,26 @@ const ROWS = 6
  *
  * A recurring event takes one row and says when it runs next, instead of five
  * consecutive Wednesdays eating the whole widget.
+ *
+ * Four races while there is a sponsor of the day under it, and as many as fit to the bottom of the
+ * column while there is none (PDL P24, variant A, owner 18.11.2026; `rowsThatFit.ts`). It drew six
+ * until then, a number no decision had set.
  */
 export function CalendarExtract({
   events,
   races,
   today,
+  fill,
 }: {
   events: BtlEvent[]
   races: Race[]
   today: string
+  /** No sponsor of the day: the list fills the column rather than stopping at four. */
+  fill: boolean
 }) {
   const { locale, t } = useI18n()
-  const series = upcomingSeries(events, today, ROWS)
+  const list = useRef<HTMLUListElement>(null)
+  const series = upcomingSeries(events, today, useRowsThatFit(list, fill))
 
   return (
     <section className="card" aria-labelledby="calendar-extract-heading">
@@ -53,7 +61,7 @@ export function CalendarExtract({
       {series.length === 0 ? (
         <p className="card__empty">{t('calendar.empty')}</p>
       ) : (
-        <ul className="extract">
+        <ul className="extract" ref={list}>
           {series.map((entry) => {
             const lengths = dotsAt(entry.next, races)
 

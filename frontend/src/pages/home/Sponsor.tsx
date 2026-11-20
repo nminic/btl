@@ -1,38 +1,73 @@
 import { useI18n } from '../../i18n/useI18n'
 import type { SponsorEntry } from './content'
 
-export function Sponsor({ sponsors }: { sponsors: SponsorEntry[] }) {
+/**
+ * „Sponzor dana", in the right column between the calendar and the calculator (PDL P24, variant A,
+ * owner 18.11.2026).
+ *
+ * The logo centred at the top, 64px tall, and the name centred under it, both one link, and the two
+ * lines of the description under them, aligned left: „Opis je poravnat levo, a logo i naziv su
+ * centrirani." The domain is not written out anywhere („Domen sponzora se ne ispisuje"), and there
+ * are no links at the foot of the box („Dve veze na dnu boksa se ne prave").
+ *
+ * **One link around the logo and the name, not two**, as the draft the owner approved draws it
+ * (`predlozi/sponzori-nacrt-desna-kolona.html`, „Veze, i zašto jedna"): a press on either goes to the
+ * sponsor, a keyboard takes one step instead of two, and a screen reader hears the name once. The
+ * logo is therefore decoration inside the link (`alt=""`); the name of the link is the name of the
+ * sponsor, and the sentence that it opens in a new window.
+ *
+ * Drawn only for a sponsor there is. Whether there is one is decided once, on the front page, which
+ * also decides the strip and the number of races in the calendar by the same answer (`Home.tsx`).
+ */
+export function Sponsor({ sponsor }: { sponsor: SponsorEntry }) {
   const { t } = useI18n()
-  // The one whose day it is, and nothing at all on a day with no sponsor: an
-  // empty card under a heading reads as a sponsor whose name failed to load.
-  const [ofTheDay] = sponsors
-
-  if (ofTheDay === undefined) {
-    return null
-  }
 
   return (
-    <section className="card" aria-labelledby="sponsor-heading">
+    <section className="card sponsor-day" aria-labelledby="sponsor-heading">
       <h2 className="card__title" id="sponsor-heading">
         {t('home.sponsorOfTheDay')}
       </h2>
-      <p className="sponsor__name">{ofTheDay.name}</p>
+      <div className="sponsor-day__top">
+        <a className="sponsor-day__link" href={sponsor.url} target="_blank" rel="noreferrer noopener">
+          <img className="sponsor-day__logo" src={sponsor.logo} alt="" />
+          <span className="sponsor-day__name">{sponsor.name}</span>{' '}
+          <span className="visually-hidden">{t('home.opensInNewWindow')}</span>
+        </a>
+      </div>
+      <p className="sponsor-day__text">{sponsor.description}</p>
     </section>
   )
 }
 
+/**
+ * The strip of every sponsor, across the full width under both columns (PDL P24, 18.11.2026).
+ *
+ * One tile of 120×48 for each, the same for all, with the logo centred in it and never distorted. The
+ * rows and the spaces between the tiles are the stylesheet's (`Home.css`, `.sponsor-strip__row`): as
+ * many as fit with at least 16px between them, the space growing until the row fills the strip but
+ * never past 72px, and past that the row gathers in the middle, as does a last row that is not full.
+ * The stylesheet is told how many there are (`--sponsors`), because a row of three is spaced as three
+ * and not as the seven the width would hold.
+ *
+ * The name of each link is the logo's own `alt`, which is the sponsor's name, and the sentence that it
+ * opens in a new window. Which level of sponsor it is („glavni sponzor", „partner") arrives with the
+ * screen on which the sponsors are entered.
+ */
 export function SponsorStrip({ sponsors }: { sponsors: SponsorEntry[] }) {
   const { t } = useI18n()
 
-  if (sponsors.length === 0) {
-    return null
-  }
-
   return (
     <section className="sponsor-strip" aria-label={t('home.partners')}>
-      {sponsors.map((one) => (
-        <span key={one.id}>{one.name}</span>
-      ))}
+      <ul className="sponsor-strip__row" style={{ '--sponsors': sponsors.length }}>
+        {sponsors.map((one) => (
+          <li key={one.id}>
+            <a className="sponsor-strip__tile" href={one.url} target="_blank" rel="noreferrer noopener">
+              <img className="sponsor-strip__logo" src={one.logo} alt={one.name} />{' '}
+              <span className="visually-hidden">{t('home.opensInNewWindow')}</span>
+            </a>
+          </li>
+        ))}
+      </ul>
     </section>
   )
 }

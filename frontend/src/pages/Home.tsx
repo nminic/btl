@@ -12,8 +12,7 @@ import { CalendarExtract } from './home/CalendarExtract'
 import { Calculator } from './home/Calculator'
 import { TopByCategory } from './home/TopByCategory'
 import { Counters } from './home/Counters'
-import { NEWS, SPONSORS } from './home/content'
-import { News } from './home/News'
+import { SPONSORS } from './home/content'
 import { President } from './home/President'
 import { Sponsor, SponsorStrip } from './home/Sponsor'
 import { TopTen } from './home/TopTen'
@@ -27,7 +26,12 @@ import './Home.css'
  * the five lengths under them, and the address of the president at the foot.
  *
  * Right, top to bottom: the counters of the running season, what is next in the
- * calendar, and the calculator.
+ * calendar, the sponsor of the day, and the calculator in two rows of three
+ * (PDL P24, variant A, owner 18.11.2026: „Tri desna boksa su zajedno visoka kao
+ * leva kolona."). The three under the counters stand as one column beside the
+ * chart and the address, so the grid puts the chart and the address across two
+ * rows each and the three boxes across the five lines between them, and both
+ * columns end on the same line by construction (`Home.css`).
  *
  * One grid holds all six, rather than two columns holding three each (owner,
  * 31.07.2026). The rows are what the owner asked for: the boards end where the
@@ -37,8 +41,10 @@ import './Home.css'
  *
  * The order in the markup is the order on a phone, where the grid becomes one
  * column and the placement below does nothing: the two boards, the figures of
- * the season, the turning chart, what is next, the address, the calculator
- * (owner, 31.07.2026). It is not the order of either column, because on one
+ * the season, the turning chart, what is next, the address, the sponsor of the
+ * day, the calculator (owner, 31.07.2026; the sponsor between the last two since
+ * 18.11.2026: „Na telefonu „Sponzor dana” stoji posle obraćanja predsednika, a
+ * pre kalkulatora."). It is not the order of either column, because on one
  * screen the two columns interleave: somebody scrolling wants the standing, then
  * the numbers behind it, then the calendar, and the prose after all of them.
  *
@@ -50,12 +56,19 @@ import './Home.css'
  * the front page what the written pages explain properly, and "Zajednica u
  * brojkama", whose member count is now the first row of the counters.
  *
- * News, the sponsor of the day and the strip of partners keep the full width
- * under both columns. They are the only part of the page that has nothing to say
- * most of the time, and they disappear entirely when they do.
+ * Under both columns, across the full width, only the strip of sponsors. The
+ * news went on 17.11.2026 (PDL P16, „vesti nema").
+ *
+ * **Whether there is a sponsor is answered once, here**, and four things read the
+ * one answer: the box of the day, the strip, how many races the calendar shows,
+ * and the shape of the grid. Without one there is neither box nor strip, the
+ * calendar runs to the bottom of the column and the grid is variant A without the
+ * box: one layout, not two (owner, 20.11.2026).
  */
 export function Home() {
   const { t } = useI18n()
+  /* The sponsor of the day is the first of them, as it was before variant A. */
+  const [ofTheDay] = SPONSORS
   const state = combineFour(useCompetitors(), useEvents(), useResults(), useRaces())
   const today = useToday()
   /* „Vaš nalog je obrisan.", for the one arrival his own deletion opens this page with (owner, 20.11.2026), in
@@ -101,7 +114,7 @@ export function Home() {
 
           return (
             <>
-              <div className="home__split">
+              <div className={ofTheDay === undefined ? 'home__split' : 'home__split home__split--sponsored'}>
                 <div className="home__boards">
                   <TopTen competitors={field} results={results} season={season} today={today} gender="M" />
                   <TopTen competitors={field} results={results} season={season} today={today} gender="F" />
@@ -116,24 +129,25 @@ export function Home() {
                 </div>
 
                 <div className="home__next">
-                  <CalendarExtract events={events} races={races} today={today} />
+                  <CalendarExtract events={events} races={races} today={today} fill={ofTheDay === undefined} />
                 </div>
 
                 <div className="home__address">
                   <President />
                 </div>
 
+                {ofTheDay !== undefined && (
+                  <div className="home__sponsor">
+                    <Sponsor sponsor={ofTheDay} />
+                  </div>
+                )}
+
                 <div className="home__calc">
                   <Calculator />
                 </div>
               </div>
 
-              <div className="home__row home__row--news">
-                <News items={NEWS} today={today} />
-                <Sponsor sponsors={SPONSORS} />
-              </div>
-
-              <SponsorStrip sponsors={SPONSORS} />
+              {ofTheDay !== undefined && <SponsorStrip sponsors={SPONSORS} />}
             </>
           )
         }}

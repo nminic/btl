@@ -69,7 +69,7 @@ describe('CalendarExtract', () => {
   ]
 
   it('says so when there is nothing ahead', () => {
-    renderWidget(<CalendarExtract events={[]} races={[]} today="2026-07-29" />)
+    renderWidget(<CalendarExtract events={[]} races={[]} today="2026-07-29" fill />)
 
     expect(screen.getByText('U ovom mesecu nema nijednog događaja.')).toBeVisible()
   })
@@ -92,6 +92,7 @@ describe('CalendarExtract', () => {
         ]}
         races={[]}
         today="2027-01-01"
+        fill
       />,
     )
 
@@ -109,7 +110,7 @@ describe('CalendarExtract', () => {
        aktuelni današnji dan kad je kliknuto." Left to choose, the calendar opens
        on the first month that has anything in it, which in a league whose season
        starts in January is months away from whoever pressed this. */
-    renderWidget(<CalendarExtract events={[]} races={[]} today="2026-07-29" />)
+    renderWidget(<CalendarExtract events={[]} races={[]} today="2026-07-29" fill />)
 
     expect(screen.getByRole('link', { name: 'Ceo kalendar' })).toHaveAttribute(
       'href',
@@ -135,6 +136,7 @@ describe('CalendarExtract', () => {
         ]}
         races={[]}
         today="2026-11-01"
+        fill
       />,
     )
 
@@ -160,6 +162,7 @@ describe('CalendarExtract', () => {
         events={[event(4, 'Fruškogorski maraton', '2026-12-05')]}
         races={races}
         today="2026-11-01"
+        fill
       />,
     )
 
