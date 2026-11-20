@@ -93,6 +93,7 @@ export function PersonalData({ me }: { me: MyData }) {
     city: me.city,
     country: me.country,
     shirtSize: me.shirtSize,
+    viberCommunity: me.viberCommunity,
   }
   const [standing, setStanding] = useState<Standing>(opened)
   /* What is on the screen, as the form hands it over every time a field moves (`onChange`). */
@@ -212,5 +213,7 @@ function sentOf(values: FormValues): Typed {
     city: text('city'),
     country: text('country'),
     shirtSize: text('shirtSize'),
+    /* A tick, which the renderer hands over as `true` or `false` and never as a word. */
+    viberCommunity: values.viberCommunity === true,
   }
 }

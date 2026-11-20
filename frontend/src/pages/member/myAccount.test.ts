@@ -63,6 +63,7 @@ function asOpened(moved: { standing?: Partial<Standing>; typed?: Partial<Typed> 
     city: 'Beograd',
     country: 'RS',
     shirtSize: 'M',
+    viberCommunity: false,
   }
 
   return [{ ...held, ...moved.standing }, { ...held, ...moved.typed }]
@@ -71,6 +72,17 @@ function asOpened(moved: { standing?: Partial<Standing>; typed?: Partial<Typed> 
 describe('what of the member’s own form actually travels', () => {
   it('is nothing at all while nothing has been touched', () => {
     expect(whatChanged(...asOpened())).toEqual({})
+  })
+
+  it('is the tick for the community on Viber when it moved, either way, and never when it did not', () => {
+    /* PDL P36, 20.11.2026: „postojeći članovi sami se prijavljuju i odjavljuju". A tick, never a word. */
+    expect(whatChanged(...asOpened({ typed: { viberCommunity: true } }))).toEqual({ viberCommunity: true })
+    expect(
+      whatChanged(...asOpened({ standing: { viberCommunity: true }, typed: { viberCommunity: false } })),
+    ).toEqual({ viberCommunity: false })
+    expect(
+      whatChanged(...asOpened({ standing: { viberCommunity: true }, typed: { viberCommunity: true } })),
+    ).toEqual({})
   })
 
   it('is the one field that moved, and never the ones beside it', () => {

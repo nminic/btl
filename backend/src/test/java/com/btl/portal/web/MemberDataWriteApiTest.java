@@ -1159,6 +1159,7 @@ class MemberDataWriteApiTest {
 		elsewhere.put("healthStatement", "a moment recorded once at registration, not a fact");
 		elsewhere.put("parentConsent", "evidence that a consent was given (V8), which is not edited");
 		elsewhere.put("parentRelation", "the same row");
+		elsewhere.put("viberCommunity", "the member's own wish, which he gives and takes back himself (PDL P36)");
 
 		List<String> onTheForm = new ArrayList<>();
 

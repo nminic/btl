@@ -19,6 +19,7 @@ export const HIS_FIELDS = [
   'idNumber',
   'address',
   'phone',
+  'viberCommunity',
   'city',
   'shirtSize',
 ] as const
@@ -27,12 +28,14 @@ export const HIS_FIELDS = [
  * THE ROWS OF THE REGISTRATION, as the member's own form draws them from 51.25em (PDL 06.11.2026, „Profil:
  * forma „Podaci" po obliku forme za prijavu"; the thirds of 12.08.2026): the two names and the father's
  * beside each other, the gender, the day and the document beside each other under them, the address and
- * the telephone beside each other. The town and the size each stand on a row of their own.
+ * the telephone beside each other, and the box for the community on Viber beside them since 20.11.2026. The
+ * town and the size each stand on a row of their own.
  */
 export const HIS_ROWS: readonly (readonly (typeof HIS_FIELDS)[number][])[] = [
   ['firstName', 'lastName', 'fatherName'],
   ['gender', 'birthDate', 'idNumber'],
-  ['address', 'phone'],
+  /* The box for the community on Viber in the third of the row that stood empty (PDL P36, 20.11.2026). */
+  ['address', 'phone', 'viberCommunity'],
   ['city'],
   ['shirtSize'],
 ]

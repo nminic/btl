@@ -2194,7 +2194,9 @@ class MeApiTest {
 
 		db.sql("update competitor set gender = 'F', bio = ?, profile_hidden = true,"
 						+ " birthday_shown = 'full', birth_date = date '" + HIS_DATE_OF_BIRTH + "',"
-						+ " photo_id = ?, address = ?, phone = ?, shirt_size = 'XXXL', father_name = ?"
+						+ " photo_id = ?, address = ?, phone = ?, shirt_size = 'XXXL', father_name = ?,"
+						/* THE WISH TO JOIN THE COMMUNITY ON VIBER (V106), his alone in the fixture. */
+						+ " viber_community_at = timestamptz '2026-11-20 10:00:00+00'"
 						+ " where member_number = ?")
 				.params(HIS_BIOGRAPHY, portrait, HIS_ADDRESS, HIS_TELEPHONE, HIS_FATHER, ME).update();
 		hasADocument(ME, HIS_DOCUMENT);

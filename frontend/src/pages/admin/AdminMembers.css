@@ -33,6 +33,13 @@
   display: block;
 }
 
+/* The word „Viber" before his number (PDL P36, 20.11.2026), in the text's own colour so the mark reads as a
+   mark beside a muted number, and never by colour alone: it is a word. */
+.members-table__viber-mark {
+  color: var(--text);
+  font-weight: 600;
+}
+
 /* THE TOWN AS A COLUMN FROM 1000px, AND UNDER THE NAME BELOW IT. Hidden outside every query and
    shown from 1000, the width the closed list already has; in pixels, because what it decides is
    whether a column is drawn (`styles/scale.test.ts`). Both halves in one query, so the column and the

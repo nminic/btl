@@ -368,7 +368,7 @@ class MeWriteApiTest {
 	 */
 	private String change(String bio, Boolean profileHidden) {
 		return mapper.writeValueAsString(new MeWriteApi.Change(bio, profileHidden, null, null,
-				null, null, null, null, null, null));
+				null, null, null, null, null, null, null));
 	}
 
 	/**
@@ -2984,7 +2984,11 @@ class MeWriteApiTest {
 	 * {@link #everyFieldThisRouteTakesIsHisBeforeHePaysOrMakesHimSeen} is the floor under both.
 	 */
 	private static final List<String> HIS_BEFORE_HE_PAYS = List.of("firstName", "lastName",
-			"address", "phone", "placeId", "city", "country", "shirtSize");
+			"address", "phone", "placeId", "city", "country", "shirtSize",
+			/* The wish to join the community on Viber, which makes nobody seen by anybody but the moderation
+			   of the members, and which the owner keeps from the registration on (20.11.2026: „želja se pamti od
+			   registracije"). */
+			"viberCommunity");
 
 	/**
 	 * The three ways of being a member whose fee does not stand. PDL P8 of 11.10.2026 reads them as two:

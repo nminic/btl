@@ -83,6 +83,11 @@ export const WHAT_HE_SEES = [
   'idNumber',
   'address',
   'phone',
+  /* The box for the community on Viber, beside the telephone as on the registration (owner, PDL P36,
+     20.11.2026: „Isti kvadratić stoji i na strani „Moji podaci”, pa se postojeći članovi sami prijavljuju i
+     odjavljuju"). Not on the administration's form above: the wish is his, and its route refuses the name
+     (`MemberDataWriteApi`, `notTakenHere`). */
+  'viberCommunity',
   'city',
   'shirtSize',
 ] as const
@@ -212,7 +217,7 @@ export function whatTheAdministrationChanged(
 
 /**
  * THE REASONS `MemberDataWriteApi` NAMES, each to its sentence. Held to the Java by
- * `pages/account/refusals.test.ts`, in both directions. Four of the seven cannot be reached by this
+ * `pages/account/refusals.test.ts`, in both directions. Four of the eight cannot be reached by this
  * screen as it is drawn (a name the route does not take, an address on a member with no account, a
  * confirmed address, whose box is held) and are answered all the same, because a request can still lose
  * a race against what the screen last read.
@@ -225,6 +230,9 @@ export const WHEN_CORRECTING_A_MEMBER: Record<string, string> = {
   thereIsNoAccount: 'memberData.thereIsNoAccount',
   theAddressIsTaken: 'memberData.theAddressIsTaken',
   theAddressIsTheSuperadmins: 'memberData.theAddressIsTheSuperadmins',
+  /* The telephone of a member who asked to join the community on Viber, emptied (owner, 20.11.2026, PDL
+     P36): the sentence is the owner's choice, word for word. */
+  theViberCommunityHoldsThePhone: 'memberData.theViberCommunityHoldsThePhone',
 }
 
 /**

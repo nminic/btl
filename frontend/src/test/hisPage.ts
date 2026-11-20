@@ -51,6 +51,8 @@ export const aLapsedMembersPage = {
      `WHAT_MAY_BE_LEFT_OUT`. */
   fatherName: 'Milan',
   birthDate: '1975-09-30',
+  /* He has not asked to join the community on Viber (PDL P36, 20.11.2026). */
+  viberCommunity: false,
 }
 
 /**

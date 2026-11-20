@@ -42,6 +42,7 @@ const HE = {
   fatherName: 'Aleksandar-Petrović Radosavljević',
   birthDate: '1992-11-23',
   idNumber: 'ABCDEFGHIJ1234567890',
+  viberCommunity: false,
 }
 
 const SOMEBODY_WHO_HAS_NOT_PAID: Answers = {

@@ -119,6 +119,7 @@ const meAs = (memberNumber: string): unknown => {
       fatherName: 'Petar',
       birthDate: '1980-04-02',
       idNumber: 'AB12345',
+      viberCommunity: false,
     },
   }
 }

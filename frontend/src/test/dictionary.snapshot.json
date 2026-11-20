@@ -1314,7 +1314,8 @@
       "town": "Mesto",
       "basis": "Osnov",
       "seasons": "Sezone",
-      "options": "Opcije"
+      "options": "Opcije",
+      "viber": "Viber"
     },
     "basisWord": {
       "payment": "Uplata",
@@ -1988,7 +1989,8 @@
     "theAddressIsConfirmed": "Član je već potvrdio ovu adresu elektronske pošte, pa je može promeniti samo on.",
     "thereIsNoAccount": "Član nema nalog na portalu, ni adresu elektronske pošte.",
     "theAddressIsTaken": "Ovu adresu elektronske pošte već koristi drugi nalog.",
-    "theAddressIsTheSuperadmins": "Ova adresa pripada administraciji portala i ne može biti adresa člana."
+    "theAddressIsTheSuperadmins": "Ova adresa pripada administraciji portala i ne može biti adresa člana.",
+    "theViberCommunityHoldsThePhone": "Član je prijavljen za Viber zajednicu, pa broj ne može da se obriše dok se ne odjavi."
   },
   "frozen": {
     "deletedMan": "<Obrisani član>",

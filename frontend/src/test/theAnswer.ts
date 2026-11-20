@@ -499,6 +499,9 @@ export const myOwnRecordFromMe = {
   fatherName: 'Petar',
   birthDate: '1980-04-02',
   idNumber: 'AB12345',
+  /* Whether he asked to join the community on Viber (`MeApi.MyOwnRecord.viberCommunity`, PDL P36,
+     20.11.2026), his alone like the telephone beside it. He has not. */
+  viberCommunity: false,
   /* The words of his that wait for a moderator (`MeApi.MyOwnRecord.bioWaiting`, PDL P11, 18.10.2026).
      The harness does NOT answer it for the members of the generated file (`test/setup.ts`): the server
      leaves it out for a member whose words do not wait, which is nearly every one, and a screen drawn
