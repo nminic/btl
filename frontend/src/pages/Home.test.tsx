@@ -78,11 +78,10 @@ describe('Home', () => {
 
       /* The tile beside it counts the places those same thirty one come from, as they wrote them (owner,
          20.11.2026): the list of the answer and not the file's thirty two, and not the number of members. */
-      const served = (JSON.parse(readFileSync(join(process.cwd(), 'src/test/mock/competitors.json'), 'utf-8')) as {
-        active: boolean
-        city: string
-        country: string
-      }[]).filter((one) => one.active)
+      const file: { active: boolean; city: string; country: string }[] = JSON.parse(
+        readFileSync(join(process.cwd(), 'src/test/mock/competitors.json'), 'utf-8'),
+      )
+      const served = file.filter((one) => one.active)
       const places = citiesOf(served)
 
       expect(places).not.toBe(31)
