@@ -48,6 +48,8 @@ export const aNeverPaidRecord = {
   fatherName: 'Zoran',
   birthDate: '1992-11-23',
   idNumber: 'CD67890',
+  /* He has not asked to join the community on Viber (PDL P36, 20.11.2026). */
+  viberCommunity: false,
 }
 
 /**

@@ -245,26 +245,46 @@ class ProofThatTheRunHappenedTest {
 	}
 
 	/** Walks a definition and notes every field one other field makes optional or required. */
-	private static void collect(JsonNode node, Map<String, String> optional, Map<String, String> required) {
-		if (node.isObject()) {
-			String named = node.path("name").asString("");
+	/**
+	 * The rules a form hangs on a PHOTOGRAPH, which is what „this rule" is.
+	 *
+	 * <p><b>Asked of the field the rule names, and not of the rule's name alone, since 20.11.2026.</b> The
+	 * registration then took {@code requiredWhenFilled} for a rule of its own: the telephone is required by the
+	 * box for the community on Viber (owner, PDL P36), which is a tick and not a photograph and says nothing
+	 * about a run. A leg of the swap hung on a field that is not a photograph drops out here, and the other leg
+	 * left alone in the same form is what fails the pair above.
+	 */
+	private static void collect(JsonNode form, Map<String, String> optional, Map<String, String> required) {
+		Set<String> photographs = new java.util.HashSet<>();
 
-			if (!named.isEmpty()) {
-				noteIf(node, "optionalWhenFilled", named, optional);
-				noteIf(node, "requiredWhenFilled", named, required);
+		fields(form, field -> {
+			if ("photo".equals(field.path("type").asString(""))) {
+				photographs.add(field.path("name").asString(""));
+			}
+		});
+		fields(form, field -> {
+			noteIf(field, "optionalWhenFilled", photographs, optional);
+			noteIf(field, "requiredWhenFilled", photographs, required);
+		});
+	}
+
+	private static void fields(JsonNode node, java.util.function.Consumer<JsonNode> each) {
+		if (node.isObject()) {
+			if (!node.path("name").asString("").isEmpty()) {
+				each.accept(node);
 			}
 
-			node.propertyStream().forEach(one -> collect(one.getValue(), optional, required));
+			node.propertyStream().forEach(one -> fields(one.getValue(), each));
 		} else if (node.isArray()) {
-			node.valueStream().forEach(one -> collect(one, optional, required));
+			node.valueStream().forEach(one -> fields(one, each));
 		}
 	}
 
-	private static void noteIf(JsonNode node, String rule, String named, Map<String, String> into) {
-		JsonNode saying = node.path(rule);
+	private static void noteIf(JsonNode node, String rule, Set<String> photographs, Map<String, String> into) {
+		String by = node.path(rule).path("field").asString("");
 
-		if (!saying.isMissingNode()) {
-			into.put(named, saying.path("field").asString(""));
+		if (photographs.contains(by)) {
+			into.put(node.path("name").asString(""), by);
 		}
 	}
 }

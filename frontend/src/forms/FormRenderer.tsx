@@ -525,8 +525,8 @@ const Field = memo(function Field({
   /** The id of a sentence that says why this held field is held (`fixedSaidBy` on the form), where
    *  the screen has one. Only a field in `fixed` is ever given it. */
   saidBy?: string
-  /** Whether this held field is drawn without the star and without „(neobavezno)" (`fixedUnmarked` on the
-   *  form). Only a field in `fixed` is ever given it. */
+  /** Whether this field is drawn without the star and without „(neobavezno)": a held one (`fixedUnmarked`
+   *  on the form), or one whose definition says so (`noOptionalWord`, which is never required). */
   unmarked?: boolean
   /** Days the date box offers beside its calendar, where the screen has any to
    *  offer. Only a date field is ever given them. */
@@ -1700,7 +1700,7 @@ export function FormRenderer({
               open={field.name === openAt}
               locked={locked.includes(field.name) || fixed.includes(field.name)}
               saidBy={fixed.includes(field.name) ? fixedSaidBy : undefined}
-              unmarked={fixedUnmarked && fixed.includes(field.name)}
+              unmarked={(fixedUnmarked && fixed.includes(field.name)) || field.noOptionalWord === true}
               steps={field.type === 'date' ? steps : undefined}
               suggesting={suggestingOn(field)}
             />

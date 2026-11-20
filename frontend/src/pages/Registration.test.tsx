@@ -179,7 +179,7 @@ async function fillEverythingExceptBirthDate(
      The same field is the address of residence in the register of members
      (owner, 20.08.2026). The telephone stands beside it and is optional, so
      nothing here fills it. */
-  await user.type(screen.getByLabelText(/^Adresa za slanje$/), 'Bulevar oslobođenja 12')
+  await user.type(screen.getByLabelText(/^Poštanska adresa za slanje$/), 'Bulevar oslobođenja 12')
   /* The town carries the country: picked out of the codebook, which is what
      fills the one beside it (forms/PlaceField.tsx). */
   await user.type(screen.getByLabelText(/^Mesto$/), 'Beograd')
@@ -848,7 +848,7 @@ describe('the address, at the moment of joining', () => {
 
     await fillEverythingExceptBirthDate(user)
     await user.type(screen.getByLabelText(/Datum rođenja/), '12031990')
-    await user.clear(screen.getByLabelText(/^Adresa za slanje$/))
+    await user.clear(screen.getByLabelText(/^Poštanska adresa za slanje$/))
     await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
 
     expect(screen.queryByRole('heading', { name: 'Prijava je zabeležena' })).not.toBeInTheDocument()
@@ -857,7 +857,7 @@ describe('the address, at the moment of joining', () => {
        the real form's version of that road, and the strongest shape it can take here:
        everything else on the form is answered, so the address is the ONE field that is
        wrong, and a cursor that merely went to the top of the form would fail. */
-    const address = screen.getByLabelText(/^Adresa za slanje$/)
+    const address = screen.getByLabelText(/^Poštanska adresa za slanje$/)
 
     expect(address).toHaveFocus()
     expect(address).toHaveAttribute('aria-invalid', 'true')
@@ -961,7 +961,7 @@ describe('the country a member lives in', () => {
     await user.type(screen.getByLabelText(/^Lozinka$/), PASSWORD)
     await user.type(screen.getByLabelText(/Ponovi lozinku/), PASSWORD)
     await user.click(screen.getByRole('radio', { name: 'Muški' }))
-    await user.type(screen.getByLabelText(/^Adresa za slanje$/), 'Bulevar oslobođenja 12')
+    await user.type(screen.getByLabelText(/^Poštanska adresa za slanje$/), 'Bulevar oslobođenja 12')
     /* A hamlet of two hundred people that no codebook of the world has heard
        of, which is exactly what the field is allowed to take. */
     await user.type(screen.getByLabelText(/^Mesto$/), 'Zaseok pod brdom')
@@ -1183,6 +1183,95 @@ describe('the telephone', () => {
 })
 
 /**
+ * THE BOX FOR THE LEAGUE'S COMMUNITY ON VIBER, beside the telephone (owner, PDL P36, 20.11.2026, „Pored
+ * telefona stoji kvadratić za BTL zajednicu na Viberu").
+ */
+describe('the box for the community on Viber', () => {
+  const THE_BOX = 'Želim u BTL zajednicu na Viberu (obaveštenja, novosti)'
+
+  it('stands in the row of the telephone, empty, and is ticked by its words and by the keyboard', async () => {
+    /* Empty until he ticks it, and the whole sentence is its name, so a press on the words ticks it and
+       Space does too (the assistant's reading of WCAG 2.2 AA, ADL A7, written into PDL P36). */
+    const user = setupUser()
+    renderForm()
+
+    const box = screen.getByRole('checkbox', { name: THE_BOX })
+
+    expect(box).not.toBeChecked()
+    expect(box).not.toBeRequired()
+    /* In the group of the telephone, and the row after the address and the telephone. */
+    expect(box.closest('fieldset')).toBe(screen.getByLabelText(/^Telefon/).closest('fieldset'))
+
+    await user.click(screen.getByText(THE_BOX))
+    expect(box).toBeChecked()
+
+    await user.keyboard(' ')
+    expect(box).toHaveFocus()
+    expect(box).not.toBeChecked()
+  }, SLOW)
+
+  it('ticked, will not let the form through without a telephone, and says why under the telephone', async () => {
+    /* „Kad je kvadratić štikliran, telefon je obavezan: ispod telefona piše „Za Viber zajednicu upišite
+       broj telefona.” i prijava ne ide dok broja nema." */
+    const user = setupUser()
+    renderForm()
+
+    await fillEverythingExceptBirthDate(user)
+    await user.type(screen.getByLabelText(/Datum rođenja/), '12041985')
+    await user.click(screen.getByRole('checkbox', { name: THE_BOX }))
+    await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
+
+    const phone = screen.getByLabelText(/^Telefon/)
+
+    expect(phone).toHaveAccessibleDescription(/Za Viber zajednicu upišite broj telefona\./)
+    expect(phone).toHaveFocus()
+    expect(screen.queryByText('Obavezno polje')).toBeNull()
+    expect(whatWasSent()).toHaveLength(0)
+
+    /* And spaces alone are no number, as on the server. */
+    await user.type(phone, '   ')
+    await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
+    expect(whatWasSent()).toHaveLength(0)
+  }, SLOW)
+
+  it('ticked with a telephone, goes through and says both', async () => {
+    const user = setupUser()
+    renderForm()
+
+    await fillEverythingExceptBirthDate(user)
+    await user.type(screen.getByLabelText(/Datum rođenja/), '12041985')
+    await user.type(screen.getByLabelText(/^Telefon/), '+381 64 765 4321')
+    await user.click(screen.getByRole('checkbox', { name: THE_BOX }))
+    await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
+
+    await waitFor(() => {
+      expect(whatWasSent()).toHaveLength(1)
+    })
+
+    expect(theBodySent()).toMatchObject({ phone: '+381 64 765 4321', viberCommunity: true })
+  }, SLOW)
+
+  it('untick it again, and the telephone is optional again', async () => {
+    /* The other half: a rule that stayed once it was raised would ask everybody who ever touched the box
+       for a number. */
+    const user = setupUser()
+    renderForm()
+
+    await fillEverythingExceptBirthDate(user)
+    await user.type(screen.getByLabelText(/Datum rođenja/), '12041985')
+    await user.click(screen.getByRole('checkbox', { name: THE_BOX }))
+    await user.click(screen.getByRole('checkbox', { name: THE_BOX }))
+    await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
+
+    await waitFor(() => {
+      expect(whatWasSent()).toHaveLength(1)
+    })
+
+    expect(theBodySent()).toMatchObject({ phone: '', viberCommunity: false })
+  }, SLOW)
+})
+
+/**
  * WHAT ACTUALLY GOES TO `/api/registration`, WHICH UNTIL 21.09.2026 WAS NOTHING AT ALL.
  *
  * <p>The screen drew „Prijava je zabelezena" and „Poslali smo poruku na …" on the press,
@@ -1268,6 +1357,7 @@ describe('what the registration sends', () => {
       country: 'RS',
       idNumber: '123456789',
       phone: '',
+      viberCommunity: false,
       shirtSize: 'XXXL',
       healthStatement: true,
       parentConsent: '',

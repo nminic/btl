@@ -269,7 +269,8 @@
     "seasons",
     "seasons.basis",
     "seasons.ranked",
-    "seasons.season"
+    "seasons.season",
+    "viberPhone"
   ],
   "moderators.json": [
     "email",

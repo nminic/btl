@@ -68,7 +68,19 @@ public final class WhatRegistrationAsksFor {
 	 * {@code member/ProfileBio.tsx}, and what bounds it is the field on
 	 * {@code profil.form.json}, which {@code MeWriteApi} reads the same number off.
 	 */
-	public static final Set<String> NEVER_REQUIRED = Set.of("phone");
+	public static final Set<String> NEVER_REQUIRED = Set.of("viberCommunity");
+
+	/**
+	 * Asked only of somebody who asked to join the league's community on Viber.
+	 *
+	 * <p>Owner, PDL P36, 20.11.2026: „Kad je kvadratić štikliran, telefon je obavezan: ispod telefona piše
+	 * „Za Viber zajednicu upišite broj telefona.” i prijava ne ide dok broja nema." The telephone was in
+	 * {@link #NEVER_REQUIRED} until that day, alone; it is optional still for everybody who leaves the box
+	 * empty, and the box ({@code viberCommunity}) is what is never required now. The form carries the same
+	 * rule as {@code requiredWhenFilled} on the telephone, naming the box, and
+	 * {@code WhatRegistrationAsksForTest} holds the two to naming the same field.
+	 */
+	public static final Set<String> ONLY_FOR_THE_VIBER_COMMUNITY = Set.of("phone");
 
 	private WhatRegistrationAsksFor() {
 	}
@@ -82,6 +94,16 @@ public final class WhatRegistrationAsksFor {
 	 * both - split in two, one of them would one day be moved and the other not.
 	 */
 	public static Set<String> from(LocalDate born, LocalDate day) {
+		return from(born, day, false);
+	}
+
+	/**
+	 * Every field this person must fill in, when he may also have asked to join the community on Viber.
+	 *
+	 * @param viber whether the box „Želim u BTL zajednicu na Viberu" was ticked, which makes the telephone
+	 *              required ({@link #ONLY_FOR_THE_VIBER_COMMUNITY})
+	 */
+	public static Set<String> from(LocalDate born, LocalDate day, boolean viber) {
 		Objects.requireNonNull(born, "born");
 		Objects.requireNonNull(day, "day");
 
@@ -91,6 +113,10 @@ public final class WhatRegistrationAsksFor {
 			asked.addAll(ONLY_FROM_A_GUARDIAN);
 		} else {
 			asked.addAll(ONLY_WITH_AN_IDENTITY_CARD);
+		}
+
+		if (viber) {
+			asked.addAll(ONLY_FOR_THE_VIBER_COMMUNITY);
 		}
 
 		return Set.copyOf(asked);

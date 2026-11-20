@@ -136,7 +136,7 @@ describe('on the page „Moji podaci" of somebody who has not paid', () => {
       }
     }
 
-    for (const name of [/^Ime$/, /^Prezime/, /^Adresa za slanje/, /^Telefon/]) {
+    for (const name of [/^Ime$/, /^Prezime/, /^Poštanska adresa za slanje/, /^Telefon/]) {
       const free = within(panel).getByRole('textbox', { name })
 
       expect(free, String(name)).not.toHaveAttribute('readonly')
@@ -175,8 +175,8 @@ describe('on the page „Moji podaci" of somebody who has not paid', () => {
     /* Nothing was changed, so nothing is sent: the button is told off. */
     expect(within(panel).getByRole('button', { name: 'Sačuvaj' })).toHaveAttribute('aria-disabled', 'true')
 
-    await user.clear(within(panel).getByLabelText(/^Adresa za slanje/))
-    await user.type(within(panel).getByLabelText(/^Adresa za slanje/), 'Ulica Druga 5')
+    await user.clear(within(panel).getByLabelText(/^Poštanska adresa za slanje/))
+    await user.type(within(panel).getByLabelText(/^Poštanska adresa za slanje/), 'Ulica Druga 5')
     await user.click(within(panel).getByRole('button', { name: 'Sačuvaj' }))
 
     expect(await screen.findByText('Sačuvano.')).toBeVisible()

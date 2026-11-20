@@ -280,8 +280,13 @@ export type FieldDef = {
    * The mirror of the rule above and the other half of one decision: a result
    * proved by a picture instead of a link has to say in words what the picture
    * shows, so the comment stops being optional the moment the picture is there.
+   *
+   * `errorKey` is the sentence an unanswered field is told while the rule holds, in place of the
+   * portal's „Obavezno polje": the telephone beside the box for the community on Viber says why it
+   * is asked (owner, PDL P36, 20.11.2026, „ispod telefona piše „Za Viber zajednicu upišite broj
+   * telefona.”"). Left out, the field is told what every other obligatory field is told.
    */
-  requiredWhenFilled?: { field: string }
+  requiredWhenFilled?: { field: string; errorKey?: string }
   /**
    * The row of the privacy policy that describes what is done with this answer.
    *
@@ -309,6 +314,13 @@ export type FieldDef = {
    * that was never the ground, over data the association cannot delete on request.
    */
   policyBasis?: string
+  /**
+   * Drawn without „(neobavezno)" beside its words, where the words are a sentence the owner settled
+   * whole: the box for the community on Viber, „Tekst uz kvadratić, jedan red: „Želim u BTL zajednicu na
+   * Viberu (obaveštenja, novosti)”" (PDL P36, 20.11.2026), drawn so in the draft he chose. A field that
+   * carries it is never required, which `forms/validate.test.ts` holds, so no star is lost with it.
+   */
+  noOptionalWord?: boolean
 }
 
 export type FormDef = {

@@ -513,6 +513,13 @@ export type Member = {
    * that has it, `noAccount` for a member with no account at all.
    */
   invitation: 'due' | 'passwordSet' | 'noAccount'
+  /**
+   * His telephone, and ONLY where he asked to join the league's community on Viber (owner, PDL P36,
+   * 20.11.2026: „Ko je štiklirao, vidi se na ekranu Moderacija članova, oznakom Viber uz broj telefona, a
+   * vlasnik ga ručno dodaje u zajednicu"). Absent for everybody else, whose telephone is not served on this
+   * list at all (`MembersApi`). The row draws „Viber: <broj>" under his name.
+   */
+  viberPhone?: string
 }
 
 /* ~~A race has no name of its own (owner, 11.08.2026).~~ **Overturned 23.08.2026

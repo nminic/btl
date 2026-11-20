@@ -411,6 +411,14 @@ class AxisConstraintsTest extends DatabaseTest {
 								+ ", null, null, 2027, '00112233445566aa', null,"
 								+ " '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 								+ " timestamptz '2026-09-01 10:00:00+00', '   ')"),
+				/* A wish to join the community on Viber with no telephone to be added by (V106; owner, PDL P36,
+				   „Kad je kvadratić štikliran, telefon je obavezan"). */
+				Violation.of("competitor_viber_community_needs_a_phone",
+						"insert into competitor (" + COMPETITOR_COLUMNS + ", viber_community_at) values ("
+								+ "'000903', 'Probni', 'Clan', 'M', date '1990-05-05', " + A_TOWN
+								+ ", null, null, 2027, '00112233445566aa', null,"
+								+ " '', false, 'none', 'Otac', 'Ulica 1', 'M',"
+								+ " timestamptz '2026-09-01 10:00:00+00', timestamptz '2026-11-20 10:00:00+00')"),
 				/* A photograph that is not there: the row would name a file the disk never got. */
 				Violation.of("competitor_photo_fk",
 						"insert into competitor (" + COMPETITOR_COLUMNS + ", photo_id) values ("

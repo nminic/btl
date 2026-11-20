@@ -440,6 +440,58 @@ describe('conditional fields', () => {
   })
 })
 
+describe('a field another field demands, saying why', () => {
+  /* Owner, PDL P36, 20.11.2026: „Kad je kvadratić štikliran, telefon je obavezan: ispod telefona piše „Za
+     Viber zajednicu upišite broj telefona.”". The rule names its own sentence (`requiredWhenFilled.errorKey`),
+     and only an unanswered field that the rule made required is told it. */
+  const phone: FieldDef = {
+    name: 'phone',
+    type: 'text',
+    labelKey: 'x',
+    maxLength: 5,
+    requiredWhenFilled: { field: 'viber', errorKey: 'because.viber' },
+  }
+  const viber: FieldDef = { name: 'viber', type: 'checkbox', labelKey: 'x' }
+  const form: FormDef = { id: 'v', titleKey: 't', submitKey: 's', fields: [phone, viber] }
+  const today = new Date(Date.UTC(2026, 10, 20))
+
+  it('tells an empty field the rule sentence while the box is ticked, and nothing while it is not', () => {
+    expect(validateForm(form, { phone: '', viber: true }, today)).toEqual({ phone: { key: 'because.viber' } })
+    expect(validateForm(form, { phone: '   ', viber: true }, today)).toEqual({ phone: { key: 'because.viber' } })
+    expect(validateForm(form, { phone: '', viber: false }, today)).toEqual({})
+    expect(validateForm(form, { phone: '064', viber: true }, today)).toEqual({})
+  })
+
+  it('tells a field what else is wrong with it in the usual words, whatever the box says', () => {
+    /* The sentence is about a missing number and about nothing else: a number too long is told it is too long. */
+    expect(validateForm(form, { phone: '0647654321', viber: true }, today)).toEqual({
+      phone: { key: 'form.errors.maxLength', params: { max: 5 } },
+    })
+  })
+
+  it('tells a field that is required of everybody the sentence every obligatory field is told', () => {
+    const always: FormDef = { ...form, fields: [{ ...phone, required: true }, viber] }
+
+    expect(validateForm(always, { phone: '', viber: true }, today)).toEqual({ phone: { key: 'form.errors.required' } })
+  })
+
+  it('draws no field without the word „neobavezno" that could ever be required', () => {
+    /* `noOptionalWord` takes the star away with the word (`FormRenderer`, `unmarked`), so a field that carries
+       it and could become required would be required with nothing on the screen to say so. Over every form the
+       portal has, so a form written tomorrow is asked on the day it is written. */
+    const unworded = Object.values(FORMS).flatMap((one) => one.fields.filter((field) => field.noOptionalWord === true))
+
+    expect(unworded.length, 'no field is drawn without the word, so this measures nothing').toBeGreaterThan(0)
+
+    for (const field of unworded) {
+      expect(field.required, `${field.name} is required and drawn without a star`).not.toBe(true)
+      expect(field.requiredWhenFilled, `${field.name} can become required with no star`).toBeUndefined()
+      expect(field.optionalWhenYoungerThan, `${field.name} is required of somebody`).toBeUndefined()
+      expect(field.optionalWhenFilled, `${field.name} is required of somebody`).toBeUndefined()
+    }
+  })
+})
+
 describe('a picture that lets one field go and demands another', () => {
   /* The rulebook's article „Dokazi", owner 22.08.2026: „Ukoliko podignete sliku, link ka zvaničnim
      rezultatima postaje neobavezan, ali polje Komentar postaje obavezno."

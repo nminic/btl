@@ -130,18 +130,26 @@ class MembersApi {
 	 *                         letter can reach. Asked of the password and never of the confirmed
 	 *                         address: an account that registered itself has a password and may still be
 	 *                         unconfirmed, and an invitation is the road to a password
+	 * @param viberPhone       his telephone, and ONLY for a member who asked to join the league's community on
+	 *                         Viber (owner, PDL P36, 20.11.2026: „Ko je štiklirao, vidi se na ekranu Moderacija
+	 *                         članova, oznakom Viber uz broj telefona, a vlasnik ga ručno dodaje u zajednicu").
+	 *                         Absent for everybody else: the row draws „Viber: <broj>" under the name of the one
+	 *                         who asked and nothing for the rest, so the telephone of a member who did not ask is
+	 *                         not served here at all (PDL, „Uvek privatno: mejl, telefon i adresa"). V106 makes
+	 *                         the two present together
 	 */
 	record Member(String memberNumber, String firstName, String lastName, String gender,
 			String city, String country, String ageBand, boolean beginner, boolean active,
 			@JsonInclude(JsonInclude.Include.NON_NULL) String membershipBasis,
 			@JsonInclude(JsonInclude.Include.NON_NULL) Integer membershipSeason,
 			List<Season> seasons, int seasonOnSale, String currency, BigDecimal expected,
-			BigDecimal price, BigDecimal balance, String invitation) {
+			BigDecimal price, BigDecimal balance, String invitation,
+			@JsonInclude(JsonInclude.Include.NON_NULL) String viberPhone) {
 	}
 
 	private record Row(long id, String memberNumber, String firstName, String lastName, String gender,
 			String city, boolean active, String basis, int birthYear,
-			String countryCode, String invitation) {
+			String countryCode, String invitation, String viberPhone) {
 	}
 
 	@GetMapping("/api/members")
@@ -180,7 +188,10 @@ class MembersApi {
 						/* WHETHER AN INVITATION CAN REACH HIM, off his own account: `account_competitor_unique`
 						   (V23) makes this join at most one row. */
 						+ " case when a.id is null then 'noAccount' when a.password_hash is null then 'due'"
-						+ "  else 'passwordSet' end as invitation"
+						+ "  else 'passwordSet' end as invitation,"
+						/* HIS TELEPHONE WHERE HE ASKED TO JOIN THE COMMUNITY ON VIBER, and nothing where he did
+						   not (P36, 20.11.2026): asked of his own row, the one the rest of this line comes off. */
+						+ " case when c.viber_community_at is not null then c.phone end as viber_phone"
 						+ " from competitor c"
 						+ " left join account a on a.competitor_id = c.id"
 						+ " left join place town on town.id = c.place_id"
@@ -195,7 +206,8 @@ class MembersApi {
 				.param("sold", sold)
 				.query((row, one) -> new Row(row.getLong(1), row.getString(2), row.getString(3),
 						row.getString(4), row.getString(5), row.getString(6), row.getBoolean(7),
-						row.getString(8), row.getInt(9), row.getString(10), row.getString(11)))
+						row.getString(8), row.getInt(9), row.getString(10), row.getString(11),
+						row.getString(12)))
 				.list();
 
 		/* EVERY MEMBER'S MONEY, THEN THE BOOK AND THE PRICE LIST ONE READING EACH FOR THE WHOLE ANSWER,
@@ -221,7 +233,7 @@ class MembersApi {
 					one.basis(), one.basis() == null ? null : sold,
 					List.copyOf(held.getOrDefault(one.id(), List.of())),
 					sold, his.name(), price.expected(), price.amount(),
-					books.get(one.id()).amount(), one.invitation());
+					books.get(one.id()).amount(), one.invitation(), one.viberPhone());
 		}).toList();
 	}
 }

@@ -478,6 +478,12 @@ export type MyData = Pick<Competitor, 'firstName' | 'lastName' | 'gender' | 'cit
   /** His shirt size, one of the seven, which the same card opens with (23.10.2026). */
   shirtSize: string
   /**
+   * Whether he asked to join the league's community on Viber, the box beside his telephone (owner, PDL P36,
+   * 20.11.2026: „Isti kvadratić stoji i na strani „Moji podaci”, pa se postojeći članovi sami prijavljuju i
+   * odjavljuju"). His alone, like the telephone (`MeApi.MyOwnRecord.viberCommunity`).
+   */
+  viberCommunity: boolean
+  /**
    * THE FOUR HE SEES LOCKED on his own card and on the page „Moji podaci" (PDL 24.10.2026, owner: „clan
    * ga vidi ali je disabled za menjanje. Moze samo da trazi od admina"): his gender is the field above,
    * and these are the other three. His father's name, never empty.
@@ -1023,8 +1029,12 @@ function dataIn(mine: object | null): MyData | null {
   const fatherName = nameIn(mine, 'fatherName')
   const birthDate = dateIn(mine, 'birthDate')
   const idNumber = textOrNothingIn(mine, 'idNumber')
+  /* A tick and nothing that merely reads as one, as `feeStandsIn` asks of the flag beside it: the server
+     always says it (`MeApi.MyOwnRecord`, a primitive), so an answer without it is not his record. */
+  const viberCommunity: unknown = Reflect.get(mine, 'viberCommunity')
 
   if (
+    typeof viberCommunity !== 'boolean' ||
     address === null ||
     phone === null ||
     country === null ||
@@ -1036,7 +1046,7 @@ function dataIn(mine: object | null): MyData | null {
     return null
   }
 
-  return { ...six, address, phone, country, shirtSize, fatherName, birthDate, idNumber }
+  return { ...six, address, phone, country, shirtSize, fatherName, birthDate, idNumber, viberCommunity }
 }
 
 /**

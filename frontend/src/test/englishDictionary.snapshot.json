@@ -456,7 +456,9 @@
     "fatherNameHint": "Needed to join the association under the law.",
     "idNumber": "Identity document number",
     "idNumberHint": "Needed to join the association under the law.",
-    "phone": "Telephone"
+    "phone": "Telephone",
+    "phoneForViber": "Enter your phone number for the Viber community.",
+    "viberCommunity": "I want to join the BTL community on Viber (announcements, news)"
   },
   "shirt": {
     "XS": "XS",
@@ -1312,7 +1314,8 @@
       "town": "Town",
       "basis": "Basis",
       "seasons": "Seasons",
-      "options": "Options"
+      "options": "Options",
+      "viber": "Viber"
     },
     "basisWord": {
       "payment": "Payment",
@@ -1986,7 +1989,8 @@
     "theAddressIsConfirmed": "The member has already confirmed this email address, so only he can change it.",
     "thereIsNoAccount": "The member has no account on the portal, and no email address.",
     "theAddressIsTaken": "Another account already uses this email address.",
-    "theAddressIsTheSuperadmins": "This address belongs to the portal's administration and cannot be a member's."
+    "theAddressIsTheSuperadmins": "This address belongs to the portal's administration and cannot be a member's.",
+    "theViberCommunityHoldsThePhone": "The member has joined the Viber community, so the number cannot be removed until they leave it."
   },
   "frozen": {
     "deletedMan": "<Deleted member>",

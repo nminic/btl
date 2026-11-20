@@ -119,9 +119,18 @@ export function waitingIn(body: unknown): number | null {
  * carries both now, so the portal knows what stands in every box and an empty box means what it
  * says: for the telephone, "I have none".
  */
-export type Standing = Record<Sent, string>
+export type Standing = Record<Sent, string> & {
+  /**
+   * Whether he asked to join the league's community on Viber (owner, PDL P36, 20.11.2026), the box beside
+   * the telephone: a tick and not a text, so it stands beside the seven rather than among them.
+   */
+  viberCommunity: boolean
+}
 
-export type Typed = Record<Sent, string>
+export type Typed = Standing
+
+/** What of the form travels: the texts that changed, and the tick where it moved. */
+export type Changed = Partial<Record<Sent, string>> & { viberCommunity?: boolean }
 
 /**
  * THE FIELDS THIS SCREEN SENDS, AND THE LENGTH OF EACH ONE'S BOX.
@@ -206,8 +215,8 @@ const THE_TOWN: readonly Sent[] = ['city', 'country']
  * @param typed    what is in each box now
  * @return only what changed, which is empty when nothing did
  */
-export function whatChanged(standing: Standing, typed: Typed): Partial<Record<Sent, string>> {
-  const changed: Partial<Record<Sent, string>> = {}
+export function whatChanged(standing: Standing, typed: Typed): Changed {
+  const changed: Changed = {}
 
   for (const name of WHAT_THIS_SCREEN_SENDS) {
     const written = typed[name].trim()
@@ -224,6 +233,12 @@ export function whatChanged(standing: Standing, typed: Typed): Partial<Record<Se
     for (const name of THE_TOWN) {
       changed[name] = typed[name].trim()
     }
+  }
+
+  /* THE BOX FOR THE COMMUNITY ON VIBER travels when it moved, as a tick (`MeWriteApi.Change.viberCommunity`):
+     ticked asks to join and unticked takes the wish back, at once (PDL P36, 20.11.2026). */
+  if (typed.viberCommunity !== standing.viberCommunity) {
+    changed.viberCommunity = typed.viberCommunity
   }
 
   return changed
@@ -267,6 +282,10 @@ export const WHEN_CHANGING_MY_DATA: Record<string, string> = {
   theTownIsNotKnown: 'account.townNotKnown',
   /* The biography's, which the panels of personal data do not send. The words are the biography's. */
   theTextIsTooLong: 'account.textIsTooLong',
+  /* The box for the community on Viber ticked, or the telephone emptied under it, with no number left (PDL
+     P36, 20.11.2026). The form says the same beside the telephone before anything is sent, so this is met only
+     by a request that lost a race against what the screen last read; the words are the form's own. */
+  theViberCommunityNeedsATelephone: 'registration.phoneForViber',
 }
 
 /**

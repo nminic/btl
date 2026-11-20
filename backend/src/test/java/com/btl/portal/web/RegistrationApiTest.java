@@ -1028,6 +1028,90 @@ class RegistrationApiTest {
 	}
 
 	/**
+	 * THE BOX FOR THE COMMUNITY ON VIBER IS KEPT AS THE MOMENT IT WAS TICKED, AND AN EMPTY BOX IS KEPT AS NOTHING.
+	 *
+	 * <p>Owner, PDL P36, 20.11.2026, „Pored telefona stoji kvadratić za BTL zajednicu na Viberu"; the portal
+	 * keeps the wish and sends nothing anywhere (P22, „Vodi se ručno").
+	 *
+	 * <p><b>Three registrations, and the one that ticked is the second</b>, so a route that wrote the wish on
+	 * every row, or on the first one it made, or read it off a box that was not this person's, is told apart
+	 * from one that wrote it where it was given. The third leaves the key out altogether, which is the form of
+	 * every registration typed before the box existed.
+	 */
+	@Test
+	void theBoxForTheViberCommunityIsKeptAsTheMomentItWasTickedAndOnlyThere() throws Exception {
+		Map<String, Object> unticked = aGrownUp();
+
+		unticked.put("viberCommunity", false);
+		assertThat(register(unticked).getStatus()).isEqualTo(204);
+
+		String ticking = "zeli.viber@primer.rs";
+		Map<String, Object> ticked = aGrownUp();
+
+		ticked.put("email", ticking);
+		ticked.put("phone", "+381 64 765 4321");
+		ticked.put("viberCommunity", true);
+		assertThat(register(ticked).getStatus()).isEqualTo(204);
+
+		String silent = "bez.kvadratica@primer.rs";
+		Map<String, Object> withoutTheKey = aGrownUp();
+
+		withoutTheKey.put("email", silent);
+		assertThat(register(withoutTheKey).getStatus()).isEqualTo(204);
+
+		Map<String, Object> hisRow = theCompetitorBehind(ticking);
+
+		assertThat(hisRow.get("viber_community_at"))
+				.as("the box was ticked and the row keeps no moment, or another one than his registration's")
+				.isNotNull()
+				.isEqualTo(hisRow.get("health_statement_at"));
+		assertThat(hisRow.get("phone")).isEqualTo("+381 64 765 4321");
+		assertThat(theCompetitorBehind(ADDRESS).get("viber_community_at"))
+				.as("an empty box was kept as a wish").isNull();
+		assertThat(theCompetitorBehind(silent).get("viber_community_at"))
+				.as("a registration that never named the box was kept as a wish").isNull();
+		assertThat(db.sql("select count(*) from competitor where viber_community_at is not null")
+				.query(Integer.class).single())
+				.as("the wish of one registration was written on more than one row")
+				.isOne();
+	}
+
+	/**
+	 * TICKED, THE TELEPHONE IS REQUIRED, AND THE SERVER SAYS SO AND NOT ONLY THE SCREEN.
+	 *
+	 * <p>Owner, PDL P36, 20.11.2026: „Kad je kvadratić štikliran, telefon je obavezan [...] i prijava ne ide dok
+	 * broja nema." A telephone of spaces alone is no telephone (V8, „no phone is NULL"). And the other half, so a
+	 * route that required the telephone of everybody would not pass: with the box empty, no telephone is still a
+	 * registration.
+	 */
+	@Test
+	void aTickedBoxWithNoTelephoneIsRefusedAndAnEmptyBoxNeedsNone() throws Exception {
+		for (Object phone : new Object[] {null, "", "   "}) {
+			Map<String, Object> ticked = aGrownUp();
+
+			ticked.put("viberCommunity", true);
+			ticked.put("phone", phone);
+
+			assertThat(register(ticked).getContentAsString())
+					.as("the box was ticked with the telephone %s and the registration went through",
+							phone == null ? "left out" : "'" + phone + "'")
+					.isEqualTo("{\"reason\":\"" + RegistrationApi.THE_FORM_IS_NOT_COMPLETE + "\"}");
+		}
+
+		assertThat(howMany("account")).isZero();
+		assertThat(howMany("competitor")).isZero();
+
+		Map<String, Object> unticked = aGrownUp();
+
+		unticked.remove("phone");
+		unticked.put("viberCommunity", false);
+
+		assertThat(register(unticked).getStatus())
+				.as("with the box empty the telephone became required").isEqualTo(204);
+		assertThat(theCompetitorBehind(ADDRESS).get("phone")).isNull();
+	}
+
+	/**
 	 * A VALUE THE FORM COULD NOT HAVE PRODUCED IS REFUSED, and told apart from nothing.
 	 *
 	 * <p>Each of these is a closed list or a shape the schema itself carries, so a request

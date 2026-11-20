@@ -728,6 +728,9 @@ const HIS_PAGE: Record<string, unknown> = {
   fatherName: 'Milan',
   birthDate: '1975-09-30',
   idNumber: 'AB12345',
+  /* WHETHER HE ASKED TO JOIN THE COMMUNITY ON VIBER (`MeApi.MyOwnRecord.viberCommunity`, PDL P36,
+     20.11.2026): his alone like the telephone, and no part of a profile. */
+  viberCommunity: true,
 }
 
 /** What the answer is when somebody signed in with a member behind the account says this. */
@@ -754,6 +757,8 @@ const WHAT_A_PAGE_NEEDS = Object.keys(HIS_PAGE).filter(
       'fatherName',
       'birthDate',
       'idNumber',
+      /* His wish to join the community on Viber (PDL P36, 20.11.2026), which is his data and no part of a page. */
+      'viberCommunity',
     ].includes(key),
 )
 
@@ -1068,6 +1073,10 @@ const THE_LOCKED_THREE = ['fatherName', 'birthDate', 'idNumber']
  *  his town, which its form writes beside the town's name. */
 const THE_TOWNS_COUNTRY = ['country']
 
+/** And the box beside his telephone since 20.11.2026, whether he asked to join the community on Viber (PDL
+ *  P36): a tick the server always says, so a record without it is not his. */
+const THE_WISH = ['viberCommunity']
+
 describe('the data of the caller himself', () => {
   it('is the six facts and his address and no number, for somebody who has registered and has not paid', async () => {
     server = serverThat(() => saying(aMemberSaying(A_NEWCOMERS_RECORD)))
@@ -1087,6 +1096,7 @@ describe('the data of the caller himself', () => {
       fatherName: 'Milan',
       birthDate: '1975-09-30',
       idNumber: 'AB12345',
+      viberCommunity: true,
     })
     expect(server.asked.map((one) => one.path)).toEqual(['/api/me'])
   })
@@ -1165,7 +1175,7 @@ describe('the data of the caller himself', () => {
     server = serverThat(() => saying(aMemberSaying(HIS_PAGE)))
 
     expect(Object.keys(must(await whatTheServerSaysOfMyData(), 'a member has data too')).toSorted()).toEqual(
-      [...THE_SIX, ...THE_TWO_THAT_ARE_HIS_ALONE, ...THE_TOWNS_COUNTRY, ...THE_LOCKED_THREE].toSorted(),
+      [...THE_SIX, ...THE_TWO_THAT_ARE_HIS_ALONE, ...THE_TOWNS_COUNTRY, ...THE_LOCKED_THREE, ...THE_WISH].toSorted(),
     )
   })
 
@@ -1219,6 +1229,28 @@ describe('the data of the caller himself', () => {
     )
 
     expect(await whatTheServerSaysOfMyData()).toBeNull()
+  })
+
+  /* **THE WISH TO JOIN THE COMMUNITY ON VIBER (20.11.2026)** is a tick and nothing that merely reads as one,
+     and an answer without it is not believed: the box on „Moji podaci" opens with it, and a box opened on a
+     value the server did not give is the fault of 18.10.2026 again. */
+  it.each<[unknown]>([[undefined], ['true'], [1], [null]])('does not believe the wish sent as %j', async (sent) => {
+    const { viberCommunity: _left, ...without } = A_NEWCOMERS_RECORD
+
+    server = serverThat(() =>
+      saying(aMemberSaying(sent === undefined ? without : { ...without, viberCommunity: sent })),
+    )
+
+    expect(await whatTheServerSaysOfMyData()).toBeNull()
+  })
+
+  it('reads the wish as the server says it, either way', async () => {
+    server = serverThat(() => saying(aMemberSaying(A_NEWCOMERS_RECORD)))
+    expect(await whatTheServerSaysOfMyData()).toMatchObject({ viberCommunity: true })
+
+    server.stop()
+    server = serverThat(() => saying(aMemberSaying({ ...A_NEWCOMERS_RECORD, viberCommunity: false })))
+    expect(await whatTheServerSaysOfMyData()).toMatchObject({ viberCommunity: false })
   })
 
   it('reads a document that is not there as the empty box, and the one that is as it is', async () => {

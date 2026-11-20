@@ -306,6 +306,18 @@ export function MemberRow({
             {categoryLabel(categoryCodeFor(one.gender, one.ageBand, one.beginner), t)}
           </span>
         </span>
+        {/* THE MARK VIBER BESIDE HIS TELEPHONE, for a member who asked to join the league's community on Viber
+            and for nobody else (owner, PDL P36, 20.11.2026: „Ko je štiklirao, vidi se na ekranu Moderacija
+            članova, oznakom Viber uz broj telefona, a vlasnik ga ručno dodaje u zajednicu"). A line of its own
+            under the number and at every width, so the owner reads the number on a telephone as well, and not
+            among the parts below, which are the columns this width folds and say what those columns say
+            (`geometry/membersTable.geometry.ts`). The server sends the number only for him
+            (`MembersApi.viberPhone`). */}
+        {one.viberPhone !== undefined && (
+          <span className="table__member-number members-table__under">
+            <span className="members-table__viber-mark">{t('admin.memberColumns.viber')}</span> {one.viberPhone}
+          </span>
+        )}
         <dl className="members-table__held">
           <div className="members-table__narrow">
             <dt>{t('admin.memberColumns.town')}</dt>

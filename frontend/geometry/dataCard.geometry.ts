@@ -58,6 +58,7 @@ const HIM = {
   fatherName: 'Aleksandar-Petrović Radosavljević',
   birthDate: '1980-04-02',
   idNumber: 'ABCDEFGHIJ1234567890',
+  viberCommunity: false,
 }
 
 const THE_LISTS = {

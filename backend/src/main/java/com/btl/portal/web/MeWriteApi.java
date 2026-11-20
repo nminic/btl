@@ -426,6 +426,19 @@ class MeWriteApi {
 	static final String THE_TOWN_IS_NOT_KNOWN = "theTownIsNotKnown";
 
 	/**
+	 * A WISH TO JOIN THE COMMUNITY ON VIBER WITH NO TELEPHONE, after the request (owner, PDL P36, 20.11.2026:
+	 * „Kad je kvadratić štikliran, telefon je obavezan [...] i prijava ne ide dok broja nema").
+	 *
+	 * <p><b>Asked of the row as it WOULD stand, which is two sources and not one:</b> what the request sends
+	 * and, for whatever it leaves out, what the row already holds. A member with a number on his row ticks the
+	 * box and sends nothing else, and that is a wish with a telephone; a member who asked to join empties his
+	 * telephone and sends nothing else, and that is a wish left with none. The answer names the telephone,
+	 * because that is the box the screen says it beside. V106's
+	 * {@code competitor_viber_community_needs_a_phone} would refuse the row anyway, as a 500.
+	 */
+	static final String THE_VIBER_COMMUNITY_NEEDS_A_TELEPHONE = "theViberCommunityNeedsATelephone";
+
+	/**
 	 * THE THREE FIELDS OF HIS OWN FORM A MEMBER MAY NOT MOVE, and the reason is two things.
 	 *
 	 * <p>PDL P28b, 2, 24.09.2026: the first two are read by the portal to work out which
@@ -532,7 +545,7 @@ class MeWriteApi {
 	 */
 	static final List<String> WHAT_THIS_ROUTE_TAKES = List.of("bio", "profileHidden",
 			"firstName", "lastName", "address", "phone", "placeId", "city", "country",
-			"shirtSize");
+			"shirtSize", "viberCommunity");
 
 	/**
 	 * THE PERSONAL FIELDS, EACH WITH THE LENGTH OF THE MEMBER'S OWN BOX AND THE WAY OUT OF
@@ -732,10 +745,15 @@ class MeWriteApi {
 	 * @param country       the code of that country, {@code RS}, never its key
 	 * @param shirtSize     one of the seven sizes the registration offers, spelt exactly as
 	 *                      the form offers it. Null leaves it alone
+	 * @param viberCommunity whether he asks to join the league's community on Viber, the box beside his
+	 *                      telephone (owner, PDL P36, 20.11.2026: „pa se postojeći članovi sami prijavljuju i
+	 *                      odjavljuju"). True asks, false takes the wish back, null leaves it alone. It takes
+	 *                      effect at once like the rest of his personal data (PDL P28b, 1). Nothing is sent to
+	 *                      Viber: „Vodi se ručno" (P22)
 	 */
 	record Change(String bio, Boolean profileHidden, String firstName, String lastName,
 			String address, String phone, Long placeId, String city, String country,
-			String shirtSize) {
+			String shirtSize, Boolean viberCommunity) {
 	}
 
 	/** Why a change could not be made. */
@@ -807,10 +825,11 @@ class MeWriteApi {
 	 *                      one IS what was sent, and after a request naming none is the size
 	 *                      that was already there - never null, because V8 holds the column
 	 *                      NOT NULL
+	 * @param viberCommunity whether the row now holds his wish to join the community on Viber
 	 */
 	record Changed(String bio, boolean profileHidden, Long waiting, String firstName,
 			String lastName, String address, String phone, Long placeId, String city,
-			String country, String shirtSize) {
+			String country, String shirtSize, boolean viberCommunity) {
 	}
 
 	/**
@@ -955,6 +974,11 @@ class MeWriteApi {
 			return no(HttpStatus.BAD_REQUEST, town.orElseThrow().refused());
 		}
 
+		if (aWishIsLeftWithNoTelephone(me, typed)) {
+			return ResponseEntity.badRequest()
+					.body(new NotAllowed(THE_VIBER_COMMUNITY_NEEDS_A_TELEPHONE, List.of("phone")));
+		}
+
 		return inOneTransaction.execute(
 				committing -> write(me, asking.account(), typed, town.orElse(null), committing));
 	}
@@ -989,7 +1013,31 @@ class MeWriteApi {
 		return typed.bio() == null && typed.profileHidden() == null && typed.firstName() == null
 				&& typed.lastName() == null && typed.address() == null && typed.phone() == null
 				&& typed.placeId() == null && typed.city() == null && typed.country() == null
-				&& typed.shirtSize() == null;
+				&& typed.shirtSize() == null && typed.viberCommunity() == null;
+	}
+
+	/**
+	 * Whether the row, once this request is written, would hold a wish to join the community on Viber and no
+	 * telephone ({@link #THE_VIBER_COMMUNITY_NEEDS_A_TELEPHONE}). Each of the two is what the request sends
+	 * where it names it and what his own row holds where it does not, and the row is the one the session
+	 * names.
+	 */
+	private boolean aWishIsLeftWithNoTelephone(long me, Change typed) {
+		if (Boolean.FALSE.equals(typed.viberCommunity())) {
+			return false;
+		}
+
+		if (typed.phone() != null && !typed.phone().isBlank()) {
+			return false;
+		}
+
+		Map<String, Object> stands = db.sql("select phone, viber_community_at is not null as wish"
+						+ " from competitor where id = ?")
+				.param(me).query().singleRow();
+		boolean wish = typed.viberCommunity() != null || Boolean.TRUE.equals(stands.get("wish"));
+		boolean noPhone = typed.phone() != null || stands.get("phone") == null;
+
+		return wish && noPhone;
 	}
 
 	/** The boxes whose contents would not fit the member's own form, oldest rule first. */
@@ -1168,7 +1216,8 @@ class MeWriteApi {
 
 		if (typed.profileHidden() != null || removing || phoneNamed || town != null
 				|| typed.firstName() != null || typed.lastName() != null
-				|| typed.address() != null || typed.shirtSize() != null) {
+				|| typed.address() != null || typed.shirtSize() != null
+				|| typed.viberCommunity() != null) {
 
 			/* THE MEMBER THE SESSION NAMES AND NOBODY ELSE. `me` came from
 			   `MemberOfAccount`, which read `account.competitor_id` off the signed in
@@ -1209,7 +1258,12 @@ class MeWriteApi {
 							+ " city = case when cast(? as boolean) then cast(? as text)"
 							+ "   else city end,"
 							+ " country_id = case when cast(? as boolean) then cast(? as bigint)"
-							+ "   else country_id end"
+							+ "   else country_id end,"
+							/* THE WISH, WITH THE MOMENT IT WAS FIRST GIVEN KEPT while he keeps it: ticking a box
+							   already ticked is not a new wish. Taken back, it is NULL (V106). */
+							+ " viber_community_at = case when cast(? as boolean) is null then viber_community_at"
+							+ "   when cast(? as boolean) then coalesce(viber_community_at, now())"
+							+ "   else null end"
 							+ " where id = ?")
 					.params(removing ? "" : null, typed.profileHidden(),
 							strippedOrNull(typed.firstName()), strippedOrNull(typed.lastName()),
@@ -1218,6 +1272,7 @@ class MeWriteApi {
 							town != null, town == null ? null : town.placeKey(),
 							town != null, town == null ? null : town.city(),
 							town != null, town == null ? null : town.countryId(),
+							typed.viberCommunity(), typed.viberCommunity(),
 							me)
 					.update();
 
@@ -1362,7 +1417,8 @@ class MeWriteApi {
 		   record would be the one place in the portal where a member's own row hands back a
 		   number he could not have sent. */
 		Standing standing = db.sql("select c.bio, c.profile_hidden, c.first_name, c.last_name,"
-						+ " c.address, c.phone, p.geonames_id, c.city, k.code, c.shirt_size"
+						+ " c.address, c.phone, p.geonames_id, c.city, k.code, c.shirt_size,"
+						+ " c.viber_community_at is not null"
 						+ " from competitor c"
 						+ " left join place p on p.id = c.place_id"
 						+ " left join country k on k.id = c.country_id"
@@ -1371,19 +1427,19 @@ class MeWriteApi {
 				.query((row, one) -> new Standing(row.getString(1), row.getBoolean(2),
 						row.getString(3), row.getString(4), row.getString(5), row.getString(6),
 						(Long) row.getObject(7), row.getString(8), row.getString(9),
-						row.getString(10)))
+						row.getString(10), row.getBoolean(11)))
 				.single();
 
 		return new Changed(standing.bio(), standing.profileHidden(),
 				theTextThatWaits(me).orElse(null), standing.firstName(), standing.lastName(),
 				standing.address(), standing.phone(), standing.placeId(), standing.city(),
-				standing.country(), standing.shirtSize());
+				standing.country(), standing.shirtSize(), standing.viberCommunity());
 	}
 
 	/** The member's own columns, before the queue is asked about anything. */
 	private record Standing(String bio, boolean profileHidden, String firstName, String lastName,
 			String address, String phone, Long placeId, String city, String country,
-			String shirtSize) {
+			String shirtSize, boolean viberCommunity) {
 	}
 
 	/**

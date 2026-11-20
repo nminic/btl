@@ -216,7 +216,7 @@ describe('a member’s own data', () => {
 
     const panel = await personalPanel()
 
-    expect(theBox(panel, /Adresa za slanje/)).toHaveValue('Vojvode Stepa 5')
+    expect(theBox(panel, /Poštanska adresa za slanje/)).toHaveValue('Vojvode Stepa 5')
     expect(theBox(panel, /Telefon/)).toHaveValue('+381 11 765 432')
   })
 
@@ -229,7 +229,7 @@ describe('a member’s own data', () => {
     const panel = await personalPanel()
 
     expect(theBox(panel, /Telefon/)).toHaveValue('')
-    expect(theBox(panel, /Adresa za slanje/)).toHaveValue('Vojvode Stepa 5')
+    expect(theBox(panel, /Poštanska adresa za slanje/)).toHaveValue('Vojvode Stepa 5')
   })
 
   /**
@@ -443,7 +443,7 @@ describe('a member’s own data', () => {
 
     const panel = await personalPanel()
 
-    await typeOver(user, theBox(panel, /Adresa za slanje/), '  Bulevar oslobođenja 12  ')
+    await typeOver(user, theBox(panel, /Poštanska adresa za slanje/), '  Bulevar oslobođenja 12  ')
     await typeOver(user, theBox(panel, /Telefon/), '  065 1234  ')
     await user.click(within(panel).getByRole('button', { name: sr.account.save }))
     await within(panel).findByText(sr.account.saved)
@@ -458,7 +458,7 @@ describe('a member’s own data', () => {
 
     const again = await personalPanel()
 
-    expect(theBox(again, /Adresa za slanje/)).toHaveValue('Bulevar oslobođenja 12')
+    expect(theBox(again, /Poštanska adresa za slanje/)).toHaveValue('Bulevar oslobođenja 12')
     expect(theBox(again, /Telefon/)).toHaveValue('065 1234')
   })
 
@@ -501,7 +501,7 @@ describe('a member’s own data', () => {
     const again = await personalPanel()
 
     expect(theBox(again, /Telefon/)).toHaveValue('')
-    expect(theBox(again, /Adresa za slanje/)).toHaveValue('Vojvode Stepa 5')
+    expect(theBox(again, /Poštanska adresa za slanje/)).toHaveValue('Vojvode Stepa 5')
   })
 })
 
@@ -648,7 +648,7 @@ describe('which boxes of a member’s own data are asked for', () => {
 
     const panel = await personalPanel()
 
-    await user.clear(theBox(panel, /Adresa za slanje/))
+    await user.clear(theBox(panel, /Poštanska adresa za slanje/))
     await user.type(theBox(panel, /Telefon/), '065 1234')
 
     expectEachBoxAsked(panel)

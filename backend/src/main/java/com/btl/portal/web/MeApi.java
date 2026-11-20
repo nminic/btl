@@ -490,6 +490,11 @@ class MeApi {
 	 *                     gave none", as {@code phone} says it). Read by his own key from that table
 	 *                     and by nobody else's: {@code competitor_id} is its primary key, so the
 	 *                     subquery returns at most the one row that is his
+	 * @param viberCommunity whether he asked to join the league's community on Viber (owner, PDL P36,
+	 *                     20.11.2026), which is the box beside his telephone on „Moji podaci". Off his own
+	 *                     row ({@code competitor.viber_community_at}, V106), and private like the telephone
+	 *                     it stands beside: no other answer of the portal carries it to anybody but the
+	 *                     moderation of the members ({@code MembersApi})
 	 */
 	record MyOwnRecord(@JsonInclude(JsonInclude.Include.NON_NULL) String memberNumber,
 			String country, int firstSeason,
@@ -507,7 +512,7 @@ class MeApi {
 			String address, @JsonInclude(JsonInclude.Include.NON_NULL) String phone, String shirtSize,
 			String fatherName, String birthDate,
 			@JsonInclude(JsonInclude.Include.NON_NULL) String idNumber,
-			@JsonInclude(JsonInclude.Include.NON_NULL) String bioWaiting) {
+			@JsonInclude(JsonInclude.Include.NON_NULL) String bioWaiting, boolean viberCommunity) {
 	}
 
 	/**
@@ -652,7 +657,10 @@ class MeApi {
 						   one row at most and the row is the one whose owner is `c.id`. */
 						+ " c.father_name, c.birth_date::text,"
 						+ " (select d.document_number from competitor_document d"
-						+ "  where d.competitor_id = c.id)"
+						+ "  where d.competitor_id = c.id),"
+						/* WHETHER HE ASKED TO JOIN THE COMMUNITY ON VIBER, off the very row the rest of this
+						   answer comes off (V106). */
+						+ " c.viber_community_at is not null"
 						+ " from competitor c"
 						+ " left join place town on town.id = c.place_id"
 						+ " left join country town_country on town_country.id = town.country_id"
@@ -729,7 +737,8 @@ class MeApi {
 									: PhotoApi.addressOfTheSmall(portrait, across,
 											row.getBigDecimal(20), row.getBigDecimal(21)),
 							row.getString(22), row.getString(23), row.getString(24),
-							row.getString(27), row.getString(28), row.getString(29), row.getString(25));
+							row.getString(27), row.getString(28), row.getString(29), row.getString(25),
+							row.getBoolean(30));
 				})
 				.single();
 	}

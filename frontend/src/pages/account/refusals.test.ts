@@ -491,8 +491,9 @@ describe('the reasons the server can name', () => {
     /* ADDED 22.10.2026, AND ANSWERED SINCE 23.10.2026 BY THE CARD „PODACI" (`profile/TheMembersData.tsx`):
        the administration correcting a member's data. Seven constants and seven reasons; the sentences it
        shares with the member's own route are that route's constants (`MeWriteApi`), held by
-       `member/myAccount.test.ts`, and not declared in this file. */
-    ['MemberDataWriteApi.java', [WHEN_CORRECTING_A_MEMBER], 7],
+       `member/myAccount.test.ts`, and not declared in this file. EIGHT SINCE 20.11.2026: the telephone of a
+       member who asked to join the community on Viber is not emptied for him (owner, PDL P36). */
+    ['MemberDataWriteApi.java', [WHEN_CORRECTING_A_MEMBER], 8],
     /* ADDED 25.10.2026 WITH THE ENVELOPE ON THE MEMBER'S ROW (`admin/MemberRow.tsx`): three constants, all
        three refusals of `POST /api/members/{memberNumber}/invitation`. The third arrives with a 503 and is
        said through the number as well (`admin/memberInvitation.ts`). */

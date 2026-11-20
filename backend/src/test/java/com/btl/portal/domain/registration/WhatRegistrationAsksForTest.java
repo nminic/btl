@@ -82,6 +82,7 @@ class WhatRegistrationAsksForTest {
 		mine.addAll(WhatRegistrationAsksFor.ONLY_WITH_AN_IDENTITY_CARD);
 		mine.addAll(WhatRegistrationAsksFor.ONLY_FROM_A_GUARDIAN);
 		mine.addAll(WhatRegistrationAsksFor.NEVER_REQUIRED);
+		mine.addAll(WhatRegistrationAsksFor.ONLY_FOR_THE_VIBER_COMMUNITY);
 
 		assertThat(mine)
 				.as("the fields the server knows are not the fields the form draws")
@@ -122,6 +123,43 @@ class WhatRegistrationAsksForTest {
 					.as("the form shows '%s' at another age than the code expects", fromAGuardian)
 					.isEqualTo(Guardianship.ACCOUNT_IS_HELD_BY_A_GUARDIAN_UNDER);
 		}
+	}
+
+	/**
+	 * THE TELEPHONE IS REQUIRED BY THE SAME BOX ON THE FORM AS IN THE CODE, AND ONLY BY IT.
+	 *
+	 * <p>Owner, PDL P36, 20.11.2026: „Kad je kvadratić štikliran, telefon je obavezan". The form says it as
+	 * {@code requiredWhenFilled} on the telephone, naming the box, and the code as
+	 * {@link WhatRegistrationAsksFor#ONLY_FOR_THE_VIBER_COMMUNITY}; a box renamed on one side alone would leave
+	 * the screen asking for a telephone the server never requires, or the other way round. And the telephone is
+	 * not required by the form outright, which would ask it of everybody.
+	 */
+	@Test
+	void theTelephoneIsRequiredByTheBoxForTheViberCommunityOnBothSides() throws IOException {
+		Map<String, JsonNode> drawn = asDrawn();
+
+		for (String forViber : WhatRegistrationAsksFor.ONLY_FOR_THE_VIBER_COMMUNITY) {
+			assertThat(drawn.get(forViber).path("requiredWhenFilled").path("field").asString())
+					.as("the form requires '%s' by another field than the box the code reads", forViber)
+					.isEqualTo("viberCommunity");
+			assertThat(drawn.get(forViber).path("required").asBoolean(false))
+					.as("the form requires '%s' of everybody", forViber)
+					.isFalse();
+		}
+
+		assertThat(drawn.get("viberCommunity").path("type").asString()).isEqualTo("checkbox");
+	}
+
+	/** Ticked, the telephone is asked at either age; empty, it is asked at neither. */
+	@ParameterizedTest
+	@ValueSource(ints = {14, 40})
+	void theBoxAsksForTheTelephoneAndAnEmptyBoxDoesNot(int years) {
+		assertThat(WhatRegistrationAsksFor.from(aged(years), A_DAY, true))
+				.containsAll(WhatRegistrationAsksFor.ONLY_FOR_THE_VIBER_COMMUNITY)
+				.containsAll(WhatRegistrationAsksFor.from(aged(years), A_DAY));
+		assertThat(WhatRegistrationAsksFor.from(aged(years), A_DAY, false))
+				.doesNotContainAnyElementsOf(WhatRegistrationAsksFor.ONLY_FOR_THE_VIBER_COMMUNITY)
+				.isEqualTo(WhatRegistrationAsksFor.from(aged(years), A_DAY));
 	}
 
 	/**

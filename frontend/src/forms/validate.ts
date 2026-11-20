@@ -248,6 +248,15 @@ export function validateForm(
     const value = values[field.name] ?? ''
     let error = validateField(field, value)
 
+    /* REQUIRED BY ANOTHER FIELD'S ANSWER, AND SAYING WHICH, where the rule names its own sentence
+       (`requiredWhenFilled.errorKey`, types.ts). Asked of the field AS WRITTEN: one that is required
+       of everybody is told what every obligatory field is told, whatever else is answered. */
+    const because = written.requiredWhenFilled?.errorKey
+
+    if (error?.key === REQUIRED_KEY && written.required !== true && because !== undefined) {
+      error = { key: because }
+    }
+
     if (error === null && field.matches !== undefined && value !== values[field.matches]) {
       error = { key: 'form.errors.matches' }
     }

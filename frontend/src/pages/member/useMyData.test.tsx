@@ -86,6 +86,7 @@ describe('his own data', () => {
         fatherName: 'Zoran',
         birthDate: '1992-11-23',
         idNumber: 'CD67890',
+        viberCommunity: false,
       },
     })
   }, SLOW)

@@ -235,6 +235,8 @@ function whatMeAnswers(): Response {
             fatherName: myOwnRecordFromMe.fatherName,
             birthDate: myOwnRecordFromMe.birthDate,
             idNumber: myOwnRecordFromMe.idNumber,
+            /* And the wish to join the community on Viber since 20.11.2026, his alone the same way. */
+            viberCommunity: myOwnRecordFromMe.viberCommunity,
           },
         }),
   }
