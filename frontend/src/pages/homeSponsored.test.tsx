@@ -37,8 +37,17 @@ const SOFRA: SponsorEntry = {
   description: 'Domaća kuhinja posle svake trke.',
 }
 
+/**
+ * The day the page is read as, one day and not the suite's: how many races lie ahead in the sample turns
+ * on the day, and on the other day the suite is read as (`test/theDay.ts`, 22.11.2027) only three do, so
+ * neither four nor nine could be drawn and the count would say nothing about the sponsor. On 01.11.2026
+ * forty-five races of different names lie ahead, more than either number, so the list is cut by the rule
+ * and never by running out.
+ */
+const A_DAY_WITH_RACES_AHEAD = '2026-11-01'
+
 async function drawn() {
-  renderAt('/sr')
+  renderAt('/sr', 'visitor', null, undefined, A_DAY_WITH_RACES_AHEAD)
 
   await screen.findByRole('heading', { level: 2, name: 'Priprema, pozor, SAD!' })
   await screen.findByRole('heading', { level: 2, name: 'Reč predsednika' })
