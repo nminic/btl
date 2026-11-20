@@ -253,7 +253,7 @@ describe('the text of the page, over the decoration', () => {
     it(`keeps 4,5:1 on the page colour under the glow, the contours, the route, where a contour crosses the route, and the dot, ${theme}`, () => {
       const glowing = over(own('--race-page-glow', theme), portal('--bg', theme))
       const contour = over(own('--race-contour', theme), glowing)
-      /* The two layers are two pseudo-elements one over the other (`.race-page::before` and `::after`), so where a
+      /* The contours and the route are painted in one drawing, the route over the contours, so where a
          contour and the route cross a word stands on both at once, each at its full strength: that is the last
          ground, and the weakest one (PR 736 review, 15.11.2026; the owner's choice of 16.11.2026 was to keep the
          lines as they are and to give the inks that fell short colours that clear 4,5:1 on it). */

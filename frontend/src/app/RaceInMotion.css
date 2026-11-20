@@ -30,8 +30,13 @@
  * contour, the route, and the place where a contour crosses the route with both at full strength; the
  * last is the weakest, and it is why `--accent`, `--accent-hover` and `--gold-500` in the dark theme and
  * `--down` and `--danger` in the light one are the colours they are (owner, 16.11.2026: the lines stay
- * as they were and the text moves). The gold line and the runner are drawn only where no text
- * stands, which Chrome is asked about (`geometry/raceInMotion.geometry.ts`).
+ * as they were and the text moves). The dot that runs the route (20.11.2026) is the strongest mark of
+ * the page, so it is a ground of its own, and it is one opaque colour (`--race-dot`) so that nothing
+ * under it adds to it; its ring is the same colour at half strength over the crossing. How strong it
+ * is allowed to be is what the text needs, not what the eye would like: in the light theme it is
+ * 1,16:1 against the page and 1,64:1 in the dark one (the route is 1,08:1 and 1,26:1), which is as far as 4,5:1 for every ink leaves it.
+ * The gold line and the runner are drawn only where no text stands, which Chrome is asked about
+ * (`geometry/raceInMotion.geometry.ts`).
  */
 :root {
   --race-header-top: #ffffff;
