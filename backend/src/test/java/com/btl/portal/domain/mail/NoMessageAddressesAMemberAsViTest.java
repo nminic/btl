@@ -50,7 +50,9 @@ class NoMessageAddressesAMemberAsViTest {
 	private static final Pattern A_VI_FORM = Pattern.compile(
 			"(?iu)(?<![\\p{L}\\p{N}])(vaš|vaša|vaše|vašu|vašeg|vašem|vašoj|vašim|vaši|vašom|vas|vam|vi|ste|niste"
 					+ "|možete|imate|želite|javite|otvorite|postavite|zatražite|pišite|pošaljite|zanemarite"
-					+ "|upišite|potvrdite|vodite|izaberete|slažete)(?![\\p{L}\\p{N}])");
+					+ "|upišite|potvrdite|vodite|izaberete|slažete|dobijate|nemate|uplatite|aktivirajte"
+					+ "|potvrđujete|uplaćujete|registrujete|kliknite|prijavite|odjavite|proverite|pročitajte"
+					+ "|sačuvajte|nastavite|pokušajte|kontaktirajte|obnovite|platite|popunite)(?![\\p{L}\\p{N}])");
 
 	/** Texts whose participle after „ste" or whose pinned twin keeps them from moving yet. */
 	private static final List<String> WAITING = List.of(
