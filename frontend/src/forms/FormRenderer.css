@@ -200,6 +200,24 @@
     grid-column: span 2;
   }
 
+  /* A TICK ON A ROW STANDS IN LINE WITH THE BOXES BESIDE IT, not with their names (owner, PDL P36,
+     20.11.2026: the box for the community on Viber „stoji u trećoj, do sada praznoj trećini reda
+     „Kontakt i dostava”", and the draft he chose has it „poravnat sa poljima").
+   *
+     A tick has no name above it: its words are beside it. Left alone it stood at the height of the
+     names of the row, a line above the boxes. So it is moved down by what stands above a box, one
+     line of a name and the gap under it, and then by half of what a box is taller than a line, so
+     that the first line of its words, and the tick beside it, sit across the middle of the boxes.
+     A sentence that wraps carries on under that line. Measured from the top and not from the bottom
+     of the row, because a telephone that is told it is needed grows a sentence under itself and the
+     row grows with it; a tick held to the bottom would leave the box it belongs beside. Under
+     51.25em every field stands on a line of its own and the tick comes straight under the
+     telephone, so none of this applies there. `geometry/registrationRow.geometry.ts` measures it at
+     360, 768 and 1280. */
+  .form__row > .field--checkbox {
+    padding-block-start: calc(1lh + var(--space-4) + (var(--control-height) - 1lh) / 2);
+  }
+
   /* THE WHOLE ROW FOR A TOWN, WITH THE TOWN TWO THIRDS OF IT AND THE COUNTRY THE THIRD (owner,
      17.10.2026, of the event form: „Mesto dve trećine i Država jedna trećina"). The three columns
      are the row's own, drawn again inside the field, so the town ends where the second column of
@@ -511,10 +529,6 @@
   margin: 0;
   font-size: 0.9rem;
   color: var(--text);
-}
-
-.field--checkbox {
-  gap: var(--space-6);
 }
 
 /* A value the form shows without asking for it. Deliberately not a box: there is

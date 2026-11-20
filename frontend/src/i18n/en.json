@@ -456,7 +456,9 @@
     "fatherNameHint": "Needed to join the association under the law.",
     "idNumber": "Identity document number",
     "idNumberHint": "Needed to join the association under the law.",
-    "phone": "Telephone"
+    "phone": "Telephone",
+    "phoneForViber": "Enter your phone number for the Viber community.",
+    "viberCommunity": "I want to join the BTL community on Viber (announcements, news)"
   },
   "shirt": {
     "XS": "XS",

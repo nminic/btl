@@ -123,6 +123,9 @@ function theBody(
     country: written(values, 'country'),
     idNumber: written(values, 'idNumber'),
     phone: written(values, 'phone'),
+    /* The box for the league's community on Viber (owner, PDL P36, 20.11.2026), a tick and never a word:
+       the server keeps the moment it was ticked and sends nothing to Viber (P22, „Vodi se ručno"). */
+    viberCommunity: values.viberCommunity === true,
     shirtSize: written(values, 'shirtSize'),
     /* ~~`bio`, which this form asked for at the moment of joining.~~ It went on
        28.09.2026 with the picture beside it, and `RegistrationApi.Typed` no longer

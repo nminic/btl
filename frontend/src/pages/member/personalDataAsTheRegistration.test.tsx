@@ -65,7 +65,7 @@ const THE_REGISTRATIONS_SHAPE: [string, [string, Role][]][] = [
   [
     sr.registration.group.contact,
     [
-      ['Adresa za slanje', 'textbox'],
+      ['Poštanska adresa za slanje', 'textbox'],
       ['Telefon', 'textbox'],
       ['Mesto', 'combobox'],
     ],

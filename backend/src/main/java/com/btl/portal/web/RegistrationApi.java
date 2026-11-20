@@ -372,12 +372,18 @@ class RegistrationApi {
 	 *                Absent is Serbian, which is the column's own default and the owner's
 	 *                „podrazumevano srpski"; a code that is not one of the two is refused like
 	 *                every other thing the form should have caught
+	 * @param viberCommunity whether the box „Želim u BTL zajednicu na Viberu (obaveštenja, novosti)" was
+	 *                ticked (owner, PDL P36, 20.11.2026). Absent is not ticked, the box's own default; ticked,
+	 *                it makes the telephone required ({@link WhatRegistrationAsksFor#ONLY_FOR_THE_VIBER_COMMUNITY}),
+	 *                and the moment it was given is what the row keeps ({@code competitor.viber_community_at},
+	 *                V106). Nothing is sent to Viber: „Vodi se ručno" (P22)
 	 */
 	record Typed(String firstName, String lastName, String fatherName, String birthDate,
 			String gender, Boolean beginner, String email, String password,
 			String passwordRepeat, String address, Long placeId, String city, String country,
 			String idNumber, String phone, String shirtSize, Boolean healthStatement,
-			String parentConsent, String parentRelation, String referredBy, String mailLanguage) {
+			String parentConsent, String parentRelation, String referredBy, String mailLanguage,
+			Boolean viberCommunity) {
 	}
 
 	/** Why a registration was refused, and never which field. */
@@ -416,7 +422,7 @@ class RegistrationApi {
 		   and the parent's signature across the same boundary in opposite directions, and
 		   `Guardianship` is where that boundary is; a list written out here would be a
 		   second copy of both, free to disagree with the form. */
-		Set<String> asked = WhatRegistrationAsksFor.from(born, today);
+		Set<String> asked = WhatRegistrationAsksFor.from(born, today, Boolean.TRUE.equals(typed.viberCommunity()));
 		Map<String, String> filledIn = whatHeFilledIn(typed, town, address);
 
 		/* EVERY NAME, WITH NOTHING EXCUSED. A second half of this condition used to let
@@ -630,7 +636,7 @@ class RegistrationApi {
 						+ " (first_name, last_name, gender, place_id, city, country_id,"
 						+ "  first_season,"
 						+ "  referral_code, referred_by, bio, profile_hidden, birth_date,"
-						+ "  father_name, address, phone, shirt_size, health_statement_at)"
+						+ "  father_name, address, phone, shirt_size, health_statement_at, viber_community_at)"
 						/* `member_number` IS NOT WRITTEN AND `member_number_seq` IS NOT ASKED.
 						   NO BASIS IS WRITTEN, and nothing says he is active: since V62 a basis is a
 						   `membership` row of a season, and a registration is no membership of
@@ -653,14 +659,15 @@ class RegistrationApi {
 						   Written as a literal rather than as an empty parameter so that there
 						   is no value here for a caller to influence at all. */
 						+ " values (?, ?, ?, ?, ?, ?, ?, ?, ?, '', false, ?,"
-						+ "  ?, ?, ?, ?, ?)"
+						+ "  ?, ?, ?, ?, ?, ?)"
 						+ " returning id")
 				.params(typed.firstName().strip(), typed.lastName().strip(), typed.gender(),
 						town.placeId(), town.city(), town.countryId(),
 						season, ReferralCode.fresh().written(),
 						whoBrought(typed),
 						java.sql.Date.valueOf(born), typed.fatherName().strip(),
-						typed.address().strip(), WhatAFieldMeans.thePhone(typed.phone()), typed.shirtSize(), now)
+						typed.address().strip(), WhatAFieldMeans.thePhone(typed.phone()), typed.shirtSize(), now,
+						Boolean.TRUE.equals(typed.viberCommunity()) ? now : null)
 				.query(Long.class)
 				.single();
 
@@ -871,6 +878,9 @@ class RegistrationApi {
 		filledIn.put("idNumber", WhatAFieldMeans.theDocument(typed.idNumber()));
 		filledIn.put("parentConsent", typed.parentConsent());
 		filledIn.put("parentRelation", WhatAFieldMeans.theRelation(typed.parentRelation()));
+		/* As the row will carry it: spaces alone are no telephone (V8, „no phone is NULL"), so they are no
+		   telephone for the community either. */
+		filledIn.put("phone", WhatAFieldMeans.thePhone(typed.phone()));
 
 		return filledIn;
 	}

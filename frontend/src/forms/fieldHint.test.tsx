@@ -315,7 +315,7 @@ describe('the rule beside a field', () => {
 
     expect(asked).toHaveAttribute('aria-expanded', 'true')
 
-    await user.pointer({ target: screen.getByLabelText(/^Adresa za slanje$/), keys: '[MouseLeft>]' })
+    await user.pointer({ target: screen.getByLabelText(/^Poštanska adresa za slanje$/), keys: '[MouseLeft>]' })
 
     expect(asked).toHaveAttribute('aria-expanded', 'false')
   })
@@ -340,18 +340,18 @@ describe('the rule beside a field', () => {
 
     /* The keyboard goes first and stays where it is: pressing anything after
        this is pressing it into the field, not into the button. */
-    await user.click(screen.getByLabelText(/^Adresa za slanje$/))
+    await user.click(screen.getByLabelText(/^Poštanska adresa za slanje$/))
     await user.hover(asked)
 
     expect(asked).toHaveAttribute('aria-expanded', 'true')
-    expect(screen.getByLabelText(/^Adresa za slanje$/)).toHaveFocus()
+    expect(screen.getByLabelText(/^Poštanska adresa za slanje$/)).toHaveFocus()
 
     await user.keyboard('{Escape}')
 
     expect(asked).toHaveAttribute('aria-expanded', 'false')
     /* And neither the pointer nor the keyboard was moved to do it, which is the
        whole of what SC 1.4.13 asks. */
-    expect(screen.getByLabelText(/^Adresa za slanje$/)).toHaveFocus()
+    expect(screen.getByLabelText(/^Poštanska adresa za slanje$/)).toHaveFocus()
   })
 
   it('stays open under a pointer that leaves while the keyboard is on it', async () => {
@@ -1074,6 +1074,7 @@ const STANDS_IN: Record<string, string | null> = {
   passwordRepeat: 'Pristup nalogu',
   address: 'Kontakt i dostava',
   phone: 'Kontakt i dostava',
+  viberCommunity: 'Kontakt i dostava',
   city: 'Kontakt i dostava',
   beginner: 'Takmičenje',
   shirtSize: 'Takmičenje',
@@ -1117,7 +1118,10 @@ const ROWS_ARE: string[][] = [
   /* „Prvi red je Adresa […] i telefon (Treća kolona je prazna)", after his own
      correction a minute later: „Moja greška, izvini, adresa ne zauzima duplu
      širinu. PO trećinu". */
-  ['address', 'phone'],
+  /* ~~(Treća kolona je prazna)~~ until 20.11.2026, when the owner filled it: „Pored telefona stoji
+     kvadratić za BTL zajednicu na Viberu", „u trećoj, do sada praznoj trećini reda „Kontakt i
+     dostava”" (PDL P36). */
+  ['address', 'phone', 'viberCommunity'],
   /* „Drugi red su jednake trećine za Mesto i Državu (Treća kolona je prazna)",
      which is ONE field: the town carries the country beside it and the two are
      two columns of the three (`FormRenderer.css`, `.field--place`). */
@@ -1215,7 +1219,7 @@ describe('a form laid out in groups', () => {
     })
   })
 
-  it('names the same seventeen fields the form asks for, and no others', () => {
+  it('names the same eighteen fields the form asks for, and no others', () => {
     /* The floor under the table above. Held in both directions: a field added to
        the form without a place in the table fails here, and so does a line left
        behind for a field that is gone. */

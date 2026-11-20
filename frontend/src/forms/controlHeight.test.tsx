@@ -508,24 +508,32 @@ describe('how tall a control in a form is', () => {
 
 describe('where a field puts its control under its name', () => {
   /**
-   * The exemption below is measured rather than remembered.
+   * ~~A checkbox field keeps a gap of its own, and it may: [...] nothing ever stands beside it to be
+   * out of line with.~~ That stopped being true on 20.11.2026, which is the day the guard that stood
+   * here was written for: the box for the community on Viber stands on the row „Kontakt i dostava”
+   * beside the address and the telephone (owner, PDL P36). So the exemption is gone rather than
+   * widened, and a tick keeps the one gap every other field keeps.
    *
-   * A checkbox field keeps a gap of its own, and it may: a tick and its sentence are
-   * not a box under a name, and nothing ever stands beside it to be out of line with.
-   * That second half is the part worth proving, and it is proved from the definitions
-   * themselves rather than from anybody's memory of them - a checkbox put on a row
-   * tomorrow takes this exemption away on the day it is written.
+   * What a tick on a row needs instead is to be put in line with the boxes beside it, because it
+   * has no name above itself. That is one rule in the sheets, and this holds that the rule is there
+   * the moment any form puts a tick on a row: read off the definitions, so a form that does it
+   * tomorrow is asked on the day it is written.
    */
-  const KEEPS_ITS_OWN = 'field--checkbox'
+  const A_TICK_ON_A_ROW = '.form__row > .field--checkbox'
 
-  it('never asks a checkbox to stand beside anything', () => {
+  it('puts a tick that shares a row in line with the boxes beside it', () => {
     const onARow = Object.values(FORMS).flatMap((form) =>
       form.fields.filter((field) => field.row !== undefined).map((field) => field.type),
     )
 
     expect(onARow.length, 'no form puts any field on a row').toBeGreaterThan(0)
-    expect(onARow, `a checkbox now shares a row, so ${KEEPS_ITS_OWN} may not keep its own gap`)
-      .not.toContain('checkbox')
+    expect(onARow, 'no form puts a tick on a row, so the rule below answers nothing').toContain('checkbox')
+
+    const moved = ALL.filter((rule) => rule.selector === A_TICK_ON_A_ROW).flatMap((rule) =>
+      rule.declarations.filter(([property]) => property === 'padding-block-start'),
+    )
+
+    expect(moved, `nothing moves ${A_TICK_ON_A_ROW} down to the line of the boxes`).toHaveLength(1)
   })
 
   it('is the same distance for every field that can share a row', () => {
@@ -535,7 +543,7 @@ describe('where a field puts its control under its name', () => {
        Neither is caught by a case that only knows the gap changed, so what is held
        here is that there is exactly ONE gap among the fields that can stand together. */
     const gaps = ALL.filter(
-      (rule) => isAField(rule.selector) && !classesOf(rule.selector).includes(KEEPS_ITS_OWN),
+      (rule) => isAField(rule.selector),
     ).flatMap((rule) =>
       rule.declarations
         .filter(([property]) => property === 'gap' || property === 'row-gap')

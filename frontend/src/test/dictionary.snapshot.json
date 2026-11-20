@@ -414,7 +414,7 @@
     "gender": "Pol",
     "genderMale": "Muški",
     "genderFemale": "Ženski",
-    "address": "Adresa za slanje",
+    "address": "Poštanska adresa za slanje",
     "city": "Mesto",
     "bioLeft": {
       "one": "Još {count} znak",
@@ -456,7 +456,9 @@
     "fatherNameHint": "Potrebno za pristup udruženju po zakonu.",
     "idNumber": "Broj ličnog dokumenta",
     "idNumberHint": "Potrebno za pristup udruženju po zakonu.",
-    "phone": "Telefon"
+    "phone": "Telefon",
+    "phoneForViber": "Za Viber zajednicu upišite broj telefona.",
+    "viberCommunity": "Želim u BTL zajednicu na Viberu (obaveštenja, novosti)"
   },
   "shirt": {
     "XS": "XS",

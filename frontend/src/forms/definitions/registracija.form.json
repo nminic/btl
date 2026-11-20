@@ -132,6 +132,20 @@
       "type": "text",
       "labelKey": "registration.phone",
       "maxLength": 30,
+      "requiredWhenFilled": {
+        "field": "viberCommunity",
+        "errorKey": "registration.phoneForViber"
+      },
+      "row": 4,
+      "groupKey": "registration.group.contact",
+      "policyRow": "Telefon, neobavezno",
+      "policyBasis": "Vaš pristanak"
+    },
+    {
+      "name": "viberCommunity",
+      "type": "checkbox",
+      "labelKey": "registration.viberCommunity",
+      "noOptionalWord": true,
       "row": 4,
       "groupKey": "registration.group.contact",
       "policyRow": "Telefon, neobavezno",
