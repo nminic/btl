@@ -179,6 +179,13 @@ describe('deleting', () => {
     expect(screen.getByRole('dialog', { name: 'Obriši nalog?' })).toBeInTheDocument()
   })
 
+  it('says nothing on a front page reached any other way', async () => {
+    renderAt('/sr')
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Balkanska trkačka liga' })).toBeInTheDocument()
+    expect(screen.queryByText('Vaš nalog je obrisan.')).toBeNull()
+  })
+
   it('stays on his page and says so when the server refuses', async () => {
     const user = setupUser()
     const { asked } = hisServer(true, { status: 404 })
