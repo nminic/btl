@@ -744,6 +744,25 @@ class RegistrationApiTest {
 	 * Serbian link stays the one every message already sent carries.
 	 */
 	@Test
+	void theLetterOfARegistrationSaysTheMomentItsLinkEndsAndThatIsWhenTheRowEnds() throws Exception {
+		java.time.Instant before = java.time.Instant.now();
+
+		assertThat(register(aGrownUp()).getStatus()).isEqualTo(204);
+
+		java.time.Instant after = java.time.Instant.now();
+		java.time.Duration aWeek = Message.CONFIRM_THE_ADDRESS.lasts();
+		java.time.Instant ends = db.sql("select t.expires_at from email_verification_token t"
+						+ " join account a on a.id = t.account_id where a.email = ?")
+				.param(ADDRESS).query(java.sql.Timestamp.class).single().toInstant();
+
+		assertThat(ends).as("a registration is seven days from the moment its link was sent, never fourteen")
+				.isBetween(before.plus(aWeek).minusMillis(1), after.plus(aWeek).plusMillis(1));
+		assertThat(waitForOne().getContent().toString())
+				.contains("Link važi do " + com.btl.portal.domain.mail.WhatANoticeSays.moment(ends,
+						com.btl.portal.domain.mail.MailLanguage.SERBIAN) + ". Posle toga");
+	}
+
+	@Test
 	void aRegistrationOnTheSerbianPageOrWithNoLanguageIsSerbian() throws Exception {
 		Map<String, Object> onTheSerbianPage = aGrownUp();
 

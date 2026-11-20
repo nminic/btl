@@ -31,6 +31,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.DateTimeException;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZonedDateTime;
 import java.util.LinkedHashMap;
@@ -542,7 +543,7 @@ class RegistrationApi {
 	private void send(Made made) {
 		try {
 			postman.send(WhatTheMessageSays.about(Message.CONFIRM_THE_ADDRESS, made.language(),
-					portal, made.link()), made.address());
+					portal, made.link(), made.endsAt()), made.address());
 		} catch (MailException theRelayDidNotTakeIt) {
 			LOG.warn("the confirmation message for account {} did not go out, so nobody has"
 					+ " told him his address; the token is written and asking for the link"
@@ -620,7 +621,7 @@ class RegistrationApi {
 
 		if (account.isEmpty()) {
 			return new Made(ResponseEntity.status(409).body(new Refused(THE_ADDRESS_IS_TAKEN)),
-					0, null, null, null);
+					0, null, null, null, null);
 		}
 
 		Timestamp now = Timestamp.from(clock.instant());
@@ -783,15 +784,17 @@ class RegistrationApi {
 	 * draws 256 bits and stores what they hash to, for the reason V6 gives: a column holding
 	 * the token as it appears in the link is a column of ready made keys, and a backup, a
 	 * dump or a line in a log opens every account that has an unspent one. How long it lasts
-	 * is not written here either - {@code expires_at} carries V6's default of twenty four
-	 * hours, which is the owner's decision of 08.09.2026 and the number
-	 * {@code HowLongALinkLastsMatchesTheSchemaTest} ties the message's own wording to.
+	 * is not worked out here either - {@link TheMomentAConfirmationLinkEnds} writes
+	 * {@code expires_at} (seven days from sending, fourteen from registering at the latest; owner,
+	 * PDL 23.10.2026 and 24.10.2026) and the letter says that same moment.
 	 */
 	private Made theLinkToSend(long account) {
 		SecretToken link = SecretToken.fresh();
 
-		db.sql("insert into email_verification_token (account_id, token_hash) values (?, ?)")
-				.params(account, link.hash()).update();
+		/* THE LINK ENDS AT THE MOMENT `TheMomentAConfirmationLinkEnds` GIVES, AND THE LETTER SAYS THAT
+		   MOMENT: for a registration just written it is seven days from now, but the same call is what
+		   the other two routes that mint this link make, so none of the three can say another. */
+		Instant endsAt = TheMomentAConfirmationLinkEnds.write(db, clock, account, link);
 
 		/* AND THE LANGUAGE COMES OFF THE SAME ROW IN THE SAME STATEMENT, read back like the
 		   address and for the same reason: every later letter is written from the row, so the
@@ -799,7 +802,7 @@ class RegistrationApi {
 		return db.sql("select email, mail_language from account where id = ?")
 				.param(account)
 				.query((row, one) -> new Made(ResponseEntity.noContent().build(), account,
-						row.getString(1), link.secret(), MailLanguage.ofTheColumn(row.getString(2))))
+						row.getString(1), link.secret(), MailLanguage.ofTheColumn(row.getString(2)), endsAt))
 				.single();
 	}
 
@@ -827,9 +830,11 @@ class RegistrationApi {
 	 *                registration, and that null is what {@link #writeThenSend} asks
 	 * @param language the language the letter is written in, read back off the row with the
 	 *                address
+	 * @param endsAt  the moment the link stops working, the one written onto its row, which the
+	 *                letter says
 	 */
 	private record Made(ResponseEntity<Refused> answer, long account, String address,
-			String link, MailLanguage language) {
+			String link, MailLanguage language, Instant endsAt) {
 	}
 
 	/**

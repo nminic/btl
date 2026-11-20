@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.util.Optional;
 
@@ -99,8 +100,11 @@ class EmailConfirmationApi {
 
 	private final TheLetterAfterTheAddress welcome;
 
+	private final Clock clock;
+
 	EmailConfirmationApi(JdbcClient db, Postman postman, TransactionTemplate inOneTransaction,
-			TheLetterAfterTheAddress welcome, @Value("${btl.portal.address}") String address) {
+			TheLetterAfterTheAddress welcome, Clock clock, @Value("${btl.portal.address}") String address) {
+		this.clock = clock;
 		this.db = db;
 		this.postman = postman;
 		this.inOneTransaction = inOneTransaction;
@@ -270,7 +274,7 @@ class EmailConfirmationApi {
 	 * carries an answer too, because its answer varies; this route's never does, so
 	 * there is nothing here but what the letter needs.
 	 */
-	private record ToSend(long account, String address, String link, MailLanguage language) {
+	private record ToSend(long account, String address, String link, MailLanguage language, Instant endsAt) {
 	}
 
 	private ToSend write(ResendTyped typed) {
@@ -312,11 +316,13 @@ class EmailConfirmationApi {
 		   precisely so a second link can be issued without retiring the first - ADL-posta
 		   asked for the resend button on the strength of that column shape before this
 		   route existed to use it. */
-		db.sql("insert into email_verification_token (account_id, token_hash) values (?, ?)")
-				.params(found.orElseThrow().id(), link.hash()).update();
+		/* THE LINK ENDS AT THE MOMENT `TheMomentAConfirmationLinkEnds` GIVES (seven days from now, but no
+		   later than fourteen from the day the account was written; PDL 24.10.2026, „Rok nepotvrđene
+		   prijave"), and the letter says that same moment. */
+		Instant endsAt = TheMomentAConfirmationLinkEnds.write(db, clock, found.orElseThrow().id(), link);
 
 		return new ToSend(found.orElseThrow().id(), found.orElseThrow().email(), link.secret(),
-				found.orElseThrow().language());
+				found.orElseThrow().language(), endsAt);
 	}
 
 	private record Found(long id, String email, MailLanguage language) {
@@ -331,7 +337,7 @@ class EmailConfirmationApi {
 	private void send(ToSend made) {
 		try {
 			postman.send(WhatTheMessageSays.about(Message.CONFIRM_THE_ADDRESS, made.language(),
-					portal, made.link()), made.address());
+					portal, made.link(), made.endsAt()), made.address());
 		} catch (MailException theRelayDidNotTakeIt) {
 			LOG.warn("a resent confirmation message for account {} did not go out; the token is"
 					+ " written and asking again is what gets him out of it",

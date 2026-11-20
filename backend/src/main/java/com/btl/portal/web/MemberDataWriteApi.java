@@ -37,6 +37,7 @@ import tools.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -327,15 +328,16 @@ class MemberDataWriteApi {
 	 * @param message {@link Message#CONFIRM_THE_ADDRESS} for an account that has a password, and
 	 *                {@link Message#INVITED_AS_A_MEMBER} for one that has none (see {@link #write})
 	 */
-	private record ToSend(long account, String address, String link, MailLanguage language, Message message) {
+	private record ToSend(long account, String address, String link, MailLanguage language, Message message,
+			Instant endsAt) {
 	}
 
 	private void send(ToSend made) {
 		try {
 			/* THE INVITATION IS ALWAYS SERBIAN and has no language to be given (owner, 10.10.2026,
 			   Q4, `Message#followsTheReader`); the confirmation follows its reader. */
-			postman.send(made.message().followsTheReader()
-					? WhatTheMessageSays.about(made.message(), made.language(), portal, made.link())
+			postman.send(made.message().saysWhenItEnds()
+					? WhatTheMessageSays.about(made.message(), made.language(), portal, made.link(), made.endsAt())
 					: WhatTheMessageSays.about(made.message(), portal, made.link()), made.address());
 		} catch (MailException theRelayDidNotTakeIt) {
 			LOG.warn("a link for account {} after the administration corrected its address did not go out;"
@@ -562,20 +564,26 @@ class MemberDataWriteApi {
 
 			/* THE INVITATION'S ROW IS WRITTEN WHERE THE GROUP ENTRY WRITES ITS OWN, so it lasts the
 			   seven days the owner gave it on 23.10.2026 and not the hour of the column's default. */
+			long hisAccount = db.sql("select id from account where competitor_id = ?")
+					.param(member).query(Long.class).single();
+			Instant endsAt = null;
+
 			if (noPassword) {
-				AnInvitationOfAMember.mint(db, db.sql("select id from account where competitor_id = ?")
-						.param(member).query(Long.class).single(), fresh);
+				AnInvitationOfAMember.mint(db, hisAccount, fresh);
 			} else {
-				db.sql("insert into email_verification_token (account_id, token_hash)"
-								+ " select id, ? from account where competitor_id = ?")
-						.params(fresh.hash(), member).update();
+				/* THE LINK TO CONFIRM ENDS AT THE MOMENT `TheMomentAConfirmationLinkEnds` GIVES, and the
+				   letter says that same moment: a correction on the tenth day gives a link that ends on the
+				   fourteenth, not on the seventeenth (PDL 24.10.2026, „Rok nepotvrđene prijave"). */
+				endsAt = TheMomentAConfirmationLinkEnds.write(db, clock, hisAccount, fresh);
 			}
+
+			Instant linkEnds = endsAt;
 
 			link = db.sql("select id, email, mail_language from account where competitor_id = ?")
 					.param(member)
 					.query((row, i) -> new ToSend(row.getLong(1), row.getString(2), fresh.secret(),
 							MailLanguage.ofTheColumn(row.getString(3)),
-							noPassword ? Message.INVITED_AS_A_MEMBER : Message.CONFIRM_THE_ADDRESS))
+							noPassword ? Message.INVITED_AS_A_MEMBER : Message.CONFIRM_THE_ADDRESS, linkEnds))
 					.single();
 		}
 
