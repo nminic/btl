@@ -338,8 +338,6 @@ class MemberDataWriteApi {
 			   Q4, `Message#followsTheReader`); the confirmation follows its reader. */
 			postman.send(made.message().saysWhenItEnds()
 					? WhatTheMessageSays.about(made.message(), made.language(), portal, made.link(), made.endsAt())
-					: made.message().followsTheReader()
-					? WhatTheMessageSays.about(made.message(), made.language(), portal, made.link())
 					: WhatTheMessageSays.about(made.message(), portal, made.link()), made.address());
 		} catch (MailException theRelayDidNotTakeIt) {
 			LOG.warn("a link for account {} after the administration corrected its address did not go out;"
