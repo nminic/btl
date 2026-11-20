@@ -7,7 +7,6 @@ import { setupUser } from '../../test/user'
 import { MemoryRouter } from 'react-router'
 import type { Competitor, Result } from '../../data/types'
 import { I18nProvider } from '../../i18n/I18nProvider'
-import { News } from './News'
 import { Sponsor, SponsorStrip } from './Sponsor'
 import { CATEGORIES } from '../../data/derive'
 import { FIRST, NEXT } from './rotation'
@@ -18,7 +17,7 @@ import { SessionProvider } from '../../session/SessionProvider'
 import { TopTen } from './TopTen'
 import { Counters } from './Counters'
 import { ColumnChart } from '../../components/ColumnChart'
-import type { NewsItem, SponsorEntry } from './content'
+import type { SponsorEntry } from './content'
 
 /* **Inside a session, since 06.09.2026.** Whether a name may lead to a profile now depends on
    who is reading: a member hiding from readers who may not read a hidden profile is drawn as plain
@@ -89,52 +88,77 @@ const result = (memberNumber: string, points: number): Result => ({
   inItsStanding: true,
 })
 
-describe('News', () => {
-  const item: NewsItem = {
+describe('Sponsor', () => {
+  /* Two of them, so that what the box draws is the first one's and could not have come from the
+     other: a name, a logo, a description and an address of its own each. */
+  const volt: SponsorEntry = {
     id: 'a',
-    date: '2026-07-20',
-    titleKey: 'home.news',
-    textKey: 'home.seeCalendar',
+    name: 'VOLT',
+    url: 'https://volt.primer.rs/',
+    logo: '/logo/volt.png',
+    description: 'Energetsko piće za duge treninge i noćne trke.',
+  }
+  const sofra: SponsorEntry = {
+    id: 'b',
+    name: 'Sofra',
+    url: 'https://sofra.primer.rs/',
+    logo: '/logo/sofra.png',
+    description: 'Domaća kuhinja posle svake trke.',
   }
 
-  it('shows nothing at all when nothing is fresh', () => {
-    const { container } = renderWidget(<News items={[]} today="2026-07-29" />)
+  it('is one link around the logo and the name, to the sponsor, in a new window', () => {
+    renderWidget(<Sponsor sponsor={volt} />)
 
-    expect(container).toBeEmptyDOMElement()
+    const box = screen.getByRole('region', { name: 'Sponzor dana' })
+    /* One link, and the name is heard once: the logo is decoration inside it (draft of variant A, „Veze,
+       i zašto jedna"). A logo carrying the name as its `alt` would make the name of the link „VOLT VOLT". */
+    const link = within(box).getByRole('link', { name: 'VOLT (otvara se u novom prozoru)' })
+
+    expect(within(box).getAllByRole('link')).toHaveLength(1)
+    expect(link).toHaveAttribute('href', 'https://volt.primer.rs/')
+    expect(link).toHaveAttribute('target', '_blank')
+    expect(link).toHaveAttribute('rel', 'noreferrer noopener')
+    expect(within(link).getByRole('presentation')).toHaveAttribute('src', '/logo/volt.png')
+    expect(within(box).getByText('Energetsko piće za duge treninge i noćne trke.')).toBeVisible()
   })
 
-  it('shows what is fresh', () => {
-    renderWidget(<News items={[item]} today="2026-07-29" />)
+  it('never writes the domain out', () => {
+    /* „Domen sponzora se ne ispisuje." (PDL P24, 18.11.2026) */
+    const { container } = renderWidget(<Sponsor sponsor={volt} />)
 
-    expect(screen.getByRole('heading', { name: 'Vesti' })).toBeVisible()
-    expect(screen.getAllByRole('listitem')).toHaveLength(1)
+    expect(container.textContent).not.toContain('primer.rs')
   })
-})
 
-describe('Sponsor', () => {
-  const sponsor: SponsorEntry = { id: 'a', name: 'Neko', url: 'https://primer.rs' }
+  it('draws every sponsor in the strip, in order, each a tile that leads to them', () => {
+    renderWidget(<SponsorStrip sponsors={[volt, sofra]} />)
 
-  it('shows nothing while there is no sponsor', () => {
-    const { container } = renderWidget(
-      <>
-        <Sponsor sponsors={[]} />
-        <SponsorStrip sponsors={[]} />
-      </>,
+    const strip = screen.getByRole('region', { name: 'Sponzori i partneri' })
+    const links = within(strip).getAllByRole('link')
+
+    expect(links.map((one) => one.textContent)).toEqual([
+      ' (otvara se u novom prozoru)',
+      ' (otvara se u novom prozoru)',
+    ])
+    expect(links.map((one) => [one.getAttribute('href'), one.getAttribute('target')])).toEqual([
+      ['https://volt.primer.rs/', '_blank'],
+      ['https://sofra.primer.rs/', '_blank'],
+    ])
+    expect(within(strip).getAllByRole('img').map((one) => [one.getAttribute('alt'), one.getAttribute('src')])).toEqual([
+      ['VOLT', '/logo/volt.png'],
+      ['Sofra', '/logo/sofra.png'],
+    ])
+    expect(within(strip).getByRole('link', { name: 'Sofra (otvara se u novom prozoru)' })).toHaveAttribute(
+      'rel',
+      'noreferrer noopener',
     )
-
-    expect(container).toBeEmptyDOMElement()
   })
 
-  it('shows the sponsor of the day and the strip once there is one', () => {
-    renderWidget(
-      <>
-        <Sponsor sponsors={[sponsor]} />
-        <SponsorStrip sponsors={[sponsor]} />
-      </>,
-    )
+  it('tells the stylesheet how many there are, which is what the rows are spaced by', () => {
+    renderWidget(<SponsorStrip sponsors={[volt, sofra]} />)
 
-    expect(screen.getByRole('heading', { name: 'Sponzor dana' })).toBeVisible()
-    expect(screen.getByRole('region', { name: 'Sponzori i partneri' })).toBeVisible()
+    expect(within(screen.getByRole('region', { name: 'Sponzori i partneri' })).getByRole('list')).toHaveStyle({
+      '--sponsors': '2',
+    })
   })
 })
 
