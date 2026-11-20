@@ -165,6 +165,12 @@ const STAYS_A_WORD = new Map([
   ['leagueResults.addRow', LISTED],
   ['leagueResults.save', FORM],
   ['leagues.counting', NOT_AN_ACTION],
+  /* The owner named the button in as many words, „Obriši nalog" (20.11.2026, „Moze li na kraju strane Moja Članarina da
+     bude Obriši nalog"), as he named „Aktiviraj članstvo" below: derived from that, a word and not a symbol. */
+  [
+    'membership.deleteAccount',
+    'the button at the end of „Moja članarina" that the owner named „Obriši nalog" (20.11.2026): a word and not a symbol',
+  ],
   ['membership.leaveTeam', LISTED],
   ['membership.leaveTeamKeep', ANSWER],
   ['membership.leaveTeamSure', ANSWER],
