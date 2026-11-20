@@ -59,18 +59,12 @@ describe('the stylesheet of the front page', () => {
     expect(/\.home__address \{([^}]*)\}/.exec(block(TWO_COLUMNS))?.[1] ?? '').toMatch(/flex: 1 1 auto;/)
   })
 
-  it('puts the boxes where a telephone has them, in the order of ADL A7, and only on a telephone', () => {
-    const phone = block('(max-width: 53.74875em)')
-
-    expect(phone).toMatch(/\.home__colL,\s*\.home__colR \{\s*display: contents;/)
-
-    const order = ['boards', 'figures', 'chart', 'next', 'address', 'sponsor', 'calc']
-
-    for (const [index, name] of order.entries()) {
-      expect(phone, name).toContain(`.home__${name} { order: ${index + 1}; }`)
-    }
-
-    expect(block(TWO_COLUMNS)).not.toContain('order:')
+  it('moves nothing with `order` and hides no column in a `display: contents`', () => {
+    /* The markup is the order the page is seen in on both layouts (ADL A7, owner, 21.11.2026: „Kod prati
+       ekran"; `Home.tsx`, `useTwoColumns`), so a sheet that put a box somewhere else would part the order
+       of the eye from the order of the focus (WCAG 2.4.3, 1.3.2). */
+    expect(css).not.toMatch(/\.home__[a-z]+ \{[^}]*\border:/)
+    expect(css).not.toContain('display: contents')
   })
 
   it('lets the calendar fill its column only in two columns and only without a sponsor', () => {

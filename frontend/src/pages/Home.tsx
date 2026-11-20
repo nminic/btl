@@ -16,6 +16,7 @@ import { SPONSORS } from './home/content'
 import { President } from './home/President'
 import { Sponsor, SponsorStrip } from './home/Sponsor'
 import { TopTen } from './home/TopTen'
+import { useTwoColumns } from './home/useTwoColumns'
 import './Home.css'
 
 /**
@@ -39,14 +40,13 @@ import './Home.css'
  * address on the left, and on the right the calendar or, with a sponsor, the sponsor's box. Both
  * columns end on the same line by construction.
  *
- * The markup is the left column and then the right one, which is what two columns are. **What a
- * phone shows is not that order:** under 860px the two are `display: contents` and `order` puts the
- * boxes where the phone has them since 31.07.2026 (ADL A7): the two boards, the figures of the
- * season, the turning chart, what is next, the address, the sponsor of the day, the calculator
- * (the sponsor between the last two since 18.11.2026: „Na telefonu „Sponzor dana” stoji posle
- * obraćanja predsednika, a pre kalkulatora."). It is not the order of either column, because on one
- * screen the two columns interleave: somebody scrolling wants the standing, then the numbers behind
- * it, then the calendar, and the prose after all of them.
+ * **The markup is the order it is seen in, on both layouts** (ADL A7, owner, 21.11.2026: „Kod prati
+ * ekran"). From 860px it is the left column and then the right one. Under 860px it is one column and the
+ * widgets are written in the order a phone shows them since 31.07.2026: the two boards, the figures of the
+ * season, the turning chart, what is next, the address, the sponsor of the day, the calculator (the sponsor
+ * between the last two since 18.11.2026). `useTwoColumns` asks the one query the stylesheet splits at, and
+ * the stylesheet moves nothing with `order`, so the focus and a screen reader go the way the eye goes
+ * (WCAG 2.4.3, 1.3.2). The price, accepted: the widgets are mounted again when a window crosses 860px.
  *
  * The membership slot stood at the foot of the right column until 04.08.2026,
  * when the owner had it removed: "nećemo ga koristiti do daljnjeg". The page of
@@ -71,6 +71,7 @@ export function Home() {
   const [ofTheDay] = SPONSORS
   const state = combineFour(useCompetitors(), useEvents(), useResults(), useRaces())
   const today = useToday()
+  const twoColumns = useTwoColumns()
   /* „Vaš nalog je obrisan.", for the one arrival his own deletion opens this page with (owner, 20.11.2026), in
      the shape the list of teams says „Tim je obrisan." in (`Teams.tsx`, `teamDeleted.ts`). */
   const arrived = useLocation().state
@@ -112,6 +113,44 @@ export function Home() {
              imported history. */
           const label = view === WARM_UP ? t('rankings.warmUp') : t('home.season', { season: view })
 
+          const boards = (
+            <div className="home__boards">
+              <TopTen competitors={field} results={results} season={season} today={today} gender="M" />
+              <TopTen competitors={field} results={results} season={season} today={today} gender="F" />
+            </div>
+          )
+          const chart = (
+            <div className="home__chart">
+              <TopByCategory competitors={field} results={results} season={view} />
+            </div>
+          )
+          const address = (
+            <div className="home__address">
+              <President />
+            </div>
+          )
+          const figures = (
+            <div className="home__figures">
+              <Counters totals={totals} title={label} members={field.length} cities={citiesOf(field)} />
+            </div>
+          )
+          const next = (
+            <div className="home__next">
+              <CalendarExtract events={events} races={races} today={today} fill={ofTheDay === undefined} />
+            </div>
+          )
+          const sponsor =
+            ofTheDay === undefined ? null : (
+              <div className="home__sponsor">
+                <Sponsor sponsor={ofTheDay} />
+              </div>
+            )
+          const calc = (
+            <div className="home__calc">
+              <Calculator />
+            </div>
+          )
+
           return (
             <>
               <div
@@ -121,40 +160,31 @@ export function Home() {
                     : 'home__split home__split--cols home__split--sponsored'
                 }
               >
-                <div className="home__colL">
-                  <div className="home__boards">
-                    <TopTen competitors={field} results={results} season={season} today={today} gender="M" />
-                    <TopTen competitors={field} results={results} season={season} today={today} gender="F" />
-                  </div>
-
-                  <div className="home__chart">
-                    <TopByCategory competitors={field} results={results} season={view} />
-                  </div>
-
-                  <div className="home__address">
-                    <President />
-                  </div>
-                </div>
-
-                <div className="home__colR">
-                  <div className="home__figures">
-                    <Counters totals={totals} title={label} members={field.length} cities={citiesOf(field)} />
-                  </div>
-
-                  <div className="home__next">
-                    <CalendarExtract events={events} races={races} today={today} fill={ofTheDay === undefined} />
-                  </div>
-
-                  {ofTheDay !== undefined && (
-                    <div className="home__sponsor">
-                      <Sponsor sponsor={ofTheDay} />
+                {twoColumns ? (
+                  <>
+                    <div className="home__colL">
+                      {boards}
+                      {chart}
+                      {address}
                     </div>
-                  )}
-
-                  <div className="home__calc">
-                    <Calculator />
-                  </div>
-                </div>
+                    <div className="home__colR">
+                      {figures}
+                      {next}
+                      {sponsor}
+                      {calc}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {boards}
+                    {figures}
+                    {chart}
+                    {next}
+                    {address}
+                    {sponsor}
+                    {calc}
+                  </>
+                )}
               </div>
 
               {ofTheDay !== undefined && <SponsorStrip sponsors={SPONSORS} />}

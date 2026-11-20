@@ -12,7 +12,7 @@ import { setupUser } from '../test/user'
 describe('Home', () => {
   /* Two thirds of standing and prose against one third of figures and things to
      do (owner, 31.07.2026). */
-  it('writes the two columns, the left one and then the right one', async () => {
+  it('writes the widgets in the order a phone shows them', async () => {
     renderAt('/sr')
 
     await screen.findByRole('heading', { level: 2, name: 'Priprema, pozor, SAD!' })
@@ -24,20 +24,20 @@ describe('Home', () => {
       .getAllByRole('heading', { level: 2 })
       .map((heading) => heading.textContent)
 
-    /* The order in the markup is the two columns, the left one and then the right one (owner, 20.11.2026:
-       „Desna kolona je zaseban stub"). What a phone shows is not this order but the one of ADL A7, the two
-       boards, the figures of the season, the turning chart, what is next, the address, the calculator, and it
-       is put there by the stylesheet under 860px (`homeLayoutStyle.test.ts` holds that, box by box).
+    /* The markup is the order it is seen in (ADL A7, owner, 21.11.2026: „Kod prati ekran"): here the one
+       column of a phone, which is what a window with no wide query is, so the two boards, the figures of the
+       season, the turning chart, what is next, the address, the calculator. The two columns of a wide
+       window are held in `frontPageOrder.test.tsx`.
 
        The widget of membership stood at the end of it until 04.08.2026, when the
        owner had it removed: "nećemo ga koristiti do daljnjeg". */
     expect(headings).toEqual([
       'Top 10 muškarci',
       'Top 10 žene',
-      'Reč predsednika',
       /* The counters: the warm-up before the first season, the season from it (owner, 12.11.2026). */
       expect.stringMatching(/^(Sezona \d{4}\.|Zagrevanje)$/),
       'Priprema, pozor, SAD!',
+      'Reč predsednika',
       'BTL kalkulator',
     ])
   })

@@ -68,21 +68,15 @@ describe('the address of the president', () => {
     /* The counters: „Zagrevanje" before the first season, „Sezona N." from it (owner, 12.11.2026). */
     const counters = screen.getByRole('heading', { level: 2, name: /^(Sezona \d{4}\.|Zagrevanje)$/ })
 
-    /* In the same column as the boards, and after them: the left column is the boards, the chart and the
-       address, and the right one is the figures, what is next and the calculator (owner, 20.11.2026: two
-       columns that are two columns). */
-    expect(address.closest('article')?.parentElement?.parentElement?.parentElement).toBe(
-      board.closest('section')?.parentElement?.parentElement,
-    )
+    /* After the boards, and after the figures: on a phone the markup is the order it is seen in (ADL A7,
+       owner, 21.11.2026), so somebody wants the standing, then the numbers behind it, and the prose after
+       both (owner, 31.07.2026). The same address in the left column of a wide window is held in
+       `frontPageOrder.test.tsx`. */
     expect(
       board.compareDocumentPosition(address) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy()
-    /* **The figures come AFTER it in the markup, since 20.11.2026**, because the right column follows the
-       left one whole. On a phone it is the other way round, and the stylesheet puts it there: somebody
-       wants the standing, then the numbers behind it, and the prose after both (owner, 31.07.2026;
-       `home/homeLayoutStyle.test.ts` holds the `order`). */
     expect(
-      address.compareDocumentPosition(counters) & Node.DOCUMENT_POSITION_FOLLOWING,
+      counters.compareDocumentPosition(address) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy()
   })
 

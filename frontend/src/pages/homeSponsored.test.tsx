@@ -71,16 +71,14 @@ describe('the front page of variant A', () => {
 
     const { headings, races, grid } = await drawn()
 
-    /* „Na telefonu „Sponzor dana” stoji posle obraćanja predsednika, a pre kalkulatora." The markup is
-       the left column and then the right one (owner, 20.11.2026), so the sponsor stands between what is
-       next and the calculator in it; where a telephone puts it is the stylesheet's (`order`,
-       `home/homeLayoutStyle.test.ts`). */
+    /* „Na telefonu „Sponzor dana” stoji posle obraćanja predsednika, a pre kalkulatora." The markup is the
+       order it is seen in (ADL A7, owner 21.11.2026: „Kod prati ekran"), and this is the one column. */
     expect(headings).toEqual([
       'Top 10 muškarci',
       'Top 10 žene',
-      'Reč predsednika',
       expect.stringMatching(/^(Sezona \d{4}\.|Zagrevanje)$/),
       'Priprema, pozor, SAD!',
+      'Reč predsednika',
       'Sponzor dana',
       'BTL kalkulator',
     ])

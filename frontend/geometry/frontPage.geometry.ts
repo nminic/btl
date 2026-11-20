@@ -43,12 +43,28 @@ function everyAnswer(dir = MOCK, prefix = ''): Record<string, unknown> {
   )
 }
 
-const ANSWERS: Answers = everyAnswer()
+/**
+ * The longest surnames and first names a member of the league can reasonably carry, put on every member of the
+ * sample (review, 21.11.2026: „Milovanović" and „Stamenkovska" broke inside the word at 860 and 1024), so the
+ * podium is measured with the names that are hardest for a column of 62 to 93px.
+ */
+const LONG_LAST = ['Stamenkovska', 'Gvozdenović', 'Milovanović', 'Jovanovićević', 'Vukićević', 'Đorđevićka']
+const LONG_FIRST = ['Aleksandar', 'Strahinja', 'Radoslava', 'Aleksandra', 'Ivona', 'Dragoslav']
+
+const MEMBERS = everyAnswer()['/api/competitors']
+const ANSWERS: Answers = {
+  ...everyAnswer(),
+  '/api/competitors': (Array.isArray(MEMBERS) ? MEMBERS : []).map((one: Record<string, unknown>, index: number) => ({
+    ...one,
+    firstName: LONG_FIRST[index % LONG_FIRST.length],
+    lastName: LONG_LAST[index % LONG_LAST.length],
+  })),
+}
 
 /** Half a pixel: a box of a fraction of a pixel is the same box. */
 const SAME = 0.5
 
-const WIDTHS: At[] = [360, 768, 860, 1024, 1280].map((width): At => ({ width, text: 100 }))
+const WIDTHS: At[] = [360, 560, 768, 860, 1024, 1280].map((width): At => ({ width, text: 100 }))
 
 type Box = { top: number; bottom: number; left: number; right: number; width: number; height: number }
 
@@ -142,6 +158,14 @@ for (const at of WIDTHS) {
           name: box(must(item.querySelector('.stand__name'))),
           who: (item.querySelector('.stand__name')?.textContent ?? '') + ' | ' + (item.querySelector('.stand__points')?.textContent ?? ''),
           nameLines: [...item.querySelectorAll('.stand__first, .stand__last')].map((one) => Math.round(one.getBoundingClientRect().height)),
+          lines: [...item.querySelectorAll('.stand__first, .stand__last')].map((one) => lines(one)),
+          fonts: [...item.querySelectorAll('.stand__first, .stand__last')].map((one) => Number.parseFloat(getComputedStyle(one).fontSize)),
+          wider: [...item.querySelectorAll('.stand__first, .stand__last')].map(
+            (one) => Math.round((one.scrollWidth - item.getBoundingClientRect().width) * 10) / 10,
+          ),
+          first: box(must(item.querySelector('.stand__first'))),
+          last: box(must(item.querySelector('.stand__last'))),
+          item: box(item),
         }))
 
         const rows = [...board.querySelectorAll('.toprow')]
@@ -167,6 +191,10 @@ for (const at of WIDTHS) {
         }
       })
 
+      function optional(value: Element | null): Box | null {
+        return value === null ? null : box(value)
+      }
+
       function must<T>(value: T | null | undefined): T {
         if (value === null || value === undefined) {
           throw new Error('something the front page draws is not there')
@@ -182,8 +210,15 @@ for (const at of WIDTHS) {
         cardInner,
         figures: box(figures),
         next: box(next),
-        left: box(must(document.querySelector('.home__colL'))),
-        right: box(must(document.querySelector('.home__colR'))),
+        left: optional(document.querySelector('.home__colL')),
+        right: optional(document.querySelector('.home__colR')),
+        /* The boxes of the page as they are written and as they stand: on a phone the children of the grid, from
+           two columns on the children of the two columns. */
+        written: [...document.querySelectorAll('.home__split > *, .home__colL > *, .home__colR > *')].flatMap((one) => {
+          const name = [...one.classList].find((each) => /^home__(boards|figures|chart|next|address|sponsor|calc)$/.test(each))
+
+          return name === undefined ? [] : [{ name: name.slice('home__'.length), top: one.getBoundingClientRect().top, left: one.getBoundingClientRect().left }]
+        }),
         boards,
       }
     })
@@ -207,10 +242,24 @@ for (const at of WIDTHS) {
       categoryUnderName: seen.boards.map((one) => one.category),
       boardWidths: seen.boards.map((one) => Math.round(one.board.width * 10) / 10),
       nextMinusFigures: Math.round((seen.next.top - seen.figures.bottom) * 10) / 10,
-      columnEnds: [Math.round(seen.left.bottom * 10) / 10, Math.round(seen.right.bottom * 10) / 10],
+      columnEnds: [Math.round((seen.left?.bottom ?? 0) * 10) / 10, Math.round((seen.right?.bottom ?? 0) * 10) / 10],
+      nameFonts: seen.boards.map((one) => one.places.map((place) => place.fonts.map((font) => Math.round(font * 10) / 10))),
+      nameWider: seen.boards.map((one) => one.places.map((place) => place.wider)),
     })}`)
 
     expect(probe.sideways).toBe(0)
+
+    /* V1, the markup is the order it is seen in under 860px (ADL A7, owner, 21.11.2026: „Kod prati ekran"):
+       the boxes in the order they are written are the boxes in the order of their tops, which is the order the
+       focus and a screen reader go in. From 860px they are two columns and there is no one order of the eye. */
+    if (at.width < 860) {
+      expect(seen.left, 'a column of a wide page under 860px').toBeNull()
+      expect(seen.written.map((one) => one.name)).toEqual(['boards', 'figures', 'chart', 'next', 'address', 'calc'])
+      expect(
+        seen.written.map((one) => one.name),
+        'the order of the markup is not the order of the eye',
+      ).toEqual([...seen.written].sort((a, b) => a.top - b.top).map((one) => one.name))
+    }
 
     /* The figures: one line each, all one height, none of them wider than its pill. */
     for (const tile of seen.tiles) {
@@ -245,6 +294,31 @@ for (const at of WIDTHS) {
 
     expect(seen.seg.left).toBeGreaterThanOrEqual(seen.cardInner.left - SAME)
     expect(seen.seg.right).toBeLessThanOrEqual(seen.cardInner.right + SAME)
+
+    /* V3, where each stands from side to side: the first in the middle of its board, the second to the left of
+       it and the third to the right. */
+    for (const board of seen.boards) {
+      const [first, second, third] = board.places
+      const centre = (one: Box | undefined) => ((one?.left ?? 0) + (one?.right ?? 0)) / 2
+      const middle = (board.board.left + board.board.right) / 2
+
+      expect(Math.abs(centre(first?.circle) - middle), 'the first is not in the middle').toBeLessThanOrEqual(1)
+      expect(centre(second?.circle), 'the second is not left of the first').toBeLessThan(centre(first?.circle) - 10)
+      expect(centre(third?.circle), 'the third is not right of the first').toBeGreaterThan(centre(first?.circle) + 10)
+    }
+
+    /* V2, the names: two lines each, the first name over the surname, never broken, in a letter that is not
+       under the floor, and still inside the column it is in. */
+    for (const board of seen.boards) {
+      for (const place of board.places) {
+        expect(place.lines, `a name is not in one line each: ${place.who}`).toEqual([1, 1])
+        expect(place.last.top, 'the surname is not under the first name').toBeGreaterThan(place.first.top)
+
+        for (const font of place.fonts) {
+          expect(font, `a name is set under the floor: ${place.who}`).toBeGreaterThanOrEqual(10.4 - 0.1)
+        }
+      }
+    }
 
     /* The podium: the first highest, then the second, then the third, the first the largest, and the same
        on both boards. */
@@ -286,9 +360,15 @@ for (const at of WIDTHS) {
     /* The right column, from two columns on: its calendar begins one gap under the figures, and the two
        columns end on one line. */
     if (at.width >= 860) {
+      /* V5, the left column from the top: the boards, then the turning chart, then the address (PDL P24). */
+      const left = seen.written.filter((one) => ['boards', 'chart', 'address'].includes(one.name)).sort((a, b) => a.top - b.top)
+
+      expect(left.map((one) => one.name)).toEqual(['boards', 'chart', 'address'])
+      expect(seen.left, 'no left column').not.toBeNull()
+      expect(seen.right, 'no right column').not.toBeNull()
       expect(seen.next.top - seen.figures.bottom, 'the calendar does not begin under the figures').toBeGreaterThan(15)
       expect(seen.next.top - seen.figures.bottom).toBeLessThan(25)
-      expect(Math.abs(seen.left.bottom - seen.right.bottom), 'the two columns do not end on one line').toBeLessThanOrEqual(1)
+      expect(Math.abs((seen.left?.bottom ?? 0) - (seen.right?.bottom ?? 0)), 'the two columns do not end on one line').toBeLessThanOrEqual(1)
     }
   })
 }

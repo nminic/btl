@@ -107,13 +107,9 @@
    still holds, and it is thinner than it was. Narrowing the faces instead would make ten of them
    unreadable, which is what the phone rule already does by dropping four.
 
-   **Below it the two columns do not exist.** They are `display: contents`, so their boxes are the
-   cells of the one grid they stand in and `order` puts them where a phone has them (ADL A7,
-   31.07.2026, and the sponsor of the day between the address and the calculator, owner 18.11.2026):
-   the boards, the figures, the chart, what is next, the address, the sponsor, the calculator. The
-   markup is the order of the two columns, the left one and then the right one, because that is what
-   a column is; what a phone shows is the order above. The only boxes that hold something to press
-   and change places between the two are the address (a link inside the text) and what is next.
+   **Below it the two columns do not exist, and the markup says so** (owner, 21.11.2026, „Kod prati
+   ekran"): `Home.tsx` writes the boxes one after another in the order a phone shows them (ADL A7) and this
+   sheet puts nothing in another place with `order`, so the focus and a screen reader go as the eye goes.
 
    Under the top row, variant A (PDL P24, owner 18.11.2026): „Tri desna boksa su zajedno visoka kao
    leva kolona." The right column is what it was: the figures, the calendar, the sponsor of the day
@@ -129,21 +125,6 @@
 .home__split--cols {
   display: grid;
   gap: var(--space-20);
-}
-
-@media (max-width: 53.74875em) {
-  .home__colL,
-  .home__colR {
-    display: contents;
-  }
-
-  .home__boards { order: 1; }
-  .home__figures { order: 2; }
-  .home__chart { order: 3; }
-  .home__next { order: 4; }
-  .home__address { order: 5; }
-  .home__sponsor { order: 6; }
-  .home__calc { order: 7; }
 }
 
 @media (min-width: 53.75em) {
@@ -574,37 +555,48 @@
   box-shadow: 0 0 0 2px var(--accent);
 }
 
-/* **The name is two elements and its block has one height for all six people** (owner, 20.11.2026, over a
-   screenshot of one name on one line and another on two: the circle of the second climbed to the level of
-   the first). The first name is over the surname, each its own element, and the block keeps the room of
-   THREE lines whatever is in it, so the step decides how high a circle stands and the name never does.
+/* **The name is two lines, the first name over the surname, and a surname never breaks** (owner,
+   20.11.2026, over a screenshot of one name on one line and another on two: the circle of the second
+   climbed to the level of the first; and on 21.11.2026, chosen with the recommendation put to him, „Manje
+   slovo za dugo prezime": always exactly two lines, and a name that does not fit the width of its column
+   is set in a smaller letter, small enough to fit, with no break, no third line and no gap).
 
-   Three and not the two of the plan: a column of the podium is 83 to 93px wide at every width from 1024 up
-   and a surname of twelve letters („Stamenkovska") is 95px in this size, so it breaks inside the word and
-   the block is two lines of surname under one of first name. Measured at 1024 and 1280 with the sample of
-   the portal: the third circle of one board stood 17px higher than it should, one pixel above the second.
-   The cost is a line of air under the shorter names. */
+   **The letter is worked out from the width that is there**: a column of the podium is
+   `(100cqi - 2 gaps) / 3.15` wide (`.stand` is `1fr 1.15fr 1fr`, so the side ones are one share and the
+   middle one 1.15 of it; the share is taken for all three, which is the narrow one), the page writes the
+   number of letters of each line in `--chars`, and a letter of this weight is about 0,66em wide on
+   average. The size is what fits that many of them in the share, never above the size of the place
+   (`--base`) and never under a floor (0,65rem, 10,4px). The two lines are the height of two lines of the
+   size of the place whatever is set in them, so the step decides how high a circle stands and the name
+   never does. Measured with the longest surnames of the sample at 360, 560, 860, 1024 and 1280 in
+   `geometry/frontPage.geometry.ts`. */
 .stand__name {
+  --base: 0.85rem;
+
   display: flex;
   flex-direction: column;
   align-items: center;
   margin-top: var(--space-4);
-  min-block-size: 3.75em;
-  font-size: 0.85rem;
+  min-block-size: 2.5em;
+  font-size: var(--base);
   font-weight: 600;
   line-height: 1.25;
-  overflow-wrap: anywhere;
   color: var(--text);
 }
 
 .stand__item--1 .stand__name {
-  font-size: 0.95rem;
+  --base: 0.95rem;
 }
 
 .stand__first,
 .stand__last {
   display: block;
-  max-inline-size: 100%;
+  white-space: nowrap;
+  font-size: clamp(
+    0.65rem,
+    calc((100cqi - 2 * var(--space-6)) / 3.15 / (var(--chars) * 0.66)),
+    var(--base)
+  );
 }
 
 /* Two lines are kept for the points as well, so that a figure that wraps at 313px and one that does

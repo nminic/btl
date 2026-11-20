@@ -223,3 +223,42 @@ describe('the filter by length of „Priprema, pozor, SAD!"', () => {
     expect(names()).toEqual([])
   })
 })
+
+/**
+ * **EVERY ONE OF THE SIX BUTTONS IS TIED TO ITS OWN LENGTH** (review, 21.11.2026: a „Duge" that asked for the
+ * marathon and a „Kratke" that asked for something else both passed, because only four of the six were ever
+ * clicked). Five events, each holding one length that no other holds, so a button that asks for another
+ * length shows another name; and „Sve" shows all five.
+ */
+describe('each button of the filter by length', () => {
+  const ONLY: [string, Dot, string][] = [
+    ['Kratke, Kraća trka', 'short', 'Samo kratka'],
+    ['21,1 km, Polumaraton', 'half', 'Samo polumaraton'],
+    ['Duge, Duža trka', 'long', 'Samo duga'],
+    ['42,2 km, Maraton', 'marathon', 'Samo maraton'],
+    ['Ultra, Ultramaraton', 'ultra', 'Samo ultra'],
+  ]
+  const events = ONLY.map(([, , name], index) => event(40 + index, name, `2027-04-${String(index + 2).padStart(2, '0')}`))
+  const races = ONLY.map(([, dot], index) => race(140 + index, 40 + index, [dot]))
+
+  for (const [button, , name] of ONLY) {
+    it(`${button} keeps ${name} and nothing else`, async () => {
+      const user = setupUser()
+
+      draw(true, events, races)
+      await user.click(within(group()).getByRole('button', { name: button }))
+
+      expect(names()).toEqual([name])
+    })
+  }
+
+  it('„Sve distance" shows all five, in the order of their dates', async () => {
+    const user = setupUser()
+
+    draw(true, events, races)
+    await user.click(within(group()).getByRole('button', { name: 'Ultra, Ultramaraton' }))
+    await user.click(within(group()).getByRole('button', { name: 'Sve distance' }))
+
+    expect(names()).toEqual(ONLY.map(([, , name]) => name))
+  })
+})

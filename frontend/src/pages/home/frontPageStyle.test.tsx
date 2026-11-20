@@ -136,9 +136,40 @@ describe('the markup of the front page and the sheets that dress it', () => {
     expect(body(home, '.home .top10 .stand__item .portrait')).toMatch(/inline-size: 4rem/)
   })
 
-  it('keeps the room of three lines for a name, so the step and not the name decides how high a circle stands', () => {
-    expect(body(home, '.stand__name')).toContain('min-block-size: 3.75em')
-    expect(body(home, '.stand__first,\n.stand__last')).toContain('display: block')
+  it('sets a name in the letter that fits its column, with a floor, and never breaks it', () => {
+    const line = body(home, '.stand__first,\n.stand__last')
+
+    expect(line).toContain('white-space: nowrap')
+    expect(line).toMatch(
+      /clamp\(\s*0\.65rem,\s*calc\(\(100cqi - 2 \* var\(--space-6\)\) \/ 3\.15 \/ \(var\(--chars\) \* 0\.66\)\),\s*var\(--base\)\s*\)/,
+    )
+    expect(line).toContain('display: block')
+    // The block keeps two lines of the size of the place, whatever is set in them.
+    expect(body(home, '.stand__name')).toContain('min-block-size: 2.5em')
+    expect(body(home, '.stand__name')).not.toMatch(/overflow-wrap/)
+  })
+
+  it('writes the number of letters of each line of the name for the stylesheet', () => {
+    const { container } = render(
+      <I18nProvider locale="sr">
+        <MemoryRouter>
+          <RoleProvider>
+            <SessionProvider initialMemberNumber={null}>
+              <TopTen
+                competitors={[{ ...person('000001'), firstName: 'Ana', lastName: 'Stamenkovska' }]}
+                results={[]}
+                season={2027}
+                today="2026-12-31"
+                gender="M"
+              />
+            </SessionProvider>
+          </RoleProvider>
+        </MemoryRouter>
+      </I18nProvider>,
+    )
+
+    expect(container.querySelector('.stand__first')).toHaveStyle({ '--chars': '3' })
+    expect(container.querySelector('.stand__last')).toHaveStyle({ '--chars': '12' })
   })
 
   it('puts the category under the name in a board narrower than about 300px, and asks the board', () => {
