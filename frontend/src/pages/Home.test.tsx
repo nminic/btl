@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { citiesOf } from '../data/derive'
 import { SLOW } from '../test/slow'
 import { matchingMedia } from '../test/media'
 import { must } from '../test/at'
@@ -72,6 +75,19 @@ describe('Home', () => {
       // is the whole of PDL P11 on the front page.
       expect(await screen.findByText(/^31 član$/, {}, { timeout: 10_000 })).toBeVisible()
       expect(screen.queryByText(/^32 člana$/)).not.toBeInTheDocument()
+
+      /* The tile beside it counts the places those same thirty one come from, as they wrote them (owner,
+         20.11.2026): the list of the answer and not the file's thirty two, and not the number of members. */
+      const served = (JSON.parse(readFileSync(join(process.cwd(), 'src/test/mock/competitors.json'), 'utf-8')) as {
+        active: boolean
+        city: string
+        country: string
+      }[]).filter((one) => one.active)
+      const places = citiesOf(served)
+
+      expect(places).not.toBe(31)
+      expect(places).toBeGreaterThan(1)
+      expect(screen.getByText(new RegExp(`^${String(places)} grad(a|ova)?$`))).toBeVisible()
     } finally {
       stop()
       window.matchMedia = previous
