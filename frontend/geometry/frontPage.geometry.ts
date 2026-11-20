@@ -163,8 +163,8 @@ for (const at of WIDTHS) {
           wider: [...item.querySelectorAll('.stand__first, .stand__last')].map(
             (one) => Math.round((one.scrollWidth - item.getBoundingClientRect().width) * 10) / 10,
           ),
-          first: box(must(item.querySelector('.stand__first'))),
-          last: box(must(item.querySelector('.stand__last'))),
+          first: box(item.querySelector('.stand__first') ?? must(item.querySelector('.stand__name'))),
+          last: box(item.querySelector('.stand__last') ?? must(item.querySelector('.stand__name'))),
           item: box(item),
         }))
 
@@ -311,6 +311,10 @@ for (const at of WIDTHS) {
        under the floor, and still inside the column it is in. */
     for (const board of seen.boards) {
       for (const place of board.places) {
+        if (place.lines.length === 0) {
+          continue // an empty place has no name to measure
+        }
+
         expect(place.lines, `a name is not in one line each: ${place.who}`).toEqual([1, 1])
         expect(place.last.top, 'the surname is not under the first name').toBeGreaterThan(place.first.top)
 
