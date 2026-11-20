@@ -690,7 +690,7 @@ class MemberDataWriteApiTest {
 		verify(postman, times(1)).send(letter.capture(), to.capture());
 		assertThat(to.getValue()).isEqualTo("nova.adresa@primer.rs");
 		assertThat(letter.getValue().subject()).isEqualTo(WhatTheMessageSays.about(Message.CONFIRM_THE_ADDRESS,
-				MailLanguage.SERBIAN, new Portal(portalAddress), "x").subject());
+				MailLanguage.SERBIAN, new Portal(portalAddress), "x", java.time.Instant.EPOCH).subject());
 
 		Matcher token = Pattern.compile("potvrda-adrese\\?token=([A-Za-z0-9_-]+)").matcher(letter.getValue().body());
 
@@ -794,6 +794,27 @@ class MemberDataWriteApiTest {
 
 	/** The new link is written in the language the account's mail is written in, not always Serbian. */
 	@Test
+	void theNewLinkOnTheTenthDayEndsOnTheFourteenthAndSaysSoInTheLetterAndInTheRow() throws Exception {
+		/* HE WAS REGISTERED NINE DAYS BEFORE THE CORRECTION, so seven days from the correction (27.10.2027)
+		   is not the end of the link: the registration is deleted on the fourteenth day (PDL 24.10.2026,
+		   „Rok nepotvrđene prijave"), 25.10.2027 at 09:00 UTC, 11:00 in Belgrade. The two days differ, so
+		   a letter that said the seventh day from the sending, or a row left at the default, fails here. */
+		db.sql("update account set created_at = ? where competitor_id = ?")
+				.params(java.sql.Timestamp.from(TODAY.minus(java.time.Duration.ofDays(9))), corrected).update();
+
+		assertThat(corrected("000005", "{\"email\": \"deseti.dan@primer.rs\"}", OVER_THE_MEMBERS).getStatus())
+				.isEqualTo(200);
+
+		ArgumentCaptor<Said> letter = ArgumentCaptor.forClass(Said.class);
+
+		verify(postman, times(1)).send(letter.capture(), anyString());
+		assertThat(letter.getValue().body()).contains("Link važi do 25.10.2027. 11:00. Posle toga");
+		assertThat(db.sql("select t.expires_at from email_verification_token t join account a on a.id = t.account_id"
+						+ " where a.competitor_id = ?").param(corrected).query(java.sql.Timestamp.class).single()
+				.toInstant()).isEqualTo(Instant.parse("2027-10-25T09:00:00Z"));
+	}
+
+	@Test
 	void theNewLinkIsInTheLanguageOfHisMail() throws Exception {
 		db.sql("update account set mail_language = 'en' where competitor_id = ?").param(corrected).update();
 
@@ -804,7 +825,7 @@ class MemberDataWriteApiTest {
 
 		verify(postman, times(1)).send(letter.capture(), anyString());
 		assertThat(letter.getValue().subject()).isEqualTo(WhatTheMessageSays.about(Message.CONFIRM_THE_ADDRESS,
-				MailLanguage.ENGLISH, new Portal(portalAddress), "x").subject());
+				MailLanguage.ENGLISH, new Portal(portalAddress), "x", java.time.Instant.EPOCH).subject());
 	}
 
 	/**

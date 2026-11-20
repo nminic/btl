@@ -154,7 +154,7 @@ class UnconfirmedAccountsAreSweptTest {
 		aMember("registrovan@primer.rs", "competitor", true);
 	}
 
-	/** „Pošalji potvrdu ponovo" is another seven days, as its own letter says. */
+	/** „Pošalji potvrdu ponovo" is another seven days (no later than the fourteenth day, which its letter says as a moment). */
 	@Test
 	void aLinkAskedForAgainKeepsHimForItsOwnSevenDays() {
 		long account = aMember("ponovo@primer.rs", "competitor", true);

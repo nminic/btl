@@ -31,10 +31,10 @@ import java.util.concurrent.TimeUnit;
  * spent, because spending it is what confirms the address (PDL 19.09.2026) - when:
  * <ul>
  * <li><b>every link he was ever sent has run out, or fourteen days have passed since his account
- * was written</b>, and he was sent at least one link. The seven days are the life of a link: every
- * letter the portal sends him says „Link važi sedam dana", and a link asked for on the sixth day is
- * another seven days. But no more than fourteen from the registration: the owner chose with my
- * recommendation (PDL 24.10.2026, „Rok nepotvrđene prijave") that a new confirmation gives seven
+ * was written</b>, and he was sent at least one link. The seven days are the life of a link, and a link
+ * asked for on the sixth day is another seven days. But no more than fourteen from the registration: the owner chose with my
+ * recommendation (PDL 24.10.2026, „Rok nepotvrđene prijave"; the letter says the moment, worked out
+ * by {@link TheMomentAConfirmationLinkEnds}) that a new confirmation gives seven
  * new days and the registration is deleted fourteen days after it at the latest, so that nobody
  * holds somebody else's address taken by asking for a new link every six days. The same for an
  * invitation, fourteen days from the entry, which is derived and not his decision (PDL, IZVEDENO
