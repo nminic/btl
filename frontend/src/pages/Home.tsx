@@ -1,4 +1,8 @@
+import { useState } from 'react'
+import { useLocation } from 'react-router'
 import { useToday } from '../clock/useClock'
+import { accountWasDeleted } from './accountDeleted'
+import { DeletionSaid } from './admin/DeletionSaid'
 import { Resource } from '../components/Resource'
 import { countedIn, totalsOf } from '../data/derive'
 import { boardsOpenOn, seasonShown, WARM_UP } from '../data/season'
@@ -54,6 +58,10 @@ export function Home() {
   const { t } = useI18n()
   const state = combineFour(useCompetitors(), useEvents(), useResults(), useRaces())
   const today = useToday()
+  /* „Vaš nalog je obrisan.", for the one arrival his own deletion opens this page with (owner, 20.11.2026), in
+     the shape the list of teams says „Tim je obrisan." in (`Teams.tsx`, `teamDeleted.ts`). */
+  const arrived = useLocation().state
+  const [said, setSaid] = useState(() => (accountWasDeleted(arrived) ? t('home.accountDeleted') : ''))
 
   return (
     <div className="home">
@@ -61,6 +69,8 @@ export function Home() {
           above, and repeating it was what the owner had removed. A page with no
           h1 at all is still a page a screen reader cannot name. */}
       <h1 className="visually-hidden">{t('app.name')}</h1>
+
+      {said !== '' && <DeletionSaid said={said} clear={setSaid} />}
 
       <Resource state={state}>
         {([competitors, events, results, races]) => {

@@ -286,6 +286,7 @@
     "text": "Ovaj ekran je u izradi."
   },
   "home": {
+    "accountDeleted": "Vaš nalog je obrisan.",
     "results": "Prijavljenih rezultata",
     "season": "Sezona {season}.",
     "kilometers": "Kilometara",
@@ -1184,6 +1185,10 @@
     "copyFailed": "Kopiranje nije uspelo. Kopiraj link ručno.",
     "balance": "na balansu",
     "balanceNote": "Balansom se plaćaju buduće članarine. Ne isplaćuje se u novcu i ne prenosi se na drugog člana.",
+    "deleteAccount": "Obriši nalog",
+    "deleteAccountAsk": "Obriši nalog?",
+    "deleteAccountFinal": "Ovo ne može da se vrati.",
+    "deleteAccountKeep": "Odustani",
     "feeExemptNoRenewal": "Članarina za sezonu {season} je izmirena.",
     "amountLabel": "Iznos",
     "fromTheBalance": "Balans pokriva {fromTheBalance}, a za uplatu ostaje {toTransfer}.",

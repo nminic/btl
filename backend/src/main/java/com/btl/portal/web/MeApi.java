@@ -224,11 +224,15 @@ class MeApi {
 
 	private final CategoryOfASeason categories;
 
-	MeApi(JdbcClient db, MemberOfAccount memberOfAccount, Clock clock, CategoryOfASeason categories) {
+	private final LeavingBeforeBecomingAMember leaving;
+
+	MeApi(JdbcClient db, MemberOfAccount memberOfAccount, Clock clock, CategoryOfASeason categories,
+			LeavingBeforeBecomingAMember leaving) {
 		this.db = db;
 		this.memberOfAccount = memberOfAccount;
 		this.clock = clock;
 		this.categories = categories;
+		this.leaving = leaving;
 	}
 
 	/**
@@ -256,10 +260,16 @@ class MeApi {
 	 *               {@code member}</b>, for the reason {@code mailLanguage} gives: a moderator who does
 	 *               not race has no {@code member} and still enters results. Until 20.10.2026 it was
 	 *               in {@code member}, and the move leaves no copy there (one served home)
+	 * @param mayLeave whether he may delete his own account himself, which is {@link
+	 *               LeavingBeforeBecomingAMember} and nothing else: the one question {@code DELETE /api/me}
+	 *               asks again under its holds, so the screen draws „Obriši nalog" only to whom the route
+	 *               would let through (the owner, 20.11.2026). On the account and not in {@code member},
+	 *               for the reason {@code mailLanguage} gives, and {@code false} for an account that races
+	 *               for nobody: it has no member to delete
 	 */
 	record WhoIAm(String role, long account,
 			@JsonInclude(JsonInclude.Include.NON_NULL) MyOwnRecord member, String mailLanguage,
-			List<Integer> seasonsOpenForAReport) {
+			List<Integer> seasonsOpenForAReport, boolean mayLeave) {
 	}
 
 	/**
@@ -523,7 +533,7 @@ class MeApi {
 		ZonedDateTime now = ZonedDateTime.now(clock);
 
 		return new WhoIAm(member.role(), member.account(), me == null ? null : recordOf(me, now),
-				mailLanguage, SeasonClock.seasonsOpenForAReport(now));
+				mailLanguage, SeasonClock.seasonsOpenForAReport(now), me != null && leaving.may(me));
 	}
 
 	/**
