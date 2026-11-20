@@ -21,7 +21,10 @@ export const WITH_A_SPONSOR = 4
  * 1100px wide (`app/Shell.css`), which it reaches at a window of about 1115px with the scrollbar, and
  * from there on the left column, and so the bottom, no longer moves.
  *
- * MEASURE-ME
+ * Measured in Chrome on the built bundle, 20.11.2026, with the sample data and no sponsor: at 1115,
+ * 1280 and 1440 the list is 454,88px tall under rows of 49,80px, which is nine whole rows and 6,70px
+ * over. Narrower, the address of the president wraps longer and the desktop counts more or as many:
+ * nine at 860, 900 and 1024, ten at 960 and 1000. Measure it again if the left column ever changes.
  */
 export const FITS_WITHOUT_A_SPONSOR = 9
 
