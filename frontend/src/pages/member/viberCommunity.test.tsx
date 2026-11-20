@@ -67,6 +67,15 @@ async function thePanel(): Promise<HTMLElement> {
   )
 }
 
+/**
+ * THE SAVE BUTTON IS LIVE, asked at once and before anything is waited for: a tick the screen did not take as a
+ * change leaves the button held (`sendIsHeld`, `aria-disabled`), and a case that only waited for „Sačuvano”
+ * would then fail on the clock and say nothing about why.
+ */
+function expectSomethingToSave(panel: HTMLElement): void {
+  expect(within(panel).getByRole('button', { name: sr.account.save })).not.toHaveAttribute('aria-disabled', 'true')
+}
+
 function whatWasPut(asked: Asked[]): unknown[] {
   return asked.filter((one) => one.path === '/api/me' && one.init?.method === 'PUT').map((one) => JSON.parse(String(one.init?.body)))
 }
@@ -116,6 +125,7 @@ describe('the box for the community on Viber on „Moji podaci”', () => {
     expect(box).not.toBeChecked()
 
     await user.click(box)
+    expectSomethingToSave(panel)
     await user.click(within(panel).getByRole('button', { name: sr.account.save }))
 
     expect(await within(panel).findByText(sr.account.saved)).toBeInTheDocument()
@@ -130,7 +140,9 @@ describe('the box for the community on Viber on „Moji podaci”', () => {
 
     const panel = await thePanel()
 
+    expect(within(panel).getByRole('checkbox', { name: THE_BOX })).toBeChecked()
     await user.click(within(panel).getByRole('checkbox', { name: THE_BOX }))
+    expectSomethingToSave(panel)
     await user.click(within(panel).getByRole('button', { name: sr.account.save }))
 
     expect(await within(panel).findByText(sr.account.saved)).toBeInTheDocument()
@@ -177,10 +189,15 @@ describe('the box for the community on Viber on „Moji podaci”', () => {
     })
     expect(whatWasPut(asked)).toEqual([])
 
+    expect(within(panel).getByRole('checkbox', { name: THE_BOX })).toBeChecked()
     await user.click(within(panel).getByRole('checkbox', { name: THE_BOX }))
     await user.click(within(panel).getByRole('button', { name: sr.account.save }))
 
-    expect(await within(panel).findByText(sr.account.saved)).toBeInTheDocument()
+    /* Asked of the request and not of „Sačuvano”, which a request refused by the form never earns. */
+    await waitFor(() => {
+      expect(whatWasPut(asked)).toHaveLength(1)
+    }, { timeout: 2000 })
     expect(whatWasPut(asked)).toEqual([{ phone: '', viberCommunity: false }])
+    expect(await within(panel).findByText(sr.account.saved)).toBeInTheDocument()
   })
 })
