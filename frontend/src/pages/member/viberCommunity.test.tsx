@@ -181,6 +181,9 @@ describe('the box for the community on Viber on „Moji podaci”', () => {
     const panel = await thePanel()
     const phone = within(panel).getByRole('textbox', { name: /^Telefon/ })
 
+    /* Asked at once, so a box that is not drawn or opens empty fails here and not on the clock below. */
+    expect(within(panel).getByRole('checkbox', { name: THE_BOX })).toBeChecked()
+
     await user.clear(phone)
     await user.click(within(panel).getByRole('button', { name: sr.account.save }))
 
