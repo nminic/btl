@@ -1,4 +1,5 @@
 import { useId } from 'react'
+import { DESKTOP_CONTOURS, DESKTOP_VIEW, PHONE_CONTOURS, PHONE_VIEW, ROUTE, TRAVEL, WAYPOINTS } from './terrain'
 import './RaceInMotion.css'
 
 /* „RACE IN MOTION" (owner, 14.11.2026, PDL „Vizuelno osveženje „Race in Motion""): running drawn
@@ -101,10 +102,46 @@ export function HeaderDecoration() {
   )
 }
 
-/** Contour lines and a route with its waypoints across the whole window (owner, 15.11.2026: the
- *  drawing goes through the middle as well, between the boxes, and not only along the sides). The
- *  drawing itself is two tiles in the sheet, repeated across and down the window, so a page of any
- *  size gets it without a seam; the cards and tables stay opaque, so it shows in the gaps. */
-export function PageBackgroundDecoration() {
-  return <div className="race-page" aria-hidden="true" />
+/** The ground of the page: four hills of their own along the edges, each a set of nested contour
+ *  lines, with a route that runs between them, and a dot that runs the route once (owner,
+ *  14.11.2026 and the approved draft of 20.11.2026). A telephone gets a drawing of its own, long
+ *  lines along both edges and two small hills, with no route and no dot. The shapes are data
+ *  (`app/terrain.ts`); how strong they are, which of the two drawings is drawn and when the dot
+ *  moves are the sheet's (`app/RaceInMotion.css`). The cards and tables stay opaque, so the ground
+ *  shows in the gutters and in the gaps between them.
+ *
+ *  `screen` names the screen that is open (its path). The dot is given it as its key, so a new
+ *  screen is a new dot, and a new dot starts to run from the beginning: it runs on every screen that
+ *  opens and not only when the portal loads. A filter that writes itself into the query is not a
+ *  new screen, and the caller passes the path alone. */
+export function PageBackgroundDecoration({ screen }: { screen: string }) {
+  return (
+    <div className="race-page" aria-hidden="true">
+      <svg className="terrain terrain--wide" viewBox={DESKTOP_VIEW} preserveAspectRatio="xMidYMid slice" focusable="false">
+        <g className="terrain__hills">
+          {DESKTOP_CONTOURS.map((contour) => (
+            <path key={contour.d} d={contour.d} opacity={contour.opacity} />
+          ))}
+        </g>
+        <path className="terrain__route" d={ROUTE} />
+        {WAYPOINTS.map(([x, y]) => (
+          <g key={`${x},${y}`}>
+            <circle className="terrain__waypoint" r="3" cx={x} cy={y} />
+            <circle className="terrain__waypoint-ring" r="7.5" cx={x} cy={y} />
+          </g>
+        ))}
+        <g key={screen} className="race-page__dot" style={{ offsetPath: `path('${TRAVEL}')` }}>
+          <circle className="race-page__dot-ring" r="11" />
+          <circle className="race-page__dot-core" r="5" />
+        </g>
+      </svg>
+      <svg className="terrain terrain--narrow" viewBox={PHONE_VIEW} preserveAspectRatio="xMidYMid slice" focusable="false">
+        <g className="terrain__hills">
+          {PHONE_CONTOURS.map((contour) => (
+            <path key={contour.d} d={contour.d} opacity={contour.opacity} />
+          ))}
+        </g>
+      </svg>
+    </div>
+  )
 }

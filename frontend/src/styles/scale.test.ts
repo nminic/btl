@@ -441,6 +441,10 @@ describe('space and corners are chosen from the scale, not typed', () => {
       ['pages/admin/SectionNav.css .adminsection__toggle', 'the control that opens a panel that is now open'],
       ['pages/admin/Verification.css .pending__toggle', 'the same, on the queue of things to verify'],
       ['pages/Rulebook.css .rulebook__toggle', 'the same, on the table of contents'],
+      [
+        'app/RaceInMotion.css .terrain--narrow',
+        'the drawing of the ground made for a telephone, taken off where the wide drawing takes its place; both are pictures that say nothing and are hidden from every reader (`aria-hidden`), so nothing readable goes with it',
+      ],
       ['pages/admin/Rights.css .rights__inline', 'the words beside a checkbox, which the column heading now carries and which are aria-hidden either way'],
       ['pages/Profile.css .profile__length-full', 'the long name of a length, swapped for the short one; both are in the accessible name, so nothing is lost to anybody'],
       [

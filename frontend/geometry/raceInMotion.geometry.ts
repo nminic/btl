@@ -258,6 +258,70 @@ for (const at of WIDTHS) {
   })
 }
 
+/* THE GROUND AND THE DOT (owner, 20.11.2026, the approved draft „Pozadina i tačka"): a telephone has a
+   ground of its own and no route and no dot, from 560px the wide ground is drawn with the route, and the
+   dot runs only for a reader who has not asked for less movement. What the sheet says is read there; what
+   Chrome draws is read here, at every width the owner listed. */
+for (const at of WIDTHS) {
+  test(`the ground draws the drawing of its width, and the dot only where the sheet lets it at ${label(at)}`, async ({ open }) => {
+    const { page } = await open(at, '/sr', 'header .brand', ANSWERS)
+    const reads = at.width / (at.text / 100)
+    const seen = await page.evaluate(() => {
+      const shown = (selector: string) => [...document.querySelectorAll(selector)].some((one) => one.checkVisibility())
+
+      return { wide: shown('.terrain--wide'), narrow: shown('.terrain--narrow'), route: shown('.terrain__route'), dot: shown('.race-page__dot') }
+    })
+
+    expect(seen.wide, 'the wide ground').toBe(reads >= 560)
+    expect(seen.narrow, 'the ground of a telephone').toBe(reads < 560)
+    expect(seen.route, 'the route').toBe(reads >= 560)
+    expect(seen.dot, 'the dot').toBe(reads >= 560)
+  })
+}
+
+test('the dot is not drawn for a reader who asked for less movement, and the ground still is', async ({ open }) => {
+  const { page } = await open({ width: 1280, text: 100 }, '/sr', 'header .brand', ANSWERS)
+
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+
+  const seen = await page.evaluate(() => ({
+    wide: [...document.querySelectorAll('.terrain--wide')].some((one) => one.checkVisibility()),
+    dot: [...document.querySelectorAll('.race-page__dot')].some((one) => one.checkVisibility()),
+    running: document.getAnimations().length,
+  }))
+
+  expect(seen).toEqual({ wide: true, dot: false, running: 0 })
+})
+
+test('the dot runs once, for five seconds at most, and starts again on the next screen', async ({ open }) => {
+  const { page } = await open({ width: 1280, text: 100 }, '/sr', 'header .brand', ANSWERS)
+  const timing = () =>
+    page.evaluate(() => {
+      const run = document.querySelector('.race-page__dot')?.getAnimations()[0]
+      const effect = run?.effect?.getComputedTiming()
+
+      return { at: Number(run?.currentTime ?? Number.NaN), duration: Number(effect?.duration), iterations: effect?.iterations }
+    })
+
+  const first = await timing()
+
+  expect(first.duration).toBeLessThanOrEqual(5000)
+  expect(first.iterations).toBe(1)
+
+  await page.waitForTimeout(1500)
+
+  const before = await timing()
+
+  expect(before.at, 'the dot is on its way').toBeGreaterThan(1000)
+
+  await page.getByRole('navigation', { name: 'Glavna navigacija' }).getByRole('link', { name: 'Kalendar' }).click()
+  await page.waitForURL(/kalendar/)
+
+  const after = await timing()
+
+  expect(after.at, 'a new screen started the dot from the beginning').toBeLessThan(before.at)
+})
+
 /* The gold line is bright where the reference has it bright (owner, 15.11.2026: „lepe istaknute
    zlatne linije"), too bright for a word to stand on it at 4,5:1, and the runner stands beside the
    tools. So both stand where no word does, and that is asked here at every width the owner listed

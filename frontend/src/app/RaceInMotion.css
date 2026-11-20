@@ -43,6 +43,7 @@
   --race-page-glow: #1657bd0d;
   --race-contour: #1657bd0e;
   --race-route: #b8901f17;
+  --race-dot: #e6ddc2;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -56,6 +57,7 @@
     --race-page-glow: #16346940;
     --race-contour: #31517b5c;
     --race-route: #d9ab2e24;
+    --race-dot: #453b20;
   }
 }
 
@@ -69,6 +71,7 @@
   --race-page-glow: #16346940;
   --race-contour: #31517b5c;
   --race-route: #d9ab2e24;
+  --race-dot: #453b20;
 }
 
 /* THE HEADER.
@@ -188,47 +191,115 @@
     radial-gradient(ellipse 40% 45% at 100% 88%, var(--race-page-glow), transparent 70%);
 }
 
-/* The drawings are masks over a token colour, so the theme decides the colour and a tile repeats
-   across and down the window without a seam (each line that leaves a tile comes back in at the
-   same height and the same angle). Only where the browser knows masks: a browser that did not
-   would paint the colour over the whole window. */
-@supports (mask-image: none) {
-  .race-page::before,
-  .race-page::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    mask-repeat: repeat;
+/* THE GROUND: hills, a route, and a dot that runs it once (owner, 14.11.2026; the approved draft of
+ * 20.11.2026, `btl-produkt/predlozi/plan-dodaci-naslovne.html`, „Pozadina i tačka").
+ *
+ * It replaced a tile that repeated across the window: four hills of their own along the edges, each
+ * a set of nested contour lines, none of them a copy of another, and a calm middle. The shapes are
+ * data (`app/terrain.ts`) drawn by `app/RaceInMotion.tsx` as two drawings, one for a wide window and
+ * one for a telephone, so a telephone gets a ground of its own and not the wide one made smaller.
+ * Each drawing is cut to the window and keeps its hills at the edges whatever the proportions
+ * (`preserveAspectRatio` slice). The strokes do not stretch with the drawing. */
+.terrain {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  fill: none;
+}
+
+.terrain path,
+.terrain circle {
+  vector-effect: non-scaling-stroke;
+}
+
+.terrain__hills {
+  stroke: var(--race-contour);
+  stroke-width: 1;
+}
+
+/* The route and its waypoints, the only gold on the page that is not the dot. */
+.terrain__route {
+  stroke: var(--race-route);
+  stroke-width: 1.5;
+  stroke-dasharray: 3 8;
+  stroke-linecap: round;
+}
+
+.terrain__waypoint {
+  fill: var(--race-route);
+  stroke: none;
+}
+
+.terrain__waypoint-ring {
+  stroke: var(--race-route);
+  stroke-width: 1.25;
+}
+
+/* A telephone has its own drawing: long lines along both edges and two small hills, with no route
+   and no dot, since every gap on it is narrow and a gold dot in one would be the loudest thing on
+   the screen. The drawing for a wide window is not drawn there at all, and the dot is a part of it,
+   so a telephone has no dot whatever else is asked. */
+.terrain--wide {
+  display: none;
+}
+
+/* THE DOT.
+ *
+ * It runs the route once and stops on the second waypoint, and it is asked for nothing: no control,
+ * no repeat (owner, 20.11.2026: once, five seconds at most, on every screen that opens). It is
+ * drawn only where the browser both moves along a path and the reader has not asked for less
+ * movement: a reader who has gets no dot, not a still one, and a browser that cannot follow a path
+ * would leave it in the corner of the drawing. It starts again on each screen because the component
+ * gives it a new key (`app/RaceInMotion.tsx`), which makes a new element, and a new element starts
+ * its animation from the beginning. The dot is stronger than the route and is therefore the
+ * strongest ground a word on the page can stand on (`--race-dot`,
+ * `styles/raceInMotion.test.ts`). */
+.race-page__dot {
+  display: none;
+  offset-rotate: 0deg;
+}
+
+.race-page__dot-core {
+  fill: var(--race-dot);
+  stroke: none;
+}
+
+.race-page__dot-ring {
+  fill: none;
+  stroke: var(--race-dot);
+  stroke-width: 1.5;
+  opacity: 0.5;
+}
+
+@keyframes race-dot-run {
+  from {
+    offset-distance: 0%;
   }
 
-  /* The contours. One tile, laid twice at two sizes and two offsets, so the eye finds no repeat;
-     a telephone gets the smaller pair, so its narrow gaps still cross a few lines. */
-  .race-page::before {
-    background-color: var(--race-contour);
-    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 480 480' fill='none' stroke='black' stroke-width='1'%3E%3Cpath stroke-opacity='.5' d='M0 34C150 58 330 10 480 34'/%3E%3Cpath stroke-opacity='.7' d='M0 56C150 84 330 28 480 56'/%3E%3Cpath stroke-opacity='.85' d='M0 80C150 114 330 46 480 80'/%3E%3Cpath stroke-opacity='1' d='M0 106C150 146 330 66 480 106'/%3E%3Cpath stroke-opacity='.9' d='M0 296C170 270 310 322 480 296'/%3E%3Cpath stroke-opacity='.75' d='M0 320C170 290 310 350 480 320'/%3E%3Cpath stroke-opacity='.6' d='M0 346C170 310 310 382 480 346'/%3E%3Cpath stroke-opacity='.45' d='M0 374C170 330 310 418 480 374'/%3E%3Cpath stroke-opacity='.8' d='M282 205C282 160 330 148 362 158C400 170 410 205 396 232C382 258 330 262 304 248C288 240 282 222 282 205Z'/%3E%3Cpath stroke-opacity='.6' d='M304 205C304 178 334 170 354 178C376 186 382 208 372 224C362 240 330 242 316 232C308 226 304 216 304 205Z'/%3E%3Cpath stroke-opacity='.45' d='M326 205C326 194 340 190 350 195C360 200 360 212 352 218C344 224 330 220 326 212C325 210 326 207 326 205Z'/%3E%3Cpath stroke-opacity='.7' d='M60 200C60 170 96 158 124 164C152 170 166 192 160 214C154 236 120 246 92 238C72 232 60 218 60 200Z'/%3E%3Cpath stroke-opacity='.5' d='M84 200C84 184 104 178 120 182C136 186 142 198 138 210C134 222 114 226 100 222C90 218 84 210 84 200Z'/%3E%3Cpath stroke-opacity='.55' d='M372 440C372 424 396 418 414 422C432 426 438 440 430 452C422 464 396 466 384 458C376 452 372 446 372 440Z'/%3E%3Cpath stroke-opacity='.4' d='M90 432C90 420 108 414 122 418C136 422 140 432 134 442C128 452 108 452 98 446C92 442 90 438 90 432Z'/%3E%3C/svg%3E"), url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 480 480' fill='none' stroke='black' stroke-width='1'%3E%3Cpath stroke-opacity='.5' d='M0 34C150 58 330 10 480 34'/%3E%3Cpath stroke-opacity='.7' d='M0 56C150 84 330 28 480 56'/%3E%3Cpath stroke-opacity='.85' d='M0 80C150 114 330 46 480 80'/%3E%3Cpath stroke-opacity='1' d='M0 106C150 146 330 66 480 106'/%3E%3Cpath stroke-opacity='.9' d='M0 296C170 270 310 322 480 296'/%3E%3Cpath stroke-opacity='.75' d='M0 320C170 290 310 350 480 320'/%3E%3Cpath stroke-opacity='.6' d='M0 346C170 310 310 382 480 346'/%3E%3Cpath stroke-opacity='.45' d='M0 374C170 330 310 418 480 374'/%3E%3Cpath stroke-opacity='.8' d='M282 205C282 160 330 148 362 158C400 170 410 205 396 232C382 258 330 262 304 248C288 240 282 222 282 205Z'/%3E%3Cpath stroke-opacity='.6' d='M304 205C304 178 334 170 354 178C376 186 382 208 372 224C362 240 330 242 316 232C308 226 304 216 304 205Z'/%3E%3Cpath stroke-opacity='.45' d='M326 205C326 194 340 190 350 195C360 200 360 212 352 218C344 224 330 220 326 212C325 210 326 207 326 205Z'/%3E%3Cpath stroke-opacity='.7' d='M60 200C60 170 96 158 124 164C152 170 166 192 160 214C154 236 120 246 92 238C72 232 60 218 60 200Z'/%3E%3Cpath stroke-opacity='.5' d='M84 200C84 184 104 178 120 182C136 186 142 198 138 210C134 222 114 226 100 222C90 218 84 210 84 200Z'/%3E%3Cpath stroke-opacity='.55' d='M372 440C372 424 396 418 414 422C432 426 438 440 430 452C422 464 396 466 384 458C376 452 372 446 372 440Z'/%3E%3Cpath stroke-opacity='.4' d='M90 432C90 420 108 414 122 418C136 422 140 432 134 442C128 452 108 452 98 446C92 442 90 438 90 432Z'/%3E%3C/svg%3E");
-    mask-size: 22rem auto, 34rem auto;
-    mask-position: left top, 9rem 17rem;
-  }
-
-  /* The route and its waypoints, the only gold on the page, and not on a telephone, where every
-     gap is narrow and a gold dot in it would be the loudest thing on the screen. */
-  .race-page::after {
-    display: none;
-    background-color: var(--race-route);
-    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 960 960' fill='none' stroke='black' stroke-width='1.25'%3E%3Cpath stroke-dasharray='3 8' d='M300 0C380 110 560 150 600 270C640 390 520 470 420 540C320 610 160 680 180 790C200 900 220 850 300 960'/%3E%3Ccircle cx='600' cy='270' r='3' fill='black' stroke='none'/%3E%3Ccircle cx='600' cy='270' r='7.5' stroke-opacity='.6'/%3E%3Ccircle cx='180' cy='790' r='3' fill='black' stroke='none'/%3E%3Ccircle cx='180' cy='790' r='7.5' stroke-opacity='.6'/%3E%3C/svg%3E");
-    mask-size: 56rem auto;
-    mask-position: 4rem 6rem;
+  to {
+    offset-distance: 100%;
   }
 }
 
-/* From where a telephone stops being one: the larger contours and the route. */
+/* From where a telephone stops being one: the wide drawing, with its route. */
 @media (min-width: 35em) {
-  .race-page::before {
-    mask-size: 30rem auto, 46rem auto;
+  .terrain--wide {
+    display: block;
   }
 
-  .race-page::after {
-    display: block;
+  .terrain--narrow {
+    display: none;
+  }
+}
+
+@supports (offset-path: path('M0 0')) {
+  @media (min-width: 35em) and (prefers-reduced-motion: no-preference) {
+    .race-page__dot {
+      display: inline;
+      animation: race-dot-run 5s cubic-bezier(0.45, 0, 0.25, 1) 1 both;
+    }
   }
 }
 
