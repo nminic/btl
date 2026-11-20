@@ -248,7 +248,11 @@
 /* THE DOT.
  *
  * It runs the route once and stops on the second waypoint, and it is asked for nothing: no control,
- * no repeat (owner, 20.11.2026: once, five seconds at most, on every screen that opens). It is
+ * no repeat (owner, 20.11.2026: once, five seconds at most, on every screen that opens). It stops
+ * because the place it rests at is its own (`offset-distance: 100%`), not because the animation holds
+ * it there: an animation that fills forwards never ends as far as the browser is concerned, and a
+ * page with one that never ends is a page that never settles for the guards that wait for it
+ * (`geometry/support/harness.ts`). It is
  * drawn only where the browser both moves along a path and the reader has not asked for less
  * movement: a reader who has gets no dot, not a still one, and a browser that cannot follow a path
  * would leave it in the corner of the drawing. It starts again on each screen because the component
@@ -298,7 +302,8 @@
   @media (min-width: 35em) and (prefers-reduced-motion: no-preference) {
     .race-page__dot {
       display: inline;
-      animation: race-dot-run 5s cubic-bezier(0.45, 0, 0.25, 1) 1 both;
+      offset-distance: 100%;
+      animation: race-dot-run 5s cubic-bezier(0.45, 0, 0.25, 1) 1;
     }
   }
 }

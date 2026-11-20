@@ -258,19 +258,37 @@ for (const at of WIDTHS) {
   })
 }
 
+/** Whether anything of this selector is drawn: no element on the way up from it is `display: none`. Read
+ *  from the computed style, since `checkVisibility()` answers true for an SVG group taken off the page by
+ *  `display: none` in Chrome (measured 20.11.2026: `getComputedStyle` said `none`, `checkVisibility()` said
+ *  `true`, and nothing was running). */
+async function isDrawn(page: Page, selector: string): Promise<boolean> {
+  return page.evaluate((query) => {
+    const drawnUp = (one: Element | null): boolean => one === null || (getComputedStyle(one).display !== 'none' && drawnUp(one.parentElement))
+
+    return [...document.querySelectorAll(query)].some((one) => drawnUp(one))
+  }, selector)
+}
+
 /* THE GROUND AND THE DOT (owner, 20.11.2026, the approved draft „Pozadina i tačka"): a telephone has a
    ground of its own and no route and no dot, from 560px the wide ground is drawn with the route, and the
    dot runs only for a reader who has not asked for less movement. What the sheet says is read there; what
    Chrome draws is read here, at every width the owner listed. */
-for (const at of WIDTHS) {
+for (const at of WIDTHS.flatMap((one): At[] => [one, { ...one, theme: 'dark' }])) {
   test(`the ground draws the drawing of its width, and the dot only where the sheet lets it at ${label(at)}`, async ({ open }) => {
-    const { page } = await open(at, '/sr', 'header .brand', ANSWERS)
-    const reads = at.width / (at.text / 100)
-    const seen = await page.evaluate(() => {
-      const shown = (selector: string) => [...document.querySelectorAll(selector)].some((one) => one.checkVisibility())
+    const { page, probe } = await open(at, '/sr', 'header .brand', ANSWERS)
 
-      return { wide: shown('.terrain--wide'), narrow: shown('.terrain--narrow'), route: shown('.terrain__route'), dot: shown('.race-page__dot') }
-    })
+    /* Neither drawing widens the page, in either theme. */
+    expect(probe.sideways).toBe(0)
+    expect(probe.widened).toBe(0)
+
+    const reads = at.width / (at.text / 100)
+    const seen = {
+      wide: await isDrawn(page, '.terrain--wide'),
+      narrow: await isDrawn(page, '.terrain--narrow'),
+      route: await isDrawn(page, '.terrain__route'),
+      dot: await isDrawn(page, '.race-page__dot'),
+    }
 
     expect(seen.wide, 'the wide ground').toBe(reads >= 560)
     expect(seen.narrow, 'the ground of a telephone').toBe(reads < 560)
@@ -284,11 +302,11 @@ test('the dot is not drawn for a reader who asked for less movement, and the gro
 
   await page.emulateMedia({ reducedMotion: 'reduce' })
 
-  const seen = await page.evaluate(() => ({
-    wide: [...document.querySelectorAll('.terrain--wide')].some((one) => one.checkVisibility()),
-    dot: [...document.querySelectorAll('.race-page__dot')].some((one) => one.checkVisibility()),
-    running: document.getAnimations().length,
-  }))
+  const seen = {
+    wide: await isDrawn(page, '.terrain--wide'),
+    dot: await isDrawn(page, '.race-page__dot'),
+    running: await page.evaluate(() => document.getAnimations().length),
+  }
 
   expect(seen).toEqual({ wide: true, dot: false, running: 0 })
 })
@@ -303,23 +321,17 @@ test('the dot runs once, for five seconds at most, and starts again on the next 
       return { at: Number(run?.currentTime ?? Number.NaN), duration: Number(effect?.duration), iterations: effect?.iterations }
     })
 
-  const first = await timing()
-
-  expect(first.duration).toBeLessThanOrEqual(5000)
-  expect(first.iterations).toBe(1)
-
-  await page.waitForTimeout(1500)
-
-  const before = await timing()
-
-  expect(before.at, 'the dot is on its way').toBeGreaterThan(1000)
+  /* The page has settled, so the first run is over and nothing runs: the dot rests where it stopped. */
+  expect((await timing()).at).toBeNaN()
 
   await page.getByRole('navigation', { name: 'Glavna navigacija' }).getByRole('link', { name: 'Kalendar' }).click()
   await page.waitForURL(/kalendar/)
 
   const after = await timing()
 
-  expect(after.at, 'a new screen started the dot from the beginning').toBeLessThan(before.at)
+  expect(after.duration, 'seconds the dot runs').toBeLessThanOrEqual(5000)
+  expect(after.iterations).toBe(1)
+  expect(after.at, 'a new screen started the dot from the beginning').toBeLessThan(2000)
 })
 
 /* The gold line is bright where the reference has it bright (owner, 15.11.2026: „lepe istaknute

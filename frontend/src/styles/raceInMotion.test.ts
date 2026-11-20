@@ -431,7 +431,7 @@ describe('the dot', () => {
       'the rule that draws the dot',
     )
     const animation = moving.style.getPropertyValue('animation')
-    const [name, duration, curve, count, fill, ...more] = animation.split(/\s+(?![^(]*\))/)
+    const [name, duration, curve, count, ...more] = animation.split(/\s+(?![^(]*\))/)
 
     expect(more, animation).toEqual([])
     expect(name).toBe('race-dot-run')
@@ -441,8 +441,9 @@ describe('the dot', () => {
     expect(curve).toMatch(/^cubic-bezier\(/)
     /* One run and no more: nothing but a number one, so „infinite" and „2" both fail. */
     expect(count).toBe('1')
-    /* Held at the end, so the dot stops on the waypoint and does not jump back to the start. */
-    expect(fill).toBe('both')
+    /* It rests on the waypoint by its own style and not by an animation that fills forwards, which never
+       ends and so never lets a page settle. */
+    expect(moving.style.getPropertyValue('offset-distance')).toBe('100%')
   })
 
   it('is the only thing in the sheet that moves, and it moves along the route from the start to the end', () => {
