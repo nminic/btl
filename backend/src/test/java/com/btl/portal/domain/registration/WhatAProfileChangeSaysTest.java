@@ -29,7 +29,7 @@ class WhatAProfileChangeSaysTest {
 		Said words = WhatAProfileChangeSays.about(Change.WORDS);
 
 		assertThat(picture.subject()).isEqualTo("Promenjena je tvoja profilna slika");
-		assertThat(picture.body()).isEqualTo("Administracija lige je promenila vašu profilnu sliku. Nova slika već"
+		assertThat(picture.body()).isEqualTo("Administracija lige je promenila tvoju profilnu sliku. Nova slika već"
 				+ " stoji na tvom profilu.\n\nBalkanska trkačka liga");
 		assertThat(WhatAProfileChangeSays.about(Change.PICTURE_REMOVED).body()).isEqualTo("Administracija lige je"
 				+ " uklonila tvoju profilnu sliku. Novu možeš da pošalješ na kartici Podaci svog profila.\n\n"
