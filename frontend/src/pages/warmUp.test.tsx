@@ -172,7 +172,7 @@ describe('the front page, before and from the first season', () => {
     expect(await screen.findByRole('heading', { level: 2, name: 'Zagrevanje' })).toBeVisible()
     expect(screen.queryByRole('heading', { level: 2, name: /^Sezona/ })).not.toBeInTheDocument()
     await waitFor(() => {
-      expect(rowOf('Prijavljenih rezultata:')).toBe(`Prijavljenih rezultata: ${String(HISTORY.length)} rezultata`)
+      expect(rowOf('Prijavljenih rezultata:')).toBe(`Prijavljenih rezultata: ${formatNumber(HISTORY.length, 'sr')} rezultata`)
     })
   }, SLOW)
 

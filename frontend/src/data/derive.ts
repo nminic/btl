@@ -365,6 +365,33 @@ export function totalsOf(results: Result[]): Totals {
   return results.reduce(addToTotals, EMPTY_TOTALS)
 }
 
+/**
+ * HOW MANY PLACES THE MEMBERS COME FROM, the eighth tile of the figures on the front page, second after
+ * the number of members (PDL, owner, 20.11.2026).
+ *
+ * **As the member wrote it** (PDL, same day, the plan's question about Zemun and Beograd, chosen with
+ * the recommendation: „Gradovi se broje kako ih je član upisao (Zemun odvojeno od Beograda)"): no
+ * merging of a town into the city around it, and no reading of what is a city. What is counted is the
+ * distinct pairs of town and country on the records, so one town name in two countries is two, and
+ * nothing is counted where no town was written.
+ *
+ * It takes the list the tile of members counts and no other (`members` and `cities` are two readings
+ * of one list), so the two tiles cannot disagree about who is in the league.
+ */
+export function citiesOf(competitors: readonly Pick<Competitor, 'city' | 'country'>[]): number {
+  const places = new Set<string>()
+
+  for (const one of competitors) {
+    const town = one.city.trim()
+
+    if (town !== '') {
+      places.add(`${town}\u0000${one.country}`)
+    }
+  }
+
+  return places.size
+}
+
 export function resultsOf(results: Result[], memberNumber: string, season?: number): Result[] {
   return results
     .filter((result) => result.memberNumber === memberNumber)
@@ -1304,9 +1331,22 @@ export type SeriesEntry = {
  * najavljuje samo bodovane trke"): `'race'` is the scored kind, so the filter below already
  * leaves an unscored race out, and `derive.test.ts` holds that it does.
  */
-export function upcomingSeries(events: BtlEvent[], today: string, limit: number): SeriesEntry[] {
+export function upcomingSeries(
+  events: BtlEvent[],
+  today: string,
+  limit: number,
+  /**
+   * Only the runs that hold a race of this length, and for each name the nearest of THOSE, not the nearest
+   * run of the event (PDL, owner, 20.11.2026, the filter of „Priprema, pozor, SAD!": the row „pokazuje
+   * najbliži datum sa tom dužinom, a ne najbliži datum događaja"). Which lengths a run holds is the same
+   * answer the dots beside it give (`dotsAt`), so a row never stands under a length whose dot it does not
+   * carry. Nothing here means every length, as before.
+   */
+  within?: { length: Dot; races: readonly Pick<Race, 'eventId' | 'dots'>[] },
+): SeriesEntry[] {
   const ahead = events
     .filter((event) => event.date >= today && event.kind === 'race')
+    .filter((event) => within === undefined || dotsAt(event, within.races).includes(within.length))
     .sort((left, right) => left.date.localeCompare(right.date))
 
   /* One row per name, and it is the first run of it: `ahead` is in date order,

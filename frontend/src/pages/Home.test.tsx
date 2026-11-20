@@ -9,7 +9,7 @@ import { setupUser } from '../test/user'
 describe('Home', () => {
   /* Two thirds of standing and prose against one third of figures and things to
      do (owner, 31.07.2026). */
-  it('lays the widgets out in the order a phone reads them', async () => {
+  it('writes the two columns, the left one and then the right one', async () => {
     renderAt('/sr')
 
     await screen.findByRole('heading', { level: 2, name: 'Priprema, pozor, SAD!' })
@@ -21,20 +21,20 @@ describe('Home', () => {
       .getAllByRole('heading', { level: 2 })
       .map((heading) => heading.textContent)
 
-    /* The order in the markup is the order on a phone (owner, 31.07.2026): the
-       two boards, the figures of the season, the turning chart, what is next,
-       the address, the calculator. On a wide screen the grid puts them in two
-       columns without moving them in the markup.
+    /* The order in the markup is the two columns, the left one and then the right one (owner, 20.11.2026:
+       „Desna kolona je zaseban stub"). What a phone shows is not this order but the one of ADL A7, the two
+       boards, the figures of the season, the turning chart, what is next, the address, the calculator, and it
+       is put there by the stylesheet under 860px (`homeLayoutStyle.test.ts` holds that, box by box).
 
        The widget of membership stood at the end of it until 04.08.2026, when the
        owner had it removed: "nećemo ga koristiti do daljnjeg". */
     expect(headings).toEqual([
       'Top 10 muškarci',
       'Top 10 žene',
+      'Reč predsednika',
       /* The counters: the warm-up before the first season, the season from it (owner, 12.11.2026). */
       expect.stringMatching(/^(Sezona \d{4}\.|Zagrevanje)$/),
       'Priprema, pozor, SAD!',
-      'Reč predsednika',
       'BTL kalkulator',
     ])
   })
@@ -146,7 +146,7 @@ describe('Home', () => {
        the suite's days, one on each side of that. Who is on the board is held in `publicScreens.test.tsx`. */
     expect(within(men).getAllByRole('listitem', { hidden: true })).toHaveLength(10)
     // The standing moved to /tabela; /top-liste is the page of Top 10 boards now.
-    expect(within(men).getByRole('link', { name: 'Cela tabela' })).toHaveAttribute(
+    expect(within(men).getByRole('link', { name: 'Kompletan poredak muškaraca' })).toHaveAttribute(
       'href',
       '/sr/tabela?pol=m',
     )

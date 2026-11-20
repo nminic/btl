@@ -4,7 +4,7 @@ import { useToday } from '../clock/useClock'
 import { accountWasDeleted } from './accountDeleted'
 import { DeletionSaid } from './admin/DeletionSaid'
 import { Resource } from '../components/Resource'
-import { countedIn, totalsOf } from '../data/derive'
+import { citiesOf, countedIn, totalsOf } from '../data/derive'
 import { boardsOpenOn, seasonShown, WARM_UP } from '../data/season'
 import { combineFour, useCompetitors, useEvents, useRaces, useResults } from '../data/useResource'
 import { useI18n } from '../i18n/useI18n'
@@ -28,25 +28,25 @@ import './Home.css'
  * Right, top to bottom: the counters of the running season, what is next in the
  * calendar, the sponsor of the day, and the calculator in two rows of three
  * (PDL P24, variant A, owner 18.11.2026: „Tri desna boksa su zajedno visoka kao
- * leva kolona."). The three under the counters stand as one column beside the
- * chart and the address, so the grid puts the chart and the address across two
- * rows each and the three boxes across the five lines between them, and both
- * columns end on the same line by construction (`Home.css`).
+ * leva kolona.").
  *
- * One grid holds all six, rather than two columns holding three each (owner,
- * 31.07.2026). The rows are what the owner asked for: the boards end where the
- * counters end, and the chart ends where the calendar does. Two columns side by
- * side cannot do that, because neither knows how tall the other came out; one
- * grid does it by itself, and the chart's bars get the height they were missing.
+ * **Two columns that are two columns** (owner, 20.11.2026, PDL „Četiri dodatka naslovne iz tuđeg
+ * nacrta": „Desna kolona je zaseban stub: statistika je visoka koliko njen sadržaj, a kalendar
+ * počinje odmah ispod nje"). From 31.07.2026 to then one grid held all six boxes and the rows were
+ * shared, so the figures were as tall as the two boards beside them and the calendar began where
+ * the boards ended. Each column is now a box of its own and the boxes in it follow one another,
+ * and each column has the one box that takes what the taller column has over (`Home.css`): the
+ * address on the left, and on the right the calendar or, with a sponsor, the sponsor's box. Both
+ * columns end on the same line by construction.
  *
- * The order in the markup is the order on a phone, where the grid becomes one
- * column and the placement below does nothing: the two boards, the figures of
- * the season, the turning chart, what is next, the address, the sponsor of the
- * day, the calculator (owner, 31.07.2026; the sponsor between the last two since
- * 18.11.2026: „Na telefonu „Sponzor dana” stoji posle obraćanja predsednika, a
- * pre kalkulatora."). It is not the order of either column, because on one
- * screen the two columns interleave: somebody scrolling wants the standing, then
- * the numbers behind it, then the calendar, and the prose after all of them.
+ * The markup is the left column and then the right one, which is what two columns are. **What a
+ * phone shows is not that order:** under 860px the two are `display: contents` and `order` puts the
+ * boxes where the phone has them since 31.07.2026 (ADL A7): the two boards, the figures of the
+ * season, the turning chart, what is next, the address, the sponsor of the day, the calculator
+ * (the sponsor between the last two since 18.11.2026: „Na telefonu „Sponzor dana” stoji posle
+ * obraćanja predsednika, a pre kalkulatora."). It is not the order of either column, because on one
+ * screen the two columns interleave: somebody scrolling wants the standing, then the numbers behind
+ * it, then the calendar, and the prose after all of them.
  *
  * The membership slot stood at the foot of the right column until 04.08.2026,
  * when the owner had it removed: "nećemo ga koristiti do daljnjeg". The page of
@@ -114,36 +114,46 @@ export function Home() {
 
           return (
             <>
-              <div className={ofTheDay === undefined ? 'home__split' : 'home__split home__split--sponsored'}>
-                <div className="home__boards">
-                  <TopTen competitors={field} results={results} season={season} today={today} gender="M" />
-                  <TopTen competitors={field} results={results} season={season} today={today} gender="F" />
-                </div>
-
-                <div className="home__figures">
-                  <Counters totals={totals} title={label} members={field.length} />
-                </div>
-
-                <div className="home__chart">
-                  <TopByCategory competitors={field} results={results} season={view} />
-                </div>
-
-                <div className="home__next">
-                  <CalendarExtract events={events} races={races} today={today} fill={ofTheDay === undefined} />
-                </div>
-
-                <div className="home__address">
-                  <President />
-                </div>
-
-                {ofTheDay !== undefined && (
-                  <div className="home__sponsor">
-                    <Sponsor sponsor={ofTheDay} />
+              <div
+                className={
+                  ofTheDay === undefined
+                    ? 'home__split home__split--cols'
+                    : 'home__split home__split--cols home__split--sponsored'
+                }
+              >
+                <div className="home__colL">
+                  <div className="home__boards">
+                    <TopTen competitors={field} results={results} season={season} today={today} gender="M" />
+                    <TopTen competitors={field} results={results} season={season} today={today} gender="F" />
                   </div>
-                )}
 
-                <div className="home__calc">
-                  <Calculator />
+                  <div className="home__chart">
+                    <TopByCategory competitors={field} results={results} season={view} />
+                  </div>
+
+                  <div className="home__address">
+                    <President />
+                  </div>
+                </div>
+
+                <div className="home__colR">
+                  <div className="home__figures">
+                    <Counters totals={totals} title={label} members={field.length} cities={citiesOf(field)} />
+                  </div>
+
+                  <div className="home__next">
+                    <CalendarExtract events={events} races={races} today={today} fill={ofTheDay === undefined} />
+                  </div>
+
+                  {ofTheDay !== undefined && (
+                    <div className="home__sponsor">
+                      <Sponsor sponsor={ofTheDay} />
+                    </div>
+                  )}
+
+                  <div className="home__calc">
+                    <Calculator />
+                  </div>
                 </div>
               </div>
 

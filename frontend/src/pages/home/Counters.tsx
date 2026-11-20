@@ -44,12 +44,29 @@ function Flag() {
 /* The one row on this widget that counts people rather than something they did,
    so it is the one row a figure of a person belongs on.
 
-   A champion, not a runner (owner, 31.07.2026). A runner mid-stride is four
-   limbs at four angles, and at twenty pixels four angles are a blot however they
-   are drawn; twice it was drawn and twice it was a blot. Somebody with both arms
-   up is one symmetrical shape, read whole before it is read at all, and it says
-   the same thing about a league of runners. */
-function Champion() {
+   A runner, a simpler sketch of the one in the header at the top right of every page (owner,
+   20.11.2026: „zasto ne nesto u smeru ovog gore desno na sajtu samo jednostavnija skica?"),
+   as drawn in the plan he approved (`predlozi/plan-dodaci-naslovne.html`). A filled shape
+   rather than a line: the champion with both arms up (31.07.2026) and the runner before it
+   were lines, and at twenty pixels the limbs of a line figure are a blot. */
+function Runner() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      stroke="currentColor"
+      strokeWidth=".5"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M17.1 1.0 L18.4 2.2 L18.1 4.1 L17.0 4.6 L17.3 7.9 L20.1 6.9 L20.7 7.7 L16.8 9.4 L15.7 8.7 L14.4 10.5 L18.2 12.8 L15.5 17.4 L17.0 19.8 L14.9 20.2 L13.6 18.2 L15.9 13.6 L13.0 13.0 L5.1 20.1 L4.7 22.8 L3.9 23.0 L3.3 19.9 L8.7 15.1 L12.9 7.9 L13.5 5.5 L12.3 4.9 L10.0 8.5 L8.9 8.2 L11.4 3.9 L15.5 3.8 L15.6 2.3 L15.0 2.3 L16.3 1.2Z" />
+    </svg>
+  )
+}
+
+/* The place the members come from: a pin over a point, the shape every map gives a town
+   (owner, 20.11.2026, the eighth tile). */
+function Pin() {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -60,10 +77,8 @@ function Champion() {
       strokeLinejoin="round"
       aria-hidden="true"
     >
-      <circle cx="12" cy="4.6" r="2.3" />
-      <path d="M12 9v6" />
-      <path d="M5.6 4.4 8.4 10.2 15.6 10.2 18.4 4.4" />
-      <path d="M12 15 8.2 20.6M12 15l3.8 5.6" />
+      <path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z" />
+      <circle cx="12" cy="10" r="2.4" />
     </svg>
   )
 }
@@ -111,6 +126,7 @@ function Row({
   unit = '',
   counted,
   decimals = 0,
+  shortUnit,
   countMs,
 }: {
   icon: ReactNode
@@ -121,6 +137,14 @@ function Row({
   /** Key of a counted phrase, for the one row whose unit declines: trka, trke. */
   counted?: string
   decimals?: number
+  /**
+   * The unit written short, for the one row whose figure is long and whose tile can be narrow: where the
+   * tile is too narrow for the whole sentence, the figure is rounded to whole numbers and carries this
+   * instead of `unit` (owner, 20.11.2026: „da piše XX.XXX p / pts (zaokruženo bez decimala i da se
+   * skrati BTL poena u p ili pts)", and „Na velikom prikazu ovde treba da ostane BTL poena"). Which of the
+   * two is drawn is the tile's own width and not the window's (`Home.css`, a container query).
+   */
+  shortUnit?: string
   countMs?: number
 }) {
   const { locale, t } = useI18n()
@@ -141,7 +165,9 @@ function Row({
     }
 
     if (counted !== undefined) {
-      return t(counted, { count: shown })
+      /* `count` picks the form of the word, `number` is what is written: the figure goes through the
+         formatter like every other tile's, so 2356 results are „2.356 rezultata" (owner, 20.11.2026). */
+      return t(counted, { count: shown, number: formatNumber(shown, locale) })
     }
 
     return `${formatNumber(shown, locale, decimals)}${unit}`
@@ -154,7 +180,25 @@ function Row({
       </span>
       <span className="score__pill">
         <span className="visually-hidden">{label}: </span>
-        {reading()}
+        {shortUnit === undefined ? (
+          reading()
+        ) : (
+          <>
+            <span className="score__full">{reading()}</span>
+            {/* The whole name is what a screen reader is given in both shapes; the short one is only
+                for the eye (owner, 20.11.2026: „čitač ekrana i dalje čuje pun naziv"). */}
+            <span className="score__short">
+              <span aria-hidden="true">
+                {formatNumber(Math.round(running), locale)}
+                {shortUnit}
+              </span>
+              <span className="visually-hidden">
+                {formatNumber(Math.round(running), locale)}
+                {unit}
+              </span>
+            </span>
+          </>
+        )}
       </span>
     </div>
   )
@@ -165,6 +209,7 @@ export function Counters({
   title,
   races = true,
   members,
+  cities,
   countMs,
 }: {
   totals: Totals
@@ -177,6 +222,12 @@ export function Counters({
    * somebody's own totals is a row wasted.
    */
   members?: number
+  /**
+   * How many different places those members come from, the second tile after the members (owner,
+   * 20.11.2026). Handed in by the front page with `members`, for the same reason: on a team and on
+   * a profile it would count one or two places and say nothing.
+   */
+  cities?: number
   /**
    * Shown above the rows on the front page and on a team, where this widget
    * stands on its own and the heading says which season it is counting.
@@ -201,7 +252,7 @@ export function Counters({
    *  chart on this page has. */
   countMs?: number
 }) {
-  const { t } = useI18n()
+  const { locale, t } = useI18n()
 
   return (
     <section
@@ -220,10 +271,19 @@ export function Counters({
       {members !== undefined && (
         <Row
           countMs={countMs}
-          icon={<Champion />}
+          icon={<Runner />}
           label={t('home.members')}
           value={members}
           counted="units.memberCount"
+        />
+      )}
+      {cities !== undefined && (
+        <Row
+          countMs={countMs}
+          icon={<Pin />}
+          label={t('home.cities')}
+          value={cities}
+          counted="units.cityCount"
         />
       )}
       {/* What is counted here is results, not races: two members who ran the
@@ -265,7 +325,7 @@ export function Counters({
         icon={<Clock />}
         label={t('home.onCourse')}
         value={totals.seconds}
-        text={formatCourseTime(totals.seconds)}
+        text={formatCourseTime(totals.seconds, locale)}
       />
       <Row
         countMs={countMs}
@@ -273,6 +333,7 @@ export function Counters({
         label={t('home.points')}
         value={totals.points}
         unit={t('home.pointsUnit')}
+        shortUnit={t('home.pointsUnitShort')}
         decimals={2}
       />
     </section>

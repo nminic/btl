@@ -653,7 +653,7 @@ function Drawn({ picker, view, sources }: { picker: Picker; view: SeasonView; so
           </NamePlate>
         ),
         members: [row.competitor.memberNumber],
-        cells: [{ text: formatCourseTime(row.seconds) }],
+        cells: [{ text: formatCourseTime(row.seconds, locale) }],
       })),
     }
 

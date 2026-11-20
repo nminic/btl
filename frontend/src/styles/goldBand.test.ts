@@ -26,10 +26,11 @@ import sr from '../i18n/sr.json'
  * end (ADL A7).
  */
 
-const BANDS = [
-  { file: 'src/pages/Home.css', rule: '.top10__block .card__title' },
-  { file: 'src/components/ColumnChart.css', rule: '.colchart__caption' },
-]
+/* One band, since 20.11.2026: the other was the gold bar over each top ten board on the front page,
+   and the owner took it away („da li su uopšte potrebni žuti naslovi sekcija top 10 muškarci i žene?
+   Možda se uzalud baca prostor", PDL „Četiri dodatka naslovne iz tuđeg nacrta"). The heading is there
+   for a screen reader and nothing is painted gold behind it. */
+const BANDS = [{ file: 'src/components/ColumnChart.css', rule: '.colchart__caption' }]
 
 const FLOOR = 4.5
 
@@ -210,9 +211,9 @@ describe('the ink on the gold band', () => {
       }
     }
 
-    /* Nothing was found by accident: two rules, two stops each. Without this the
+    /* Nothing was found by accident: one rule, two stops. Without this the
        whole test passes on an empty parse. */
-    expect(pairs).toHaveLength(4)
+    expect(pairs).toHaveLength(2)
 
     for (const pair of pairs) {
       expect(
@@ -479,8 +480,12 @@ describe('what the owner asked for on 04.08.2026', () => {
     {
       of: 'src/pages/Home.css',
       rule: '.home__calc',
-      holds: /align-self:\s*start/,
+      /* `align-self: start` until 20.11.2026, when the two columns became two flex columns of their own:
+         there the box is as tall as it is because it does not grow (`flex: none`), and `align-self: start`
+         on the cross axis of a column would make it as NARROW as it is. */
+      holds: /flex:\s*none/,
       why: 'the calculator ends where it ends, not where the president\'s word does',
+      within: '@media (min-width: 53.75em)',
     },
     {
       of: 'src/pages/TopBoards.css',

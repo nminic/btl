@@ -381,8 +381,9 @@ describe('space and corners are chosen from the scale, not typed', () => {
       // The wide layout, and the navigation stops folding away, with its half.
       780, 819.98, 820,
       // Set by their own content, each said where it is written: the front page
-      // at 860, the rights table and the Top liste at 900.
-      860, 900, 1000,
+      // at 860 and its half 859.98 (the front page puts its two columns away below it,
+      // since 20.11.2026), the rights table and the Top liste at 900.
+      859.98, 860, 900, 1000,
       // Where the gutter beside the column holds the runner of the header beside
       // the tools, as the owner's reference draws him (app/RaceInMotion.css).
       1280,

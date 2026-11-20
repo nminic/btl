@@ -68,19 +68,21 @@ describe('the address of the president', () => {
     /* The counters: „Zagrevanje" before the first season, „Sezona N." from it (owner, 12.11.2026). */
     const counters = screen.getByRole('heading', { level: 2, name: /^(Sezona \d{4}\.|Zagrevanje)$/ })
 
-    /* Same grid as the boards, and after them: one grid holds the whole page
-       now, so the two are cells of it rather than children of one column. */
+    /* In the same column as the boards, and after them: the left column is the boards, the chart and the
+       address, and the right one is the figures, what is next and the calculator (owner, 20.11.2026: two
+       columns that are two columns). */
     expect(address.closest('article')?.parentElement?.parentElement?.parentElement).toBe(
       board.closest('section')?.parentElement?.parentElement,
     )
     expect(
       board.compareDocumentPosition(address) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy()
-    /* The figures come before it in the markup, because on a phone somebody
-       wants the standing, then the numbers behind it, and the prose after both
-       (owner, 31.07.2026). On a wide screen the grid puts them side by side. */
+    /* **The figures come AFTER it in the markup, since 20.11.2026**, because the right column follows the
+       left one whole. On a phone it is the other way round, and the stylesheet puts it there: somebody
+       wants the standing, then the numbers behind it, and the prose after both (owner, 31.07.2026;
+       `home/homeLayoutStyle.test.ts` holds the `order`). */
     expect(
-      counters.compareDocumentPosition(address) & Node.DOCUMENT_POSITION_FOLLOWING,
+      address.compareDocumentPosition(counters) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy()
   })
 

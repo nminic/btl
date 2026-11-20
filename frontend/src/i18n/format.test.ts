@@ -1,5 +1,6 @@
 import {
   DATE_SHAPE_OPTIONS,
+  formatCourseTime,
   formatDate,
   formatDayInSentence,
   formatDistance,
@@ -400,5 +401,31 @@ describe('an amount of money', () => {
     ['a balance past a thousand in English', 'en', 1234.5, '1,234.50'],
   ])('writes %s', (_what, locale, amount, written) => {
     expect(money(amount, locale)).toBe(written)
+  })
+})
+
+/**
+ * TIME ON THE COURSE, as the front page's tile writes it, with the point for the thousands (owner, 20.11.2026:
+ * „8.872 h"). The hours went out raw until then, and 8872 of them read „8872 h" beside „69.234,81 km".
+ */
+describe('formatCourseTime', () => {
+  const seconds = 8872 * 3600 + 5 * 60 + 28
+
+  it('writes the hours with the point of the thousands in Serbian', () => {
+    expect(formatCourseTime(seconds, 'sr')).toBe("8.872 h 05' 28''")
+  })
+
+  it('writes them with the comma in English', () => {
+    expect(formatCourseTime(seconds, 'en')).toBe("8,872 h 05' 28''")
+  })
+
+  it('writes the hours of the old tile as they were where there are fewer than a thousand', () => {
+    expect(formatCourseTime(299 * 3600 + 49 * 60 + 43, 'sr')).toBe("299 h 49' 43''")
+    expect(formatCourseTime(0, 'sr')).toBe("0 h 00' 00''")
+  })
+
+  it('keeps the minutes and the seconds to two digits and never negative', () => {
+    expect(formatCourseTime(3600 + 60 + 1, 'sr')).toBe("1 h 01' 01''")
+    expect(formatCourseTime(-5, 'sr')).toBe("0 h 00' 00''")
   })
 })

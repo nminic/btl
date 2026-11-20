@@ -41,16 +41,36 @@ function block(query: string): string {
 const FILLS = '.home__split:not(.home__split--sponsored) .home__next .extract {'
 
 describe('the stylesheet of the front page', () => {
-  it('splits the page at the query the calendar asks', () => {
-    expect(block(TWO_COLUMNS)).toContain('.home__split {')
+  it('splits the page at the query the calendar asks, into two columns that are boxes of their own', () => {
+    const split = block(TWO_COLUMNS)
+
+    expect(split).toContain('.home__split--cols {')
+    expect(split).toMatch(/\.home__colL,\s*\.home__colR \{[^}]*display: flex;[^}]*flex-direction: column;/)
   })
 
-  it('gives the box a place in the grid of a page with a sponsor', () => {
+  it('makes the box of the sponsor take what the taller column has over, and keeps the calendar to its four rows', () => {
     const split = block(TWO_COLUMNS)
-    const sponsored = /\.home__split--sponsored \{([^}]*)\}/.exec(split)?.[1] ?? ''
 
-    expect(sponsored).toMatch(/'chart sponsor'\s*'address sponsor'/)
-    expect(split).toMatch(/\.home__sponsor \{ grid-area: sponsor; \}/)
+    expect(/\.home__sponsor \{([^}]*)\}/.exec(split)?.[1] ?? '').toMatch(/flex: 1 1 auto;/)
+    expect(/\.home__split--sponsored \.home__next \{([^}]*)\}/.exec(split)?.[1] ?? '').toMatch(/flex: none;/)
+  })
+
+  it('makes the address the box of the left column that takes what the right column has over', () => {
+    expect(/\.home__address \{([^}]*)\}/.exec(block(TWO_COLUMNS))?.[1] ?? '').toMatch(/flex: 1 1 auto;/)
+  })
+
+  it('puts the boxes where a telephone has them, in the order of ADL A7, and only on a telephone', () => {
+    const phone = block('(max-width: 53.74875em)')
+
+    expect(phone).toMatch(/\.home__colL,\s*\.home__colR \{\s*display: contents;/)
+
+    const order = ['boards', 'figures', 'chart', 'next', 'address', 'sponsor', 'calc']
+
+    for (const [index, name] of order.entries()) {
+      expect(phone, name).toContain(`.home__${name} { order: ${index + 1}; }`)
+    }
+
+    expect(block(TWO_COLUMNS)).not.toContain('order:')
   })
 
   it('lets the calendar fill its column only in two columns and only without a sponsor', () => {
