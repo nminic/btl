@@ -142,6 +142,10 @@ const ALLOWED = new Map([
     'components/ColumnChart.css | padding | var(--space-10) var(--space-10)\n    max(var(--space-12), calc(var(--count-chars, 2) * 0.24rem + var(--space-6)))',
     'the step under the bars is half the circle that hangs into it, and the circle is as wide as the longest number in the chart, so this one is arithmetic and not a step off the scale',
   ],
+  [
+    'pages/Home.css | column-gap | clamp(var(--space-16), (100cqi - 1px - var(--across) * 120px) / (var(--across) - 1), 72px)',
+    'not a step: the space between the tiles of the strip of sponsors is whatever makes a row fill the strip, between the 16px of the scale and 72px (PDL P24, „Razmak u traci sponzora je od 16 do 72 px, kako ga nacrt v3 crta i obrazlaže (beleška „Zašto 72”)"; draft: about three fifths of a tile, so a group of logos still reads as one row). 120px is the tile the owner chose („Pločica za logo je 120×48 px"), and the one pixel is left over so a row that fills the strip exactly is not broken by a rounding',
+  ],
 ])
 
 /**

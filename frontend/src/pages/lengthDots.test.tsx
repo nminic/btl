@@ -98,7 +98,7 @@ const SCREENS = [
   {
     where: 'the front page',
     draw: (races: Race[]) => (
-      <CalendarExtract events={[event]} races={races} today="2027-05-07" />
+      <CalendarExtract events={[event]} races={races} today="2027-05-07" fill />
     ),
   },
 ]

@@ -5,7 +5,6 @@ import { configure, getConfig, screen, waitFor, within } from '@testing-library/
 import { renderAt } from '../test/render'
 import { membersAsServed } from '../test/serverAnswers'
 import { setupUser } from '../test/user'
-import { freshNews, type NewsItem } from './home/content'
 
 describe('Home', () => {
   /* Two thirds of standing and prose against one third of figures and things to
@@ -330,12 +329,16 @@ describe('Home', () => {
     expect(within(calc).queryByText('Unesi dužinu i vreme.')).not.toBeInTheDocument()
   })
 
-  it('hides the news and the sponsor while they have nothing fresh to say', async () => {
+  /* „„Sponzor dana" i traka logotipa se ne prikazuju ako nema aktivnog sponzora" (PDL P24), and the
+     portal has none yet. The news are not there at all since 17.11.2026 (PDL P16). The same page with
+     a sponsor is `homeSponsored.test.tsx`. */
+  it('draws neither the sponsor of the day nor the strip while there is no sponsor, and no news', async () => {
     renderAt('/sr')
 
     await screen.findByRole('heading', { name: 'Reč predsednika' })
     expect(screen.queryByRole('heading', { name: 'Vesti' })).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Sponzor dana' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: 'Sponzori i partneri' })).not.toBeInTheDocument()
   })
 })
 
@@ -487,26 +490,4 @@ describe('the season the front page counts', () => {
     expect(await screen.findByRole('heading', { level: 2, name: 'Sezona 2028.' })).toBeVisible()
     expect(await resultsRow()).toBe('Prijavljenih rezultata: 0 rezultata')
   }, SLOW)
-})
-
-describe('freshNews', () => {
-  const item = (id: string, date: string): NewsItem => ({ id, date, titleKey: 'x', textKey: 'y' })
-
-  it('drops anything older than sixty days', () => {
-    const items = [item('staro', '2026-01-01'), item('novo', '2026-07-01')]
-
-    expect(freshNews(items, '2026-07-29').map((one) => one.id)).toEqual(['novo'])
-  })
-
-  it('takes the three newest, newest first', () => {
-    const items = ['2026-07-01', '2026-07-20', '2026-07-10', '2026-07-25'].map((date) =>
-      item(date, date),
-    )
-
-    expect(freshNews(items, '2026-07-29').map((one) => one.id)).toEqual([
-      '2026-07-25',
-      '2026-07-20',
-      '2026-07-10',
-    ])
-  })
 })

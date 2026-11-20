@@ -6,13 +6,6 @@
   gap: var(--space-20);
 }
 
-/* One column on a phone, the widths from the agreed layout from tablet up. */
-.home__row {
-  display: grid;
-  gap: var(--space-20);
-  align-items: start;
-}
-
 /* Two thirds of the page against one (owner, 31.07.2026): the standing and the
    prose on the left, the figures and the things to do on the right.
 
@@ -58,36 +51,87 @@
    moved onto the scale, so the clearance this decision rests on moved with them,
    from 1,64px to 1,0px. It still holds, and it is thinner than it was.
    Narrowing the faces instead would make ten of them unreadable, which is what
-   the phone rule already does by dropping four. */
+   the phone rule already does by dropping four.
+
+   Under the top row, variant A (PDL P24, owner 18.11.2026): the chart and the
+   address on the left, and on the right the calendar, the sponsor of the day and
+   the calculator as one column beside both of them („Tri desna boksa su zajedno
+   visoka kao leva kolona."). The three on the right do not share rows with the
+   two on the left, so each of the left two stands across two rows and the right
+   ones across the lines between, and both columns end on the last line of the
+   grid whatever their heights: the columns line up by construction and not by
+   a number.
+
+   Which row takes the difference is said by its sizing. With a sponsor it is the
+   row the address shares with the box (`1fr`), so the box takes what is left and
+   centres its logo and name in it, as the draft does („Preostalih 15,50 px upija
+   prostor oko znaka i naziva"); the row under the chart is sized by the chart
+   alone (`auto`), so the calendar keeps the height of its four rows. Without a
+   sponsor it is the row the address shares with the calendar, and the calendar
+   runs into it: as many races as fit to the bottom (`.extract` below, and
+   `home/rowsThatFit.ts`). */
 @media (min-width: 53.75em) {
   .home__split {
     grid-template-columns: 2fr 1fr;
+    grid-template-rows: auto auto 1fr auto;
     grid-template-areas:
       'boards figures'
       'chart next'
+      'address next'
       'address calc';
     align-items: stretch;
   }
 
+  .home__split--sponsored {
+    grid-template-rows: auto auto auto 1fr auto;
+    grid-template-areas:
+      'boards figures'
+      'chart next'
+      'chart sponsor'
+      'address sponsor'
+      'address calc';
+  }
+
   .home__boards { grid-area: boards; }
-  .home__chart { grid-area: chart; }
   .home__address { grid-area: address; }
   .home__figures { grid-area: figures; }
   .home__next { grid-area: next; }
+  .home__sponsor { grid-area: sponsor; }
 
-  /* As tall as it is, and no taller (owner, 04.08.2026). It shares its row with
-     the address of the president, which is prose and runs long, and every widget
-     on this page fills the row it was given: the calculator was six fields and a
-     line of answer stretched over a column of text, with the fields at the top
-     and nothing under them. Every other pairing on the page is two widgets that
-     want the same height; this one is not. */
+  /* As tall as the chart was beside a calendar of six rows, which is what it
+     stood at until the calendar stopped having six (draft of variant A,
+     „Grafikon zadržava današnjih 394,45 px kao sopstvenu najmanju visinu"). It
+     took that height from the row it shared with the calendar; with four races
+     beside it it would fall to its own and the left column would come out
+     shorter, and the owner keeps the left column as it is („Ne planiram da
+     menjam reč predsednika"). */
+  .home__chart {
+    grid-area: chart;
+    min-block-size: 24.65rem;
+  }
+
+  /* As tall as the column leaves it and no taller: the rows drawn in it do not
+     count towards its height (`contain: size`), so how many of them there are
+     cannot move the row they are counted in, and `home/rowsThatFit.ts` draws as
+     many whole rows as stand in it. Without a sponsor and in two columns only:
+     in one column there is no bottom to run to, and a list that weighs nothing
+     there would be a list of nought. */
+  .home__split:not(.home__split--sponsored) .home__next .extract {
+    flex: 1 1 0;
+    min-block-size: 0;
+    contain: size;
+  }
+
+  /* As tall as it is, and no taller (owner, 04.08.2026). It shared its row with
+     the address of the president until variant A, and every widget on this page
+     fills the row it was given: the calculator was six fields and a line of
+     answer stretched over a column of text, with the fields at the top and
+     nothing under them. Since 18.11.2026 it is the last box of the right column
+     and its row is sized by it alone, so this holds the same decision against a
+     row that is ever given more. */
   .home__calc {
     grid-area: calc;
     align-self: start;
-  }
-
-  .home__row--news {
-    grid-template-columns: 2fr 1fr;
   }
 }
 
@@ -419,7 +463,7 @@
 .calc__cell {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: var(--space-2);
   min-width: 0;
 }
 
@@ -435,7 +479,7 @@
 .calc__field {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: var(--space-2);
   font-size: 0.75rem;
   color: var(--text-muted);
   min-width: 0;
@@ -448,7 +492,12 @@
   background: var(--bg);
   border: 1px solid var(--control-border);
   border-radius: var(--radius-8);
-  padding: var(--space-8);
+  /* Two pixels above and below the figure rather than eight, which is how the
+     calculator of variant A is drawn shorter with the same six boxes, labels and
+     letters (draft, „Kalkulator je sabijen ovako"): a box of about 28px, over the
+     24px a target has to be (WCAG 2.2 SC 2.5.8). The label stands two pixels
+     over it rather than four, in the cell and in the field alike. */
+  padding: var(--space-2) var(--space-8);
   min-width: 0;
 }
 
@@ -492,8 +541,8 @@
   flex-wrap: wrap;
   gap: var(--space-6);
   /* A minimum, and tall enough that it is what governs in both states: the
-     figure at its largest is a little over two rem and the words are shorter
-     than that, so the line is 2.6rem whether there is an answer yet or not, and
+     figure at its largest is about two rem and the words are shorter than that,
+     so the line is 2.2rem whether there is an answer yet or not, and
      nothing in the card moves as somebody types. That is the same stillness the
      fixed height was written for, kept by the same number.
    *
@@ -503,8 +552,14 @@
      browser for larger text, and the figure goes to a second line. With a fixed
      height that second line is not cut off, which would at least be visible, but
      spills out over whatever the card holds next, because nothing here clips.
-     A minimum lets the box take the line it actually needs. */
-  min-block-size: 2.6rem;
+     A minimum lets the box take the line it actually needs.
+   *
+     2.2rem and not the 2.6rem it was until variant A, which put the
+     calculator under the sponsor of the day in the same column and drew it
+     shorter so the three boxes of the column stand as tall as the left one
+     (PDL P24, owner 18.11.2026, „BTL kalkulator sabijen u dva reda po tri
+     polja"; draft, „Kalkulator je sabijen ovako"). */
+  min-block-size: 2.2rem;
 }
 
 .calc__label {
@@ -576,29 +631,114 @@
  * lost the tie and the word stayed at 13,6px. */
 .calc__answer .calc__reset {
   font-size: 0.8rem;
+  /* 28px rather than the 38,4 of a compact button, for the calculator of
+     variant A (draft, „dugme Reset je visoko 28 px umesto 38,4"); still over the
+     24px of a target (WCAG 2.2 SC 2.5.8), and the word stays on the line of „BTL
+     poeni:" because the row is laid along that line and not along the boxes. */
+  height: 1.75rem;
 }
 
-/* News and sponsor */
+/* The calculator's rows eight pixels apart rather than the ten of every other
+   card, the last of the ways variant A draws it shorter (draft, „između redova 8
+   umesto 10"). */
+.home__calc > .card {
+  gap: var(--space-8);
+}
 
-.news {
+/* „Sponzor dana" (PDL P24, owner 18.11.2026): the logo at the top, centred and
+   64px tall, the name centred under it, both one link, and two lines of
+   description at the foot of the box, aligned left (`home/Sponsor.tsx`). The
+   part with the logo and the name takes whatever height the box has over its
+   own and centres them in it, so the description stands at the foot with the
+   card's own padding under it and no links in between (owner: „da se smanji
+   nepotrebno veliki razmak između linka ka sponzorskoj strani i dna"). */
+.sponsor-day__top {
+  flex: 1 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sponsor-day__link {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-10);
+  border-radius: var(--radius-8);
+  text-decoration: none;
+}
+
+/* Never wider than the box and never distorted: a wide logo is drawn smaller
+   rather than squeezed. */
+.sponsor-day__logo {
+  display: block;
+  block-size: 64px;
+  inline-size: auto;
+  max-inline-size: 100%;
+  object-fit: contain;
+}
+
+.sponsor-day__name {
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.sponsor-day__text {
+  margin: 0;
+}
+
+/* The strip of every sponsor, under both columns (PDL P24, owner 18.11.2026):
+   „Pločica za logo je 120×48 px, ista za sve sponzore, a logo je u njoj centriran
+   i nije izobličen."; „Na telefonu logoi idu u redove, a nepun poslednji red je
+   centriran."; „Kad je sponzora malo, stoje kao grupa na sredini trake, sa
+   razmakom kao da ih je više".
+
+   The rule is the draft's, in one declaration (`predlozi/sponzori-nacrt-desna-
+   kolona.html`, „Jedno pravilo" and „Zašto 72"): as many tiles to a row as fit
+   with at least 16px between them, but never more than there are sponsors, and
+   the space between them as wide as it takes for that row to fill the strip, but
+   never wider than 72px. Past 72 the row gathers in the middle with 72 between,
+   and every row after the first has the same space and stands in the middle, a
+   last one that is not full among them.
+
+   The width is the strip's own (a container), so the rule does not care what
+   stands beside it, and one pixel is left over so that a row which fills the
+   strip exactly is not broken into a row and a tile by a rounding. With a single
+   sponsor there is nothing to space: the division is by nought, which is
+   infinite, and the clamp makes it 72. */
+.sponsor-strip {
+  container-type: inline-size;
+  padding-top: var(--space-16);
+  border-top: 1px solid var(--border);
+}
+
+.sponsor-strip__row {
+  --across: min(var(--sponsors), round(down, (100cqi + var(--space-16)) / (120px + var(--space-16))));
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  column-gap: clamp(var(--space-16), (100cqi - 1px - var(--across) * 120px) / (var(--across) - 1), 72px);
+  row-gap: var(--space-16);
   list-style: none;
   margin: 0;
   padding: 0;
-  display: grid;
-  gap: var(--space-12);
 }
 
-.news__date {
-  display: block;
-  color: var(--text-muted);
-  font-size: 0.8rem;
-}
-
-.sponsor-strip {
+.sponsor-strip__tile {
   display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-16);
-  padding-top: var(--space-8);
-  border-top: 1px solid var(--border);
-  color: var(--text-muted);
+  align-items: center;
+  justify-content: center;
+  inline-size: 120px;
+  block-size: 48px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-6);
+  background: var(--surface);
+}
+
+.sponsor-strip__logo {
+  display: block;
+  max-inline-size: 100%;
+  max-block-size: 100%;
+  object-fit: contain;
 }
