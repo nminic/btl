@@ -1786,7 +1786,7 @@ class ResultWriteApiTest {
 		assertThat(stillThere(myResult)).isFalse();
 		assertThat(theLineInTheInboxOf(ME).get(0))
 				.as("the relay being down cost the league its record")
-				.isEqualTo("Vaš rezultat je obrisan");
+				.isEqualTo("Tvoj rezultat je obrisan");
 	}
 
 	/**
@@ -1828,7 +1828,7 @@ class ResultWriteApiTest {
 
 		MimeMessage arrived = theMessageThatWentOut();
 
-		assertThat(arrived.getSubject()).isEqualTo("Vaš rezultat je obrisan");
+		assertThat(arrived.getSubject()).isEqualTo("Tvoj rezultat je obrisan");
 		assertThat(theLineInTheInboxOf(ME)).containsExactly(arrived.getSubject(), asItWasWritten(arrived));
 	}
 

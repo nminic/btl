@@ -706,10 +706,10 @@ class MemberDataWriteApiTest {
 				+ " where a.competitor_id = ?", first)).isOne();
 
 		/* ONE MESSAGE, TO HIM, FROM THE LEAGUE, naming every datum and no value. */
-		assertThat(messages()).containsExactly(corrected + " Izmenjeni su vaši podaci");
+		assertThat(messages()).containsExactly(corrected + " Izmenjeni su tvoji podaci");
 		assertThat(db.sql("select coalesce(from_id::text, '-') || ' | ' || from_name || ' | ' || body from message")
 				.query(String.class).single())
-				.isEqualTo("- | Balkanska trkačka liga | Administracija lige je izmenila vaše podatke: ime, prezime,"
+				.isEqualTo("- | Balkanska trkačka liga | Administracija lige je izmenila tvoje podatke: ime, prezime,"
 						+ " ime oca, pol, datum rođenja, broj ličnog dokumenta, adresa elektronske pošte, adresa,"
 						+ " telefon, mesto, veličina majice.\n\nBalkanska trkačka liga");
 
@@ -733,7 +733,7 @@ class MemberDataWriteApiTest {
 		assertThat(corrected("000005", "{\"lastName\": \"Novic\", \"firstName\": \"Ispravljani\"}",
 				OVER_THE_MEMBERS).getStatus()).isEqualTo(200);
 		assertThat(db.sql("select body from message").query(String.class).single())
-				.startsWith("Administracija lige je izmenila vaše podatke: prezime.");
+				.startsWith("Administracija lige je izmenila tvoje podatke: prezime.");
 	}
 
 	/**

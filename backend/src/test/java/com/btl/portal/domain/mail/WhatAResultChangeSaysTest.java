@@ -191,13 +191,13 @@ class WhatAResultChangeSaysTest {
 			assertThat(WhatAResultChangeSays.approved(A_RUN, in).body())
 					.as("the message about an approval, in %s", in)
 					.isEqualTo(serbian
-							? lines("Vaš rezultat je verifikovan:", "", run, "", "Balkanska trkačka liga")
+							? lines("Tvoj rezultat je verifikovan:", "", run, "", "Balkanska trkačka liga")
 							: lines("Your result has been verified:", "", run, "", "Balkanska trkačka liga"));
 
 			assertThat(WhatAResultChangeSays.deleted(A_RUN, in).body())
 					.as("the message about a deletion, in %s", in)
 					.isEqualTo(serbian
-							? lines("Sa portala je obrisan vaš rezultat:", "", run, "", "Balkanska trkačka liga")
+							? lines("Sa portala je obrisan tvoj rezultat:", "", run, "", "Balkanska trkačka liga")
 							: lines("Your result has been deleted from the portal:", "", run, "", "Balkanska trkačka liga"));
 		}
 	}
@@ -220,17 +220,17 @@ class WhatAResultChangeSaysTest {
 
 			Said before = WhatAResultChangeSays.enteredBeforeTheLeague(A_RUN, in);
 
-			assertThat(before.subject()).isEqualTo(serbian ? "Unet vam je rezultat"
+			assertThat(before.subject()).isEqualTo(serbian ? "Unet ti je rezultat"
 					: "A result has been entered for you");
 			assertThat(before.body())
 					.as("the message about a run before the first season, in %s", in)
 					.isEqualTo(lines(
-							serbian ? "Liga vam je unela rezultat:" : "The league has entered a result for you:",
+							serbian ? "Liga ti je unela rezultat:" : "The league has entered a result for you:",
 							"",
 							run,
 							"",
 							serbian ? "Trka je održana pre prve zvanične sezone lige (2027). Rezultat je upisan"
-									+ " u vašu istoriju."
+									+ " u tvoju istoriju."
 									: "The race was run before the first official season of the league (2027)."
 									+ " The result is entered in your history.",
 							"",
@@ -238,12 +238,12 @@ class WhatAResultChangeSaysTest {
 
 			Said changed = WhatAResultChangeSays.changedByTheLeague(A_RUN, ANOTHER_RUN, in);
 
-			assertThat(changed.subject()).isEqualTo(serbian ? "Vaš rezultat je izmenjen"
+			assertThat(changed.subject()).isEqualTo(serbian ? "Tvoj rezultat je izmenjen"
 					: "Your result has been changed");
 			assertThat(changed.body())
 					.as("the message about a change the league made, in %s", in)
 					.isEqualTo(lines(
-							serbian ? "Liga je izmenila vaš rezultat." : "The league has changed your result.",
+							serbian ? "Liga je izmenila tvoj rezultat." : "The league has changed your result.",
 							"",
 							serbian ? "Stara vrednost:" : "Old value:",
 							run,
@@ -274,28 +274,28 @@ class WhatAResultChangeSaysTest {
 			String run = WhatAResultChangeSays.inWords(A_RUN, in);
 			boolean serbian = in == MailLanguage.SERBIAN;
 			String sentence = serbian
-					? "Rezultat je upisan u vašu istoriju. Tabela zamrznute sezone 2027 ostaje ista."
+					? "Rezultat je upisan u tvoju istoriju. Tabela zamrznute sezone 2027 ostaje ista."
 					: "The result is entered in your history. The table of the frozen season 2027 stays"
 					+ " the same.";
 
 			Said entered = WhatAResultChangeSays.enteredInAFrozenSeason(A_RUN, in);
 
-			assertThat(entered.subject()).isEqualTo(serbian ? "Unet vam je rezultat"
+			assertThat(entered.subject()).isEqualTo(serbian ? "Unet ti je rezultat"
 					: "A result has been entered for you");
 			assertThat(entered.body())
 					.as("the message about a run entered in a frozen season, in %s", in)
 					.isEqualTo(lines(
-							serbian ? "Liga vam je unela rezultat:" : "The league has entered a result for you:",
+							serbian ? "Liga ti je unela rezultat:" : "The league has entered a result for you:",
 							"", run, "", sentence, "", "Balkanska trkačka liga"));
 
 			Said approved = WhatAResultChangeSays.approvedInAFrozenSeason(A_RUN, in);
 
-			assertThat(approved.subject()).isEqualTo(serbian ? "Verifikovan vam je rezultat"
+			assertThat(approved.subject()).isEqualTo(serbian ? "Verifikovan ti je rezultat"
 					: "A result has been verified for you");
 			assertThat(approved.body())
 					.as("the message about a run approved in a frozen season, in %s", in)
 					.isEqualTo(lines(
-							serbian ? "Verifikovan vam je rezultat:"
+							serbian ? "Verifikovan ti je rezultat:"
 									: "A result has been verified for you:",
 							"", run, "", sentence, "", "Balkanska trkačka liga"));
 		}

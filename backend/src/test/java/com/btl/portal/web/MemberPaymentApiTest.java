@@ -92,7 +92,7 @@ class MemberPaymentApiTest {
 			+ " referral_code, referred_by, bio, profile_hidden, birthday_shown,"
 			+ " father_name, address, shirt_size, health_statement_at";
 
-	private static final String THE_SUBJECT = "Evidentirana je vaša uplata članarine";
+	private static final String THE_SUBJECT = "Evidentirana je tvoja uplata članarine";
 
 	@Autowired
 	private MockMvc http;
@@ -318,8 +318,8 @@ class MemberPaymentApiTest {
 		assertThat(messages()).containsExactly(renewing + " " + THE_SUBJECT);
 		assertThat(db.sql("select coalesce(from_id::text, '-') || ' | ' || from_name || ' | ' || body"
 						+ " from message").query(String.class).single())
-				.isEqualTo("- | Balkanska trkačka liga | Za sezonu 2028 evidentirana je vaša uplata članarine.\n"
-						+ "\nZa sezonu 2028 ste član lige.\n"
+				.isEqualTo("- | Balkanska trkačka liga | Za sezonu 2028 evidentirana je tvoja uplata članarine.\n"
+						+ "\nZa sezonu 2028 si član lige.\n"
 						+ "\nBalkanska trkačka liga");
 
 		verifyNoInteractions(postman);

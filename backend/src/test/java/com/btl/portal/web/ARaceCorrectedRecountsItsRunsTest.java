@@ -186,7 +186,7 @@ class ARaceCorrectedRecountsItsRunsTest {
 	private static final LocalDate A_MARATHON_OF_2015 = LocalDate.parse("2015-04-19");
 
 	/** What a line in the inbox about a run counted again is called. */
-	private static final String RECOUNTED = "Vaš rezultat je preračunat";
+	private static final String RECOUNTED = "Tvoj rezultat je preračunat";
 
 	/** What a line about a run of a season that has frozen ends with (PDL P4, owner, 15.11.2026, decision
 	 *  (c) of the answers on PR 739), in the words of {@code resultEnteredInAFrozenSeason}. The sentence

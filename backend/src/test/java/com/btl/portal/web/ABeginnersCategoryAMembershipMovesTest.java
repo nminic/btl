@@ -105,12 +105,12 @@ class ABeginnersCategoryAMembershipMovesTest {
 
 	private static final String CLOSED = "Početnička kategorija vam je zatvorena";
 
-	private static final String REOPENED = "Početnička kategorija vam je ponovo otvorena";
+	private static final String REOPENED = "Početnička kategorija ti je ponovo otvorena";
 
 	private static final String CLOSED_2027 = "Početnička kategorija vam je zatvorena za sezonu 2028,"
 			+ " jer ste u sezoni 2027 prešli prag od 12 bodova.\n\nBalkanska trkačka liga";
 
-	private static final String REOPENED_2027 = "Početnička kategorija vam je ponovo otvorena za sezonu"
+	private static final String REOPENED_2027 = "Početnička kategorija ti je ponovo otvorena za sezonu"
 			+ " 2028, jer je članstvo za sezonu 2027 poništeno.\n\nBalkanska trkačka liga";
 
 	private static final String A_TOWN_ABROAD = "(select id from place where rank = 1)";

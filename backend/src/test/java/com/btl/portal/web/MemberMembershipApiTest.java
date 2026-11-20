@@ -102,9 +102,9 @@ class MemberMembershipApiTest {
 			+ " referral_code, referred_by, bio, profile_hidden, birthday_shown,"
 			+ " father_name, address, shirt_size, health_statement_at";
 
-	private static final String CANCELLED = "Stornirano je vaše članstvo";
+	private static final String CANCELLED = "Stornirano je tvoje članstvo";
 
-	private static final String CHANGED = "Promenjen je osnov vašeg članstva";
+	private static final String CHANGED = "Promenjen je osnov tvog članstva";
 
 	@Autowired
 	private MockMvc http;
@@ -407,7 +407,7 @@ class MemberMembershipApiTest {
 				+ " Mira Clanovic");
 		assertThat(messages()).containsExactly(member + " " + CANCELLED);
 		assertThat(db.sql("select body from message").query(String.class).single())
-				.isEqualTo("Za sezonu 2028 stornirano je vaše članstvo.\n\nZa sezonu 2028 više niste član lige.\n"
+				.isEqualTo("Za sezonu 2028 stornirano je tvoje članstvo.\n\nZa sezonu 2028 više nisi član lige.\n"
 						+ "\nBalkanska trkačka liga");
 
 		verifyNoInteractions(postman);
@@ -713,7 +713,7 @@ class MemberMembershipApiTest {
 				+ accountOf(OVER_THE_MEMBERS) + " Mira Clanovic");
 		assertThat(messages()).containsExactly(member + " " + CHANGED);
 		assertThat(db.sql("select body from message").query(String.class).single())
-				.contains("osnov vašeg članstva je sada: oslobođenje od članarine.");
+				.contains("osnov tvog članstva je sada: oslobođenje od članarine.");
 	}
 
 	@Test
@@ -822,7 +822,7 @@ class MemberMembershipApiTest {
 				+ accountOf(OVER_THE_MEMBERS) + " Mira Clanovic");
 		assertThat(messages()).containsExactly(member + " " + CHANGED);
 		assertThat(db.sql("select body from message").query(String.class).single())
-				.contains("osnov vašeg članstva je sada: uplata.");
+				.contains("osnov tvog članstva je sada: uplata.");
 	}
 
 	/** What the payments screen refuses about a payment, refused here in its words, with nothing moved. */

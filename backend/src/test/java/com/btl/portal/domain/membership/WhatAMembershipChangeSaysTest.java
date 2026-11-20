@@ -73,22 +73,22 @@ class WhatAMembershipChangeSaysTest {
 	@Test
 	void whatEachOfThemSays() {
 		assertThat(WhatAMembershipChangeSays.paymentRecorded(SEASON)).isEqualTo(new Said(
-				"Evidentirana je vaša uplata članarine",
-				"Za sezonu 2028 evidentirana je vaša uplata članarine.\n\n"
-						+ "Za sezonu 2028 ste član lige.\n\n"
+				"Evidentirana je tvoja uplata članarine",
+				"Za sezonu 2028 evidentirana je tvoja uplata članarine.\n\n"
+						+ "Za sezonu 2028 si član lige.\n\n"
 						+ "Balkanska trkačka liga"));
 
 		assertThat(WhatAMembershipChangeSays.basisChanged(SEASON, Basis.FEE_EXEMPT)).isEqualTo(new Said(
-				"Promenjen je osnov vašeg članstva",
-				"Za sezonu 2028 promenjen je osnov vašeg članstva.\n\n"
-						+ "Za sezonu 2028 ste i dalje član lige, a osnov vašeg članstva je sada:"
+				"Promenjen je osnov tvog članstva",
+				"Za sezonu 2028 promenjen je osnov tvog članstva.\n\n"
+						+ "Za sezonu 2028 si i dalje član lige, a osnov tvog članstva je sada:"
 						+ " oslobođenje od članarine.\n\n"
 						+ "Balkanska trkačka liga"));
 
 		assertThat(WhatAMembershipChangeSays.cancelled(SEASON)).isEqualTo(new Said(
-				"Stornirano je vaše članstvo",
-				"Za sezonu 2028 stornirano je vaše članstvo.\n\n"
-						+ "Za sezonu 2028 više niste član lige.\n\n"
+				"Stornirano je tvoje članstvo",
+				"Za sezonu 2028 stornirano je tvoje članstvo.\n\n"
+						+ "Za sezonu 2028 više nisi član lige.\n\n"
 						+ "Balkanska trkačka liga"));
 
 		assertThat(WhatAMembershipChangeSays.beginnersCategoryMoved(false, SEASON, 2029)).isEqualTo(new Said(
@@ -98,8 +98,8 @@ class WhatAMembershipChangeSaysTest {
 						+ "Balkanska trkačka liga"));
 
 		assertThat(WhatAMembershipChangeSays.beginnersCategoryMoved(true, SEASON, 2029)).isEqualTo(new Said(
-				"Početnička kategorija vam je ponovo otvorena",
-				"Početnička kategorija vam je ponovo otvorena za sezonu 2029, jer je članstvo za sezonu 2028"
+				"Početnička kategorija ti je ponovo otvorena",
+				"Početnička kategorija ti je ponovo otvorena za sezonu 2029, jer je članstvo za sezonu 2028"
 						+ " poništeno.\n\n"
 						+ "Balkanska trkačka liga"));
 

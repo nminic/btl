@@ -28,15 +28,15 @@ class WhatAProfileChangeSaysTest {
 		Said picture = WhatAProfileChangeSays.about(Change.PICTURE);
 		Said words = WhatAProfileChangeSays.about(Change.WORDS);
 
-		assertThat(picture.subject()).isEqualTo("Promenjena je vaša profilna slika");
+		assertThat(picture.subject()).isEqualTo("Promenjena je tvoja profilna slika");
 		assertThat(picture.body()).isEqualTo("Administracija lige je promenila vašu profilnu sliku. Nova slika već"
-				+ " stoji na vašem profilu.\n\nBalkanska trkačka liga");
+				+ " stoji na tvom profilu.\n\nBalkanska trkačka liga");
 		assertThat(WhatAProfileChangeSays.about(Change.PICTURE_REMOVED).body()).isEqualTo("Administracija lige je"
-				+ " uklonila vašu profilnu sliku. Novu možete da pošaljete na kartici Podaci svog profila.\n\n"
+				+ " uklonila tvoju profilnu sliku. Novu možeš da pošalješ na kartici Podaci svog profila.\n\n"
 				+ "Balkanska trkačka liga");
-		assertThat(words.subject()).isEqualTo("Promenjen je vaš tekst o sebi");
-		assertThat(words.body()).isEqualTo("Administracija lige je promenila vaš tekst o sebi. Promena već stoji"
-				+ " na vašem profilu.\n\nBalkanska trkačka liga");
+		assertThat(words.subject()).isEqualTo("Promenjen je tvoj tekst o sebi");
+		assertThat(words.body()).isEqualTo("Administracija lige je promenila tvoj tekst o sebi. Promena već stoji"
+				+ " na tvom profilu.\n\nBalkanska trkačka liga");
 	}
 
 	@Test

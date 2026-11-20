@@ -548,13 +548,13 @@ class ResultsByTheLeagueApiTest {
 		assertThat(entered(RESULTS_MODERATOR, theTen, rows(row(ANA, null, null, null, AN_HOUR)))
 				.getStatus()).isEqualTo(201);
 
-		assertThat(subjectsTo(ANA)).containsExactly("Vaš rezultat je verifikovan",
+		assertThat(subjectsTo(ANA)).containsExactly("Tvoj rezultat je verifikovan",
 				"Početnička kategorija vam je zatvorena");
 		assertThat(nobodyElseWasWrittenTo(ANA)).isTrue();
 
 		MimeMessage letter = theOneLetterTo(ANAS_ADDRESS);
 
-		assertThat(letter.getSubject()).isEqualTo("Vaš rezultat je verifikovan");
+		assertThat(letter.getSubject()).isEqualTo("Tvoj rezultat je verifikovan");
 		assertThat(envelope()).containsExactlyInAnyOrder(ANAS_ADDRESS, theLeague);
 		assertThat(bodiesTo(ANA).get(0)).isEqualTo(letter.getContent().toString()
 				.replace("\r\n", "\n").strip());
@@ -594,7 +594,7 @@ class ResultsByTheLeagueApiTest {
 
 		entered(RESULTS_MODERATOR, theHill, rows(row(ANA, "1.00", 0, 0, AN_HOUR)));
 
-		assertThat(theOneLetterTo(ANAS_ADDRESS).getSubject()).isEqualTo("Vaš rezultat je verifikovan");
+		assertThat(theOneLetterTo(ANAS_ADDRESS).getSubject()).isEqualTo("Tvoj rezultat je verifikovan");
 	}
 
 	/**
@@ -607,7 +607,7 @@ class ResultsByTheLeagueApiTest {
 		assertThat(entered(RESULTS_MODERATOR, theOldRace, rows(row(ANA, null, null, null, 4000)))
 				.getStatus()).isEqualTo(201);
 
-		assertThat(subjectsTo(ANA)).containsExactly("Unet vam je rezultat");
+		assertThat(subjectsTo(ANA)).containsExactly("Unet ti je rezultat");
 		assertThat(bodiesTo(ANA).get(0)).contains("pre prve zvanične sezone lige (2027)")
 				.doesNotContain("Za godinu");
 		assertThat(envelope()).containsExactlyInAnyOrder(ANAS_ADDRESS, theLeague);
@@ -619,7 +619,7 @@ class ResultsByTheLeagueApiTest {
 		assertThat(entered(RESULTS_MODERATOR, theTen, rows(row(VERA, null, null, null, AN_HOUR)))
 				.getStatus()).isEqualTo(201);
 
-		assertThat(subjectsTo(VERA)).containsExactly("Vaš rezultat je verifikovan");
+		assertThat(subjectsTo(VERA)).containsExactly("Tvoj rezultat je verifikovan");
 		assertThat(SMTP.getReceivedMessages()).isEmpty();
 	}
 
@@ -637,7 +637,7 @@ class ResultsByTheLeagueApiTest {
 
 		theOneLetterTo(MIRAS_ADDRESS);
 		assertThat(envelope()).containsExactlyInAnyOrder(MIRAS_ADDRESS, theLeague);
-		assertThat(subjectsTo(MIRA)).containsExactly("Vaš rezultat je verifikovan");
+		assertThat(subjectsTo(MIRA)).containsExactly("Tvoj rezultat je verifikovan");
 	}
 
 	@Test
@@ -647,7 +647,7 @@ class ResultsByTheLeagueApiTest {
 		assertThat(entered(RESULTS_MODERATOR, theTen, rows(row(ANA, null, null, null, AN_HOUR)))
 				.getStatus()).isEqualTo(201);
 		assertThat(resultsOf(ANA)).hasSize(1);
-		assertThat(subjectsTo(ANA)).contains("Vaš rezultat je verifikovan");
+		assertThat(subjectsTo(ANA)).contains("Tvoj rezultat je verifikovan");
 	}
 
 	/* ===================================================================== the running season */
@@ -709,7 +709,7 @@ class ResultsByTheLeagueApiTest {
 
 		assertThat(entered(RESULTS_MODERATOR, theNextYearsRace, rows(row(DRAGAN, null, null, null,
 			AN_HOUR))).getStatus()).isEqualTo(201);
-		assertThat(subjectsTo(DRAGAN)).containsExactly("Vaš rezultat je verifikovan");
+		assertThat(subjectsTo(DRAGAN)).containsExactly("Tvoj rezultat je verifikovan");
 	}
 
 	/**
@@ -796,7 +796,7 @@ class ResultsByTheLeagueApiTest {
 
 		assertThat(entered(RESULTS_MODERATOR, theHill, rows(row(DRAGAN, "12.00", 300, 250, 5000)))
 			.getStatus()).as("the second 2027 freezes it asks nothing").isEqualTo(201);
-		assertThat(subjectsTo(DRAGAN)).contains("Unet vam je rezultat");
+		assertThat(subjectsTo(DRAGAN)).contains("Unet ti je rezultat");
 	}
 
 	/**
@@ -832,11 +832,11 @@ class ResultsByTheLeagueApiTest {
 			row(DRAGAN, null, null, null, AN_HOUR),
 			row(BOJAN, null, null, null, AN_HOUR))).getStatus()).isEqualTo(201);
 
-		String sentence = "Rezultat je upisan u vašu istoriju. Tabela zamrznute sezone 2027 ostaje ista.";
+		String sentence = "Rezultat je upisan u tvoju istoriju. Tabela zamrznute sezone 2027 ostaje ista.";
 
 		for (String serbian : List.of(ANA, DRAGAN)) {
-			assertThat(subjectsTo(serbian)).containsExactly("Unet vam je rezultat");
-			assertThat(bodiesTo(serbian).get(0)).startsWith("Liga vam je unela rezultat:")
+			assertThat(subjectsTo(serbian)).containsExactly("Unet ti je rezultat");
+			assertThat(bodiesTo(serbian).get(0)).startsWith("Liga ti je unela rezultat:")
 				.contains(sentence).doesNotContain("ulazi u").doesNotContain("Za godinu");
 		}
 
@@ -859,13 +859,13 @@ class ResultsByTheLeagueApiTest {
 
 		assertThat(entered(RESULTS_MODERATOR, theTen, rows(row(VERA, null, null, null, AN_HOUR)))
 			.getStatus()).isEqualTo(201);
-		assertThat(subjectsTo(VERA).get(0)).isEqualTo("Vaš rezultat je verifikovan");
+		assertThat(subjectsTo(VERA).get(0)).isEqualTo("Tvoj rezultat je verifikovan");
 
 		clock.moveTo(THE_SECOND_OF_THE_FREEZE);
 
 		assertThat(entered(RESULTS_MODERATOR, theTen, rows(row(ANA, null, null, null, AN_HOUR)))
 			.getStatus()).isEqualTo(201);
-		assertThat(subjectsTo(ANA)).containsExactly("Unet vam je rezultat");
+		assertThat(subjectsTo(ANA)).containsExactly("Unet ti je rezultat");
 		assertThat(bodiesTo(ANA).get(0)).contains("Tabela zamrznute sezone 2027 ostaje ista");
 	}
 
@@ -879,7 +879,7 @@ class ResultsByTheLeagueApiTest {
 
 		assertThat(entered(RESULTS_MODERATOR, theTen, rows(row(ANA, null, null, null, AN_HOUR)))
 			.getStatus()).isEqualTo(201);
-		assertThat(subjectsTo(ANA)).contains("Vaš rezultat je verifikovan").doesNotContain("Unet vam je rezultat");
+		assertThat(subjectsTo(ANA)).contains("Tvoj rezultat je verifikovan").doesNotContain("Unet ti je rezultat");
 		assertThat(bodiesTo(ANA)).noneMatch(body -> body.contains("zamrznuta"));
 	}
 
@@ -903,9 +903,9 @@ class ResultsByTheLeagueApiTest {
 
 		String body = bodiesTo(ANA).get(0);
 
-		assertThat(subjectsTo(ANA).get(0)).isEqualTo("Vaš rezultat je izmenjen");
+		assertThat(subjectsTo(ANA).get(0)).isEqualTo("Tvoj rezultat je izmenjen");
 		assertThat(body.indexOf("12,00 km")).isGreaterThan(0).isLessThan(body.indexOf("11,50 km"));
-		assertThat(theOneLetterTo(ANAS_ADDRESS).getSubject()).isEqualTo("Vaš rezultat je izmenjen");
+		assertThat(theOneLetterTo(ANAS_ADDRESS).getSubject()).isEqualTo("Tvoj rezultat je izmenjen");
 		assertThat(envelope()).containsExactlyInAnyOrder(ANAS_ADDRESS, theLeague);
 	}
 
@@ -1017,8 +1017,8 @@ class ResultsByTheLeagueApiTest {
 				row(ANA, null, null, null, AN_HOUR)));
 
 		assertThat(answer.getStatus()).isEqualTo(201);
-		assertThat(subjectsTo(VERA)).containsExactly("Vaš rezultat je verifikovan");
-		assertThat(subjectsTo(ANA)).containsExactly("Vaš rezultat je verifikovan",
+		assertThat(subjectsTo(VERA)).containsExactly("Tvoj rezultat je verifikovan");
+		assertThat(subjectsTo(ANA)).containsExactly("Tvoj rezultat je verifikovan",
 				"Početnička kategorija vam je zatvorena");
 		assertThat(bodiesTo(ANA).get(1)).isEqualTo("Liga vam je unela rezultat sa trke Desetka od"
 				+ " 08.05.2027. Time ste u zvaničnoj sezoni prešli prag od 12 bodova, pa vam je"
@@ -1041,7 +1041,7 @@ class ResultsByTheLeagueApiTest {
 
 		changed(RESULTS_MODERATOR, theTen, anas, figuresBody(null, null, null, AN_HOUR));
 
-		assertThat(subjectsTo(ANA)).containsExactly("Vaš rezultat je izmenjen",
+		assertThat(subjectsTo(ANA)).containsExactly("Tvoj rezultat je izmenjen",
 				"Početnička kategorija vam je zatvorena");
 		assertThat(bodiesTo(ANA).get(1)).contains("izmenila rezultat");
 
@@ -1060,15 +1060,15 @@ class ResultsByTheLeagueApiTest {
 
 		assertThat(entered(RESULTS_MODERATOR, theTen, rows(row(ANA, null, null, null, AN_HOUR)))
 				.getStatus()).isEqualTo(201);
-		assertThat(subjectsTo(ANA)).containsExactly("Unet vam je rezultat");
+		assertThat(subjectsTo(ANA)).containsExactly("Unet ti je rezultat");
 
 		long anas = resultsOfIds(ANA).get(1);
 
 		changed(RESULTS_MODERATOR, theTen, anas, figuresBody(null, null, null, 7200));
 		removed(RESULTS_MODERATOR, theTen, anas);
 
-		assertThat(subjectsTo(ANA)).containsExactly("Unet vam je rezultat",
-				"Vaš rezultat je izmenjen", "Vaš rezultat je obrisan");
+		assertThat(subjectsTo(ANA)).containsExactly("Unet ti je rezultat",
+				"Tvoj rezultat je izmenjen", "Tvoj rezultat je obrisan");
 	}
 
 	/* ============================================ „Unos rezultata za događaj”: one save of all three */
@@ -1785,7 +1785,7 @@ class ResultsByTheLeagueApiTest {
 
 		assertThat(db.sql("select date from btl_event where id = ?").param(theEvent).query(LocalDate.class)
 				.single()).isEqualTo(LocalDate.of(2015, 6, 6));
-		assertThat(subjectsTo(VERA)).containsExactly("Unet vam je rezultat");
+		assertThat(subjectsTo(VERA)).containsExactly("Unet ti je rezultat");
 		assertThat(bodiesTo(VERA).get(0)).contains("pre prve zvanične sezone lige (2027)");
 		assertThat(resultsOf(VERA)).hasSize(1);
 
@@ -1795,8 +1795,8 @@ class ResultsByTheLeagueApiTest {
 		assertThat(onAnEvent(RESULTS_MODERATOR, onTheEvent(theEvent, "{\"id\":" + theFirstRace + "}",
 				row(DRAGAN, "5.00", 1, 1, AN_HOUR))).getStatus()).as("a race of the calendar").isEqualTo(201);
 		assertThat(subjectsTo(ANA)).as("only the line of this entry, none about a category")
-				.containsExactly("Unet vam je rezultat");
-		assertThat(subjectsTo(DRAGAN)).containsExactly("Unet vam je rezultat");
+				.containsExactly("Unet ti je rezultat");
+		assertThat(subjectsTo(DRAGAN)).containsExactly("Unet ti je rezultat");
 
 		int races = howMany("race");
 		MockHttpServletResponse ofAnotherYear = onAnEvent(RESULTS_MODERATOR, onTheEvent(theEvent,
@@ -1825,7 +1825,7 @@ class ResultsByTheLeagueApiTest {
 				row(DRAGAN, "12.00", 300, 250, 5000))).getStatus()).isEqualTo(201);
 
 		for (String who : List.of(ANA, DRAGAN)) {
-			assertThat(subjectsTo(who)).containsExactly("Unet vam je rezultat");
+			assertThat(subjectsTo(who)).containsExactly("Unet ti je rezultat");
 			assertThat(bodiesTo(who).get(0)).contains("Tabela zamrznute sezone 2027 ostaje ista").doesNotContain("Za godinu");
 		}
 	}

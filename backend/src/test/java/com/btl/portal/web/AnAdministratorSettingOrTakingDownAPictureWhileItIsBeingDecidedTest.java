@@ -80,7 +80,7 @@ class AnAdministratorSettingOrTakingDownAPictureWhileItIsBeingDecidedTest {
 
 	private static final String THE_ADMINISTRATOR = "odlucuje-slika-administracija@primer.rs";
 
-	private static final String THE_REMOVAL_SUBJECT = "Uklonjena je vaša profilna slika";
+	private static final String THE_REMOVAL_SUBJECT = "Uklonjena je tvoja profilna slika";
 
 	private static final Path PHOTOS = aFolderOfThisRunsOwn();
 

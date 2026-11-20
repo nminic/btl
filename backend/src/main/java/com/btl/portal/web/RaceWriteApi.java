@@ -772,10 +772,10 @@ class RaceWriteApi {
 	 * here is my proposal and awaits his word.
 	 */
 	private void tellHimHisRunWasCountedAgain(long member, Run was, Run is, boolean inAFrozenSeason) {
-		tell(member, "Vaš rezultat je preračunat",
+		tell(member, "Tvoj rezultat je preračunat",
 				"Ispravljene su mere trke " + is.raceName() + " od "
 						+ WhatAResultChangeSays.asADay(is.day())
-						+ ", pa je vaš rezultat sa nje ponovo bodovan.\n\nStara vrednost:\n"
+						+ ", pa je tvoj rezultat sa nje ponovo bodovan.\n\nStara vrednost:\n"
 						+ WhatAResultChangeSays.inWords(was) + "\n\nNova vrednost:\n"
 						+ WhatAResultChangeSays.inWords(is) + (inAFrozenSeason
 								? "\n\nTabela zamrznute sezone " + is.day().getYear() + " ostaje ista."

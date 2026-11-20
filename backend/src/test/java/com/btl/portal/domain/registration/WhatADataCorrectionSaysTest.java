@@ -40,8 +40,8 @@ class WhatADataCorrectionSaysTest {
 	void whatItSays() {
 		Said said = WhatADataCorrectionSays.corrected(List.of(Field.BIRTH_DATE, Field.GENDER));
 
-		assertThat(said.subject()).isEqualTo("Izmenjeni su vaši podaci");
-		assertThat(said.body()).isEqualTo("Administracija lige je izmenila vaše podatke: pol, datum rođenja.\n"
+		assertThat(said.subject()).isEqualTo("Izmenjeni su tvoji podaci");
+		assertThat(said.body()).isEqualTo("Administracija lige je izmenila tvoje podatke: pol, datum rođenja.\n"
 				+ "\nBalkanska trkačka liga");
 	}
 
@@ -51,7 +51,7 @@ class WhatADataCorrectionSaysTest {
 		Said said = WhatADataCorrectionSays.corrected(
 				List.of(Field.SHIRT_SIZE, Field.FIRST_NAME, Field.TOWN, Field.FIRST_NAME));
 
-		assertThat(said.body()).startsWith("Administracija lige je izmenila vaše podatke: ime, mesto, veličina majice.");
+		assertThat(said.body()).startsWith("Administracija lige je izmenila tvoje podatke: ime, mesto, veličina majice.");
 	}
 
 	@Test

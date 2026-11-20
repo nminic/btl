@@ -2623,7 +2623,7 @@ class VerificationWriteApi {
 				.update();
 
 		tell(proposal.competitorId(), "Tim je prihvaćen",
-				"Vaš tim \"" + proposal.name() + "\" je prihvaćen i od sada ga vodite.");
+				"Tvoj tim \"" + proposal.name() + "\" je prihvaćen i od sada ga vodiš.");
 
 		/* AND THE TEAMS THAT HAD ALREADY ASKED HIM ARE TOLD, because the approval is the third door a
 		   member goes into a team by. PDL 06.09.2026: „Tim čiji je poziv ostao neodgovoren dobija poruku
