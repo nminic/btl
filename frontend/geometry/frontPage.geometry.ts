@@ -318,6 +318,10 @@ for (const at of WIDTHS) {
         expect(place.lines, `a name is not in one line each: ${place.who}`).toEqual([1, 1])
         expect(place.last.top, 'the surname is not under the first name').toBeGreaterThan(place.first.top)
 
+        for (const wider of place.wider) {
+          expect(wider, `a name is wider than its column: ${place.who}`).toBeLessThanOrEqual(SAME)
+        }
+
         for (const font of place.fonts) {
           expect(font, `a name is set under the floor: ${place.who}`).toBeGreaterThanOrEqual(10.4 - 0.1)
         }
