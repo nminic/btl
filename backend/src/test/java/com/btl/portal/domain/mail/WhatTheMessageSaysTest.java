@@ -10,6 +10,7 @@ import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -37,9 +38,17 @@ class WhatTheMessageSaysTest {
 	 * Serbian whatever {@code in} says.
 	 */
 	private static Said said(Message message, MailLanguage in) {
+		if (message.saysWhenItEnds()) {
+			return WhatTheMessageSays.about(message, in, PORTAL, TOKEN, THE_LINK_ENDS);
+		}
+
 		return message.followsTheReader() ? WhatTheMessageSays.about(message, in, PORTAL, TOKEN)
 				: WhatTheMessageSays.about(message, PORTAL, TOKEN);
 	}
+
+	/** 12:00 UTC, which is 13:00 in Belgrade in December, on a day that is neither today nor any
+	 *  day a case could mistake for it. */
+	private static final Instant THE_LINK_ENDS = Instant.parse("2026-12-17T12:00:00Z");
 
 	/** The languages a message is really written in: both for one that follows its reader,
 	 *  Serbian alone for an invitation. */
@@ -90,13 +99,13 @@ class WhatTheMessageSaysTest {
 		String tail = "Balkanska trkačka liga";
 
 		assertThat(WhatTheMessageSays.about(Message.CONFIRM_THE_ADDRESS, MailLanguage.SERBIAN, PORTAL,
-				TOKEN).body()).isEqualTo(String.join("\n",
+				TOKEN, THE_LINK_ENDS).body()).isEqualTo(String.join("\n",
 				"Dobrodošli u Balkansku trkačku ligu.",
 				"",
 				"Adresu potvrđujete otvaranjem ovog linka:",
 				linkOf(Message.CONFIRM_THE_ADDRESS, MailLanguage.SERBIAN),
 				"",
-				"Link važi sedam dana. Posle toga se nepotvrđena prijava briše, a sa ove adrese možete da se"
+				"Link važi do 17.12.2026. 13:00. Posle toga se nepotvrđena prijava briše, a sa ove adrese možete da se"
 						+ " registrujete ponovo.",
 				"",
 				"Ako se niste registrovali kod nas, zanemarite ovu poruku.",
@@ -143,13 +152,13 @@ class WhatTheMessageSaysTest {
 				tail));
 
 		assertThat(WhatTheMessageSays.about(Message.CONFIRM_THE_ADDRESS, MailLanguage.ENGLISH, PORTAL,
-				TOKEN).body()).isEqualTo(String.join("\n",
+				TOKEN, THE_LINK_ENDS).body()).isEqualTo(String.join("\n",
 				"Welcome to BTL.",
 				"",
 				"You confirm the address by opening this link:",
 				linkOf(Message.CONFIRM_THE_ADDRESS, MailLanguage.ENGLISH),
 				"",
-				"The link is valid for seven days. After that the unconfirmed registration is deleted, and you"
+				"The link is valid until 17 December 2026 at 13:00. After that the unconfirmed registration is deleted, and you"
 						+ " can register again from this address.",
 				"",
 				"If you did not register with us, ignore this message.",
@@ -362,9 +371,14 @@ class WhatTheMessageSaysTest {
 	@EnumSource(Message.class)
 	void howLongTheLinkLastsReachesTheMember(Message message) {
 		for (MailLanguage in : languagesOf(message)) {
+			/* THE MESSAGE THAT SAYS WHEN ITS LINK ENDS says the moment it was handed, not a length. */
+			String whatItSays = message.saysWhenItEnds()
+					? WhatANoticeSays.moment(THE_LINK_ENDS, in)
+					: WhatTheMessageSays.howLong(message.lasts(), in);
+
 			assertThat(said(message, in).body())
 					.as("%s in %s never told the member how long he has", message, in)
-					.contains(WhatTheMessageSays.howLong(message.lasts(), in));
+					.contains(whatItSays);
 		}
 	}
 
@@ -473,6 +487,23 @@ class WhatTheMessageSaysTest {
 	}
 
 	@Test
+	void aMessageThatSaysWhenItEndsIsNeverAskedForWithoutTheMomentAndTheOthersNeverWithOne() {
+		/* THE CONFIRMATION IS THE ONE THAT SAYS A MOMENT (PDL 24.10.2026, „Rok nepotvrđene prijave"): asked
+		   for with nothing, it would print a length that is true of the first letter and not of the
+		   one asked for on the tenth day. */
+		assertThat(Arrays.stream(Message.values()).filter(Message::saysWhenItEnds))
+				.containsExactly(Message.CONFIRM_THE_ADDRESS);
+		assertThatThrownBy(() -> WhatTheMessageSays.about(Message.CONFIRM_THE_ADDRESS, MailLanguage.SERBIAN,
+				PORTAL, TOKEN)).isInstanceOf(IllegalArgumentException.class)
+				.hasMessageContaining("says the moment its link ends");
+
+		/* AND A MESSAGE THAT SAYS A LENGTH IS NOT HANDED A MOMENT it would have no place for. */
+		assertThatThrownBy(() -> WhatTheMessageSays.about(Message.SET_A_NEW_PASSWORD, MailLanguage.SERBIAN,
+				PORTAL, TOKEN, THE_LINK_ENDS)).isInstanceOf(IllegalArgumentException.class)
+				.hasMessageContaining("says how long its link lasts");
+	}
+
+	@Test
 	void nothingMissingIsQuietlyAccepted() {
 		assertThatThrownBy(() -> new Portal(null))
 				.isInstanceOf(NullPointerException.class).hasMessage("address");
@@ -483,12 +514,15 @@ class WhatTheMessageSaysTest {
 		assertThatThrownBy(() -> WhatTheMessageSays.about(Message.CONFIRM_THE_ADDRESS, null, PORTAL,
 				TOKEN)).isInstanceOf(NullPointerException.class).hasMessage("reader");
 		assertThatThrownBy(() -> WhatTheMessageSays.about(Message.CONFIRM_THE_ADDRESS,
-				MailLanguage.SERBIAN, null, TOKEN))
+				MailLanguage.SERBIAN, null, TOKEN, THE_LINK_ENDS))
 				.isInstanceOf(NullPointerException.class).hasMessage("portal");
+		assertThatThrownBy(() -> WhatTheMessageSays.about(Message.CONFIRM_THE_ADDRESS,
+				MailLanguage.SERBIAN, PORTAL, TOKEN, null))
+				.isInstanceOf(NullPointerException.class).hasMessage("endsAt");
 		assertThatThrownBy(() -> WhatTheMessageSays.about(Message.INVITED_AS_A_MEMBER, null, TOKEN))
 				.isInstanceOf(NullPointerException.class).hasMessage("portal");
 		assertThatThrownBy(() -> WhatTheMessageSays.about(Message.CONFIRM_THE_ADDRESS,
-				MailLanguage.SERBIAN, PORTAL, null))
+				MailLanguage.SERBIAN, PORTAL, null, THE_LINK_ENDS))
 				.isInstanceOf(NullPointerException.class).hasMessage("token");
 	}
 

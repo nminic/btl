@@ -2,6 +2,7 @@ package com.btl.portal.domain.mail;
 
 import java.text.MessageFormat;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.ResourceBundle;
@@ -210,7 +211,7 @@ public final class WhatTheMessageSays {
 	 */
 	public enum Message {
 
-		CONFIRM_THE_ADDRESS("confirmTheAddress", "/potvrda-adrese", Duration.ofDays(7), true),
+		CONFIRM_THE_ADDRESS("confirmTheAddress", "/potvrda-adrese", Duration.ofDays(7), true, true),
 
 		SET_A_NEW_PASSWORD("setANewPassword", "/nova-lozinka", Duration.ofHours(1), true),
 
@@ -263,11 +264,34 @@ public final class WhatTheMessageSays {
 
 		private final boolean followsTheReader;
 
+		private final boolean saysWhenItEnds;
+
 		Message(String key, String path, Duration lasts, boolean followsTheReader) {
+			this(key, path, lasts, followsTheReader, false);
+		}
+
+		Message(String key, String path, Duration lasts, boolean followsTheReader,
+				boolean saysWhenItEnds) {
 			this.key = key;
 			this.path = path;
 			this.lasts = lasts;
 			this.followsTheReader = followsTheReader;
+			this.saysWhenItEnds = saysWhenItEnds;
+		}
+
+		/**
+		 * Whether the message says the MOMENT its link ends, „do 27.11.2026. 14:35", and not how long
+		 * it lasts, „sedam dana".
+		 *
+		 * <p>True for the confirmation of an address and for nothing else. Its link lasts seven days
+		 * from the sending but no longer than fourteen from the registration (PDL 24.10.2026, „Rok
+		 * nepotvrđene prijave"), so „sedam dana" is true of the first letter and untrue of the one asked
+		 * for on the tenth day; only the moment is true of both, and it is worked out by
+		 * {@code web.TheMomentAConfirmationLinkEnds} and handed here, never worked out from
+		 * {@link #lasts}. The others end a fixed time after they are written, and say how long.
+		 */
+		public boolean saysWhenItEnds() {
+			return saysWhenItEnds;
 		}
 
 		/**
@@ -314,7 +338,8 @@ public final class WhatTheMessageSays {
 					+ " so it is asked for with one");
 		}
 
-		return written(message, MailLanguage.SERBIAN, portal, token);
+		return written(message, MailLanguage.SERBIAN, portal, token,
+				howLong(message.lasts(), MailLanguage.SERBIAN));
 	}
 
 	/**
@@ -335,10 +360,42 @@ public final class WhatTheMessageSays {
 					+ " 10.10.2026), so it is not asked for in a language");
 		}
 
-		return written(message, reader, portal, token);
+		if (message.saysWhenItEnds()) {
+			throw new IllegalArgumentException(message + " says the moment its link ends, so it is asked"
+					+ " for with one");
+		}
+
+		return written(message, reader, portal, token, howLong(message.lasts(), reader));
 	}
 
-	private static Said written(Message message, MailLanguage in, Portal portal, String token) {
+	/**
+	 * A MESSAGE THAT SAYS THE MOMENT ITS LINK ENDS, in its reader's language and in the league's zone
+	 * ({@link WhatANoticeSays#moment}, the one way a moment is written to a member).
+	 *
+	 * <p>The confirmation of an address is the one message that does (PDL 24.10.2026, „Rok nepotvrđene
+	 * prijave": a new link gives seven new days, but the registration is deleted fourteen days after it
+	 * was written at the latest). The moment is the one written onto the link's row, so the letter and
+	 * the table cannot disagree.
+	 *
+	 * @param endsAt the instant the link stops working, the same one the row carries
+	 * @throws IllegalArgumentException for a message that says how long it lasts
+	 */
+	public static Said about(Message message, MailLanguage reader, Portal portal, String token,
+			Instant endsAt) {
+		Objects.requireNonNull(message, "message");
+		Objects.requireNonNull(reader, "reader");
+		Objects.requireNonNull(endsAt, "endsAt");
+
+		if (!message.saysWhenItEnds()) {
+			throw new IllegalArgumentException(message + " says how long its link lasts, not the moment"
+					+ " it ends, so it is not asked for with one");
+		}
+
+		return written(message, reader, portal, token, WhatANoticeSays.moment(endsAt, reader));
+	}
+
+	private static Said written(Message message, MailLanguage in, Portal portal, String token,
+			String howLong) {
 		Objects.requireNonNull(portal, "portal");
 		Objects.requireNonNull(token, "token");
 
@@ -371,7 +428,7 @@ public final class WhatTheMessageSays {
 
 		return new Said(words.getString(message.key() + ".subject"),
 				new MessageFormat(words.getString(message.key() + ".body"), ONE_SET_OF_WORDS)
-						.format(new Object[] {link, howLong(message.lasts(), in)}));
+						.format(new Object[] {link, howLong}));
 	}
 
 	/**
