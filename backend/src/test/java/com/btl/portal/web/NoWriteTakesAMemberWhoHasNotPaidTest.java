@@ -272,8 +272,17 @@ class NoWriteTakesAMemberWhoHasNotPaidTest {
 	 * @param lapsedToo whether a member whose fee has LAPSED may do it as well. PDL P8 of 11.10.2026
 	 *                  gives him the renewal and his profile and takes the rest back, so it is false
 	 *                  for exactly the two routes that sentence names
+	 * @param paidToo   whether a member whose fee STANDS may do it as well, which is true of every route
+	 *                  here but one: {@code DELETE /api/me} is for somebody who never became a member and
+	 *                  for nobody with a number (the owner, 20.11.2026), so there the member whose fee
+	 *                  stands and both of the lapsed are turned away, and the member who never paid is
+	 *                  the anchor that shows the route does something
 	 */
-	record Before(String reason, Act act, boolean lapsedToo) {
+	record Before(String reason, Act act, boolean lapsedToo, boolean paidToo) {
+
+		Before(String reason, Act act, boolean lapsedToo) {
+			this(reason, act, lapsedToo, true);
+		}
 
 		Before(String reason, Act act) {
 			this(reason, act, true);
@@ -303,6 +312,13 @@ class NoWriteTakesAMemberWhoHasNotPaidTest {
 					"{\"language\":\"en\"}"))),
 			entry("POST /api/me/membership", new Before("„plaćanje\": his own membership, out of his"
 					+ " balance", (f, owner) -> post("/api/me/membership"))),
+			/* NOT ON P8's LIST, AND THE ONLY ROUTE HERE THAT A MEMBER WHOSE FEE STANDS MAY NOT USE: the
+			   owner, 20.11.2026, „Moze li na kraju strane Moja Članarina da bude Obriši nalog. …
+			   jednostavno da se obriše član kao da nikad nije ni registrovan i to je to, ionako nema
+			   njegovih podataka u sistemu niti rezultata." Who may is `LeavingBeforeBecomingAMember`. */
+			entry("DELETE /api/me", new Before("not on P8's list; the owner, 20.11.2026: „jednostavno da se"
+					+ " obriše član kao da nikad nije ni registrovan\", and only for somebody with no number",
+					(f, owner) -> delete("/api/me"), true, false)),
 			entry("PUT /api/me/password", new Before("„lozinku\"; not to a member whose fee has lapsed"
 					+ " (PDL P8, 11.10.2026)", (f, owner) -> json(
 					put("/api/me/password"), "{\"oldPassword\":\"" + PASSWORD + "\",\"password\":"
@@ -589,6 +605,19 @@ class NoWriteTakesAMemberWhoHasNotPaidTest {
 	void aMemberWhoHasNeverPaidMayDoWhatTheDecisionGivesHim(String route) throws Exception {
 		Act act = MAY_BEFORE_PAYING.get(route).act();
 
+		if (!MAY_BEFORE_PAYING.get(route).paidToo()) {
+			assertTurnedAway(route + " as " + PAID, () -> act.about(this, PAID), PAID);
+
+			MockHttpServletResponse answer = sent(act.about(this, NEVER_PAID), NEVER_PAID);
+
+			assertThat(answer.getStatus())
+					.as("%s as %s: it is his and nobody else's (%s), and he was answered %s", route, NEVER_PAID,
+							MAY_BEFORE_PAYING.get(route).reason(), answer.getContentAsString())
+					.isBetween(200, 299);
+
+			return;
+		}
+
 		int whatAPaidMemberIsTold = sent(act.about(this, PAID), PAID).getStatus();
 
 		assertThat(whatAPaidMemberIsTold)
@@ -626,6 +655,14 @@ class NoWriteTakesAMemberWhoHasNotPaidTest {
 	void aMemberWhoseFeeHasLapsedMayDoOnlyWhatTheRenewalNeeds(String route) throws Exception {
 		Before before = MAY_BEFORE_PAYING.get(route);
 		Act act = before.act();
+
+		if (!before.paidToo()) {
+			for (String caller : THE_LAPSED) {
+				assertTurnedAway(route + " as " + caller, () -> act.about(this, caller), caller);
+			}
+
+			return;
+		}
 
 		int whatAPaidMemberIsTold = sent(act.about(this, PAID), PAID).getStatus();
 

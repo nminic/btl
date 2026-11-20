@@ -99,6 +99,9 @@ export function neverPaidAsServed(
             mailLanguage: 'sr',
             /* And the seasons open for a report, which the server answers every account as well. */
             seasonsOpenForAReport: [2027],
+            /* And whether he may delete his own account, which the server answers every account: no here,
+               so the button „Obriši nalog" stays out of every case that is not about it. */
+            mayLeave: false,
           }),
           { status: 200, headers: { 'content-type': 'application/json' } },
         )

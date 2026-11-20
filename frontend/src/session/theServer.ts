@@ -554,6 +554,30 @@ export async function whatTheServerSaysOfMyMailLanguage(): Promise<MailLanguage 
 }
 
 /**
+ * WHETHER THE SERVER WOULD LET HIM DELETE HIS OWN ACCOUNT, and `false` for anything that is not a plain
+ * yes.
+ *
+ * <p>`mayLeave` on the OUTER answer (`MeApi.WhoIAm`, owner 20.11.2026), which is the one condition
+ * `DELETE /api/me` asks again under its holds (`LeavingBeforeBecomingAMember`). Read beside the
+ * language and for its reason: a fault in it must never sign him out. Only `true` is a yes, so an answer
+ * that did not come, or carried something the portal does not read, draws no button: a control that
+ * would be refused is worse than one that is not there.
+ */
+export async function whatTheServerSaysOfMyLeaving(): Promise<boolean> {
+  const body = await whatTheServerAnswersMe()
+
+  return body !== null && Reflect.get(body, 'mayLeave') === true
+}
+
+/**
+ * HE DELETES HIS OWN ACCOUNT: `DELETE /api/me`, with no body the route reads (`MeLeavingApi`), through the
+ * one function every write goes through, so the token goes with it.
+ */
+export async function leaveThePortal(): Promise<Answer> {
+  return askTheServer('/api/me', {}, 'DELETE')
+}
+
+/**
  * THE WORDS OF HIS THAT WAIT FOR A MODERATOR, or nothing when the record cannot be believed.
  *
  * <p>`bioWaiting` on the caller's own record (`MeApi.MyOwnRecord`, PDL P11, 18.10.2026), which the

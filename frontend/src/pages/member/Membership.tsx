@@ -36,6 +36,7 @@ import { useMyCategory } from './useMyCategory'
 import { theServerWasToldILeft } from './teamExit'
 import { MyRacingPairs } from './MyRacingPairs'
 import { MyBalanceLine } from './MyBalanceLine'
+import { LeaveThePortal } from './LeaveThePortal'
 import { WhatHeSends } from './WhatHeSends'
 import { WHEN_LETTING_MYSELF_IN } from './fromTheBalance'
 import { useLetMeIn } from './useLetMeIn'
@@ -1280,6 +1281,12 @@ export function Membership() {
               />
               <p className="member__note">{t('membership.balanceNote')}</p>
             </section>
+
+            {/* „OBRIŠI NALOG", THE LAST THING ON THE PAGE (owner, 20.11.2026, „na kraju strane Moja
+                Članarina"), for somebody who never became a member and for nobody else. Asked only for
+                somebody with no number, because a number already says no; whether he may is the
+                server's answer, not this line's (`LeaveThePortal`). */}
+            {who.standing === 'neverPaid' && <LeaveThePortal account={who.account} />}
           </div>
         )
       }}

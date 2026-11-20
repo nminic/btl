@@ -399,6 +399,10 @@ class RightsAtTheDoorTest {
 	 */
 	private static final Set<String> ANSWERS_WITHOUT_A_RIGHT =
 			Set.of("GET /api/me", "PUT /api/me", "POST /api/sign-in", "POST /api/sign-out",
+					/* HIS OWN ACCOUNT, DELETED BY HIMSELF, ADDED 20.11.2026, for `PUT /api/me`'s reason: no box
+					   anybody could tick lets one member delete another's account. What decides is the session
+					   and the member it names, under the holds in `MeLeavingApi`. */
+					"DELETE /api/me",
 					"GET /api/comments", "GET /api/attendance",
 					/* SAYING YOU ARE GOING, AND TAKING IT BACK, ADDED 03.10.2026 WITH B212. Not a
 					   moderator's action and no box a superadmin could tick: the owner's choice, as

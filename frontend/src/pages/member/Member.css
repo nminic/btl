@@ -34,6 +34,17 @@
   gap: var(--space-10);
 }
 
+/* „Obriši nalog", the last thing on „Moja članarina" (owner, 20.11.2026): under a line like every panel above it,
+   and as wide as its words rather than the column, since it is an option that stands there and not the page's act. */
+.member__leave {
+  border-top: 1px solid var(--border);
+  padding-top: var(--space-12);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-10);
+}
+
 .member__links {
   display: flex;
   flex-wrap: wrap;

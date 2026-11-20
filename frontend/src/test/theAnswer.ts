@@ -538,6 +538,10 @@ export const whoIAm = {
      just ended. The sample says the first season, which is the ordinary state of 2027. On the account
      since 20.10.2026, so the moderator's screen reads it as the member's form does. */
   seasonsOpenForAReport: [2027],
+  /* Whether he may delete his own account (`MeApi.WhoIAm.mayLeave`, owner 20.11.2026), which only somebody who
+     never became a member may. The sample is a member with a number, so no; a case about the button puts its own
+     server in front. */
+  mayLeave: false,
 }
 
 /**

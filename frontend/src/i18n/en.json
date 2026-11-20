@@ -286,6 +286,7 @@
     "text": "This screen is under construction."
   },
   "home": {
+    "accountDeleted": "Your account has been deleted.",
     "results": "Results reported",
     "season": "Season {season}.",
     "kilometers": "Kilometres",
@@ -1184,6 +1185,10 @@
     "copyFailed": "Copying failed. Copy the link by hand.",
     "balance": "on the balance",
     "balanceNote": "The balance pays for future fees. It is not paid out in money and is not transferred to another member.",
+    "deleteAccount": "Delete account",
+    "deleteAccountAsk": "Delete account?",
+    "deleteAccountFinal": "This cannot be undone.",
+    "deleteAccountKeep": "Cancel",
     "feeExemptNoRenewal": "The fee for season {season} is settled.",
     "amountLabel": "Amount",
     "fromTheBalance": "Your balance covers {fromTheBalance}, and {toTransfer} is left to pay.",
