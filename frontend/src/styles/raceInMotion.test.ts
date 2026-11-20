@@ -15,10 +15,11 @@ import { bodyOf, everyRule, ruleFor, rulesInMedia, unremarked } from '../test/st
  * The owner's own condition is the one measured hardest: the decoration must never reduce the
  * readability of text. So every colour the layers paint is laid over the ground it is painted on,
  * at its full strength, and the text of that ground is held at 4,5:1 against the result (WCAG 2.2
- * SC 1.4.3), in both themes. On the page that is six grounds: the page under its glow, a contour over it,
- * the route over it, the place where a contour and the route cross, both at full strength, the dot (20.11.2026,
- * the strongest mark on the page and so the strongest ground a word can stand on) and the ring that goes round
- * it, over that crossing. The header's own text is measured under the glow and the lanes. A ground the layers
+ * SC 1.4.3), in both themes. On the page that is four grounds: the page under its glow, a contour over it,
+ * the route over it, and the place where a contour and the route cross, both at full strength (the weakest
+ * ground there is). The dot that runs the route (20.11.2026) is gold and meant to be seen, 3:1 against the
+ * page, and no word stands on it: that is Chrome's to ask. The header's own text is measured under the glow
+ * and the lanes. A ground the layers
  * can make and this does not measure is not measured at all.
  */
 
@@ -111,7 +112,6 @@ describe('the colours of the decoration', () => {
     '--race-page-glow',
     '--race-contour',
     '--race-route',
-    '--race-dot',
   ]
 
   it('are each given once per theme block, and the two dark blocks agree', () => {
@@ -250,7 +250,7 @@ describe('the text of the page, over the decoration', () => {
       expect(inkOf(theme)).toEqual(expect.arrayContaining(['--text', '--text-muted', '--accent', '--down']))
     })
 
-    it(`keeps 4,5:1 on the page colour under the glow, the contours, the route, where a contour crosses the route, and the dot, ${theme}`, () => {
+    it(`keeps 4,5:1 on the page colour under the glow, the contours, the route, and where a contour crosses the route, ${theme}`, () => {
       const glowing = over(own('--race-page-glow', theme), portal('--bg', theme))
       const contour = over(own('--race-contour', theme), glowing)
       /* The contours and the route are painted in one drawing, the route over the contours, so where a
@@ -258,13 +258,7 @@ describe('the text of the page, over the decoration', () => {
          ground, and the weakest one (PR 736 review, 15.11.2026; the owner's choice of 16.11.2026 was to keep the
          lines as they are and to give the inks that fell short colours that clear 4,5:1 on it). */
       const crossing = over(own('--race-route', theme), contour)
-      /* The dot is opaque, so what lies under it is not part of its ground: it is the colour it is, over a
-         contour, over the route or over nothing. Its ring is the same colour at the strength the sheet gives it,
-         laid over the crossing, which is the weakest thing it can lie on. */
-      const dot = own('--race-dot', theme)
-      const ringStrength = Number(ruleFor(decoration, '.race-page__dot-ring', 'RaceInMotion.css').getPropertyValue('opacity'))
-      const ring = over(`${dot}${Math.round(ringStrength * 255).toString(16).padStart(2, '0')}`, crossing)
-      const grounds = [glowing, contour, over(own('--race-route', theme), glowing), crossing, dot, ring]
+      const grounds = [glowing, contour, over(own('--race-route', theme), glowing), crossing]
 
       for (const ink of inkOf(theme)) {
         for (const ground of grounds) {
@@ -277,19 +271,19 @@ describe('the text of the page, over the decoration', () => {
 
 describe('the dot, as a colour', () => {
   for (const theme of ['light', 'dark'] as const) {
-    it(`is one opaque colour, so what is under it is no ground for a word, and stronger than the route, ${theme}`, () => {
-      const dot = own('--race-dot', theme)
+    it(`is the gold of the header's line, and stands out of the page at least 3:1, ${theme}`, () => {
+      /* Owner, 20.11.2026: „Jaka tačka, nikad ispod teksta". The dot is meant to be seen, so it owes the page
+         what a mark owes it (WCAG 2.2 SC 1.4.11, MARK), and it is the gold of the header's line, not a
+         colour of its own. NO WORD IS MEASURED AGAINST IT, and that is the point of the decision: a word
+         never stands on the dot or on the route it runs, which Chrome is asked about
+         (geometry/raceInMotion.geometry.ts, „the route and the dot touch no word"). The text of the page
+         keeps 4,5:1 on every ground that is left. */
+      expect(written('.race-page__dot-core').getPropertyValue('fill')).toBe('var(--race-gold)')
+      expect(written('.race-page__dot-ring').getPropertyValue('stroke')).toBe('var(--race-gold)')
+
       const glowing = over(own('--race-page-glow', theme), portal('--bg', theme))
 
-      /* Six digits and no alpha: with an alpha, the ground would be the dot over a contour over the route,
-         and 4,5:1 would leave it too faint to be seen at all. */
-      expect(dot).toMatch(/^#[0-9a-f]{6}$/)
-
-      /* It is the strongest mark of the page: further from the page than the route is, the route being the
-         strongest line there was before it. */
-      expect(contrast(dot, glowing), `the dot against the page, ${theme}`).toBeGreaterThan(
-        contrast(over(own('--race-route', theme), glowing), glowing),
-      )
+      expect(contrast(over(own('--race-gold', theme), glowing), glowing), `the dot against the page, ${theme}`).toBeGreaterThanOrEqual(MARK)
     })
   }
 })
@@ -349,9 +343,10 @@ describe('what is drawn at which width', () => {
     expect(hiding.map((rule) => rule.selectorText)).toEqual([])
   })
 
-  it('draws the wide ground, with the route and the dot in it, from 560px and a telephone its own', () => {
+  it('draws the hills and the lane of the route and the dot from 560px and a telephone its own', () => {
     expect(written('.terrain--wide').getPropertyValue('display')).toBe('none')
-    expect(writtenIn('(min-width: 35em)', '.terrain--wide').getPropertyValue('display')).toBe('block')
+    expect(written('.terrain--lane').getPropertyValue('display')).toBe('none')
+    expect(writtenIn('(min-width: 35em)', '.terrain--wide, .terrain--lane').getPropertyValue('display')).toBe('block')
     expect(writtenIn('(min-width: 35em)', '.terrain--narrow').getPropertyValue('display')).toBe('none')
 
     /* The telephone's drawing is drawn by nothing else, so it has no way to be drawn wide: no rule gives
@@ -384,8 +379,27 @@ describe('the ground of the page', () => {
     expect(written('.terrain__route').getPropertyValue('stroke')).toBe('var(--race-route)')
     expect(written('.terrain__waypoint').getPropertyValue('fill')).toBe('var(--race-route)')
     expect(written('.terrain__waypoint-ring').getPropertyValue('stroke')).toBe('var(--race-route)')
-    expect(written('.race-page__dot-core').getPropertyValue('fill')).toBe('var(--race-dot)')
-    expect(written('.race-page__dot-ring').getPropertyValue('stroke')).toBe('var(--race-dot)')
+  })
+})
+
+describe('the lane of the route', () => {
+  it('lies beside the column of the page, its right edge on the edge of the column, so no word is ever over it', () => {
+    /* Owner, 20.11.2026: „Jaka tačka, nikad ispod teksta". The strip is 100 units wide and drawn 100px wide
+       (6,25rem), and the column is the 1100px the shell gives the page; what is asked of Chrome is that no
+       word is over the route (geometry/raceInMotion.geometry.ts), and what is asked here is why that holds. */
+    const lane = written('.terrain--lane')
+
+    /* jsdom writes the calc back in its own order, so the three numbers are asked for and not the spelling:
+       half of what is left of the window beside a column of 1100px, less the width of the strip. */
+    const left = lane.getPropertyValue('left')
+
+    expect(left).toMatch(/^calc\(/)
+    expect(left).toContain('100% - 1100px')
+    expect(left).toContain('6.25rem')
+    expect(left).toMatch(/0\.5|\/ 2/)
+    expect(lane.getPropertyValue('width')).toBe('6.25rem')
+    expect(lane.getPropertyValue('height')).toBe('100%')
+    expect(shell).toMatch(/max-width: 1100px;/)
   })
 })
 

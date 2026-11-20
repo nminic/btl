@@ -297,6 +297,134 @@ for (const at of WIDTHS.flatMap((one): At[] => [one, { ...one, theme: 'dark' }])
   })
 }
 
+/**
+ * Where the route, and so the dot that runs it, meets a word that stands on the bare page, if anywhere
+ * (owner, 20.11.2026: „Jaka tačka, nikad ispod teksta").
+ *
+ * <p>The route is sampled along its length every few units and each sample is placed on the screen through
+ * the path's own matrix, so the drawing is read where Chrome puts it at this width, slice and all. A word
+ * is every line box of every text node of the page outside the layer, read the way the browser lays it out
+ * (`Range.getClientRects`). Words that stand on something opaque are not measured: a card, the header, the
+ * footer and the menus are painted over the layer, so nothing is under them to read. What is left are the
+ * words that stand on the page itself, the only ones the route and the dot can be seen behind.
+ *
+ * <p>The layer is fixed to the window and the page scrolls under it, so any word may be scrolled to any
+ * height the route reaches. A word is therefore compared by where it stands ACROSS, not by how far down: a
+ * word that shares a column with a sample of the route, within the radius of the ring of the dot, is a
+ * touch whatever the scroll.
+ */
+async function routeTouches(page: Page): Promise<{ words: number; points: number; touches: string[] }> {
+  return page.evaluate(() => {
+    const route = document.querySelector('.terrain--lane .terrain__route')
+    const dotRadius = 11 + 2
+
+    if (!(route instanceof SVGGeometryElement)) {
+      return { words: 0, points: 0, touches: ['no route'] }
+    }
+
+    const matrix = route.getScreenCTM()
+    const length = route.getTotalLength()
+    const columns: number[] = []
+
+    for (let at = 0; at <= length; at += 4) {
+      const point = route.getPointAtLength(at)
+
+      columns.push(matrix === null ? Number.NaN : new DOMPoint(point.x, point.y).matrixTransform(matrix).x)
+    }
+
+    /* And the path the dot itself is sent along, which is its own data and not the route's, so a dot sent
+       somewhere the route does not go is seen as well. It is read from what Chrome computed for the dot. */
+    const dot = document.querySelector('.race-page__dot')
+    const travel = dot === null ? null : /path\("([^"]+)"\)/.exec(getComputedStyle(dot).offsetPath)?.[1]
+
+    if (travel === undefined || travel === null) {
+      return { words: 0, points: 0, touches: ['no path for the dot'] }
+    }
+
+    const own = document.createElementNS('http://www.w3.org/2000/svg', 'path')
+
+    own.setAttribute('d', travel)
+    route.parentElement?.append(own)
+
+    for (let at = 0; at <= own.getTotalLength(); at += 4) {
+      const point = own.getPointAtLength(at)
+
+      columns.push(matrix === null ? Number.NaN : new DOMPoint(point.x, point.y).matrixTransform(matrix).x)
+    }
+
+    own.remove()
+
+    /* Nothing of this word is seen on the bare page: it stands on something painted over the layer, or it is
+       taken out of sight (the visually hidden words of a screen, which are one pixel and cut). The colour is
+       read for its alpha whatever notation Chrome answers in, so a colour it writes in a notation of its own
+       is not taken for a transparent one. */
+    const covered = (one: Element | null): boolean => {
+      for (let up = one; up !== null; up = up.parentElement) {
+        const style = getComputedStyle(up)
+        const alpha = /(?:,|\/)\s*([\d.]+)(%?)\s*\)$/.exec(style.backgroundColor)
+        const strength = alpha === null ? 1 : Number(alpha[1]) / (alpha[2] === '%' ? 100 : 1)
+        const painted = style.backgroundColor !== 'transparent' && strength >= 0.99
+
+        if (up.localName === 'header' || up.localName === 'footer') return true
+        if (style.backgroundImage !== 'none') return true
+        if (painted && up !== document.body && up !== document.documentElement) return true
+        if (style.overflow !== 'visible' && up.getBoundingClientRect().width <= 1) return true
+      }
+
+      return false
+    }
+
+    const words: { text: string; left: number; right: number }[] = []
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT)
+
+    for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) {
+      const text = (node.textContent ?? '').trim()
+      const parent = node.parentElement
+
+      if (text === '' || parent === null || parent.closest('.race-page, script, style') !== null) continue
+      if (!parent.checkVisibility({ opacityProperty: true, visibilityProperty: true }) || covered(parent)) continue
+
+      const range = document.createRange()
+
+      range.selectNodeContents(node)
+
+      for (const box of range.getClientRects()) {
+        if (box.width > 0) words.push({ text, left: box.left, right: box.right })
+      }
+    }
+
+    const touches = words
+      .filter((word) => columns.some((x) => x + dotRadius > word.left && x - dotRadius < word.right))
+      .map((word) => `„${word.text.slice(0, 40)}" at ${Math.round(word.left)}-${Math.round(word.right)}`)
+
+    return { words: words.length, points: columns.length, touches }
+  })
+}
+
+/* The front page has no word on the bare page at all, so it would pass whatever the route did: the rulebook is
+   text laid straight on the page (534 words) and the calendar has its heading and its notes there (13). Each
+   must hold words, or this asks nothing. */
+for (const at of WIDTHS.flatMap((one): At[] => [one, { ...one, theme: 'dark' }])) {
+  const reads = at.width / (at.text / 100)
+
+  if (reads < 560) continue
+
+  for (const path of ['/sr', '/sr/pravilnik', '/sr/kalendar']) {
+    test(`the route and the dot touch no word on ${path} at ${label(at)}`, async ({ open }) => {
+      const { page } = await open(at, path, 'header .brand', ANSWERS)
+      const seen = await routeTouches(page)
+
+      expect(seen.points, 'the route was sampled').toBeGreaterThan(100)
+
+      if (path !== '/sr') {
+        expect(seen.words, 'words that stand on the bare page, so this asks something').toBeGreaterThan(5)
+      }
+
+      expect(seen.touches).toEqual([])
+    })
+  }
+}
+
 test('the dot is not drawn for a reader who asked for less movement, and the ground still is', async ({ open }) => {
   const { page } = await open({ width: 1280, text: 100 }, '/sr', 'header .brand', ANSWERS)
 

@@ -1,5 +1,5 @@
 import { useId } from 'react'
-import { DESKTOP_CONTOURS, DESKTOP_VIEW, PHONE_CONTOURS, PHONE_VIEW, ROUTE, TRAVEL, WAYPOINTS } from './terrain'
+import { DESKTOP_CONTOURS, DESKTOP_VIEW, LANE_VIEW, PHONE_CONTOURS, PHONE_VIEW, ROUTE, TRAVEL, WAYPOINTS } from './terrain'
 import './RaceInMotion.css'
 
 /* „RACE IN MOTION" (owner, 14.11.2026, PDL „Vizuelno osveženje „Race in Motion""): running drawn
@@ -104,7 +104,9 @@ export function HeaderDecoration() {
 
 /** The ground of the page: four hills of their own along the edges, each a set of nested contour
  *  lines, with a route that runs between them, and a dot that runs the route once (owner,
- *  14.11.2026 and the approved draft of 20.11.2026). A telephone gets a drawing of its own, long
+ *  14.11.2026 and the approved draft of 20.11.2026). The route and the dot are in a lane of their own,
+ *  a strip in the gutter beside the column of the page (owner, 20.11.2026: „Jaka tačka, nikad ispod
+ *  teksta"), so they are never over a word. A telephone gets a drawing of its own, long
  *  lines along both edges and two small hills, with no route and no dot. The shapes are data
  *  (`app/terrain.ts`); how strong they are, which of the two drawings is drawn and when the dot
  *  moves are the sheet's (`app/RaceInMotion.css`). The cards and tables stay opaque, so the ground
@@ -123,6 +125,8 @@ export function PageBackgroundDecoration({ screen }: { screen: string }) {
             <path key={contour.d} d={contour.d} opacity={contour.opacity} />
           ))}
         </g>
+      </svg>
+      <svg className="terrain terrain--lane" viewBox={LANE_VIEW} preserveAspectRatio="xMaxYMid slice" focusable="false">
         <path className="terrain__route" d={ROUTE} />
         {WAYPOINTS.map(([x, y]) => (
           <g key={`${x},${y}`}>

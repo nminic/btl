@@ -121,30 +121,35 @@ describe('the decoration of the page', () => {
     expect(layer).toHaveTextContent('')
   })
 
-  it('is two drawings, a wide one and a telephone\'s, each cut to the window and no stop for the keyboard of an old browser', () => {
+  it('is three drawings, the hills, the lane of the route and a telephone\'s, each cut and no stop for the keyboard of an old browser', () => {
     const { layer } = layerOf()
     const drawings = [...layer.querySelectorAll('svg')]
 
-    expect(drawings.map((one) => one.getAttribute('class'))).toEqual(['terrain terrain--wide', 'terrain terrain--narrow'])
+    expect(drawings.map((one) => one.getAttribute('class'))).toEqual(['terrain terrain--wide', 'terrain terrain--lane', 'terrain terrain--narrow'])
 
     for (const drawing of drawings) {
       expect(drawing).toHaveAttribute('focusable', 'false')
-      expect(drawing).toHaveAttribute('preserveAspectRatio', 'xMidYMid slice')
+      /* The lane is held by its right edge, which is the edge of the column; the hills are cut to the middle. */
+      expect(drawing).toHaveAttribute('preserveAspectRatio', drawing.classList.contains('terrain--lane') ? 'xMaxYMid slice' : 'xMidYMid slice')
     }
   })
 
-  it('draws the four hills and the route and its two waypoints in the wide drawing, from the data and from nothing else', () => {
+  it('draws the four hills in the wide drawing and the route and its two waypoints in the lane, from the data and from nothing else', () => {
     const { layer } = layerOf()
     const wide = must(layer.querySelector('.terrain--wide'), 'the wide drawing')
     const hills = [...wide.querySelectorAll('.terrain__hills path')]
 
     expect(hills.map((one) => one.getAttribute('d'))).toEqual(DESKTOP_CONTOURS.map((one) => one.d))
     expect(hills.map((one) => Number(one.getAttribute('opacity')))).toEqual(DESKTOP_CONTOURS.map((one) => one.opacity))
-    expect(wide.querySelector('.terrain__route')).toHaveAttribute('d', ROUTE)
+    expect(wide.querySelectorAll('.terrain__route, .terrain__waypoint, .race-page__dot')).toHaveLength(0)
+
+    const lane = must(layer.querySelector('.terrain--lane'), 'the lane')
+
+    expect(lane.querySelector('.terrain__route')).toHaveAttribute('d', ROUTE)
     expect(
-      [...wide.querySelectorAll('.terrain__waypoint')].map((one) => [Number(one.getAttribute('cx')), Number(one.getAttribute('cy'))]),
+      [...lane.querySelectorAll('.terrain__waypoint')].map((one) => [Number(one.getAttribute('cx')), Number(one.getAttribute('cy'))]),
     ).toEqual(WAYPOINTS)
-    expect(wide.querySelectorAll('.terrain__waypoint-ring')).toHaveLength(WAYPOINTS.length)
+    expect(lane.querySelectorAll('.terrain__waypoint-ring')).toHaveLength(WAYPOINTS.length)
   })
 
   it('gives a telephone a ground of its own, with no route, no waypoint and no dot in it', () => {
@@ -155,6 +160,7 @@ describe('the decoration of the page', () => {
     expect(narrow.querySelectorAll('.terrain__route, .terrain__waypoint, .terrain__waypoint-ring')).toHaveLength(0)
     expect(narrow.querySelector(DOT)).toBeNull()
     expect(layer.querySelectorAll(DOT)).toHaveLength(1)
+    expect(must(layer.querySelector(DOT), 'the dot').closest('svg')).toHaveClass('terrain--lane')
   })
 
   it('draws no line twice, none stronger than the colour of its token, and none that is not a shape of its own', () => {

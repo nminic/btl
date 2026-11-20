@@ -77,6 +77,10 @@ const ALLOWED = new Map([
     'app/RaceInMotion.css | right | max(var(--space-16), calc((100% - 1100px) / 2 - 145px))',
     'not a step: the runner of the reference stands as far in from the edge as the gutter beside the column (1100px, app/Shell.css) less the 145px the reference leaves between him and the last tool, owner 15.11.2026',
   ],
+  [
+    'app/RaceInMotion.css | left | calc((100% - 1100px) / 2 - 6.25rem)',
+    'not a step: the lane of the route ends where the column of the page begins (1100px, app/Shell.css), so that no word is ever over the route or the dot, owner 20.11.2026',
+  ],
   ['pages/Home.css | inset-inline-start | -0.2rem', 'a mark pulled out over the corner it sits on'],
   ['pages/Home.css | inset-block-start | -0.2rem', 'a mark pulled up over the corner it sits on'],
   [

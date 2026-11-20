@@ -30,11 +30,11 @@
  * contour, the route, and the place where a contour crosses the route with both at full strength; the
  * last is the weakest, and it is why `--accent`, `--accent-hover` and `--gold-500` in the dark theme and
  * `--down` and `--danger` in the light one are the colours they are (owner, 16.11.2026: the lines stay
- * as they were and the text moves). The dot that runs the route (20.11.2026) is the strongest mark of
- * the page, so it is a ground of its own, and it is one opaque colour (`--race-dot`) so that nothing
- * under it adds to it; its ring is the same colour at half strength over the crossing. How strong it
- * is allowed to be is what the text needs, not what the eye would like: in the light theme it is
- * 1,16:1 against the page and 1,64:1 in the dark one (the route is 1,08:1 and 1,26:1), which is as far as 4,5:1 for every ink leaves it.
+ * as they were and the text moves). The dot that runs the route (20.11.2026, owner: „Jaka tačka,
+ * nikad ispod teksta”) is the gold of the header's line (`--race-gold`) and is meant to be seen: at
+ * least 3:1 against the page in both themes (WCAG 2.2 SC 1.4.11, `MARK` in the guard). That is why no
+ * word is measured against it: a word never stands on the dot or on the route, and that is asked of
+ * Chrome (`geometry/raceInMotion.geometry.ts`, „the route and the dot touch no word").
  * The gold line and the runner are drawn only where no text stands, which Chrome is asked about
  * (`geometry/raceInMotion.geometry.ts`).
  */
@@ -48,7 +48,6 @@
   --race-page-glow: #1657bd0d;
   --race-contour: #1657bd0e;
   --race-route: #b8901f17;
-  --race-dot: #e6ddc2;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -62,7 +61,6 @@
     --race-page-glow: #16346940;
     --race-contour: #31517b5c;
     --race-route: #d9ab2e24;
-    --race-dot: #453b20;
   }
 }
 
@@ -76,7 +74,6 @@
   --race-page-glow: #16346940;
   --race-contour: #31517b5c;
   --race-route: #d9ab2e24;
-  --race-dot: #453b20;
 }
 
 /* THE HEADER.
@@ -250,6 +247,22 @@
   display: none;
 }
 
+/* THE LANE (owner, 20.11.2026: „Jaka tačka, nikad ispod teksta"). The route and the dot are drawn in a strip
+   100 units wide, which is 100px at the browser's own text size, whose right edge is the left edge of the
+   column of the page (1100px, `app/Shell.css`). Beside the column there are no words, so the route and the
+   dot are never over one, at any width and at any height of the window. A window narrower than the column
+   has the strip off its left edge, and between 1100px and about 1300px only a part of it shows: where there
+   is no gutter, there is no route. */
+.terrain--lane {
+  display: none;
+  top: 0;
+  right: auto;
+  bottom: auto;
+  left: calc((100% - 1100px) / 2 - 6.25rem);
+  width: 6.25rem;
+  height: 100%;
+}
+
 /* THE DOT.
  *
  * It runs the route once and stops on the second waypoint, and it is asked for nothing: no control,
@@ -263,21 +276,21 @@
  * would leave it in the corner of the drawing. It starts again on each screen because the component
  * gives it a new key (`app/RaceInMotion.tsx`), which makes a new element, and a new element starts
  * its animation from the beginning. The dot is stronger than the route and is therefore the
- * strongest ground a word on the page can stand on (`--race-dot`,
- * `styles/raceInMotion.test.ts`). */
+ * strongest mark of the page, and no word stands under it or under the route
+ * (`geometry/raceInMotion.geometry.ts`). */
 .race-page__dot {
   display: none;
   offset-rotate: 0deg;
 }
 
 .race-page__dot-core {
-  fill: var(--race-dot);
+  fill: var(--race-gold);
   stroke: none;
 }
 
 .race-page__dot-ring {
   fill: none;
-  stroke: var(--race-dot);
+  stroke: var(--race-gold);
   stroke-width: 1.5;
   opacity: 0.5;
 }
@@ -294,7 +307,8 @@
 
 /* From where a telephone stops being one: the wide drawing, with its route. */
 @media (min-width: 35em) {
-  .terrain--wide {
+  .terrain--wide,
+  .terrain--lane {
     display: block;
   }
 

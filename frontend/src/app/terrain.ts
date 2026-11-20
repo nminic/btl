@@ -26,6 +26,10 @@ export interface Contour {
 /** The box the desktop drawing is laid out in. */
 export const DESKTOP_VIEW = '0 0 1600 1000'
 
+/** The box the lane is laid out in: a strip 100 units wide that lies in the gutter beside the column of the
+ *  page, its right edge on the edge of the column, so the route and the dot are never over a word. */
+export const LANE_VIEW = '0 0 100 1000'
+
 /** The box the telephone drawing is laid out in. */
 export const PHONE_VIEW = '0 0 360 800'
 
@@ -130,14 +134,14 @@ export const PHONE_CONTOURS: readonly Contour[] = [
 /** The route that runs between the hills: from the top of the left edge, past two waypoints, to the
  *  second of them, and on to the foot of the window. The dot of the page travels the first part of it
  *  (`TRAVEL`). */
-export const ROUTE = 'M160 140C166 152 193 188 196 215C199 242 187 272 176 300C165 328 139 354 128 380C117 406 106 429 110 455C114 481 135 509 150 535C165 561 192 584 198 610C204 636 196 665 186 690C176 715 151 734 140 760C129 786 116 817 118 845C120 873 138 904 150 930C162 956 183 988 190 1000'
+export const ROUTE = 'M53 140C57 152 76 188 78 215C80 242 72 272 64 300C56 328 38 354 30 380C22 406 14 429 17 455C20 481 35 509 45 535C56 561 75 584 80 610C84 636 78 665 71 690C64 715 46 734 38 760C30 786 21 817 23 845C24 873 37 904 45 930C54 956 69 988 74 1000'
 
 /** The stretch of the route the dot travels: the same path cut at the second waypoint, where the
  *  dot stops. Its last curve is the route's, re-drawn to end on the waypoint. */
-export const TRAVEL = 'M160 140C166 152 193 188 196 215C199 242 187 272 176 300C165 328 139 354 128 380C117 406 106 429 110 455C114 481 135 509 150 535C165 561 192 584 198 610C204 636 188 677 186 690'
+export const TRAVEL = 'M53 140C57 152 76 188 78 215C80 242 72 272 64 300C56 328 38 354 30 380C22 406 14 429 17 455C20 481 35 509 45 535C56 561 75 584 80 610C84 636 73 677 71 690'
 
 /** The two waypoints, the second being where the dot stops. */
 export const WAYPOINTS: readonly (readonly [number, number])[] = [
-  [128, 380],
-  [186, 690],
+  [30, 380],
+  [71, 690],
 ]
