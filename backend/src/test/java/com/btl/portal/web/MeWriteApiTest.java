@@ -1770,11 +1770,17 @@ class MeWriteApiTest {
 		assertThat(hisOwnRecord(FIRST_WRITTEN).path("viberCommunity").asBoolean())
 				.as("the wish of one member came out of another member's door").isFalse();
 
-		/* TICKED AGAIN, THE MOMENT IT WAS FIRST GIVEN STANDS: ticking a box already ticked is not a new wish. */
+		/* TICKED AGAIN, THE MOMENT IT WAS FIRST GIVEN STANDS: ticking a box already ticked is not a new wish.
+		   The moment is moved to a day long past first, because the case runs in one transaction and the
+		   database's own clock answers the same instant to every statement of it: compared with what the
+		   first tick wrote, a write of a fresh moment would read as the old one. */
+		db.sql("update competitor set viber_community_at = timestamptz '2026-11-01 09:00:00+00'"
+				+ " where member_number = ?").param(ME).update();
+
 		String given = wishOf(ME);
 
 		assertThat(changeAs(ME, changing("viberCommunity", true)).getStatus()).isEqualTo(200);
-		assertThat(wishOf(ME)).isEqualTo(given);
+		assertThat(wishOf(ME)).as("ticking a box already ticked wrote a new moment").isEqualTo(given);
 
 		MockHttpServletResponse left = changeAs(ME, changing("viberCommunity", false));
 
