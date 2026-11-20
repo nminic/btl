@@ -574,18 +574,22 @@
   box-shadow: 0 0 0 2px var(--accent);
 }
 
-/* **The name is two lines of one height for all six people** (owner, 20.11.2026, over a screenshot of
-   one name on one line and another on two: the circle of the second climbed to the level of the
-   first). The first name is over the surname, each its own element, and the block keeps the room of
-   two lines whatever is in it, so the step decides how high a circle stands and the name never does.
-   On a board narrower than about 300px it keeps three, because the surname is then long enough to
-   break inside one word („Gvozdenović" at a board of 254px) and the block is as tall as that. */
+/* **The name is two elements and its block has one height for all six people** (owner, 20.11.2026, over a
+   screenshot of one name on one line and another on two: the circle of the second climbed to the level of
+   the first). The first name is over the surname, each its own element, and the block keeps the room of
+   THREE lines whatever is in it, so the step decides how high a circle stands and the name never does.
+
+   Three and not the two of the plan: a column of the podium is 83 to 93px wide at every width from 1024 up
+   and a surname of twelve letters („Stamenkovska") is 95px in this size, so it breaks inside the word and
+   the block is two lines of surname under one of first name. Measured at 1024 and 1280 with the sample of
+   the portal: the third circle of one board stood 17px higher than it should, one pixel above the second.
+   The cost is a line of air under the shorter names. */
 .stand__name {
   display: flex;
   flex-direction: column;
   align-items: center;
   margin-top: var(--space-4);
-  min-block-size: 2.5em;
+  min-block-size: 3.75em;
   font-size: 0.85rem;
   font-weight: 600;
   line-height: 1.25;
@@ -700,12 +704,14 @@
   box-shadow: none;
 }
 
+/* The name wraps where it must and is never cut: a list of rows in which `Radoslav Milovanović` ended in
+   an ellipsis at 1024px cut the one thing the row is for (measured, 20.11.2026, with the sample of the
+   portal). The columns are a subgrid, so a row of two lines changes nothing in the alignment of the rest. */
 .toprows .nm {
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
   font-size: 0.9rem;
+  line-height: 1.25;
   text-align: left;
 }
 
@@ -762,10 +768,6 @@
     grid-column: 3;
     grid-row: 1;
     align-self: end;
-    white-space: normal;
-    overflow: visible;
-    text-overflow: clip;
-    line-height: 1.25;
   }
 
   .toprows .kt {
@@ -778,10 +780,6 @@
   .toprows .pt {
     grid-column: 4;
     grid-row: 1 / span 2;
-  }
-
-  .stand__name {
-    min-block-size: 3.75em;
   }
 }
 
