@@ -99,7 +99,10 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 				   longer written by anybody: it is generated from `birth_date`, so the date is the
 				   fact and the year is a way of saying it. */
 				"birth_date", "birth_year", "father_name", "address", "phone", "shirt_size",
-				"health_statement_at", "photo_id");
+				"health_statement_at", "photo_id",
+				/* V106: the moment he asked to join the league's community on Viber, empty where he has not
+				   (owner, PDL P36, 20.11.2026). */
+				"viber_community_at");
 
 		assertThat(columnsOf("btl_event")).containsExactlyInAnyOrder("id", "slug", "name", "date", "place_id",
 				"city", "country_id", "kind", "featured", "description", "link", "copied_from");
