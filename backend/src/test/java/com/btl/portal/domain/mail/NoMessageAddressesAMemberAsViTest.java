@@ -116,7 +116,7 @@ class NoMessageAddressesAMemberAsViTest {
 		found.addAll(literalsWithAViForm());
 
 		assertThat(found)
-				.as("a text with a „vi" form that is not waiting, or one waiting that has moved to „ti"")
+				.as("a text with a vi form that is not waiting, or one waiting that has moved to ti")
 				.containsExactlyInAnyOrderElementsOf(WAITING);
 		assertThat(new TreeSet<>(WAITING)).as("the waiting list names nothing twice").hasSameSizeAs(WAITING);
 	}
