@@ -101,8 +101,7 @@
     "expected": 4800,
     "price": 4800,
     "balance": 0,
-    "invitation": "due",
-    "viberPhone": "+381 64 123 4567"
+    "invitation": "due"
   },
   {
     "memberNumber": "000005",
@@ -154,7 +153,8 @@
     "expected": 4800,
     "price": 4800,
     "balance": 0,
-    "invitation": "passwordSet"
+    "invitation": "passwordSet",
+    "viberPhone": "+381 64 123 4567"
   },
   {
     "memberNumber": "000007",
