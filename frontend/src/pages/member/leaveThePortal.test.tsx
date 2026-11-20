@@ -1,4 +1,4 @@
-import { configure, fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { configure, fireEvent, getConfig, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 import { aNeverPaidRecord } from '../../test/neverPaid'
 import { renderAt } from '../../test/render'
@@ -94,7 +94,7 @@ describe('the button', () => {
     expect(panel?.contains(button)).toBe(false)
     expect(Boolean(referral.compareDocumentPosition(button) & Node.DOCUMENT_POSITION_FOLLOWING)).toBe(true)
     expect(document.querySelectorAll('section.member__panel ~ .member__leave')).toHaveLength(1)
-  })
+  }, SLOW)
 
   it('is not drawn when the server says he may not, over the same record', async () => {
     hisServer(false)
@@ -103,7 +103,7 @@ describe('the button', () => {
     /* The answer has arrived, so its absence is the no and not a page still waiting for it. */
     await waitFor(() => expect(document.querySelector('.member__leave')).toBeNull())
     expect(screen.queryByRole('button', { name: 'Obriši nalog' })).toBeNull()
-  })
+  }, SLOW)
 })
 
 describe('the window', () => {
@@ -123,7 +123,7 @@ describe('the window', () => {
     expect(screen.queryByRole('dialog')).toBeNull()
     expect(deletions(asked)).toHaveLength(0)
     expect(screen.getByRole('button', { name: 'Obriši nalog' })).toBeInTheDocument()
-  })
+  }, SLOW)
 
   it('is closed by Escape, and Escape sends nothing', async () => {
     const user = setupUser()
@@ -135,7 +135,7 @@ describe('the window', () => {
 
     expect(screen.queryByRole('dialog')).toBeNull()
     expect(deletions(asked)).toHaveLength(0)
-  })
+  }, SLOW)
 })
 
 describe('deleting', () => {
@@ -156,7 +156,7 @@ describe('deleting', () => {
     expect(screen.queryByRole('heading', { name: 'Moja članarina' })).toBeNull()
     /* AND THE PORTAL HAS FORGOTTEN HIM: the header offers the way in again, which it draws only to nobody. */
     expect(await screen.findByRole('link', { name: 'Prijavi se' })).toBeInTheDocument()
-  })
+  }, SLOW)
 
   it('sends one request for two presses while the first is out, and for a double press', async () => {
     const user = setupUser()
@@ -177,14 +177,14 @@ describe('deleting', () => {
 
     await waitFor(() => expect(deletions(asked)).toHaveLength(1))
     expect(screen.getByRole('dialog', { name: 'Obriši nalog?' })).toBeInTheDocument()
-  })
+  }, SLOW)
 
   it('says nothing on a front page reached any other way', async () => {
     renderAt('/sr')
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Balkanska trkačka liga' })).toBeInTheDocument()
     expect(screen.queryByText('Vaš nalog je obrisan.')).toBeNull()
-  })
+  }, SLOW)
 
   it('stays on his page and says so when the server refuses', async () => {
     const user = setupUser()
@@ -201,5 +201,14 @@ describe('deleting', () => {
     expect(screen.queryByRole('dialog')).toBeNull()
     expect(screen.getByRole('heading', { level: 1, name: 'Moja članarina' })).toBeInTheDocument()
     expect(deletions(asked)).toHaveLength(1)
+  }, SLOW)
+})
+
+describe('what a case of this file may end in', () => {
+  it('is an assertion and never its own clock: every wait is given less time than a case has', () => {
+    /* The floor under the `configure` at the head of the file, as `neverPaid.test.tsx` keeps it: every case above is
+       given `SLOW` and every wait half of it, so a wait that never succeeds ends with its own words and a series of
+       mutations reads an assertion, not a timeout (CLAUDE.md, section 25). */
+    expect(getConfig().asyncUtilTimeout).toBeLessThan(SLOW)
   })
 })
