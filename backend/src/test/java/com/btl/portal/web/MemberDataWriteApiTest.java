@@ -761,6 +761,45 @@ class MemberDataWriteApiTest {
 		assertThat(rowOf(corrected)).contains("|Treca 3|-|");
 	}
 
+	/**
+	 * THE TELEPHONE OF A MEMBER WHO ASKED TO JOIN THE COMMUNITY ON VIBER IS NOT EMPTIED FOR HIM (owner,
+	 * 20.11.2026, chosen with the recommendation: „server to odbija rečenicom „Član je prijavljen za Viber
+	 * zajednicu, pa broj ne može da se obriše dok se ne odjavi.” Želja ostaje članova").
+	 *
+	 * <p>The member who asked is the FIRST of the fixture and the one corrected beside him is not, so the wish
+	 * read off the wrong row is told apart both ways; a number corrected to another number still goes through,
+	 * so a route that refused every correction of his telephone would not pass; and the box itself is not this
+	 * route's to move.
+	 */
+	@Test
+	void theTelephoneOfAMemberInTheViberCommunityIsNotEmptiedForHim() throws Exception {
+		db.sql("update competitor set viber_community_at = timestamptz '2026-11-20 10:00:00+00' where id = ?")
+				.param(first).update();
+
+		MockHttpServletResponse emptied = corrected("000002", "{\"phone\": \" \"}", OVER_THE_MEMBERS);
+
+		assertThat(emptied.getStatus()).isEqualTo(409);
+		assertThat(reasonIn(emptied)).isEqualTo(MemberDataWriteApi.THE_VIBER_COMMUNITY_HOLDS_THE_PHONE);
+		assertThat(rowOf(first)).contains("|Ulica 1|0601234567|");
+		assertThat(db.sql("select count(*) from message").query(Long.class).single())
+				.as("a refused correction told the member his data were changed").isZero();
+
+		assertThat(corrected("000002", "{\"phone\": \"0659998887\"}", OVER_THE_MEMBERS).getStatus())
+				.as("a number corrected to another number was refused").isEqualTo(200);
+		assertThat(rowOf(first)).contains("|Ulica 1|0659998887|");
+		assertThat(db.sql("select viber_community_at is not null from competitor where id = ?").param(first)
+				.query(Boolean.class).single()).as("a correction of his telephone took his wish").isTrue();
+
+		/* And the member beside him, who did not ask, has his telephone emptied as before. */
+		assertThat(corrected("000005", "{\"phone\": \" \"}", OVER_THE_MEMBERS).getStatus()).isEqualTo(200);
+		assertThat(rowOf(corrected)).contains("|Ulica 1|-|");
+
+		MockHttpServletResponse theBox = corrected("000005", "{\"viberCommunity\": true}", OVER_THE_MEMBERS);
+
+		assertThat(theBox.getStatus()).isEqualTo(400);
+		assertThat(reasonIn(theBox)).isEqualTo(MemberDataWriteApi.NOT_TAKEN_HERE);
+	}
+
 	@Test
 	void aTypedTownIsWrittenWithItsCountry() throws Exception {
 		assertThat(corrected("000005", "{\"city\": \" Mali Grad \", \"country\": \"RS\"}", OVER_THE_MEMBERS)

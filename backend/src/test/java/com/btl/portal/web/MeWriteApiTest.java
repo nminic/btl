@@ -1733,6 +1733,114 @@ class MeWriteApiTest {
 				.isEqualTo("Ulica 1");
 	}
 
+	/* ------------------------------------------------------------------------------------
+	   THE COMMUNITY ON VIBER - OWNER, PDL P36, 20.11.2026: „Isti kvadratić stoji i na strani
+	   „Moji podaci”, pa se postojeći članovi sami prijavljuju i odjavljuju."
+	   ------------------------------------------------------------------------------------ */
+
+	/** His wish as the row holds it: the moment, as text, or {@code -} where there is none. */
+	private String wishOf(String memberNumber) {
+		return db.sql("select coalesce(viber_community_at::text, '-') from competitor where member_number = ?")
+				.param(memberNumber).query(String.class).single();
+	}
+
+	/**
+	 * HE JOINS AND LEAVES HIMSELF, AT ONCE, AND ONLY HIS OWN ROW MOVES.
+	 *
+	 * <p><b>Three rows and three states</b>, so no two sources agree: the member written first never asks,
+	 * somebody else asks before him and keeps his wish while this member takes his back, and this member is
+	 * written third. Each is read off the row, off the answer of the write and off his next visit, because the
+	 * screen opens from the last of the three.
+	 */
+	@Test
+	void aMemberJoinsTheViberCommunityAndLeavesItHimselfAndAtOnce() throws Exception {
+		assertThat(changeAs(SOMEONE_ELSE, changing("phone", "0601112223", "viberCommunity", true)).getStatus())
+				.isEqualTo(200);
+		assertThat(changeAs(ME, changing("phone", "0641112223")).getStatus()).isEqualTo(200);
+
+		MockHttpServletResponse joined = changeAs(ME, changing("viberCommunity", true));
+
+		assertThat(joined.getStatus())
+				.as("a member with a telephone on his row could not ask to join: %s", joined.getContentAsString())
+				.isEqualTo(200);
+		assertThat(answerIn(joined).path("viberCommunity").asBoolean()).isTrue();
+		assertThat(wishOf(ME)).as("the wish was not written on his row").isNotEqualTo("-");
+		assertThat(hisOwnRecord(ME).path("viberCommunity").asBoolean())
+				.as("his next visit opens the box empty over a row that holds the wish").isTrue();
+		assertThat(hisOwnRecord(FIRST_WRITTEN).path("viberCommunity").asBoolean())
+				.as("the wish of one member came out of another member's door").isFalse();
+
+		/* TICKED AGAIN, THE MOMENT IT WAS FIRST GIVEN STANDS: ticking a box already ticked is not a new wish. */
+		String given = wishOf(ME);
+
+		assertThat(changeAs(ME, changing("viberCommunity", true)).getStatus()).isEqualTo(200);
+		assertThat(wishOf(ME)).isEqualTo(given);
+
+		MockHttpServletResponse left = changeAs(ME, changing("viberCommunity", false));
+
+		assertThat(left.getStatus()).isEqualTo(200);
+		assertThat(answerIn(left).path("viberCommunity").asBoolean()).isFalse();
+		assertThat(wishOf(ME)).as("taking the wish back was not written").isEqualTo("-");
+		assertThat(hisOwnRecord(ME).path("viberCommunity").asBoolean()).isFalse();
+		assertThat(personalOf(ME).get(3)).as("leaving the community took his telephone with it")
+				.isEqualTo("0641112223");
+		assertThat(wishOf(SOMEONE_ELSE)).as("his leaving took somebody else's wish with it").isNotEqualTo("-");
+		assertThat(wishOf(FIRST_WRITTEN)).isEqualTo("-");
+	}
+
+	/**
+	 * A WISH NEEDS A TELEPHONE, AND THE TELEPHONE IS THE ONE THE ROW WOULD HOLD AFTER THE REQUEST.
+	 *
+	 * <p>Owner, PDL P36, 20.11.2026: „Kad je kvadratić štikliran, telefon je obavezan". Two sources of the one
+	 * telephone, and each case takes one of them away: none on the row and none sent; spaces sent; a wish on the
+	 * row and the telephone emptied by itself. And the two that must pass, so a route that refused every wish
+	 * would not: a telephone sent beside the wish, and the wish taken back in the same request that empties the
+	 * telephone.
+	 */
+	@Test
+	void aWishToJoinNeedsATelephoneOnTheRowOrInTheRequest() throws Exception {
+		for (String body : List.of(changing("viberCommunity", true),
+				changing("viberCommunity", true, "phone", "   "),
+				changing("viberCommunity", true, "phone", ""))) {
+
+			MockHttpServletResponse refused = changeAs(ME, body);
+
+			assertThat(refused.getStatus()).as("%s was taken from a member with no telephone", body).isEqualTo(400);
+			assertThat(reasonIn(refused)).isEqualTo(MeWriteApi.THE_VIBER_COMMUNITY_NEEDS_A_TELEPHONE);
+			assertThat(answerIn(refused).path("fields").toString()).isEqualTo("[\"phone\"]");
+			assertThat(wishOf(ME)).isEqualTo("-");
+		}
+
+		assertThat(changeAs(ME, changing("viberCommunity", true, "phone", "  0641112223  ")).getStatus())
+				.isEqualTo(200);
+		assertThat(personalOf(ME).get(3)).isEqualTo("0641112223");
+
+		MockHttpServletResponse emptied = changeAs(ME, changing("phone", ""));
+
+		assertThat(emptied.getStatus()).as("the telephone of a member in the community was emptied").isEqualTo(400);
+		assertThat(reasonIn(emptied)).isEqualTo(MeWriteApi.THE_VIBER_COMMUNITY_NEEDS_A_TELEPHONE);
+		assertThat(personalOf(ME).get(3)).isEqualTo("0641112223");
+		assertThat(wishOf(ME)).isNotEqualTo("-");
+
+		assertThat(changeAs(ME, changing("viberCommunity", false, "phone", "")).getStatus())
+				.as("leaving the community and removing the telephone in one request was refused")
+				.isEqualTo(200);
+		assertThat(personalOf(ME).get(3)).isEqualTo("null");
+		assertThat(wishOf(ME)).isEqualTo("-");
+	}
+
+	/** A box answered with a word and not a tick is a form nobody's screen made, and nothing is written. */
+	@Test
+	void aWishThatIsNotATickIsRefused() throws Exception {
+		assertThat(changeAs(ME, changing("phone", "0641112223")).getStatus()).isEqualTo(200);
+
+		MockHttpServletResponse refused = changeAs(ME, changing("viberCommunity", "da"));
+
+		assertThat(refused.getStatus()).isEqualTo(400);
+		assertThat(reasonIn(refused)).isEqualTo(MeWriteApi.THE_FORM_IS_NOT_COMPLETE);
+		assertThat(wishOf(ME)).isEqualTo("-");
+	}
+
 	/**
 	 * THE SWITCH THAT HIDES HIS PROFILE IS WHAT THE NEXT VISIT IS HANDED, both ways, on the two routes a
 	 * screen draws it from: his own record and the list.

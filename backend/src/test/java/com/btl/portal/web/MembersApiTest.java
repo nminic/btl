@@ -132,6 +132,41 @@ class MembersApiTest {
 		account(AN_ACTIVE_MEMBER, "competitor", onlyTheNext);
 		account(A_LAPSED_MEMBER, "competitor", lapsedWithNone);
 		account(NEVER_A_MEMBER, "competitor", neverAMember);
+
+		/* THE COMMUNITY ON VIBER (P36, 20.11.2026), and three telephones so no two sources agree: 000007 asked
+		   to join and gave his number, 000002 gave a number and did not ask, and the registered account that was
+		   never a member asked too, with a number of his own, and is on no list (owner, 20.11.2026: „oznaka se na
+		   Moderaciji pojavljuje čim nalog dobije članski broj"). The one who asked is neither first nor last. */
+		db.sql("update competitor set phone = '+381 64 700 0002' where id = ?").param(both).update();
+		db.sql("update competitor set phone = '+381 64 700 0007', viber_community_at = timestamptz"
+				+ " '2026-11-20 10:00:00+00' where id = ?").param(onlyTheNext).update();
+		db.sql("update competitor set phone = '+381 64 700 0000', viber_community_at = timestamptz"
+				+ " '2026-11-20 10:00:00+00' where id = ?").param(neverAMember).update();
+	}
+
+	/**
+	 * THE MARK VIBER CARRIES THE TELEPHONE OF WHO ASKED TO JOIN, AND NOBODY ELSE'S (owner, PDL P36, 20.11.2026:
+	 * „Ko je štiklirao, vidi se na ekranu Moderacija članova, oznakom Viber uz broj telefona"; and „Telefon
+	 * ostalih se ne servira"). Read off every row, so a route that served everybody's telephone, or the wish of
+	 * the first member, or the telephone of a member who did not ask, is told apart from one that served his.
+	 */
+	@Test
+	void theMarkViberCarriesTheTelephoneOfWhoAskedAndOfNobodyElse() throws Exception {
+		Map<String, String> viber = new LinkedHashMap<>();
+
+		for (JsonNode one : members()) {
+			if (one.has("viberPhone")) {
+				viber.put(one.path("memberNumber").asString(), one.path("viberPhone").asString());
+			}
+		}
+
+		assertThat(viber).as("the mark is not on exactly the one member who asked, with his own number")
+				.containsExactly(Map.entry("000007", "+381 64 700 0007"));
+
+		db.sql("update competitor set viber_community_at = null where member_number = '000007'").update();
+
+		assertThat(StreamSupport.stream(members().spliterator(), false).filter(one -> one.has("viberPhone")))
+				.as("a member who took the wish back still carries the mark").isEmpty();
 	}
 
 	/**

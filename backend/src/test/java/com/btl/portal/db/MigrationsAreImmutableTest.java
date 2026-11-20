@@ -894,7 +894,15 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   at V104 when it was written.
 
 			   Pinned LAST, when the file was final, off this very assertion. */
-			new Applied("105", "V105__an_imported_result_says_it_was_imported_and_when.sql", 267399578));
+			new Applied("105", "V105__an_imported_result_says_it_was_imported_and_when.sql", 267399578),
+
+			/* V106. A member may ask to join the league's community on Viber (owner, PDL P36, 20.11.2026, „Pored
+			   telefona stoji kvadratić za BTL zajednicu na Viberu"): one empty column on competitor, the moment the
+			   wish was given, and the rule that a wish needs a telephone. Nothing already standing touched. 106 and
+			   no other: main stood at V105 when it was written.
+
+			   Pinned LAST, when the file was final, off this very assertion. */
+			new Applied("106", "V106__a_member_may_ask_to_join_the_viber_community.sql", 2075345268));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {

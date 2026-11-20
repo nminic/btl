@@ -1969,7 +1969,7 @@ class MeApiTest {
 						+ " excuse is for nothing")
 				.containsAll(Set.of("referralCode", "referredCount", "membershipBasis",
 						"membershipSeason", "active", "address", "phone", "bioWaiting", "shirtSize",
-						"fatherName", "birthDate", "idNumber"));
+						"fatherName", "birthDate", "idNumber", "viberCommunity"));
 		/* THE PUBLIC LIST CARRIES NONE OF THESE, and that is a decision and not a gap:
 		   PDL „Uvek privatno: mejl, telefon i adresa", and the size of the shirt since 23.10.2026,
 		   which section 3 of the privacy policy lists among what is never shown. Asked of the record's components so that a
@@ -1978,7 +1978,7 @@ class MeApiTest {
 				.as("the public list carries a member's postal address, telephone or words that"
 						+ " wait, which are private (PDL) and are handed to him alone through this route")
 				.doesNotContain("address", "phone", "bioWaiting", "shirtSize", "fatherName", "birthDate",
-						"idNumber");
+						"idNumber", "viberCommunity");
 		/* `active` IS THE FOURTH, since 11.10.2026, AND ITS TWIN IS THE ROW ITSELF. The public
 		   list is of the active members, so on it the fact is not a field but the presence of the
 		   member (`frontend/src/data/types.ts`: "it is the PRESENCE OF THE ROW"), and a lapsed
@@ -1989,6 +1989,9 @@ class MeApiTest {
 						+ " four named for it: give it a twin, or name it here with its reason")
 				.containsExactlyInAnyOrder("referralCode", "referredCount", "active", "address",
 						"phone", "bioWaiting", "shirtSize", "fatherName", "birthDate", "idNumber",
+						/* THE WISH TO JOIN THE COMMUNITY ON VIBER (owner, PDL P36, 20.11.2026), private like
+						   the telephone it stands beside, so it has no twin on the public list. */
+						"viberCommunity",
 						/* THE CATEGORY OF HIS CARD, and its twin is the public card's `category`, whose
 						   three fields these are (V81, `CategoryOfASeason`); they are compared below by
 						   value, field against field. */

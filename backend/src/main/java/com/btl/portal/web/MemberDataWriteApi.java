@@ -138,6 +138,18 @@ class MemberDataWriteApi {
 	static final String THE_ADDRESS_IS_TAKEN = "theAddressIsTaken";
 
 	/**
+	 * The member asked to join the league's community on Viber, so his telephone is not emptied for him.
+	 *
+	 * <p>Owner, 20.11.2026, chosen between the options offered with the recommendation (PDL P36, „Ko je
+	 * štiklirao, vidi se na ekranu Moderacija članova"): when the administration tries to empty the telephone
+	 * of a member who ticked the box, the server refuses it, „Član je prijavljen za Viber zajednicu, pa broj ne
+	 * može da se obriše dok se ne odjavi." The wish stays his: he takes it back himself on „Moji podaci", and
+	 * this route does not take the box at all ({@link #NOT_TAKEN_HERE}). A number corrected to another number is
+	 * not refused. V106's {@code competitor_viber_community_needs_a_phone} would refuse the row anyway, as a 500.
+	 */
+	static final String THE_VIBER_COMMUNITY_HOLDS_THE_PHONE = "theViberCommunityHoldsThePhone";
+
+	/**
 	 * The address is one the settings name as the superadmin's (owner, 23.10.2026, PDL „Administracija
 	 * ne sme da ispravi adresu pošte člana na adresu imenovanog superadmina"). The sentence the screen
 	 * says for it is the assistant's and the owner changes it on QA: „Ova adresa pripada administraciji
@@ -506,6 +518,15 @@ class MemberDataWriteApi {
 		if (documentEmptied && !underSixteen) {
 			return Corrected.refused(ResponseEntity.badRequest()
 					.body(new MeWriteApi.NotAllowed(MeWriteApi.A_FIELD_IS_BLANK, List.of("idNumber"))));
+		}
+
+		/* HIS TELEPHONE, WHILE HE IS IN THE COMMUNITY ON VIBER, IS NOT EMPTIED FOR HIM (owner, 20.11.2026).
+		   Read under the hold taken above, so a wish given in the same instant is one before or after this. */
+		if (typed.phone() != null && typed.phone().isBlank()
+				&& db.sql("select viber_community_at is not null from competitor where id = ?")
+				.param(member).query(Boolean.class).single()) {
+
+			return Corrected.refused(conflict(THE_VIBER_COMMUNITY_HOLDS_THE_PHONE));
 		}
 
 		/* EVERY REFUSAL IS BEHIND US BUT ONE, and nothing has been written yet.
