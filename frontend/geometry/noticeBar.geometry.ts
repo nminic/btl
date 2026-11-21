@@ -74,7 +74,26 @@ for (const at of WIDTHS) {
         mainTop: main?.top ?? Number.NaN,
         textFits: text === null ? false : text.scrollWidth <= text.clientWidth + 0.5,
         textHeight: text?.getBoundingClientRect().height ?? Number.NaN,
-        close: close === undefined ? null : { w: close.width, h: close.height, left: close.left, right: close.right },
+        close: close === undefined ? null : { w: close.width, h: close.height, left: close.left, right: close.right, top: close.top, bottom: close.bottom },
+        /* The column the content of the page stands in, read off `main` and not off the strip's own classes, so
+           a strip that loses its column (a class renamed, a wrapper gone) is measured against the page's. */
+        column: (() => {
+          const element = document.querySelector('main')
+
+          if (element === null) {
+            return null
+          }
+
+          const style = getComputedStyle(element)
+          const edge = element.getBoundingClientRect()
+
+          return { left: edge.left + Number.parseFloat(style.paddingLeft), right: edge.right - Number.parseFloat(style.paddingRight) }
+        })(),
+        textBox: (() => {
+          const box = text?.getBoundingClientRect()
+
+          return box === undefined ? null : { left: box.left, right: box.right, top: box.top, bottom: box.bottom }
+        })(),
       }
     })
 
@@ -98,6 +117,19 @@ for (const at of WIDTHS) {
     expect(close.h).toBeGreaterThanOrEqual(44 - 0.5)
     expect(close.left).toBeGreaterThanOrEqual(0)
     expect(close.right).toBeLessThanOrEqual(seen.width + 0.5)
+
+    /* THE CROSS IS ON THE RIGHT (owner: „krstić desno") and the sentence is in the column of the page: the
+       column's right edge, give or take the 12px the cross hangs out of it so its drawing lines up with the edge;
+       the sentence begins where the content does; and the cross is in the row of the sentence or to the right of
+       it, never under it. A strip that loses its column puts the cross under the text at 360 and stretches the
+       sentence across the whole window at 1280. */
+    const column = seen.column ?? { left: Number.NaN, right: Number.NaN }
+    const textBox = seen.textBox ?? { left: Number.NaN, right: Number.NaN, top: Number.NaN, bottom: Number.NaN }
+
+    expect(Math.abs(close.right - (column.right + 12)), `the cross stands at the right of the column ${JSON.stringify({ close, column })}`).toBeLessThanOrEqual(1)
+    expect(Math.abs(textBox.left - column.left), `the sentence begins where the content begins ${JSON.stringify({ textBox, column })}`).toBeLessThanOrEqual(1)
+    expect(close.left, 'the cross is to the right of the sentence').toBeGreaterThanOrEqual(textBox.right - 0.5)
+    expect(seen.close?.top ?? Number.NaN, 'the cross is in the row of the sentence, not under it').toBeLessThan(textBox.bottom)
 
     const takes = await page.getByRole('button', { name: 'Zatvori obaveštenje' }).evaluate((element) => {
       const box = element.getBoundingClientRect()
@@ -141,5 +173,26 @@ for (const at of WIDTHS) {
 
     expect(verdict.overlap, `the panel and the strip overlap, or this measures nothing: ${JSON.stringify(verdict)}`).toBeGreaterThan(8)
     expect(verdict.covered).toBe('the panel')
+  })
+}
+
+/* THE PERSON THAT STANDS FOR „PRIJAVI SE" ON A DESKTOP IS SEEN (owner, 21.11.2026, PDL „Zaglavlje za posetioca").
+   Asked of Chrome because jsdom lays nothing out: the drawing takes its size from `.shell__person`, and an
+   `<svg>` with that class gone is 0 by 0, which leaves a visitor with a link that has a name and nothing to
+   look at. A telephone draws the arrow of its own row, which `phoneHeader.geometry.ts` holds. */
+for (const at of WIDTHS.filter((one) => one.width >= 700)) {
+  test(`the person for „Prijavi se" has a size you can see at ${label(at)}`, async ({ open }) => {
+    const { page } = await open(at, '/sr', 'header .brand', NO_ANSWERS)
+    const link = page.getByRole('link', { name: 'Prijavi se' })
+    const box = await link.locator('svg').boundingBox()
+
+    expect(box, 'the link draws a person').not.toBeNull()
+    expect(box?.width ?? 0, 'the person is wide enough to see').toBeGreaterThanOrEqual(16)
+    expect(box?.height ?? 0, 'the person is tall enough to see').toBeGreaterThanOrEqual(16)
+
+    const link_ = await link.boundingBox()
+
+    expect(link_?.width ?? 0, 'the link is a target of at least 24px (WCAG 2.2 SC 2.5.8)').toBeGreaterThanOrEqual(24)
+    expect(link_?.height ?? 0).toBeGreaterThanOrEqual(24)
   })
 }
