@@ -56,7 +56,7 @@ const MEMBERS = everyAnswer()['/api/competitors']
 
 /**
  * The first result of every member raised by 399.000 points (owner, 21.11.2026: the podium prints the BTL
- * points of the whole history while the league warms up, in the short unit "p", "399.999,99 p"), so the figure
+ * points of the whole history while the league warms up, as the number alone, "399.999,99"), so the figure
  * the podium and the list have to hold is of that length and not the two-digit one of the sample.
  */
 const RESULTS = everyAnswer()['/api/results']
@@ -365,9 +365,9 @@ for (const at of WIDTHS) {
 
       expect(board.places).toHaveLength(3)
 
-      /* The figure of the podium in the short unit: one line under the name, and not wider than its place. */
+      /* The figure of the podium is the number and no letter after it (owner, 21.11.2026): one line, not wider than its place. */
       for (const place of board.places.filter((one) => one.pointsText !== '')) {
-        expect(place.pointsText, 'the podium does not print the short unit').toMatch(/\d p$/)
+        expect(place.pointsText, 'the podium prints something besides the number').toMatch(/^\d[\d.,]*,\d\d$/)
         expect(place.pointsLines, `the points break into lines: ${place.who}`).toBe(1)
         expect(place.pointsOver, `the points are wider than their place: ${place.who}`).toBeLessThanOrEqual(SAME)
       }
@@ -452,7 +452,7 @@ const ALL_TEXTS: At['text'][] = [100, 125, 150, 175, 200]
 
 /**
  * THE FIGURE OF THE PODIUM STANDS IN ITS COLUMN AT EVERY TEXT SIZE, IN BOTH LANGUAGES (owner, 21.11.2026, review of
- * PR 768, WCAG 1.4.4 Resize text): the floor of the letter is in `rem`, so at 200% a figure like 399.999,99 p
+ * PR 768, WCAG 1.4.4 Resize text): the floor of the letter is in `rem`, so at 200% a figure like 399.999,99
  * no longer fits a column of 60px, and a figure kept on one line spilled 14px out of its column and over the
  * next one. What is measured is the text a person sees (the rectangles of its range, since a box that
  * overflows does not make its element wider): inside its own column, clear of the figure beside it and of

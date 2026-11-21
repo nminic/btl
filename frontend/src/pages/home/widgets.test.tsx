@@ -210,10 +210,10 @@ describe('TopTen', () => {
       '2. Ime 000002',
       '3. Ime 000003',
     ])
-    expect(items.map((one) => within(one).getByText(/\d p$/).textContent)).toEqual([
-      '100,00 p',
-      '90,00 p',
-      '80,00 p',
+    expect(items.map((one) => within(one).getByText(/^\d[\d.,]*,\d\d$/).textContent)).toEqual([
+      '100,00',
+      '90,00',
+      '80,00',
     ])
     expect(items.map((one) => within(one).getByText('M 40-54').textContent)).toEqual([
       'M 40-54',
@@ -255,10 +255,10 @@ describe('TopTen', () => {
 
     const items = within(lists().podium).getAllByRole('listitem')
 
-    expect(items.map((one) => within(one).getByText(/\d p$/).textContent)).toEqual([
-      '0,00 p',
-      '0,00 p',
-      '0,00 p',
+    expect(items.map((one) => within(one).getByText(/^\d[\d.,]*,\d\d$/).textContent)).toEqual([
+      '0,00',
+      '0,00',
+      '0,00',
     ])
 
     for (const one of items) {
@@ -288,7 +288,7 @@ describe('TopTen', () => {
     // 000002 has the points and is first; the other two are held.
     expect(within(at(items, 0)).getByRole('link', { name: '1. Ime 000002' })).toBeVisible()
     expect(at(items, 0)).toHaveClass('stand__item--won')
-    expect(within(at(items, 1)).getByText('0,00 p')).toBeVisible()
+    expect(within(at(items, 1)).getByText('0,00')).toBeVisible()
     expect(at(items, 1)).not.toHaveClass('stand__item--won')
   })
 
@@ -363,10 +363,10 @@ describe('TopTen', () => {
       )
 
       /* The name is two elements and the figure follows it, so the text of a place reads „Ime" „000001" „60,75 p". */
-      expect(shown().podium.map((one) => /Ime(\d{6})(\d+,\d\d p)/.exec(one ?? '')?.slice(1))).toEqual([
-        ['000001', '60,75 p'],
-        ['000002', '50,20 p'],
-        ['000003', '49,99 p'],
+      expect(shown().podium.map((one) => /Ime(\d{6})(\d[\d.]*,\d\d)/.exec(one ?? '')?.slice(1))).toEqual([
+        ['000001', '60,75'],
+        ['000002', '50,20'],
+        ['000003', '49,99'],
       ])
       expect(shown().rows.map((one) => one?.replace(/^\d+\.I0Ime /, ''))).toEqual([
         '000005M 40-547,09',
@@ -395,7 +395,7 @@ describe('TopTen', () => {
         .getAllByRole('listitem', { hidden: true })
         .map((one) => must(one.querySelector('.stand__points'), 'the figure of a place'))
 
-      expect(figures.map((one) => one.textContent)).toEqual(['1.234.567,89 p', '34.921,69 p', '60,75 p'])
+      expect(figures.map((one) => one.textContent)).toEqual(['1.234.567,89', '34.921,69', '60,75'])
       expect(figures.map((one) => one.querySelectorAll('wbr').length)).toEqual([2, 1, 0])
       /* The letter is worked out from the number of characters the page writes, and the unit is among them. */
       expect(figures.map((one) => one.getAttribute('style'))).toEqual(
@@ -410,8 +410,8 @@ describe('TopTen', () => {
         <TopTen competitors={field} results={raced} season={2027} today={THE_DAY_BEFORE} gender="M" />,
       )
 
-      expect(shown().podium.slice(0, 1).map((one) => /Ime(\d{6})(\d+,\d\d p)/.exec(one ?? '')?.slice(1))).toEqual([
-        ['000001', '73,09 p'],
+      expect(shown().podium.slice(0, 1).map((one) => /Ime(\d{6})(\d[\d.]*,\d\d)/.exec(one ?? '')?.slice(1))).toEqual([
+        ['000001', '73,09'],
       ])
     })
 
@@ -426,9 +426,9 @@ describe('TopTen', () => {
         <TopTen competitors={field} results={raced} season={2027} today={THE_FIRST_DAY} gender="M" />,
       )
 
-      expect(shown().podium.slice(0, 2).map((one) => /Ime(\d{6})(\d+,\d\d p)/.exec(one ?? '')?.slice(1))).toEqual([
-        ['000001', '12,34 p'],
-        ['000002', '5,55 p'],
+      expect(shown().podium.slice(0, 2).map((one) => /Ime(\d{6})(\d[\d.]*,\d\d)/.exec(one ?? '')?.slice(1))).toEqual([
+        ['000001', '12,34'],
+        ['000002', '5,55'],
       ])
     })
   })
