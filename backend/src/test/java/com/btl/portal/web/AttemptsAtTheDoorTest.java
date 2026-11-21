@@ -316,6 +316,11 @@ class AttemptsAtTheDoorTest {
 		clock.moveTo(start.plus(Duration.ofMinutes(59)).plusSeconds(59));
 		isTheRefusal(anIncompleteRegistration(network), "1");
 
+		/* HALF A SECOND LEFT IS STILL ONE TO WAIT, not nought: a client told to wait nought and asking
+		   again at once is refused again. */
+		clock.moveTo(start.plus(Duration.ofMinutes(59)).plusSeconds(59).plusMillis(500));
+		isTheRefusal(anIncompleteRegistration(network), "1");
+
 		clock.moveTo(start.plus(Duration.ofHours(1)));
 		assertThat(anIncompleteRegistration(network).getStatus()).as("the first ran out").isEqualTo(400);
 		isTheRefusal(anIncompleteRegistration(network), Long.toString(Duration.ofMinutes(10).toSeconds()));
