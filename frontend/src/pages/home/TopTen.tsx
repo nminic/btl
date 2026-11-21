@@ -190,9 +190,7 @@ function ListedPlace({
       </span>
       <Face slot={competitor} place={place} />
       <span className="nm">
-        <ProfileLink competitor={competitor} title={name}>
-          {name}
-        </ProfileLink>
+        <ProfileLink competitor={competitor}>{name}</ProfileLink>
       </span>
       <span className="kt">{categoryLabelIn(competitor, season, t)}</span>
       <span className="pt">

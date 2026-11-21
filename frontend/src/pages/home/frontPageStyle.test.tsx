@@ -186,10 +186,10 @@ describe('the markup of the front page and the sheets that dress it', () => {
     expect(body(home, '.toprows li')).toContain('grid-column: 1 / -1')
   })
 
-  it('keeps the row as tall as it was: the name is one line and ends in three dots where it does not fit', () => {
-    expect(body(home, '.toprows .nm')).toMatch(/text-overflow: ellipsis/)
-    expect(body(home, '.toprows .nm')).toMatch(/white-space: nowrap/)
-    expect(body(home, '.toprows .nm')).toMatch(/overflow: hidden/)
+  it('never cuts a name of the list: it wraps where it does not fit, and nothing clips the ring of focus', () => {
+    expect(body(home, '.toprows .nm')).toMatch(/overflow-wrap: anywhere/)
+    expect(body(home, '.toprows .nm')).not.toMatch(/text-overflow|nowrap|overflow: hidden/)
+    expect(body(home, '.toprows .kt')).not.toMatch(/text-overflow|nowrap|overflow: hidden/)
     expect(body(home, '.toprows li')).toContain('min-block-size: 2.75rem')
   })
 })

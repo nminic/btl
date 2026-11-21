@@ -703,7 +703,7 @@
   display: grid;
   /* The points column is as wide as the widest figure, and no wider than 35% of the list: a figure that does not
      fit even then breaks after a thousands separator (`TopTen.tsx`, `Figure`) and does not push the list out. */
-  grid-template-columns: 1.6rem 28px minmax(0, 1fr) fit-content(35%);
+  grid-template-columns: max-content 28px minmax(0, 1fr) fit-content(35%);
   column-gap: var(--space-8);
 }
 
@@ -753,20 +753,20 @@
    `.rankings__member-number`, `table__member-number`: two blocks under each other, the second smaller and
    muted, no gap between them); the sizes are the list's own, the name 0.9rem and the category 0.75rem.
 
-   **The row is no taller than it was**: two lines of 0.9rem and 0.75rem at a line height of 1.15 are 30px, the row's padding 12px, a border of 1px, and the
-   floor 2.75rem (44px) is what it always was, so two boards side by side stay one height. For that the name is one
-   line and ends in three dots where it does not fit (owner, 21.11.2026, the same rule as the surnames of the
-   podium), the whole name staying in the `title` and in the link; it used to wrap, which is what a row with the
-   category beside it could afford and a row of fixed height cannot. The columns are a subgrid of one grid, so the
-   points stay on one line at the right in every row. */
+   **A name is never cut** (owner, 21.11.2026, chosen between the offered, with the recommendation put to him,
+   after the review of PR 768: „Ime se nikad ne seče: gde ne staje u jedan red (na 560 i 860 px), prelazi u dva
+   reda i red postaje viši"): the name wraps where it must and the row grows with it. Where it fits (768, 1024 and
+   1280 at the browser's own text size) the row is the 2.75rem (44px) it always was: two lines of 0.9rem and 0.75rem
+   at a line height of 1.15 are 30px, the padding 12px, the border 1px. Nothing here clips, so the ring of focus
+   of the link (`index.css`, 2px and an offset of 2px) is drawn whole. The columns are a subgrid of one grid, so
+   the points stay on one line at the right in every row, and two boards side by side stay one height because
+   the grid they stand in stretches both. */
 .toprows .nm {
   grid-column: 3;
   grid-row: 1;
   align-self: end;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
   font-size: 0.9rem;
   line-height: 1.15;
   text-align: left;
@@ -777,12 +777,10 @@
   grid-row: 2;
   align-self: start;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow-wrap: anywhere;
   font-size: 0.75rem;
   line-height: 1.15;
   color: var(--text-muted);
-  white-space: nowrap;
   text-align: left;
 }
 

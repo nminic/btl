@@ -403,7 +403,8 @@ for (const at of WIDTHS) {
       for (const row of board.rows) {
         expect(row.category.top, 'the category is not under the name').toBeGreaterThanOrEqual(row.name.bottom - SAME)
         expect(Math.abs(row.category.left - row.name.left), 'the category does not start where the name does').toBeLessThanOrEqual(SAME)
-        expect(row.row.height, 'the row of the list is taller than it was').toBeLessThanOrEqual(45)
+        expect(row.cut, 'a name of the list is cut').toBe(false)
+
       }
     }
 
@@ -454,6 +455,7 @@ const SAMPLE_NAMES: Answers = {
 
 const TEXTS: At['text'][] = [100, 125, 200]
 const ALL_TEXTS: At['text'][] = [100, 125, 150, 175, 200]
+const BOTH_TEXTS: At['text'][] = [100, 200]
 
 /**
  * THE FIGURE OF THE PODIUM STANDS IN ITS COLUMN AT EVERY TEXT SIZE, IN BOTH LANGUAGES (owner, 21.11.2026, review of
@@ -697,7 +699,7 @@ test('the focus on a race only „Ultra" shows goes to the heading of the calend
  * their column, and the page does not move sideways. A name that does not fit ends in three dots, so it is
  * measured by the box it is drawn in, and the figure by the text a person sees.
  */
-for (const width of [360, 768, 1024, 1280]) {
+for (const width of [360, 560, 768, 860, 1024, 1280]) {
   for (const text of ALL_TEXTS) {
     for (const language of ['sr', 'en']) {
       const here: At = { width, text }
@@ -729,8 +731,11 @@ for (const width of [360, 768, 1024, 1280]) {
               return value
             }
 
+            const nameBox = must(row.querySelector('.nm'))
+
             return {
               text: figure.textContent ?? '',
+              nameCut: nameBox.scrollWidth - nameBox.clientWidth,
               row: rect(row),
               parts: {
                 no: rect(must(row.querySelector('.no'))),
@@ -781,6 +786,7 @@ for (const width of [360, 768, 1024, 1280]) {
             expect(meets(one, other), `${what} are on each other: ${row.text}`).toBe(false)
           }
 
+          expect(row.nameCut, `a name of the list is cut: ${row.text}`).toBeLessThanOrEqual(SAME)
           expect(figure.left, `the points leave the row on the left: ${row.text}`).toBeGreaterThanOrEqual(row.row.left - SAME)
           expect(figure.right, `the points leave the row on the right: ${row.text}`).toBeLessThanOrEqual(row.row.right + SAME)
           expect(row.figureOver, `the points stick out of their own column: ${row.text}`).toBeLessThanOrEqual(SAME)
@@ -835,5 +841,85 @@ for (const width of [768, 1280]) {
       seen.podium.some((place) => Math.abs(place.size - (list?.size ?? 0)) <= 0.05),
       'no figure of the podium is the size of the list one: it is set smaller everywhere',
     ).toBe(true)
+  })
+}
+
+/**
+ * THE RING OF FOCUS OF A NAME IN THE LIST IS DRAWN WHOLE (WCAG 2.4.7, review of PR 768): a link is focused from the
+ * keyboard, and its ring (`index.css`, the outline and its offset) grown round the link must lie inside the box of
+ * every ancestor that clips what is drawn outside it. A name in a box that hides its overflow had a ring cut to a
+ * thin line, and at 860px no ring at all.
+ */
+for (const width of [360, 560, 768, 860, 1024, 1280]) {
+  for (const text of BOTH_TEXTS) {
+    test(`the ring of focus of the names of the list is not clipped, at ${label({ width, text })}`, async ({ open, theDay }) => {
+      test.skip(theDay !== THE_DAY_THE_SUITE_IS_READ_AS, 'no row stands in the list on this day')
+
+      const { page } = await open({ width, text }, '/sr', '.top10 .stand', ANSWERS)
+
+      await page.keyboard.press('Tab')
+
+      const seen = await page.evaluate(() => {
+        const links = [...document.querySelectorAll('.toprows .nm a')]
+
+        return links.map((link) => {
+          if (link instanceof HTMLElement) {
+            link.focus()
+          }
+
+          const style = getComputedStyle(link)
+          const grow = Number.parseFloat(style.outlineWidth) + Number.parseFloat(style.outlineOffset)
+          const box = link.getBoundingClientRect()
+          const ring = { left: box.left - grow, right: box.right + grow, top: box.top - grow, bottom: box.bottom + grow }
+          let cut = 0
+
+          for (let up = link.parentElement; up !== null && up !== document.documentElement; up = up.parentElement) {
+            const own = getComputedStyle(up)
+
+            if (own.overflowX !== 'visible' || own.overflowY !== 'visible') {
+              const clip = up.getBoundingClientRect()
+
+              cut = Math.max(cut, clip.left - ring.left, ring.right - clip.right, clip.top - ring.top, ring.bottom - clip.bottom)
+            }
+          }
+
+          return { name: link.textContent ?? '', cut, ringWidth: Number.parseFloat(style.outlineWidth), focused: document.activeElement === link }
+        })
+      })
+
+      expect(seen.length, 'the list has no name to focus').toBeGreaterThan(0)
+
+      for (const one of seen) {
+        expect(one.focused, `${one.name} cannot be focused`).toBe(true)
+        expect(one.ringWidth, `${one.name} has no ring of focus`).toBeGreaterThan(0)
+        expect(one.cut, `the ring of focus of ${one.name} is clipped`).toBeLessThanOrEqual(SAME)
+      }
+    })
+  }
+}
+
+/**
+ * WHERE THE NAME FITS, THE ROW IS THE 44px IT ALWAYS WAS (owner, 21.11.2026: a name is never cut, and where it does not
+ * fit it wraps and the row grows): with the names of the portal, at the three widths where they stand in one line at the
+ * browser's own text size, a row of the list is the 2.75rem and a pixel of border, and the two boards are one height.
+ */
+for (const width of [768, 1024, 1280]) {
+  test(`a row of the list is one row high where the name fits, at ${label({ width, text: 100 })}`, async ({ open, theDay }) => {
+    test.skip(theDay !== THE_DAY_THE_SUITE_IS_READ_AS, 'no row stands in the list on this day')
+
+    const { page } = await open({ width, text: 100 }, '/sr', '.top10 .stand', everyAnswer())
+
+    const seen = await page.evaluate(() => ({
+      rows: [...document.querySelectorAll('.toprow:not(.toprow--empty)')].map((row) => Math.round(row.getBoundingClientRect().height * 10) / 10),
+      boards: [...document.querySelectorAll('.top10')].map((board) => Math.round(board.getBoundingClientRect().height * 10) / 10),
+    }))
+
+    expect(seen.rows.length).toBeGreaterThan(0)
+
+    for (const height of seen.rows) {
+      expect(height, 'a row of the list is taller than it was').toBeLessThanOrEqual(45)
+    }
+
+    expect(Math.max(...seen.boards) - Math.min(...seen.boards), 'the two boards are not one height').toBeLessThanOrEqual(SAME)
   })
 }
