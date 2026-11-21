@@ -53,8 +53,24 @@ const LONG_LAST = ['Stamenkovska', 'Gvozdenović', 'Milovanović', 'Jovanovićev
 const LONG_FIRST = ['Aleksandar', 'Strahinja', 'Radoslava', 'Aleksandra', 'Ivona', 'Dragoslav']
 
 const MEMBERS = everyAnswer()['/api/competitors']
+
+/**
+ * The first result of every member raised by 34.000 points (owner, 21.11.2026: the podium prints the BTL
+ * points of the whole history while the league warms up, in the short unit "p", "34.921,69 p"), so the figure
+ * the podium and the list have to hold is of that length and not the two-digit one of the sample.
+ */
+const RESULTS = everyAnswer()['/api/results']
+const SEEN = new Set<unknown>()
+
 const ANSWERS: Answers = {
   ...everyAnswer(),
+  '/api/results': (Array.isArray(RESULTS) ? RESULTS : []).map((one: Record<string, unknown>) => {
+    const first = !SEEN.has(one.memberNumber)
+
+    SEEN.add(one.memberNumber)
+
+    return first && typeof one.points === 'number' ? { ...one, points: one.points + 34000 } : one
+  }),
   '/api/competitors': (Array.isArray(MEMBERS) ? MEMBERS : []).map((one: Record<string, unknown>, index: number) => ({
     ...one,
     firstName: LONG_FIRST[index % LONG_FIRST.length],
@@ -157,6 +173,16 @@ for (const at of WIDTHS) {
           circle: box(must(item.querySelector('.portrait'))),
           step: box(must(item.querySelector('.stand__step'))),
           name: box(must(item.querySelector('.stand__name'))),
+          /* A place nobody stands on has no figure to measure (the other day the podium is empty). */
+          pointsLines: item.querySelector('.stand__points') === null ? 0 : lines(must(item.querySelector('.stand__points'))),
+          pointsText: item.querySelector('.stand__points')?.textContent ?? '',
+          pointsOver: (() => {
+            const figure = item.querySelector('.stand__points')
+
+            return figure === null
+              ? 0
+              : Math.round((box(figure).right - item.getBoundingClientRect().right) * 10) / 10
+          })(),
           who: (item.querySelector('.stand__name')?.textContent ?? '') + ' | ' + (item.querySelector('.stand__points')?.textContent ?? ''),
           nameLines: [...item.querySelectorAll('.stand__first, .stand__last')].map((one) => Math.round(one.getBoundingClientRect().height)),
           lines: [...item.querySelectorAll('.stand__first, .stand__last')].map((one) => lines(one)),
@@ -338,6 +364,13 @@ for (const at of WIDTHS) {
       const [first, second, third] = board.places
 
       expect(board.places).toHaveLength(3)
+
+      /* The figure of the podium in the short unit: one line under the name, and not wider than its place. */
+      for (const place of board.places.filter((one) => one.pointsText !== '')) {
+        expect(place.pointsText, 'the podium does not print the short unit').toMatch(/\d p$/)
+        expect(place.pointsLines, `the points break into lines: ${place.who}`).toBe(1)
+        expect(place.pointsOver, `the points are wider than their place: ${place.who}`).toBeLessThanOrEqual(SAME)
+      }
       expect(first?.circle.top, 'the first is not above the second').toBeLessThan((second?.circle.top ?? 0) - 1)
       expect(second?.circle.top, 'the second is not above the third').toBeLessThan((third?.circle.top ?? 0) - 1)
       expect(first?.circle.width).toBeGreaterThan((second?.circle.width ?? 0) + 1)
