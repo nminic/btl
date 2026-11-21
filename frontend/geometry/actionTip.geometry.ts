@@ -191,24 +191,22 @@ for (const at of WIDTHS) {
       await expect(page.locator('.action-tip')).toHaveCount(0)
 
       /* Every frame from here on says where the box stands, or that there is none. */
-      await page.evaluate(() => {
-        const frames: (number | null)[] = []
-        const holder = window as unknown as { frames: (number | null)[]; recording: boolean }
-
-        holder.frames = frames
-        holder.recording = true
+      const recorder = await page.evaluateHandle(() => {
+        const state: { frames: (number | null)[]; recording: boolean } = { frames: [], recording: true }
 
         const frame = () => {
           const words = document.querySelector('.action-tip__words')
 
-          frames.push(words === null ? null : words.getBoundingClientRect().left)
+          state.frames.push(words === null ? null : words.getBoundingClientRect().left)
 
-          if (holder.recording) {
+          if (state.recording) {
             requestAnimationFrame(frame)
           }
         }
 
         requestAnimationFrame(frame)
+
+        return state
       })
 
       if (how === 'the pointer') {
@@ -220,24 +218,22 @@ for (const at of WIDTHS) {
       }
 
       await page.locator('.action-tip').waitFor({ state: 'visible' })
-      await page.evaluate(
-        () =>
+      await recorder.evaluate(
+        (state) =>
           new Promise<void>((done) => {
-            const holder = window as unknown as { frames: (number | null)[] }
-            const drawnAt = holder.frames.length
-            const wait = () => (holder.frames.length - drawnAt >= 20 ? done() : requestAnimationFrame(wait))
+            const drawnAt = state.frames.length
+            const wait = () => (state.frames.length - drawnAt >= 20 ? done() : requestAnimationFrame(wait))
 
             wait()
           }),
       )
 
-      const frames = await page.evaluate(() => {
-        const holder = window as unknown as { frames: (number | null)[]; recording: boolean }
+      const frames = await recorder.evaluate((state) => {
+        state.recording = false
 
-        holder.recording = false
-
-        return holder.frames
+        return state.frames
       })
+
       /* The frames above are a race against one frame of paint, so what they would see is asked of the cause as
          well: the box has no time to glide in, whatever a frame happened to show. */
       expect(
