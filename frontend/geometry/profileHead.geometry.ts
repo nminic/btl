@@ -450,7 +450,13 @@ for (const at of WIDTHS) {
 
 /** THE FILTER OF THE RACES ON THE PROFILE (owner, 21.11.2026: „na desktopu filter trka na profilu nije širok kao
  *  strana nego koliko mu dugmad traže, levo"). */
-for (const at of [{ width: 360, text: 100 }, { width: 768, text: 100 }, { width: 1280, text: 100 }] as At[]) {
+const FILTER_WIDTHS: At[] = [
+  { width: 360, text: 100 },
+  { width: 768, text: 100 },
+  { width: 1280, text: 100 },
+]
+
+for (const at of FILTER_WIDTHS) {
   test(`the filter of the races on the profile is as wide as its buttons ask from a tablet up, ${label(at)}`, async ({ open }) => {
     const { page, probe } = await open(at, HER_PAGE, '#profile-results', THE_LISTS)
     const measured = await measure(page)
