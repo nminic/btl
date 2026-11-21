@@ -42,6 +42,9 @@ function everyAnswer(dir = MOCK, prefix = ''): Record<string, unknown> {
 /** Signed in as the administration, so the header holds every control it can hold. */
 const ANSWERS: Answers = { ...everyAnswer(), '/api/me': { role: 'superadmin', account: 41, membershipBasis: null } }
 
+/** The narrowest window on which the lane is drawn at a height of 900 and text of 100% (`1132px + 5em`, 80px of em). */
+const LANE_FROM = 1212
+
 const WIDTHS: At[] = [
   { width: 320, text: 100 },
   { width: 375, text: 100 },
@@ -292,7 +295,8 @@ for (const at of WIDTHS.flatMap((one): At[] => [one, { ...one, theme: 'dark' }])
 
     expect(seen.wide, 'the wide ground').toBe(reads >= 560)
     expect(seen.narrow, 'the ground of a telephone').toBe(reads < 560)
-    expect(seen.route, 'the route').toBe(reads >= 560)
+    /* The lane is drawn where the gutter holds it, which at the height of this suite (900) and text of 100% is from 1212px. */
+    expect(seen.route, 'the route').toBe(at.width >= LANE_FROM && at.text === 100)
     /* The suite reads as somebody who asked for less movement (`motion` in `geometry/support/harness.ts`), who gets no
        dot at any width; where it is drawn is asked below, with the reader who has not. */
     expect(seen.dot, 'the dot').toBe(false)
@@ -422,10 +426,9 @@ async function routeTouches(page: Page): Promise<{ words: number; points: number
 /* The front page has no word on the bare page at all, so it would pass whatever the route did: the rulebook is
    text laid straight on the page (534 words) and the calendar has its heading and its notes there (13). Each
    must hold words, or this asks nothing. */
-for (const at of WIDTHS.flatMap((one): At[] => [one, { ...one, theme: 'dark' }])) {
-  const reads = at.width / (at.text / 100)
-
-  if (reads < 560) continue
+for (const at of ([...WIDTHS, { width: 1920, text: 100 }, { width: 1220, text: 100 }] satisfies At[]).flatMap((one): At[] => [one, { ...one, theme: 'dark' }])) {
+  /* Where the lane is not drawn there is no route to meet a word (the 1920px window is added: it has the most room). */
+  if (at.width < LANE_FROM || at.text !== 100) continue
 
   for (const path of ['/sr', '/sr/pravilnik', '/sr/kalendar']) {
     test(`the route and the dot touch no word on ${path} at ${label(at)}`, async ({ open }) => {
@@ -455,17 +458,17 @@ test('the dot is not drawn for a reader who asked for less movement, and the gro
   expect(seen).toEqual({ wide: true, dot: false, running: 0 })
 })
 
-/* The dot is drawn from 560px for a reader who has not asked for less movement, and at no width under it. Each of
-   these pays for the five seconds it runs before the page settles. */
-for (const width of [320, 600, 1280]) {
-  test(`the dot is drawn for a reader who has not asked for less movement, from 560px, at ${width}px`, async ({ open }) => {
+/* The dot is drawn for a reader who has not asked for less movement, where the lane is (from 1212px at a height of 900),
+   and at no width under it. Each of these pays for the seconds it runs before the page settles. */
+for (const width of [320, 600, 1150, 1280]) {
+  test(`the dot is drawn for a reader who has not asked for less movement, where the gutter holds it, at ${width}px`, async ({ open }) => {
     const { page } = await open({ width, text: 100, motion: 'no-preference' }, '/sr', 'header .brand', ANSWERS)
 
-    expect(await isDrawn(page, '.race-page__dot')).toBe(width >= 560)
+    expect(await isDrawn(page, '.race-page__dot')).toBe(width >= LANE_FROM)
   })
 }
 
-test('the dot runs once, for five seconds at most, and starts again on the next screen', async ({ open }) => {
+test('the dot runs once, in under five seconds, and starts again on the next screen', async ({ open }) => {
   const { page } = await open({ width: 1280, text: 100, motion: 'no-preference' }, '/sr', 'header .brand', ANSWERS)
 
   /* The page has settled, so the first run is over and nothing of the dot runs: it rests where it stopped. */
@@ -504,7 +507,7 @@ test('the dot runs once, for five seconds at most, and starts again on the next 
       }),
   )
 
-  expect(after.duration, 'seconds the dot runs').toBeLessThanOrEqual(5000)
+  expect(after.duration, 'seconds the dot runs').toBeLessThan(5000)
   expect(after.iterations).toBe(1)
   expect(after.at, 'a new screen started the dot from the beginning').toBeLessThan(2000)
 })
@@ -640,3 +643,117 @@ test('the page layer stays the size of the window at the foot of a long page', a
   expect(box.top).toBe(0)
   expect(box.bottom).toBe(box.height)
 })
+
+/* WHERE THE DOT IS LEFT, READ OFF WHAT CHROME DRAWS (owner, 21.11.2026: it leaves over the bottom edge of the window
+   and is gone). The sheet's and the component's cases work the end of the path out from the data; only here is
+   the ring's own box read, so a centre moved on the circles, a translate on the group or a taller view of the lane
+   fail here and nowhere else. The window is made as tall as each case says after the page has settled: the dot is
+   resting at the end of its path, and the lane is laid out again for the new height. */
+for (const [width, height] of [
+  [1280, 650],
+  [1920, 1080],
+  [1440, 1400],
+  [1280, 1400],
+] as const) {
+  test(`the dot is left wholly below the bottom edge of the window at ${width}x${height}`, async ({ open }) => {
+    const { page } = await open({ width, text: 100, motion: 'no-preference' }, '/sr', 'header .brand', ANSWERS)
+
+    expect(await page.evaluate(() => document.querySelector('.race-page__dot')?.getAnimations().length ?? -1), 'the run is over').toBe(0)
+
+    await page.setViewportSize({ width, height })
+
+    const seen = await page.evaluate(
+      () =>
+        new Promise<{ top: number; window: number }>((resolve) => {
+          requestAnimationFrame(() =>
+            requestAnimationFrame(() => {
+              const ring = document.querySelector('.race-page__dot-ring')
+
+              resolve({ top: ring === null ? Number.NaN : ring.getBoundingClientRect().top, window: window.innerHeight })
+            }),
+          )
+        }),
+    )
+
+    expect(seen.window).toBe(height)
+    expect(seen.top, 'top of the ring against the bottom of the window').toBeGreaterThanOrEqual(height)
+  })
+}
+
+/* THE DOT STAYS IN THE WINDOW AND IN ITS OWN STRIP ALL THE WAY (owner, 21.11.2026, from a window 1380px high: „Ovako
+   tačka tokom animacije izađe iz vidnog polja iako je ekran mnogo veći i ima prostora"). From the start of the run
+   to the moment its top crosses the bottom edge, the whole ring is inside the window across and inside the box of the
+   lane's drawing, where Chrome draws it: it is stopped at each two per cent of its way and its own box is read,
+   so a lane too narrow for the height, a drawing cut by `slice`, or a centre moved on the circles all fail here.
+   The route is asked the same. Where the lane is not drawn at all (a window with no gutter for it) it is asked that
+   it is not, and nothing else. */
+for (const [width, height, drawn] of [
+  [1150, 900, false],
+  [1212, 900, true],
+  [1280, 900, true],
+  [1280, 1400, true],
+  [1440, 2400, true],
+  [1500, 2400, true],
+  [1920, 1080, true],
+  [3840, 2160, true],
+  [600, 1200, false],
+  [1220, 2400, false],
+] as const) {
+  test(`the dot and the route stay in the window and in their own strip all the way at ${width}x${height}`, async ({ open }) => {
+    const { page } = await open({ width, text: 100, motion: 'no-preference' }, '/sr', 'header .brand', ANSWERS)
+
+    await page.setViewportSize({ width, height })
+    expect(await isDrawn(page, '.terrain--lane')).toBe(drawn)
+    expect(await isDrawn(page, '.race-page__dot')).toBe(drawn)
+
+    if (!drawn) return
+
+    const seen = await page.evaluate(
+      () =>
+        new Promise<{ samples: number; outside: string[]; routeOutside: string[] }>((resolve) => {
+          requestAnimationFrame(() =>
+            requestAnimationFrame(() => {
+              const dot = document.querySelector('.race-page__dot')
+              const ring = document.querySelector('.race-page__dot-ring')
+              const lane = document.querySelector('.terrain--lane')
+              const route = document.querySelector('.terrain__route')
+
+              if (!(dot instanceof SVGElement) || ring === null || lane === null || route === null) {
+                resolve({ samples: 0, outside: ['no dot, ring, lane or route'], routeOutside: [] })
+                return
+              }
+
+              const strip = lane.getBoundingClientRect()
+              const inside = (box: DOMRect) => box.left >= 0 && box.right <= window.innerWidth && box.left >= strip.left - 0.5 && box.right <= strip.right + 0.5
+              const outside: string[] = []
+              let samples = 0
+
+              dot.style.animation = 'none'
+
+              for (let percent = 0; percent <= 100; percent += 2) {
+                dot.style.offsetDistance = `${percent}%`
+
+                const box = ring.getBoundingClientRect()
+
+                if (box.top >= window.innerHeight) continue
+
+                samples += 1
+                if (!inside(box)) outside.push(`${percent}%: ${Math.round(box.left)}..${Math.round(box.right)} in ${Math.round(strip.left)}..${Math.round(strip.right)}`)
+              }
+
+              dot.style.animation = ''
+              dot.style.offsetDistance = ''
+
+              const routeBox = route.getBoundingClientRect()
+
+              resolve({ samples, outside, routeOutside: inside(routeBox) ? [] : [`${Math.round(routeBox.left)}..${Math.round(routeBox.right)}`] })
+            }),
+          )
+        }),
+    )
+
+    expect(seen.samples, 'samples of the dot while it is in the window').toBeGreaterThan(10)
+    expect(seen.outside).toEqual([])
+    expect(seen.routeOutside).toEqual([])
+  })
+}

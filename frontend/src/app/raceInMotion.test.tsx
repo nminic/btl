@@ -2,7 +2,7 @@ import { act, render, screen } from '@testing-library/react'
 import { htmlElement, must } from '../test/at'
 import { renderAt } from '../test/render'
 import { HeaderDecoration, PageBackgroundDecoration } from './RaceInMotion'
-import { DESKTOP_CONTOURS, PHONE_CONTOURS, ROUTE, TRAVEL, WAYPOINTS } from './terrain'
+import { DESKTOP_CONTOURS, LANE_VIEW, PHONE_CONTOURS, ROUTE, TRAVEL, TRAVEL_END_Y, WAYPOINTS } from './terrain'
 
 /* „Race in Motion" (owner, 14.11.2026, PDL „Vizuelno osveženje „Race in Motion""): two pictures that
  * say nothing, drawn once by the shell. What a reader of the page meets of them is nothing at all,
@@ -178,16 +178,26 @@ describe('the decoration of the page', () => {
     expect(DESKTOP_CONTOURS.length).toBeGreaterThanOrEqual(55)
   })
 
-  it('sends the dot along the route and stops it on the second waypoint', () => {
+  it('sends the dot along the whole route and on out over the bottom edge of the window', () => {
     const { layer } = layerOf()
     const dot = must(layer.querySelector(DOT), 'the dot')
-    const second = must(WAYPOINTS[1], 'the second waypoint')
+    const ring = must(dot.querySelector('.race-page__dot-ring'), 'the ring of the dot')
 
     expect(dot instanceof SVGElement && dot.style.offsetPath).toBe(`path('${TRAVEL}')`)
-    /* The stretch the dot runs is the route itself up to the waypoint it stops on, ending on it. */
-    expect(ROUTE.startsWith(TRAVEL.slice(0, TRAVEL.lastIndexOf('C')))).toBe(true)
-    expect(TRAVEL.endsWith(`${second[0]} ${second[1]}`)).toBe(true)
+    /* The dot runs the route itself from its start to its end, and only then leaves it. */
+    expect(TRAVEL.startsWith(ROUTE)).toBe(true)
+    expect(TRAVEL.length).toBeGreaterThan(ROUTE.length)
     expect(dot.querySelectorAll('circle')).toHaveLength(2)
+
+    /* Where the path ends the dot is out of sight: the lane shows y up to the height of its view at most (`slice`
+       cuts the rest on a low window), so the whole ring, which is as wide as the circle says, stands below that,
+       and does not merely touch it. */
+    const [, , , viewHeight] = LANE_VIEW.split(' ').map(Number)
+    const ends = Number(must(/ ([\d.]+)$/.exec(TRAVEL), 'the end of the path')[1])
+    const radius = Number(ring.getAttribute('r'))
+
+    expect(ends).toBe(TRAVEL_END_Y)
+    expect(ends - radius, 'the top of the ring where the path ends').toBeGreaterThan(Number(viewHeight))
   })
 
   it('starts the dot again on every screen that opens, and leaves it running on the same one', () => {

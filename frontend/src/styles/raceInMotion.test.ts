@@ -124,7 +124,12 @@ describe('the colours of the decoration', () => {
   })
 
   it('are the only custom properties the sheet declares, so a new one cannot skip the blocks above', () => {
-    const declared = new Set([...unremarked(decoration).matchAll(/\s(--[a-z0-9-]+):/g)].map((one) => at(one, 1)))
+    /* The lane's three are geometry and not colours (the strip's width, the room beside the column and the squeeze); they
+       are written once, on the lane, with no value per theme, and are pinned in `the lane of the route` below. */
+    const GEOMETRY = ['--fit', '--lane-width', '--room']
+    const declared = new Set(
+      [...unremarked(decoration).matchAll(/\s(--[a-z0-9-]+):/g)].map((one) => at(one, 1)).filter((name) => !GEOMETRY.includes(name)),
+    )
 
     expect([...declared].sort()).toEqual([...NAMES].sort())
   })
@@ -346,8 +351,12 @@ describe('what is drawn at which width', () => {
   it('draws the hills and the lane of the route and the dot from 560px and a telephone its own', () => {
     expect(written('.terrain--wide').getPropertyValue('display')).toBe('none')
     expect(written('.terrain--lane').getPropertyValue('display')).toBe('none')
-    expect(writtenIn('(min-width: 35em)', '.terrain--wide, .terrain--lane').getPropertyValue('display')).toBe('block')
+    expect(writtenIn('(min-width: 35em)', '.terrain--wide').getPropertyValue('display')).toBe('block')
     expect(writtenIn('(min-width: 35em)', '.terrain--narrow').getPropertyValue('display')).toBe('none')
+    /* The lane is not drawn from 560px but where there is a gutter for it (below), so no rule of 35em draws it. */
+    expect(
+      rulesInMedia(decoration, '(min-width: 35em)', 'RaceInMotion.css').filter((rule) => flat(rule.selectorText).includes('.terrain--lane')),
+    ).toEqual([])
 
     /* The telephone's drawing is drawn by nothing else, so it has no way to be drawn wide: no rule gives
        it a display outside the one that takes it away. */
@@ -389,17 +398,55 @@ describe('the lane of the route', () => {
        word is over the route (geometry/raceInMotion.geometry.ts), and what is asked here is why that holds. */
     const lane = written('.terrain--lane')
 
-    /* jsdom writes the calc back in its own order, so the three numbers are asked for and not the spelling:
+    /* jsdom writes the calc back in its own order, so the numbers are asked for and not the spelling:
        half of what is left of the window beside a column of 1100px, less the width of the strip. */
     const left = lane.getPropertyValue('left')
 
     expect(left).toMatch(/^calc\(/)
     expect(left).toContain('100% - 1100px')
-    expect(left).toContain('6.25rem')
+    expect(left).toContain('var(--lane-width)')
     expect(left).toMatch(/0\.5|\/ 2/)
-    expect(lane.getPropertyValue('width')).toBe('6.25rem')
+    expect(lane.getPropertyValue('width')).toBe('var(--lane-width)')
     expect(lane.getPropertyValue('height')).toBe('100%')
     expect(shell).toMatch(/max-width: 1100px;/)
+  })
+
+  /* Owner, 21.11.2026: „suzi putanju tako da ovo ne može da se desi". The strip is as wide as the drawing needs at the
+     height of the window (`slice` scales by the larger of width over 100 and height over 1000, so a window taller than
+     1000 units needs a strip a tenth of its height wide, or the left of the drawing is cut), and what the gutter is
+     short of is taken out of the drawing across. Chrome measures where the ring goes (geometry/raceInMotion.geometry.ts);
+     here is what makes it so. */
+  it('is as wide as the drawing needs at the height of the window, and squeezes what the gutter cannot hold', () => {
+    const lane = unremarked(decoration).match(/\.terrain--lane \{([^}]*)\}/)?.[1] ?? ''
+
+    expect(lane).toMatch(/--lane-width:\s*max\(6\.25rem,\s*10vh\);/)
+    expect(lane).toMatch(/--fit:\s*clamp\(0\.25,/)
+    expect(lane).toMatch(/--room:\s*calc\(\(100vw - 1100px\) \/ 2 - 1rem\);/)
+
+    const fit = unremarked(decoration).match(/\.race-lane__fit \{([^}]*)\}/)?.[1] ?? ''
+
+    expect(fit).toMatch(/transform-box:\s*view-box;/)
+    expect(fit).toMatch(/scale:\s*var\(--fit\) 1;/)
+
+    /* The round marks are drawn at 1 over the squeeze across, so they stay round. */
+    const round = unremarked(decoration).match(/\.terrain__waypoint,\s*\.terrain__waypoint-ring,\s*\.race-page__dot-core,\s*\.race-page__dot-ring \{([^}]*)\}/)?.[1] ?? ''
+
+    expect(round).toMatch(/scale:\s*calc\(1 \/ var\(--fit\)\) 1;/)
+  })
+
+  it('is drawn only where the gutter holds it: each height asks the width its tallest window asks for', () => {
+    const list = unremarked(decoration).match(/@media\s+((?:\(min-width: calc\(1132px[^{]*?)+)\{\s*\.terrain--lane \{\s*display: block;/)?.[1] ?? ''
+    const asks = [...list.matchAll(/\(min-width: calc\(1132px \+ max\(5em, (\d+)px\)\)\) and \(max-height: (\d+)px\)/g)].map((one) => [Number(at(one, 1)), Number(at(one, 2))])
+
+    /* Seven steps up to 5000px, and each asks for 8% of its height: four tenths of the strip, twice. */
+    expect(asks).toHaveLength(7)
+    expect(asks.map((one) => Number(one[0]) / Number(one[1]))).toEqual(asks.map(() => 0.08))
+    expect(asks.map((one) => one[1])).toEqual([1000, 1500, 2000, 2500, 3000, 4000, 5000])
+
+    /* And only in a browser that divides one length by another: Firefox 155 does not, so it cannot work out `--fit`,
+       the drawing is not squeezed and the window cuts the ring (review of PR 767, round 2). It has no lane and no dot
+       rather than a cut one, under the one `@supports` that asks for that, as the dot's does for `offset-path`. */
+    expect(unremarked(decoration)).toMatch(/@supports \(width: calc\(1px \* \(1px \/ 1px\)\)\) \{\s*@media\s+\(min-width: calc\(1132px/)
   })
 })
 
@@ -439,7 +486,7 @@ describe('the dot', () => {
     expect(must(moving[0], 'the rule that draws the dot').asks).toEqual([`@media ${CONDITION}`, "@supports (offset-path: path('M0 0'))"])
   })
 
-  it('runs once, for five seconds at most, and stays where it stops', () => {
+  it('runs once, in under five seconds, and rests where its path ends', () => {
     const moving = must(
       dotRules().find((rule) => rule.asks.length > 0),
       'the rule that draws the dot',
@@ -450,12 +497,12 @@ describe('the dot', () => {
     expect(more, animation).toEqual([])
     expect(name).toBe('race-dot-run')
     expect(duration).toMatch(/^\d+(\.\d+)?s$/)
-    expect(Number.parseFloat(must(duration, 'the duration')), 'seconds the dot runs').toBeLessThanOrEqual(5)
+    expect(Number.parseFloat(must(duration, 'the duration')), 'seconds the dot runs').toBeLessThan(5)
     expect(Number.parseFloat(must(duration, 'the duration')), 'seconds the dot runs').toBeGreaterThan(0)
     expect(curve).toMatch(/^cubic-bezier\(/)
     /* One run and no more: nothing but a number one, so „infinite" and „2" both fail. */
     expect(count).toBe('1')
-    /* It rests on the waypoint by its own style and not by an animation that fills forwards, which never
+    /* It rests at the end of its path by its own style and not by an animation that fills forwards, which never
        ends and so never lets a page settle. */
     expect(moving.style.getPropertyValue('offset-distance')).toBe('100%')
   })
