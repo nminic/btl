@@ -239,7 +239,7 @@ describe('a sentence with a value put into it', () => {
          There is nowhere to look up which sentence that is, so the file stands in for it
          and several such calls in one file share this line. */
       '? (CategoryDonut.tsx)',
-      '? (Counters.tsx)',
+      '? (Counters.tsx) <- formatNumber',
       /* What is wrong with one cell of the table of races. The key is built from the cell and
          the reason (`admin/raceRows.ts`, `sentenceFor`), so it is not written into the call. The
          only values any of them take are the two bounds of the cell, in „Dozvoljene su
@@ -665,7 +665,7 @@ describe('a sentence with a value put into it', () => {
          A plural, so the number decides which of the three Serbian forms the sentence takes. */
       'topBoards.sharedRaces',
       'units.btlPoints <- formatPoints',
-      'units.memberCount',
+      'units.memberCount <- formatNumber',
       /* NOT A SENTENCE, and written here because the guard reads names and cannot tell: the queue
          of results (R3b, `useWaitingRuns`) and the queue of cards (after a refusal of a decision about
          a picture, OS, `usePending`) are each read again with a revision

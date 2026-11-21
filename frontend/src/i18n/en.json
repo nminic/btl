@@ -299,7 +299,8 @@
     "topMen": "Top 10 men",
     "topWomen": "Top 10 women",
     "place": "{place}.",
-    "wholeStanding": "The whole table",
+    "wholeStandingMen": "Full standing of the men",
+    "wholeStandingWomen": "Full standing of the women",
     "byCategory": "Races by distance",
     "calculator": "The BTL calculator",
     "calcLength": "Length (km)",
@@ -327,6 +328,15 @@
       "ultra": "Most ultramarathons"
     },
     "pointsUnit": " BTL points",
+    "pointsUnitShort": " pts",
+    "cities": "Cities the members come from",
+    "lengthKm": "km",
+    "lengthNumber": {
+      "half": "21.1",
+      "marathon": "42.2"
+    },
+    "lengthsRest": "distances",
+    "noneOfLength": "There are no upcoming races of this distance.",
     "ascentUnit": " m+",
     "descentUnit": " m-",
     "members": "League members",
@@ -479,14 +489,19 @@
       "other": "{count} races"
     },
     "memberCount": {
-      "one": "{count} member",
-      "few": "{count} members",
-      "other": "{count} members"
+      "one": "{number} member",
+      "few": "{number} members",
+      "other": "{number} members"
+    },
+    "cityCount": {
+      "one": "{number} city",
+      "few": "{number} cities",
+      "other": "{number} cities"
     },
     "resultCount": {
-      "one": "{count} result",
-      "few": "{count} results",
-      "other": "{count} results"
+      "one": "{number} result",
+      "few": "{number} results",
+      "other": "{number} results"
     }
   },
   "rankings": {
