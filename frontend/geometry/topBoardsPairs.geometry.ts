@@ -96,6 +96,8 @@ async function readBoards(
     const rows = [...pairsBox.querySelectorAll('tbody tr')]
     const last = rows[rows.length - 1]
     const style = getComputedStyle(pairsBox)
+    const progressStyle = getComputedStyle(progressBox)
+    const progressContent = progressBox.lastElementChild
 
     return {
       rows: rows.length,
@@ -103,6 +105,14 @@ async function readBoards(
       pairsFoot: pairsBox.getBoundingClientRect().bottom,
       progressFoot: progressBox.getBoundingClientRect().bottom,
       lastRowFoot: last === undefined ? 0 : last.getBoundingClientRect().bottom,
+      /* How far the progress box was stretched past its own words: its foot, less its padding and border, less the
+         foot of its last child. The grid sizes the two rows the pairs span, so a pair too tall for what the left
+         column leaves does not move the feet apart, it stretches this box, and that stretch is what this reads. */
+      progressSlack:
+        progressBox.getBoundingClientRect().bottom -
+        Number.parseFloat(progressStyle.paddingBottom) -
+        Number.parseFloat(progressStyle.borderBottomWidth) -
+        (progressContent === null ? 0 : progressContent.getBoundingClientRect().bottom),
       boxPadding: Number.parseFloat(style.paddingBottom) + Number.parseFloat(style.borderBottomWidth),
       inTwoColumns: pairsBox.getBoundingClientRect().left > progressBox.getBoundingClientRect().right - 1,
     }
@@ -127,6 +137,7 @@ for (const at of THE_WIDTHS) {
     }
 
     expect(Math.abs(seen.pairsFoot - seen.progressFoot), `feet: ${JSON.stringify(seen)}`).toBeLessThanOrEqual(LEVEL)
+    expect(seen.progressSlack, `the progress box is stretched: ${JSON.stringify(seen)}`).toBeLessThanOrEqual(LEVEL)
     expect(
       seen.lastRowFoot,
       `the last row runs past the padding of its box: ${JSON.stringify(seen)}`,
