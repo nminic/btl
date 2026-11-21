@@ -14,6 +14,8 @@ import { useI18n } from '../../i18n/useI18n'
    it is written down as open (ADL A7) rather than fixed here, since only
    table.css is read by the test that keeps this honest. */
 import '../../styles/table.css'
+import { NavSymbolIcon } from '../../app/icons'
+import { NAV_SYMBOL } from '../../app/navSymbol'
 import { useRowsThatFit } from './rowsThatFit'
 
 /* "Priprema, pozor, SAD!" The calendar is the main reason people come, so what
@@ -103,6 +105,9 @@ function LengthFilter({
   )
 }
 
+/** The calendar of the header of a telephone: the symbol the navigation gives its own „Kalendar", never a drawing of this card's. */
+const CALENDAR_SYMBOL = NAV_SYMBOL.calendar
+
 export function CalendarExtract({
   events,
   races,
@@ -136,8 +141,16 @@ export function CalendarExtract({
         <h2 className="card__title" id="calendar-extract-heading">
           {t('home.readySetGo')}
         </h2>
+        {/* The word where it fits beside the title and the calendar of the header where it does not (owner,
+            21.11.2026, after the review of PR 770): the card decides which (`Home.css`, `.card__head-word`), and
+            the name of the link is the same word either way: the one a reader hears is the hidden copy, and the
+            one a sighted reader sees is hidden from the reader, so it is never read twice. */}
         <Link className="card__head-link" to={`/${locale}/kalendar?mesec=${today.slice(0, 7)}`}>
-          {t('home.seeCalendar')}
+          <NavSymbolIcon of={CALENDAR_SYMBOL} className="card__head-icon" />
+          <span className="card__head-word" aria-hidden="true">
+            {t('home.seeCalendar')}
+          </span>
+          <span className="visually-hidden">{t('home.seeCalendar')}</span>
         </Link>
       </div>
 

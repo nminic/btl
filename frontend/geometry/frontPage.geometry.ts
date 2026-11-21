@@ -543,7 +543,9 @@ test('the focus on „Ceo kalendar" stays on it when the filter goes back to „
     text: (document.activeElement?.textContent ?? '').trim(),
   }))
 
-  expect(seen).toEqual({ tag: 'A', text: 'Ceo kalendar' })
+  /* The link carries its word twice (the one drawn and the one that is read, or the icon and the one that is read), so its text is not the word alone. */
+  expect(seen.tag).toBe('A')
+  expect(seen.text).toContain('Ceo kalendar')
 })
 
 test('the focus on a race only „Ultra" shows goes to the heading of the calendar, and to no other race', async ({
@@ -591,7 +593,7 @@ test('the focus on a race only „Ultra" shows goes to the heading of the calend
  *   pixel;
  * - no sideways scroll.
  */
-const CALENDAR_AT: At[] = [360, 768, 1024, 1280].flatMap((width) => TEXTS.map((text): At => ({ width, text })))
+const CALENDAR_AT: At[] = [360, 768, 860, 900, 940, 960, 1024, 1280].flatMap((width) => TEXTS.map((text): At => ({ width, text })))
 
 for (const language of ['sr', 'en'] as const) {
   for (const at of CALENDAR_AT) {
@@ -599,7 +601,7 @@ for (const language of ['sr', 'en'] as const) {
       const { page, probe } = await open(at, `/${language}`, '.top10 .stand', ANSWERS)
 
       const seen = await page.evaluate(() => {
-        const box = (element: Element) => {
+        const box = (element: Element | Range) => {
           const { top, bottom, left, right } = element.getBoundingClientRect()
 
           return { top, bottom, left, right }
@@ -628,6 +630,18 @@ for (const language of ['sr', 'en'] as const) {
           text: must(card.querySelector('.card__head-link')).textContent,
           seg: box(must(card.querySelector('.seg'))),
           first: box(must(card.querySelector('.extract__row'))),
+          /* The TEXT of the first race, not the frame of its row (owner, 21.11.2026, after the review of PR 770:
+             „jednako do teksta prve trke, ne do okvira njenog reda"): the range of the words of its name. */
+          firstText: (() => {
+            const range = document.createRange()
+
+            range.selectNodeContents(must(card.querySelector('.extract__row .extract__name a')))
+
+            return box(range)
+          })(),
+          icon: getComputedStyle(must(card.querySelector('.card__head-icon'))).display !== 'none',
+          word: getComputedStyle(must(card.querySelector('.card__head-word'))).display !== 'none',
+          name: card.querySelector('.card__head-link')?.textContent ?? '',
           rows: card.querySelectorAll('.extract__row').length,
           list: box(must(card.querySelector('.extract'))),
           last: box([...card.querySelectorAll('.extract__row')].at(-1) ?? card),
@@ -639,12 +653,35 @@ for (const language of ['sr', 'en'] as const) {
         sameRow: seen.link.top < seen.title.bottom && seen.link.bottom > seen.title.top,
         reserve: Math.round((seen.card.right - seen.link.right) * 10) / 10,
         above: Math.round((seen.seg.top - seen.head.bottom) * 10) / 10,
-        below: Math.round((seen.first.top - seen.seg.bottom) * 10) / 10,
+        below: Math.round((seen.firstText.top - seen.seg.bottom) * 10) / 10,
+        icon: seen.icon,
+        word: seen.word,
+        size: [Math.round((seen.link.right - seen.link.left) * 10) / 10, Math.round((seen.link.bottom - seen.link.top) * 10) / 10],
+        need: Math.round((seen.card.right - seen.card.left) * 10) / 10,
         rows: seen.rows,
         spare: Math.round((seen.list.bottom - seen.last.bottom) * 10) / 10,
       })}`)
 
-      expect(seen.text).toBe(language === 'sr' ? 'Ceo kalendar' : 'Full calendar')
+      /* What a reader hears is the word, in both of the shapes (the icon is drawn and says nothing). */
+      expect(seen.name).toContain(language === 'sr' ? 'Ceo kalendar' : 'Full calendar')
+      expect(seen.icon, 'the word and the icon are both drawn, or neither').not.toBe(seen.word)
+
+      /* The card decides, not the window and not the language: the word where it fits at the reader's own text
+         (from 960px, in Serbian too) and the icon under it, 860 to 955. */
+      if (at.text === 100 && at.width >= 960) {
+        expect(seen.word, 'a wide card draws the icon and not the word').toBe(true)
+      }
+
+      if (at.text === 100 && at.width >= 860 && at.width < 960) {
+        expect(seen.icon, 'a narrow card draws the word and not the icon').toBe(true)
+      }
+
+      /* The icon is a target of 24 by 24 at least (WCAG 2.2 SC 2.5.8). */
+      if (seen.icon) {
+        expect(seen.link.right - seen.link.left, 'the icon is narrower than 24px').toBeGreaterThanOrEqual(24 - SAME)
+        expect(seen.link.bottom - seen.link.top, 'the icon is lower than 24px').toBeGreaterThanOrEqual(24 - SAME)
+      }
+
       expect(seen.link.left, 'the link is outside the card on the left').toBeGreaterThanOrEqual(seen.card.left - SAME)
       expect(seen.link.right, 'the link is outside the card on the right').toBeLessThanOrEqual(seen.card.right + SAME)
       expect(Math.abs(seen.link.right - seen.card.right), 'the link is not on the right').toBeLessThanOrEqual(1)
@@ -661,10 +698,13 @@ for (const language of ['sr', 'en'] as const) {
         expect(sameRow, 'the link is not in the row of the title').toBe(true)
       }
 
+      /* A pixel at the reader's own text, and as many pixels as the text is times larger at a larger one (the scale
+         is in rem, so the rooms grow with the text): the steps of the scale are even and the text of a race stands
+         1px in from the frame of its row, so 16 and 15 is as near as it comes. The tenth is the measuring. */
       expect(
-        Math.abs(seen.seg.top - seen.head.bottom - (seen.first.top - seen.seg.bottom)),
-        'the room above the filter is not the room under it',
-      ).toBeLessThanOrEqual(1)
+        Math.abs(seen.seg.top - seen.head.bottom - (seen.firstText.top - seen.seg.bottom)),
+        'the room above the filter is not the room under it, to the text of the first race',
+      ).toBeLessThanOrEqual(at.text / 100 + 0.1)
       /* At the reader's own text the page never moves sideways. At 200% on 360px the decorative background of the
          page (`.race-page`, measured: 18px) is wider than the window on one of the two days and is not this card's,
          so there the card is held to its own box above (the link inside it) and not the page to a scroll. */

@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import type { BtlEvent, Race } from '../../data/types'
 import { I18nProvider } from '../../i18n/I18nProvider'
+import { NAV } from '../../app/routes'
 import { CalendarExtract } from './CalendarExtract'
 
 /* The extract of the calendar, which is the widget "Priprema, pozor, SAD!".
@@ -140,6 +141,28 @@ describe('CalendarExtract', () => {
     ).toBeTruthy()
     expect(list.contains(link)).toBe(false)
     expect(screen.getAllByRole('link', { name: 'Ceo kalendar' })).toHaveLength(1)
+  })
+
+  /* Owner, 21.11.2026 (PDL, after the review of PR 770): where the word does not fit beside the title the link is
+     the calendar of the header, and its name stays the word. The card decides which is drawn (jsdom lays nothing
+     out, so what is held here is what both shapes are made of: the symbol is the navigation's own and says nothing,
+     the word that is drawn is hidden from the reader, and the name is the word once). */
+  it('draws the calendar of the header and names the link with the word, once', () => {
+    renderWidget(<CalendarExtract events={[]} races={[]} today="2026-07-29" fill />)
+
+    const link = screen.getByRole('link', { name: 'Ceo kalendar' })
+    const drawing = link.querySelector('svg')
+    const calendarOfTheHeader = NAV.find((section) => section.id === 'calendar')?.symbol
+
+    expect(calendarOfTheHeader).toBe('calendar')
+    expect(drawing?.getAttribute('data-symbol'), 'it is not the symbol of the header').toBe(calendarOfTheHeader)
+    expect(drawing?.getAttribute('aria-hidden'), 'the drawing is read').toBe('true')
+    expect(link.textContent, 'the word is not there twice, once to see and once to hear').toBe('Ceo kalendarCeo kalendar')
+    expect(
+      [...link.querySelectorAll('[aria-hidden="true"]')].filter((one) => one.textContent === 'Ceo kalendar'),
+      'the word that is drawn is read as well',
+    ).toHaveLength(1)
+    expect(link.querySelector('.visually-hidden')?.textContent, 'the name is not the hidden word').toBe('Ceo kalendar')
   })
 
   it('calls the link "Full calendar" in English', () => {

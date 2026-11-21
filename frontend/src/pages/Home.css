@@ -310,6 +310,42 @@
 .card__head-link {
   margin-inline-start: auto;
   font-size: 0.9rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* The word, and the calendar of the header only where the word does not fit beside the title (owner,
+   21.11.2026, after the review of PR 770: „umesto teksta stoji samo ikonica kalendara, ista kao u mobilnoj
+   navigaciji"). The card decides, not the window (`.home__next > .card` is the container, as for the „km"
+   of the filter), and the language does not: one threshold, the one the longer of the two needs.
+
+   **The threshold is 16.75rem of the inside of the card.** Measured in Chrome at the reader's own text, in
+   Serbian, where it is the longer: the title is 171,7px, the gap 12px and the word 83,3px, which is 267px,
+   16,7rem; 16,75 (268px) is a hair over it, so a rounding never puts the word in a row it does not fit, and the first card of 960px (268,7) still has the word. In rem and not in
+   pixels, because the title and the word grow with the text of the reader and the card does not: at 125
+   and 200 per cent the word stands only in a card that is wider than 16,75 of that larger rem, which is
+   what the word needs at that size, so it never goes under the title. */
+.card__head-icon {
+  display: none;
+}
+
+@container (max-width: 16.75rem) {
+  .card__head-word {
+    display: none;
+  }
+
+  /* A target of 24 by 24 at least (WCAG 2.2 SC 2.5.8), in rem so it grows with the text. */
+  .card__head-link {
+    min-inline-size: 1.5rem;
+    min-block-size: 1.5rem;
+  }
+
+  .card__head-icon {
+    display: block;
+    inline-size: 1.25rem;
+    block-size: 1.25rem;
+  }
 }
 
 .card__note,
@@ -433,10 +469,20 @@
   padding: var(--space-2);
   border: 1px solid var(--control-border);
   border-radius: var(--radius-round);
-  /* The filter stands half way between the title and the first race (owner, 21.11.2026): the gap of the
-     card is 10px, and 6px more on each side makes 16px above and 16px below (the scale has 16 and 20,
-     the owner's "oko 18" is between them). */
-  margin-block: var(--space-6);
+  /* The filter stands half way between the title and the TEXT of the first race (owner, 21.11.2026): the
+     gap of the card is 10px, so 6px above makes 16px under the title. Under it the text of the first race
+     is 1px in from the frame of its row once the row's own padding is taken back (below), so 4px makes
+     10 + 4 + 1 = 15px to the text: the scale has only even steps, and one pixel is the least it can be
+     off. Measured: 16 and 15 at the reader's own text, and twice that at 200 per cent. */
+  margin-block: var(--space-6) var(--space-4);
+}
+
+/* The first race starts 12px in (its own padding), so the room under the filter is counted to the TEXT of
+   the race and not to the frame of its row (owner, 21.11.2026, after the review of PR 770: „jednako do
+   teksta prve trke, ne do okvira njenog reda"). The list is pulled up by that padding, which leaves the
+   rows as they are and gives the room to the list, so the count of rows by height is still of whole rows. */
+.seg + .extract {
+  margin-block-start: calc(-1 * var(--space-12));
 }
 
 .seg__b {

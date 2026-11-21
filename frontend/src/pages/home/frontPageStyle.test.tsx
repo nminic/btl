@@ -131,9 +131,20 @@ describe('the markup of the front page and the sheets that dress it', () => {
     expect(body(home, '.card__head')).toMatch(/display: flex;/)
     expect(body(home, '.card__head')).toMatch(/flex-wrap: wrap;/)
     expect(body(home, '.card__head-link')).toMatch(/margin-inline-start: auto;/)
-    expect(body(home, '.seg')).toMatch(/margin-block: var\(--space-6\);/)
+    expect(body(home, '.seg')).toMatch(/margin-block: var\(--space-6\) var\(--space-4\);/)
     expect(body(home, '.seg')).not.toMatch(/margin-(top|bottom)/)
+    /* The room under the filter is counted to the text of the first race, so the row's own padding is taken back. */
+    expect(body(home, '.seg + .extract')).toMatch(/margin-block-start: calc\(-1 \* var\(--space-12\)\);/)
   })
+
+  it('draws the calendar of the header in place of the word where the card is narrower than the word needs', () => {
+    /* One threshold for both languages, in rem, asked of the card: 16,75rem (268px) is over the 267px the Serbian
+       word, the gap and the title need at the reader's own text. A target of 24px at least, and the word is only
+       taken out of sight, never out of the tree (it is drawn aria-hidden and the name is a copy of it). */
+    expect(home).toMatch(/\.card__head-icon \{\s*display: none;/)
+    expect(home).toMatch(
+      /@container \(max-width: 16\.75rem\) \{\s*\.card__head-word \{\s*display: none;\s*\}[\s\S]*?min-inline-size: 1\.5rem;\s*min-block-size: 1\.5rem;[\s\S]*?\.card__head-icon \{\s*display: block;/,
+    )  })
 
   it('steps the podium down from the first to the third, with the first circle the largest', () => {
     const step = (place: number) =>
