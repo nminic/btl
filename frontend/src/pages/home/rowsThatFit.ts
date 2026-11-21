@@ -54,8 +54,17 @@ export const TWO_COLUMNS = '(min-width: 53.75em)'
  *
  * @param list    the list of races, which is what is measured
  * @param filling whether there is no sponsor, so that the list fills the column
+ * @param available how many races there are to draw in it, whatever fits. Not a measure of anything: it is there so that the
+ *                height of a row is read again when races come back into a list that had none (a length
+ *                chosen that has no race ahead, and then another), because a list with no rows has no
+ *                row to measure and the count it keeps would otherwise be the one of before the
+ *                window or the text was changed.
  */
-export function useRowsThatFit(list: RefObject<HTMLElement | null>, filling: boolean): number {
+export function useRowsThatFit(
+  list: RefObject<HTMLElement | null>,
+  filling: boolean,
+  available: number,
+): number {
   const [rows, setRows] = useState(FITS_WITHOUT_A_SPONSOR)
 
   useLayoutEffect(() => {
@@ -95,7 +104,7 @@ export function useRowsThatFit(list: RefObject<HTMLElement | null>, filling: boo
     return () => {
       watching.disconnect()
     }
-  }, [list, filling])
+  }, [list, filling, available])
 
   return filling ? rows : WITH_A_SPONSOR
 }

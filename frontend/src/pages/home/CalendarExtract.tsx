@@ -1,7 +1,7 @@
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import { Link } from 'react-router'
-import { dotsAt, upcomingSeries } from '../../data/derive'
-import type { BtlEvent, Race } from '../../data/types'
+import { CATEGORIES, dotsAt, upcomingSeries } from '../../data/derive'
+import type { BtlEvent, Race, RaceCategory } from '../../data/types'
 import { formatDayMonth } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 /* For the five colours of `.length-dot`, which live in the table sheet because
@@ -35,7 +35,74 @@ import { useRowsThatFit } from './rowsThatFit'
  * Four races while there is a sponsor of the day under it, and as many as fit to the bottom of the
  * column while there is none (PDL P24, variant A, owner 18.11.2026; `rowsThatFit.ts`). It drew six
  * until then, a number no decision had set.
+ *
+ * **The filter by length** (owner, 20.11.2026, PDL „Četiri dodatka naslovne iz tuđeg nacrta"): six
+ * buttons in one row, „Sve, Kratke, 21,1 km, Duge, 42,2 km, Ultra", in the order the profile has them
+ * (`CATEGORIES`, which goes by length). A click filters at once. A length chosen shows the races of that
+ * length **in the number „Sve" shows**, as many as fit, or four with a sponsor, and if there are fewer
+ * ahead, all there are. The row is as it was: the date, the name, the dots; no „za N dana" under the
+ * name (owner: „Nema potrebe za dodatnim redovima "Za 16 dana" i sl.").
  */
+/**
+ * The six buttons, as one segmented control in one row.
+ *
+ * **Each says its name the way the profile says it and is read out in full.** What is drawn is the
+ * short word (`profile.lengthsShort`); what a screen reader is given is that and the length as the
+ * portal says it everywhere else (`category.*`), in a hidden span, so a button called „Kratke" is read
+ * „Kratke, Kraća trka" and the word on it is inside its name (WCAG 2.5.3).
+ *
+ * **Only the unit goes when there is no room, and it goes by the card's width and not the window's**
+ * (owner, 20.11.2026: „Gde ne staje, otpada samo km"): „21,1" and „42,2" are written apart from their
+ * „km", which a container query on the card hides (`Home.css`).
+ */
+function LengthFilter({
+  value,
+  onChange,
+}: {
+  value: RaceCategory | null
+  onChange: (value: RaceCategory | null) => void
+}) {
+  const { t } = useI18n()
+  const options: { key: RaceCategory | null; word: string; measure: string; rest: string }[] = [
+    { key: null, word: t('profile.lengthsShort.all'), measure: '', rest: t('home.lengthsRest') },
+    ...CATEGORIES.map((one) => ({
+      key: one,
+      word: t(`profile.lengthsShort.${one}`),
+      measure: one === 'half' || one === 'marathon' ? t(`home.lengthNumber.${one}`) : '',
+      rest: t(`category.${one}`),
+    })),
+  ]
+
+  return (
+    <div className="seg" role="group" aria-label={t('profile.length')}>
+      {options.map((option) => (
+        <button
+          key={option.key ?? 'all'}
+          type="button"
+          className={option.key === value ? 'seg__b seg__b--on' : 'seg__b'}
+          aria-pressed={option.key === value}
+          onClick={() => onChange(option.key)}
+        >
+          {option.measure === '' ? (
+            option.word
+          ) : (
+            <>
+              {option.measure} <span className="seg__km">{t('home.lengthKm')}</span>
+            </>
+          )}
+          {/* The space is outside the hidden words and not the first thing in them: a name is read off
+              the text nodes one by one and a space that begins a node is not kept (measured). */}
+          {option.key === null && ' '}
+          <span className="visually-hidden">
+            {option.key === null ? '' : ', '}
+            {option.rest}
+          </span>
+        </button>
+      ))}
+    </div>
+  )
+}
+
 export function CalendarExtract({
   events,
   races,
@@ -50,7 +117,12 @@ export function CalendarExtract({
 }) {
   const { locale, t } = useI18n()
   const list = useRef<HTMLUListElement>(null)
-  const series = upcomingSeries(events, today, useRowsThatFit(list, fill))
+  const [length, setLength] = useState<RaceCategory | null>(null)
+  /* Every race there is to show, in the order of its date, and then as many of them as fit: the count
+     is the same whichever length is chosen, so „Sve" and a length fill the card alike. */
+  const ahead = upcomingSeries(events, today, Infinity, length === null ? undefined : { length, races })
+  const fits = useRowsThatFit(list, fill, ahead.length)
+  const series = ahead.slice(0, fits)
 
   return (
     <section className="card" aria-labelledby="calendar-extract-heading">
@@ -58,42 +130,46 @@ export function CalendarExtract({
         {t('home.readySetGo')}
       </h2>
 
-      {series.length === 0 ? (
-        <p className="card__empty">{t('calendar.empty')}</p>
-      ) : (
-        <ul className="extract" ref={list}>
-          {series.map((entry) => {
-            const lengths = dotsAt(entry.next, races)
+      <LengthFilter value={length} onChange={setLength} />
 
-            return (
-              <li key={entry.next.id} className="extract__row">
-                {/* A real date underneath, so what a machine reads is never the
-                    shortened form a person reads. */}
-                <time className="extract__date" dateTime={entry.next.date}>
-                  {formatDayMonth(entry.next.date)}
-                </time>
-                <span className="extract__name">
-                  <Link to={`/${locale}/kalendar/${entry.next.slug}`}>{entry.name}</Link>
-                </span>
-                <span className="extract__lengths">
-                  {lengths.map((one) => (
-                    <span
-                      key={one}
-                      className={`length-dot length-dot--${one}`}
-                      aria-hidden="true"
-                    />
-                  ))}
-                  {/* The colours mean nothing to anyone who cannot separate
-                      them, so the names travel with the dots. */}
-                  <span className="visually-hidden">
-                    {lengths.map((one) => t(`category.${one}`)).join(', ')}
-                  </span>
-                </span>
-              </li>
-            )
-          })}
-        </ul>
+      {/* The list stays in the page when there is nothing to put in it, so the count that is kept for
+          the column is kept for the element that is measured. */}
+      {series.length === 0 && (
+        <p className="card__empty">{t(length === null ? 'calendar.empty' : 'home.noneOfLength')}</p>
       )}
+
+      <ul className="extract" ref={list}>
+        {series.map((entry) => {
+          const lengths = dotsAt(entry.next, races)
+
+          return (
+            <li key={entry.next.id} className="extract__row">
+              {/* A real date underneath, so what a machine reads is never the
+                  shortened form a person reads. */}
+              <time className="extract__date" dateTime={entry.next.date}>
+                {formatDayMonth(entry.next.date)}
+              </time>
+              <span className="extract__name">
+                <Link to={`/${locale}/kalendar/${entry.next.slug}`}>{entry.name}</Link>
+              </span>
+              <span className="extract__lengths">
+                {lengths.map((one) => (
+                  <span
+                    key={one}
+                    className={`length-dot length-dot--${one}`}
+                    aria-hidden="true"
+                  />
+                ))}
+                {/* The colours mean nothing to anyone who cannot separate
+                    them, so the names travel with the dots. */}
+                <span className="visually-hidden">
+                  {lengths.map((one) => t(`category.${one}`)).join(', ')}
+                </span>
+              </span>
+            </li>
+          )
+        })}
+      </ul>
 
       {/* On the month today is in (owner, 04.08.2026), which is not where the
           calendar opens by itself: left to choose, it opens on the first month

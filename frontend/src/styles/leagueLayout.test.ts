@@ -222,7 +222,11 @@ const REACHED_FROM = [
      a 7,5rem disc of its own called `card__face`, with its own copy of the six declarations
      `.face-circle` was extracted to hold. One mention, the size and the ring. */
   'pages/Competitors.css: portrait x1',
-  'pages/Home.css: portrait x2',
+  /* THE TOP TEN OF THE FRONT PAGE, six mentions since 20.11.2026 (it was two): the size of a circle on the
+     podium, the larger size of the first, the ring of gold that goes round the first only when the place
+     was won, the hover, the small circle of the list from the fourth place, and the empty one of the list
+     in a narrow board. All six are SIZE or RING, none of them hides or moves the circle. */
+  'pages/Home.css: portrait x6',
   'pages/Profile.css: portrait x2',
   'pages/Rankings.css: plate__faces x1',
 ]

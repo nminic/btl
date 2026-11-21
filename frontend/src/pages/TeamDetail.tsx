@@ -437,7 +437,7 @@ export function TeamDetail() {
                 <p className="profile__meta">
                   {team.city}
                   {' · '}
-                  {t('units.memberCount', { count: everMembers.length })}
+                  {t('units.memberCount', { count: everMembers.length, number: formatNumber(everMembers.length, locale) })}
                 </p>
               </header>
 

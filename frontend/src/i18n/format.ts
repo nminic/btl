@@ -168,13 +168,15 @@ export function formatDuration(totalSeconds: number): string {
 /* Time on the course, in the shape the owner asked for: 299 h 49' 43''. Not the
  * same as a race time, which is a clock reading and stays hh:mm:ss; this is a
  * quantity of time, and the marks say so. */
-export function formatCourseTime(totalSeconds: number): string {
+export function formatCourseTime(totalSeconds: number, locale: string): string {
   const seconds = Math.max(0, Math.round(totalSeconds))
   const hours = Math.floor(seconds / 3600)
   const minutes = Math.floor((seconds % 3600) / 60)
   const rest = seconds % 60
 
-  return `${hours} h ${String(minutes).padStart(2, '0')}' ${String(rest).padStart(2, '0')}''`
+  /* The hours go through the formatter like every other figure of the tiles: 8872 hours are „8.872 h"
+     and in English „8,872 h" (owner, 20.11.2026, a fault that was there). */
+  return `${formatNumber(hours, locale)} h ${String(minutes).padStart(2, '0')}' ${String(rest).padStart(2, '0')}''`
 }
 
 /**

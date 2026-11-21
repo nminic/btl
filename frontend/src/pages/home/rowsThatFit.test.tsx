@@ -1,8 +1,9 @@
-import { act, render, screen } from '@testing-library/react'
+import { act, render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
-import type { BtlEvent } from '../../data/types'
+import type { BtlEvent, Race } from '../../data/types'
 import { I18nProvider } from '../../i18n/I18nProvider'
 import { matchingMedia } from '../../test/media'
+import { setupUser } from '../../test/user'
 import { CalendarExtract } from './CalendarExtract'
 import { FITS_WITHOUT_A_SPONSOR, TWO_COLUMNS, WITH_A_SPONSOR } from './rowsThatFit'
 
@@ -166,6 +167,53 @@ describe('the races of „Priprema, pozor, SAD!"', () => {
     draw(TWELVE, true)
 
     expect(rows()).toBe(FITS_WITHOUT_A_SPONSOR)
+  })
+
+  /* The length filter can leave the list with nothing in it (`lengthFilter.test.tsx`), and a list with no rows
+     has no row to measure. Whatever happens to the room while it is empty is not told to anybody, because
+     the list's own size does not change (it takes the column's, `contain: size`), so the count has to be
+     read again when races come back. */
+  it('reads the room again when races come back into a list that had none', async () => {
+    const user = setupUser()
+    const short = (id: number): Race => ({
+      id,
+      eventId: id,
+      name: 'Trka',
+      renamed: false,
+      kind: 'length',
+      limitSeconds: 0,
+      date: '2027-04-03',
+      distanceKm: 5,
+      ascentM: 0,
+      descentM: 0,
+      category: 'short',
+      dots: ['short'],
+    })
+
+    laidOut(2, 350, 50)
+    const { unmount } = render(
+      <I18nProvider locale="sr">
+        <MemoryRouter>
+          <CalendarExtract events={TWELVE} races={TWELVE.map((one) => short(one.id))} today="2027-04-01" fill />
+        </MemoryRouter>
+      </I18nProvider>,
+    )
+    expect(rows()).toBe(7)
+
+    const group = screen.getByRole('group', { name: 'Distanca' })
+
+    await user.click(within(group).getByRole('button', { name: /Ultra/ }))
+    expect(screen.queryAllByRole('listitem')).toHaveLength(0)
+
+    // The column is shorter now, and nobody was told: the list drew nothing and so did not change size.
+    room.list = 250
+    await user.click(within(group).getByRole('button', { name: /^Sve/ }))
+
+    expect(rows()).toBe(5)
+
+    /* Gone before the next case begins, or the disconnecting it does is counted in that one. */
+    unmount()
+    disconnected.mockClear()
   })
 
   it('stops watching when it is gone', () => {

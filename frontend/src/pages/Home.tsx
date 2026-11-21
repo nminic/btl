@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useCallback, useLayoutEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useLocation } from 'react-router'
 import { useToday } from '../clock/useClock'
 import { accountWasDeleted } from './accountDeleted'
 import { DeletionSaid } from './admin/DeletionSaid'
 import { Resource } from '../components/Resource'
-import { countedIn, totalsOf } from '../data/derive'
+import { citiesOf, countedIn, totalsOf } from '../data/derive'
 import { boardsOpenOn, seasonShown, WARM_UP } from '../data/season'
 import { combineFour, useCompetitors, useEvents, useRaces, useResults } from '../data/useResource'
 import { useI18n } from '../i18n/useI18n'
@@ -16,6 +17,8 @@ import { SPONSORS } from './home/content'
 import { President } from './home/President'
 import { Sponsor, SponsorStrip } from './home/Sponsor'
 import { TopTen } from './home/TopTen'
+import { putBack, whereIs, type Remembered } from './home/keepTheFocus'
+import { useTwoColumns } from './home/useTwoColumns'
 import './Home.css'
 
 /**
@@ -28,25 +31,24 @@ import './Home.css'
  * Right, top to bottom: the counters of the running season, what is next in the
  * calendar, the sponsor of the day, and the calculator in two rows of three
  * (PDL P24, variant A, owner 18.11.2026: „Tri desna boksa su zajedno visoka kao
- * leva kolona."). The three under the counters stand as one column beside the
- * chart and the address, so the grid puts the chart and the address across two
- * rows each and the three boxes across the five lines between them, and both
- * columns end on the same line by construction (`Home.css`).
+ * leva kolona.").
  *
- * One grid holds all six, rather than two columns holding three each (owner,
- * 31.07.2026). The rows are what the owner asked for: the boards end where the
- * counters end, and the chart ends where the calendar does. Two columns side by
- * side cannot do that, because neither knows how tall the other came out; one
- * grid does it by itself, and the chart's bars get the height they were missing.
+ * **Two columns that are two columns** (owner, 20.11.2026, PDL „Četiri dodatka naslovne iz tuđeg
+ * nacrta": „Desna kolona je zaseban stub: statistika je visoka koliko njen sadržaj, a kalendar
+ * počinje odmah ispod nje"). From 31.07.2026 to then one grid held all six boxes and the rows were
+ * shared, so the figures were as tall as the two boards beside them and the calendar began where
+ * the boards ended. Each column is now a box of its own and the boxes in it follow one another,
+ * and each column has the one box that takes what the taller column has over (`Home.css`): the
+ * address on the left, and on the right the calendar or, with a sponsor, the sponsor's box. Both
+ * columns end on the same line by construction.
  *
- * The order in the markup is the order on a phone, where the grid becomes one
- * column and the placement below does nothing: the two boards, the figures of
- * the season, the turning chart, what is next, the address, the sponsor of the
- * day, the calculator (owner, 31.07.2026; the sponsor between the last two since
- * 18.11.2026: „Na telefonu „Sponzor dana” stoji posle obraćanja predsednika, a
- * pre kalkulatora."). It is not the order of either column, because on one
- * screen the two columns interleave: somebody scrolling wants the standing, then
- * the numbers behind it, then the calendar, and the prose after all of them.
+ * **The markup is the order it is seen in, on both layouts** (ADL A7, owner, 21.11.2026: „Kod prati
+ * ekran"). From 860px it is the left column and then the right one. Under 860px it is one column and the
+ * widgets are written in the order a phone shows them since 31.07.2026: the two boards, the figures of the
+ * season, the turning chart, what is next, the address, the sponsor of the day, the calculator (the sponsor
+ * between the last two since 18.11.2026). `useTwoColumns` asks the one query the stylesheet splits at, and
+ * the stylesheet moves nothing with `order`, so the focus and a screen reader go the way the eye goes
+ * (WCAG 2.4.3, 1.3.2). The price, accepted: the widgets are mounted again when a window crosses 860px.
  *
  * The membership slot stood at the foot of the right column until 04.08.2026,
  * when the owner had it removed: "nećemo ga koristiti do daljnjeg". The page of
@@ -71,13 +73,64 @@ export function Home() {
   const [ofTheDay] = SPONSORS
   const state = combineFour(useCompetitors(), useEvents(), useResults(), useRaces())
   const today = useToday()
+  const twoColumns = useTwoColumns()
+
+  /* **THE CALCULATOR IS NOT WRITTEN AGAIN WHEN THE PAGE CHANGES ITS COLUMNS** (owner, 21.11.2026: only the
+     chosen length and the chart go back to their beginning). It holds what somebody typed in its boxes, and
+     those are not a thing to lose by turning a phone: it is drawn once into an element of its own (`held`),
+     and the box of the page that stands where it belongs takes that element in (`takeIn`), whichever of the
+     two writings of the page is there. The element and what is in it are the same ones before and after, so
+     the values, the cursor and the focus stay; a focus that the move itself drops is put back on the same
+     box. */
+  const [held] = useState(() => {
+    const holder = document.createElement('div')
+
+    holder.style.display = 'contents'
+
+    return holder
+  })
+  const inside = useRef<Element | null>(null)
+  const takeIn = useCallback(
+    (slot: HTMLElement | null) => {
+      if (slot === null) {
+        return
+      }
+
+      slot.append(held)
+
+      if (inside.current !== null && held.contains(inside.current) && inside.current instanceof HTMLElement) {
+        inside.current.focus()
+      }
+    },
+    [held],
+  )
+
+  /* And where the focus is in the boxes that ARE written again, which is put back when the writing changes. */
+  const remembered = useRef<Remembered | null>(null)
+
+  useLayoutEffect(() => {
+    putBack(document, remembered.current)
+  }, [twoColumns])
   /* „Vaš nalog je obrisan.", for the one arrival his own deletion opens this page with (owner, 20.11.2026), in
      the shape the list of teams says „Tim je obrisan." in (`Teams.tsx`, `teamDeleted.ts`). */
   const arrived = useLocation().state
   const [said, setSaid] = useState(() => (accountWasDeleted(arrived) ? t('home.accountDeleted') : ''))
 
   return (
-    <div className="home">
+    <div
+      className="home"
+      onFocus={(event) => {
+        remembered.current = whereIs(event.target)
+
+        if (event.target.closest('.home__calc') !== null) {
+          inside.current = event.target
+        }
+      }}
+      onBlur={() => {
+        remembered.current = null
+        inside.current = null
+      }}
+    >
       {/* Not shown, but present: the header already says the name in full right
           above, and repeating it was what the owner had removed. A page with no
           h1 at all is still a page a screen reader cannot name. */}
@@ -112,40 +165,77 @@ export function Home() {
              imported history. */
           const label = view === WARM_UP ? t('rankings.warmUp') : t('home.season', { season: view })
 
+          const boards = (
+            <div className="home__boards">
+              <TopTen competitors={field} results={results} season={season} today={today} gender="M" />
+              <TopTen competitors={field} results={results} season={season} today={today} gender="F" />
+            </div>
+          )
+          const chart = (
+            <div className="home__chart">
+              <TopByCategory competitors={field} results={results} season={view} />
+            </div>
+          )
+          const address = (
+            <div className="home__address">
+              <President />
+            </div>
+          )
+          const figures = (
+            <div className="home__figures">
+              <Counters totals={totals} title={label} members={field.length} cities={citiesOf(field)} />
+            </div>
+          )
+          const next = (
+            <div className="home__next">
+              <CalendarExtract events={events} races={races} today={today} fill={ofTheDay === undefined} />
+            </div>
+          )
+          const sponsor =
+            ofTheDay === undefined ? null : (
+              <div className="home__sponsor">
+                <Sponsor sponsor={ofTheDay} />
+              </div>
+            )
+          const calc = <div className="home__calc" ref={takeIn} />
+
           return (
             <>
-              <div className={ofTheDay === undefined ? 'home__split' : 'home__split home__split--sponsored'}>
-                <div className="home__boards">
-                  <TopTen competitors={field} results={results} season={season} today={today} gender="M" />
-                  <TopTen competitors={field} results={results} season={season} today={today} gender="F" />
-                </div>
-
-                <div className="home__figures">
-                  <Counters totals={totals} title={label} members={field.length} />
-                </div>
-
-                <div className="home__chart">
-                  <TopByCategory competitors={field} results={results} season={view} />
-                </div>
-
-                <div className="home__next">
-                  <CalendarExtract events={events} races={races} today={today} fill={ofTheDay === undefined} />
-                </div>
-
-                <div className="home__address">
-                  <President />
-                </div>
-
-                {ofTheDay !== undefined && (
-                  <div className="home__sponsor">
-                    <Sponsor sponsor={ofTheDay} />
-                  </div>
+              <div
+                className={
+                  ofTheDay === undefined
+                    ? 'home__split home__split--cols'
+                    : 'home__split home__split--cols home__split--sponsored'
+                }
+              >
+                {twoColumns ? (
+                  <>
+                    <div className="home__colL">
+                      {boards}
+                      {chart}
+                      {address}
+                    </div>
+                    <div className="home__colR">
+                      {figures}
+                      {next}
+                      {sponsor}
+                      {calc}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {boards}
+                    {figures}
+                    {chart}
+                    {next}
+                    {address}
+                    {sponsor}
+                    {calc}
+                  </>
                 )}
-
-                <div className="home__calc">
-                  <Calculator />
-                </div>
               </div>
+
+              {createPortal(<Calculator />, held)}
 
               {ofTheDay !== undefined && <SponsorStrip sponsors={SPONSORS} />}
             </>

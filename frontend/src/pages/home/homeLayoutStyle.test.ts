@@ -41,16 +41,30 @@ function block(query: string): string {
 const FILLS = '.home__split:not(.home__split--sponsored) .home__next .extract {'
 
 describe('the stylesheet of the front page', () => {
-  it('splits the page at the query the calendar asks', () => {
-    expect(block(TWO_COLUMNS)).toContain('.home__split {')
+  it('splits the page at the query the calendar asks, into two columns that are boxes of their own', () => {
+    const split = block(TWO_COLUMNS)
+
+    expect(split).toContain('.home__split--cols {')
+    expect(split).toMatch(/\.home__colL,\s*\.home__colR \{[^}]*display: flex;[^}]*flex-direction: column;/)
   })
 
-  it('gives the box a place in the grid of a page with a sponsor', () => {
+  it('makes the box of the sponsor take what the taller column has over, and keeps the calendar to its four rows', () => {
     const split = block(TWO_COLUMNS)
-    const sponsored = /\.home__split--sponsored \{([^}]*)\}/.exec(split)?.[1] ?? ''
 
-    expect(sponsored).toMatch(/'chart sponsor'\s*'address sponsor'/)
-    expect(split).toMatch(/\.home__sponsor \{ grid-area: sponsor; \}/)
+    expect(/\.home__sponsor \{([^}]*)\}/.exec(split)?.[1] ?? '').toMatch(/flex: 1 1 auto;/)
+    expect(/\.home__split--sponsored \.home__next \{([^}]*)\}/.exec(split)?.[1] ?? '').toMatch(/flex: none;/)
+  })
+
+  it('makes the address the box of the left column that takes what the right column has over', () => {
+    expect(/\.home__address \{([^}]*)\}/.exec(block(TWO_COLUMNS))?.[1] ?? '').toMatch(/flex: 1 1 auto;/)
+  })
+
+  it('moves nothing with `order` and hides no column in a `display: contents`', () => {
+    /* The markup is the order the page is seen in on both layouts (ADL A7, owner, 21.11.2026: „Kod prati
+       ekran"; `Home.tsx`, `useTwoColumns`), so a sheet that put a box somewhere else would part the order
+       of the eye from the order of the focus (WCAG 2.4.3, 1.3.2). */
+    expect(css).not.toMatch(/\.home__[a-z]+ \{[^}]*\border:/)
+    expect(css).not.toContain('display: contents')
   })
 
   it('lets the calendar fill its column only in two columns and only without a sponsor', () => {

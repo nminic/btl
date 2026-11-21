@@ -71,8 +71,8 @@ describe('the front page of variant A', () => {
 
     const { headings, races, grid } = await drawn()
 
-    /* „Na telefonu „Sponzor dana” stoji posle obraćanja predsednika, a pre kalkulatora." The order in the
-       markup is the order on a telephone (ADL A7). */
+    /* „Na telefonu „Sponzor dana” stoji posle obraćanja predsednika, a pre kalkulatora." The markup is the
+       order it is seen in (ADL A7, owner 21.11.2026: „Kod prati ekran"), and this is the one column. */
     expect(headings).toEqual([
       'Top 10 muškarci',
       'Top 10 žene',
