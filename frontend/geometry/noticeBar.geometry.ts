@@ -62,9 +62,11 @@ for (const at of WIDTHS) {
     const seen = await page.evaluate(() => {
       const box = (selector: string) => document.querySelector(selector)?.getBoundingClientRect()
       const note = box('.notice')
-      const header = box('header')
-      /* The strip is the first thing in `main`, so the content starts where the thing after it starts. */
-      const main = document.querySelector('.notice')?.nextElementSibling?.getBoundingClientRect()
+      /* What the header measured before the strip: the strip is the last thing inside it, so its own part is
+         everything up to the element before the strip (the bar and the navigation). */
+      const header = document.querySelector('.notice')?.previousElementSibling?.getBoundingClientRect()
+      const whole = box('header')
+      const main = box('main')
       const text = document.querySelector<HTMLElement>('.notice__text')
       const close = box('.notice__close')
 
@@ -72,6 +74,7 @@ for (const at of WIDTHS) {
         width: document.documentElement.clientWidth,
         note: note === undefined ? null : { top: note.top, bottom: note.bottom, left: note.left, right: note.right },
         headerBottom: header?.bottom ?? Number.NaN,
+        wholeBottom: whole?.bottom ?? Number.NaN,
         mainTop: main?.top ?? Number.NaN,
         textFits: text === null ? false : text.scrollWidth <= text.clientWidth + 0.5,
         textHeight: text?.getBoundingClientRect().height ?? Number.NaN,
@@ -103,7 +106,8 @@ for (const at of WIDTHS) {
     const note = seen.note ?? { top: 0, bottom: 0, left: 0, right: 0 }
 
     /* Under the header and not over it, and over the content and not under it. */
-    expect(note.top, 'the strip starts where the header ends').toBeGreaterThanOrEqual(seen.headerBottom - 0.5)
+    expect(note.top, 'the strip starts where the bar and the navigation of the header end').toBeGreaterThanOrEqual(seen.headerBottom - 0.5)
+    expect(Math.abs(seen.wholeBottom - note.bottom), 'the header ends where the strip ends').toBeLessThanOrEqual(0.5)
     expect(seen.mainTop, 'the content starts where the strip ends').toBeGreaterThanOrEqual(note.bottom - 0.5)
     /* The whole width of the window, and not a pixel past it. */
     expect(note.left).toBeGreaterThanOrEqual(0)

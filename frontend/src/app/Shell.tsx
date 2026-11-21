@@ -385,6 +385,18 @@ export function Shell() {
         ) : (
           navigation
         )}
+
+        {/* THE GOLD STRIP, THE LAST THING IN THE HEADER, which is where it stands: under the bar and the
+            navigation, over the content (owner, 21.11.2026, PDL „Zlatna traka obaveštenja ispod
+            zaglavlja"). It is in the header and in neither of the other two places it could have been
+            drawn, and both were measured. Outside every landmark, axe's `region` rule fails on every
+            screen that shows it. First in `main`, the rule that a page begins with its heading
+            (`test/met.ts`, „begins with its heading", held by `pages/publicData.test.tsx`) fails on the
+            same screens, and a reader sent to the content by the skip link would meet a note before the
+            name of the screen. The header is a landmark (the banner) and a note for the whole site
+            belongs to it; its own bar and navigation are drawn first and keep their places
+            (`app/NoticeBar.tsx`). */}
+        <NoticeBar main={main} />
       </header>
 
       {/* Back to the top on a new screen, and back where it was on the way back.
@@ -412,12 +424,6 @@ export function Shell() {
           two directions at once. */}
       <PageMetaContext.Provider value={declare}>
         <main id="content" className="shell__main" ref={main} tabIndex={-1}>
-          {/* THE GOLD STRIP, THE FIRST THING IN THE MAIN CONTENT, which is where it stands under the header
-              (owner, 21.11.2026, PDL „Zlatna traka obaveštenja ispod zaglavlja"). It is in `main` and not
-              beside it because axe's `region` rule asks for all content to be inside a landmark, and the
-              strip is a note and not one (`app/NoticeBar.tsx`); the header is left alone, so its height and
-              every measure taken of it stay what they were. */}
-          <NoticeBar main={main} />
           <ErrorBoundary
             fallback={
               <div role="alert">

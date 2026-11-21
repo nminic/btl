@@ -114,11 +114,12 @@ describe('where the strip stands', { timeout: SLOW }, () => {
 
     expect(screen.queryByRole('region', NOTE)).toBeNull()
     expect(screen.queryByRole('alert')).toBeNull()
-    expect(note.closest('header')).toBeNull()
-    /* In the main content, as its first child: axe's `region` rule asks for all content to be inside a
-       landmark (`pages/accessibility.test.tsx`), and the header is left with its own height. */
-    expect(note.parentElement).toBe(screen.getByRole('main'))
-    expect(note.parentElement?.firstElementChild).toBe(note)
+    /* The last thing in the header, after its bar and navigation, and not in the main content: axe's `region`
+       rule asks for all content to be inside a landmark (`pages/accessibility.test.tsx`), and the page has to
+       begin with its heading in `main` (`test/met.ts`, `pages/publicData.test.tsx`). */
+    expect(note.parentElement).toBe(screen.getByRole('banner'))
+    expect(note.parentElement?.lastElementChild).toBe(note)
+    expect(screen.getByRole('main')).not.toContainElement(note)
   })
 
   /* THE FLOOR, asked of the router rather than written out. Every address the portal has without a

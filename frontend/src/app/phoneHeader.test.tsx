@@ -97,7 +97,11 @@ async function tabbedThrough(): Promise<string[]> {
     }
 
     if (banner.contains(at)) {
-      names.push(nameOf(at))
+      /* The gold strip is the last thing in the banner and its cross the last stop in it (`app/Shell.tsx`);
+         it is no control of the header's own, which is what this lists. */
+      if (at.closest('[role="note"]') === null) {
+        names.push(nameOf(at))
+      }
     } else if (names.length > 0) {
       break
     }

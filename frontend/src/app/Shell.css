@@ -8,9 +8,6 @@
   flex-direction: column;
   min-width: 0;
   isolation: isolate;
-  /* The gold strip is drawn as wide as `100vw`, which with a classic scrollbar is a little wider than the
-     window; clipped here so that makes no sideways scrolling (`app/NoticeBar.css`). */
-  overflow-x: clip;
 }
 
 .shell__skip {
@@ -41,6 +38,11 @@
   z-index: 6;
   border-bottom: 1px solid var(--border);
   background: var(--surface);
+}
+
+/* The gold strip is the last thing in the header and carries the line under it (`app/NoticeBar.css`). */
+.shell__header:has(.notice) {
+  border-bottom: 0;
 }
 
 .shell__bar,

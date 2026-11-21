@@ -61,8 +61,12 @@ function forgetIt(): void {
  *
  * **Not a header, and not a landmark.** `role="note"` with a name, which is not a region: one more
  * landmark would change the count every screen reader announces, and `alert` or `status` would interrupt a
- * reader for a sentence that is not urgent. It stands inside `main`, as its first child, because axe's `region` rule asks for all content to be inside a
- * landmark; the header is not where it goes, so the header's height and every measure taken of it stay what they were. After the cross the focus goes to the main content, because the
+ * reader for a sentence that is not urgent. It is the last thing inside the header (the banner landmark), after the bar and the navigation. Two
+ * rules put it there and both are held by a test: axe's `region` rule asks for all content to be inside a
+ * landmark (`pages/accessibility.test.tsx`), and the page has to begin with its heading in `main`
+ * (`test/met.ts`, „begins with its heading”, `pages/publicData.test.tsx`), which a strip drawn first in
+ * `main` would break. The header's own bar and navigation keep their places and their height: what a guard
+ * measures of the header is the part before the strip. After the cross the focus goes to the main content, because the
  * button it was on is gone.
  */
 export function NoticeBar({ main }: { main: RefObject<HTMLElement | null> }) {
