@@ -275,7 +275,7 @@ class WhatANoticeSaysTest {
 						"Lozinka na tvom nalogu u Balkanskoj trkačkoj ligi promenjena je"
 								+ " 24.09.2026. 16:35.",
 						"",
-						"Sa svih ostalih uređaja nalog je odjavljen.",
+						"Nalog je odjavljen sa svih ostalih uređaja.",
 						"",
 						"Ako ovo nije tvoja promena, neko drugi zna tvoju staru lozinku. Odmah zatraži novu lozinku sa"
 								+ " strane za prijavu i javi nam se na info@balkanskatrkackaliga.net.",

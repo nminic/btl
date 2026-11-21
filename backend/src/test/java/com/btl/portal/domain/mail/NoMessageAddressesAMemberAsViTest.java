@@ -124,7 +124,7 @@ class NoMessageAddressesAMemberAsViTest {
 			assertThat(A_SINGULAR_FORM_THAT_HAS_A_SEX.matcher(sexed).find()).as(sexed).isTrue();
 		}
 		for (String neutral : List.of("Ako zahtev nije stigao od tebe, zanemari ovu poruku.", "Otvoren ti je nalog",
-				"Sa svih ostalih uređaja nalog je odjavljen.", "Ako ovo nije tvoja promena", "Samo to", "Sijaset",
+				"Nalog je odjavljen sa svih ostalih uređaja.", "Ako ovo nije tvoja promena", "Samo to", "Sijaset",
 				"Lozinka je promenjena")) {
 			assertThat(A_SINGULAR_FORM_THAT_HAS_A_SEX.matcher(neutral).find()).as(neutral).isFalse();
 		}
