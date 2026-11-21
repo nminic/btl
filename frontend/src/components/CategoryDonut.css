@@ -44,13 +44,22 @@
   transform-origin: 100px 100px;
 }
 
-/* Where the pointer is actually read: the slices at the size they are when
-   nothing is chosen, over the top of the drawing and never seen. It never
-   changes shape, so what is under the pointer never changes by itself. */
+/* Where the pointer is actually read: the slices at the size a chosen one reaches, over the top of the
+   drawing and never seen. It never changes shape, so what is under the pointer never changes by itself.
+   Transparent and not `none`, because only a painted shape is touched. A keyboard reaches it, and the
+   focus is drawn as a line round the slice (WCAG 2.2 SC 2.4.7, 1.4.11). */
 .donut__hit {
-  fill: none;
-  stroke: transparent;
+  fill: transparent;
+  fill-rule: evenodd;
+  stroke: none;
   cursor: pointer;
+  outline: none;
+}
+
+.donut__hit:focus-visible {
+  stroke: var(--text);
+  stroke-width: 3px;
+  stroke-linejoin: round;
 }
 
 .donut__track {
@@ -58,26 +67,42 @@
   stroke: var(--border);
 }
 
-/* The drawing does not catch the pointer; the layer below does. A slice that
-   grows moves its own edge, and an edge that moves under a still mouse makes
-   the ring flicker between two slices for as long as the pointer stands on the
-   line between them. */
+/* The drawing does not catch the pointer; the layer above it does. The slices are true sectors, so the
+   movement is the outer edge alone (the path is rewritten each frame, `CategoryDonut.tsx`) and nothing
+   here animates a radius. The ones not chosen fade a little, and colours are never mixed: it is the
+   slice's own opacity over the track, and nothing else (owner, 21.11.2026). */
 .donut__seg {
-  fill: none;
+  fill-rule: evenodd;
   pointer-events: none;
-  /* The one being pointed at grows outwards, so the hole in the middle never
-     changes size. Both halves of that have to move together: the radius carries
-     the inner edge outwards while the width carries the outer edge, and
-     animating only one of them made the inner edge set off first and come back,
-     which is the flicker this was meant to avoid. */
-  transition:
-    stroke-width var(--fast),
-    r var(--fast);
+  opacity: 1;
+  transition: opacity var(--fast);
+}
+
+.donut__seg--dim {
+  opacity: 0.55;
+}
+
+/* The number and the word in the middle are new elements at every choice, and each comes in with a
+   short fade, so they are crossfaded and not jumped. */
+.donut__total,
+.donut__unit {
+  animation: donut-fade 160ms ease-out;
+}
+
+@keyframes donut-fade {
+  from {
+    opacity: 0;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .donut__seg {
     transition: none;
+  }
+
+  .donut__total,
+  .donut__unit {
+    animation: none;
   }
 }
 
