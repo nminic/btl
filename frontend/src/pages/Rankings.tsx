@@ -1,4 +1,5 @@
-import { categoryLabel } from '../data/categories'
+import { categoryLabel, categoryShortLabel } from '../data/categories'
+import { CategoryWords } from '../components/CategoryWords'
 import { useEffect, useMemo, type ReactNode } from 'react'
 import { useToday } from '../clock/useClock'
 import { CompetitorName } from '../components/CompetitorName'
@@ -182,7 +183,10 @@ function Standing({
             onChange={(key) => onChange({ kategorija: key })}
             options={[
               { key: '', content: t('rankings.allCategories') },
-              ...codes.map((code) => ({ key: code, content: categoryLabel(code, t) })),
+              ...codes.map((code) => ({
+                key: code,
+                content: <CategoryWords full={categoryLabel(code, t)} short={categoryShortLabel(code, t)} />,
+              })),
             ]}
           />
         </div>

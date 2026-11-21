@@ -56,3 +56,27 @@
   inline-size: fit-content;
   max-inline-size: 100%;
 }
+
+/* **MORE ROOM IN THE FILTER THAT IS AS WIDE AS ITS BUTTONS** (owner, 21.11.2026, PDL „Filter u BTL tabelama i na
+   profilu dobija više prostora: dugmad nisu zbijena"). Written on `.seg--fit` and nowhere else, so the filter in the
+   card of the front page, which is narrow and has no room to give, is not moved by a pixel. Before: 4px over and under
+   the words, 6px at the sides, no room between two buttons, 28px high. Now: 6px over and under, 2rem high, 4px between
+   two buttons and 8px at the sides on a telephone, where the six have to stand in one row, and 14px from 35em up.
+   The selector is two classes so it also wins over the narrow rule of the card above (`@container`), whichever
+   container a screen puts around the filter. */
+.seg--fit {
+  column-gap: var(--space-4);
+}
+
+.seg--fit .seg__b {
+  min-block-size: 2rem;
+  padding-block: var(--space-6);
+  padding-inline: var(--space-8);
+  font-size: 0.75rem;
+}
+
+@media (min-width: 35em) {
+  .seg--fit .seg__b {
+    padding-inline: var(--space-14);
+  }
+}

@@ -476,12 +476,14 @@ for (const at of FILTER_WIDTHS) {
     if (at.width >= 700) {
       const asked = buttons.reduce((sum, one) => sum + one.width, 0)
 
-      /* The buttons, the gap between none of them, and the padding and the border of the group (`.seg`): a few
-         pixels, never the width of the page. */
-      expect(group.width, 'the filter is wider than its buttons ask').toBeLessThanOrEqual(asked + 12)
+      /* The buttons, the 4px between every two of them (`.seg--fit`, owner, 21.11.2026), and the padding and the
+         border of the group (`.seg`): a few pixels, never the width of the page. */
+      expect(group.width, 'the filter is wider than its buttons ask').toBeLessThanOrEqual(asked + 12 + 4 * (buttons.length - 1))
       expect(group.width, 'the filter is as wide as the page').toBeLessThan(parent.width - 100)
     } else {
-      expect(group.width, 'on a telephone the filter is the whole row').toBeGreaterThanOrEqual(parent.width - SLACK)
+      /* On a telephone it is the same filter as everywhere (`fit`, owner, 21.11.2026: the profile's goes the way the
+         tables' does), as wide as its buttons ask and never wider than the row it stands in. */
+      expect(group.width, 'on a telephone the filter runs out of its row').toBeLessThanOrEqual(parent.width + SLACK)
     }
 
     standsInsideThePage(measured, probe)

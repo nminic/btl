@@ -104,11 +104,16 @@ async function measure(page: Page) {
          as tall as the name beside it. One rectangle per line the words are drawn on. */
       const words = document.createRange()
 
-      words.selectNodeContents(one)
+      /* A button of the filter carries the full name and, beside it, the short form (`CategoryWords`); the one that
+         is clipped to a pixel is only read, so the lines are those of the one that is drawn. */
+      const long = one.querySelector('.seg__long')
+      const clipped = long !== null && long.getBoundingClientRect().width <= 2
+
+      words.selectNodeContents(clipped ? (one.querySelector('.seg__short') ?? one) : one)
 
       const lines = new Set([...words.getClientRects()].map((rect) => Math.round(rect.top))).size
 
-      return { text: (one.textContent ?? '').trim(), left: found.left, right: found.right, lines }
+      return { text: ((one.querySelector('.seg__long') ?? one).textContent ?? '').trim(), left: found.left, right: found.right, lines }
     }
 
     return {
