@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
+import { useFilterParams } from '../../app/useFilterParams'
 import { Resource } from '../../components/Resource'
 import { clearResourceCache } from '../../data/client'
 import type { League } from '../../data/types'
@@ -84,7 +85,7 @@ function CountedDays({ counted }: { counted: number[] }) {
  * competition entered here was remembered as an overlay, and an entity filed under `id`
  * takes its identity from `admin/raceIds.ts`, which counts DOWN from nought so that
  * nothing it hands out can collide with a `bigserial`. So the first competition entered
- * during a visit was number `-1`, and the panel of races underneath it - which HAS been
+ * during a visit was number `-1`, and the panel of races of its form - which HAS been
  * speaking to the server since 24.09.2026 - posted to `/api/leagues/-1/races`. The screen
  * confirmed a save, drew a row, and every race put into that row went nowhere.
  *
@@ -95,8 +96,24 @@ function CountedDays({ counted }: { counted: number[] }) {
  */
 export function AdminLeagues() {
   const { locale, t } = useI18n()
-  const [editing, setEditing] = useState<Editing | null>(null)
+  /** What was opened by pressing something on this screen. */
+  const [pressed, setPressed] = useState<Editing | null>(null)
   const state = useLeagues()
+  /**
+   * WHICH COMPETITION IS BEING CHANGED, NAMED BY ITS OWN IDENTITY IN THE ADDRESS (`?izmena=`), the way
+   * `AdminEvents.tsx` names an event.
+   *
+   * **The page of a competition sends the reader here with it** (the pencil in its head; PDL, owner
+   * 21.11.2026: the form the administration already has is the one that opens, and not a second one
+   * drawn on that page). Nothing is written by the press: the form opens on the competition as it
+   * stands, in the mode a row of the list opens it in, with its box of races in it.
+   *
+   * Read on every render and looked for inside the `Resource` below, because the list is not here when
+   * the address is. What somebody pressed wins over it (`pressed`), and leaving the form empties the
+   * address (`onDone`), so coming back to this screen does not open it again.
+   */
+  const [params, setParams] = useFilterParams()
+  const changedId = params.get('izmena')
 
   /**
    * WHAT THIS VISIT HAS WRITTEN, ON TOP OF WHAT THE SERVER ANSWERED WITH.
@@ -113,7 +130,7 @@ export function AdminLeagues() {
    * the moment a write comes back. What is held is therefore what the server has just
    * ACCEPTED, never what this screen hopes it did: every one of the three is written
    * inside the branch that ran only because an answer said the write went through. That
-   * is the arrangement `LeagueRaceModeration` beside it already uses and gives its
+   * is the arrangement `LeagueRaceModeration` in its form already uses and gives its
    * reason for.
    *
    * **AND, SINCE 25.09.2026, THE CACHE BEHIND ALL OF THIS DOES NOT OUTLIVE A SUCCESSFUL
@@ -132,17 +149,17 @@ export function AdminLeagues() {
    * WHICH RACES EACH COMPETITION COUNTS, AS THIS VISIT HAS LEFT IT, over what was served.
    *
    * **The one home for a fact two things on this screen draw**, and it is here rather than in
-   * the panel because the panel is not the only reader: the count in the row above it is the
+   * the panel because the panel is not the only reader: the count in the row of the list is the
    * other, and until 28.09.2026 the two were separate stores. The panel held its own
    * `useState` and the row counted `League.eventIds` off the served answer, so a race written
    * through the panel reached one of them and not the other. That is what the owner met on QA
    * and read as a competition that had not saved.
    *
-   * **The shape is `pages/Leagues.tsx`'s `standing`, word for word** - „what this visit wrote
-   * into it, or what was served" - and nothing is put in that a route has not accepted.
+   * **The shape is „what this visit wrote into it, or what was served"**, and nothing is put
+   * in that a route has not accepted.
    *
-   * **And it outlives the editor, which the panel's own state did not.** Opening a form swaps
-   * the whole subtree below, so every panel is unmounted and mounted again; this component is
+   * **And it outlives the editor, which the panel's own state did not.** Closing the form
+   * unmounts the panel, and opening it mounts a new one; this component is
    * not, so a race entered and then a form opened and closed no longer reads as a race that
    * went away.
    */
@@ -166,7 +183,7 @@ export function AdminLeagues() {
    * MAKING ONE OR CHANGING ONE, AND THE IDENTITY COMES BACK FROM THE DATABASE.
    *
    * **`POST` answers 201 with the id it handed out** (`LeagueWriteApi.Written`), and that
-   * id is the whole of what the row, the panel of races under it and both of the other two
+   * id is the whole of what the row, the panel of races in its form and both of the other two
    * routes are addressed by. Read off the answer through `identityIn`, which refuses
    * anything that is not a whole number above nought - the range a `bigserial` lives in,
    * and deliberately not the range the session overlay used to hand out.
@@ -175,8 +192,15 @@ export function AdminLeagues() {
    * in the row after a save is what was typed, which it already holds. Reading the record
    * back would make this a second home for the competition's own data.
    */
-  async function saveOne(values: FormValues, text: Record<string, string>): Promise<Saving> {
-    const mine = editing !== null && editing.mode === 'one' ? editing.record : null
+  async function saveOne(
+    values: FormValues,
+    text: Record<string, string>,
+    editing: Editing,
+  ): Promise<Saving> {
+    /* THE FORM THAT IS OPEN, handed in and not read off state: a form opened from the address is held
+       by no state at all, and a save that read `pressed` would find nothing, take the competition for
+       a new one and `POST` it a second time. */
+    const mine = editing.mode === 'one' ? editing.record : null
     const id = mine === null ? null : Number(mine[LEAGUES.idField])
     const answer = await askTheServer(
       id === null ? '/api/leagues' : `/api/leagues/${id}`,
@@ -206,7 +230,7 @@ export function AdminLeagues() {
 
     /* THE ONE ANSWER THAT IS NEITHER A REFUSAL NOR SOMETHING THIS SCREEN CAN DRAW. The
        write happened - the route answered 201 - but without the identity there is no
-       address for the row, for the panel under it or for either of the other two routes.
+       address for the row, for the panel in its form or for either of the other two routes.
        Drawing a row anyway is exactly the fault this whole increment closes, one number
        further along, so nothing is drawn and the reader is told the truth: it is saved,
        and the screen has to be reloaded to see it. */
@@ -300,6 +324,16 @@ export function AdminLeagues() {
              assumption that had already been overturned. */
           const rows = recordsOf(LEAGUES, leagues, written)
 
+          /* The competition a change is asked for, found in the whole list and compared as text, so that
+             `9` is the address of one and `09` and `9abc` are not. Undefined where the address names none
+             this list has, and that draws the list and not a form: a stale link is not worth a blank
+             form, and a blank form is a way to make a competition nobody meant to make (`AdminEvents`,
+             measured 29.09.2026). */
+          const changeSource =
+            changedId === null ? undefined : rows.find((one) => String(one.id) === changedId)
+          const editing: Editing | null =
+            pressed ?? (changeSource === undefined ? null : { mode: 'one', record: changeSource })
+
           /** Which races a competition counts now: what this visit wrote, or what was served. */
           function counted(id: number): number[] {
             return counting[id] ?? countedRacesOf(leagues, id)
@@ -342,15 +376,45 @@ export function AdminLeagues() {
                    decides: `add` writes with `on conflict (slug) do nothing` and
                    `change` with a `not exists` clause inside the statement, both
                    of which answer `theAddressIsTaken`. */
-                save={saveOne}
-                onDone={() => setEditing(null)}
+                save={(values, text) => saveOne(values, text, editing)}
+                /* THE RACES THIS COMPETITION COUNTS STAND IN ITS OWN FORM, UNDER THE FIELD OF
+                   PRIZES (PDL, owner 21.11.2026: „U administraciji liga spisak „Trke u ligi"
+                   više ne stoji ispod tabele liga, nego u izmeni same lige, ispod polja
+                   Nagrade"). Drawn only for a competition that already exists: a new one has no
+                   identity until the route hands it out, and the panel writes to
+                   `/api/leagues/{id}/races`. Found in `rows` by identity rather than read off the
+                   record, so what is drawn is the competition as this visit left it, and drawn
+                   through `filter` and `map` so that „no such row" is an empty list and not a
+                   branch. The panel writes at once and not with the button that saves the
+                   form, as it always did; it holds nothing the form holds. */
+                beneath={
+                  editing.mode === 'one'
+                    ? () =>
+                        rows
+                          .filter((one) => one.id === Number(editing.record[LEAGUES.idField]))
+                          .map((league) => (
+                            <LeagueRaceModeration
+                              key={league.id}
+                              league={league}
+                              counted={counted(league.id)}
+                              onCounted={(change) => nowCounting(league.id, change)}
+                            />
+                          ))
+                    : undefined
+                }
+                onDone={() => {
+                  setPressed(null)
+                  /* And the address forgets it, so leaving the form and coming back to this screen
+                     does not open it again. */
+                  setParams({}, { replace: true })
+                }}
               />
             )
           }
 
           return (
             <>
-              <EntityBar entity={LEAGUES} onNew={() => setEditing({ mode: 'new' })} />
+              <EntityBar entity={LEAGUES} onNew={() => setPressed({ mode: 'new' })} />
 
               {/* What the deletion said, DRAWN and not only said (owner, 23.10.2026: the deletion asks and
                   answers as the member's row does, `DeletionSaid.tsx`). */}
@@ -378,7 +442,7 @@ export function AdminLeagues() {
                     </tr>
                   </thead>
                   <tbody>
-                    {rows.flatMap((league) => [
+                    {rows.map((league) => (
                       <tr key={league.id}>
                         {/* Read, not edited in place. Deliberate, and the
                             owner's own record of it (PENDING, 10.08.2026): a
@@ -398,7 +462,7 @@ export function AdminLeagues() {
                         </td>
                         <td>{league.season}</td>
                         <td>
-                          {/* OFF THE SAME LIST THE BOX UNDER THIS ROW DRAWS, which is what
+                          {/* OFF THE SAME LIST THE BOX IN ITS FORM DRAWS, which is what
                               stops the two saying different things about one competition. */}
                           <CountedDays counted={counted(league.id)} />
                         </td>
@@ -408,7 +472,7 @@ export function AdminLeagues() {
                             asks={t('admin.leagueDeleteAsk')}
                             record={league}
                             name={league.name}
-                            onOpen={() => setEditing({ mode: 'one', record: league })}
+                            onOpen={() => setPressed({ mode: 'one', record: league })}
                             deleteRecord={() => deleteOne(league)}
                             /* The sentence of an earlier refusal of THIS row goes when the reader
                                puts the question away (registry item 311). */
@@ -421,58 +485,8 @@ export function AdminLeagues() {
                               carries itself: `ServerSaid` draws it in an alert. */}
                           {refused !== null && refused.id === league.id && saying(refused.answer)}
                         </td>
-                      </tr>,
-                      /* WHICH RACES COUNT TOWARDS THIS ONE, AND THE `+` THAT
-                         PUTS ONE THERE (PDL P15a, P28b point 7).
-
-                         In a row of its own under the league rather than in a
-                         cell beside it, because it is a box that opens and what
-                         it opens is a list of days and distances: inside the
-                         five columns it would either squeeze the table or push
-                         the page sideways, and the portal's rule is no sideways
-                         scrolling from 360px up.
-
-                         **Since 25.09.2026 it is addressed by an identity the
-                         DATABASE handed out**, for a competition entered during
-                         this visit as much as for one that was served. It was
-                         the first thing on this screen with a route behind it and
-                         the rest of the screen has now followed; what that closes
-                         is a panel that posted to `/api/leagues/-1/races`.
-
-                         **AND WHAT IT COUNTS IS HANDED DOWN FROM HERE, out of the
-                         answer THIS screen was served, rather than fetched again
-                         out of the cache that answer arrived in.** The panel read
-                         `arrivedResource('leagues')` at every mount until
-                         25.09.2026, and `saveOne` and `deleteOne` above now EMPTY
-                         that entry the moment a write goes through. Closing the
-                         editor swaps this whole subtree, so each panel mounted
-                         again and found nothing where its races had been - while
-                         `state` up here still holds the served answer in full,
-                         which is what `leagues` is. One home, reached one way.
-
-                         **AND SINCE 28.09.2026 THE LIST GOES ON BEING THIS
-                         SCREEN'S AFTER THE PANEL CHANGES IT** (`counting` above).
-                         It was handed down as the served answer and then kept
-                         inside the panel, which made two homes of one fact: the
-                         count in the row was still counting `eventIds` off that
-                         same served answer, so a race written through the panel
-                         reached the box and not the count. Now the panel reports
-                         what the route accepted, this holds it, and both the count
-                         and the box are drawn off it.
-
-                         A competition entered during this visit is in neither the
-                         answer nor the cache, so it starts counting nothing, which
-                         is what it does count until somebody puts a race in it. */
-                      <tr key={`${league.id}-races`}>
-                        <td colSpan={5}>
-                          <LeagueRaceModeration
-                            league={league}
-                            counted={counted(league.id)}
-                            onCounted={(change) => nowCounting(league.id, change)}
-                          />
-                        </td>
-                      </tr>,
-                    ])}
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
