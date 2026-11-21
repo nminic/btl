@@ -61,7 +61,6 @@ for (const at of WIDTHS) {
     const { page, probe } = await open(at, ADDRESS, READY, {})
     const seen = await page.evaluate(read, SENTENCE)
 
-    console.log(`MEASURED ${at.width} with sentence: above ${seen.above}, between ${seen.between}`)
     expect(seen.sentence).toBe(true)
     expect(probe.sideways).toBe(0)
     expect(seen.above).toBeGreaterThan(0)
@@ -80,7 +79,6 @@ for (const at of WIDTHS) {
 
     const without = await page.evaluate(read, SENTENCE)
 
-    console.log(`MEASURED ${at.width} without sentence: above ${without.above}, between ${without.between}`)
     expect(without.sentence).toBe(false)
     expect(without.above).toBeGreaterThan(0)
     expect(Math.abs(without.between - without.above)).toBeLessThanOrEqual(ONE_PIXEL)
