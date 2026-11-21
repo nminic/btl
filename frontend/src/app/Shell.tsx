@@ -226,6 +226,7 @@ export function Shell() {
   const { locale, t } = useI18n()
   const sections = useNavSections()
   const rest = useRestOfPath()
+  const openScreen = useLocation().pathname
   const { pageTitle, declare } = useRouteChrome()
   const phone = usePhoneHeader()
 
@@ -344,7 +345,7 @@ export function Shell() {
 
       {/* The two layers of „Race in Motion" (owner, 14.11.2026): pictures under everything, drawn
           once here so that no screen carries a copy (app/RaceInMotion.tsx). */}
-      <PageBackgroundDecoration />
+      <PageBackgroundDecoration screen={openScreen} />
 
       <header className={phone ? 'shell__header shell__header--phone' : 'shell__header'}>
         <HeaderDecoration />
