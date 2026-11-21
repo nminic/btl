@@ -67,9 +67,7 @@ class NoMessageAddressesAMemberAsViTest {
 			"mail/sr.properties#invitedAsAModerator.subject",
 			"mail/sr.properties#invitedAsAModerator.body",
 			"notices/sr.properties#thePasswordHasChanged.subject",
-			"notices/sr.properties#thePasswordHasChanged.body",
-			"java/web/PairWriteApi.java ::  vaš trkački par za sezonu ",
-			"java/web/PairWriteApi.java :: Vaš trkački par za sezonu ");
+			"notices/sr.properties#thePasswordHasChanged.body");
 
 	@Test
 	void everyTextWithAViFormIsOneOfTheOnesWaitingForTheOwnersAnswerAndEveryOneWaitingStillHasOne()

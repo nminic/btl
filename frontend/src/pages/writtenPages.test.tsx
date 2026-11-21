@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { THEME_STORAGE_KEY } from '../app/themeContext'
+import { NOTICE_STORAGE_KEY } from '../app/noticeBarFacts'
 /* `PRICES` is still read, for the one case that has to name the amount the BUNDLE ships
    so that the served one can be shown to differ from it. `JUNIOR` is not: the junior row is
    read off the answer now, like every other. */
@@ -2329,16 +2330,29 @@ describe('how a written page is set', () => {
   /**
    * The stores the policy deliberately does not name, and why.
    *
-   * One entry, and it is the simulated day the developer tools keep: written only
+   * Two entries. The first is the simulated day the developer tools keep: written only
    * where those tools are switched on (`devToolsEnabled()` in
    * clock/ClockProvider.tsx), which is the QA site and never the portal a visitor
    * reaches. QA is behind a password and is not indexed, so the reader of this
    * policy is never the reader of that store. The reason is written down here
    * because it was written down once before, in a comment, and went out with the
    * code that comment sat in; a review then had to find it again.
+   *
+   * The second is the gold strip's „closed" mark, by the exact name the strip
+   * writes (`NOTICE_STORAGE_KEY`, read from app/noticeBarFacts.ts rather than
+   * spelt a second time). Owner, 21.11.2026, choosing between the offered
+   * outcomes against the recommendation: „Ja ne zelim uopste da se A prikaze /
+   * upise bilo gde." The policy therefore stays silent about this one store, on
+   * purpose, and that is the owner's decision and not an oversight of this guard.
+   * It is one name and nothing wider: any other store the portal starts keeping
+   * still has to be named by the policy.
    */
   const NOT_DISCLOSED = new Map([
     ['btl.simulated-day', 'kept only where the developer tools are on, so never on the portal'],
+    [
+      NOTICE_STORAGE_KEY,
+      'the owner chose that the policy says nothing about the strip (21.11.2026)',
+    ],
   ])
 
   it('names every store the portal actually keeps in a browser, by its own name', () => {

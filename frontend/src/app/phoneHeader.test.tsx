@@ -97,7 +97,11 @@ async function tabbedThrough(): Promise<string[]> {
     }
 
     if (banner.contains(at)) {
-      names.push(nameOf(at))
+      /* The gold strip is the last thing in the banner and its cross the last stop in it (`app/Shell.tsx`);
+         it is no control of the header's own, which is what this lists. */
+      if (at.closest('[role="note"]') === null) {
+        names.push(nameOf(at))
+      }
     } else if (names.length > 0) {
       break
     }
@@ -186,9 +190,15 @@ describe('the header of a desktop, which stays as it was', () => {
 
     await screen.findByRole('link', { name: 'Učlani se' })
 
-    for (const name of ['Prijavi se', 'Učlani se']) {
-      expect(screen.getByRole('link', { name }).querySelector('svg')).toBeNull()
-    }
+    /* „Učlani se" stays a word, gold. „Prijavi se" is the one link of a desktop that is drawn, and since
+       21.11.2026 (owner, PDL „Zaglavlje za posetioca") it is drawn as a person, which is not one of the
+       telephone's symbols: the arrow into the door must not leak upwards either. */
+    expect(screen.getByRole('link', { name: 'Učlani se' }).querySelector('svg')).toBeNull()
+
+    const signIn = screen.getByRole('link', { name: 'Prijavi se' })
+
+    expect(signIn.querySelector('svg')).not.toBeNull()
+    expect(signIn.querySelector('[data-symbol]')).toBeNull()
   }, SLOW)
 })
 

@@ -40,6 +40,11 @@
   background: var(--surface);
 }
 
+/* The gold strip is the last thing in the header and carries the line under it (`app/NoticeBar.css`). */
+.shell__header:has(.notice) {
+  border-bottom: 0;
+}
+
 .shell__bar,
 .shell__nav,
 .shell__main,
@@ -737,6 +742,15 @@
    and it is the wrong one, because it gives the row back its width a moment later. */
 .shell__guest--waiting {
   visibility: hidden;
+}
+
+/* The person that stands for „Prijavi se" on a desktop (owner, 21.11.2026, PDL „Zaglavlje za posetioca"): the
+   link keeps the height and the shape of the button beside it, and holds the drawing with room to spare on
+   both sides, so the pressed area is the whole button and not the line of the drawing. */
+.shell__person {
+  flex: none;
+  inline-size: 1.25rem;
+  block-size: 1.25rem;
 }
 
 /* The one control in the header that brings the league any money (PDL P28a).

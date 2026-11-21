@@ -244,6 +244,11 @@
     "openAccount": "Otvori nalog",
     "openMyMenu": "Otvori moj meni"
   },
+  "notice": {
+    "label": "Obaveštenje",
+    "text": "Trenutno prikazani podaci su istorijski podaci članova, prikazani zabave radi. Zvanična sezona počinje 1. januara u ponoć: tada brojači i poredak kreću od nule za sve, a ono što je ranije istrčano ostaje na profilima.",
+    "close": "Zatvori obaveštenje"
+  },
   "nav": {
     "home": "Naslovna",
     "calendar": "Kalendar",
@@ -286,7 +291,7 @@
     "text": "Ovaj ekran je u izradi."
   },
   "home": {
-    "accountDeleted": "Vaš nalog je obrisan.",
+    "accountDeleted": "Tvoj nalog je obrisan.",
     "results": "Prijavljenih rezultata",
     "season": "Sezona {season}.",
     "kilometers": "Kilometara",
@@ -510,7 +515,7 @@
     "women": "Žene",
     "season": "Sezona",
     "warmUp": "Zagrevanje",
-    "myRow": "vaš red",
+    "myRow": "tvoj red",
     "categoryFilter": "Kategorija",
     "allCategories": "Sve",
     "empty": "U ovoj sezoni i kategoriji nema nijednog rezultata.",
@@ -545,11 +550,11 @@
     "refuse": "Odbij",
     "inviteClosed": "Ovaj poziv više nije otvoren.",
     "brokenSubject": "Trkački par je raskinut",
-    "brokenBody": "Vaš trkački par za sezonu {season} je raskinut. {who} je od te sezone u drugom paru.",
+    "brokenBody": "Tvoj trkački par za sezonu {season} je raskinut. {who} je od te sezone u drugom paru.",
     "sent": "Poslat poziv: {who}.",
     "received": "Primljen poziv: {who}.",
-    "endedBody": "{who} je raskinuo vaš trkački par za sezonu {season}.",
-    "endedBodyFemale": "{who} je raskinula vaš trkački par za sezonu {season}.",
+    "endedBody": "{who} je raskinuo tvoj trkački par za sezonu {season}.",
+    "endedBodyFemale": "{who} je raskinula tvoj trkački par za sezonu {season}.",
     "mine": "Trkački par",
     "breakUp": "Raskini trkački par",
     "forSeason": "Za sezonu {season}.",
@@ -866,7 +871,7 @@
     "memberNumberLabel": "Članski broj {number}"
   },
   "teams": {
-    "myTeam": "vaš tim",
+    "myTeam": "tvoj tim",
     "title": "Timovi",
     "columns": {
       "team": "Tim",
@@ -1012,7 +1017,8 @@
     "needsBoth": "Upiši adresu i lozinku.",
     "refused": "Prijava nije uspela. Adresa ili lozinka nisu tačne, ili je nalog privremeno zaključan zbog previše neuspelih pokušaja.",
     "noWho": "Prijava nije završena. Osveži stranu i pokušaj ponovo, a ako se ponovi, piši na info@balkanskatrkackaliga.net.",
-    "forgotten": "Zaboravljena lozinka"
+    "forgotten": "Zaboravljena lozinka",
+    "noAccount": "Nemaš nalog? Učlani se"
   },
   "newPassword": {
     "title": "Nova lozinka",

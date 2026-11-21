@@ -9,7 +9,7 @@ import { setupUser } from '../../test/user'
 /**
  * „OBRIŠI NALOG" AT THE END OF „MOJA ČLANARINA" (owner, 20.11.2026): drawn on the server's yes and nowhere else,
  * a window „Obriši / Odustani" before anything is sent, one request however it is pressed, and the front page with
- * „Vaš nalog je obrisan." once he is gone.
+ * „Tvoj nalog je obrisan." once he is gone.
  *
  * <p><b>THE AXES.</b> The server's answer, yes and no, and the same record under both, so that only `mayLeave` can be
  * what draws the button. The three ways out of the window that send nothing (Odustani, Escape) beside the one that
@@ -150,7 +150,7 @@ describe('deleting', () => {
       }),
     )
 
-    expect(await screen.findByText('Vaš nalog je obrisan.')).toHaveAttribute('role', 'status')
+    expect(await screen.findByText('Tvoj nalog je obrisan.')).toHaveAttribute('role', 'status')
     expect(screen.getByRole('heading', { level: 1, name: 'Balkanska trkačka liga' })).toBeInTheDocument()
     expect(deletions(asked)).toHaveLength(1)
     expect(screen.queryByRole('heading', { name: 'Moja članarina' })).toBeNull()
@@ -183,7 +183,7 @@ describe('deleting', () => {
     renderAt('/sr')
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Balkanska trkačka liga' })).toBeInTheDocument()
-    expect(screen.queryByText('Vaš nalog je obrisan.')).toBeNull()
+    expect(screen.queryByText('Tvoj nalog je obrisan.')).toBeNull()
   }, SLOW)
 
   it('stays on his page and says so when the server refuses', async () => {
