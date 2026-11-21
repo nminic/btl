@@ -217,6 +217,53 @@ describe('pointing at a slice', () => {
   })
 })
 
+/* A finger on a browser that does not move focus to what it touches (Safari does not for an element
+   that is not a form control), so nothing blurs and the only way back is the document's own listener.
+   The events are sent as that finger sends them: a `pointerenter` and then a `pointerdown`, both
+   `touch`. The tests above go through user-event, whose touch also moves focus, and focus leaving is a
+   second way back that would hide the first. */
+describe('going back, for a finger that moves no focus', () => {
+  const ALL = ['4', 'trke']
+  const touch = (one: Element) => {
+    fireEvent.pointerEnter(one, { pointerType: 'touch' })
+    fireEvent.pointerDown(one, { pointerType: 'touch' })
+  }
+
+  it('chooses on the first touch, though a pointerenter came just before it', () => {
+    renderDonut(TWO())
+
+    touch(first(hitsNow()))
+
+    expect(middle()[0]).toBe('3')
+  })
+
+  it('goes back on a touch in the middle of the ring, and on one outside it', () => {
+    renderDonut(TWO())
+
+    touch(first(hitsNow()))
+    fireEvent.pointerDown(must(document.querySelector('.donut__total'), 'the figure'), {
+      pointerType: 'touch',
+    })
+    expect(middle()).toEqual(ALL)
+
+    touch(first(hitsNow()))
+    expect(middle()[0]).toBe('3')
+    fireEvent.pointerDown(document.body, { pointerType: 'touch' })
+    expect(middle()).toEqual(ALL)
+  })
+
+  it('goes back on the second touch of the same slice, and moves on a touch of another', () => {
+    renderDonut(TWO())
+
+    touch(first(hitsNow()))
+    touch(at(hitsNow(), 1))
+    expect(middle()).toEqual(['1', 'maraton'])
+
+    touch(at(hitsNow(), 1))
+    expect(middle()).toEqual(ALL)
+  })
+})
+
 describe('going back to all the races', () => {
   const ALL = ['4', 'trke']
 
