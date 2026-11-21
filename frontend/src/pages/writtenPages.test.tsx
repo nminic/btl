@@ -217,7 +217,7 @@ function howLongKept(): Map<string, string> {
 }
 
 /** The one section that says what the portal collects, which both guards below read. */
-const collectedRows = () => sectionOf('politika-privatnosti', /Podaci koje unosite pri učlanjenju/)
+const collectedRows = () => sectionOf('politika-privatnosti', /Podaci koje unosiš pri učlanjenju/)
 
 describe('the written pages', () => {
   it.each([
@@ -920,7 +920,7 @@ describe('the privacy policy', () => {
        the section. The day the policy is signed off is moved by it, to 16.11.2026, which
        the sign-off case below holds. */
     const sentence =
-      'Kad podelite link svog profila, društvene mreže i aplikacije za poruke prikazuju njegov pregled sa vašim imenom, odobrenom slikom i brojem trka i kilometara.'
+      'Kad podeliš link svog profila, društvene mreže i aplikacije za poruke prikazuju njegov pregled sa tvojim imenom, odobrenom slikom i brojem trka i kilometara.'
     const publicPart = must(
       sectionOf('politika-privatnosti', /### Javno se prikazuje/)
         .split('### Javno se prikazuje')[1]
@@ -930,7 +930,7 @@ describe('the privacy policy', () => {
     const paragraphs = publicPart.split(NEWLINE + NEWLINE).map((each) => each.trim()).filter(Boolean)
 
     expect(paragraphs).toHaveLength(2)
-    expect(paragraphs[0]).toMatch(/^Ime i prezime, članski broj, .* i linkovi koje sami dodate\.$/)
+    expect(paragraphs[0]).toMatch(/^Ime i prezime, članski broj, .* i linkovi koje dodaš\.$/)
     expect(paragraphs[1]).toBe(sentence)
     expect(whole('politika-privatnosti').split(sentence)).toHaveLength(2)
   })
@@ -943,7 +943,7 @@ describe('the privacy policy', () => {
     /* Found by what it says rather than by its heading, which is what
        `sectionOf` reads: the sections are numbered and one inserted above moves
        the rest. */
-    const rights = sectionOf('politika-privatnosti', /Polja profila, sliku i tekst o sebi menjate i brišete/)
+    const rights = sectionOf('politika-privatnosti', /Polja profila, sliku i tekst o sebi menjaš i brišeš/)
 
     expect(rights).not.toContain('u podnožju svake strane')
     expect(rights).toContain('ne povlači jer se ne daje')
@@ -1035,7 +1035,7 @@ describe('the privacy policy', () => {
        the field that was collected for weeks with no row at all. */
     const about = collectedRows()
       .split('###')
-      .filter((block) => /Podaci koje unosite|Podaci koji nastaju dok ste/.test(block))
+      .filter((block) => /Podaci koje unosiš|Podaci koji nastaju dok si/.test(block))
 
     expect(about.length, 'the policy no longer has the two tables about the member').toBe(2)
 
@@ -1086,7 +1086,7 @@ describe('the privacy policy', () => {
   })
 
   it('keeps the profile picture among what membership produces, not what joining collects', () => {
-    /* An independent review found "Profilna fotografija" sitting in "Podaci koje unosite pri
+    /* An independent review found "Profilna fotografija" sitting in "Podaci koje unosiš pri
        učlanjenju" ("data you enter when you join"), but RegistrationApi never writes a
        picture: it names "photo" in its own NOT_COLLECTED_YET, and the `insert into
        competitor` statement that route runs never names photo_id among its columns. The
@@ -1098,8 +1098,8 @@ describe('the privacy policy', () => {
        some row of the two), which is exactly why nothing above this case would have caught
        the row sitting in the wrong one. */
     const blocks = collectedRows().split('###')
-    const joining = blocks.find((block) => /Podaci koje unosite pri učlanjenju/.test(block))
-    const ongoing = blocks.find((block) => /Podaci koji nastaju dok ste član/.test(block))
+    const joining = blocks.find((block) => /Podaci koje unosiš pri učlanjenju/.test(block))
+    const ongoing = blocks.find((block) => /Podaci koji nastaju dok si član/.test(block))
 
     expect(joining, 'the policy no longer has the "upon joining" table').toBeDefined()
     expect(ongoing, 'the policy no longer has the "while you are a member" table').toBeDefined()
@@ -1132,8 +1132,8 @@ describe('the privacy policy', () => {
 
     expect(link).toHaveAttribute('href', '/sr/moji-podaci')
     expect(link.closest('p')?.textContent).toBe(
-      'Polja profila, sliku i tekst o sebi menjate i brišete na strani Moji podaci. Saglasnost za kolačiće se ne' +
-        ' povlači jer se ne daje (sekcija 4). Kopiju podataka pripremamo ručno, u CSV ili JSON obliku, kad to tražite.',
+      'Polja profila, sliku i tekst o sebi menjaš i brišeš na strani Moji podaci. Saglasnost za kolačiće se ne' +
+        ' povlači jer se ne daje (sekcija 4). Kopiju podataka pripremamo ručno, u CSV ili JSON obliku, kad to tražiš.',
     )
 
     /* And it is followed: a visitor is asked to sign in, and the screen that asks him carries the way back. */
@@ -1155,7 +1155,7 @@ describe('the privacy policy', () => {
        file that a hundred lines up says in its own words why that is wrong, and a column
        added before it turned the check into a check on the wrong cell. */
     const said = howLongKept()
-    const profile = said.get('Prestanete da budete član')
+    const profile = said.get('Prestaneš da budeš član')
     const register = said.get('Broj ličnog dokumenta i ime oca')
 
     expect(profile, 'the policy no longer says how long a former member is kept').toBeDefined()
@@ -1266,7 +1266,7 @@ describe('the privacy policy', () => {
        measured against was only checked for existing: both rows moved to three months and
        the policy then said an account that never became a membership outlives one that did,
        with the suite green. Measured. */
-    const asMember = monthsIn(String(kept.get('Prestanete da budete član')))
+    const asMember = monthsIn(String(kept.get('Prestaneš da budeš član')))
 
     expect(
       asMember,
@@ -1870,8 +1870,8 @@ describe('the rulebook', () => {
        "Urednička revizija Pravilnika, Uslova i Politike privatnosti (29.10.2026)"); the three things the
        article says did not change. */
     expect(rulebook).toMatch(/Dovoljan je link ka zvaničnim rezultatima\./)
-    expect(rulebook).toMatch(/Ako ga nemate, pošaljite sliku, na primer snimak sata ili diplomu/)
-    expect(rulebook).toMatch(/kratko napišite zašto linka nema i šta se na slici vidi/)
+    expect(rulebook).toMatch(/Ako ga nemaš, pošalji sliku, na primer snimak sata ili diplomu/)
+    expect(rulebook).toMatch(/kratko napiši zašto linka nema i šta se na slici vidi/)
     expect(rulebook).not.toMatch(/sasvim dovoljan|recimo snimak|u par reči/)
     /* And nowhere the other way round, in any of the three documents: this rule
        lived in four homes and one of them was rewritten while three went on
@@ -2000,10 +2000,10 @@ describe('the rulebook', () => {
        standing like everybody else. */
     expect(rulebook).not.toMatch(/ne konkuriše u generalnom plasmanu/)
     expect(rulebook).toMatch(
-      /birate da li ćete se takmičiti u početničkoj kategoriji \(Početnici, Početnice\) ili u svojoj uzrasnoj/,
+      /biraš da li ćeš se takmičiti u početničkoj kategoriji \(Početnici, Početnice\) ili u svojoj uzrasnoj/,
     )
-    expect(rulebook).toMatch(/Tokom sezone ste u jednoj kategoriji i ona se ne menja do kraja godine/)
-    expect(rulebook).toMatch(/od sledeće sezone prelazite u svoju uzrasnu kategoriju i tu ostajete/)
+    expect(rulebook).toMatch(/Tokom sezone si u jednoj kategoriji i ona se ne menja do kraja godine/)
+    expect(rulebook).toMatch(/od sledeće sezone prelaziš u svoju uzrasnu kategoriju i tu ostaješ/)
     expect(rulebook).toMatch(/kao i svi ostali ulaze i u generalni plasman/)
   })
 
@@ -2079,10 +2079,10 @@ describe('the rulebook', () => {
        22.08.2026). The forms are held to the same thing in src/forms/definitions.test.ts
        and in the case on the picture further down. */
     expect(rulebook).toMatch(
-      /Upisujete događaj i trku, dužinu, uspon i spust, vreme i link ka zvaničnim rezultatima/,
+      /Upisuješ događaj i trku, dužinu, uspon i spust, vreme i link ka zvaničnim rezultatima/,
     )
     expect(rulebook).toMatch(
-      /Ako ga nemate, pošaljite sliku, na primer snimak sata ili diplomu, i kratko napišite zašto linka nema/,
+      /Ako ga nemaš, pošalji sliku, na primer snimak sata ili diplomu, i kratko napiši zašto linka nema/,
     )
   })
 })
@@ -2526,11 +2526,11 @@ describe('how a written page is set', () => {
     expect(offersTrack(lines)).toEqual([])
     /* Until 10.11.2026 the sweep also had to reach the one line that was allowed to mention a
        track file, in order to prove the trigger live rather than merely quiet. The owner's
-       words for Article 33 are „Dužinu, uspon i spust upisujete sami." and no page or
+       words for Article 33 were „Dužinu, uspon i spust upisujete sami." (21.11.2026: „Dužinu, uspon i spust upisuješ.") and no page or
        dictionary line names one any more, so the trigger is proven live by the cases of
        `the guard over the written pages` below, and what is held here is that the sweep
        still reaches the article that used to carry the refusal. */
-    expect(lines.some(([where, line]) => where === 'pravilnik' && line.includes('Dužinu, uspon i spust upisujete sami.')))
+    expect(lines.some(([where, line]) => where === 'pravilnik' && line.includes('Dužinu, uspon i spust upisuješ.')))
       .toBe(true)
   })
 
@@ -2860,13 +2860,13 @@ describe('what the written pages say the fee buys', () => {
     )[0]
     const article = must(
       /### Član \d+\. Kako se prijavljuje rezultat[\s\S]*?(?=### Član)/.exec(
-        sectionOf('pravilnik', /Rezultat prijavljujete sami/),
+        sectionOf('pravilnik', /Rezultat prijavljuješ sa svog profila/),
       ),
       'the article on how a result is submitted in its section',
     )[0]
 
-    expect(proof).toMatch(/Ako ga nemate, pošaljite sliku/)
-    expect(proof).toMatch(/kratko napišite zašto linka nema i šta se na slici vidi/)
+    expect(proof).toMatch(/Ako ga nemaš, pošalji sliku/)
+    expect(proof).toMatch(/kratko napiši zašto linka nema i šta se na slici vidi/)
 
     /* **What the article „Kako se prijavljuje rezultat" says about how a result reaches the portal is held in the
        snapshot now, with the rest of the written pages** (`writtenVerification.test.ts`,
@@ -3015,13 +3015,14 @@ describe('what the written pages say the fee buys', () => {
        15.11.2026 with the sentence that says an unscored race is a personal record (V100;
        owner, 14.11.2026, the day it reaches QA), by the same rule. The policy moved on to
        16.11.2026 with the sentence that says what a network shows of a shared profile (V102;
-       owner, 16.11.2026). Written per
+       owner, 16.11.2026), and all three to 21.11.2026 with the Serbian legal texts speaking to the
+       reader as „ti” (V107; owner, 21.11.2026, the day it is expected on QA), by the same rule. Written per
        document and not as one day for all three, so a date moved on one of them,
        or left behind on one, is a failure that names the document. */
     const SIGNED_OFF = {
-      pravilnik: '15.11.2026',
-      'uslovi-koriscenja': '11.11.2026',
-      'politika-privatnosti': '16.11.2026',
+      pravilnik: '21.11.2026',
+      'uslovi-koriscenja': '21.11.2026',
+      'politika-privatnosti': '21.11.2026',
     } as const
 
     for (const slug of ['pravilnik', 'uslovi-koriscenja', 'politika-privatnosti'] as const) {
@@ -3162,7 +3163,7 @@ describe('what the written pages say the fee buys', () => {
       'it may be offering to name a safeguard once more',
     )
     endsOn(
-      'Prvo nam pišite na [info@balkanskatrkackaliga.net](mailto:info@balkanskatrkackaliga.net).',
+      'Prvo nam piši na [info@balkanskatrkackaliga.net](mailto:info@balkanskatrkackaliga.net).',
       'it may be offering a way to complain once more',
     )
 

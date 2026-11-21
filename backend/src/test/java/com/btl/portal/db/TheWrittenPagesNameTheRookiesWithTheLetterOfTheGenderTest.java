@@ -1,5 +1,6 @@
 package com.btl.portal.db;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
@@ -28,6 +29,16 @@ import static org.assertj.core.api.Assertions.assertThat;
  * moved in the migration, in the table below and in every guard that holds it.
  */
 class TheWrittenPagesNameTheRookiesWithTheLetterOfTheGenderTest extends DatabaseTest {
+
+	/**
+	 * V107 (21.11.2026) later changed the pronoun of the sentences this file asks about, and moved the sign-off of the three
+	 * documents, so what is asked here is asked of the text as V106 left it. The text the portal serves now is held by
+	 * {@link TheWrittenPagesSpeakToTheReaderAsTiTest}.
+	 */
+	@BeforeEach
+	void theTextAsV106LeftIt() {
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "107");
+	}
 
 	static final String RULEBOOK = "pravilnik";
 

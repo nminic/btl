@@ -9,7 +9,7 @@
       "labelKey": "profile.bio",
       "maxLength": 360,
       "policyRow": "Biografija, tekst o sebi, linkovi na Stravu i Instagram",
-      "policyBasis": "Vaš pristanak"
+      "policyBasis": "Tvoj pristanak"
     }
   ]
 }
