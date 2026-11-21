@@ -77,7 +77,8 @@ function wordOf(key: string): unknown {
  */
 const SYMBOL_OF = new Map<string, { symbol: ActionSymbol; word: string }>([
   ['admin.cancelMembership', { symbol: SYMBOL.undo, word: 'Storniraj' }],
-  /* Changing the rules and the prizes of a competition (pages/league/EditableText.tsx). */
+  /* The pencil in the head of the sheet of a competition, which leads to its form in the administration
+     (pages/Leagues.tsx, owner 21.11.2026). */
   ['admin.change', { symbol: SYMBOL.pencil, word: 'Izmeni' }],
   ['admin.dropRace', { symbol: SYMBOL.cross, word: 'Izbaci' }],
   /* The row of a race in the form of an event (PDL 20.10.2026, derived from the map). */

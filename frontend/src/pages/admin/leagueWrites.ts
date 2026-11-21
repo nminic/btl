@@ -1,8 +1,12 @@
-import type { League } from '../../data/types'
-
 /**
- * WHAT THE TWO SCREENS THAT WRITE A COMPETITION SEND, AND WHAT EVERY REFUSAL OF IT IS
- * CALLED.
+ * WHAT THE ADMINISTRATION SENDS WHEN IT WRITES A COMPETITION, AND WHAT EVERY REFUSAL OF IT
+ * IS CALLED.
+ *
+ * <p><b>The administration is the one place a competition is written, since 21.11.2026</b>
+ * (owner, PDL „Glava lista lige: na desktopu sve u jednom redu”): „male veze „Izmeni” kod
+ * Propozicija i Nagrada nestaju”, and the pencil on the list of competitions leads to the form
+ * here instead. Until that day the terms and the prizes were also changed in place on that list,
+ * one box at a time, and this module built that body too (`upsertOf`, gone with it).
  *
  * <p>Its own module rather than a constant beside either screen, which is the arrangement
  * `pages/member/myAccount.ts` already has and the reason it gives: `react/only-export-components`
@@ -28,9 +32,8 @@ import type { League } from '../../data/types'
  * three required ones. So a competition saved with only its name would have its address
  * blanked, and the route would refuse the request before it got that far.
  *
- * <p>Which is why the terms and the prizes, edited on the public list one box at a time
- * (`pages/Leagues.tsx`), still travel with the other four: what that box changes is one
- * field of a record the route only accepts whole.
+ * <p>Which is why the form sends all five every time, the terms and the prizes among
+ * them, even when only one of them moved.
  */
 export type Upsert = {
   name: string
@@ -41,46 +44,10 @@ export type Upsert = {
 }
 
 /**
- * The two fields of a competition that are written where they are READ.
+ * The five read off the FORM of a competition (`admin/AdminLeagues.tsx`).
  *
- * <p>Owner, 07.09.2026, asked where a moderator should change them now that the page of
- * one competition no longer carries them: the same place they are read. „A screen that
- * shows one thing and changes it somewhere else is a screen where the two can disagree,
- * and the person who spots the mistake is the one who cannot fix it"
- * (`pages/league/EditableText.tsx`).
- *
- * <p>Named once here rather than spelt `'rules' | 'prizes'` in each of the three files
- * that say it, because the box, the list that draws it and the body that is sent have to
- * agree about which two they are.
- */
-export type LeagueWords = 'rules' | 'prizes'
-
-/**
- * The competition as it stands, in the shape the route takes, with one field replaced.
- *
- * <p>Built off the served record rather than off anything a screen is holding, so the four
- * fields nobody on that screen is editing go back exactly as they came. The one place this
- * is used is the public list, where a moderator changes the terms or the prizes in place
- * and the other four are not in question.
- */
-export function upsertOf(league: League, change: Partial<Upsert>): Upsert {
-  return {
-    name: league.name,
-    slug: league.slug,
-    season: league.season,
-    rules: league.rules,
-    prizes: league.prizes,
-    ...change,
-  }
-}
-
-/**
- * And the same five read off the FORM, which is the other of the two screens that write
- * one.
- *
- * <p>Beside `upsertOf` rather than inside the screen, so the list of what the route takes
- * is written once. Two screens building it separately is the shape that goes wrong the day
- * the route takes a sixth column: one of them sends it and the other silently blanks it.
+ * <p>Here rather than inside the screen, so the list of what the route takes is written
+ * once, beside the shape of it.
  *
  * <p><b>`season` is a number on the wire and text in the form</b> - `forms/types.ts` holds
  * every value as a string or a flag - and `rules` and `prizes` are NOT NULL in the schema

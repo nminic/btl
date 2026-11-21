@@ -8,7 +8,7 @@ import { must } from '../../test/at'
 import { renderWithI18n } from '../../test/render'
 import { SLOW } from '../../test/slow'
 import { sources, WHOLE_PORTAL } from '../../test/sources'
-import { EditableText } from './EditableText'
+import { LeagueText } from './LeagueText'
 
 /**
  * EVERY LINK DRAWN OUT OF `addressesIn` IS DRAWN LEFT TO RIGHT, and nothing draws one without a case
@@ -160,17 +160,8 @@ const MODULES = import.meta.glob<Record<string, unknown>>('/src/**/*.tsx')
    them by the box of a competition. The seat draws that box, which is where the links stand. */
 const SEATS: Record<string, { from: string; seat: (text: string) => ReactElement }> = {
   'components/markdownText.ts': {
-    from: 'pages/league/EditableText.tsx',
-    seat: (text) => (
-      <EditableText
-        value={text}
-        field="rules"
-        headingId="seat-rules"
-        heading="Propozicije"
-        canEdit={false}
-        onSave={() => Promise.resolve(true)}
-      />
-    ),
+    from: 'pages/league/LeagueText.tsx',
+    seat: (text) => <LeagueText value={text} headingId="seat-rules" heading="Propozicije" />,
   },
   /* The words a member sent beside a result, drawn in the moderator's queue (PDL P9, 03.10.2026,
      PENDING 28904). The seat draws the component and not the queue around it, which is where the

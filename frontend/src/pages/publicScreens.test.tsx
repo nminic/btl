@@ -3321,15 +3321,13 @@ describe('Leagues', () => {
        (`pages/details.test.tsx`). */
     const SCREENS = [
       ['/sr/lige', 'RunTrace liga 2027', 'visitor'],
-      /* The list through the eyes of somebody who may fill it in, which is where the
-         terms and the prizes are now written („Ceo tekst, uređuje se tu"). A field with
-         nothing written in it is drawn to **nobody else**: `EditableText` returns
-         nothing at all when the value is empty and the reader cannot edit, so the
-         sentence „Još nije napisano." and anything put beside it is invisible to a
-         visitor and passed the whole gate (measured 01.09.2026). Until 21.11.2026 both
-         competitions of 2027 stood on this one screen, one written and one empty; since
-         the owner chose that only the chosen one is written out (PDL „Strana „Lige” se
-         radi po predlogu B”), the empty one is its own seat, opened by the address. */
+      /* The list through the eyes of somebody who may change a competition, which is the
+         one reader the pencil in the head of the sheet is drawn for (owner, 21.11.2026, PDL
+         „Glava lista lige: na desktopu sve u jednom redu”): its name is held here, and a
+         visitor's seat never draws it. Until that day this seat held the boxes of the terms
+         and the prizes as somebody who could write them in place saw them. Since the owner
+         chose that only the chosen competition is written out (PDL „Strana „Lige” se radi po
+         predlogu B”), the second one is its own seat, opened by the address. */
       ['/sr/lige', 'RunTrace liga 2027', 'superadmin'],
       ['/sr/lige?liga=planinska-2027', 'Planinska liga 2027', 'superadmin'],
       /* The other season, which is the whole of what the control beside the heading
@@ -3347,6 +3345,10 @@ describe('Leagues', () => {
       /* And the competition that is not there, which is its own screen. */
       ['/sr/liga/ne-postoji', 'Ove lige nema.', 'visitor'],
       ['/sr/administracija/lige', 'RunTrace liga 2027', 'superadmin'],
+      /* The same list with one competition open for change, which is where its box of races lives since
+         the races moved from the list into the form of the competition, under the prizes. The plain seat
+         above can no longer see them, so without this one every word of that box is held by nothing. */
+      ['/sr/administracija/lige?izmena=1', 'Izmena lige', 'superadmin'],
     ] as const
 
     const drawn: Record<string, unknown> = screens

@@ -194,7 +194,7 @@ function addressIn(word: string): Found | null {
  * as one.
  *
  * Written for the terms and the prizes of a competition, the two boxes on the list of competitions
- * (`pages/league/EditableText.tsx`, drawn through `components/Markdown.tsx` since 16.10.2026, which
+ * (`pages/league/LeagueText.tsx`, drawn through `components/Markdown.tsx` since 16.10.2026, which
  * asks this through `components/markdownText.ts`), and for the sentence the owner gave on 03.10.2026
  * (PDL P15): the
  * paragraph of the terms of the RunTrace league has to carry `www.runtrace.net` as a link that opens

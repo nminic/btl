@@ -975,7 +975,6 @@
     "noResults": "There is no result at all in this competition yet.",
     "noneOfThese": "There is no result in this competition in the division chosen.",
     "unknown": "unknown",
-    "notWritten": "Not written yet.",
     "name": "Competition",
     "eventCount": {
       "one": "{number} event",
@@ -989,7 +988,7 @@
     },
     "showcase": "Competitions in the {season} season",
     "kicker": "Accompanying competition",
-    "table": "Competition table",
+    "table": "Table",
     "months": "Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec",
     "yearNext": {
       "one": "{number} event through the year, the next on {next}",
@@ -1001,7 +1000,12 @@
       "few": "{number} events through the year, all of them held",
       "other": "{number} events through the year, all of them held"
     },
-    "openBelow": "Open below"
+    "change": "Change the competition: {name}",
+    "state": {
+      "held": "Held",
+      "next": "Next",
+      "ahead": "Upcoming"
+    }
   },
   "pricing": {
     "rows": {
@@ -1601,7 +1605,6 @@
       "theWindowIsShut": "A team is deleted only in the transfer window, from 21 November to 31 December."
     },
     "leagueSavedUnseen": "The competition was saved. Refresh the page.",
-    "leagueTextSaved": "The change has been saved.",
     "priceSaved": "The price has been saved.",
     "priceRefused": {
       "theFormIsNotComplete": "A name, a price in euros or a price in dinars is missing.",

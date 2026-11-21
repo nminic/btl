@@ -311,10 +311,11 @@ async function bodyIn(answer: Response): Promise<unknown> {
  *             **`PUT` STOOD HERE FOR AN AFTERNOON, WENT, AND CAME BACK ON 25.09.2026 WITH
  *             ITS CALLER, which is what the line it left behind said would happen.** That
  *             line read „it comes back with its caller", and the caller is
- *             `PUT /api/leagues/{id}`, now sent by `admin/AdminLeagues.tsx` and by the terms
- *             and prizes on the public list of competitions (`pages/Leagues.tsx`). The
- *             branch is therefore reachable from two screens rather than claimed to be
- *             needed, which is the whole difference from the afternoon it was removed.
+ *             `PUT /api/leagues/{id}`, now sent by `admin/AdminLeagues.tsx` (and until
+ *             21.11.2026 by the terms and the prizes on the public list of competitions as
+ *             well, which the owner sent to that form on that day). The branch is
+ *             therefore reachable from a screen rather than claimed to be needed, which is
+ *             the whole difference from the afternoon it was removed.
  *
  *             **`tellTheServer` STOOD BESIDE THIS AND IS GONE IN THE SAME BREATH.** It was
  *             written on 24.09.2026 as a MERGE decision and said so in its own words - „the

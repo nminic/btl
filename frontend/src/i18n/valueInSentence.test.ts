@@ -421,6 +421,10 @@ describe('a sentence with a value put into it', () => {
       'leagueResults.removeRow',
       'leagueResults.rowNumber',
       'leagueResults.title',
+      /* „Izmeni ligu: {name}", the name of the pencil in the head of the sheet of a competition
+         (owner, 21.11.2026). After a colon, so nothing governs the name and it stands as it is
+         written, the shape `admin.changeNamed` („Izmeni rezultat: {name}") already has. */
+      'leagues.change',
       /* The name of the competition inside the name of the control that opens its list of events
          and races, and inside the wait under it. Nominative, because the competition is what the
          box is about and nothing governs it: „Događaji i trke, RunTrace liga 2027". */

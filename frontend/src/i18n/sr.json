@@ -975,7 +975,6 @@
     "noResults": "Na ovom takmičenju još nema nijednog rezultata.",
     "noneOfThese": "U ovom takmičenju nema nijednog rezultata u izabranoj konkurenciji.",
     "unknown": "nepoznato",
-    "notWritten": "Još nije napisano.",
     "name": "Liga",
     "eventCount": {
       "one": "{number} događaj",
@@ -989,7 +988,7 @@
     },
     "showcase": "Lige u sezoni {season}",
     "kicker": "Propratna liga",
-    "table": "Tabela lige",
+    "table": "Tabela",
     "months": "jan feb mar apr maj jun jul avg sep okt nov dec",
     "yearNext": {
       "one": "{number} događaj kroz godinu, sledeći {next}",
@@ -1001,7 +1000,12 @@
       "few": "{number} događaja kroz godinu, svi su održani",
       "other": "{number} događaja kroz godinu, svi su održani"
     },
-    "openBelow": "Otvorena ispod"
+    "change": "Izmeni ligu: {name}",
+    "state": {
+      "held": "Održan",
+      "next": "Sledeći",
+      "ahead": "Predstoji"
+    }
   },
   "pricing": {
     "rows": {
@@ -1596,7 +1600,6 @@
     "leagueGone": "Liga je obrisana.",
     "leagueDeleteAsk": "Obriši ligu?",
     "leagueSavedUnseen": "Liga je sačuvana. Osveži stranu.",
-    "leagueTextSaved": "Izmena je sačuvana.",
     "priceSaved": "Cena je sačuvana.",
     "priceRefused": {
       "theFormIsNotComplete": "Nedostaje naziv, cena u evrima ili cena u dinarima.",
