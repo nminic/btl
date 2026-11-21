@@ -21,10 +21,12 @@ import { TopTen } from './TopTen'
 
 const home = readFileSync(join(process.cwd(), 'src/pages/Home.css'), 'utf-8').replaceAll('\r\n', '\n')
 const lengthFilter = readFileSync(join(process.cwd(), 'src/components/LengthFilter.css'), 'utf-8').replaceAll('\r\n', '\n')
+const segmented = readFileSync(join(process.cwd(), 'src/components/Segmented.css'), 'utf-8').replaceAll('\r\n', '\n')
 const counter = readFileSync(join(process.cwd(), 'src/styles/counter.css'), 'utf-8').replaceAll('\r\n', '\n')
 const sheets = `${home}
 ${counter}
-${lengthFilter}`
+${lengthFilter}
+${segmented}`
 
 const person = (memberNumber: string): Competitor => ({
   memberNumber,

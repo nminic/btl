@@ -1,0 +1,58 @@
+/* The segmented control: one row of buttons, one of them pressed, shared by every filter of this shape on
+   the portal (owner, 21.11.2026: the filter of the races on the profile, the length filter of the front page and the
+   category filter of the BTL tables are one component). The card or section around it is the container the narrow
+   rule asks about; where there is none the rule does not apply. */
+.seg {
+  display: flex;
+  /* Wraps: at an enlarged text the six do not fit one row, and a row that cannot wrap squeezes the boxes
+     under their words (WCAG 1.4.4, 1.4.10). At the ordinary text they fit and stay in one row. */
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: var(--space-2) 0;
+  padding: var(--space-2);
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius-round);
+  margin-bottom: var(--space-4);
+}
+
+.seg__b {
+  /* No `min-width: 0`: a button is never narrower than its own words. */
+  flex: 1 1 auto;
+  min-block-size: 1.75rem;
+  padding: var(--space-4) var(--space-6);
+  border: 0;
+  border-radius: var(--radius-round);
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  text-align: center;
+  cursor: pointer;
+}
+
+.seg__b:hover {
+  color: var(--text);
+}
+
+.seg__b--on {
+  background: var(--surface-hover);
+  color: var(--text);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+@container (max-width: 16.875rem) {
+  .seg__b {
+    padding-inline: var(--space-4);
+    font-size: 0.72rem;
+  }
+}
+
+/* As wide as its buttons ask, from the left, and no wider than the room (owner, 21.11.2026: on a desktop the filter
+   is not as wide as the page). Where the room runs out the buttons wrap, as they do in the full-width form. */
+.seg--fit {
+  inline-size: fit-content;
+  max-inline-size: 100%;
+}

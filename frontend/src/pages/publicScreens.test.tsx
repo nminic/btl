@@ -566,6 +566,26 @@ describe('Rankings', () => {
     expect(within(screen.getByRole('table')).getAllByRole('row')).toHaveLength(all)
   })
 
+  it('lists „Sve" first and then the categories in the order of their codes, as one pressable row', async () => {
+    /* The order the table has always offered them in (owner, 21.11.2026, the filter is the shared segmented
+       control and the order does not change with it): „Sve", then the codes sorted, men before women. The
+       whole list is read, so a reversed or shuffled row fails, and each button says whether it is pressed. */
+    renderAt(ADDRESS(inLeague(2020)))
+
+    await screen.findByRole('table')
+
+    const buttons = within(screen.getByRole('group', { name: 'Kategorija' })).getAllByRole('button')
+    const names = buttons.map((one) => one.textContent ?? '')
+
+    expect(first(names)).toBe('Sve')
+    expect(names.length).toBeGreaterThan(2)
+    const letter = first(names.slice(1)).charAt(0)
+
+    expect(names.slice(1)).toEqual(['24-', '25-39', '40-54', '55+'].map((band) => `${letter} ${band}`).filter((one) => names.includes(one)))
+    expect(names.slice(1).length, 'every band of the gender is offered').toBeGreaterThanOrEqual(4)
+    expect(buttons.map((one) => one.getAttribute('aria-pressed'))).toEqual(['true', ...names.slice(1).map(() => 'false')])
+  })
+
   it('drops a search out of an address that still carries one, on arrival', async () => {
     /* Somebody has this bookmarked from before the search went, and nothing on this
        screen reads `trazi` any more. Left alone it is carried into every filter
@@ -604,8 +624,8 @@ describe('Rankings', () => {
 
   it('marks the chosen category as chosen, and not only to a screen reader', async () => {
     /* `aria-pressed` says which chip is on, and the class is what draws it: a
-       filled background and an accent edge (`rankings__category--on` in
-       Rankings.css). A review replaced both class expressions with the plain
+       filled background and an accent edge (`seg__b--on` in
+       Segmented.css). A review replaced both class expressions with the plain
        one and watched all 1846 tests pass, because everything here asked only
        after the attribute. A reader who can see the screen would have had eight
        identical chips and no way to tell which one they had pressed.
@@ -622,14 +642,14 @@ describe('Rankings', () => {
     const all = chips.getByRole('button', { name: 'Sve' })
     const one = chips.getAllByRole('button').filter((chip) => chip !== all)
 
-    expect(all.className).toContain('rankings__category--on')
-    expect(first(one).className).not.toContain('rankings__category--on')
+    expect(all.className).toContain('seg__b--on')
+    expect(first(one).className).not.toContain('seg__b--on')
 
     await user.click(first(one))
 
-    expect(first(one).className).toContain('rankings__category--on')
+    expect(first(one).className).toContain('seg__b--on')
     expect(chips.getByRole('button', { name: 'Sve' }).className).not.toContain(
-      'rankings__category--on',
+      'seg__b--on',
     )
   })
 
