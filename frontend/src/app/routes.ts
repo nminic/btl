@@ -112,6 +112,10 @@ export const TEAMS_ADDRESS = 'timovi'
 /** Where the standing of the people is served, which is the first two cards of the tables. */
 export const TABLE_ADDRESS = 'tabela'
 
+/** Where the boards of the season are served (Top liste), named for the strip under the header, which stands
+ *  on this address and on the front page and the tables (`app/NoticeBar.tsx`). */
+export const TOP_BOARDS_ADDRESS = 'top-liste'
+
 /* The slugs stay Serbian in every language
  * (PDL P18, „Adrese nose **jezički prefiks za sve jezike, uključujući srpski**"),
  * which is why the decision writes the English route as /en/kalendar rather than
@@ -126,7 +130,7 @@ export const NAV: NavSection[] = [
     alsoMarkedOn: [TEAMS_ADDRESS],
     symbol: NAV_SYMBOL.ranking,
   },
-  { id: 'boards', labelKey: 'nav.topBoards', path: 'top-liste', seoKey: 'topBoards', symbol: NAV_SYMBOL.steps },
+  { id: 'boards', labelKey: 'nav.topBoards', path: TOP_BOARDS_ADDRESS, seoKey: 'topBoards', symbol: NAV_SYMBOL.steps },
   /* "Lige", which is what they are. They were called "Takmičenja" while they sat
      inside a group named for ranking, where the plain word would have read as
      the league itself (owner, 04.08.2026). */

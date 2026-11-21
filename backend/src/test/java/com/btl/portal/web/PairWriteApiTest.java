@@ -1717,7 +1717,7 @@ class PairWriteApiTest {
 						+ " a portal telling through one door and staying silent through another")
 				.containsExactly("Balkanska trkačka liga | Trkački par je raskinut |"
 						+ " Ime" + who + " Probic" + who + " je " + verb
-						+ " vaš trkački par za sezonu " + BEING_FORMED + ".");
+						+ " tvoj trkački par za sezonu " + BEING_FORMED + ".");
 
 		assertThat(postFor(who))
 				.as("the one who pressed the button was told about his own press")
@@ -1766,7 +1766,7 @@ class PairWriteApiTest {
 						+ " has run yet")
 				.containsExactly("Balkanska trkačka liga | Trkački par je raskinut |"
 						+ " Ime" + HE_ASKED_HER + " Probic" + HE_ASKED_HER
-						+ " je raskinuo vaš trkački par za sezonu " + STILL_RUNNING + ".");
+						+ " je raskinuo tvoj trkački par za sezonu " + STILL_RUNNING + ".");
 
 		assertThat(seasonsPairedIn(HE_ASKED_HER))
 				.as("the pair of the season being formed went instead of the one that was named")

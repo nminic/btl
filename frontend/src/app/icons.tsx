@@ -180,6 +180,18 @@ export function NavSymbolIcon({ of, className }: IconProps & { of: NavSymbol }) 
   )
 }
 
+/** A person, head and shoulders: what „Prijavi se" is drawn as in the header of a visitor on a desktop
+ *  (owner, 21.11.2026, PDL „Zaglavlje za posetioca"). It carries no name; the link it stands in keeps the word
+ *  for the reader (`app/Shell.tsx`). */
+export function PersonIcon({ className }: IconProps) {
+  return (
+    <Stroke className={className}>
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4.5 20.5a7.5 7.5 0 0 1 15 0" />
+    </Stroke>
+  )
+}
+
 export function MailIcon({ className }: IconProps) {
   return (
     <Stroke className={className}>

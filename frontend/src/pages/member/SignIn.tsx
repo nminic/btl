@@ -215,6 +215,15 @@ export function SignIn() {
         <Link to={`/${locale}/zaboravljena-lozinka`}>{t('signIn.forgotten')}</Link>
       </p>
 
+      {/* THE WAY TO JOINING, FROM THE ONE SCREEN WHERE SOMEBODY WITHOUT AN ACCOUNT MAY BE LOOKING (owner,
+          21.11.2026, PDL „Zaglavlje za posetioca"; the sentence is the one the decision gives, „Nemaš nalog?
+          Učlani se"). The header of a visitor on a desktop draws „Prijavi se" as a person, and this is what
+          stays for a visitor who came here by it and has no account yet. A link of its own, outside the
+          form for the reason the one above is. */}
+      <p>
+        <Link to={`/${locale}/registracija`}>{t('signIn.noAccount')}</Link>
+      </p>
+
       {trouble === 'noWho' && (
         <p className="field__error" role="alert">
           {t('signIn.noWho')}

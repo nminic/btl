@@ -209,6 +209,8 @@ class TheWrittenPagesNameZohoAsAProcessorTest extends DatabaseTest {
 
 	@Test
 	void theSerbianRowStandsInThatOneSectionAndZohoIsNamedNowhereElse() {
+		/* V107 (21.11.2026) later changed the pronoun of this sentence; what is asked here is asked of the text as V106 left it. */
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "107");
 		theRowStandsInThatOneSectionAndZohoIsNamedNowhereElse("sr");
 	}
 
@@ -219,6 +221,8 @@ class TheWrittenPagesNameZohoAsAProcessorTest extends DatabaseTest {
 
 	@Test
 	void theSerbianRowFollowsBrevoDirectlyAndPrecedesTheBank() {
+		/* V107 (21.11.2026) later changed the pronoun of this sentence; what is asked here is asked of the text as V106 left it. */
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "107");
 		theRowFollowsBrevoDirectlyAndPrecedesTheBank("sr");
 	}
 
@@ -256,6 +260,7 @@ class TheWrittenPagesNameZohoAsAProcessorTest extends DatabaseTest {
 	 */
 	private void theSignOffOfThePolicyHasMovedOnAndNoOtherDocumentMovedWithIt(String language) {
 		/* The text as V94 left it: V95 (owner, 11.11.2026) moved the sign-offs of all three pages and took sentences out of them, which is held by TheWrittenPagesStateTheFactCarriedOverTest. */
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "107");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "102");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "100");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "98");
@@ -387,6 +392,8 @@ class TheWrittenPagesNameZohoAsAProcessorTest extends DatabaseTest {
 
 	@Test
 	void v60RunAgainOverTheFinishedTextStopsAndSaysTheRowIsAlreadyThere() {
+		/* V107 (21.11.2026) later changed the pronoun of this sentence; what is asked here is asked of the text as V106 left it. */
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "107");
 		PSQLException error = v60RunAgain();
 
 		assertThat(error.getServerErrorMessage().getMessage()).contains("the written pages were not edited");

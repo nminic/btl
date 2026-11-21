@@ -16,7 +16,8 @@ import { ErrorBoundary } from './ErrorBoundary'
 import { LanguageMenu } from './LanguageMenu'
 import { MessagesMenu } from './MessagesMenu'
 import { PageMetaContext } from './pageMetaContext'
-import { NavSymbolIcon } from './icons'
+import { NavSymbolIcon, PersonIcon } from './icons'
+import { NoticeBar } from './NoticeBar'
 import { NAV_SYMBOL, type NavSymbol } from './navSymbol'
 import { usePhoneHeader } from './phoneHeader'
 import { HeaderDecoration, PageBackgroundDecoration } from './RaceInMotion'
@@ -296,7 +297,18 @@ export function Shell() {
           to={`/${locale}/prijava`}
           {...(asking ? NOT_OFFERED : {})}
         >
-          <Face symbol={NAV_SYMBOL.signIn} word={t('shell.signIn')} phone={phone} />
+          {/* A PERSON ON A DESKTOP, THE ARROW INTO THE DOOR ON A TELEPHONE (owner, 21.11.2026, PDL „Zaglavlje
+              za posetioca"): „Prijavi se" stops being a word beside the gold „Učlani se" and becomes the person
+              every portal draws for it. The word stays in the link, out of sight, so the name is the same
+              „Prijavi se" at every width; a telephone keeps what it has (`Face`). */}
+          {phone ? (
+            <Face symbol={NAV_SYMBOL.signIn} word={t('shell.signIn')} phone />
+          ) : (
+            <>
+              <PersonIcon className="shell__person" />
+              <span className="visually-hidden">{t('shell.signIn')}</span>
+            </>
+          )}
         </Link>
         <Link
           className={waitingFor('button--cta', asking)}
@@ -373,6 +385,18 @@ export function Shell() {
         ) : (
           navigation
         )}
+
+        {/* THE GOLD STRIP, THE LAST THING IN THE HEADER, which is where it stands: under the bar and the
+            navigation, over the content (owner, 21.11.2026, PDL „Zlatna traka obaveštenja ispod
+            zaglavlja"). It is in the header and in neither of the other two places it could have been
+            drawn, and both were measured. Outside every landmark, axe's `region` rule fails on every
+            screen that shows it. First in `main`, the rule that a page begins with its heading
+            (`test/met.ts`, „begins with its heading", held by `pages/publicData.test.tsx`) fails on the
+            same screens, and a reader sent to the content by the skip link would meet a note before the
+            name of the screen. The header is a landmark (the banner) and a note for the whole site
+            belongs to it; its own bar and navigation are drawn first and keep their places
+            (`app/NoticeBar.tsx`). */}
+        <NoticeBar main={main} />
       </header>
 
       {/* Back to the top on a new screen, and back where it was on the way back.

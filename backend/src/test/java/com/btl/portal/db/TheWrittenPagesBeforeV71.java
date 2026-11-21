@@ -72,6 +72,19 @@ final class TheWrittenPagesBeforeV71 {
 		return edits;
 	}
 
+	/** Every edit of a migration whose table has a field column, in the order it makes them. */
+	static List<Edit> editsWithAFieldOf(String sql) {
+		List<Edit> edits = new ArrayList<>();
+		Matcher each = AN_EDIT.matcher(sql);
+
+		while (each.find()) {
+			edits.add(new Edit(each.group(1).replace("''", "'"), each.group(2), Integer.parseInt(each.group(3)),
+					each.group(4), each.group(5), each.group(6), each.group(7)));
+		}
+
+		return edits;
+	}
+
 	/** One edit of V73: its table has no field column, the body is always the one. */
 	private static final Pattern A_BODY_EDIT = Pattern.compile(
 			"\\(\\s*'((?:[^']|'')*)',\\s*'([^']*)',\\s*(\\d+),\\s*'(\\w+)',\\s*"
@@ -80,7 +93,7 @@ final class TheWrittenPagesBeforeV71 {
 
 	/**
 	 * A MIGRATION AFTER V71 UNDONE, so that what is put back is the text V71 left, whatever the later ones have written
-	 * since: V73 (24.10.2026), V76 (27.10.2026), V77 and V78 (both 29.10.2026), V80 (30.10.2026), V89 (07.11.2026), V90 (08.11.2026), V93, V94 and V95 (all 10.11.2026), V96 (12.11.2026), V98 (14.11.2026), V100 (14.11.2026, Article 15 says an unscored race is a personal record), V102 (16.11.2026, the policy says what a shared profile shows), the latest first.
+	 * since: V73 (24.10.2026), V76 (27.10.2026), V77 and V78 (both 29.10.2026), V80 (30.10.2026), V89 (07.11.2026), V90 (08.11.2026), V93, V94 and V95 (all 10.11.2026), V96 (12.11.2026), V98 (14.11.2026), V100 (14.11.2026, Article 15 says an unscored race is a personal record), V102 (16.11.2026, the policy says what a shared profile shows), V107 (21.11.2026, the Serbian legal texts speak to the reader as ti), the latest first.
 	 *
 	 * <p>Every guard that calls {@link #putBack(JdbcClient, String)} puts the pages back to how they stood before an older
 	 * migration and runs it again, and each of them is written against the text V71 left. V73 added the word "drugima"
@@ -100,6 +113,13 @@ final class TheWrittenPagesBeforeV71 {
 		while (each.find()) {
 			edits.add(new Edit(each.group(1).replace("''", "'"), each.group(2), Integer.parseInt(each.group(3)),
 					each.group(4), "body", each.group(5), each.group(6)));
+		}
+
+		/* A migration whose table has a field column, as V71's and V107's have (a heading is edited as well as a body), is read
+		   the way V71 is read. The two shapes cannot be mistaken for each other: the second quoted word after the number is
+		   the field in one and the old text's dollar quote in the other. */
+		if (edits.isEmpty()) {
+			edits.addAll(editsWithAFieldOf(v73));
 		}
 
 		assertThat(edits).as("no edit could be read out of V%s, so nothing would be put back", version).isNotEmpty();
@@ -131,6 +151,7 @@ final class TheWrittenPagesBeforeV71 {
 	}
 
 	static void putBack(JdbcClient db, String v71) {
+		undoBodyEdits(db, "107");
 		undoBodyEdits(db, "102");
 		undoBodyEdits(db, "100");
 		undoBodyEdits(db, "98");
