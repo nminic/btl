@@ -41,7 +41,7 @@ describe('the box that holds what an organiser writes about a competition', () =
 
     const box = within(
       must(
-        (await screen.findByRole('heading', { level: 2, name: /RunTrace liga/ })).closest('li'),
+        (await screen.findByRole('heading', { level: 2, name: /RunTrace liga/ })).closest('article'),
         'the box of the competition',
       ),
     )

@@ -32,7 +32,7 @@ const chosenLink = (list: HTMLElement): HTMLElement[] =>
     .filter((one) => one.getAttribute('aria-current') === 'true')
 
 describe('the showcase of competitions', () => {
-  it('opens on the first card, and only its sheet is written out', SLOW, async () => {
+  it('opens on the first card, and only its sheet is written out', { timeout: SLOW }, async () => {
     renderAt('/sr/lige?sezona=2027', 'superadmin', null, undefined, IN_THE_SEASON)
 
     const list = await showcase()
@@ -52,7 +52,7 @@ describe('the showcase of competitions', () => {
     expect(screen.queryByRole('button', { name: 'Događaji i trke, Planinska liga 2027' })).toBeNull()
   })
 
-  it('opens on the one the address names', SLOW, async () => {
+  it('opens on the one the address names', { timeout: SLOW }, async () => {
     renderAt('/sr/lige?sezona=2027&liga=planinska-2027', 'superadmin', null, undefined, IN_THE_SEASON)
 
     const list = await showcase()
@@ -66,7 +66,7 @@ describe('the showcase of competitions', () => {
   it.each([
     ['a slug of nothing', 'nepostoji'],
     ['a slug of another season', 'brdska-2019'],
-  ])('falls to the first card on %s', SLOW, async (_, slug) => {
+  ])('falls to the first card on %s', { timeout: SLOW }, async (_, slug) => {
     renderAt(`/sr/lige?sezona=2027&liga=${slug}`, 'visitor', null, undefined, IN_THE_SEASON)
 
     const list = await showcase()
@@ -75,7 +75,7 @@ describe('the showcase of competitions', () => {
     expect(within(sheet()).getByRole('heading', { level: 2 })).toHaveTextContent('RunTrace liga 2027')
   })
 
-  it('writes the choice into the address, keeps the season beside it, and puts the reader on the sheet', SLOW, async () => {
+  it('writes the choice into the address, keeps the season beside it, and puts the reader on the sheet', { timeout: SLOW }, async () => {
     const user = setupUser()
     const { router } = renderAt('/sr/lige?sezona=2027', 'visitor', null, undefined, IN_THE_SEASON)
 
@@ -103,7 +103,7 @@ describe('the showcase of competitions', () => {
     )
   })
 
-  it('puts the reader on the sheet when the chosen card is pressed again, and changes nothing else', SLOW, async () => {
+  it('puts the reader on the sheet when the chosen card is pressed again, and changes nothing else', { timeout: SLOW }, async () => {
     const user = setupUser()
     const { router } = renderAt('/sr/lige?sezona=2027&liga=runtrace-2027', 'visitor', null, undefined, IN_THE_SEASON)
 
@@ -115,7 +115,7 @@ describe('the showcase of competitions', () => {
     expect(new URLSearchParams(router.state.location.search).get('liga')).toBe('runtrace-2027')
   })
 
-  it('gives each card and the sheet the way to the table of its competition', SLOW, async () => {
+  it('gives each card and the sheet the way to the table of its competition', { timeout: SLOW }, async () => {
     renderAt('/sr/lige?sezona=2027', 'visitor', null, undefined, IN_THE_SEASON)
 
     const list = await showcase()
@@ -135,7 +135,7 @@ describe('the showcase of competitions', () => {
     )
   })
 
-  it('says on each card the season, how many events count and how many people are in it', SLOW, async () => {
+  it('says on each card the season, how many events count and how many people are in it', { timeout: SLOW }, async () => {
     renderAt('/sr/lige?sezona=2027', 'visitor', null, undefined, IN_THE_SEASON)
 
     const list = await showcase()
@@ -151,7 +151,7 @@ describe('the showcase of competitions', () => {
 })
 
 describe('a season with one competition', () => {
-  it('draws no showcase, only the sheet', SLOW, async () => {
+  it('draws no showcase, only the sheet', { timeout: SLOW }, async () => {
     renderAt('/sr/lige?sezona=2019', 'visitor', null, undefined, IN_THE_SEASON)
 
     expect(await screen.findByRole('heading', { level: 2, name: 'Brdska liga 2019' })).toBeInTheDocument()
@@ -161,7 +161,7 @@ describe('a season with one competition', () => {
 })
 
 describe('a season with no competition at all', () => {
-  it('says so, as it always did', SLOW, async () => {
+  it('says so, as it always did', { timeout: SLOW }, async () => {
     const server = serverThat((path) =>
       path === '/api/leagues'
         ? new Response(JSON.stringify([] satisfies League[]), {
@@ -180,7 +180,7 @@ describe('a season with no competition at all', () => {
 })
 
 describe('the terms and the prizes of the chosen competition', () => {
-  it('can be changed by somebody with the right and only read by a visitor', SLOW, async () => {
+  it('can be changed by somebody with the right and only read by a visitor', { timeout: SLOW }, async () => {
     const first = renderAt('/sr/lige?sezona=2027', 'superadmin', null, undefined, IN_THE_SEASON)
 
     await showcase()
@@ -195,7 +195,7 @@ describe('the terms and the prizes of the chosen competition', () => {
 })
 
 describe('the line through the year', () => {
-  it('names how many events there are and the next one, and leads each dot to its event', SLOW, async () => {
+  it('names how many events there are and the next one, and leads each dot to its event', { timeout: SLOW }, async () => {
     renderAt('/sr/lige?sezona=2027', 'visitor', null, undefined, IN_THE_SEASON)
 
     await showcase()
@@ -220,14 +220,14 @@ describe('the line through the year', () => {
     ).toBe(at(next, 0).getAttribute('href'))
   })
 
-  it('says every event is held once the last one is behind', SLOW, async () => {
+  it('says every event is held once the last one is behind', { timeout: SLOW }, async () => {
     renderAt('/sr/lige?sezona=2027', 'visitor', null, undefined, '2028-02-01')
 
     await showcase()
     expect(await within(sheet()).findByText('8 događaja kroz godinu, svi su održani')).toBeInTheDocument()
   })
 
-  it('writes the events of the sheet one to a line, the name as a link, the day in brackets and the lengths after a dash', SLOW, async () => {
+  it('writes the events of the sheet one to a line, the name as a link, the day in brackets and the lengths after a dash', { timeout: SLOW }, async () => {
     renderAt('/sr/lige?sezona=2027', 'visitor', null, undefined, IN_THE_SEASON)
 
     await showcase()

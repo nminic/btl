@@ -460,7 +460,7 @@ export function Leagues() {
                 <TileYear league={one} />
                 <Link className="leagues__tile-table" to={`/${locale}/liga/${one.slug}`}>
                   {t('leagues.table')}
-                  <span className="visually-hidden"> {one.name}</span>
+                  {' '}<span className="visually-hidden">{one.name}</span>
                   <span aria-hidden="true"> →</span>
                 </Link>
               </li>
@@ -468,7 +468,14 @@ export function Leagues() {
           </ul>
         )}
 
-        <article className="leagues__sheet" aria-labelledby={`league-name-${league.id}`}>
+        {/* Keyed by the competition, so a sheet opened for another one is a sheet of its own: the box
+            of events arrives open for each (owner, 03.11.2026), and a box folded or being written in
+            one competition is not carried over into the next. */}
+        <article
+          key={league.id}
+          className="leagues__sheet"
+          aria-labelledby={`league-name-${league.id}`}
+        >
           <div className="leagues__score">
             <LeagueMark name={league.name} />
             <div className="leagues__score-name">
@@ -503,7 +510,7 @@ export function Leagues() {
             </ul>
             <Link className="leagues__cta" to={`/${locale}/liga/${league.slug}`}>
               {t('leagues.table')}
-              <span className="visually-hidden"> {league.name}</span>
+              {' '}<span className="visually-hidden">{league.name}</span>
               <span aria-hidden="true">→</span>
             </Link>
           </div>

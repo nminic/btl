@@ -3301,9 +3301,12 @@ describe('Leagues', () => {
          nothing written in it is drawn to **nobody else**: `EditableText` returns
          nothing at all when the value is empty and the reader cannot edit, so the
          sentence „Još nije napisano." and anything put beside it is invisible to a
-         visitor and passed the whole gate (measured 01.09.2026). Both competitions of
-         2027 stand on this one screen, one written and one empty. */
+         visitor and passed the whole gate (measured 01.09.2026). Until 21.11.2026 both
+         competitions of 2027 stood on this one screen, one written and one empty; since
+         the owner chose that only the chosen one is written out (PDL „Strana „Lige” se
+         radi po predlogu B”), the empty one is its own seat, opened by the address. */
       ['/sr/lige', 'RunTrace liga 2027', 'superadmin'],
+      ['/sr/lige?liga=planinska-2027', 'Planinska liga 2027', 'superadmin'],
       /* The other season, which is the whole of what the control beside the heading
          does. Read without it, a competition of 2019 is on no seat at all. */
       ['/sr/lige?sezona=2019', 'Brdska liga 2019', 'visitor'],

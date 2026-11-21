@@ -16,7 +16,32 @@
     "noneOfThese": "U ovom takmičenju nema nijednog rezultata u izabranoj konkurenciji.",
     "unknown": "nepoznato",
     "notWritten": "Još nije napisano.",
-    "name": "Liga"
+    "name": "Liga",
+    "eventCount": {
+      "one": "{number} događaj",
+      "few": "{number} događaja",
+      "other": "{number} događaja"
+    },
+    "entrantCount": {
+      "one": "{number} učesnik",
+      "few": "{number} učesnika",
+      "other": "{number} učesnika"
+    },
+    "showcase": "Lige u sezoni {season}",
+    "kicker": "Propratna liga",
+    "table": "Tabela lige",
+    "months": "jan feb mar apr maj jun jul avg sep okt nov dec",
+    "yearNext": {
+      "one": "{number} događaj kroz godinu, sledeći {next}",
+      "few": "{number} događaja kroz godinu, sledeći {next}",
+      "other": "{number} događaja kroz godinu, sledeći {next}"
+    },
+    "yearHeld": {
+      "one": "{number} događaj kroz godinu, svi su održani",
+      "few": "{number} događaja kroz godinu, svi su održani",
+      "other": "{number} događaja kroz godinu, svi su održani"
+    },
+    "openBelow": "Otvorena ispod"
   },
   "seo": {
     "home": {

@@ -119,15 +119,15 @@ describe('the list of competitions', () => {
   it('counts a frozen competition by its snapshot', async () => {
     renderAt('/sr/lige?sezona=2027')
 
-    const card = (await screen.findByRole('heading', { name: /RunTrace liga 2027/ })).closest('section, article, li')
+    const card = (await screen.findByRole('heading', { name: /RunTrace liga 2027/ })).closest('article')
 
-    await waitFor(() => expect(card?.textContent).toContain(`${sr.leagues.entrants}: 2`))
+    await waitFor(() => expect(card?.textContent).toMatch(/(^|\D)2 učesnika/))
 
     /* And a competition the snapshot wrote no standing for is none, not the count of another one
        (mutation S18, 06.11.2026). */
-    const other = screen.getByRole('heading', { name: /Planinska liga 2027/ }).closest('section, article, li')
+    const other = screen.getByRole('link', { name: 'Planinska liga 2027' }).closest('li')
 
-    expect(other?.textContent).toContain(`${sr.leagues.entrants}: 0`)
+    expect(other?.textContent).toMatch(/(^|\D)0 učesnika/)
   })
 })
 

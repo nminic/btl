@@ -317,6 +317,7 @@
 .leagues__year {
   position: relative;
   block-size: 2.5rem;
+  container: year / inline-size;
   margin-block: var(--space-8) var(--space-12);
 }
 
@@ -328,19 +329,19 @@
 .leagues__year-line {
   position: absolute;
   inset-inline: 0;
-  inset-block-start: 0.7rem;
+  inset-block-start: var(--space-12);
   block-size: 2px;
   border-radius: var(--radius-4);
   background: var(--border);
 }
 
 .leagues__year--mini .leagues__year-line {
-  inset-block-start: 0.55rem;
+  inset-block-start: var(--space-8);
 }
 
 .leagues__year-today {
   position: absolute;
-  inset-block-start: 0.1rem;
+  inset-block-start: var(--space-2);
   inset-inline-start: var(--at);
   inline-size: 2px;
   block-size: 1.25rem;
@@ -354,7 +355,7 @@
 
 .leagues__dot {
   position: absolute;
-  inset-block-start: calc(0.7rem + 1px);
+  inset-block-start: var(--space-12);
   inset-inline-start: var(--at);
   display: grid;
   place-items: center;
@@ -364,7 +365,7 @@
 }
 
 .leagues__year--mini .leagues__dot {
-  inset-block-start: calc(0.55rem + 1px);
+  inset-block-start: var(--space-8);
   inline-size: 0.75rem;
   block-size: 0.75rem;
 }
@@ -397,7 +398,7 @@
 .leagues__months {
   position: absolute;
   inset-inline: 0;
-  inset-block-start: 1.25rem;
+  inset-block-start: var(--space-20);
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
   color: var(--text-muted);
@@ -413,7 +414,7 @@
   display: none;
 }
 
-@media (min-width: 35em) {
+@container year (min-width: 30em) {
   .leagues__month-long {
     display: inline;
   }
