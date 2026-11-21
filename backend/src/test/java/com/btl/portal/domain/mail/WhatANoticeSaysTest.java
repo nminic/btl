@@ -272,13 +272,13 @@ class WhatANoticeSaysTest {
 		assertThat(WhatANoticeSays.about(Notice.THE_PASSWORD_HAS_CHANGED, MailLanguage.SERBIAN,
 				"24.09.2026. 16:35").body())
 				.isEqualTo(String.join("\n",
-						"Lozinka na vašem nalogu u Balkanskoj trkačkoj ligi promenjena je"
+						"Lozinka na tvom nalogu u Balkanskoj trkačkoj ligi promenjena je"
 								+ " 24.09.2026. 16:35.",
 						"",
-						"Odjavljeni ste sa svih ostalih uređaja.",
+						"Sa svih ostalih uređaja nalog je odjavljen.",
 						"",
-						"Ako ovo niste uradili vi, neko drugi zna vašu staru lozinku. Odmah zatražite novu lozinku sa"
-								+ " strane za prijavu i javite nam se na info@balkanskatrkackaliga.net.",
+						"Ako ovo nije tvoja promena, neko drugi zna tvoju staru lozinku. Odmah zatraži novu lozinku sa"
+								+ " strane za prijavu i javi nam se na info@balkanskatrkackaliga.net.",
 						""));
 
 		assertThat(WhatANoticeSays.about(Notice.THE_PASSWORD_HAS_CHANGED, MailLanguage.ENGLISH,

@@ -914,7 +914,7 @@ class MePasswordApiTest {
 
 		MimeMessage posted = waitForOne();
 
-		assertThat(posted.getSubject()).isEqualTo("Lozinka na vašem nalogu je promenjena");
+		assertThat(posted.getSubject()).isEqualTo("Lozinka na tvom nalogu je promenjena");
 		assertThat(posted.getContent().toString()).doesNotContain("odjavljenih uređaja");
 	}
 

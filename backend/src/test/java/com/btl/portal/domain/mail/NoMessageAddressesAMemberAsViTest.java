@@ -49,25 +49,43 @@ class NoMessageAddressesAMemberAsViTest {
 					+ "|sačuvajte|nastavite|pokušajte|kontaktirajte|obnovite|platite|popunite)(?![\\p{L}\\p{N}])");
 
 	/**
-	 * THE TEXTS THAT STILL WAIT, and each for a reason that is not the participle (the participle is
-	 * solved: the words go by the sex of who reads, {@link Gender}). Four flows go to an account that
-	 * may name no member, a moderator who does not race (V23), who has no sex anywhere in the portal:
-	 * the invitation of a moderator, the link to set a new password, the notice that it was changed, and
-	 * the confirmation of the address he is sent while he has not yet spent his invitation (that one is
-	 * written to him in the words it always had, {@code mail/sr-no-member}).
-	 * What those say to him is the owner's question, asked on 21.11.2026 and not answered here. The two
-	 * {@code PairWriteApi} sentences are tied sign for sign to {@code pair.endedBody} and
-	 * {@code pair.brokenBody} in {@code frontend/src/i18n/sr.json}, which the move of the screens to
-	 * „ti" rewrites, and they move with it.
+	 * THE TEXTS THAT STILL WAIT. One flow only: the confirmation of the address that is sent to an account
+	 * that names no member, a moderator who does not race (V23), who has no sex anywhere in the portal
+	 * ({@code mail/sr-no-member}). It is written to him in the words it always had. The owner's decision
+	 * of 21.11.2026 moves three letters to that account ({@link #THE_THREE_FOR_AN_ACCOUNT_WITHOUT_A_MEMBER});
+	 * this one is not among the three, and what is said to him in it is still the owner's question.
 	 */
 	private static final List<String> WAITING = List.of(
 			"mail/sr-no-member.properties#confirmTheAddress.subject",
-			"mail/sr-no-member.properties#confirmTheAddress.body",
+			"mail/sr-no-member.properties#confirmTheAddress.body");
+
+	/**
+	 * THE THREE LETTERS THAT GO TO AN ACCOUNT WITHOUT A MEMBER PROFILE, and so to a reader whose sex the
+	 * portal does not know. Owner, 21.11.2026: „Tri mejla koja idu i nalogu bez članskog profila (pozivnica
+	 * za moderatora, nova lozinka, obaveštenje o promeni lozinke) prelaze na „ti” tekstom bez roda, isti za
+	 * sve primaoce". They are off {@link #WAITING}, so the floor above holds them to „ti" like every other
+	 * text, and {@link #A_SINGULAR_FORM_THAT_HAS_A_SEX} holds them to a text with no sex.
+	 */
+	private static final List<String> THE_THREE_FOR_AN_ACCOUNT_WITHOUT_A_MEMBER = List.of(
+			"mail/sr.properties#setANewPassword.subject",
 			"mail/sr.properties#setANewPassword.body",
 			"mail/sr.properties#invitedAsAModerator.subject",
 			"mail/sr.properties#invitedAsAModerator.body",
 			"notices/sr.properties#thePasswordHasChanged.subject",
 			"notices/sr.properties#thePasswordHasChanged.body");
+
+	/**
+	 * WHAT THIS CAN AND CANNOT SEE. In Serbian the sex of the reader enters a sentence addressed to „ti" in
+	 * two ways: the past tense and the passive ({@code promenio si}, {@code pozvana si}, {@code nisi tražio}),
+	 * which cannot be said without the second person singular of „to be", and the word „sam" (alone). So the
+	 * question asked is about the form of the call and not about the participle: does the text hold
+	 * {@code si}, {@code nisi}, {@code budi}, {@code sam}, {@code sama}? No word list of participles is kept,
+	 * because there is no end to those. WHAT IT DOES NOT SEE: an adjective that agrees with „ti" without
+	 * any of these words next to it (for example a relative clause „ti koji ..."). None of the three says
+	 * „ti" as a word of its own, and a text that later does must be read by a person.
+	 */
+	private static final Pattern A_SINGULAR_FORM_THAT_HAS_A_SEX = Pattern.compile(
+			"(?iu)(?<![\\p{L}\\p{N}])(si|nisi|budi|sam|sama)(?![\\p{L}\\p{N}])");
 
 	@Test
 	void everyTextWithAViFormIsOneOfTheOnesWaitingForTheOwnersAnswerAndEveryOneWaitingStillHasOne()
@@ -81,6 +99,35 @@ class NoMessageAddressesAMemberAsViTest {
 				.as("a text with a vi form that is not waiting, or one waiting that has moved to ti")
 				.containsExactlyInAnyOrderElementsOf(WAITING);
 		assertThat(new TreeSet<>(WAITING)).as("the waiting list names nothing twice").hasSameSizeAs(WAITING);
+	}
+
+	@Test
+	void theThreeLettersForAnAccountWithoutAMemberAreInTiAndSaySomethingThatHasNoSex() throws IOException {
+		for (String address : THE_THREE_FOR_AN_ACCOUNT_WITHOUT_A_MEMBER) {
+			String file = address.substring(0, address.indexOf('#'));
+			String key = address.substring(address.indexOf('#') + 1);
+			Properties words = new Properties();
+			try (Reader in = Files.newBufferedReader(MAIN.resolve("resources").resolve(file), StandardCharsets.UTF_8)) {
+				words.load(in);
+			}
+			assertThat(words.getProperty(key)).as(address).isNotBlank();
+			assertThat(A_SINGULAR_FORM_THAT_HAS_A_SEX.matcher(words.getProperty(key)).find())
+					.as(address + " says a form of the second person singular that has a sex").isFalse();
+			assertThat(A_VI_FORM.matcher(words.getProperty(key)).find()).as(address + " says a vi form").isFalse();
+		}
+	}
+
+	@Test
+	void theScannerForASexSeesTheFormsItIsMeantToAndNotTheOnesWithoutOne() {
+		for (String sexed : List.of("Ako nisi tražio novu lozinku", "Ako ovo nisi uradila", "Promenio si lozinku",
+				"Pozvan si", "Budi obavešten", "Postavi je sam", "Postavi je sama")) {
+			assertThat(A_SINGULAR_FORM_THAT_HAS_A_SEX.matcher(sexed).find()).as(sexed).isTrue();
+		}
+		for (String neutral : List.of("Ako zahtev nije stigao od tebe, zanemari ovu poruku.", "Otvoren ti je nalog",
+				"Sa svih ostalih uređaja nalog je odjavljen.", "Ako ovo nije tvoja promena", "Samo to", "Sijaset",
+				"Lozinka je promenjena")) {
+			assertThat(A_SINGULAR_FORM_THAT_HAS_A_SEX.matcher(neutral).find()).as(neutral).isFalse();
+		}
 	}
 
 	@Test

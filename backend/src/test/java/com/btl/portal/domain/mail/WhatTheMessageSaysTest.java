@@ -114,27 +114,27 @@ class WhatTheMessageSaysTest {
 
 		assertThat(WhatTheMessageSays.about(Message.SET_A_NEW_PASSWORD, MailLanguage.SERBIAN, PORTAL,
 				TOKEN).body()).isEqualTo(String.join("\n",
-				"Stigao nam je zahtev da postavite novu lozinku za svoj nalog.",
+				"Stigao nam je zahtev da postaviš novu lozinku za svoj nalog.",
 				"",
-				"Otvorite ovaj link i upišite je:",
+				"Otvori ovaj link i upiši je:",
 				linkOf(Message.SET_A_NEW_PASSWORD, MailLanguage.SERBIAN),
 				"",
 				"Link važi 1 sat i može da se upotrebi jednom.",
 				"",
-				"Ako niste tražili novu lozinku, zanemarite ovu poruku.",
+				"Ako zahtev nije stigao od tebe, zanemari ovu poruku.",
 				"",
 				tail));
 
 		assertThat(WhatTheMessageSays.about(Message.INVITED_AS_A_MODERATOR, PORTAL, TOKEN).body())
 				.isEqualTo(String.join("\n",
-				"Superadmin vam je otvorio nalog moderatora na portalu Balkanske trkačke lige.",
+				"Superadmin ti je otvorio nalog moderatora na portalu Balkanske trkačke lige.",
 				"",
-				"Nalog još nema lozinku. Otvorite ovaj link i postavite je sami:",
+				"Nalog još nema lozinku. Otvori ovaj link i postavi je:",
 				linkOf(Message.INVITED_AS_A_MODERATOR, MailLanguage.SERBIAN),
 				"",
 				"Link važi 1 sat i može da se upotrebi jednom.",
 				"",
-				"Ako link istekne, zatražite novi sa strane za prijavu.",
+				"Ako link istekne, zatraži novi sa strane za prijavu.",
 				"",
 				tail));
 
