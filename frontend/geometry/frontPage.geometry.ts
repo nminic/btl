@@ -53,8 +53,24 @@ const LONG_LAST = ['Stamenkovska', 'Gvozdenović', 'Milovanović', 'Jovanovićev
 const LONG_FIRST = ['Aleksandar', 'Strahinja', 'Radoslava', 'Aleksandra', 'Ivona', 'Dragoslav']
 
 const MEMBERS = everyAnswer()['/api/competitors']
+
+/**
+ * The first result of every member raised by 399.000 points (owner, 21.11.2026: the podium prints the BTL
+ * points of the whole history while the league warms up, in the short unit "p", "399.999,99 p"), so the figure
+ * the podium and the list have to hold is of that length and not the two-digit one of the sample.
+ */
+const RESULTS = everyAnswer()['/api/results']
+const SEEN = new Set<unknown>()
+
 const ANSWERS: Answers = {
   ...everyAnswer(),
+  '/api/results': (Array.isArray(RESULTS) ? RESULTS : []).map((one: Record<string, unknown>) => {
+    const first = !SEEN.has(one.memberNumber)
+
+    SEEN.add(one.memberNumber)
+
+    return first && typeof one.points === 'number' ? { ...one, points: one.points + 399000 } : one
+  }),
   '/api/competitors': (Array.isArray(MEMBERS) ? MEMBERS : []).map((one: Record<string, unknown>, index: number) => ({
     ...one,
     firstName: LONG_FIRST[index % LONG_FIRST.length],
@@ -65,7 +81,7 @@ const ANSWERS: Answers = {
 /** Half a pixel: a box of a fraction of a pixel is the same box. */
 const SAME = 0.5
 
-const WIDTHS: At[] = [360, 560, 768, 860, 1024, 1280].map((width): At => ({ width, text: 100 }))
+const WIDTHS: At[] = [360, 540, 560, 768, 860, 1024, 1280].map((width): At => ({ width, text: 100 }))
 
 type Box = { top: number; bottom: number; left: number; right: number; width: number; height: number }
 
@@ -157,6 +173,16 @@ for (const at of WIDTHS) {
           circle: box(must(item.querySelector('.portrait'))),
           step: box(must(item.querySelector('.stand__step'))),
           name: box(must(item.querySelector('.stand__name'))),
+          /* A place nobody stands on has no figure to measure (the other day the podium is empty). */
+          pointsLines: item.querySelector('.stand__points') === null ? 0 : lines(must(item.querySelector('.stand__points'))),
+          pointsText: item.querySelector('.stand__points')?.textContent ?? '',
+          pointsOver: (() => {
+            const figure = item.querySelector('.stand__points')
+
+            return figure === null
+              ? 0
+              : Math.round((box(figure).right - item.getBoundingClientRect().right) * 10) / 10
+          })(),
           who: (item.querySelector('.stand__name')?.textContent ?? '') + ' | ' + (item.querySelector('.stand__points')?.textContent ?? ''),
           nameLines: [...item.querySelectorAll('.stand__first, .stand__last')].map((one) => Math.round(one.getBoundingClientRect().height)),
           lines: [...item.querySelectorAll('.stand__first, .stand__last')].map((one) => lines(one)),
@@ -338,6 +364,13 @@ for (const at of WIDTHS) {
       const [first, second, third] = board.places
 
       expect(board.places).toHaveLength(3)
+
+      /* The figure of the podium in the short unit: one line under the name, and not wider than its place. */
+      for (const place of board.places.filter((one) => one.pointsText !== '')) {
+        expect(place.pointsText, 'the podium does not print the short unit').toMatch(/\d p$/)
+        expect(place.pointsLines, `the points break into lines: ${place.who}`).toBe(1)
+        expect(place.pointsOver, `the points are wider than their place: ${place.who}`).toBeLessThanOrEqual(SAME)
+      }
       expect(first?.circle.top, 'the first is not above the second').toBeLessThan((second?.circle.top ?? 0) - 1)
       expect(second?.circle.top, 'the second is not above the third').toBeLessThan((third?.circle.top ?? 0) - 1)
       expect(first?.circle.width).toBeGreaterThan((second?.circle.width ?? 0) + 1)
@@ -415,8 +448,82 @@ const SAMPLE_NAMES: Answers = {
 }
 
 const TEXTS: At['text'][] = [100, 125, 200]
+const ALL_TEXTS: At['text'][] = [100, 125, 150, 175, 200]
 
-for (const width of [360, 560, 768, 860, 1024, 1280]) {
+/**
+ * THE FIGURE OF THE PODIUM STANDS IN ITS COLUMN AT EVERY TEXT SIZE, IN BOTH LANGUAGES (owner, 21.11.2026, review of
+ * PR 768, WCAG 1.4.4 Resize text): the floor of the letter is in `rem`, so at 200% a figure like 399.999,99 p
+ * no longer fits a column of 60px, and a figure kept on one line spilled 14px out of its column and over the
+ * next one. What is measured is the text a person sees (the rectangles of its range, since a box that
+ * overflows does not make its element wider): inside its own column, clear of the figure beside it and of
+ * every circle, and cut by nothing.
+ */
+for (const width of [360, 540, 768, 1280]) {
+  for (const text of ALL_TEXTS) {
+    for (const language of ['sr', 'en']) {
+      const here: At = { width, text }
+
+      test(`the figures of the podium stay in their columns, at ${label(here)}, in ${language}`, async ({ open, theDay }) => {
+        test.skip(theDay !== THE_DAY_THE_SUITE_IS_READ_AS, 'no figure stands on the podium on this day')
+
+        const { page } = await open(here, `/${language}`, '.top10 .stand', ANSWERS)
+
+        const seen = await page.evaluate(() =>
+          [...document.querySelectorAll('.top10')].map((board) => {
+            const items = [...board.querySelectorAll('.stand__item')]
+            const rectsOf = (element: Element) => {
+              const range = document.createRange()
+
+              range.selectNodeContents(element)
+
+              return [...range.getClientRects()].filter((one) => one.width > 0)
+            }
+            const circles = [...board.querySelectorAll('.stand .portrait')].map((one) => one.getBoundingClientRect())
+
+            return items.map((item, index) => {
+              const figure = item.querySelector('.stand__points')
+              const column = item.getBoundingClientRect()
+              const rects = figure === null ? [] : rectsOf(figure)
+
+              return {
+                index,
+                text: figure?.textContent ?? '',
+                over: Math.max(0, ...rects.map((one) => Math.max(column.left - one.left, one.right - column.right))),
+                rects: rects.map((one) => ({ left: one.left, right: one.right, top: one.top, bottom: one.bottom })),
+                circles: circles.map((one) => ({ left: one.left, right: one.right, top: one.top, bottom: one.bottom })),
+              }
+            })
+          }),
+        )
+
+        const meets = (
+          a: { left: number; right: number; top: number; bottom: number },
+          b: { left: number; right: number; top: number; bottom: number },
+        ) => Math.min(a.right, b.right) - Math.max(a.left, b.left) > SAME && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > SAME
+
+        for (const board of seen) {
+          for (const place of board.filter((one) => one.text !== '')) {
+            expect(place.over, `the figure sticks out of its column: ${place.text}`).toBeLessThanOrEqual(SAME)
+
+            for (const rect of place.rects) {
+              for (const circle of place.circles) {
+                expect(meets(rect, circle), `the figure runs into a circle: ${place.text}`).toBe(false)
+              }
+
+              for (const other of board.filter((one) => one.index !== place.index)) {
+                for (const beside of other.rects) {
+                  expect(meets(rect, beside), `the figure runs into the one beside it: ${place.text}`).toBe(false)
+                }
+              }
+            }
+          }
+        }
+      })
+    }
+  }
+}
+
+for (const width of [360, 540, 560, 768, 860, 1024, 1280]) {
   for (const text of TEXTS) {
     const here: At = { width, text }
 

@@ -334,6 +334,7 @@
     },
     "pointsUnit": " BTL points",
     "pointsUnitShort": " pts",
+    "podiumPointsUnit": " pts",
     "cities": "Cities the members come from",
     "lengthKm": "km",
     "lengthNumber": {

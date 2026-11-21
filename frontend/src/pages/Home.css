@@ -617,12 +617,27 @@
    this text is 16px. */
 .stand__points {
   min-block-size: 2.6em;
-  font-size: 0.8rem;
+  /* **A figure never breaks and is set in a smaller letter where it does not fit** (owner, 21.11.2026, "Manje
+     slovo za dugo prezime", applied to the points by the same rule as the surname above: the letter is worked
+     out from the share of the column and the number of characters the page writes in `--chars`, never above
+     0,8rem and never under the floor of the surname, 0,65rem, 10,4px). A digit of tabular figures is about
+     0,62em wide, narrower than a letter of the name, so the figure is counted at that. The two lines of height
+     stay, so a circle is never lifted against its neighbour. */
+  font-size: clamp(
+    0.65rem,
+    calc((100cqi - 2 * var(--space-6)) / 3.15 / (var(--chars) * 0.62)),
+    0.8rem
+  );
   line-height: 1.3;
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
-  text-wrap: balance;
-  overflow-wrap: anywhere;
+  /* **Where even the smallest letter does not fit, the figure breaks, and only at the places `TopTen.tsx` marks**
+     (owner, 21.11.2026, review of PR 768, WCAG 1.4.4: the floor is in `rem`, so at 200% it is 20,8px and a
+     figure no longer fits a column): at the space before the unit, then after a thousands separator, a
+     break the markup puts in with `<wbr>`. `overflow-wrap` stays `normal`, so nothing is broken inside a
+     group of digits, and nothing is cut, hidden or ended in dots. */
+  overflow-wrap: normal;
+  hyphens: none;
 }
 
 .stand__cat {

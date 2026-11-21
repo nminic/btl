@@ -210,10 +210,10 @@ describe('TopTen', () => {
       '2. Ime 000002',
       '3. Ime 000003',
     ])
-    expect(items.map((one) => within(one).getByText(/BTL poena$/).textContent)).toEqual([
-      '100,00 BTL poena',
-      '90,00 BTL poena',
-      '80,00 BTL poena',
+    expect(items.map((one) => within(one).getByText(/\d p$/).textContent)).toEqual([
+      '100,00 p',
+      '90,00 p',
+      '80,00 p',
     ])
     expect(items.map((one) => within(one).getByText('M 40-54').textContent)).toEqual([
       'M 40-54',
@@ -245,20 +245,20 @@ describe('TopTen', () => {
     expect(within(item).queryByText('Ime 000001')).not.toBeInTheDocument()
   })
 
-  /* **A place that was not won has no gold and says nought** (PDL, 18.10.2026, „Red bez trke ima redni broj,
-     ali nikad boju postolja"; owner, 20.11.2026, chose „0,00 BTL poena" for the podium until the places are
-     won). Nobody has raced, so the three hold their places and the ring is on none of them. */
-  it('says 0,00 BTL poena and draws no gold ring while the places are held and not won', () => {
+  /* **A place that was not won has no gold** (PDL, 18.10.2026, „Red bez trke ima redni broj, ali nikad boju
+     postolja"). Nobody has raced, so the three hold their places and the ring is on none of them; and a
+     member with no result at all has no history either, so the figure is 0,00 (owner, 21.11.2026). */
+  it('draws no gold ring while the places are held and not won, and writes 0,00 p for a member with no result', () => {
     renderWidget(
       <TopTen competitors={competitors} results={[]} season={2027} today={THE_DAY_BEFORE} gender="M" />,
     )
 
     const items = within(lists().podium).getAllByRole('listitem')
 
-    expect(items.map((one) => within(one).getByText(/BTL poena$/).textContent)).toEqual([
-      '0,00 BTL poena',
-      '0,00 BTL poena',
-      '0,00 BTL poena',
+    expect(items.map((one) => within(one).getByText(/\d p$/).textContent)).toEqual([
+      '0,00 p',
+      '0,00 p',
+      '0,00 p',
     ])
 
     for (const one of items) {
@@ -288,7 +288,7 @@ describe('TopTen', () => {
     // 000002 has the points and is first; the other two are held.
     expect(within(at(items, 0)).getByRole('link', { name: '1. Ime 000002' })).toBeVisible()
     expect(at(items, 0)).toHaveClass('stand__item--won')
-    expect(within(at(items, 1)).getByText('0,00 BTL poena')).toBeVisible()
+    expect(within(at(items, 1)).getByText('0,00 p')).toBeVisible()
     expect(at(items, 1)).not.toHaveClass('stand__item--won')
   })
 
@@ -315,6 +315,122 @@ describe('TopTen', () => {
       '/sr/takmicar/000004-ime-000004',
     )
     expect(lists().rows).toHaveAttribute('start', '4')
+  })
+
+  /* **The figure of the warm-up is the history, and it is the figure the order stands on** (owner,
+     21.11.2026: „Dok je zagrevanje ... BTL bodovi ukupni kroz istoriju"; from 1.1.2027 the points of the
+     season). The sums are chosen so that no other source can print them: 60,75 is three runs and is neither
+     the last run (30,25) nor the best (30,25) nor the points of the season (the season has none yet); 50,20
+     is two equal runs; 49,99 is one run; 7,09 is two small ones (0,07 and 7,02) and one run of nobody's
+     (`memberNumber` null) and one of a member who is not on the board are in nobody's sum; and 000006 has
+     no result at all. The order is 000001, 000002, 000003, 000005, 000006 and not the order of the numbers,
+     and the figure is asserted beside every name so that an order and a figure that came from two sums
+     would part. */
+  describe('the history shown while the league warms up', () => {
+    const before = (memberNumber: string | null, date: string, points: number): Result => ({
+      ...result('000001', points),
+      memberNumber,
+      date,
+      inItsSeason: false,
+      inItsStanding: false,
+    })
+    const field = ['000006', '000005', '000003', '000002', '000001'].map(competitor)
+    const history: Result[] = [
+      before('000001', '2016-03-01', 30.25),
+      before('000001', '2019-03-01', 20.5),
+      before('000001', '2026-09-01', 10),
+      before('000002', '2021-03-01', 25.1),
+      before('000002', '2018-03-01', 25.1),
+      before('000003', '2020-03-01', 49.99),
+      before('000005', '2022-03-01', 0.07),
+      before('000005', '2017-03-01', 7.02),
+      before('000009', '2019-03-01', 900),
+      before(null, '2019-03-01', 900),
+    ]
+    const shown = () => ({
+      podium: within(lists().podium)
+        .getAllByRole('listitem', { hidden: true })
+        .map((one) => one.textContent),
+      rows: within(lists().rows)
+        .getAllByRole('listitem', { hidden: true })
+        .slice(0, 2)
+        .map((one) => one.textContent),
+    })
+
+    it('prints on the podium and in the list the sum the board is ordered by', () => {
+      renderWidget(
+        <TopTen competitors={field} results={history} season={2027} today={THE_DAY_BEFORE} gender="M" />,
+      )
+
+      /* The name is two elements and the figure follows it, so the text of a place reads „Ime" „000001" „60,75 p". */
+      expect(shown().podium.map((one) => /Ime(\d{6})(\d+,\d\d p)/.exec(one ?? '')?.slice(1))).toEqual([
+        ['000001', '60,75 p'],
+        ['000002', '50,20 p'],
+        ['000003', '49,99 p'],
+      ])
+      expect(shown().rows.map((one) => one?.replace(/^\d+\.I0Ime /, ''))).toEqual([
+        '000005M 40-547,09',
+        '000006M 40-540,00',
+      ])
+    })
+
+    /* A result of 2027 read on the day before is not something production holds, but a fixture can, and the
+       rule is „every member", so the member who has points of the season prints the history too: 60,75 and
+       12,34 are 73,09, a figure neither of the two is. */
+    /* A figure of thousands may break after the thousands separator and nowhere else (review of PR 768, WCAG
+       1.4.4): the text is the same as ever, and a break is marked after every group but not inside the
+       decimals, so „34.921,69" has one and „1.234.567,89" has two and „60,75" has none. */
+    it('marks a place to break after each thousands separator, and does not change the text', () => {
+      const big = [
+        { ...before('000001', '2019-03-01', 34921.69) },
+        { ...before('000002', '2019-03-01', 1234567.89) },
+        { ...before('000003', '2019-03-01', 60.75) },
+      ]
+
+      renderWidget(
+        <TopTen competitors={field} results={big} season={2027} today={THE_DAY_BEFORE} gender="M" />,
+      )
+
+      const figures = within(lists().podium)
+        .getAllByRole('listitem', { hidden: true })
+        .map((one) => must(one.querySelector('.stand__points'), 'the figure of a place'))
+
+      expect(figures.map((one) => one.textContent)).toEqual(['1.234.567,89 p', '34.921,69 p', '60,75 p'])
+      expect(figures.map((one) => one.querySelectorAll('wbr').length)).toEqual([2, 1, 0])
+      /* The letter is worked out from the number of characters the page writes, and the unit is among them. */
+      expect(figures.map((one) => one.getAttribute('style'))).toEqual(
+        figures.map((one) => `--chars: ${one.textContent?.length};`),
+      )
+    })
+
+    it('prints the history of a member who already has points of the season as well', () => {
+      const raced = [...history, { ...result('000001', 12.34), date: '2027-03-01' }]
+
+      renderWidget(
+        <TopTen competitors={field} results={raced} season={2027} today={THE_DAY_BEFORE} gender="M" />,
+      )
+
+      expect(shown().podium.slice(0, 1).map((one) => /Ime(\d{6})(\d+,\d\d p)/.exec(one ?? '')?.slice(1))).toEqual([
+        ['000001', '73,09 p'],
+      ])
+    })
+
+    it('prints the points of the season, and not the history, from the first day of 2027', () => {
+      const raced = [
+        ...history,
+        { ...result('000001', 12.34), date: '2027-03-01' },
+        { ...result('000002', 5.55), date: '2027-03-02' },
+      ]
+
+      renderWidget(
+        <TopTen competitors={field} results={raced} season={2027} today={THE_FIRST_DAY} gender="M" />,
+      )
+
+      expect(shown().podium.slice(0, 2).map((one) => /Ime(\d{6})(\d+,\d\d p)/.exec(one ?? '')?.slice(1))).toEqual([
+        ['000001', '12,34 p'],
+        ['000002', '5,55 p'],
+      ])
+    })
   })
 
   it('keeps the heading for a screen reader and does not draw it', () => {
