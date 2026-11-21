@@ -397,8 +397,13 @@ for (const at of WIDTHS) {
       expect(level(column('category', 'left')), 'the categories do not start on one line').toBeLessThanOrEqual(SAME)
       expect(level(column('points', 'right')), 'the points do not end on one line').toBeLessThanOrEqual(SAME)
 
+      /* The category stands under the name on every width, in the name's own column (owner, 21.11.2026), and the
+         row is no taller than the 2.75rem it always was (44px, and a pixel of border), so the two boards stay one
+         height and the two lines stand inside the height of the circle's row. */
       for (const row of board.rows) {
-        expect(row.cut, 'a name of the list is wider than its cell').toBe(false)
+        expect(row.category.top, 'the category is not under the name').toBeGreaterThanOrEqual(row.name.bottom - SAME)
+        expect(Math.abs(row.category.left - row.name.left), 'the category does not start where the name does').toBeLessThanOrEqual(SAME)
+        expect(row.row.height, 'the row of the list is taller than it was').toBeLessThanOrEqual(45)
       }
     }
 
@@ -685,3 +690,102 @@ test('the focus on a race only „Ultra" shows goes to the heading of the calend
 
   expect(seen).toEqual({ tag: 'H2', text: 'Priprema, pozor, SAD!' })
 })
+
+/**
+ * THE LIST FROM THE FOURTH PLACE AT EVERY WIDTH, EVERY TEXT SIZE AND IN BOTH LANGUAGES (owner, 21.11.2026: the
+ * category under the name on every width): nothing in a row overlaps anything else, the points do not leave
+ * their column, and the page does not move sideways. A name that does not fit ends in three dots, so it is
+ * measured by the box it is drawn in, and the figure by the text a person sees.
+ */
+for (const width of [360, 768, 1024, 1280]) {
+  for (const text of ALL_TEXTS) {
+    for (const language of ['sr', 'en']) {
+      const here: At = { width, text }
+
+      test(`the list of the board has nothing on anything, at ${label(here)}, in ${language}`, async ({ open, theDay }) => {
+        test.skip(theDay !== THE_DAY_THE_SUITE_IS_READ_AS, 'no row stands in the list on this day')
+
+        const { page } = await open(here, `/${language}`, '.top10 .stand', ANSWERS)
+
+        const rows = await page.evaluate(() =>
+          [...document.querySelectorAll('.toprow:not(.toprow--empty)')].map((row) => {
+            const rect = (element: Element) => {
+              const { left, right, top, bottom } = element.getBoundingClientRect()
+
+              return { left, right, top, bottom }
+            }
+            const figure = must(row.querySelector('.pt'))
+            const range = document.createRange()
+
+            range.selectNodeContents(figure)
+
+            const text = [...range.getClientRects()].filter((one) => one.width > 0)
+
+            function must<T>(value: T | null): T {
+              if (value === null) {
+                throw new Error('something the list draws is not there')
+              }
+
+              return value
+            }
+
+            return {
+              text: figure.textContent ?? '',
+              row: rect(row),
+              parts: {
+                no: rect(must(row.querySelector('.no'))),
+                circle: rect(must(row.querySelector('.portrait'))),
+                name: rect(must(row.querySelector('.nm'))),
+                category: rect(must(row.querySelector('.kt'))),
+                figure: text.length === 0 ? rect(figure) : { left: Math.min(...text.map((one) => one.left)), right: Math.max(...text.map((one) => one.right)), top: Math.min(...text.map((one) => one.top)), bottom: Math.max(...text.map((one) => one.bottom)) },
+              },
+              figureOver: Math.max(0, ...text.map((one) => one.right - figure.getBoundingClientRect().right), ...text.map((one) => figure.getBoundingClientRect().left - one.left)),
+            }
+          }),
+        )
+
+        expect(rows.length, 'the list has no rows to measure').toBeGreaterThan(0)
+        /* The list's own contribution to a sideways scroll, and not the page's: at 360px and 175% the decorative
+           background of the route (`.race-page`, PR 760 and 767) is wider than the window, which is not this list
+           and is reported apart. */
+        const spill = await page.evaluate(() =>
+          [...document.querySelectorAll('.toprows')].map((list) => ({
+            scrolls: list.scrollWidth - list.clientWidth,
+            beyond: list.getBoundingClientRect().right - document.documentElement.clientWidth,
+          })),
+        )
+
+        for (const one of spill) {
+          expect(one.scrolls, 'a list scrolls sideways inside itself').toBeLessThanOrEqual(SAME)
+          expect(one.beyond, 'a list is wider than the window').toBeLessThanOrEqual(SAME)
+        }
+
+
+        type Rect = { left: number; right: number; top: number; bottom: number }
+
+        const meets = (a: Rect, b: Rect) =>
+          Math.min(a.right, b.right) - Math.max(a.left, b.left) > SAME && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > SAME
+
+        for (const row of rows) {
+          const { no, circle, name, category, figure } = row.parts
+          const pairs: [string, Rect, Rect][] = [
+            ['the name and the category', name, category],
+            ['the name and the points', name, figure],
+            ['the category and the points', category, figure],
+            ['the circle and the name', circle, name],
+            ['the circle and the category', circle, category],
+            ['the number and the circle', no, circle],
+          ]
+
+          for (const [what, one, other] of pairs) {
+            expect(meets(one, other), `${what} are on each other: ${row.text}`).toBe(false)
+          }
+
+          expect(figure.left, `the points leave the row on the left: ${row.text}`).toBeGreaterThanOrEqual(row.row.left - SAME)
+          expect(figure.right, `the points leave the row on the right: ${row.text}`).toBeLessThanOrEqual(row.row.right + SAME)
+          expect(row.figureOver, `the points stick out of their own column: ${row.text}`).toBeLessThanOrEqual(SAME)
+        }
+      })
+    }
+  }
+}

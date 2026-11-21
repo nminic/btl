@@ -23,6 +23,16 @@ const PODIUM = 3
  */
 const AFTER_A_THOUSANDS_SEPARATOR = /(?<=[.,])(?=\d{3}(?:\D|$))/
 
+/** The figure as text with a place to break after each thousands separator, for the podium and for the list. */
+function Figure({ text }: { text: string }) {
+  return text.split(AFTER_A_THOUSANDS_SEPARATOR).map((piece, index) => (
+    <Fragment key={piece}>
+      {index > 0 && <wbr />}
+      {piece}
+    </Fragment>
+  ))
+}
+
 /**
  * One face on the board, carrying the number of its place, as a way to that
  * person or as a plain circle where there is nowhere to go.
@@ -132,12 +142,7 @@ function PodiumPlace({
         </span>
       </span>
       <span className="stand__points" style={{ '--chars': figure.length }}>
-        {figure.split(AFTER_A_THOUSANDS_SEPARATOR).map((piece, index) => (
-          <Fragment key={piece}>
-            {index > 0 && <wbr />}
-            {piece}
-          </Fragment>
-        ))}
+        <Figure text={figure} />
       </span>
       {category !== '' && <span className="stand__cat">{category}</span>}
       <span className="stand__step" aria-hidden="true">
@@ -185,10 +190,14 @@ function ListedPlace({
       </span>
       <Face slot={competitor} place={place} />
       <span className="nm">
-        <ProfileLink competitor={competitor}>{name}</ProfileLink>
+        <ProfileLink competitor={competitor} title={name}>
+          {name}
+        </ProfileLink>
       </span>
       <span className="kt">{categoryLabelIn(competitor, season, t)}</span>
-      <span className="pt">{formatPoints(slot.points, locale)}</span>
+      <span className="pt">
+        <Figure text={formatPoints(slot.points, locale)} />
+      </span>
     </li>
   )
 }

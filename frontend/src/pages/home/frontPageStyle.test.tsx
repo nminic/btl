@@ -172,13 +172,13 @@ describe('the markup of the front page and the sheets that dress it', () => {
     expect(container.querySelector('.stand__last')).toHaveStyle({ '--chars': '12' })
   })
 
-  it('puts the category under the name in a board narrower than about 300px, and asks the board', () => {
-    expect(body(home, '.top10')).toContain('container-type: inline-size')
-
-    const narrow = home.slice(home.indexOf('@container (max-width: 16.625rem)'))
-
-    expect(narrow).toMatch(/\.toprows \.kt \{\s*grid-column: 3;\s*grid-row: 2;/)
-    expect(narrow).toMatch(/\.toprows \.nm \{\s*grid-column: 3;\s*grid-row: 1;/)
+  it('puts the category under the name on every width, and asks nothing of the board for it', () => {
+    /* Owner, 21.11.2026: the category stands under the name on every width. The rule of 20.11.2026 did it in a
+       board narrower than about 300px, by a container query, and it is gone and not left as one nothing meets. */
+    expect(body(home, '.toprows .kt')).toMatch(/grid-column: 3;\s*grid-row: 2;/)
+    expect(body(home, '.toprows .nm')).toMatch(/grid-column: 3;\s*grid-row: 1;/)
+    expect(body(home, '.toprows .pt')).toMatch(/grid-column: 4;\s*grid-row: 1 \/ span 2;/)
+    expect(home).not.toContain('@container (max-width: 16.625rem)')
   })
 
   it('lays the list on one grid and every row on a subgrid of it, so the columns are shared', () => {
@@ -186,7 +186,10 @@ describe('the markup of the front page and the sheets that dress it', () => {
     expect(body(home, '.toprows li')).toContain('grid-column: 1 / -1')
   })
 
-  it('does not cut a name of the list', () => {
-    expect(body(home, '.toprows .nm')).not.toMatch(/text-overflow|nowrap|overflow: hidden/)
+  it('keeps the row as tall as it was: the name is one line and ends in three dots where it does not fit', () => {
+    expect(body(home, '.toprows .nm')).toMatch(/text-overflow: ellipsis/)
+    expect(body(home, '.toprows .nm')).toMatch(/white-space: nowrap/)
+    expect(body(home, '.toprows .nm')).toMatch(/overflow: hidden/)
+    expect(body(home, '.toprows li')).toContain('min-block-size: 2.75rem')
   })
 })
