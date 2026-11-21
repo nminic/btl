@@ -209,6 +209,29 @@ public final class WhatANoticeSays {
 		Objects.requireNonNull(in, "in");
 		Objects.requireNonNull(facts, "facts");
 
+		return said(notice, words(in), facts);
+	}
+
+	/**
+	 * THE NOTICE FOR AN ACCOUNT THAT NAMES NO MEMBER (administration, a moderator who does not race, V23).
+	 *
+	 * <p>Owner, 21.11.2026: „Samo nalozi bez profila. Neka za članove ostane kako jeste". Such an account has
+	 * no sex in any table of the portal, so its Serbian words are the ones in {@code notices/sr-no-member},
+	 * on „ti" with no verb that has a sex; a member is written {@link #about} as before. English has no
+	 * participle and is the same for everybody.
+	 */
+	public static Said aboutToAnAccountThatNamesNoMember(Notice notice, MailLanguage in, String... facts) {
+		Objects.requireNonNull(notice, "notice");
+		Objects.requireNonNull(in, "in");
+		Objects.requireNonNull(facts, "facts");
+
+		ResourceBundle words = in == MailLanguage.ENGLISH ? words(in)
+				: ResourceBundle.getBundle(WORDS + "sr-no-member", ONE_SET_OF_WORDS);
+
+		return said(notice, words, facts);
+	}
+
+	private static Said said(Notice notice, ResourceBundle words, String... facts) {
 		if (facts.length != notice.facts()) {
 			throw new IllegalArgumentException(notice + " takes " + notice.facts()
 					+ " facts and was given " + facts.length);
@@ -217,8 +240,6 @@ public final class WhatANoticeSays {
 		for (String one : facts) {
 			Objects.requireNonNull(one, "a fact");
 		}
-
-		ResourceBundle words = words(in);
 
 		return new Said(words.getString(notice.key() + ".subject"),
 				/* MessageFormat and not concatenation, the same as the other bundle: the words

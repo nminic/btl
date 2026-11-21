@@ -202,6 +202,10 @@ const IN_PIXELS = new Map([
     'drops the seventh column of the chart and everything past it',
   ],
   [
+    'pages/Profile.css 559.98',
+    'clips the word „Godina" of the season on a telephone, where it stays the name of the field for a reader who hears it (PDL 21.11.2026)',
+  ],
+  [
     'styles/table.css 699.98',
     'drops the columns marked `table__hide-phone`, which is what the row holds',
   ],

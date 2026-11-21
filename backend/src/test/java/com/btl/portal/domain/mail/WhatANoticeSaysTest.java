@@ -294,6 +294,56 @@ class WhatANoticeSaysTest {
 						""));
 	}
 
+	/**
+	 * THE PASSWORD NOTICE FOR AN ACCOUNT THAT NAMES NO MEMBER. Owner, 21.11.2026: „Samo nalozi bez profila.
+	 * Neka za članove ostane kako jeste", and the sentence about the other devices: „Nalog je odjavljen sa svih
+	 * ostalih uređaja." A member is held word for word to the old text by the snapshot above; this account is
+	 * held to the new one, on „ti" and with no verb that has a sex. English has no participle and is the same.
+	 */
+	@Test
+	void theNoticeOfAnAccountThatNamesNoMemberIsOnTiWithNoSexAndAMemberKeepsHisOwn() {
+		assertThat(WhatANoticeSays.aboutToAnAccountThatNamesNoMember(Notice.THE_PASSWORD_HAS_CHANGED,
+				MailLanguage.SERBIAN, "24.09.2026. 16:35"))
+				.isEqualTo(new Said("Lozinka na tvom nalogu je promenjena", String.join("\n",
+						"Lozinka na tvom nalogu u Balkanskoj trkačkoj ligi promenjena je 24.09.2026. 16:35.",
+						"",
+						"Nalog je odjavljen sa svih ostalih uređaja.",
+						"",
+						"Ako ovo nije tvoja promena, neko drugi zna tvoju staru lozinku. Odmah zatraži novu lozinku sa"
+								+ " strane za prijavu i javi nam se na info@balkanskatrkackaliga.net.",
+						"")));
+		assertThat(WhatANoticeSays.about(Notice.THE_PASSWORD_HAS_CHANGED, MailLanguage.SERBIAN,
+				"24.09.2026. 16:35").subject()).isEqualTo("Lozinka na vašem nalogu je promenjena");
+		assertThat(WhatANoticeSays.aboutToAnAccountThatNamesNoMember(Notice.THE_PASSWORD_HAS_CHANGED,
+				MailLanguage.ENGLISH, "24 September 2026 at 16:35"))
+				.isEqualTo(WhatANoticeSays.about(Notice.THE_PASSWORD_HAS_CHANGED, MailLanguage.ENGLISH,
+						"24 September 2026 at 16:35"));
+
+		assertThatThrownBy(() -> WhatANoticeSays.aboutToAnAccountThatNamesNoMember(
+				Notice.THE_PASSWORD_HAS_CHANGED, MailLanguage.SERBIAN)).isInstanceOf(IllegalArgumentException.class);
+		assertThatThrownBy(() -> WhatANoticeSays.aboutToAnAccountThatNamesNoMember(
+				Notice.THE_PASSWORD_HAS_CHANGED, MailLanguage.SERBIAN, (String) null))
+				.isInstanceOf(NullPointerException.class);
+		assertThatThrownBy(() -> WhatANoticeSays.aboutToAnAccountThatNamesNoMember(null, MailLanguage.SERBIAN,
+				"x")).isInstanceOf(NullPointerException.class);
+		assertThatThrownBy(() -> WhatANoticeSays.aboutToAnAccountThatNamesNoMember(
+				Notice.THE_PASSWORD_HAS_CHANGED, null, "x")).isInstanceOf(NullPointerException.class);
+		assertThatThrownBy(() -> WhatANoticeSays.aboutToAnAccountThatNamesNoMember(
+				Notice.THE_PASSWORD_HAS_CHANGED, MailLanguage.SERBIAN, (String[]) null))
+				.isInstanceOf(NullPointerException.class);
+	}
+
+	/** The floor over that dictionary: the notice's keys and the notice's holes, nothing else. */
+	@Test
+	void theWordsOfAnAccountThatNamesNoMemberAreTheNoticesKeysWithTheSameHoles() {
+		ResourceBundle none = ResourceBundle.getBundle("notices/sr-no-member", java.util.Locale.ROOT);
+
+		assertThat(none.keySet()).containsExactlyInAnyOrder("thePasswordHasChanged.subject",
+				"thePasswordHasChanged.body");
+		assertThat(WhatANoticeSays.howManyFactsTheWordsTake(none.getString("thePasswordHasChanged.body")))
+				.isEqualTo(Notice.THE_PASSWORD_HAS_CHANGED.facts());
+	}
+
 	/** Facts of the right count, each one visibly itself so a case can find it in the text. */
 	private static String[] someFactsFor(Notice notice) {
 		String[] facts = new String[notice.facts()];

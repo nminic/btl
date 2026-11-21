@@ -211,7 +211,6 @@ const STAYS_A_WORD = new Map([
   ['shell.home', NOT_AN_ACTION],
   ['signIn.sending', FORM],
   ['signIn.submit', FORM],
-  ['teams.invite', LISTED],
   ['teams.join', LISTED],
   ['teams.joinWithdraw', LISTED],
   /* „Prijavi tim" since 17.11.2026 (owner: „treba da se zove dugme zapravo Prijavi tim"), the same way into

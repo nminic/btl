@@ -127,14 +127,14 @@ class WhatTheMessageSaysTest {
 
 		assertThat(WhatTheMessageSays.about(Message.INVITED_AS_A_MODERATOR, PORTAL, TOKEN).body())
 				.isEqualTo(String.join("\n",
-				"Superadmin vam je otvorio nalog moderatora na portalu Balkanske trkačke lige.",
+				"Superadmin ti je otvorio nalog moderatora na portalu Balkanske trkačke lige.",
 				"",
-				"Nalog još nema lozinku. Otvorite ovaj link i postavite je sami:",
+				"Nalog još nema lozinku. Otvori ovaj link i postavi je:",
 				linkOf(Message.INVITED_AS_A_MODERATOR, MailLanguage.SERBIAN),
 				"",
 				"Link važi 1 sat i može da se upotrebi jednom.",
 				"",
-				"Ako link istekne, zatražite novi sa strane za prijavu.",
+				"Ako link istekne, zatraži novi sa strane za prijavu.",
 				"",
 				tail));
 
@@ -714,16 +714,62 @@ class WhatTheMessageSaysTest {
 				.hasMessage("endsAt");
 	}
 
-	/** The floor over that dictionary: the two keys of the confirmation, with the holes of the masculine one. */
+	/**
+	 * THE LINK TO SET A NEW PASSWORD, FOR WHO THE PORTAL KNOWS AS A MEMBER AND FOR WHO IT DOES NOT.
+	 * Owner, 21.11.2026: „Samo nalozi bez profila. Neka za članove ostane kako jeste". The member is asked for
+	 * with {@code about(message, language, portal, token)} and is held word for word to the text it had on
+	 * {@code origin/main} by the snapshot above; an account that names no member is held here to the new one,
+	 * on „ti" and with no verb that has a sex. The two must differ in exactly that, and in nothing else but
+	 * the words.
+	 */
 	@Test
-	void theWordsOfAnAccountThatNamesNoMemberAreTheTwoKeysOfTheConfirmationWithTheSameHoles() {
+	void anAccountThatNamesNoMemberIsWrittenTheNewPasswordLinkOnTiAndAMemberTheOldOne() {
+		String tail = WhatTheMessageSays.about(Message.SET_A_NEW_PASSWORD, MailLanguage.SERBIAN, PORTAL, TOKEN)
+				.body().lines().reduce((first, last) -> last).orElseThrow();
+		Said none = WhatTheMessageSays.aboutToAnAccountThatNamesNoMember(Message.SET_A_NEW_PASSWORD,
+				MailLanguage.SERBIAN, PORTAL, TOKEN);
+		Said member = WhatTheMessageSays.about(Message.SET_A_NEW_PASSWORD, MailLanguage.SERBIAN, PORTAL, TOKEN);
+
+		assertThat(none.subject()).isEqualTo("Postavljanje nove lozinke").isEqualTo(member.subject());
+		assertThat(none.body()).isEqualTo(String.join("\n",
+				"Stigao nam je zahtev da postaviš novu lozinku za svoj nalog.",
+				"",
+				"Otvori ovaj link i upiši je:",
+				linkOf(Message.SET_A_NEW_PASSWORD, MailLanguage.SERBIAN),
+				"",
+				"Link važi 1 sat i može da se upotrebi jednom.",
+				"",
+				"Ako zahtev nije stigao od tebe, zanemari ovu poruku.",
+				"",
+				tail));
+		assertThat(member.body()).contains("postavite novu lozinku").contains("niste tražili")
+				.isNotEqualTo(none.body());
+		assertThat(WhatTheMessageSays.aboutToAnAccountThatNamesNoMember(Message.SET_A_NEW_PASSWORD,
+				MailLanguage.ENGLISH, PORTAL, TOKEN))
+				.isEqualTo(WhatTheMessageSays.about(Message.SET_A_NEW_PASSWORD, MailLanguage.ENGLISH, PORTAL, TOKEN));
+
+		assertThatThrownBy(() -> WhatTheMessageSays.aboutToAnAccountThatNamesNoMember(Message.CONFIRM_THE_ADDRESS,
+				MailLanguage.SERBIAN, PORTAL, TOKEN)).isInstanceOf(IllegalArgumentException.class);
+		assertThatThrownBy(() -> WhatTheMessageSays.aboutToAnAccountThatNamesNoMember(null, MailLanguage.SERBIAN,
+				PORTAL, TOKEN)).isInstanceOf(NullPointerException.class).hasMessage("message");
+		assertThatThrownBy(() -> WhatTheMessageSays.aboutToAnAccountThatNamesNoMember(Message.SET_A_NEW_PASSWORD,
+				null, PORTAL, TOKEN)).isInstanceOf(NullPointerException.class).hasMessage("reader");
+	}
+
+	/** The floor over that dictionary: the keys of the two messages it holds, with the holes of the ones they replace. */
+	@Test
+	void theWordsOfAnAccountThatNamesNoMemberAreTheKeysOfTheTwoMessagesItHoldsWithTheSameHoles() {
 		ResourceBundle none = ResourceBundle.getBundle("mail/sr-no-member", java.util.Locale.ROOT);
 		ResourceBundle man = WhatTheMessageSays.words(MailLanguage.SERBIAN);
 
-		assertThat(none.keySet()).containsExactlyInAnyOrder("confirmTheAddress.subject", "confirmTheAddress.body");
-		assertThat(new java.text.MessageFormat(none.getString("confirmTheAddress.body"), java.util.Locale.ROOT)
-				.getFormatsByArgumentIndex().length)
-				.isEqualTo(new java.text.MessageFormat(man.getString("confirmTheAddress.body"), java.util.Locale.ROOT)
-						.getFormatsByArgumentIndex().length);
+		assertThat(none.keySet()).containsExactlyInAnyOrder("confirmTheAddress.subject", "confirmTheAddress.body",
+				"setANewPassword.subject", "setANewPassword.body");
+		for (String key : List.of("confirmTheAddress.body", "setANewPassword.body")) {
+			assertThat(new java.text.MessageFormat(none.getString(key), java.util.Locale.ROOT)
+					.getFormatsByArgumentIndex().length)
+					.as(key)
+					.isEqualTo(new java.text.MessageFormat(man.getString(key), java.util.Locale.ROOT)
+							.getFormatsByArgumentIndex().length);
+		}
 	}
 }
