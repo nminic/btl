@@ -320,17 +320,20 @@
    navigaciji"). The card decides, not the window (`.home__next > .card` is the container, as for the „km"
    of the filter), and the language does not: one threshold, the one the longer of the two needs.
 
-   **The threshold is 16.75rem of the inside of the card.** Measured in Chrome at the reader's own text, in
-   Serbian, where it is the longer: the title is 171,7px, the gap 12px and the word 83,3px, which is 267px,
-   16,7rem; 16,75 (268px) is a hair over it, so a rounding never puts the word in a row it does not fit, and the first card of 960px (268,7) still has the word. In rem and not in
-   pixels, because the title and the word grow with the text of the reader and the card does not: at 125
-   and 200 per cent the word stands only in a card that is wider than 16,75 of that larger rem, which is
-   what the word needs at that size, so it never goes under the title. */
+   **The threshold is 17.5rem of the inside of the card (280px).** Measured at the reader's own text, in
+   Serbian, where it is the longer: on this machine the title is 171,7px, the gap 12px and the word 83,3px,
+   which is 267px; in the Chrome of the pipeline (other letters) the word is 85,6px and the card of 960px
+   (268,7) did not hold it, so about 274px. 280 is over both with six pixels to spare, so a font that is a
+   little wider than either never puts the word in a row it does not fit; the card of 1024px (285) keeps the
+   word and the one of 960px has the icon. In rem and not in pixels, because the title and the word grow
+   with the text of the reader and the card does not: at 125 and 200 per cent the word stands only in a card
+   that is wider than 17,5 of that larger rem, which is what the word needs at that size, so it never goes
+   under the title. */
 .card__head-icon {
   display: none;
 }
 
-@container (max-width: 16.75rem) {
+@container (max-width: 17.5rem) {
   .card__head-word {
     display: none;
   }
