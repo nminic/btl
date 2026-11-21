@@ -100,15 +100,15 @@ describe('CategoryDonut', () => {
   it('is read once, off the table, and not a second time off the drawing', () => {
     /* Chrome does not treat the children of an `img` as presentational, so a
        named drawing was read out in full and then the table said the same thing
-       again. What is drawn stays hidden from a reader; only the slices a keyboard
-       reaches are in the reading, as buttons, and the table is the one place the
-       numbers are read out. */
+       again (ADL A7, 31.07.2026). The whole drawing is hidden from a reader,
+       nothing in it is a control or a picture, and the table is the one place the
+       numbers are read out. `geometry/donutHiddenFromReader.geometry.ts` asks the
+       same of Chrome's own accessibility tree. */
     renderDonut(new Map<RaceCategory, number>([['short', 1]]))
 
-    expect(document.querySelector('.donut__ring')).toHaveAttribute('aria-hidden', 'true')
-    expect(document.querySelector('.donut__total')).toHaveAttribute('aria-hidden', 'true')
-    expect(document.querySelector('.donut__unit')).toHaveAttribute('aria-hidden', 'true')
+    expect(document.querySelector('svg.donut')).toHaveAttribute('aria-hidden', 'true')
     expect(screen.queryByRole('img')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button')).not.toBeInTheDocument()
     expect(screen.getByRole('table', { name: 'Trke po distanci' })).toBeInTheDocument()
   })
 
@@ -217,12 +217,7 @@ describe('pointing at a slice', () => {
   })
 })
 
-/* A finger on a browser that does not move focus to what it touches (Safari does not for an element
-   that is not a form control), so nothing blurs and the only way back is the document's own listener.
-   The events are sent as that finger sends them: a `pointerenter` and then a `pointerdown`, both
-   `touch`. The tests above go through user-event, whose touch also moves focus, and focus leaving is a
-   second way back that would hide the first. */
-describe('going back, for a finger that moves no focus', () => {
+describe('going back, for a finger', () => {
   const ALL = ['4', 'trke']
   const touch = (one: Element) => {
     fireEvent.pointerEnter(one, { pointerType: 'touch' })
@@ -325,23 +320,6 @@ describe('going back to all the races', () => {
     await user.click(first(hitsNow()))
 
     expect(middle()[0]).toBe('3')
-  })
-
-  it('chooses by focus and lets go by blur, and says which one is pressed', async () => {
-    const user = setupUser()
-    renderDonut(TWO())
-
-    await user.tab()
-    expect(first(hitsNow())).toHaveFocus()
-    expect(first(hitsNow())).toHaveAttribute('aria-pressed', 'true')
-    expect(middle()[0]).toBe('3')
-
-    await user.tab()
-    expect(at(hitsNow(), 1)).toHaveAttribute('aria-pressed', 'true')
-    expect(first(hitsNow())).toHaveAttribute('aria-pressed', 'false')
-
-    await user.tab()
-    expect(middle()).toEqual(ALL)
   })
 })
 
