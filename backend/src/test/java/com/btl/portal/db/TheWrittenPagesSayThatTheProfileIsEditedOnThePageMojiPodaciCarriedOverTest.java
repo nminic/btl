@@ -135,6 +135,7 @@ class TheWrittenPagesSayThatTheProfileIsEditedOnThePageMojiPodaciCarriedOverTest
 	@Test
 	void v89OverTheTextItFoundGivesTheTextThePortalServesAndChangesNothingElse() {
 		/* The text as V94 left it: V95 (owner, 11.11.2026) is held by TheWrittenPagesStateTheFactCarriedOverTest. */
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "107");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "102");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "100");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "98");
@@ -180,6 +181,7 @@ class TheWrittenPagesSayThatTheProfileIsEditedOnThePageMojiPodaciCarriedOverTest
 	void v89RunAgainOverTheFinishedTextStopsAndListsEveryEdit() {
 		/* The text V89 finished, which is the text before V90 linked its sentence and moved its sign-off (08.11.2026). */
 		/* The text as V94 left it: V95 (owner, 11.11.2026) moved the sign-offs of all three pages and took sentences out of them, which is held by TheWrittenPagesStateTheFactCarriedOverTest. */
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "107");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "102");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "100");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "98");
@@ -208,6 +210,7 @@ class TheWrittenPagesSayThatTheProfileIsEditedOnThePageMojiPodaciCarriedOverTest
 	 */
 	@Test
 	void anOldTextThatStandsTwiceAndOneThatIsNotThereAreBothReportedAndNothingIsChanged() {
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "107");
 		theTextAsItStoodBeforeV89();
 
 		TheWrittenPagesSayThatTheProfileIsEditedOnThePageMojiPodaciTest.Change edit = TheWrittenPagesSayThatTheProfileIsEditedOnThePageMojiPodaciTest.CHANGES
@@ -240,6 +243,7 @@ class TheWrittenPagesSayThatTheProfileIsEditedOnThePageMojiPodaciCarriedOverTest
 	/** A SECTION THAT ALREADY CARRIES THE NEW TEXT BESIDE THE OLD ONE STOPS V89, whatever the old text finds. */
 	@Test
 	void aNewTextThatIsAlreadyThereBesideTheOldOneStopsV89() {
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "107");
 		theTextAsItStoodBeforeV89();
 
 		TheWrittenPagesSayThatTheProfileIsEditedOnThePageMojiPodaciTest.Change edit = TheWrittenPagesSayThatTheProfileIsEditedOnThePageMojiPodaciTest.CHANGES
@@ -262,6 +266,7 @@ class TheWrittenPagesSayThatTheProfileIsEditedOnThePageMojiPodaciCarriedOverTest
 	 */
 	@Test
 	void theSweepFindsWhatItKeepsOutInTheTextBeforeV89() {
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "107");
 		theTextAsItStoodBeforeV89();
 
 		List<TheWrittenPagesDropTheirExplanationsTest.Row> rows = TheWrittenPagesDropTheirExplanationsTest
