@@ -166,8 +166,7 @@ describe('the table of results beside the races the league does not score', () =
       '42,2 km, Maraton',
       'Ultra, Ultramaraton',
     ])
-    /* The ring's own slice is a button now and carries the name; the filter buttons are the ones outside the drawing. */
-    expect(screen.queryAllByRole('button', { name: /Nebodovane/ }).filter((one) => one.closest('svg') === null)).toEqual([])
+    expect(screen.queryByRole('button', { name: /Nebodovane/ })).not.toBeInTheDocument()
 
     /* Under „Sve" every unscored race is drawn, with its dash. */
     expect(lines().map(raceOf)).toEqual(expect.arrayContaining(unscored.map((result) => result.raceName)))

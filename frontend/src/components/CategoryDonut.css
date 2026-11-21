@@ -46,20 +46,13 @@
 
 /* Where the pointer is actually read: the slices at the size a chosen one reaches, over the top of the
    drawing and never seen. It never changes shape, so what is under the pointer never changes by itself.
-   Transparent and not `none`, because only a painted shape is touched. A keyboard reaches it, and the
-   focus is drawn as a line round the slice (WCAG 2.2 SC 2.4.7, 1.4.11). */
+   Transparent and not `none`, because only a painted shape is touched. Not a control: a mouse and a
+   finger choose, Esc takes it back, and the table is the reading. */
 .donut__hit {
   fill: transparent;
   fill-rule: evenodd;
   stroke: none;
   cursor: pointer;
-  outline: none;
-}
-
-.donut__hit:focus-visible {
-  stroke: var(--text);
-  stroke-width: 3px;
-  stroke-linejoin: round;
 }
 
 .donut__track {

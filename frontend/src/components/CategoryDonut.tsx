@@ -232,20 +232,19 @@ export function CategoryDonut({
 
   return (
     <div className="donut-block">
-      <svg className="donut" viewBox={`0 0 ${SIDE} ${SIDE}`}>
-        {/* The whole ring when nothing has been run, and the gap behind the slices otherwise. What is
-            drawn is hidden from a reader, who has the table below; what a keyboard can reach, the
-            slices of the layer over it, is not. */}
+      <svg className="donut" viewBox={`0 0 ${SIDE} ${SIDE}`} aria-hidden="true">
+        {/* The whole ring when nothing has been run, and the gap behind the slices otherwise. The whole
+            drawing is hidden from a reader (ADL A7, 31.07.2026): the table below is the one place the
+            numbers are read, and a named drawing was read out in full and then again. */}
         <circle
           className="donut__track"
-          aria-hidden="true"
           cx={CENTRE}
           cy={CENTRE}
           r={(INNER + OUTER) / 2}
           strokeWidth={OUTER - INNER}
         />
 
-        <g className="donut__ring" aria-hidden="true">
+        <g className="donut__ring">
           {slices.map((slice) => (
             <path
               key={slice.one}
@@ -268,10 +267,6 @@ export function CategoryDonut({
               key={slice.one}
               className="donut__hit"
               d={sector(slice.offset, slice.share, OUTER + GROWTH)}
-              role="button"
-              tabIndex={0}
-              aria-label={`${nameOf(slice.one)}: ${formatNumber(slice.value, locale)}`}
-              aria-pressed={pointed === slice.one}
               /* A mouse chooses by passing over, as it always did. A finger has no passing over: its
                  touch chooses, and the same touch again lets go (owner, 21.11.2026). A touch is skipped
                  here because it fires a `pointerenter` just before its `pointerdown`, which would make
@@ -289,11 +284,9 @@ export function CategoryDonut({
                   setPointed(null)
                 }
               }}
-              onFocus={() => setPointed(slice.one)}
-              onBlur={() => setPointed(null)}
             >
               {/* On the layer that reads the pointer, because that is the one the browser draws a
-                  tooltip for, and it names the control for a reader. */}
+                  tooltip for. */}
               <title>
                 {nameOf(slice.one)}: {formatNumber(slice.value, locale)}
               </title>
@@ -306,7 +299,6 @@ export function CategoryDonut({
         <text
           key={`total-${pointed ?? 'all'}`}
           className="donut__total"
-          aria-hidden="true"
           x={CENTRE}
           y={CENTRE + 6}
           textAnchor="middle"
@@ -320,7 +312,6 @@ export function CategoryDonut({
         <text
           key={`unit-${pointed ?? 'all'}`}
           className="donut__unit"
-          aria-hidden="true"
           x={CENTRE}
           y={CENTRE + 28}
           textAnchor="middle"
