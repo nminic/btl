@@ -77,6 +77,10 @@ const ALLOWED = new Map([
     'app/RaceInMotion.css | right | max(var(--space-16), calc((100% - 1100px) / 2 - 145px))',
     'not a step: the runner of the reference stands as far in from the edge as the gutter beside the column (1100px, app/Shell.css) less the 145px the reference leaves between him and the last tool, owner 15.11.2026',
   ],
+  [
+    'app/RaceInMotion.css | left | calc((100% - 1100px) / 2 - 6.25rem)',
+    'not a step: the lane of the route ends where the column of the page begins (1100px, app/Shell.css), so that no word is ever over the route or the dot, owner 20.11.2026',
+  ],
   ['pages/Home.css | inset-inline-start | -0.2rem', 'a mark pulled out over the corner it sits on'],
   ['pages/Home.css | inset-block-start | -0.2rem', 'a mark pulled up over the corner it sits on'],
   [
@@ -441,6 +445,10 @@ describe('space and corners are chosen from the scale, not typed', () => {
       ['pages/admin/SectionNav.css .adminsection__toggle', 'the control that opens a panel that is now open'],
       ['pages/admin/Verification.css .pending__toggle', 'the same, on the queue of things to verify'],
       ['pages/Rulebook.css .rulebook__toggle', 'the same, on the table of contents'],
+      [
+        'app/RaceInMotion.css .terrain--narrow',
+        'the drawing of the ground made for a telephone, taken off where the wide drawing takes its place; both are pictures that say nothing and are hidden from every reader (`aria-hidden`), so nothing readable goes with it',
+      ],
       ['pages/admin/Rights.css .rights__inline', 'the words beside a checkbox, which the column heading now carries and which are aria-hidden either way'],
       ['pages/Profile.css .profile__length-full', 'the long name of a length, swapped for the short one; both are in the accessible name, so nothing is lost to anybody'],
       [

@@ -258,6 +258,257 @@ for (const at of WIDTHS) {
   })
 }
 
+/** Whether anything of this selector is drawn: no element on the way up from it is `display: none`. Read
+ *  from the computed style, since `checkVisibility()` answers true for an SVG group taken off the page by
+ *  `display: none` in Chrome (measured 20.11.2026: `getComputedStyle` said `none`, `checkVisibility()` said
+ *  `true`, and nothing was running). */
+async function isDrawn(page: Page, selector: string): Promise<boolean> {
+  return page.evaluate((query) => {
+    const drawnUp = (one: Element | null): boolean => one === null || (getComputedStyle(one).display !== 'none' && drawnUp(one.parentElement))
+
+    return [...document.querySelectorAll(query)].some((one) => drawnUp(one))
+  }, selector)
+}
+
+/* THE GROUND AND THE DOT (owner, 20.11.2026, the approved draft „Pozadina i tačka"): a telephone has a
+   ground of its own and no route and no dot, from 560px the wide ground is drawn with the route, and the
+   dot runs only for a reader who has not asked for less movement. What the sheet says is read there; what
+   Chrome draws is read here, at every width the owner listed. */
+for (const at of WIDTHS.flatMap((one): At[] => [one, { ...one, theme: 'dark' }])) {
+  test(`the ground draws the drawing of its width, and the dot only where the sheet lets it at ${label(at)}`, async ({ open }) => {
+    const { page, probe } = await open(at, '/sr', 'header .brand', ANSWERS)
+
+    /* Neither drawing widens the page, in either theme. */
+    expect(probe.sideways).toBe(0)
+    expect(probe.widened).toBe(0)
+
+    const reads = at.width / (at.text / 100)
+    const seen = {
+      wide: await isDrawn(page, '.terrain--wide'),
+      narrow: await isDrawn(page, '.terrain--narrow'),
+      route: await isDrawn(page, '.terrain__route'),
+      dot: await isDrawn(page, '.race-page__dot'),
+    }
+
+    expect(seen.wide, 'the wide ground').toBe(reads >= 560)
+    expect(seen.narrow, 'the ground of a telephone').toBe(reads < 560)
+    expect(seen.route, 'the route').toBe(reads >= 560)
+    /* The suite reads as somebody who asked for less movement (`motion` in `geometry/support/harness.ts`), who gets no
+       dot at any width; where it is drawn is asked below, with the reader who has not. */
+    expect(seen.dot, 'the dot').toBe(false)
+  })
+}
+
+/**
+ * Where the route, and so the dot that runs it, meets a word that stands on the bare page, if anywhere
+ * (owner, 20.11.2026: „Jaka tačka, nikad ispod teksta").
+ *
+ * <p>The route is sampled along its length every few units and each sample is placed on the screen through
+ * the path's own matrix, so the drawing is read where Chrome puts it at this width, slice and all; the dot is
+ * read at each two per cent of its way from its own box, wherever Chrome draws it; the route is as wide as the
+ * ring of the dot is. A word
+ * is every line box of every text node of the page outside the layer, read the way the browser lays it out
+ * (`Range.getClientRects`). Words that stand on something opaque are not measured: a card, the header, the
+ * footer and the menus are painted over the layer, so nothing is under them to read. What is left are the
+ * words that stand on the page itself, the only ones the route and the dot can be seen behind.
+ *
+ * <p>The layer is fixed to the window and the page scrolls under it, so any word may be scrolled to any
+ * height the route reaches. A word is therefore compared by where it stands ACROSS, not by how far down: a
+ * word that shares a column with a sample of the route, within the radius of the ring of the dot, is a
+ * touch whatever the scroll.
+ */
+async function routeTouches(page: Page): Promise<{ words: number; points: number; touches: string[] }> {
+  return page.evaluate(() => {
+    const route = document.querySelector('.terrain--lane .terrain__route')
+    if (!(route instanceof SVGGeometryElement)) {
+      return { words: 0, points: 0, touches: ['no route'] }
+    }
+
+    const matrix = route.getScreenCTM()
+    const length = route.getTotalLength()
+    const spans: { left: number; right: number }[] = []
+    const ring = document.querySelector('.race-page__dot-ring')
+    const dot = document.querySelector('.race-page__dot')
+
+    if (ring === null || !(dot instanceof SVGElement)) {
+      return { words: 0, points: 0, touches: ['no dot'] }
+    }
+
+    /* It is not drawn for the reader of this suite (`motion` in the harness), so it is shown for the reading: the
+       question is where it goes, and the sheet's own reasons for not drawing it are asked elsewhere. */
+    dot.style.display = 'inline'
+
+    /* How far the dot reaches to each side is the box Chrome draws its ring in, not a number written here. */
+    const radius = ring.getBoundingClientRect().width / 2
+
+    if (!(radius > 0)) {
+      return { words: 0, points: 0, touches: ['the dot has no box'] }
+    }
+
+    for (let at = 0; at <= length; at += 4) {
+      const point = route.getPointAtLength(at)
+
+      const x = matrix === null ? Number.NaN : new DOMPoint(point.x, point.y).matrixTransform(matrix).x
+
+      spans.push({ left: x - radius, right: x + radius })
+    }
+
+    /* And the dot itself, where Chrome DRAWS it: it is stopped at each two per cent of its way and the box of
+       the whole dot is read. Reading the path it is sent along would miss everything that moves the drawn dot
+       without touching the path (a centre on the circles, a translate on the group, an anchor); this does
+       not. The animation is taken off for the reading, which puts the dot where the style says. */
+    dot.style.animation = 'none'
+
+    for (let percent = 0; percent <= 100; percent += 2) {
+      dot.style.offsetDistance = `${percent}%`
+
+      /* The box of the whole group, so a circle moved on its own is read as well as the group. */
+      const box = dot.getBoundingClientRect()
+
+      spans.push({ left: box.left, right: box.right })
+    }
+
+    dot.style.animation = ''
+    dot.style.offsetDistance = ''
+    dot.style.display = ''
+
+    /* Nothing of this word is seen on the bare page: it stands on something painted over the layer, or it is
+       taken out of sight (the visually hidden words of a screen, which are one pixel and cut). The colour is
+       read for its alpha whatever notation Chrome answers in, so a colour it writes in a notation of its own
+       is not taken for a transparent one. */
+    const covered = (one: Element | null): boolean => {
+      for (let up = one; up !== null; up = up.parentElement) {
+        const style = getComputedStyle(up)
+        const alpha = /(?:,|\/)\s*([\d.]+)(%?)\s*\)$/.exec(style.backgroundColor)
+        const strength = alpha === null ? 1 : Number(alpha[1]) / (alpha[2] === '%' ? 100 : 1)
+        const painted = style.backgroundColor !== 'transparent' && strength >= 0.99
+
+        if (up.localName === 'header' || up.localName === 'footer') return true
+        if (style.backgroundImage !== 'none') return true
+        if (painted && up !== document.body && up !== document.documentElement) return true
+        if (style.overflow !== 'visible' && up.getBoundingClientRect().width <= 1) return true
+      }
+
+      return false
+    }
+
+    const words: { text: string; left: number; right: number }[] = []
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT)
+
+    for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) {
+      const text = (node.textContent ?? '').trim()
+      const parent = node.parentElement
+
+      if (text === '' || parent === null || parent.closest('.race-page, script, style') !== null) continue
+      if (!parent.checkVisibility({ opacityProperty: true, visibilityProperty: true }) || covered(parent)) continue
+
+      const range = document.createRange()
+
+      range.selectNodeContents(node)
+
+      for (const box of range.getClientRects()) {
+        if (box.width > 0) words.push({ text, left: box.left, right: box.right })
+      }
+    }
+
+    const touches = words
+      .filter((word) => spans.some((span) => span.right > word.left && span.left < word.right))
+      .map((word) => `„${word.text.slice(0, 40)}" at ${Math.round(word.left)}-${Math.round(word.right)}`)
+
+    return { words: words.length, points: spans.length, touches }
+  })
+}
+
+/* The front page has no word on the bare page at all, so it would pass whatever the route did: the rulebook is
+   text laid straight on the page (534 words) and the calendar has its heading and its notes there (13). Each
+   must hold words, or this asks nothing. */
+for (const at of WIDTHS.flatMap((one): At[] => [one, { ...one, theme: 'dark' }])) {
+  const reads = at.width / (at.text / 100)
+
+  if (reads < 560) continue
+
+  for (const path of ['/sr', '/sr/pravilnik', '/sr/kalendar']) {
+    test(`the route and the dot touch no word on ${path} at ${label(at)}`, async ({ open }) => {
+      const { page } = await open(at, path, 'header .brand', ANSWERS)
+      const seen = await routeTouches(page)
+
+      expect(seen.points, 'the route was sampled').toBeGreaterThan(100)
+
+      if (path !== '/sr') {
+        expect(seen.words, 'words that stand on the bare page, so this asks something').toBeGreaterThan(5)
+      }
+
+      expect(seen.touches).toEqual([])
+    })
+  }
+}
+
+test('the dot is not drawn for a reader who asked for less movement, and the ground still is', async ({ open }) => {
+  const { page } = await open({ width: 1280, text: 100, motion: 'reduce' }, '/sr', 'header .brand', ANSWERS)
+  const seen = {
+    wide: await isDrawn(page, '.terrain--wide'),
+    dot: await isDrawn(page, '.race-page__dot'),
+    /* The dot's own, and not every animation of the page: another one may be running on a slow runner. */
+    running: await page.evaluate(() => document.querySelector('.race-page__dot')?.getAnimations().length ?? 0),
+  }
+
+  expect(seen).toEqual({ wide: true, dot: false, running: 0 })
+})
+
+/* The dot is drawn from 560px for a reader who has not asked for less movement, and at no width under it. Each of
+   these pays for the five seconds it runs before the page settles. */
+for (const width of [320, 600, 1280]) {
+  test(`the dot is drawn for a reader who has not asked for less movement, from 560px, at ${width}px`, async ({ open }) => {
+    const { page } = await open({ width, text: 100, motion: 'no-preference' }, '/sr', 'header .brand', ANSWERS)
+
+    expect(await isDrawn(page, '.race-page__dot')).toBe(width >= 560)
+  })
+}
+
+test('the dot runs once, for five seconds at most, and starts again on the next screen', async ({ open }) => {
+  const { page } = await open({ width: 1280, text: 100, motion: 'no-preference' }, '/sr', 'header .brand', ANSWERS)
+
+  /* The page has settled, so the first run is over and nothing of the dot runs: it rests where it stopped. */
+  expect(await page.evaluate(() => document.querySelector('.race-page__dot')?.getAnimations().length ?? -1)).toBe(0)
+
+  /* The click and the reading are ONE step in the page: a reading made a round trip later, on a slow runner,
+     can find the new run already over (the first version of this case failed so on CI, 20.11.2026). */
+  const after = await page.evaluate(
+    () =>
+      new Promise<{ at: number; duration: number; iterations: number | undefined }>((resolve) => {
+        const old = document.querySelector('.race-page__dot')
+        const link = [...document.querySelectorAll('nav[aria-label="Glavna navigacija"] a')].find((one) => one.textContent?.trim() === 'Kalendar')
+
+        if (!(link instanceof HTMLElement)) {
+          resolve({ at: Number.NaN, duration: Number.NaN, iterations: undefined })
+          return
+        }
+
+        link.click()
+
+        const look = () => {
+          const now = document.querySelector('.race-page__dot')
+          const run = now === old ? undefined : now?.getAnimations()[0]
+
+          if (run === undefined) {
+            requestAnimationFrame(look)
+            return
+          }
+
+          const effect = run.effect?.getComputedTiming()
+
+          resolve({ at: Number(run.currentTime), duration: Number(effect?.duration), iterations: effect?.iterations })
+        }
+
+        look()
+      }),
+  )
+
+  expect(after.duration, 'seconds the dot runs').toBeLessThanOrEqual(5000)
+  expect(after.iterations).toBe(1)
+  expect(after.at, 'a new screen started the dot from the beginning').toBeLessThan(2000)
+})
+
 /* The gold line is bright where the reference has it bright (owner, 15.11.2026: „lepe istaknute
    zlatne linije"), too bright for a word to stand on it at 4,5:1, and the runner stands beside the
    tools. So both stand where no word does, and that is asked here at every width the owner listed
