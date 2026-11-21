@@ -334,6 +334,12 @@
 }
 
 @container (max-width: 17.5rem) {
+  /* The icon has no baseline of its own, so on the baseline it rides high against the title (owner, 21.11.2026:
+     „Ikonica kalendara ode previsoko gore u odnosu na tekst levo"): in the middle of the row instead. */
+  .card__head {
+    align-items: center;
+  }
+
   .card__head-word {
     display: none;
   }
