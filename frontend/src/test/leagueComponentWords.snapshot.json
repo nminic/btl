@@ -114,7 +114,7 @@
     "·"
   ],
   "src/pages/admin/AdminLeagues.tsx": [
-    "-races",
+    "../../app/useFilterParams",
     "../../components/Resource",
     "../../data/client",
     "../../data/types",
@@ -150,6 +150,7 @@
     "col",
     "done",
     "field__error",
+    "izmena",
     "leagues",
     "leagues.events",
     "leagues.name",
@@ -223,7 +224,6 @@
     "rankings__field",
     "react",
     "refused",
-    "submit",
     "visually-hidden"
   ],
   "src/pages/league/LeagueEvents.tsx": [
