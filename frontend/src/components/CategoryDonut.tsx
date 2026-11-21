@@ -270,6 +270,7 @@ export function CategoryDonut({
               d={sector(slice.offset, slice.share, OUTER + GROWTH)}
               role="button"
               tabIndex={0}
+              aria-label={`${nameOf(slice.one)}: ${formatNumber(slice.value, locale)}`}
               aria-pressed={pointed === slice.one}
               /* A mouse chooses by passing over, as it always did. A finger has no passing over: its
                  touch chooses, and the same touch again lets go (owner, 21.11.2026). A touch is skipped
