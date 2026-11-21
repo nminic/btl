@@ -100,6 +100,13 @@ for (const { at, columns } of WIDTHS) {
         head: [...sheet.querySelectorAll('.leagues__score > *, .leagues__pills > li')]
           .filter((part) => !part.classList.contains('leagues__pills'))
           .map(box),
+        /* Each pill on one line, as wide as its words: the front page's tile is a size container, and
+           in this row that once made every pill a column one letter wide with nothing overlapping. */
+        pills: [...sheet.querySelectorAll('.score__pill')].map((pill) => {
+          const found = pill.getBoundingClientRect()
+
+          return { width: found.width, letter: parseFloat(getComputedStyle(pill).fontSize) }
+        }),
       }
     })
 
@@ -144,6 +151,12 @@ for (const { at, columns } of WIDTHS) {
       }
     }
 
+    expect(seen.pills.length, 'the sheet carries its three pills').toBe(3)
+
+    for (const [index, pill] of seen.pills.entries()) {
+      expect(pill.width, `pill ${index + 1} is wider than four letters`).toBeGreaterThan(4 * pill.letter)
+    }
+
     expect(probe.sideways).toBe(0)
     expect(probe.widened).toBe(0)
   })
@@ -155,7 +168,7 @@ for (const at of [
   { width: 1280, text: 200 },
 ] satisfies At[]) {
   test(`one competition is its sheet alone, across the whole list, ${label(at)}`, async ({ open }) => {
-    const { page, probe } = await open(at, '/sr/lige', '.leagues__sheet', { '/api/leagues': [FIRST] })
+    const { page, probe } = await open(at, '/sr/lige', '.leagues__sheet', { '/api/leagues': [{ ...FIRST, rules: 'Propozicije lige, napisane dovoljno dugo da strana bude duža od prozora. '.repeat(60) }] })
 
     const seen = await page.evaluate(() => {
       const sheet = document.querySelector('.leagues__sheet')

@@ -126,6 +126,8 @@
   min-block-size: 1.5rem;
   font-weight: 600;
   font-size: 0.9rem;
+  /* A flex box drops the space at the edge of each of its items, so the arrow is set apart here. */
+  gap: var(--space-4);
 }
 
 /* The line of facts under the name on a card: the season, how many events count, how many people
@@ -215,6 +217,13 @@
   margin: 0;
   padding: 0;
   list-style: none;
+}
+
+/* The front page's tile is a container for its own short figure (`styles/counter.css`), and a
+   container is sized as if it had no content: in this row, where each pill is as wide as its words,
+   that made every pill a column one letter wide. Measured in Chrome on 21.11.2026. */
+.leagues__pills .score {
+  container-type: normal;
 }
 
 .leagues__pills .score__pill {
