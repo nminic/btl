@@ -246,7 +246,7 @@
   },
   "notice": {
     "label": "Notice",
-    "text": "The data shown at the moment are the historical data of members. The official season begins on 1 January at midnight: then the counters and the standings start from zero for everyone, and whatever was run earlier stays on the profiles.",
+    "text": "Historical data of members are shown at the moment. The official season begins on 1 January at midnight, and the counters start from zero for every member.",
     "close": "Close the notice"
   },
   "nav": {

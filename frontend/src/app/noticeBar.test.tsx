@@ -27,9 +27,8 @@ const CLOSE = { name: 'Zatvori obaveštenje' }
 /** The sentence the owner approved, word for word (PDL 21.11.2026, „Tekst"). Written out here and not read
  *  from the dictionary, so a changed word in the dictionary is a failing case and not a quiet edit. */
 const SENTENCE =
-  'Trenutno prikazani podaci su istorijski podaci članova. ' +
-  'Zvanična sezona počinje 1. januara u ponoć: tada brojači i poredak kreću od nule za sve, ' +
-  'a ono što je ranije istrčano ostaje na profilima.'
+  'Trenutno su prikazani istorijski podaci članova. ' +
+  'Zvanična sezona počinje 1. januara u ponoć, a brojači kreću od nule za sve članove.'
 
 /** The screens the strip stands on, as addresses a reader types: the front page, the Top lists and the three
  *  cards of the BTL tables (Muškarci and Žene at `tabela`, Timovi at `timovi`; owner, 21.11.2026). */
@@ -285,7 +284,7 @@ describe('closing it', { timeout: SLOW }, () => {
 
     const note = await screen.findByRole('note', { name: 'Notice' })
 
-    expect(note).toHaveTextContent(/^The data shown at the moment are the historical data of members/)
+    expect(note).toHaveTextContent(/^Historical data of members are shown at the moment. The official season begins on 1 January at midnight, and the counters start from zero for every member\./)
     expect(screen.getByRole('button', { name: 'Close the notice' })).toBeVisible()
   })
 
