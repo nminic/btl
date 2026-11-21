@@ -59,6 +59,12 @@ import java.util.Optional;
  * owner's covers this specific question and none was invented for it; see the PR this
  * class shipped with for the question actually asked of him.</b>
  *
+ * <p><b>The one answer beside 204 is 429, and it is no exception to the above</b> (owner,
+ * 21.11.2026: three letters of confirmation per address in an hour). The count is kept by the
+ * address as typed and before the lookup, so the fourth request within the hour is refused alike
+ * for an address nobody holds, one already confirmed and one waiting on this letter
+ * ({@link AttemptsAtTheDoor}).
+ *
  * <p><b>What that uniformity does NOT close: a network timing difference.</b> The
  * branch that finds an unconfirmed account calls the mail relay before answering; the
  * other two branches do not, and a relay is slower than a row that is never read.
@@ -90,6 +96,13 @@ class EmailConfirmationApi {
 	 */
 	static final String THE_LINK_IS_NOT_VALID = "theLinkIsNotValid";
 
+	/**
+	 * More attempts for one address within the hour than the owner allows (21.11.2026), by {@link #resend}, answered 429
+	 * with {@code Retry-After}. {@link AttemptsAtTheDoor} counts; this route only says so, and says it
+	 * for an address nobody holds exactly as for one somebody does.
+	 */
+	static final String TOO_MANY_ATTEMPTS = "tooManyAttempts";
+
 	private final JdbcClient db;
 
 	private final Postman postman;
@@ -102,9 +115,13 @@ class EmailConfirmationApi {
 
 	private final Clock clock;
 
+	private final AttemptsAtTheDoor door;
+
 	EmailConfirmationApi(JdbcClient db, Postman postman, TransactionTemplate inOneTransaction,
-			TheLetterAfterTheAddress welcome, Clock clock, @Value("${btl.portal.address}") String address) {
+			TheLetterAfterTheAddress welcome, Clock clock, AttemptsAtTheDoor door,
+			@Value("${btl.portal.address}") String address) {
 		this.clock = clock;
+		this.door = door;
 		this.db = db;
 		this.postman = postman;
 		this.inOneTransaction = inOneTransaction;
@@ -257,7 +274,20 @@ class EmailConfirmationApi {
 	 * not the exception {@code RegistrationApi} made of itself.
 	 */
 	@PostMapping("/api/email-confirmation/resend")
-	ResponseEntity<Void> resend(@RequestBody ResendTyped typed) {
+	ResponseEntity<Refused> resend(@RequestBody ResendTyped typed) {
+		/* COUNTED BY THE ADDRESS AS TYPED, BEFORE IT IS LOOKED UP, so the fourth request within the
+		   hour is the same 429 for an address nobody holds, one already confirmed and one waiting on
+		   this very letter, and the refusal tells nobody which of the three it was. A blank address
+		   sends nothing and is not counted: there is no letter to hold back. */
+		if (typed.email() != null && !typed.email().isBlank()) {
+			Optional<ResponseEntity<Refused>> tooMany = door.aConfirmationLetter(typed.email(),
+					new Refused(TOO_MANY_ATTEMPTS));
+
+			if (tooMany.isPresent()) {
+				return tooMany.orElseThrow();
+			}
+		}
+
 		ToSend made = inOneTransaction.execute(committing -> write(typed));
 
 		if (made != null) {
