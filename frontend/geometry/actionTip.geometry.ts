@@ -48,16 +48,10 @@ const ANSWERS: Answers = {
   '/api/competitors': sample('competitors'),
 }
 
-/* EVERY CASE OF THIS FILE ASKS FOR `no-preference`, which the suite does not by default (`motion` in
-   `geometry/support/harness.ts`). Under `prefers-reduced-motion: reduce` there is a found fault of the portal: the
-   rule of `src/index.css` (60-67) gives every element a transition of 0,01ms, so the box of the word of a symbol is
-   drawn for a frame at the top left corner (`left: 0`) before it jumps to its place (measured 21.11.2026, Chrome,
-   the box at 0 in the first frame on the pointer and on the keyboard). That is not what these cases ask, and a
-   separate change corrects the rule. When it is merged these cases go back to the default. */
 const WIDTHS: At[] = [
-  { width: 360, text: 100, motion: 'no-preference' },
-  { width: 768, text: 100, motion: 'no-preference' },
-  { width: 1280, text: 100, motion: 'no-preference' },
+  { width: 360, text: 100 },
+  { width: 768, text: 100 },
+  { width: 1280, text: 100 },
 ]
 
 /** Eight pixels, what the component holds the box from every edge of the window. */
@@ -424,7 +418,7 @@ for (const path of QUEUES) {
     [1280, false],
   ] as const) {
     test(`the toggle of a card is ${drawn ? '' : 'not '}drawn on ${path} at ${String(width)}px`, async ({ open }) => {
-      const { page } = await open({ width, text: 100, motion: 'no-preference' }, path, '.action:visible', { ...SAMPLE, '/api/me': SUPERADMIN })
+      const { page } = await open({ width, text: 100 }, path, '.action:visible', { ...SAMPLE, '/api/me': SUPERADMIN })
 
       const toggles = await page.evaluate(() =>
         [...document.querySelectorAll('.pending__toggle')].map((one) => getComputedStyle(one).display !== 'none'),
@@ -461,7 +455,7 @@ const NEIGHBOURS: { path: string; width: number; from: RegExp; to: RegExp; answe
 
 for (const one of NEIGHBOURS) {
   test(`the neighbour of a symbol gets the first press, on ${one.path} at ${String(one.width)}px`, async ({ open }) => {
-    const { page } = await open({ width: one.width, text: 100, motion: 'no-preference' }, one.path, '.action:visible', one.answers)
+    const { page } = await open({ width: one.width, text: 100 }, one.path, '.action:visible', one.answers)
     const row = page.locator('tbody tr').filter({ has: page.getByRole('button', { name: one.to }) }).first()
     const from = row.getByRole('button', { name: one.from })
     const to = row.getByRole('button', { name: one.to })
@@ -612,7 +606,7 @@ for (const at of WIDTHS) {
 for (const path of QUEUES) {
   for (const width of [360, 768]) {
     test(`the toggle of a card stands on the line of its heading on ${path} at ${String(width)}px`, async ({ open }) => {
-      const { page } = await open({ width, text: 100, motion: 'no-preference' }, path, '.action:visible', { ...SAMPLE, '/api/me': SUPERADMIN })
+      const { page } = await open({ width, text: 100 }, path, '.action:visible', { ...SAMPLE, '/api/me': SUPERADMIN })
       const seen = (await page.evaluate(offTheLine)).filter((one) => one.name?.startsWith('Prikaži') === true)
 
       /* Measured, not assumed: at least one toggle stands beside words, so the case is never passed
