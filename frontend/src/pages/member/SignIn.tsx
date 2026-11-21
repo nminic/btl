@@ -211,7 +211,7 @@ export function SignIn() {
           press in it: inside, a reader tabbing from the password field would meet it
           before the button that signs him in. The words are the ones the messages
           already use for this page. */}
-      <p>
+      <p className="member__way-out">
         <Link to={`/${locale}/zaboravljena-lozinka`}>{t('signIn.forgotten')}</Link>
       </p>
 
@@ -220,7 +220,7 @@ export function SignIn() {
           Učlani se"). The header of a visitor on a desktop draws „Prijavi se" as a person, and this is what
           stays for a visitor who came here by it and has no account yet. A link of its own, outside the
           form for the reason the one above is. */}
-      <p>
+      <p className="member__way-out">
         <Link to={`/${locale}/registracija`}>{t('signIn.noAccount')}</Link>
       </p>
 

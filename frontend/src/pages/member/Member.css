@@ -63,6 +63,15 @@
   width: 100%;
 }
 
+/* THE TWO LINKS UNDER THE SIGN IN FORM (owner, 21.11.2026: the space between „Zaboravljena lozinka" and „Nemaš
+   nalog? Učlani se" „nema razloga da bude veće od prethodnog vertikalnog razmaka"). The page is a flex column
+   with a gap and margins do not collapse in one, so a paragraph's own margin was added to the gap above the
+   first link (32px) and twice between the two (48px). Here the margin is above and nowhere else, so every link
+   stands the same 32px under whatever is over it: the sentence, the button, or the link before it. */
+.member__way-out {
+  margin: var(--space-16) 0 0;
+}
+
 /* TWO PANELS BESIDE EACH OTHER (PDL P11, owner, 18.10.2026, "Strana Podešavanja, sa snimaka", and
    since 23.10.2026 the three rows of the settings: the password beside the privacy, the picture beside
    the words about oneself, the theme beside the language of the mail). One column on a
