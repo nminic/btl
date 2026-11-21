@@ -70,6 +70,12 @@ class TheProxyInFrontOfThePortalTest {
 			    location / {
 			        return 200 "$http_x_btl_client_address";
 			    }
+			    location /api/previews/ {
+			        return 404;
+			    }
+			    location ~ ^/api/previews/competitor/000001-(sr|en)$ {
+			        return 200 "<title>PROFILE-PREVIEW $uri</title>";
+			    }
 			}
 			""";
 
@@ -222,6 +228,75 @@ class TheProxyInFrontOfThePortalTest {
 				.as("another visitor through the same Cloudflare machine").isEqualTo(200);
 	}
 
+	// ------------------------------------------------------- what a shared link shows, in which language
+
+	private static final String SERBIAN_TITLE = "<title>Balkanska trkačka liga - svaka trka se broji!</title>";
+
+	private static final String ENGLISH_TITLE = "<title>Balkanska trkačka liga - every race counts!</title>";
+
+	/** The head of the page nginx sends for an address, which is all a network that runs no script reads. */
+	private static String theHeadOf(String path) {
+		HttpResponse<String> answer = ask("GET", path, fromTheEdge(NOT_CLOUDFLARE, null));
+
+		assertThat(answer.statusCode()).as(path).isEqualTo(200);
+
+		return answer.body().substring(0, answer.body().indexOf("</head>"));
+	}
+
+	private static void isTheEnglishFrontPage(String path) {
+		String head = theHeadOf(path);
+
+		assertThat(head).as(path).contains(ENGLISH_TITLE)
+				.contains("<meta property=\"og:locale\" content=\"en_US\" />")
+				.contains("<meta property=\"og:locale:alternate\" content=\"sr_RS\" />")
+				.contains("every race counts!\" />")
+				.contains("content=\"Every race counts. The race calendar,")
+				.contains("<meta property=\"og:image:alt\" content=\"Logo of the Balkan Running League\" />")
+				.contains("<meta name=\"twitter:title\" content=\"Balkanska trkačka liga - every race counts!\" />")
+				.doesNotContain("svaka trka se broji")
+				.doesNotContain("PROFILE-PREVIEW");
+	}
+
+	private static void isTheSerbianFrontPage(String path) {
+		String head = theHeadOf(path);
+
+		assertThat(head).as(path).contains(SERBIAN_TITLE)
+				.contains("<meta property=\"og:locale\" content=\"sr_RS\" />")
+				.contains("<meta property=\"og:locale:alternate\" content=\"en_US\" />")
+				.contains("<meta property=\"og:image:alt\" content=\"Logo Balkanske trkačke lige\" />")
+				.doesNotContain("every race counts")
+				.doesNotContain("PROFILE-PREVIEW");
+	}
+
+	@Test
+	void everyEnglishAddressIsSentWithTheEnglishTagsAMessengerReads() {
+		for (String path : new String[] {"/en", "/en/", "/en/kalendar", "/en/top-liste", "/en/kalendar/some-race"}) {
+			isTheEnglishFrontPage(path);
+		}
+	}
+
+	@Test
+	void theSerbianAddressesAndTheFrontPageStaySerbian() {
+		for (String path : new String[] {"/", "/sr", "/sr/", "/sr/kalendar", "/sr/top-liste", "/enx", "/entry"}) {
+			isTheSerbianFrontPage(path);
+		}
+	}
+
+	@Test
+	void aProfileIsStillAskedForItsOwnPreviewInItsOwnLanguage() {
+		assertThat(theHeadOf("/en/takmicar/000001-some-name")).contains("PROFILE-PREVIEW /api/previews/competitor/000001-en")
+				.doesNotContain("every race counts").doesNotContain("svaka trka se broji");
+		assertThat(theHeadOf("/sr/takmicar/000001-some-name")).contains("PROFILE-PREVIEW /api/previews/competitor/000001-sr")
+				.doesNotContain("every race counts").doesNotContain("svaka trka se broji");
+		assertThat(theHeadOf("/en/takmicar/000001")).contains("PROFILE-PREVIEW /api/previews/competitor/000001-en");
+	}
+
+	@Test
+	void aProfileTheBackendHasNothingToSayOfIsTheFrontPageOfItsOwnLanguage() {
+		isTheEnglishFrontPage("/en/takmicar/000999-nobody");
+		isTheSerbianFrontPage("/sr/takmicar/000999-nikoga");
+	}
+
 	// ------------------------------------------------------------------- what a page may load
 
 	private static String thePolicyTheFileDeclares() throws IOException {
@@ -240,6 +315,7 @@ class TheProxyInFrontOfThePortalTest {
 		Map<String, Integer> answers = new LinkedHashMap<>();
 		answers.put("/", 200);
 		answers.put("/sr/kalendar", 200);
+		answers.put("/en/kalendar", 200);
 		answers.put("/sr/takmicar/000127-petar-petrovic", 200);
 		answers.put("/assets/index-abc.js", 200);
 		answers.put("/assets/nothing-here.js", 404);

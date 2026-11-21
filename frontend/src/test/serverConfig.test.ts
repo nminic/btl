@@ -219,25 +219,66 @@ describe('what the server in front of the portal is told', () => {
     }
 
     const names = [...String(profile?.[1]).matchAll(/\(\?<(\w+)>/g)].map((one) => String(one[1]))
-    const include = /<!--# include virtual="\/api\/previews\/competitor\/\$(\w+)-\$(\w+)" stub="([\w-]+)" -->/
+    const include = /<!--# if expr="\$btl_preview_locale = en" -->\s*<!--# include virtual="\$btl_preview_path" stub="([\w-]+)" -->\s*<!--# else -->\s*<!--# include virtual="\$btl_preview_path" stub="([\w-]+)" -->\s*<!--# endif -->/
       .exec(page)
 
     expect(include, 'index.html asks for no preview').not.toBeNull()
-    expect([String(include?.[1]), String(include?.[2])], 'the include reads other variables')
-      .toEqual(['btl_preview_number', 'btl_preview_locale'])
     expect(names.sort()).toEqual(['btl_preview_locale', 'btl_preview_number'])
-
-    const block = new RegExp(
-      `<!--# block name="${String(include?.[3])}" -->([\\s\\S]*?)<!--# endblock -->`,
-    ).exec(page)
-
-    expect(block, 'the stub names a block index.html does not define').not.toBeNull()
-    expect(String(block?.[1]), 'the stub is not the front page\'s own block').toContain(
-      '<meta property="og:image" content="https://balkanskatrkackaliga.net/icon-512.png" />',
+    expect(String(profile?.[2]), 'the profile location asks for the folder of the backend').toContain(
+      'set $btl_preview_path /api/previews/competitor/$btl_preview_number-$btl_preview_locale;',
     )
-    expect(String(block?.[1])).toMatch(/<title>[^<]+<\/title>/)
-    expect(page.indexOf(String(include?.[0])), 'the include stands before the block it names')
-      .toBeGreaterThan(page.indexOf('<!--# endblock -->'))
+
+    /* THE FRONT PAGE'S BLOCK IN BOTH LANGUAGES (owner, 21.11.2026): the Serbian one is the stub of
+       everything but `en`, the English one of `en`, and both carry every tag a network reads. */
+    const blocks = new Map<string, string>()
+
+    for (const [which, language, locale, other] of [
+      [String(include?.[2]), 'sr', 'sr_RS', 'en_US'],
+      [String(include?.[1]), 'en', 'en_US', 'sr_RS'],
+    ] as const) {
+      const block = new RegExp(
+        `<!--# block name="${which}" -->([\\s\\S]*?)<!--# endblock -->`,
+      ).exec(page)
+
+      expect(block, `the stub of ${language} names a block index.html does not define`).not.toBeNull()
+      expect(String(block?.[1]), 'the stub is not the front page\'s own block').toContain(
+        '<meta property="og:image" content="https://balkanskatrkackaliga.net/icon-512.png" />',
+      )
+      expect(String(block?.[1])).toMatch(/<title>[^<]+<\/title>/)
+      expect(String(block?.[1]), `og:locale of ${language}`).toContain(
+        `<meta property="og:locale" content="${locale}" />`,
+      )
+      expect(String(block?.[1]), `og:locale:alternate of ${language}`).toContain(
+        `<meta property="og:locale:alternate" content="${other}" />`,
+      )
+      blocks.set(language, String(block?.[1]))
+    }
+
+    expect(blocks.get('sr'), 'both languages read the same block').not.toBe(blocks.get('en'))
+    expect(page.indexOf('<!--# if expr'), 'the include stands before the blocks it names')
+      .toBeGreaterThan(page.lastIndexOf('<!--# endblock -->'))
+
+    const english = /location\s+~\s+"(\^\/en[^"]*)"\s*\{([^}]*)\}/.exec(conf)
+
+    expect(english, 'no location for the English addresses').not.toBeNull()
+    expect(String(english?.[2])).toMatch(/^\s*ssi on;/m)
+    expect(String(english?.[2])).toMatch(/set \$btl_preview_locale en;/)
+    expect(String(english?.[2])).toMatch(/set \$btl_preview_path \/previews\/none;/)
+    expect(conf.indexOf(String(english?.[0])), 'a profile under /en is matched by its own location first')
+      .toBeGreaterThan(conf.indexOf(String(profile?.[0])))
+    const fallback = /location\s+=\s+\/index\.html\s*\{([^}]*)\}/.exec(conf)
+
+    expect(fallback, 'the fallback has SSI off, so the English block would be read as live tags')
+      .not.toBeNull()
+    expect(String(fallback?.[1])).toMatch(/^\s*ssi on;/m)
+    expect(String(fallback?.[1])).toMatch(/set \$btl_preview_path \/previews\/none;/)
+    expect(String(fallback?.[1]), 'the fallback is told it is English').not.toMatch(/btl_preview_locale/)
+    for (const address of ['/en', '/en/', '/en/kalendar', '/en/top-liste/x']) {
+      expect(new RegExp(String(english?.[1])).test(address), address).toBe(true)
+    }
+    for (const address of ['/', '/sr', '/sr/kalendar', '/enx', '/entry', '/api/en']) {
+      expect(new RegExp(String(english?.[1])).test(address), address).toBe(false)
+    }
 
     const previews = /location\s+\/api\/previews\/\s*\{([^}]*)\}/.exec(conf)
 
