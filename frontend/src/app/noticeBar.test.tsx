@@ -33,7 +33,7 @@ const SENTENCE =
 
 /** The screens the strip stands on, as addresses a reader types: the front page, the Top lists and the three
  *  cards of the BTL tables (Muškarci and Žene at `tabela`, Timovi at `timovi`; owner, 21.11.2026). */
-const STANDS_ON = ['/sr', '/sr/top-liste', '/sr/tabela', '/sr/timovi', '/en/timovi']
+const STANDS_ON = ['/sr', '/sr/top-liste', '/sr/tabela', '/sr/timovi']
 
 /** The same, as the part of the address after the language: written out here and not read from
  *  `NOTICE_SHOWN_ON`, which a list asked about itself could only agree with. */
@@ -287,6 +287,12 @@ describe('closing it', { timeout: SLOW }, () => {
 
     expect(note).toHaveTextContent(/^The data shown at the moment are the historical data of members/)
     expect(screen.getByRole('button', { name: 'Close the notice' })).toBeVisible()
+  })
+
+  it('stands on the teams in English as well, the third card of the tables', async () => {
+    renderAt('/en/timovi', 'visitor', null, undefined, BEFORE)
+
+    expect(await screen.findByRole('note', { name: 'Notice' })).toBeVisible()
   })
 
   it('still closes for the visit when the browser keeps nothing, and still opens when it cannot be read', async () => {
