@@ -102,7 +102,7 @@ describe('what the server in front of the portal is told', () => {
 
     expect(used, 'the location for /api/me/password carries no limit_req').not.toBeNull()
     expect(
-      new RegExp(`limit_req_zone\\s+\\$binary_remote_addr\\s+zone=${String(used?.[1])}:\\d+m\\s+rate=\\d+r/m;`)
+      new RegExp(`limit_req_zone\\s+\\$btl_client\\s+zone=${String(used?.[1])}:\\d+m\\s+rate=\\d+r/m;`)
         .test(conf),
       `the zone ${String(used?.[1])} is not declared`,
     ).toBe(true)
@@ -132,7 +132,7 @@ describe('what the server in front of the portal is told', () => {
     expect(used, 'the location for /api/cards/ carries no limit_req').not.toBeNull()
     expect(used?.[1], 'the cards share a zone with something else').toBe('cards')
     expect(
-      new RegExp(`limit_req_zone\\s+\\$binary_remote_addr\\s+zone=${String(used?.[1])}:\\d+m\\s+rate=\\d+r/m;`)
+      new RegExp(`limit_req_zone\\s+\\$btl_client\\s+zone=${String(used?.[1])}:\\d+m\\s+rate=\\d+r/m;`)
         .test(conf),
       `the zone ${String(used?.[1])} is not declared`,
     ).toBe(true)
