@@ -442,6 +442,11 @@ describe('the lane of the route', () => {
     expect(asks).toHaveLength(7)
     expect(asks.map((one) => Number(one[0]) / Number(one[1]))).toEqual(asks.map(() => 0.08))
     expect(asks.map((one) => one[1])).toEqual([1000, 1500, 2000, 2500, 3000, 4000, 5000])
+
+    /* And only in a browser that divides one length by another: Firefox 155 does not, so it cannot work out `--fit`,
+       the drawing is not squeezed and the window cuts the ring (review of PR 767, round 2). It has no lane and no dot
+       rather than a cut one, under the one `@supports` that asks for that, as the dot's does for `offset-path`. */
+    expect(unremarked(decoration)).toMatch(/@supports \(width: calc\(1px \* \(1px \/ 1px\)\)\) \{\s*@media\s+\(min-width: calc\(1132px/)
   })
 })
 
