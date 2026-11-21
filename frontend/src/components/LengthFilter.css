@@ -1,0 +1,51 @@
+/* The filter by length, shared by the front page and the profile (owner, 20.11.2026 and 21.11.2026).
+   The card or section around it is the container the narrow rule asks about; where there is none
+   (the profile) the rule does not apply and the unit stays. */
+.seg {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  padding: var(--space-2);
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius-round);
+  margin-bottom: var(--space-4);
+}
+
+.seg__b {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-block-size: 1.75rem;
+  padding: var(--space-4) var(--space-6);
+  border: 0;
+  border-radius: var(--radius-round);
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  text-align: center;
+  cursor: pointer;
+}
+
+.seg__b:hover {
+  color: var(--text);
+}
+
+.seg__b--on {
+  background: var(--surface-hover);
+  color: var(--text);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+@container (max-width: 16.875rem) {
+  .seg__km {
+    display: none;
+  }
+
+  .seg__b {
+    padding-inline: var(--space-4);
+    font-size: 0.72rem;
+  }
+}
