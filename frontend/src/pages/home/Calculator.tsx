@@ -138,6 +138,38 @@ function refusedAsNotWhole(text: string): boolean {
   return text.trim() !== '' && !isWhole(text)
 }
 
+/**
+ * THE MINUTES AND THE SECONDS ARE FROM 0 TO 59, AND A FIGURE OUTSIDE THAT IS PUT BACK TO THE NEAREST END.
+ *
+ * Owner, 21.11.2026 (`btl-produkt/PDL.md`): „Minuti i sekunde u kalkulatoru mogu biti od 0 do 59. Ako
+ * otkucam broj veci od 59, polje treba da se promeni na 59, a ispod 0 na 0." The hours are not touched.
+ *
+ * **When: on every `input`, as the writing lands, and not on leaving the box.** A figure above 59 cannot
+ * become a valid one by more digits (`6` stays, `65` becomes 59, and `659` could never have been
+ * anything else), and a figure below nought cannot either, so correcting at once costs nobody a
+ * keystroke they wanted, while correcting on blur would let the answer be computed from 65 until the
+ * box is left. `5` and `-` alone are not outside the range and are left for the person to go on writing.
+ *
+ * **Only a whole number is corrected.** A fraction (`65,5`, `1e3`) is still refused in the forms' words
+ * (`WHOLE_BOXES`, owner, 20.10.2026), and an empty box stays empty and is nought only in the sum.
+ */
+const CLAMPED_BOXES: readonly (keyof Values)[] = ['minutes', 'seconds']
+const LARGEST_MINUTE_OR_SECOND = 59
+
+function clampedMinuteOrSecond(text: string): string {
+  if (!isWhole(text)) {
+    return text
+  }
+
+  const written = Number(text.trim())
+
+  if (written > LARGEST_MINUTE_OR_SECOND) {
+    return String(LARGEST_MINUTE_OR_SECOND)
+  }
+
+  return written < 0 ? '0' : text
+}
+
 /** One box of the widget: the label with the box inside it, and under it the sentence that says
  *  why the box is refused, when it is. The sentence is beside the label and not inside it, so it
  *  is not part of the name of the box. */
@@ -247,7 +279,19 @@ export function Calculator() {
     const widgets = [widget.current].filter((node): node is HTMLElement => node !== null)
 
     const look = () => {
-      widgets.forEach((node) => setHeld(heldBy(node)))
+      widgets.forEach((node) => {
+        node.querySelectorAll('input').forEach((box) => {
+          const clamped = CLAMPED_BOXES.some((name) => name === box.name)
+            ? clampedMinuteOrSecond(box.value)
+            : box.value
+
+          if (clamped !== box.value) {
+            box.value = clamped
+          }
+        })
+
+        setHeld(heldBy(node))
+      })
     }
 
     widgets.forEach((node) => node.addEventListener('input', look))
