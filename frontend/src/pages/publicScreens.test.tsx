@@ -2273,7 +2273,7 @@ describe('CompetitorProfile', () => {
         name: 'Zbirno',
       }).parentElement,
     ).toHaveTextContent(/\d+ trk/)
-    expect(within(screen.getByRole('table', { name: 'Rezultati' })).getAllByRole('row').length)
+    expect(within(screen.getByRole('table', { name: 'Trke' })).getAllByRole('row').length)
       .toBeGreaterThan(1)
   })
 
@@ -2345,10 +2345,10 @@ describe('CompetitorProfile', () => {
 
     expect(before.length).toBeGreaterThan(1)
 
-    await user.click(screen.getByRole('button', { name: 'Maraton 42,2 km' }))
+    await user.click(screen.getByRole('button', { name: '42,2 km, Maraton' }))
     /* The rows themselves, not only the count: the count is the expression
        the table draws from, so it cannot tell the two apart. */
-    const lengths = within(screen.getByRole('table', { name: 'Rezultati' }))
+    const lengths = within(screen.getByRole('table', { name: 'Trke' }))
       .getAllByRole('row')
       .slice(1)
       .map((row) => must(at(within(row).getAllByRole('cell'), 2).textContent, 'the length cell'))
@@ -2388,7 +2388,7 @@ describe('CompetitorProfile', () => {
 
     await screen.findByRole('heading', { level: 1 })
     expect(selectElement(screen.getByLabelText('Godina')).value).toBe('sve')
-    expect(screen.getByRole('table', { name: 'Rezultati' })).toBeVisible()
+    expect(screen.getByRole('table', { name: 'Trke' })).toBeVisible()
   })
 
   it('names the race a result was run in, not the event it belonged to', async () => {
@@ -2402,7 +2402,7 @@ describe('CompetitorProfile', () => {
        mutations that put the event's name back went unnoticed by 2137 tests. */
     renderAt('/sr/takmicar/000002?sezona=2020')
 
-    const results = await screen.findByRole('table', { name: /Rezultati/ })
+    const results = await screen.findByRole('table', { name: 'Trke' })
     const inside = within(results)
 
     expect(
@@ -2579,7 +2579,7 @@ describe('CompetitorProfile', () => {
     /* The length has no column of its own any more: it is the colour of the dot
        beside the distance, and its name is there for a screen reader, which is
        what this reads. */
-    const cells = within(screen.getByRole('table', { name: 'Rezultati' }))
+    const cells = within(screen.getByRole('table', { name: 'Trke' }))
       .getAllByRole('row')
       .slice(1)
       .map((row) => must(at(within(row).getAllByRole('cell'), 2).textContent, 'text'))
@@ -2601,7 +2601,7 @@ describe('CompetitorProfile', () => {
     /* And the dot beside each distance wears that row's own length. It is the
        one thing on the row that says which of the five it is, and every row
        taking the same colour looked exactly like every row taking its own. */
-    const dots = within(screen.getByRole('table', { name: 'Rezultati' }))
+    const dots = within(screen.getByRole('table', { name: 'Trke' }))
       .getAllByRole('row')
       .slice(1)
       .map((row) => row.querySelector('.profile__dot')?.className.split('--')[1])

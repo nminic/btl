@@ -1,9 +1,10 @@
 import { useRef, useState } from 'react'
 import { Link } from 'react-router'
-import { CATEGORIES, dotsAt, upcomingSeries } from '../../data/derive'
+import { dotsAt, upcomingSeries } from '../../data/derive'
 import type { BtlEvent, Race, RaceCategory } from '../../data/types'
 import { formatDayMonth } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
+import { LengthFilter } from '../../components/LengthFilter'
 /* For the five colours of `.length-dot`, which live in the table sheet because
    the results table draws them too (styles/table.css). The front page needs it
    said out loud more than the calendar does: Home.css asks only for the counter,
@@ -43,66 +44,6 @@ import { useRowsThatFit } from './rowsThatFit'
  * ahead, all there are. The row is as it was: the date, the name, the dots; no „za N dana" under the
  * name (owner: „Nema potrebe za dodatnim redovima "Za 16 dana" i sl.").
  */
-/**
- * The six buttons, as one segmented control in one row.
- *
- * **Each says its name the way the profile says it and is read out in full.** What is drawn is the
- * short word (`profile.lengthsShort`); what a screen reader is given is that and the length as the
- * portal says it everywhere else (`category.*`), in a hidden span, so a button called „Kratke" is read
- * „Kratke, Kraća trka" and the word on it is inside its name (WCAG 2.5.3).
- *
- * **Only the unit goes when there is no room, and it goes by the card's width and not the window's**
- * (owner, 20.11.2026: „Gde ne staje, otpada samo km"): „21,1" and „42,2" are written apart from their
- * „km", which a container query on the card hides (`Home.css`).
- */
-function LengthFilter({
-  value,
-  onChange,
-}: {
-  value: RaceCategory | null
-  onChange: (value: RaceCategory | null) => void
-}) {
-  const { t } = useI18n()
-  const options: { key: RaceCategory | null; word: string; measure: string; rest: string }[] = [
-    { key: null, word: t('profile.lengthsShort.all'), measure: '', rest: t('home.lengthsRest') },
-    ...CATEGORIES.map((one) => ({
-      key: one,
-      word: t(`profile.lengthsShort.${one}`),
-      measure: one === 'half' || one === 'marathon' ? t(`home.lengthNumber.${one}`) : '',
-      rest: t(`category.${one}`),
-    })),
-  ]
-
-  return (
-    <div className="seg" role="group" aria-label={t('profile.length')}>
-      {options.map((option) => (
-        <button
-          key={option.key ?? 'all'}
-          type="button"
-          className={option.key === value ? 'seg__b seg__b--on' : 'seg__b'}
-          aria-pressed={option.key === value}
-          onClick={() => onChange(option.key)}
-        >
-          {option.measure === '' ? (
-            option.word
-          ) : (
-            <>
-              {option.measure} <span className="seg__km">{t('home.lengthKm')}</span>
-            </>
-          )}
-          {/* The space is outside the hidden words and not the first thing in them: a name is read off
-              the text nodes one by one and a space that begins a node is not kept (measured). */}
-          {option.key === null && ' '}
-          <span className="visually-hidden">
-            {option.key === null ? '' : ', '}
-            {option.rest}
-          </span>
-        </button>
-      ))}
-    </div>
-  )
-}
-
 export function CalendarExtract({
   events,
   races,

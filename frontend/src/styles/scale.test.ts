@@ -389,7 +389,7 @@ describe('space and corners are chosen from the scale, not typed', () => {
       // other half, 700, went on 03.10.2026 with the one query that was written
       // against it: the table of races is drawn in two shapes at the wide layout
       // now, and nothing else on the portal asks about 700.
-      620, 699.98,
+      699.98,
       // The wide layout, and the navigation stops folding away, with its half.
       780, 819.98, 820,
       // Set by their own content, each said where it is written: the front page
@@ -458,7 +458,6 @@ describe('space and corners are chosen from the scale, not typed', () => {
         'the drawing of the ground made for a telephone, taken off where the wide drawing takes its place; both are pictures that say nothing and are hidden from every reader (`aria-hidden`), so nothing readable goes with it',
       ],
       ['pages/admin/Rights.css .rights__inline', 'the words beside a checkbox, which the column heading now carries and which are aria-hidden either way'],
-      ['pages/Profile.css .profile__length-full', 'the long name of a length, swapped for the short one; both are in the accessible name, so nothing is lost to anybody'],
       [
         'pages/Profile.css .table--races .event-races__label',
         'the word over a figure of a race, which is the only name the figure has on a telephone and is taken off from the wide layout up, where the head of the table is drawn over the column and says the same word. It is real text in the cell and not generated content, so on a telephone it is read with the figure; and the head is not drawn there (`display: none`, written outside every query), so the two are never both exposed (`pages/event/raceTable.test.tsx`, `pages/eventTableStyle.test.ts`)',

@@ -192,10 +192,10 @@ describe('the mark of his card in the address of his own profile', () => {
 
     expect(written.get('sezona')).toBe('2019')
     expect(written.get('duzina')).toBe('half')
-    expect(await screen.findByRole('button', { name: /^Polumaraton/ }))
+    expect(await screen.findByRole('button', { name: /^21,1 km/ }))
       .toHaveAttribute('aria-pressed', 'true')
 
-    await user.click(screen.getByRole('button', { name: /^Maraton/ }))
+    await user.click(screen.getByRole('button', { name: /^42,2 km/ }))
 
     await waitFor(() => {
       expect(new URLSearchParams(router.state.location.search).get('duzina')).toBe('marathon')

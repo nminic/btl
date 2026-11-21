@@ -17,8 +17,9 @@ import { formatNumber, formatShortDate } from '../../i18n/format'
    - the result: scored or unscored, of the SAME member and the SAME year. 000002 holds three scored
      and two unscored results in 2026 and four scored and one unscored in 2020, so no year is made of
      one kind alone and a swap between the two lists cannot give the same table;
-   - the filter: „Sve", a length, „Nebodovane trke". The two unscored races of 2026 are of the lengths
-     `short` and `ultra`, so the length buttons that would show them if the lists were mixed exist;
+   - the filter: „Sve" and a length (no button for the unscored races alone since 21.11.2026). The two
+     unscored races of 2026 are of the lengths `short` and `ultra`, so the length buttons that would
+     show them if the lists were mixed exist;
    - the year: with an unscored result and without (2019 has none), and a year with an unscored result
      and no scored one (2024, served by a case of its own);
    - the count of unscored races, for the case of the word: one, two to four, five and more, which is
@@ -39,7 +40,7 @@ async function bothLists(): Promise<{ scored: Result[]; unscored: Result[] }> {
 
 /** The lines of the table of results, as the cells of each. */
 function lines(): HTMLElement[][] {
-  const table = screen.queryByRole('table', { name: 'Rezultati' })
+  const table = screen.queryByRole('table', { name: 'Trke' })
 
   /* A length with nothing in it draws no table at all, only its sentence. */
   if (table === null) {
@@ -55,18 +56,16 @@ function lines(): HTMLElement[][] {
 const pointsOf = (cells: HTMLElement[]) => must(at(cells, 6).textContent, 'the points cell')
 const raceOf = (cells: HTMLElement[]) => must(at(cells, 1).textContent, 'the race cell')
 
-/** The row of filters, whose seventh button is the one for the races that are not scored. */
+/** The row of filters: „Sve" and the five lengths, the same six as on the front page. */
 function theFilters() {
   return within(screen.getByRole('group', { name: 'Distanca' })).getAllByRole('button')
 }
-
-const UNSCORED_BUTTON = { name: 'Nebodovane trke Nebodovane' }
 
 describe('the table of results beside the races the league does not score', () => {
   it('draws both together under „Sve", newest first, and counts both in the heading', async () => {
     renderAt(`${ADDRESS}?sezona=sve`)
 
-    await screen.findByRole('table', { name: 'Rezultati' })
+    await screen.findByRole('table', { name: 'Trke' })
     const { scored, unscored } = await bothLists()
     /* On one day the scored one first: the sort is stable and the scored ones are put in first. */
     const expected = [
@@ -79,7 +78,7 @@ describe('the table of results beside the races the league does not score', () =
     expect(unscored.length).toBeGreaterThan(1)
     expect(scored.length).toBeGreaterThan(unscored.length)
     expect(
-      screen.getByRole('heading', { name: `Rezultati ${String(scored.length + unscored.length)}` }),
+      screen.getByRole('heading', { name: `Trke ${String(scored.length + unscored.length)}` }),
     ).toBeVisible()
     expect(lines().map((cells) => at(cells, 0).textContent)).toEqual(
       expected.map((line) => formatShortDate(line.result.date, 'sr')),
@@ -90,7 +89,7 @@ describe('the table of results beside the races the league does not score', () =
   it('writes „–" under Bodovi on every unscored line and a number on every scored one', async () => {
     renderAt(`${ADDRESS}?sezona=sve`)
 
-    await screen.findByRole('table', { name: 'Rezultati' })
+    await screen.findByRole('table', { name: 'Trke' })
     const { unscored } = await bothLists()
     const named = new Set(unscored.map((result) => result.raceName))
     const drawn = lines().filter((cells) => named.has(raceOf(cells)))
@@ -110,7 +109,7 @@ describe('the table of results beside the races the league does not score', () =
   it('says what an unscored line is instead of the length group it has none of', async () => {
     renderAt(`${ADDRESS}?sezona=2026`)
 
-    const table = await screen.findByRole('table', { name: 'Rezultati' })
+    const table = await screen.findByRole('table', { name: 'Trke' })
     const swim = must(
       within(table)
         .getAllByRole('row')
@@ -128,7 +127,7 @@ describe('the table of results beside the races the league does not score', () =
     const user = setupUser()
     renderAt(`${ADDRESS}?sezona=2026`)
 
-    await screen.findByRole('table', { name: 'Rezultati' })
+    await screen.findByRole('table', { name: 'Trke' })
     const { scored, unscored } = await bothLists()
     const inYear = (list: Result[]) => list.filter((result) => result.date.startsWith('2026'))
 
@@ -152,68 +151,84 @@ describe('the table of results beside the races the league does not score', () =
     }
   })
 
-  it('shows only the unscored races under „Nebodovane trke", and puts the choice in the address', async () => {
+  it('has no button for the unscored races alone: six, in the order of the front page, and the unscored ones are under „Sve" only', async () => {
     const user = setupUser()
     const { router } = renderAt(`${ADDRESS}?sezona=sve`)
 
-    await screen.findByRole('table', { name: 'Rezultati' })
+    await screen.findByRole('table', { name: 'Trke' })
     const { unscored } = await bothLists()
 
-    await user.click(screen.getByRole('button', UNSCORED_BUTTON))
+    expect(theFilters().map((one) => one.textContent)).toEqual([
+      'Sve distance',
+      'Kratke, Kraća trka',
+      '21,1 km, Polumaraton',
+      'Duge, Duža trka',
+      '42,2 km, Maraton',
+      'Ultra, Ultramaraton',
+    ])
+    expect(screen.queryByRole('button', { name: /Nebodovane/ })).not.toBeInTheDocument()
 
-    expect(lines().map(raceOf).sort()).toEqual(unscored.map((result) => result.raceName).sort())
-    expect(lines().map(pointsOf)).toEqual(unscored.map(() => '–Bez bodova'))
-    expect(screen.getByRole('heading', { name: `Rezultati ${String(unscored.length)}` })).toBeVisible()
-    expect(screen.getByRole('button', UNSCORED_BUTTON)).toHaveAttribute('aria-pressed', 'true')
-    expect(screen.getByRole('button', { name: 'Sve distance Sve' })).toHaveAttribute('aria-pressed', 'false')
-    expect(router.state.location.search).toContain('duzina=nebodovane')
+    /* Under „Sve" every unscored race is drawn, with its dash. */
+    expect(lines().map(raceOf)).toEqual(expect.arrayContaining(unscored.map((result) => result.raceName)))
 
-    /* And „Sve" takes it back out of the address, as a length does. */
-    await user.click(screen.getByRole('button', { name: 'Sve distance Sve' }))
+    /* And under any length none of them is, and the choice is in the address. */
+    for (const index of [1, 2, 3, 4, 5]) {
+      await user.click(at(theFilters(), index))
+
+      expect(lines().map(raceOf).filter((name) => unscored.some((one) => one.raceName === name))).toEqual([])
+    }
+
+    expect(router.state.location.search).toContain('duzina=ultra')
+
+    /* „Sve" takes it back out of the address, as a length does. */
+    await user.click(screen.getByRole('button', { name: 'Sve distance' }))
 
     expect(router.state.location.search).not.toContain('duzina')
   })
 
-  it('opens on the unscored races when the address says so', async () => {
+  it('opens on „Sve" for the address that used to ask for „Nebodovane trke", and not on an empty list', async () => {
     renderAt(`${ADDRESS}?sezona=sve&duzina=nebodovane`)
 
-    await screen.findByRole('table', { name: 'Rezultati' })
-    expect(screen.getByRole('button', UNSCORED_BUTTON)).toHaveAttribute('aria-pressed', 'true')
+    await screen.findByRole('table', { name: 'Trke' })
+    const { scored, unscored } = await bothLists()
+
+    expect(screen.getByRole('button', { name: 'Sve distance' })).toHaveAttribute('aria-pressed', 'true')
+    expect(lines()).toHaveLength(Math.min(50, scored.length + unscored.length))
+    expect(screen.queryByText('Nema nijedne nebodovane trke.')).not.toBeInTheDocument()
   })
 
   it('opens on all of them for a word it does not know, as it does for a length it does not know', async () => {
     renderAt(`${ADDRESS}?sezona=sve&duzina=nebodovan`)
 
-    await screen.findByRole('table', { name: 'Rezultati' })
-    expect(screen.getByRole('button', { name: 'Sve distance Sve' })).toHaveAttribute(
+    await screen.findByRole('table', { name: 'Trke' })
+    expect(screen.getByRole('button', { name: 'Sve distance' })).toHaveAttribute(
       'aria-pressed',
       'true',
     )
-    expect(screen.getByRole('button', UNSCORED_BUTTON)).toHaveAttribute('aria-pressed', 'false')
   })
 
-  it('follows the year: one unscored race in 2020', async () => {
-    renderAt(`${ADDRESS}?sezona=2020&duzina=nebodovane`)
+  it('follows the year: one unscored race in 2020, drawn under „Sve" with its dash', async () => {
+    renderAt(`${ADDRESS}?sezona=2020`)
 
-    await screen.findByRole('table', { name: 'Rezultati' })
-    expect(lines().map(raceOf)).toEqual(['Biciklistički maraton Fruške gore'])
-    expect(screen.getByRole('heading', { name: 'Rezultati 1' })).toBeVisible()
+    await screen.findByRole('table', { name: 'Trke' })
+    const row = must(
+      lines().find((cells) => raceOf(cells) === 'Biciklistički maraton Fruške gore'),
+      'the unscored race of 2020',
+    )
+
+    expect(pointsOf(row)).toBe('–Bez bodova')
+    expect(screen.getByRole('heading', { name: `Trke ${String(lines().length)}` })).toBeVisible()
   })
 
-  it('has a sentence of its own for a year with none, and the filters can be cleared out of it', async () => {
-    const user = setupUser()
-
+  it('draws the table, and no sentence about the unscored, for the old address in a year without any', async () => {
     /* 2019 is a year this member has results in and none of them unscored. */
     renderAt(`${ADDRESS}?sezona=2019&duzina=nebodovane`)
 
-    expect(
-      await screen.findByText('Za izabranu godinu nema nijedne nebodovane trke.'),
-    ).toBeVisible()
-    await user.click(screen.getByRole('button', { name: 'Poništi filtere' }))
-    expect(await screen.findByRole('table', { name: 'Rezultati' })).toBeVisible()
+    expect(await screen.findByRole('table', { name: 'Trke' })).toBeVisible()
+    expect(screen.queryByText('Za izabranu godinu nema nijedne nebodovane trke.')).not.toBeInTheDocument()
   })
 
-  it('has a sentence of its own for no unscored race at all, which is not about a length', async () => {
+  it('draws the scored table for the old address when no unscored race is served at all', async () => {
     const stop = serverThat((path) =>
       path === '/api/unscored-results'
         ? new Response('[]', { status: 200, headers: { 'content-type': 'application/json' } })
@@ -223,8 +238,8 @@ describe('the table of results beside the races the league does not score', () =
     try {
       renderAt(`${ADDRESS}?sezona=sve&duzina=nebodovane`)
 
-      expect(await screen.findByText('Nema nijedne nebodovane trke.')).toBeVisible()
-      expect(screen.queryByText(/izabrane distance/)).not.toBeInTheDocument()
+      expect(await screen.findByRole('table', { name: 'Trke' })).toBeVisible()
+      expect(screen.queryByText('Nema nijedne nebodovane trke.')).not.toBeInTheDocument()
     } finally {
       stop()
     }
@@ -260,7 +275,7 @@ describe('the table of results beside the races the league does not score', () =
     try {
       renderAt(`${ADDRESS}?sezona=2024`)
 
-      await screen.findByRole('table', { name: 'Rezultati' })
+      await screen.findByRole('table', { name: 'Trke' })
       expect(lines().map(raceOf)).toEqual(['Plivanje oko Ade'])
       expect(pointsOf(first(lines()))).toBe('–Bez bodova')
       /* The year is one of the years offered, so the address was not turned into „sve". */
@@ -317,7 +332,7 @@ describe('the ring beside the table', () => {
   it('has a slice for the unscored races, and counts them in the total it says in words', async () => {
     renderAt(`${ADDRESS}?sezona=sve`)
 
-    await screen.findByRole('table', { name: 'Rezultati' })
+    await screen.findByRole('table', { name: 'Trke' })
     const { scored, unscored } = await bothLists()
     const reading = screen.getByRole('table', { name: 'Trke po distanci' })
     const row = must(
@@ -339,7 +354,7 @@ describe('the ring beside the table', () => {
        not the member's: a ring that counted every year's unscored races gave 2019 a slice of three. */
     renderAt(`${ADDRESS}?sezona=2019`)
 
-    await screen.findByRole('table', { name: 'Rezultati' })
+    await screen.findByRole('table', { name: 'Trke' })
     const { scored, unscored } = await bothLists()
     const inYear = (list: Result[], year: string) =>
       list.filter((result) => result.date.startsWith(year)).length
@@ -362,7 +377,7 @@ describe('the ring beside the table', () => {
   it('counts the unscored races of the year chosen, and of that year alone', async () => {
     renderAt(`${ADDRESS}?sezona=2020`)
 
-    await screen.findByRole('table', { name: 'Rezultati' })
+    await screen.findByRole('table', { name: 'Trke' })
     const { scored, unscored } = await bothLists()
     const scoredIn2020 = scored.filter((result) => result.date.startsWith('2020')).length
     const unscoredIn2020 = unscored.filter((result) => result.date.startsWith('2020')).length
@@ -393,7 +408,7 @@ describe('the ring beside the table', () => {
     try {
       renderAt(`${ADDRESS}?sezona=sve`)
 
-      await screen.findByRole('table', { name: 'Rezultati' })
+      await screen.findByRole('table', { name: 'Trke' })
       expect(screen.queryByRole('rowheader', { name: 'Nebodovane trke' })).not.toBeInTheDocument()
     } finally {
       stop()

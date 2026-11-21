@@ -197,13 +197,13 @@ describe('clearing the filters', () => {
     expect(await screen.findByText(/nema nijednog rezultata/)).toBeVisible()
     await user.click(screen.getByRole('button', { name: 'Poništi filtere' }))
 
-    expect(screen.getByRole('table', { name: 'Rezultati' })).toBeVisible()
+    expect(screen.getByRole('table', { name: 'Trke' })).toBeVisible()
     // The length is a row of six now, and the one that is on says which.
-    expect(screen.getByRole('button', { name: 'Sve distance Sve' })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: 'Sve distance' })).toHaveAttribute(
       'aria-pressed',
       'true',
     )
-    expect(screen.getByRole('button', { name: 'Maraton 42,2 km' })).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByRole('button', { name: '42,2 km, Maraton' })).toHaveAttribute('aria-pressed', 'false')
   })
 })
 
@@ -215,14 +215,14 @@ describe('the length, as one row of six', () => {
     /* Counted as the heading counts them, not as the table draws them: the table
        grows as it is read and stops at fifty, so the number of rows on screen is
        a fact about how far somebody has scrolled (CompetitorProfile.tsx). */
-    await screen.findByRole('table', { name: 'Rezultati' })
+    await screen.findByRole('table', { name: 'Trke' })
     const all = Number(must(document.querySelector('.profile__count')?.textContent, 'the count beside the heading'))
 
-    await user.click(screen.getByRole('button', { name: 'Polumaraton 21,1 km' }))
+    await user.click(screen.getByRole('button', { name: '21,1 km, Polumaraton' }))
     /* And the rows really are only that length. The count above is the same
        expression the table draws from, so on its own it cannot tell a
        filtered table from an unfiltered one under a filtered heading. */
-    const lengths = within(screen.getByRole('table', { name: 'Rezultati' }))
+    const lengths = within(screen.getByRole('table', { name: 'Trke' }))
       .getAllByRole('row')
       .slice(1)
       .map((row) => must(at(within(row).getAllByRole('cell'), 2).textContent, 'the length cell'))
@@ -235,11 +235,11 @@ describe('the length, as one row of six', () => {
 
     expect(narrowed).toBeLessThan(all)
     expect(narrowed).toBeGreaterThan(0)
-    expect(screen.getByRole('button', { name: 'Polumaraton 21,1 km' })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: '21,1 km, Polumaraton' })).toHaveAttribute(
       'aria-pressed',
       'true',
     )
-    expect(screen.getByRole('button', { name: 'Sve distance Sve' })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: 'Sve distance' })).toHaveAttribute(
       'aria-pressed',
       'false',
     )
@@ -251,10 +251,10 @@ describe('the length, as one row of six', () => {
     const user = setupUser()
     const { router } = renderAt('/sr/takmicar/000002?sezona=sve&duzina=half')
 
-    await screen.findByRole('table', { name: 'Rezultati' })
+    await screen.findByRole('table', { name: 'Trke' })
     expect(router.state.location.search).toContain('duzina=half')
 
-    await user.click(screen.getByRole('button', { name: 'Sve distance Sve' }))
+    await user.click(screen.getByRole('button', { name: 'Sve distance' }))
 
     // Written into the address only where it differs from the default, so an
     // address stays as short as it can be.
@@ -262,36 +262,37 @@ describe('the length, as one row of six', () => {
     expect(router.state.location.search).toContain('sezona=sve')
   })
 
-  it('is named by both of its names, at every width', async () => {
+  it('is the very row the front page has: the same group, the same buttons, the short word on screen and the full name read out', async () => {
     renderAt('/sr/takmicar/000002?sezona=sve')
 
-    await screen.findByRole('table', { name: 'Rezultati' })
+    await screen.findByRole('table', { name: 'Trke' })
 
-    /* Both names are always in the reading, and only one of them is on screen.
-       The first attempt hid the long one with `display: none` and the short one
-       with `aria-hidden`, which between them left the control with no accessible
-       name at all below 620px: six unnamed buttons on the width PDL P24 calls
-       the main one. */
-    expect(screen.getByRole('button', { name: 'Maraton 42,2 km' })).toBeVisible()
-    expect(screen.getByRole('button', { name: 'Sve distance Sve' })).toBeVisible()
-    expect(document.querySelector('.profile__length-short')).not.toHaveAttribute('aria-hidden')
+    const group = screen.getByRole('group', { name: 'Distanca' })
+
+    expect(group).toHaveClass('seg')
+
+    const buttons = within(group).getAllByRole('button')
+
+    expect(buttons).toHaveLength(6)
+
+    for (const one of buttons) {
+      expect(one).toHaveClass('seg__b')
+    }
+
+    /* The word on the button is inside its name (WCAG 2.5.3), and the rest of the name is in text a
+       screen reader reads and the eye does not (`visually-hidden`), at every width. */
+    expect(within(group).getByRole('button', { name: 'Kratke, Kraća trka' })).toBeVisible()
+    expect(within(group).getByRole('button', { name: 'Kratke, Kraća trka' }).querySelector('.visually-hidden')).toHaveTextContent(
+      'Kraća trka',
+    )
+    expect(within(group).getByRole('button', { name: '42,2 km, Maraton' })).toBeVisible()
+    expect(within(group).getByRole('button', { name: 'Sve distance' })).toBeVisible()
   })
 
-  it('hides one of the two names by moving it, never by removing it', () => {
-    /* jsdom computes no media queries, so the rule is read as text, the way the
-       ducat art and the ring are tested (ADL A7). `display: none` on either name
-       is what would take it out of the reading, and it is the one thing this
-       stylesheet must not do to them. */
+  it('has no styles of its own for the row: the front page and the profile draw one sheet', () => {
     const css = readFileSync(join(process.cwd(), 'src/pages/Profile.css'), 'utf-8')
 
-    /* Matched on the rules themselves rather than on everything after the first
-       mention of one. A slice to the end of the file catches any `display: none`
-       written below it, for any selector at all, and misses one written above. */
-    expect(css).toMatch(/\.profile__length-short\s*\{[^}]*clip-path: inset\(50%\)/)
-    expect(css).toMatch(
-      /@media \(max-width: 38\.75em\)[\s\S]*?\.profile__length-full\s*\{[^}]*clip-path: inset\(50%\)/,
-    )
-    expect(css).not.toMatch(/\.profile__length-(full|short)\s*\{[^}]*display:\s*none/)
+    expect(css).not.toMatch(/\.profile__length/)
   })
 })
 
@@ -650,7 +651,7 @@ describe('the years a profile offers', () => {
     /* And what is below the control is all of them too. A select shows its first option for a
        value it does not carry, so the control alone would read „sve" while the table below was
        read in 2010 and stood empty (review of PR 670). */
-    expect(screen.getByRole('table', { name: 'Rezultati' })).toBeVisible()
+    expect(screen.getByRole('table', { name: 'Trke' })).toBeVisible()
     expect(screen.queryByText(/nema nijednog rezultata/i)).not.toBeInTheDocument()
   })
 
@@ -1172,7 +1173,7 @@ describe('the table of results on a profile, named in full', () => {
        length and not a column. */
     renderAt('/sr/takmicar/000021?sezona=sve')
 
-    const table = await screen.findByRole('table', { name: 'Rezultati' })
+    const table = await screen.findByRole('table', { name: 'Trke' })
 
     expect(
       within(table)
@@ -1184,7 +1185,7 @@ describe('the table of results on a profile, named in full', () => {
   it('reads each of the three from its own field, in every row', async () => {
     renderAt('/sr/takmicar/000021?sezona=sve')
 
-    const table = await screen.findByRole('table', { name: 'Rezultati' })
+    const table = await screen.findByRole('table', { name: 'Trke' })
     /* „Sve" draws the races the league does not score as well (PDL, 14.11.2026), and they are
        read from the other list. */
     const mine = [
