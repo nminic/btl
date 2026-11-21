@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import type { BtlEvent, Race } from '../../data/types'
 import { I18nProvider } from '../../i18n/I18nProvider'
+import { NAV } from '../../app/routes'
 import { CalendarExtract } from './CalendarExtract'
 
 /* The extract of the calendar, which is the widget "Priprema, pozor, SAD!".
@@ -116,6 +117,68 @@ describe('CalendarExtract', () => {
       'href',
       '/sr/kalendar?mesec=2026-07',
     )
+  })
+
+  /* Owner, 21.11.2026 (PDL, „Filter po dužini u „Priprema, pozor, SAD!"): the way to the calendar goes
+     from the bottom of the card into the row of the title, on its right, so the room it took is the
+     list's. It is still a link, in the same row as the heading and before the list, never under it. */
+  it('puts the link to the calendar in the row of the title and nothing under the list', () => {
+    renderWidget(<CalendarExtract events={[]} races={[]} today="2026-07-29" fill />)
+
+    const heading = screen.getByRole('heading', { level: 2, name: 'Priprema, pozor, SAD!' })
+    const link = screen.getByRole('link', { name: 'Ceo kalendar' })
+    const list = screen.getByRole('list')
+
+    expect(link.parentElement, 'the link is not in the row of the title').toBe(heading.parentElement)
+    expect(heading.contains(link), 'the link is inside the heading').toBe(false)
+    expect(
+      heading.compareDocumentPosition(link) & Node.DOCUMENT_POSITION_FOLLOWING,
+      'the link does not follow the title',
+    ).toBeTruthy()
+    expect(
+      list.compareDocumentPosition(link) & Node.DOCUMENT_POSITION_PRECEDING,
+      'the link is under the list',
+    ).toBeTruthy()
+    expect(list.contains(link)).toBe(false)
+    expect(screen.getAllByRole('link', { name: 'Ceo kalendar' })).toHaveLength(1)
+  })
+
+  /* Owner, 21.11.2026 (PDL, after the review of PR 770): where the word does not fit beside the title the link is
+     the calendar of the header, and its name stays the word. The card decides which is drawn (jsdom lays nothing
+     out, so what is held here is what both shapes are made of: the symbol is the navigation's own and says nothing,
+     the word that is drawn is hidden from the reader, and the name is the word once). */
+  it('draws the calendar of the header and names the link with the word, once', () => {
+    renderWidget(<CalendarExtract events={[]} races={[]} today="2026-07-29" fill />)
+
+    const link = screen.getByRole('link', { name: 'Ceo kalendar' })
+    const drawing = link.querySelector('svg')
+    const calendarOfTheHeader = NAV.find((section) => section.id === 'calendar')?.symbol
+
+    expect(calendarOfTheHeader).toBe('calendar')
+    expect(drawing?.getAttribute('data-symbol'), 'it is not the symbol of the header').toBe(calendarOfTheHeader)
+    expect(drawing?.getAttribute('aria-hidden'), 'the drawing is read').toBe('true')
+    expect(link.textContent, 'the word is not there twice, once to see and once to hear').toBe('Ceo kalendarCeo kalendar')
+    expect(
+      [...link.querySelectorAll('[aria-hidden="true"]')].filter((one) => one.textContent === 'Ceo kalendar'),
+      'the word that is drawn is read as well',
+    ).toHaveLength(1)
+    expect(link.querySelector('.visually-hidden')?.textContent, 'the name is not the hidden word').toBe('Ceo kalendar')
+  })
+
+  it('calls the link "Full calendar" in English', () => {
+    render(
+      <I18nProvider locale="en">
+        <MemoryRouter>
+          <CalendarExtract events={[]} races={[]} today="2026-07-29" fill />
+        </MemoryRouter>
+      </I18nProvider>,
+    )
+
+    expect(screen.getByRole('link', { name: 'Full calendar' })).toHaveAttribute(
+      'href',
+      '/en/kalendar?mesec=2026-07',
+    )
+    expect(screen.queryByText('The whole calendar')).toBeNull()
   })
 
   /* Owner, 08.11.2026 (PDL, „oznaka „i još N termina” se briše zauvek"): „Ne zelim da se ovde

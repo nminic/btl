@@ -15,6 +15,8 @@ import { LengthFilter } from '../../components/LengthFilter'
    it is written down as open (ADL A7) rather than fixed here, since only
    table.css is read by the test that keeps this honest. */
 import '../../styles/table.css'
+import { NavSymbolIcon } from '../../app/icons'
+import { NAV_SYMBOL } from '../../app/navSymbol'
 import { useRowsThatFit } from './rowsThatFit'
 
 /* "Priprema, pozor, SAD!" The calendar is the main reason people come, so what
@@ -44,6 +46,9 @@ import { useRowsThatFit } from './rowsThatFit'
  * ahead, all there are. The row is as it was: the date, the name, the dots; no „za N dana" under the
  * name (owner: „Nema potrebe za dodatnim redovima "Za 16 dana" i sl.").
  */
+/** The calendar of the header of a telephone: the symbol the navigation gives its own „Kalendar", never a drawing of this card's. */
+const CALENDAR_SYMBOL = NAV_SYMBOL.calendar
+
 export function CalendarExtract({
   events,
   races,
@@ -67,9 +72,28 @@ export function CalendarExtract({
 
   return (
     <section className="card" aria-labelledby="calendar-extract-heading">
-      <h2 className="card__title" id="calendar-extract-heading">
-        {t('home.readySetGo')}
-      </h2>
+      {/* The way on to the whole calendar stands in the row of the title, on its right (owner, 21.11.2026,
+          „Ceo kalendar”), so the room it took under the list is the list's. The row wraps: in a larger
+          text the link goes under the title, still on the right. The month today is in (owner,
+          04.08.2026) is not where the calendar opens by itself: left to choose, it opens on the first
+          month that has anything in it, and in a league whose season starts in January that is months
+          away from whoever pressed this. */}
+      <div className="card__head">
+        <h2 className="card__title" id="calendar-extract-heading">
+          {t('home.readySetGo')}
+        </h2>
+        {/* The word where it fits beside the title and the calendar of the header where it does not (owner,
+            21.11.2026, after the review of PR 770): the card decides which (`Home.css`, `.card__head-word`), and
+            the name of the link is the same word either way: the one a reader hears is the hidden copy, and the
+            one a sighted reader sees is hidden from the reader, so it is never read twice. */}
+        <Link className="card__head-link" to={`/${locale}/kalendar?mesec=${today.slice(0, 7)}`}>
+          <NavSymbolIcon of={CALENDAR_SYMBOL} className="card__head-icon" />
+          <span className="card__head-word" aria-hidden="true">
+            {t('home.seeCalendar')}
+          </span>
+          <span className="visually-hidden">{t('home.seeCalendar')}</span>
+        </Link>
+      </div>
 
       <LengthFilter value={length} onChange={setLength} />
 
@@ -111,14 +135,6 @@ export function CalendarExtract({
           )
         })}
       </ul>
-
-      {/* On the month today is in (owner, 04.08.2026), which is not where the
-          calendar opens by itself: left to choose, it opens on the first month
-          that has anything in it, and in a league whose season starts in January
-          that is months away from whoever pressed this. */}
-      <Link className="card__more" to={`/${locale}/kalendar?mesec=${today.slice(0, 7)}`}>
-        {t('home.seeCalendar')}
-      </Link>
     </section>
   )
 }
