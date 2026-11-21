@@ -3,8 +3,11 @@
    (the profile) the rule does not apply and the unit stays. */
 .seg {
   display: flex;
+  /* Wraps: at an enlarged text the six do not fit one row, and a row that cannot wrap squeezes the boxes
+     under their words (WCAG 1.4.4, 1.4.10). At the ordinary text they fit and stay in one row. */
+  flex-wrap: wrap;
   align-items: stretch;
-  gap: 0;
+  gap: var(--space-2) 0;
   padding: var(--space-2);
   border: 1px solid var(--control-border);
   border-radius: var(--radius-round);
@@ -12,8 +15,8 @@
 }
 
 .seg__b {
+  /* No `min-width: 0`: a button is never narrower than its own words. */
   flex: 1 1 auto;
-  min-width: 0;
   min-block-size: 1.75rem;
   padding: var(--space-4) var(--space-6);
   border: 0;
