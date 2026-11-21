@@ -249,6 +249,12 @@ class RegistrationApi {
 	/** One address is one account (V6), and the owner decided this is said out loud. */
 	static final String THE_ADDRESS_IS_TAKEN = "theAddressIsTaken";
 
+	/**
+	 * More attempts from one network within the hour than the owner allows (21.11.2026), answered 429
+	 * with {@code Retry-After}. {@link AttemptsAtTheDoor} counts; this route only says so.
+	 */
+	static final String TOO_MANY_ATTEMPTS = "tooManyAttempts";
+
 	private final JdbcClient db;
 
 	private final Postman postman;
@@ -282,6 +288,8 @@ class RegistrationApi {
 	 */
 	private final ATownFromTheCodebookOrTyped towns;
 
+	private final AttemptsAtTheDoor door;
+
 	/**
 	 * @param address where the portal lives, which is what the link in the message hangs
 	 *                off. {@link WhatTheMessageSays} says at length why it may never be
@@ -296,7 +304,7 @@ class RegistrationApi {
 	 *                relay's key.
 	 */
 	RegistrationApi(JdbcClient db, Postman postman, Clock clock,
-			TransactionTemplate inOneTransaction, ATownFromTheCodebookOrTyped towns,
+			TransactionTemplate inOneTransaction, ATownFromTheCodebookOrTyped towns, AttemptsAtTheDoor door,
 			@Value("${btl.portal.address}") String address) {
 
 		this.db = db;
@@ -304,6 +312,7 @@ class RegistrationApi {
 		this.clock = clock;
 		this.inOneTransaction = inOneTransaction;
 		this.towns = towns;
+		this.door = door;
 		this.portal = new Portal(address);
 
 		/* READ ONCE, HERE, AND NOT ON EVERY REGISTRATION. The controller is a singleton,
@@ -396,6 +405,15 @@ class RegistrationApi {
 		   the same point: `@RequestBody` is required, so a request with no body is turned
 		   away with 400 before this method runs. `aRequestWithNoFormAtAllNeverReachesUs`
 		   is what holds that guarantee. */
+
+		/* COUNTED FIRST, BEFORE ANYTHING ABOUT THE FORM IS ASKED: every attempt spends the
+		   allowance, a refused one as much as one that is written (`AttemptsAtTheDoor`). */
+		Optional<ResponseEntity<Refused>> tooMany = door.aRegistration(asking, new Refused(TOO_MANY_ATTEMPTS));
+
+		if (tooMany.isPresent()) {
+			return tooMany.orElseThrow();
+		}
+
 		LocalDate today = LocalDate.ofInstant(clock.instant(), SeasonClock.ZONE);
 		LocalDate born = WhatAFieldMeans.theDay(typed.birthDate(), today);
 

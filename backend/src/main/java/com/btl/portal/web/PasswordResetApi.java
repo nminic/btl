@@ -104,6 +104,13 @@ class PasswordResetApi {
 	 *  route was handed does not point at a row that is still live and unspent. */
 	static final String THE_LINK_IS_NOT_VALID = "theLinkIsNotValid";
 
+	/**
+	 * More attempts for one address within the hour than the owner allows (21.11.2026), by {@link #request}, answered 429
+	 * with {@code Retry-After}. {@link AttemptsAtTheDoor} counts; this route only says so, and says it
+	 * for an address nobody holds exactly as for one somebody does.
+	 */
+	static final String TOO_MANY_ATTEMPTS = "tooManyAttempts";
+
 	private final JdbcClient db;
 
 	private final Postman postman;
@@ -118,9 +125,13 @@ class PasswordResetApi {
 
 	private final TheLetterAfterTheAddress welcome;
 
+	private final AttemptsAtTheDoor door;
+
 	PasswordResetApi(JdbcClient db, Postman postman, TransactionTemplate inOneTransaction,
-			TheLetterAfterTheAddress welcome, @Value("${btl.portal.address}") String address) {
+			TheLetterAfterTheAddress welcome, AttemptsAtTheDoor door,
+			@Value("${btl.portal.address}") String address) {
 		this.db = db;
+		this.door = door;
 		this.postman = postman;
 		this.inOneTransaction = inOneTransaction;
 		this.welcome = welcome;
@@ -150,10 +161,28 @@ class PasswordResetApi {
 
 	/**
 	 * ASKING FOR THE LINK, which never says more than "if there was something to do,
-	 * it is done" - see the class comment.
+	 * it is done" - see the class comment - or, past three requests for one address within
+	 * the hour, 429, which is the same for every address and so says no more than 204 did.
 	 */
 	@PostMapping("/api/password-reset/request")
-	ResponseEntity<Void> request(@RequestBody RequestTyped typed) {
+	ResponseEntity<Refused> request(@RequestBody RequestTyped typed) {
+		/* AN ADDRESS NO ACCOUNT CAN HOLD IS ANSWERED 204 AT ONCE, NEITHER COUNTED NOR LOOKED UP, for
+		   the reason `EmailConfirmationApi.resend` gives at length (security review of PR 763). */
+		if (typed.email() == null
+				|| !WhatAnAddressLooksLike.itDoes(WhatAnAddressLooksLike.asItIsStored(typed.email()))) {
+
+			return ResponseEntity.noContent().build();
+		}
+
+		/* COUNTED BY THE ADDRESS AS TYPED, BEFORE IT IS LOOKED UP (owner, 21.11.2026: three an hour,
+		   and the answer says nothing about whether the address exists). */
+		Optional<ResponseEntity<Refused>> tooMany = door.aNewPasswordLetter(typed.email(),
+				new Refused(TOO_MANY_ATTEMPTS));
+
+		if (tooMany.isPresent()) {
+			return tooMany.orElseThrow();
+		}
+
 		ToSend made = inOneTransaction.execute(committing -> write(typed));
 
 		if (made != null) {
@@ -176,11 +205,8 @@ class PasswordResetApi {
 	private record Found(long id, String email, MailLanguage language) {
 	}
 
+	/** Only ever asked with an address of the shape an account can hold; {@link #request} sees to it. */
 	private ToSend write(RequestTyped typed) {
-		if (typed.email() == null || typed.email().isBlank()) {
-			return null;
-		}
-
 		/* NEITHER CONFIRMED NOR UNCONFIRMED IS ASKED HERE, unlike
 		   `EmailConfirmationApi.resend`'s own lookup - see the class comment for why a
 		   reset is not conditioned on `email_confirmed_at` in either direction. */

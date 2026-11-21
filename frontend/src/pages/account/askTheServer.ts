@@ -415,7 +415,13 @@ export async function askTheServer(
      (`btl-produkt/ADL.md`, 08.09.2026): „Registracija na vec zauzetu adresu kaze da je
      zauzeta." He was shown the price before choosing it - anybody can then test whether
      an address is a member of the league - and took it. */
-  if (answer.status === 400 || answer.status === 409) {
+  /* AND 429 READ THE SAME WAY, since 21.11.2026: the three doors that send a letter to an address
+     the caller names refuse past their hourly allowance with 429 and the reason in the body
+     (`AttemptsAtTheDoor`, owner 21.11.2026), and the screen says „Previše pokušaja" for it. A 429
+     with no reason in it is the proxy's own per-minute limit (`frontend/nginx.conf`), which answers
+     with a page of its own, and stays the bare number: the general sentence („Pokušaj ponovo za koji
+     minut") is the true one for it, while „za sat vremena" would not be. */
+  if (answer.status === 400 || answer.status === 409 || answer.status === 429) {
     const refusal = await refusalIn(answer)
 
     return refusal === null

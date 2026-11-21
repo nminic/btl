@@ -1051,6 +1051,7 @@
     "locked": "The browser has forgotten the access password for the trial period. Open the portal in a new tab and type it there, then come back here and send again; what you have entered is still here.",
     "lockedOpen": "Open in a new tab",
     "wrong": "Nothing was saved (error {status}). Try again in a few minutes.",
+    "tooManyAttempts": "Too many attempts. Try again in an hour.",
     "malformed": "Nothing was saved. The fault is on our side; write to us at info@balkanskatrkackaliga.net.",
     "nothing": "The portal did not manage to reach the server. Check the connection and try again."
   },

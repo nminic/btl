@@ -3,6 +3,7 @@ import { Link } from 'react-router'
 import { AskedLabel } from '../../forms/AskedLabel'
 import { useI18n } from '../../i18n/useI18n'
 import { askTheServer, type Answer } from './askTheServer'
+import { WHEN_ASKING_FOR_A_NEW_PASSWORD } from './refusals'
 import { ServerSaid } from './ServerSaid'
 import '../member/Member.css'
 
@@ -165,10 +166,10 @@ export function ForgottenPassword() {
         )}
       </form>
 
-      {/* The map of named refusals is empty because this route names none: it answers
-          204 and nothing else, and declares no reason constant for `refusals.test.ts`
-          to read. The same shape, and for the same reason, as `SignIn`'s own call. */}
-      {refusal !== null && <ServerSaid answer={refusal} refusals={{}} />}
+      {/* One named refusal since 21.11.2026, three requests for one address within the hour
+          (`WHEN_ASKING_FOR_A_NEW_PASSWORD` says why it is the same for every address); every
+          other answer of the route is 204. */}
+      {refusal !== null && <ServerSaid answer={refusal} refusals={WHEN_ASKING_FOR_A_NEW_PASSWORD} />}
     </div>
   )
 }

@@ -2,6 +2,8 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
+  WHEN_ASKING_FOR_A_NEW_PASSWORD,
+  WHEN_ASKING_FOR_THE_LINK_AGAIN,
   WHEN_CONFIRMING_AN_ADDRESS,
   WHEN_LEAVING_A_TEAM,
   WHEN_PROPOSING_A_TEAM,
@@ -273,14 +275,18 @@ describe('the reasons the server can name', () => {
        pass as "this route names nothing". Three, one and three are what the files hold
        today; one more is exactly the event this file exists for, and it arrives as a
        red gate with the number in the message. */
-    ['PasswordResetApi.java', [WHEN_SETTING_A_PASSWORD], 3],
-    ['EmailConfirmationApi.java', [WHEN_CONFIRMING_AN_ADDRESS], 1],
+    /* FOUR, TWO AND FOUR SINCE 21.11.2026, one reason added to each of the three routes that send
+       a letter to an address the caller names: `tooManyAttempts`, past the hourly allowance (owner,
+       ADL, „Ograničenje broja pokušaja"). The two routes that ask for a letter had no dictionary of
+       their own until then, because they named nothing; each now has one, on its file's line. */
+    ['PasswordResetApi.java', [WHEN_SETTING_A_PASSWORD, WHEN_ASKING_FOR_A_NEW_PASSWORD], 4],
+    ['EmailConfirmationApi.java', [WHEN_CONFIRMING_AN_ADDRESS, WHEN_ASKING_FOR_THE_LINK_AGAIN], 2],
     /* The third route, added 21.09.2026 when the registration screen began to send.
        It is the first one here whose refusals do not all arrive under 400: the taken
        address is a 409. That changes nothing in this file, and the reason it does not
        is the point - the gate is over the NAMES a route declares, and a name is what
        the screen looks a sentence up by, whichever number carried it. */
-    ['RegistrationApi.java', [WHEN_REGISTERING], 3],
+    ['RegistrationApi.java', [WHEN_REGISTERING], 4],
     /* The fourth and fifth, added 22.09.2026 when ProposeTeam.tsx and RateEvent.tsx
        began to send: two more members' writes that answer 201 rather than 204, which
        is `askTheServer`'s own widening and not a fact this gate has any reason to
