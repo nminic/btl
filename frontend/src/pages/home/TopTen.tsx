@@ -103,6 +103,7 @@ function PodiumPlace({
   const { competitor } = slot
   const category = categoryLabelIn(competitor, season, t)
   const won = place === 1 && slot.ranked
+  const points = `${formatPoints(slot.points, locale)}${t('home.podiumPointsUnit')}`
 
   return (
     <li className={`stand__item stand__item--${place}${won ? ' stand__item--won' : ''}`}>
@@ -117,9 +118,8 @@ function PodiumPlace({
           {competitor.lastName}
         </span>
       </span>
-      <span className="stand__points">
-        {formatPoints(slot.points, locale)}
-        {t('home.podiumPointsUnit')}
+      <span className="stand__points" style={{ '--chars': points.length }}>
+        {points}
       </span>
       {category !== '' && <span className="stand__cat">{category}</span>}
       <span className="stand__step" aria-hidden="true">

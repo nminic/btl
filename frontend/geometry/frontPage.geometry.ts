@@ -55,8 +55,8 @@ const LONG_FIRST = ['Aleksandar', 'Strahinja', 'Radoslava', 'Aleksandra', 'Ivona
 const MEMBERS = everyAnswer()['/api/competitors']
 
 /**
- * The first result of every member raised by 34.000 points (owner, 21.11.2026: the podium prints the BTL
- * points of the whole history while the league warms up, in the short unit "p", "34.921,69 p"), so the figure
+ * The first result of every member raised by 399.000 points (owner, 21.11.2026: the podium prints the BTL
+ * points of the whole history while the league warms up, in the short unit "p", "399.999,99 p"), so the figure
  * the podium and the list have to hold is of that length and not the two-digit one of the sample.
  */
 const RESULTS = everyAnswer()['/api/results']
@@ -69,7 +69,7 @@ const ANSWERS: Answers = {
 
     SEEN.add(one.memberNumber)
 
-    return first && typeof one.points === 'number' ? { ...one, points: one.points + 34000 } : one
+    return first && typeof one.points === 'number' ? { ...one, points: one.points + 399000 } : one
   }),
   '/api/competitors': (Array.isArray(MEMBERS) ? MEMBERS : []).map((one: Record<string, unknown>, index: number) => ({
     ...one,
@@ -81,7 +81,7 @@ const ANSWERS: Answers = {
 /** Half a pixel: a box of a fraction of a pixel is the same box. */
 const SAME = 0.5
 
-const WIDTHS: At[] = [360, 560, 768, 860, 1024, 1280].map((width): At => ({ width, text: 100 }))
+const WIDTHS: At[] = [360, 540, 560, 768, 860, 1024, 1280].map((width): At => ({ width, text: 100 }))
 
 type Box = { top: number; bottom: number; left: number; right: number; width: number; height: number }
 
@@ -449,7 +449,7 @@ const SAMPLE_NAMES: Answers = {
 
 const TEXTS: At['text'][] = [100, 125, 200]
 
-for (const width of [360, 560, 768, 860, 1024, 1280]) {
+for (const width of [360, 540, 560, 768, 860, 1024, 1280]) {
   for (const text of TEXTS) {
     const here: At = { width, text }
 
