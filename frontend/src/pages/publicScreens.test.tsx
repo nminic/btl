@@ -566,6 +566,26 @@ describe('Rankings', () => {
     expect(within(screen.getByRole('table')).getAllByRole('row')).toHaveLength(all)
   })
 
+  it('lists „Sve" first and then the categories in the order of their codes, as one pressable row', async () => {
+    /* The order the table has always offered them in (owner, 21.11.2026, the filter is the shared segmented
+       control and the order does not change with it): „Sve", then the codes sorted, men before women. The
+       whole list is read, so a reversed or shuffled row fails, and each button says whether it is pressed. */
+    renderAt(ADDRESS(inLeague(2020)))
+
+    await screen.findByRole('table')
+
+    const buttons = within(screen.getByRole('group', { name: 'Kategorija' })).getAllByRole('button')
+    const names = buttons.map((one) => one.textContent ?? '')
+
+    expect(first(names)).toBe('Sve')
+    expect(names.length).toBeGreaterThan(2)
+    const letter = first(names.slice(1)).charAt(0)
+
+    expect(names.slice(1)).toEqual(['24-', '25-39', '40-54', '55+'].map((band) => `${letter} ${band}`).filter((one) => names.includes(one)))
+    expect(names.slice(1).length, 'every band of the gender is offered').toBeGreaterThanOrEqual(4)
+    expect(buttons.map((one) => one.getAttribute('aria-pressed'))).toEqual(['true', ...names.slice(1).map(() => 'false')])
+  })
+
   it('drops a search out of an address that still carries one, on arrival', async () => {
     /* Somebody has this bookmarked from before the search went, and nothing on this
        screen reads `trazi` any more. Left alone it is carried into every filter
