@@ -515,8 +515,16 @@ class MePasswordApi {
 	 */
 	private void tell(Done done) {
 		try {
-			postman.send(WhatANoticeSays.about(Notice.THE_PASSWORD_HAS_CHANGED, done.language(),
-					WhatANoticeSays.moment(done.at(), done.language())), done.address());
+			/* AN ACCOUNT THAT NAMES NO MEMBER (administration, a moderator who does not race) IS WRITTEN THE
+			   WORDS WITH NO SEX, A MEMBER THE WORDS HE ALWAYS HAD (owner, 21.11.2026: „Samo nalozi bez profila.
+			   Neka za članove ostane kako jeste"). */
+			String moment = WhatANoticeSays.moment(done.at(), done.language());
+
+			postman.send(TheSexOfAMember.ofTheAccount(db, done.account()).isPresent()
+					? WhatANoticeSays.about(Notice.THE_PASSWORD_HAS_CHANGED, done.language(), moment)
+					: WhatANoticeSays.aboutToAnAccountThatNamesNoMember(Notice.THE_PASSWORD_HAS_CHANGED,
+							done.language(), moment),
+					done.address());
 		}
 		catch (MailException theRelayDidNotTakeIt) {
 			/* THE ACCOUNT'S NUMBER AND NEVER ITS ADDRESS, which is what `RegistrationApi`,

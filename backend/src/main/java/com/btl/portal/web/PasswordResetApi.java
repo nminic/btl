@@ -250,9 +250,14 @@ class PasswordResetApi {
 
 	private void send(ToSend made) {
 		try {
-			postman.send(
-					WhatTheMessageSays.about(Message.SET_A_NEW_PASSWORD, made.language(), portal,
-							made.link()),
+			/* AN ACCOUNT THAT NAMES NO MEMBER IS WRITTEN THE WORDS WITH NO SEX, A MEMBER THE WORDS HE ALWAYS HAD
+			   (owner, 21.11.2026: „Samo nalozi bez profila. Neka za članove ostane kako jeste"). Which of the
+			   two is asked of the row, the way `EmailConfirmationApi` asks it; the answer to whoever asked for
+			   the link is the same in both cases, so this tells nobody which kind of account an address is. */
+			postman.send(TheSexOfAMember.ofTheAccount(db, made.account()).isPresent()
+					? WhatTheMessageSays.about(Message.SET_A_NEW_PASSWORD, made.language(), portal, made.link())
+					: WhatTheMessageSays.aboutToAnAccountThatNamesNoMember(Message.SET_A_NEW_PASSWORD,
+							made.language(), portal, made.link()),
 					made.address());
 		} catch (MailException theRelayDidNotTakeIt) {
 			LOG.warn("a password reset message for account {} did not go out; asking again is"

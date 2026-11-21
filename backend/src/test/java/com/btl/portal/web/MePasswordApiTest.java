@@ -918,6 +918,42 @@ class MePasswordApiTest {
 		assertThat(posted.getContent().toString()).doesNotContain("odjavljenih uređaja");
 	}
 
+	/**
+	 * THE NOTICE GOES BY WHO READS IT. Owner, 21.11.2026: the notice of a changed password is written on
+	 * „ti" with no sex to an account that names no member, and, to the question whether a member gets that
+	 * too: „Samo nalozi bez profila. Neka za članove ostane kako jeste". {@code ME} names no member; the
+	 * second account names one, and is written the words he always had. Each half is the other's mutation:
+	 * a route that gave everybody one of the two texts fails the other half.
+	 */
+	@Test
+	void aMemberIsToldInTheWordsHeAlwaysHadAndAnAccountThatNamesNoMemberInTheWordsWithNoSex() throws Exception {
+		assertThat(asking(theSessionIAskFrom(),
+				body(MY_OLD_PASSWORD, MY_NEW_PASSWORD, MY_NEW_PASSWORD)).getStatus()).isEqualTo(204);
+
+		MimeMessage none = waitForOne();
+
+		assertThat(none.getSubject()).isEqualTo("Lozinka na tvom nalogu je promenjena");
+		assertThat(none.getContent().toString())
+				.contains("Nalog je odjavljen sa svih ostalih uređaja.")
+				.contains("Ako ovo nije tvoja promena")
+				.doesNotContain("Odjavljeni ste");
+
+		SMTP.reset();
+
+		String member = aMemberBehindAnAccount(Behind.A_FEE_THAT_STANDS, 2);
+
+		assertThat(asking(theSessionOf(member),
+				body(MY_OLD_PASSWORD, MY_NEW_PASSWORD, MY_NEW_PASSWORD)).getStatus()).isEqualTo(204);
+
+		MimeMessage mine = waitForOne();
+
+		assertThat(mine.getSubject()).isEqualTo("Lozinka na vašem nalogu je promenjena");
+		assertThat(mine.getContent().toString())
+				.contains("Odjavljeni ste sa svih ostalih uređaja.")
+				.contains("Ako ovo niste uradili vi")
+				.doesNotContain("Nalog je odjavljen");
+	}
+
 	@Test
 	void aRefusedRequestPostsNothing() throws Exception {
 		assertThat(asking(theSessionIAskFrom(),

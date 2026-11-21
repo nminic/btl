@@ -49,30 +49,43 @@ class NoMessageAddressesAMemberAsViTest {
 					+ "|sačuvajte|nastavite|pokušajte|kontaktirajte|obnovite|platite|popunite)(?![\\p{L}\\p{N}])");
 
 	/**
-	 * THE TEXTS THAT STILL WAIT. One flow only: the confirmation of the address that is sent to an account
-	 * that names no member, a moderator who does not race (V23), who has no sex anywhere in the portal
-	 * ({@code mail/sr-no-member}). It is written to him in the words it always had. The owner's decision
-	 * of 21.11.2026 moves three letters to that account ({@link #THE_THREE_FOR_AN_ACCOUNT_WITHOUT_A_MEMBER});
-	 * this one is not among the three, and what is said to him in it is still the owner's question.
+	 * THE TEXTS THAT STILL WAIT, the ones a MEMBER reads and the ones the owner has not yet moved to „ti".
+	 *
+	 * <p>The confirmation of the address that is sent to an account that names no member, a moderator who
+	 * does not race (V23, {@code mail/sr-no-member}), is written to him in the words it always had: it is not
+	 * one of the three letters the owner moved, and what is said to him in it is still his question.
+	 *
+	 * <p>The link to set a new password and the notice that a password has changed, when they go to a
+	 * MEMBER. Owner, 21.11.2026, asked whether the text with no sex also goes to members: „Samo nalozi bez
+	 * profila. Neka za članove ostane kako jeste". So a member is written the words he always had
+	 * ({@code mail/sr.properties}, {@code notices/sr.properties}), which wait on „vi" like every text a
+	 * member reads that the owner has not moved; the account that names no member has its own words in
+	 * {@code sr-no-member}, below.
 	 */
 	private static final List<String> WAITING = List.of(
 			"mail/sr-no-member.properties#confirmTheAddress.subject",
-			"mail/sr-no-member.properties#confirmTheAddress.body");
-
-	/**
-	 * THE THREE LETTERS THAT GO TO AN ACCOUNT WITHOUT A MEMBER PROFILE, and so to a reader whose sex the
-	 * portal does not know. Owner, 21.11.2026: „Tri mejla koja idu i nalogu bez članskog profila (pozivnica
-	 * za moderatora, nova lozinka, obaveštenje o promeni lozinke) prelaze na „ti” tekstom bez roda, isti za
-	 * sve primaoce". They are off {@link #WAITING}, so the floor above holds them to „ti" like every other
-	 * text, and {@link #A_SINGULAR_FORM_THAT_HAS_A_SEX} holds them to a text with no sex.
-	 */
-	private static final List<String> THE_THREE_FOR_AN_ACCOUNT_WITHOUT_A_MEMBER = List.of(
-			"mail/sr.properties#setANewPassword.subject",
+			"mail/sr-no-member.properties#confirmTheAddress.body",
 			"mail/sr.properties#setANewPassword.body",
-			"mail/sr.properties#invitedAsAModerator.subject",
-			"mail/sr.properties#invitedAsAModerator.body",
 			"notices/sr.properties#thePasswordHasChanged.subject",
 			"notices/sr.properties#thePasswordHasChanged.body");
+
+	/**
+	 * THE THREE LETTERS AS AN ACCOUNT WITHOUT A MEMBER PROFILE READS THEM, and so as a reader whose sex the
+	 * portal does not know. Owner, 21.11.2026: „Tri mejla koja idu i nalogu bez članskog profila (pozivnica
+	 * za moderatora, nova lozinka, obaveštenje o promeni lozinke) prelaze na „ti” tekstom bez roda, isti za
+	 * sve primaoce", and, to the question whether a member gets them too: „Samo nalozi bez profila. Neka za
+	 * članove ostane kako jeste". The invitation of a moderator goes only to such an account, so it stands in
+	 * {@code mail/sr.properties}; the other two have words of their own in {@code sr-no-member}. They are off
+	 * {@link #WAITING}, so the floor above holds them to „ti" like every other text, and
+	 * {@link #A_SINGULAR_FORM_THAT_HAS_A_SEX} holds them to a text with no sex.
+	 */
+	private static final List<String> THE_THREE_FOR_AN_ACCOUNT_WITHOUT_A_MEMBER = List.of(
+			"mail/sr-no-member.properties#setANewPassword.subject",
+			"mail/sr-no-member.properties#setANewPassword.body",
+			"mail/sr.properties#invitedAsAModerator.subject",
+			"mail/sr.properties#invitedAsAModerator.body",
+			"notices/sr-no-member.properties#thePasswordHasChanged.subject",
+			"notices/sr-no-member.properties#thePasswordHasChanged.body");
 
 	/**
 	 * WHAT THIS CAN AND CANNOT SEE. In Serbian the sex of the reader enters a sentence addressed to „ti" in

@@ -306,6 +306,51 @@ class PasswordResetApiTest {
 				.contains("1 hour");
 	}
 
+	/**
+	 * THE LINK IS WRITTEN BY WHO READS IT. Owner, 21.11.2026: the letter that sets a new password is on
+	 * „ti" with no sex to an account that names no member, and, to the question whether a member gets that
+	 * too: „Samo nalozi bez profila. Neka za članove ostane kako jeste". {@code anAccount} names no member;
+	 * the second one is given a member and is written the words he always had. Each half is the other's
+	 * mutation: a route that wrote everybody the same text fails one of them.
+	 */
+	@Test
+	void aMemberIsWrittenTheOldWordsAndAnAccountThatNamesNoMemberTheOnesWithNoSex() throws Exception {
+		String none = aFreshAddress();
+
+		anAccount(none);
+
+		assertThat(request(none).getStatus()).isEqualTo(204);
+
+		String bodyOfNone = waitForOne().getContent().toString();
+
+		assertThat(bodyOfNone).startsWith("Stigao nam je zahtev da postaviš novu lozinku")
+				.contains("Otvori ovaj link i upiši je:")
+				.contains("Ako zahtev nije stigao od tebe, zanemari ovu poruku.")
+				.doesNotContain("Ako niste tražili");
+
+		SMTP.purgeEmailFromAllMailboxes();
+
+		String member = aFreshAddress();
+		long account = anAccount(member);
+		long competitor = db.sql("insert into competitor (first_name, last_name, gender, birth_date, place_id,"
+						+ " first_season, referral_code, bio, profile_hidden, birthday_shown, father_name,"
+						+ " address, shirt_size, health_statement_at) values ('Probni', 'Clan', 'M',"
+						+ " date '1990-01-01', (select id from place where rank = 1), 2027, ?, '', false,"
+						+ " 'none', 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00')"
+						+ " returning id")
+				.param(String.format("%016x", System.nanoTime())).query(Long.class).single();
+
+		db.sql("update account set competitor_id = ? where id = ?").params(competitor, account).update();
+
+		assertThat(request(member).getStatus()).isEqualTo(204);
+
+		assertThat(waitForOne().getContent().toString())
+				.startsWith("Stigao nam je zahtev da postavite novu lozinku")
+				.contains("Otvorite ovaj link i upišite je:")
+				.contains("Ako niste tražili novu lozinku, zanemarite ovu poruku.")
+				.doesNotContain("Ako zahtev nije stigao");
+	}
+
 	@Test
 	void requestBuildsTheLinkFromTheSettingAndNotFromWhoeverAsked() throws Exception {
 		String email = aFreshAddress();

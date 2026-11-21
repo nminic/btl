@@ -432,6 +432,25 @@ public final class WhatTheMessageSays {
 		return written(message, reader, null, true, portal, token, WhatANoticeSays.moment(endsAt, reader));
 	}
 
+	/**
+	 * THE LINK TO SET A NEW PASSWORD, FOR AN ACCOUNT THAT NAMES NO MEMBER. Owner, 21.11.2026: „Samo nalozi
+	 * bez profila. Neka za članove ostane kako jeste": this account is written {@code mail/sr-no-member},
+	 * on „ti" with no verb that has a sex, and a member is asked for with
+	 * {@link #about(Message, MailLanguage, Portal, String)} and gets the words he always had.
+	 */
+	public static Said aboutToAnAccountThatNamesNoMember(Message message, MailLanguage reader, Portal portal,
+			String token) {
+		Objects.requireNonNull(message, "message");
+		Objects.requireNonNull(reader, "reader");
+
+		if (message != Message.SET_A_NEW_PASSWORD) {
+			throw new IllegalArgumentException(message + " has no words for an account that names no member,"
+					+ " asked for without a moment");
+		}
+
+		return written(message, reader, null, true, portal, token, howLong(message.lasts(), reader));
+	}
+
 	private static Said written(Message message, MailLanguage in, Gender sex, Portal portal, String token,
 			String howLong) {
 		return written(message, in, sex, false, portal, token, howLong);
