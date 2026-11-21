@@ -9,6 +9,7 @@ import {
   did,
   forgetEveryCookie,
   isResource,
+  refused,
   serverThat,
   type Asked,
 } from '../../test/serverAnswers'
@@ -296,13 +297,17 @@ describe('what the screen says about the answer', () => {
   })
 
   it('says what the server said, for each answer that is not a yes', async () => {
-    /* The three shapes this route can come back in that are not 204. It names no
-       refusal of its own - it declares no reason constant, which is what
-       `refusals.test.ts` reads the other routes' by - so `ServerSaid` is handed an
-       empty map and these three sentences are the whole of what there is to say. */
+    /* The shapes this route can come back in that are not 204. Since 21.11.2026 it names one
+       refusal of its own, three requests for one address within the hour, which
+       `refusals.test.ts` reads off `PasswordResetApi.java`. */
     const answers: [name: string, made: () => Response, said: RegExp][] = [
       ['a token the server did not recognise', () => answeredWith(403), /Zahtev nije prošao/],
       ['a number nothing else explains', () => answeredWith(500), /greška 500/],
+      [
+        'the fourth request for one address within the hour',
+        () => refused('tooManyAttempts', 429),
+        /^Previše pokušaja\. Pokušaj ponovo za sat vremena\.$/,
+      ],
     ]
 
     for (const [, made, said] of answers) {

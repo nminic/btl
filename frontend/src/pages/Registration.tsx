@@ -6,7 +6,7 @@ import { FormRenderer } from '../forms/FormRenderer'
 import type { FormValues } from '../forms/types'
 import { REFERRAL_CODE } from '../data/pricing'
 import { askTheServer, type Answer } from './account/askTheServer'
-import { WHEN_REGISTERING } from './account/refusals'
+import { WHEN_ASKING_FOR_THE_LINK_AGAIN, WHEN_REGISTERING } from './account/refusals'
 import { ServerSaid } from './account/ServerSaid'
 import { useSend, useSent } from './sent'
 import type { Locale } from '../i18n/config'
@@ -144,23 +144,6 @@ function theBody(
     mailLanguage: language,
   }
 }
-
-/**
- * THE REFUSALS `POST /api/email-confirmation/resend` CAN NAME, AND THERE ARE NONE.
- *
- * <p><b>Read off the route rather than remembered.</b> `EmailConfirmationApi.resend` ends
- * `ResponseEntity.noContent()` on every path - an address nobody holds, one already confirmed and
- * one waiting on exactly this message are all 204, on purpose - and returns no `Refused` body. The
- * one reason that class declares, `THE_LINK_IS_NOT_VALID`, belongs to the OTHER route
- * (`POST /api/email-confirmation`, `WHEN_CONFIRMING_AN_ADDRESS`). What can come back from this one
- * is therefore a number and no reason: a 403 for the token, a 400 for a body Spring cannot read, a
- * 5xx, or nothing at all, and `ServerSaid` says each of them.
- *
- * <p>Named as a constant rather than written `{}` at the call site, so that the day the route does
- * name one there is a place for its sentence to go, and so that the reason it is empty is written
- * once beside the emptiness instead of being a puzzle at the call site.
- */
-const WHEN_ASKING_FOR_THE_LINK_AGAIN: Record<string, string> = {}
 
 /* The form itself is the JSON definition; this screen only decides what happens with the
  * values. ~~Until the backend exists, it carries two of them on the confirmation's own
@@ -306,7 +289,8 @@ export function Registration() {
             **What the server answers is the same for every address**
             (`EmailConfirmationApi.resend`: 204 whether the address belongs to nobody, to
             somebody already confirmed or to somebody waiting on exactly this message, so the
-            route is no oracle for which addresses are members). A 204 therefore says „received"
+            route is no oracle for which addresses are members; the fourth request for one address
+            within the hour is 429, and that too is the same for every address). A 204 therefore says „received"
             and not „sent", and the sentence says what that is worth: IF this address is still
             waiting, a message is being sent (and since 21.10.2026 it does not say „sent" even then,
             PDL P8, PENDING 28430). It is `forgottenPassword.done`'s shape for the same

@@ -817,6 +817,22 @@ describe('the letter asked for again', () => {
     expect(await screen.findByText(sr.registration.resent)).toBeVisible()
   }, SLOW)
 
+  it('says there were too many attempts when this address has asked three times in the hour', async () => {
+    /* The one reason the route names (owner, 21.11.2026), the same for every address. */
+    resendAnswer = () => refused('tooManyAttempts', 429)
+
+    const user = setupUser()
+    renderForm()
+
+    await registered(user)
+    await user.click(screen.getByRole('button', ASK))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      /^Previše pokušaja\. Pokušaj ponovo za sat vremena\.$/,
+    )
+    expect(screen.queryByText(sr.registration.resent)).toBeNull()
+  }, SLOW)
+
   it('lets the next press through after a refusal, and then says it', async () => {
     resendAnswer = () => answeredWith(500)
 
@@ -1732,6 +1748,26 @@ describe('a registration the server refuses', () => {
       'vladan@primer.rs',
     )
     expect(inputElement(screen.getByLabelText(/^Ime$/)).value).toBe('Vladan')
+  }, SLOW)
+
+  it('says there were too many attempts when the server counts this one past the hour\'s five', async () => {
+    /* Owner, 21.11.2026 (ADL): five registrations an hour from one network, every attempt
+       counted, answered 429 with the reason named. The form stays as it was typed: an hour later
+       the same press goes through. */
+    registrationAnswered(() => refused('tooManyAttempts', 429))
+
+    const user = setupUser()
+    renderForm()
+
+    await fillAndSend(user)
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      /^Previše pokušaja\. Pokušaj ponovo za sat vremena\.$/,
+    )
+    expect(screen.queryByRole('heading', { name: 'Prijava je zabeležena' })).toBeNull()
+    expect(inputElement(screen.getByLabelText(/Adresa elektronske pošte/)).value).toBe(
+      'vladan@primer.rs',
+    )
   }, SLOW)
 
   it('tells a leaked password apart from a form the route would not take', async () => {
