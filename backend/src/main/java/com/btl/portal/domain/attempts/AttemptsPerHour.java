@@ -4,6 +4,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayDeque;
 import java.util.Deque;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -37,7 +38,15 @@ import java.util.Optional;
  * pushes the oldest counts out. That is a hundred thousand requests in an hour, which the relay and
  * the proxy notice long before this map does.
  *
- * <p>Thread safe by being synchronized as a whole: every call is a few operations on one small deque.
+ * <p><b>A key nobody has knocked with for an hour is forgotten</b> (security review of PR 763,
+ * 21.11.2026). Measured there: a key five hours old was still in the map, because emptying its
+ * attempts left the key itself behind. So every knock first sweeps from the key touched longest ago,
+ * taking out each whose last attempt has run out, and stops at the first that still counts. The map
+ * is kept in the order keys were touched, so everything behind that first live key was touched later
+ * and is left; and any key untouched for an hour has nothing left that counts, so it is taken. A key
+ * stays only while something in it still counts.
+ *
+ * <p>Thread safe by being synchronized as a whole: every call is a few operations on small deques.
  */
 public final class AttemptsPerHour {
 
@@ -77,6 +86,8 @@ public final class AttemptsPerHour {
 	 *         attempt still counting runs out, and then nothing is counted
 	 */
 	public synchronized Optional<Duration> knock(String key, Instant now) {
+		forgetWhatHasRunOut(now);
+
 		Deque<Instant> attempts = letIn.computeIfAbsent(key, nobody -> new ArrayDeque<>());
 
 		while (!attempts.isEmpty() && !now.isBefore(attempts.peekFirst().plus(THE_WINDOW))) {
@@ -90,6 +101,24 @@ public final class AttemptsPerHour {
 		attempts.addLast(now);
 
 		return Optional.empty();
+	}
+
+	/** How many keys are kept at this moment, which is what a ceiling on memory is measured by. */
+	public synchronized int keysRemembered() {
+		return letIn.size();
+	}
+
+	/**
+	 * From the key touched longest ago, every key whose LAST attempt has run out, up to the first one
+	 * that still counts. No key in the map is ever empty: one is written only by a knock that is let
+	 * in, or refused because it already holds its allowance.
+	 */
+	private void forgetWhatHasRunOut(Instant now) {
+		Iterator<Deque<Instant>> eldest = letIn.values().iterator();
+
+		while (eldest.hasNext() && !now.isBefore(eldest.next().peekLast().plus(THE_WINDOW))) {
+			eldest.remove();
+		}
 	}
 
 }

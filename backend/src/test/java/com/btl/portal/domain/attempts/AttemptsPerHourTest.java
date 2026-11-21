@@ -96,6 +96,37 @@ class AttemptsPerHourTest {
 	}
 
 	@Test
+	void aKeyNobodyHasKnockedWithForAnHourIsForgotten() {
+		/* Security review of PR 763: a key five hours old was still in the map, its attempts emptied
+		   and the key itself left behind, so every address ever typed stayed in memory. */
+		AttemptsPerHour three = new AttemptsPerHour(3, 100);
+
+		three.knock("a", T0);
+		three.knock("b", T0.plus(Duration.ofMinutes(30)));
+		assertThat(three.keysRemembered()).isEqualTo(2);
+
+		three.knock("c", T0.plus(Duration.ofHours(1)));
+		assertThat(three.keysRemembered()).as("a ran out, b still counts").isEqualTo(2);
+
+		three.knock("d", T0.plus(Duration.ofMinutes(90)));
+		assertThat(three.keysRemembered()).as("b ran out, c still counts").isEqualTo(2);
+
+		three.knock("e", T0.plus(Duration.ofHours(5)));
+		assertThat(three.keysRemembered()).as("only the one just let in").isEqualTo(1);
+	}
+
+	@Test
+	void aKeyIsKeptWhileItsLastAttemptCountsEvenIfItsFirstHasRunOut() {
+		AttemptsPerHour three = new AttemptsPerHour(3, 100);
+
+		three.knock("a", T0);
+		three.knock("a", T0.plus(Duration.ofMinutes(50)));
+		three.knock("b", T0.plus(Duration.ofMinutes(70)));
+
+		assertThat(three.keysRemembered()).isEqualTo(2);
+	}
+
+	@Test
 	void anAllowanceOfNothingOrAMemoryOfNothingIsRefusedAtStartUp() {
 		assertThatThrownBy(() -> new AttemptsPerHour(0, 100)).isInstanceOf(IllegalArgumentException.class);
 		assertThatThrownBy(() -> new AttemptsPerHour(1, 0)).isInstanceOf(IllegalArgumentException.class);

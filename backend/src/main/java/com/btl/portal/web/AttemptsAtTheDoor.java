@@ -106,6 +106,12 @@ class AttemptsAtTheDoor {
 				refused);
 	}
 
+	/** How many keys the three counts keep between them, which is what the memory they hold grows with. */
+	int keysRemembered() {
+		return registrations.keysRemembered() + confirmationLetters.keysRemembered()
+				+ newPasswordLetters.keysRemembered();
+	}
+
 	/**
 	 * 429 with the reason and {@code Retry-After}, the seconds until the oldest attempt still counting
 	 * runs out, rounded up so that a client which waits exactly that long is let in.

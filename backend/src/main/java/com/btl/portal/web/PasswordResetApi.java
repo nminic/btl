@@ -166,16 +166,21 @@ class PasswordResetApi {
 	 */
 	@PostMapping("/api/password-reset/request")
 	ResponseEntity<Refused> request(@RequestBody RequestTyped typed) {
-		/* COUNTED BY THE ADDRESS AS TYPED, BEFORE IT IS LOOKED UP (owner, 21.11.2026: three an hour,
-		   and the answer says nothing about whether the address exists), for the reason
-		   `EmailConfirmationApi.resend` gives in the same words. */
-		if (typed.email() != null && !typed.email().isBlank()) {
-			Optional<ResponseEntity<Refused>> tooMany = door.aNewPasswordLetter(typed.email(),
-					new Refused(TOO_MANY_ATTEMPTS));
+		/* AN ADDRESS NO ACCOUNT CAN HOLD IS ANSWERED 204 AT ONCE, NEITHER COUNTED NOR LOOKED UP, for
+		   the reason `EmailConfirmationApi.resend` gives at length (security review of PR 763). */
+		if (typed.email() == null
+				|| !WhatAnAddressLooksLike.itDoes(WhatAnAddressLooksLike.asItIsStored(typed.email()))) {
 
-			if (tooMany.isPresent()) {
-				return tooMany.orElseThrow();
-			}
+			return ResponseEntity.noContent().build();
+		}
+
+		/* COUNTED BY THE ADDRESS AS TYPED, BEFORE IT IS LOOKED UP (owner, 21.11.2026: three an hour,
+		   and the answer says nothing about whether the address exists). */
+		Optional<ResponseEntity<Refused>> tooMany = door.aNewPasswordLetter(typed.email(),
+				new Refused(TOO_MANY_ATTEMPTS));
+
+		if (tooMany.isPresent()) {
+			return tooMany.orElseThrow();
 		}
 
 		ToSend made = inOneTransaction.execute(committing -> write(typed));
@@ -200,11 +205,8 @@ class PasswordResetApi {
 	private record Found(long id, String email, MailLanguage language) {
 	}
 
+	/** Only ever asked with an address of the shape an account can hold; {@link #request} sees to it. */
 	private ToSend write(RequestTyped typed) {
-		if (typed.email() == null || typed.email().isBlank()) {
-			return null;
-		}
-
 		/* NEITHER CONFIRMED NOR UNCONFIRMED IS ASKED HERE, unlike
 		   `EmailConfirmationApi.resend`'s own lookup - see the class comment for why a
 		   reset is not conditioned on `email_confirmed_at` in either direction. */

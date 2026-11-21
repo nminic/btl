@@ -107,6 +107,9 @@ class AttemptsAtTheDoorTest {
 	@Autowired
 	private AClockTheCaseMoves clock;
 
+	@Autowired
+	private AttemptsAtTheDoor door;
+
 	private Instant start;
 
 	private int fresh;
@@ -484,6 +487,65 @@ class AttemptsAtTheDoorTest {
 
 		clock.moveTo(start.plus(Duration.ofHours(1)));
 		assertThat(askForANewPassword(nobody).getStatus()).isEqualTo(204);
+	}
+
+	@Test
+	void anAddressNoAccountCanHoldIsAnsweredAsNobodyAndLeavesNothingInMemory() throws Exception {
+		/* Security review of PR 763: an address of half a megabyte was kept as a key for every
+		   request, two hundred of them held some 200 MB. The shape is asked first now (V6,
+		   `account_email_shape`), and what fails it is answered 204 and never counted. */
+		/* One knock first on each of the three counts: the clock has moved three hours since the last
+		   case, so these sweep every key the earlier cases left, and the count read next stands still
+		   unless something below adds to it. */
+		resend(aFreshAddress());
+		askForANewPassword(aFreshAddress());
+		anIncompleteRegistration(aFreshNetwork());
+
+		int before = door.keysRemembered();
+		String tooLong = "a".repeat(300) + "@primer.rs";
+
+		for (String nobody : new String[] {tooLong, "nije adresa", "dva@@primer.rs", "bez-majmuna"}) {
+			for (int one = 1; one <= 4; one++) {
+				assertThat(resend(nobody).getStatus()).as("%s, %d", nobody, one).isEqualTo(204);
+				assertThat(askForANewPassword(nobody).getStatus()).as("%s, %d", nobody, one).isEqualTo(204);
+			}
+		}
+
+		assertThat(door.keysRemembered()).as("not one key for them").isEqualTo(before);
+
+		/* AND THE MEASUREMENT MEASURES: an address of the right shape does leave one key per count. */
+		String held = aFreshAddress();
+
+		resend(held);
+		askForANewPassword(held);
+
+		assertThat(door.keysRemembered()).isEqualTo(before + 2);
+	}
+
+	@Test
+	void aCapitalIWithADotDoesNotBuyAFourthLetterOfEitherKind() throws Exception {
+		/* Security review of PR 763: Java folds `İ` (U+0130) into two characters and PostgreSQL's
+		   `lower()` into one, so the variant was a new count and the same account, and five links
+		   went out where three may. Not of the portal's shape, it is answered 204 and sends nothing. */
+		String address = aFreshAddress();
+		long account = anUnconfirmedAccountAt(address);
+		String withTheDot = address.toUpperCase().replace('I', 'İ');
+
+		assertThat(withTheDot).isNotEqualTo(address.toUpperCase());
+
+		for (int one = 1; one <= 3; one++) {
+			assertThat(resend(address).getStatus()).isEqualTo(204);
+			assertThat(askForANewPassword(address).getStatus()).isEqualTo(204);
+		}
+
+		assertThat(resend(withTheDot).getStatus()).isEqualTo(204);
+		assertThat(askForANewPassword(withTheDot).getStatus()).isEqualTo(204);
+
+		assertThat(linksFor(account)).as("letters of confirmation").isEqualTo(3);
+		assertThat(db.sql("select count(*) from password_reset_token where account_id = ?")
+				.param(account).query(Integer.class).single()).as("links to a new password").isEqualTo(3);
+		assertThat(SMTP.waitForIncomingEmail(5000, 6)).isTrue();
+		assertThat(SMTP.waitForIncomingEmail(500, 7)).as("no seventh letter").isFalse();
 	}
 
 	@Test

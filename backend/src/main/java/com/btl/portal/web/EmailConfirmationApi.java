@@ -275,17 +275,27 @@ class EmailConfirmationApi {
 	 */
 	@PostMapping("/api/email-confirmation/resend")
 	ResponseEntity<Refused> resend(@RequestBody ResendTyped typed) {
+		/* AN ADDRESS NO ACCOUNT CAN HOLD IS ANSWERED 204 AT ONCE, NEITHER COUNTED NOR LOOKED UP
+		   (security review of PR 763, 21.11.2026). `account_email_shape` (V6) lets no row carry
+		   anything but this shape, so the answer is the one a lookup would have given and says
+		   nothing more. It closes two holes the count had: a key of half a megabyte, kept in memory
+		   for every request, and a letter `İ` that Java folds into two characters and PostgreSQL's
+		   `lower()` into one, so the count and the lookup disagreed about which address it was and
+		   the allowance of three could be spent again. Only ASCII passes the shape, and on ASCII the
+		   two folds agree. */
+		if (typed.email() == null
+				|| !WhatAnAddressLooksLike.itDoes(WhatAnAddressLooksLike.asItIsStored(typed.email()))) {
+
+			return ResponseEntity.noContent().build();
+		}
+
 		/* COUNTED BY THE ADDRESS AS TYPED, BEFORE IT IS LOOKED UP, so the fourth request within the
 		   hour is the same 429 for an address nobody holds, one already confirmed and one waiting on
-		   this very letter, and the refusal tells nobody which of the three it was. A blank address
-		   sends nothing and is not counted: there is no letter to hold back. */
-		if (typed.email() != null && !typed.email().isBlank()) {
-			Optional<ResponseEntity<Refused>> tooMany = door.aConfirmationLetter(typed.email(),
-					new Refused(TOO_MANY_ATTEMPTS));
+		   this very letter, and the refusal tells nobody which of the three it was. */
+		Optional<ResponseEntity<Refused>> tooMany = door.aConfirmationLetter(typed.email(), new Refused(TOO_MANY_ATTEMPTS));
 
-			if (tooMany.isPresent()) {
-				return tooMany.orElseThrow();
-			}
+		if (tooMany.isPresent()) {
+			return tooMany.orElseThrow();
 		}
 
 		ToSend made = inOneTransaction.execute(committing -> write(typed));
@@ -307,11 +317,8 @@ class EmailConfirmationApi {
 	private record ToSend(long account, String address, String link, MailLanguage language, Instant endsAt) {
 	}
 
+	/** Only ever asked with an address of the shape an account can hold; {@link #resend} sees to it. */
 	private ToSend write(ResendTyped typed) {
-		if (typed.email() == null || typed.email().isBlank()) {
-			return null;
-		}
-
 		/* `lower(email) = lower(?)` AND NOT A FOLDED VALUE COMPARED WITH `=`, the same
 		   choice `SignInApi` makes and for the same reason: this is a lookup over rows
 		   this route did not write, so the floor under a row that reached the table
