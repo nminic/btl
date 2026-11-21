@@ -113,7 +113,7 @@ for (const screen of SCREENS) {
       expect(seen.pad, 'room at the sides of a button').toBeGreaterThanOrEqual(screen.name === 'profile' ? (at.width >= 35 * 16 * (at.text / 100) ? 14 : 8) : 6)
 
       if (screen.name === 'front page') {
-        expect(seen.pad, 'the front page filter was given room it does not have').toBeLessThanOrEqual(12)
+        expect(seen.pad, 'the front page filter was given room it does not have').toBeLessThanOrEqual((6 * at.text) / 100 + SLACK)
       }
 
       for (const one of seen.buttons) {
