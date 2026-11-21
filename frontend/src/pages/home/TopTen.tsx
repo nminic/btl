@@ -64,9 +64,14 @@ function Face({ slot, place }: { slot: Competitor | undefined; place: number }) 
  * **A screen reader hears one name, once.** The link carries „1. Vesna Đoković" and the two lines
  * drawn under it are `aria-hidden`, so the name is neither read twice nor read as two pieces.
  *
+ * **The points are written with the short unit „p" / „pts"** (owner, 21.11.2026: „umesto BTL poena verovatno
+ * treba da piše samo p / pts da bi moglo da stane lepo"), under a key of the podium's own
+ * (`home.podiumPointsUnit`): the figures of the front page read `home.pointsUnit` and
+ * `home.pointsUnitShort`, and a decision about the podium is not a decision about them. Until
+ * 1 January 2027 the figure is the BTL points of the whole history (owner, 21.11.2026, `boardOfTen`).
+ *
  * **The ring of gold around the first place is for a place that was WON** (PDL, 18.10.2026, „Red
- * bez trke ima redni broj, ali nikad boju postolja", applied by the owner on 20.11.2026 to a
- * podium that says „0,00 BTL poena" until the places are won). A member who only holds the place
+ * bez trke ima redni broj, ali nikad boju postolja", applied by the owner on 20.11.2026). A member who only holds the place
  * until he has a result (`ranked` false) stands on the podium without it.
  */
 function PodiumPlace({
@@ -114,7 +119,7 @@ function PodiumPlace({
       </span>
       <span className="stand__points">
         {formatPoints(slot.points, locale)}
-        {t('home.pointsUnit')}
+        {t('home.podiumPointsUnit')}
       </span>
       {category !== '' && <span className="stand__cat">{category}</span>}
       <span className="stand__step" aria-hidden="true">
