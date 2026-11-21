@@ -143,15 +143,33 @@ describe('which races count towards a competition', () => {
     })
   }
 
-  /** Opens the box of the competition every case acts on. */
+  /**
+   * Opens the form of a named competition, from the list, which is where its box now stands
+   * (PDL, owner 21.11.2026: „u izmeni same lige, ispod polja Nagrade").
+   */
+  async function openTheFormOf(user: ReturnType<typeof setupUser>, name: string) {
+    const table = within(await screen.findByRole('table', { name: 'Lige' }))
+    const row = must(
+      table.getAllByRole('row').find((one) => one.textContent?.includes(name)),
+      `the row of ${name}`,
+    )
+
+    await user.click(within(row).getByRole('button', { name: `Otvori: ${name}` }))
+  }
+
+  /** And back to the list, where the count of days is read. */
+  async function backToTheList(user: ReturnType<typeof setupUser>) {
+    await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
+  }
+
+  /** Opens the form of the competition every case acts on, and its box. */
   async function openTheBox() {
     const user = setupUser()
 
     renderAt('/sr/administracija/lige', 'superadmin')
 
-    await user.click(
-      await screen.findByRole('button', { name: `Trke u ligi ${ITS_NAME}` }),
-    )
+    await openTheFormOf(user, ITS_NAME)
+    await user.click(await screen.findByRole('button', { name: `Trke u ligi ${ITS_NAME}` }))
 
     return user
   }
@@ -273,26 +291,143 @@ describe('which races count towards a competition', () => {
   it('the box is folded on arrival, named after its own competition, and points at its own panel',
     async () => {
       const server = serving()
+      const user = setupUser()
 
       renderAt('/sr/administracija/lige', 'superadmin')
 
+      await openTheFormOf(user, ITS_NAME)
+
+      /* ONE BOX, AND IT IS THE ONE OF THE COMPETITION THAT WAS OPENED: not one per competition
+         of the list, which is what stood here until 21.11.2026. */
       const toggles = await screen.findAllByRole('button', { name: /^Trke u ligi / })
 
-      expect(toggles.length).toBe(LEAGUES.length)
+      expect(toggles).toHaveLength(1)
 
-      const panels = toggles.map((toggle) => {
-        expect(toggle).toHaveAttribute('aria-expanded', 'false')
-        expect(must(toggle.parentElement, 'what the button sits in').tagName).toBe('H2')
+      const toggle = must(toggles[0], 'the only control that opens a box')
 
-        return toggle.getAttribute('aria-controls')
-      })
-
-      /* Its own panel and not a neighbour's: three buttons pointing at one panel is what a
-         constant id produces, and a reader following either of the other two lands here. */
-      expect(new Set(panels).size).toBe(panels.length)
+      expect(toggle).toHaveAccessibleName(`Trke u ligi ${ITS_NAME}`)
+      expect(toggle).toHaveAttribute('aria-expanded', 'false')
+      expect(must(toggle.parentElement, 'what the button sits in').tagName).toBe('H2')
+      /* Its own panel and not a neighbour's: the identity of THIS competition, which is neither
+         the first of the list nor the only one of its season. */
+      expect(toggle.getAttribute('aria-controls')).toBe(`league-moderation-${ACTED}`)
 
       server.stop()
     }, SLOW)
+
+  /**
+   * WHERE THE BOX STANDS, ASKED AS TWO THINGS (PDL, owner 21.11.2026: „U administraciji liga spisak
+   * „Trke u ligi" više ne stoji ispod tabele liga, nego u izmeni same lige, ispod polja Nagrade").
+   *
+   * **Two sentences and two checks.** „Not under the table" is a question about the list; „in the form,
+   * under the prizes" is a question about the form, and the order is read off the document and not off the
+   * markup, with the containment asked as well (`compareDocumentPosition` sets `FOLLOWING` for a
+   * descendant too).
+   */
+  describe('and it stands in the form of the competition, under the prizes, and nowhere else', () => {
+    it('is not on the list of competitions at all', async () => {
+      const server = serving()
+
+      renderAt('/sr/administracija/lige', 'superadmin')
+
+      const table = await screen.findByRole('table', { name: 'Lige' })
+
+      /* Rows of data only: a header row and one row per competition, so a second row under each of
+         them, which is where the box used to stand, is a row too many. */
+      expect(within(table).getAllByRole('row')).toHaveLength(LEAGUES.length + 1)
+      expect(screen.queryByRole('button', { name: /^Trke u ligi / })).not.toBeInTheDocument()
+
+      server.stop()
+    }, SLOW)
+
+    it('follows the field of prizes and comes before the button that saves', async () => {
+      const server = serving()
+      const user = setupUser()
+
+      renderAt('/sr/administracija/lige', 'superadmin')
+
+      await openTheFormOf(user, ITS_NAME)
+
+      const toggle = await screen.findByRole('button', { name: `Trke u ligi ${ITS_NAME}` })
+      const form = must(toggle.closest('form'), 'the form of the competition')
+      const prizes = within(form).getByLabelText(/^Nagrade/)
+      const save = within(form).getByRole('button', { name: 'Sačuvaj' })
+
+      expect(prizes.contains(toggle)).toBe(false)
+      expect(prizes.compareDocumentPosition(toggle) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+      expect(
+        toggle.compareDocumentPosition(save) & Node.DOCUMENT_POSITION_FOLLOWING,
+        'the box stands after the button that saves',
+      ).toBeTruthy()
+      expect(toggle.contains(save)).toBe(false)
+
+      server.stop()
+    }, SLOW)
+
+    it('is that of the competition that was opened, and of no other', async () => {
+      const server = serving()
+      const user = setupUser()
+
+      renderAt('/sr/administracija/lige', 'superadmin')
+
+      /* THE SECOND OF THE LIST AND NOT THE FIRST, so „this competition" and „the first one served"
+         are different answers; and it is opened after another, so a box left over from the previous
+         form is a second box. */
+      await openTheFormOf(user, NOTHING_YET)
+      await backToTheList(user)
+      await openTheFormOf(user, ITS_NAME)
+
+      expect(
+        (await screen.findAllByRole('button', { name: /^Trke u ligi / })).map((one) =>
+          one.getAttribute('aria-controls'),
+        ),
+      ).toEqual([`league-moderation-${ACTED}`])
+
+      server.stop()
+    }, SLOW)
+
+    it('is not drawn for a competition that is being made, which has no identity to be written to',
+      async () => {
+        const server = serving()
+        const user = setupUser()
+
+        renderAt('/sr/administracija/lige', 'superadmin')
+
+        await user.click(await screen.findByRole('button', { name: /^Nova liga/ }))
+        await screen.findByRole('button', { name: 'Nazad na spisak' })
+
+        expect(screen.queryByRole('button', { name: /^Trke u ligi / })).not.toBeInTheDocument()
+        expect(document.querySelector('[id^="league-moderation-"]')).toBeNull()
+
+        server.stop()
+      }, SLOW)
+
+    it('does not save the competition when a race is added, and does not save it for a race taken out',
+      async () => {
+        const server = serving()
+        const user = await openTheBox()
+
+        await user.selectOptions(
+          screen.getByLabelText('Događaj', { selector: `#league-moderation-${ACTED}-event` }),
+          String(OVER_TWO_MORNINGS),
+        )
+        await user.click(screen.getByRole('button', { name: 'Dodaj u ligu' }))
+        await user.click(first(await screen.findAllByRole('button', { name: /^Izbaci trku/ })))
+
+        /* THE BOX IS INSIDE THE FORM OF THE COMPETITION, and a press in it that also sent that form would
+           be a write to `/api/leagues/{id}` that nobody asked for. The two writes are the two the panel
+           makes and no third; the form is still open, saved by nothing. */
+        await waitFor(() => {
+          expect(writes(server.asked).map((one) => `${one.how} ${one.path}`)).toEqual([
+            `POST /api/leagues/${ACTED}/races`,
+            expect.stringMatching(new RegExp(`^DELETE /api/leagues/${ACTED}/races/`)),
+          ])
+        })
+        expect(screen.queryByText('Sačuvano')).not.toBeInTheDocument()
+
+        server.stop()
+      }, SLOW)
+  })
 
   it('sends the whole day when no single race is chosen, and counts every race of it',
     async () => {
@@ -615,9 +750,8 @@ describe('which races count towards a competition', () => {
 
       renderAt('/sr/administracija/lige', 'superadmin')
 
-      await user.click(
-        await screen.findByRole('button', { name: 'Trke u ligi Prva liga 2027' }),
-      )
+      await openTheFormOf(user, 'Prva liga 2027')
+      await user.click(await screen.findByRole('button', { name: 'Trke u ligi Prva liga 2027' }))
 
       const empty = must(document.getElementById('league-moderation-7'), 'the empty competition')
 
@@ -630,7 +764,9 @@ describe('which races count towards a competition', () => {
          a season the calendar has not reached has nothing to be offered, and the two states
          are told apart here because they send an administrator to two different places: one
          is a list to be filled in, the other is a calendar to be entered first. */
-      await user.click(screen.getByRole('button', { name: 'Trke u ligi Buduća liga 2035' }))
+      await backToTheList(user)
+      await openTheFormOf(user, 'Buduća liga 2035')
+      await user.click(await screen.findByRole('button', { name: 'Trke u ligi Buduća liga 2035' }))
 
       const ahead = must(document.getElementById('league-moderation-13'), 'the season ahead')
 
@@ -721,11 +857,7 @@ describe('which races count towards a competition', () => {
     it('says so in the box that was pressed, with the way to a new tab, and keeps what was chosen', async () => {
       const server = serving(theProxy)
       const user = await openTheBox()
-      /* AND A SECOND BOX OPEN BESIDE IT, so a sentence drawn in every panel is one too many. */
-      await user.click(screen.getByRole('button', { name: `Trke u ligi ${NOTHING_YET}` }))
-
       const box = must(document.getElementById(`league-moderation-${ACTED}`), 'the box')
-      const other = must(document.getElementById(`league-moderation-${COUNTS_NOTHING}`), 'the other box')
 
       await chooseADay(user)
       await user.click(within(box).getByRole('button', { name: 'Dodaj u ligu' }))
@@ -733,7 +865,8 @@ describe('which races count towards a competition', () => {
       expect(await within(box).findByRole('alert', {}, { timeout: HALF })).toHaveTextContent(SENTENCE)
       expect(within(box).getByRole('link', { name: OPEN })).toHaveAttribute('href', '/sr')
       expect(box.textContent ?? '').not.toContain(REFRESH)
-      expect(other.textContent ?? '').not.toContain(SENTENCE)
+      /* ONCE ON THE SCREEN, so a sentence drawn in the form as well as in the box is one too many. */
+      expect(screen.getAllByText(SENTENCE)).toHaveLength(1)
       /* „ono što si upisao je i dalje tu": the two choosers hold what was chosen. */
       expect(screen.getByLabelText('Događaj', { selector: `#league-moderation-${ACTED}-event` })).toHaveValue(
         String(A_DAY_NOBODY_COUNTS),
@@ -805,7 +938,7 @@ describe('which races count towards a competition', () => {
   })
 
   /**
-   * THE ROW ABOVE THE BOX, WHICH IS WHERE THIS PANEL'S WRITES WERE NOT ARRIVING.
+   * THE ROW OF THE LIST, WHICH IS WHERE THIS PANEL'S WRITES WERE NOT ARRIVING.
    *
    * **The owner met it on QA and read it as work lost** (28.09.2026: „Popunim ovo ovako i
    * onda se nista ne sacuva, nije se kreirala Liga sa ovim dogadjajem"). Nothing had been
@@ -821,7 +954,7 @@ describe('which races count towards a competition', () => {
    * above the box said the opposite. What the cases below add is the JOIN: one press, and
    * both the thing that lists and the thing that counts are read after it.
    */
-  describe('and the count in the row says what the box under it counts', () => {
+  describe('and the count in the row says what the box in its form counts', () => {
     /** The row a competition is named in, which is the first one carrying its name. */
     async function rowOf(name: string): Promise<HTMLElement> {
       const table = within(await screen.findByRole('table', { name: 'Lige' }))
@@ -873,11 +1006,10 @@ describe('which races count towards a competition', () => {
 
         renderAt('/sr/administracija/lige', 'superadmin')
 
-        await user.click(
-          await screen.findByRole('button', { name: `Trke u ligi ${NOTHING_YET}` }),
-        )
-
         await theCountSays(NOTHING_YET, 'Bez događaja')
+
+        await openTheFormOf(user, NOTHING_YET)
+        await user.click(await screen.findByRole('button', { name: `Trke u ligi ${NOTHING_YET}` }))
 
         await user.selectOptions(
           screen.getByLabelText('Događaj', {
@@ -896,6 +1028,8 @@ describe('which races count towards a competition', () => {
            both races of the morning that went in, and the count over it says the one day they
            are. Either one alone is what the package already had. */
         expect(within(box).getAllByRole('button', { name: /^Izbaci trku/ })).toHaveLength(2)
+        /* The count is in the list, and the list is behind the form, so the reader goes back to it. */
+        await backToTheList(user)
         await theCountSays(NOTHING_YET, '1')
         /* And the competition next to it has not moved, so the press reached one row rather
            than the column. */
@@ -910,14 +1044,13 @@ describe('which races count towards a competition', () => {
 
       const box = must(document.getElementById(`league-moderation-${ACTED}`), 'the box')
 
-      await theCountSays(ITS_NAME, '2')
-
       for (const out of [...within(box).getAllByRole('button', { name: /^Izbaci trku/ })]) {
         await user.click(out)
       }
 
       /* Both races gone is both DAYS gone, because a day is on the list only through a race
          of it. A count taken off the served `eventIds` would still be saying „2". */
+      await backToTheList(user)
       await theCountSays(ITS_NAME, 'Bez događaja')
 
       server.stop()
@@ -969,16 +1102,15 @@ describe('which races count towards a competition', () => {
       SLOW,
     )
 
-    it('keeps the races entered during a visit when a form is opened over them and closed',
+    it('keeps the races entered during a visit when the form is closed and opened again',
       async () => {
         const server = serving()
         const user = setupUser()
 
         renderAt('/sr/administracija/lige', 'superadmin')
 
-        await user.click(
-          await screen.findByRole('button', { name: `Trke u ligi ${NOTHING_YET}` }),
-        )
+        await openTheFormOf(user, NOTHING_YET)
+        await user.click(await screen.findByRole('button', { name: `Trke u ligi ${NOTHING_YET}` }))
         await user.selectOptions(
           screen.getByLabelText('Događaj', {
             selector: `#league-moderation-${COUNTS_NOTHING}-event`,
@@ -987,18 +1119,14 @@ describe('which races count towards a competition', () => {
         )
         await user.click(screen.getByRole('button', { name: 'Dodaj u ligu' }))
 
-        /* OPENING A FORM SWAPS THIS WHOLE SUBTREE, so every panel is unmounted and mounted
-           again. While the list lived inside the panel, that took every race entered during
-           the visit with it: the races were on the server and the screen drew them gone,
-           which is the same sentence the owner read as „nothing was saved". */
-        await user.click(
-          within(await rowOf(NOTHING_YET)).getByRole('button', { name: `Otvori: ${NOTHING_YET}` }),
-        )
-        await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
-
+        /* CLOSING THE FORM TAKES THE BOX WITH IT, which now stands inside it, so what it was holding
+           goes unless the screen above it holds the list. The races were on the server and the screen
+           drew them gone, which is the same sentence the owner read as „nothing was saved". */
+        await backToTheList(user)
         await theCountSays(NOTHING_YET, '1')
 
-        await user.click(screen.getByRole('button', { name: `Trke u ligi ${NOTHING_YET}` }))
+        await openTheFormOf(user, NOTHING_YET)
+        await user.click(await screen.findByRole('button', { name: `Trke u ligi ${NOTHING_YET}` }))
 
         const box = must(
           document.getElementById(`league-moderation-${COUNTS_NOTHING}`),

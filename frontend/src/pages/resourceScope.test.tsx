@@ -292,11 +292,12 @@ describe('a part of a screen waits without covering the page', () => {
 
       expect(dayColumn, 'no column of the table is named "Događaja"').toBeGreaterThanOrEqual(0)
 
-      /* **Every OTHER row, and it is measured rather than assumed.** Each league in this table
-         sits above a second `<tr>` that carries its folded panel of races in one cell spanning
-         every column (`leagues__counting`, opened by „Trke u ligi …"); that row answers
-         `getAllByRole('cell')` with a single cell, not five, so filtering on the cell count
-         this table's own header defines is what tells a row of data from a row of panel. */
+      /* **Rows of data, and it is measured rather than assumed.** Until 21.11.2026 each league in this
+         table sat above a second `<tr>` carrying its folded panel of races in one cell spanning every
+         column, and filtering on the cell count this table's own header defines is what told a row of
+         data from a row of panel. The panel stands in the form of the competition now (PDL 21.11.2026),
+         so no such row is drawn; the filter stays, because it is the same question and it costs
+         nothing, and the case that the list draws none is `admin/leagueRaceModeration.test.tsx`'s. */
       const rows = within(table)
         .getAllByRole('row')
         .slice(1)

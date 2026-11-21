@@ -162,8 +162,10 @@ export function LeagueRaceModeration({
 
           **AN `h2`, AND DRAWN AS THE `h3` IT WAS** (owner, 16.10.2026, PDL „Jedini nalaz axe-a":
           „naslov kutije „Trke u ligi" postaje drugog nivoa (h2), sa istom veličinom kao danas, pa
-          izgled i tekst ostaju isti"). In administration this box stands in a row of a table under
-          the screen's `h1` and under no `h2`, so an `h3` skipped a level (axe, `heading-order`).
+          izgled i tekst ostaju isti"). When that was decided this box stood in a row of a table under
+          the screen's `h1` and under no `h2`, so an `h3` skipped a level (axe, `heading-order`). Since
+          21.11.2026 it stands in the form of the competition, under the `h2` of the form, below the field
+          of prizes (PDL 21.11.2026), and the level stays as the owner decided it.
           The public page of a competition draws its own box (`league/LeagueEvents.tsx`), which
           stands under the competition's `h2` and is rightly an `h3`; it shares no component with
           this one, so nothing here is handed down. The names of the events inside are `h3` for the
@@ -215,9 +217,7 @@ export function LeagueRaceModeration({
               return one === '' ? chosen.map((race) => race.id) : [Number(one)]
             }
 
-            async function addToTheLeague(pressed: { preventDefault: () => void }) {
-              pressed.preventDefault()
-
+            async function addToTheLeague() {
               const asking = one === '' ? { eventId: Number(day) } : { raceId: Number(one) }
               const going = entered()
 
@@ -285,7 +285,15 @@ export function LeagueRaceModeration({
                     {t('admin.noEventsOfSeason', { season: league.season })}
                   </p>
                 ) : (
-                  <form className="leagues__adding" onSubmit={(press) => void addToTheLeague(press)}>
+                  /* NOT A `<form>`, SINCE 21.11.2026, AND THAT IS A MEASUREMENT OF WHERE IT STANDS: the
+                     panel is drawn inside the form of the competition itself, under the field of
+                     prizes (`AdminLeagues.tsx`, PDL 21.11.2026), and a form inside a form is not
+                     valid HTML and sends its `submit` up through React to the outer one, so a
+                     press on the button below would also have saved the competition. The control
+                     is a button that does not submit and asks for the write itself. The name this
+                     box had as a form was none (a `<form>` with no name is no landmark), so no
+                     name is lost. */
+                  <div className="leagues__adding">
                     {/* THE SHAPE EVERY OTHER CHOICE ON THIS PORTAL WEARS, AND IT IS COPIED
                         RATHER THAN INVENTED (owner, 28.09.2026: „zasto su dropdowns ovako
                         nakaradni?"). These two were a bare `<label>` beside a bare `<select>`,
@@ -335,10 +343,15 @@ export function LeagueRaceModeration({
                       </select>
                     </div>
 
-                    <button type="submit" className="button" disabled={day === ''}>
+                    <button
+                      type="button"
+                      className="button"
+                      disabled={day === ''}
+                      onClick={() => void addToTheLeague()}
+                    >
                       {t('admin.addRace')}
                     </button>
-                  </form>
+                  </div>
                 )}
 
                 {locked && <TheSiteIsLocked />}

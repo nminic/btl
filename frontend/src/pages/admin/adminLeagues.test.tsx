@@ -213,6 +213,17 @@ describe('a competition made, changed and taken away', () => {
         '/sr/liga/vojvodjanska-2027',
       )
 
+      /* THE BOX STANDS IN THE FORM OF THE COMPETITION (PDL 21.11.2026), so the competition that was
+         just made is opened from the list, and it is found there by the identity the route handed
+         out. */
+      await user.click(
+        within(
+          must(
+            listed.getAllByRole('row').find((one) => one.textContent?.includes('Vojvođanska liga 2027')),
+            'the row of the competition that was just made',
+          ),
+        ).getByRole('button', { name: 'Otvori: Vojvođanska liga 2027' }),
+      )
       await user.click(
         await screen.findByRole('button', { name: 'Trke u ligi Vojvođanska liga 2027' }),
       )
@@ -856,7 +867,7 @@ describe('a competition made, changed and taken away', () => {
   })
 
   /**
-   * AND THE PANEL OF RACES UNDER EVERY ROW STILL COUNTS WHAT IT COUNTED, AFTER A SAVE HERE.
+   * AND THE PANEL OF RACES IN EVERY FORM STILL COUNTS WHAT IT COUNTED, AFTER A SAVE HERE.
    *
    * **What this measures is what the fix above CREATED, and it was measured in a browser
    * before it was written down (review, PR 368, 25.09.2026).** `clearResourceCache('leagues')`
@@ -887,8 +898,16 @@ describe('a competition made, changed and taken away', () => {
           must(document.getElementById(`league-moderation-${id}`), 'the panel of races'),
         ).queryAllByRole('button', { name: /^Izbaci trku/ })
 
-      const openTheBoxOf = async (user: ReturnType<typeof setupUser>, name: string) =>
-        user.click(await screen.findByRole('button', { name: `Trke u ligi ${name}` }))
+      const openTheBoxOf = async (user: ReturnType<typeof setupUser>, name: string) => {
+        const table = within(await screen.findByRole('table', { name: 'Lige' }))
+        const row = must(
+          table.getAllByRole('row').find((one) => one.textContent?.includes(name)),
+          `the row of ${name}`,
+        )
+
+        await user.click(within(row).getByRole('button', { name: `Otvori: ${name}` }))
+        await user.click(await screen.findByRole('button', { name: `Trke u ligi ${name}` }))
+      }
 
       const server = serving()
       const user = setupUser()
@@ -902,7 +921,9 @@ describe('a competition made, changed and taken away', () => {
       ])
 
       /* THE OTHER COMPETITION IS OPENED, RENAMED AND SAVED, and then the list is come back
-         to - which is what unmounts and remounts every panel on this screen. */
+         to - which is what unmounts the panel and mounts one again, now that it stands in the form. */
+      await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
+
       const rows = within(await screen.findByRole('table', { name: 'Lige' }))
       const other = must(
         rows.getAllByRole('row').find((one) => one.textContent?.includes('Prva liga 2027')),
@@ -940,6 +961,121 @@ describe('a competition made, changed and taken away', () => {
 
       server.stop()
     }, SLOW)
+
+  /**
+   * THE FORM OF A COMPETITION OPENED FROM THE ADDRESS (`?izmena=`), THE WAY THE EVENTS DO (`AdminEvents.tsx`;
+   * the pencil in the head of the page of a competition sends the reader here, PDL 21.11.2026).
+   *
+   * **The axes, counted.** `ACTED` is written second and keyed third of four, so „the one the address names",
+   * „the first served" and „the one a row opens" are three different competitions. An address that names
+   * nothing, a number this list has not got, and two that a lookup by number would accept (`09`, `9abc`)
+   * are four ways of being wrong. And the save of a form opened this way is the one thing no state holds.
+   */
+  describe('and the form of one is opened from the address', () => {
+    it('opens THE competition the address names, with its own values, and not the first served',
+      async () => {
+        const server = serving()
+
+        renderAt(`/sr/administracija/lige?izmena=${ACTED}`, 'superadmin')
+
+        expect(await screen.findByLabelText(/^Naziv lige/)).toHaveValue(ITS_NAME)
+        expect(screen.getByLabelText(/^Adresa/)).toHaveValue(ITS_ADDRESS)
+        expect(screen.getByRole('button', { name: `Trke u ligi ${ITS_NAME}` })).toBeVisible()
+        expect(screen.queryByRole('table', { name: 'Lige' })).not.toBeInTheDocument()
+
+        server.stop()
+      }, SLOW)
+
+    it.each(['999999', '', '09', '9abc', 'devet'])(
+      'draws the list and not a form where the address names %j',
+      async (named) => {
+        const server = serving()
+
+        renderAt(`/sr/administracija/lige?izmena=${named}`, 'superadmin')
+
+        expect(await screen.findByRole('table', { name: 'Lige' })).toBeVisible()
+        expect(screen.queryByLabelText(/^Naziv lige/)).not.toBeInTheDocument()
+        expect(writes(server.asked)).toEqual([])
+
+        server.stop()
+      }, SLOW)
+
+    it('saves as a change of THAT competition: a PUT on its own address, and never a POST', async () => {
+      const server = serving()
+      const user = setupUser()
+
+      renderAt(`/sr/administracija/lige?izmena=${ACTED}`, 'superadmin')
+
+      const name = await screen.findByLabelText(/^Naziv lige/)
+
+      await user.clear(name)
+      await user.type(name, 'Druga liga 2027 i prijatelji')
+      await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+      await screen.findByRole('status', { name: 'Sačuvano' })
+
+      expect(writes(server.asked).map((one) => `${one.how} ${one.path}`)).toEqual([
+        `PUT /api/leagues/${ACTED}`,
+      ])
+
+      server.stop()
+    }, SLOW)
+
+    it('forgets the address when the form is left, so the list comes back and stays', async () => {
+      const server = serving()
+      const user = setupUser()
+      const { router } = renderAt(`/sr/administracija/lige?izmena=${ACTED}`, 'superadmin')
+
+      await user.click(await screen.findByRole('button', { name: 'Nazad na spisak' }))
+
+      expect(await screen.findByRole('table', { name: 'Lige' })).toBeVisible()
+      expect(router.state.location.search).toBe('')
+      expect(screen.queryByLabelText(/^Naziv lige/)).not.toBeInTheDocument()
+
+      server.stop()
+    }, SLOW)
+
+    it('lets what was pressed win over an address that arrives while it is open', async () => {
+      const server = serving()
+      const user = setupUser()
+      const { router } = renderAt('/sr/administracija/lige', 'superadmin')
+
+      /* THE FIRST ROW IS PRESSED, and then the address names ANOTHER competition (the browser's Forward, a
+         link to this screen), so „what was pressed" and „what the address names" are two competitions. */
+      const table = within(await screen.findByRole('table', { name: 'Lige' }))
+      const row = must(
+        table.getAllByRole('row').find((one) => one.textContent?.includes('Prva liga 2027')),
+        'the row of the first competition',
+      )
+
+      await user.click(within(row).getByRole('button', { name: 'Otvori: Prva liga 2027' }))
+      expect(await screen.findByLabelText(/^Naziv lige/)).toHaveValue('Prva liga 2027')
+
+      await act(() => router.navigate(`/sr/administracija/lige?izmena=${ACTED}`))
+
+      /* Asked of the BOX and not of the field: the fields of an open form hold what they were opened with
+         whatever the record under them becomes, so the name in the field says nothing about which
+         competition the screen thinks is open. The box is drawn for the competition it is open on. */
+      expect(screen.getByRole('button', { name: 'Trke u ligi Prva liga 2027' })).toBeVisible()
+      expect(screen.queryByRole('button', { name: `Trke u ligi ${ITS_NAME}` })).not.toBeInTheDocument()
+
+      server.stop()
+    }, SLOW)
+
+    it('opens a form for a new competition from the list, with no box of races', async () => {
+      const server = serving()
+      const user = setupUser()
+
+      renderAt(`/sr/administracija/lige?izmena=${ACTED}`, 'superadmin')
+
+      await user.click(await screen.findByRole('button', { name: 'Nazad na spisak' }))
+      await user.click(await screen.findByRole('button', { name: 'Nova liga' }))
+
+      expect(await screen.findByLabelText(/^Naziv lige/)).toHaveValue('')
+      expect(screen.queryByRole('button', { name: /^Trke u ligi / })).not.toBeInTheDocument()
+
+      server.stop()
+    }, SLOW)
+  })
 
   it('is open to a moderator holding the right over competitions, and shut to one without it',
     async () => {
