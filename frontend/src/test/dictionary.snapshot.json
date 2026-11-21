@@ -1036,6 +1036,7 @@
     "locked": "Pregledač je zaboravio pristupnu šifru za probni period. Otvori portal u novoj kartici i ukucaj je tamo, pa se vrati ovde i pošalji ponovo; ono što si upisao je i dalje tu.",
     "lockedOpen": "Otvori u novoj kartici",
     "wrong": "Ništa nije sačuvano (greška {status}). Pokušaj ponovo za koji minut.",
+    "tooManyAttempts": "Previše pokušaja. Pokušaj ponovo za sat vremena.",
     "malformed": "Ništa nije sačuvano. Greška je na našoj strani; piši nam na info@balkanskatrkackaliga.net.",
     "nothing": "Portal nije uspeo da dođe do servera. Proveri vezu i pokušaj ponovo."
   },
