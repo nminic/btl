@@ -113,7 +113,7 @@ async function measure(page: Page) {
 
     return {
       cells: [...document.querySelectorAll('.table__category')].map(box),
-      buttons: [...document.querySelectorAll('.rankings__category')].map(box),
+      buttons: [...document.querySelectorAll('.seg[aria-labelledby="rankings-categories"] .seg__b')].map(box),
       viewport: document.documentElement.clientWidth,
       scroll: document.documentElement.scrollWidth,
     }
