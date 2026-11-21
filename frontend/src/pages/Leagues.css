@@ -156,6 +156,10 @@
   /* Asked by the head below whether it has room for one row: a question about the sheet and not about
      the window, so it is a container and not a place where the portal changes shape. */
   container: league-sheet / inline-size;
+  /* The line above the name in the head, said once because the pencil beside it is moved by exactly this
+     (`.leagues__edit`). */
+  --leagues-kicker-size: 0.7rem;
+  --leagues-kicker-leading: 1.4;
 }
 
 .leagues__score {
@@ -195,8 +199,8 @@
 
 .leagues__kicker {
   margin: 0;
-  font-size: 0.7rem;
-  line-height: 1.4;
+  font-size: var(--leagues-kicker-size);
+  line-height: var(--leagues-kicker-leading);
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -260,12 +264,12 @@
   grid-column: 3;
   grid-row: 1;
   /* On the line of the NAME and not of the block it stands beside. The row centres everything in it, and
-     the block is the line above the name (`.leagues__kicker`: 0.7rem at a line of 1.4) plus the name, so
+     the block is the line above the name (`.leagues__kicker`, sized by the two properties on the sheet) plus the name, so
      the centre of the block stands half that line above the centre of the name: measured 7.75px at 360
      and at 768 (`geometry/actionTip.geometry.ts`, „on the line of the words around it"). A margin of the
      whole line above moves the centre of the square down by half of it. A head of one row (the container
      query below) has no line above the words it stands beside, and takes it off again. */
-  margin-block-start: calc(0.7rem * 1.4);
+  margin-block-start: calc(var(--leagues-kicker-size) * var(--leagues-kicker-leading));
   border: 1px solid color-mix(in srgb, var(--white) 45%, transparent);
   border-radius: var(--radius-8);
   background: color-mix(in srgb, var(--white) 10%, transparent);
