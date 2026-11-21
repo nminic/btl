@@ -127,6 +127,28 @@ describe('the markup of the front page and the sheets that dress it', () => {
     expect(home).toMatch(/\.home__next > \.card \{\s*container-type: inline-size;/)
   })
 
+  it('lets the row of the title wrap and keeps the link on the right, and the filter half way between the title and the first race', () => {
+    /* Owner, 21.11.2026: the link is in the row of the title, and in a larger text it goes under the title, still on
+       the right. The filter has the same room above and below it: the gap of the card, and the same step more on
+       each side (the margin is on the filter, and it is a step of the scale). */
+    expect(body(home, '.card__head')).toMatch(/display: flex;/)
+    expect(body(home, '.card__head')).toMatch(/flex-wrap: wrap;/)
+    expect(body(home, '.card__head-link')).toMatch(/margin-inline-start: auto;/)
+    expect(body(home, '.home__next .seg')).toMatch(/margin-block: var\(--space-6\) var\(--space-4\);/)
+    expect(body(home, '.home__next .seg')).not.toMatch(/margin-(top|bottom)/)
+    /* The room under the filter is counted to the text of the first race, so the row's own padding is taken back. */
+    expect(body(home, '.seg + .extract')).toMatch(/margin-block-start: calc\(-1 \* var\(--space-12\)\);/)
+  })
+
+  it('draws the calendar of the header in place of the word where the card is narrower than the word needs', () => {
+    /* One threshold for both languages, in rem, asked of the card: 17,5rem (280px) is over the 267 to 274px the Serbian
+       word, the gap and the title need at the reader's own text. A target of 24px at least, and the word is only
+       taken out of sight, never out of the tree (it is drawn aria-hidden and the name is a copy of it). */
+    expect(home).toMatch(/\.card__head-icon \{\s*display: none;/)
+    expect(home).toMatch(
+      /@container \(max-width: 17.5rem\) \{\s*\.card__head-word \{\s*display: none;\s*\}[\s\S]*?min-inline-size: 1\.5rem;\s*min-block-size: 1\.5rem;[\s\S]*?\.card__head-icon \{\s*display: block;/,
+    )  })
+
   it('steps the podium down from the first to the third, with the first circle the largest', () => {
     const step = (place: number) =>
       Number(/block-size: (\d+)px/.exec(body(home, `.stand__item--${String(place)} .stand__step`))?.[1])

@@ -296,6 +296,61 @@
   font-weight: 700;
 }
 
+/* The row of a title with its way on (owner, 21.11.2026: „Veza ka kalendaru prelazi iz dna kartice u red
+   sa naslovom, desno"). It wraps, so a larger text puts the link under the title, and the margin sends
+   the link to the right wherever it ends up. */
+.card__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: var(--space-12);
+  row-gap: var(--space-4);
+}
+
+.card__head-link {
+  margin-inline-start: auto;
+  font-size: 0.9rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* The word, and the calendar of the header only where the word does not fit beside the title (owner,
+   21.11.2026, after the review of PR 770: „umesto teksta stoji samo ikonica kalendara, ista kao u mobilnoj
+   navigaciji"). The card decides, not the window (`.home__next > .card` is the container, as for the „km"
+   of the filter), and the language does not: one threshold, the one the longer of the two needs.
+
+   **The threshold is 17.5rem of the inside of the card (280px).** Measured at the reader's own text, in
+   Serbian, where it is the longer: on this machine the title is 171,7px, the gap 12px and the word 83,3px,
+   which is 267px; in the Chrome of the pipeline (other letters) the word is 85,6px and the card of 960px
+   (268,7) did not hold it, so about 274px. 280 is over both with six pixels to spare, so a font that is a
+   little wider than either never puts the word in a row it does not fit; the card of 1024px (285) keeps the
+   word and the one of 960px has the icon. In rem and not in pixels, because the title and the word grow
+   with the text of the reader and the card does not: at 125 and 200 per cent the word stands only in a card
+   that is wider than 17,5 of that larger rem, which is what the word needs at that size, so it never goes
+   under the title. */
+.card__head-icon {
+  display: none;
+}
+
+@container (max-width: 17.5rem) {
+  .card__head-word {
+    display: none;
+  }
+
+  /* A target of 24 by 24 at least (WCAG 2.2 SC 2.5.8), in rem so it grows with the text. */
+  .card__head-link {
+    min-inline-size: 1.5rem;
+    min-block-size: 1.5rem;
+  }
+
+  .card__head-icon {
+    display: block;
+    inline-size: 1.25rem;
+    block-size: 1.25rem;
+  }
+}
+
 .card__note,
 .card__empty {
   margin: 0;
@@ -408,6 +463,27 @@
    same on the right column at 860px and on a phone where the card is as wide as the page. */
 .home__next > .card {
   container-type: inline-size;
+}
+
+/* The filter itself lives in `components/LengthFilter.css`, shared with the profile. What is the card's own
+   is the room around it, and it is asked of the card of the calendar only (`.home__next`), so the filter of
+   the profile keeps the room it has.
+
+   The filter stands half way between the title and the TEXT of the first race (owner, 21.11.2026): the
+   gap of the card is 10px, so 6px above makes 16px under the title. Under it the text of the first race
+   is 1px in from the frame of its row once the row's own padding is taken back (below), so 4px makes
+   10 + 4 + 1 = 15px to the text: the scale has only even steps, and one pixel is the least it can be
+   off. Measured: 16 and 15 at the reader's own text, and twice that at 200 per cent. */
+.home__next .seg {
+  margin-block: var(--space-6) var(--space-4);
+}
+
+/* The first race starts 12px in (its own padding), so the room under the filter is counted to the TEXT of
+   the race and not to the frame of its row (owner, 21.11.2026, after the review of PR 770: „jednako do
+   teksta prve trke, ne do okvira njenog reda"). The list is pulled up by that padding, which leaves the
+   rows as they are and gives the room to the list, so the count of rows by height is still of whole rows. */
+.seg + .extract {
+  margin-block-start: calc(-1 * var(--space-12));
 }
 
 /* The seasonal slot that stood at the foot of the right column was removed on
