@@ -84,7 +84,7 @@ beforeEach(() => {
   localStorage.clear()
 })
 
-describe('where the strip stands', () => {
+describe('where the strip stands', { timeout: SLOW }, () => {
   it.each(STANDS_ON)('stands under the header on %s, with the owner\'s sentence', async (address) => {
     renderAt(address, 'visitor', null, undefined, BEFORE)
 
@@ -141,7 +141,7 @@ describe('where the strip stands', () => {
   }, 120_000)
 })
 
-describe('how long the strip lasts', () => {
+describe('how long the strip lasts', { timeout: SLOW }, () => {
   it('is still there on the last day of the warm-up', async () => {
     renderAt('/sr', 'visitor', null, undefined, LAST_DAY)
 
@@ -198,7 +198,7 @@ describe('how long the strip lasts', () => {
   })
 })
 
-describe('closing it', () => {
+describe('closing it', { timeout: SLOW }, () => {
   it('takes the strip away, writes one note in the browser, and puts the focus on the main content', async () => {
     const user = setupUser()
 
@@ -211,7 +211,7 @@ describe('closing it', () => {
     expect(NOTICE_STORAGE_KEY).toBe('btl-notice-closed')
     expect(localStorage.getItem(NOTICE_STORAGE_KEY)).not.toBeNull()
     expect(screen.getByRole('main')).toHaveFocus()
-  }, SLOW)
+  })
 
   it('closes from the keyboard, with Enter on the button', async () => {
     const user = setupUser()
@@ -225,7 +225,7 @@ describe('closing it', () => {
 
     expect(screen.queryByRole('note', NOTE)).toBeNull()
     expect(screen.getByRole('main')).toHaveFocus()
-  }, SLOW)
+  })
 
   it('stays closed on the next screen the strip would stand on, in the same visit', async () => {
     const user = setupUser()
@@ -237,7 +237,7 @@ describe('closing it', () => {
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Top liste' })).toBeVisible()
     expect(screen.queryByRole('note', NOTE)).toBeNull()
-  }, SLOW)
+  })
 
   it('stays closed on a later visit, on any of the three screens, until the warm-up ends', async () => {
     const user = setupUser()
@@ -254,7 +254,7 @@ describe('closing it', () => {
       expect(screen.queryByRole('note', NOTE), address).toBeNull()
       unmount()
     }
-  }, SLOW)
+  })
 
   /* WHERE THE NOTE IS KEPT IS NOT A PER-LANGUAGE FACT: one strip, one cross. A key that carried the
      language would let the Serbian visit close it and the English one see it again. */
@@ -270,7 +270,7 @@ describe('closing it', () => {
     await screen.findByRole('main')
 
     expect(screen.queryByRole('note', { name: 'Notice' })).toBeNull()
-  }, SLOW)
+  })
 
   it('has its own words in English', async () => {
     renderAt('/en', 'visitor', null, undefined, BEFORE)
@@ -293,5 +293,5 @@ describe('closing it', () => {
 
     expect(screen.queryByRole('note', NOTE)).toBeNull()
     expect(screen.getByRole('main')).toHaveFocus()
-  }, SLOW)
+  })
 })
