@@ -44,8 +44,8 @@ describe('the slice of the races the league does not score', () => {
     const slices = [...document.querySelectorAll('.donut__seg')]
 
     expect(slices).toHaveLength(2)
-    expect(at(slices, 0)).toHaveAttribute('stroke', 'var(--length-ultra)')
-    expect(at(slices, 1)).toHaveAttribute('stroke', 'var(--text-muted)')
+    expect(at(slices, 0)).toHaveAttribute('fill', 'var(--length-ultra)')
+    expect(at(slices, 1)).toHaveAttribute('fill', 'var(--text-muted)')
   })
 
   it('draws no slice when there are none, and the ring of a team page is the ring it was', () => {

@@ -1,5 +1,6 @@
-import { fireEvent, render, screen, within } from '@testing-library/react'
-import { at, first } from '../test/at'
+import { act, fireEvent, render, screen, within } from '@testing-library/react'
+import { afterEach, vi } from 'vitest'
+import { at, first, must } from '../test/at'
 import { setupUser } from '../test/user'
 import { I18nProvider } from '../i18n/I18nProvider'
 import type { RaceCategory } from '../data/types'
@@ -12,6 +13,33 @@ function renderDonut(counts: Map<RaceCategory, number>) {
     </I18nProvider>,
   )
 }
+
+/** The outer and the inner radius a slice is drawn with, read off its path. */
+function radii(one: Element) {
+  const d = one.getAttribute('d') ?? ''
+  const outer = /A ([\d.]+) [\d.]+ 0 \d 1/.exec(d)
+  const inner = /A ([\d.]+) [\d.]+ 0 \d 0/.exec(d)
+
+  return { outer: Number(at(outer ?? [], 1)), inner: Number(at(inner ?? [], 1)) }
+}
+
+const slicesNow = () => [...document.querySelectorAll('.donut__seg')]
+const hitsNow = () => [...document.querySelectorAll('.donut__hit')]
+const middle = () => [
+  document.querySelector('.donut__total')?.textContent,
+  document.querySelector('.donut__unit')?.textContent,
+]
+
+const TWO = () =>
+  new Map<RaceCategory, number>([
+    ['short', 3],
+    ['marathon', 1],
+  ])
+
+afterEach(() => {
+  vi.useRealTimers()
+  vi.unstubAllGlobals()
+})
 
 describe('CategoryDonut', () => {
   it('names only the lengths this person has actually run', () => {
@@ -35,12 +63,7 @@ describe('CategoryDonut', () => {
        about, and the drawing is hidden from the reading. Without this row it
        existed nowhere else: the widget beside it stopped counting races in the
        same change that hid the ring. */
-    renderDonut(
-      new Map<RaceCategory, number>([
-        ['short', 3],
-        ['marathon', 1],
-      ]),
-    )
+    renderDonut(TWO())
 
     const total = within(screen.getByRole('table')).getByRole('rowheader', { name: 'Zbirno' })
 
@@ -77,125 +100,101 @@ describe('CategoryDonut', () => {
   it('is read once, off the table, and not a second time off the drawing', () => {
     /* Chrome does not treat the children of an `img` as presentational, so a
        named drawing was read out in full and then the table said the same thing
-       again. */
+       again. What is drawn stays hidden from a reader; only the slices a keyboard
+       reaches are in the reading, as buttons, and the table is the one place the
+       numbers are read out. */
     renderDonut(new Map<RaceCategory, number>([['short', 1]]))
 
-    expect(document.querySelector('svg')).toHaveAttribute('aria-hidden', 'true')
+    expect(document.querySelector('.donut__ring')).toHaveAttribute('aria-hidden', 'true')
+    expect(document.querySelector('.donut__total')).toHaveAttribute('aria-hidden', 'true')
+    expect(document.querySelector('.donut__unit')).toHaveAttribute('aria-hidden', 'true')
     expect(screen.queryByRole('img')).not.toBeInTheDocument()
     expect(screen.getByRole('table', { name: 'Trke po distanci' })).toBeInTheDocument()
+  })
+
+  it('draws a ring that is whole when one length is all there is', () => {
+    renderDonut(new Map<RaceCategory, number>([['short', 2]]))
+
+    // One slice of the whole: two half circles each way, and a hole.
+    expect(radii(first(slicesNow()))).toEqual({ outer: 85, inner: 55 })
   })
 })
 
 describe('pointing at a slice', () => {
-  it('grows the one under the pointer and leaves the rest alone', async () => {
+  it('lifts the one under the pointer outwards and leaves the rest alone', async () => {
     const user = setupUser()
-    renderDonut(
-      new Map<RaceCategory, number>([
-        ['short', 3],
-        ['marathon', 1],
-      ]),
-    )
+    renderDonut(TWO())
 
-    const slices = [...document.querySelectorAll('.donut__seg')]
-    const before = slices.map((one) => one.getAttribute('stroke-width'))
-    /* Hovered on the layer that reads the pointer, read off the layer that
-       draws. They are the same slices in the same order; keeping them apart is
-       what stops a grown slice from moving its own hit area (owner,
-       01.08.2026). */
-    const hits = [...document.querySelectorAll('.donut__hit')]
+    const before = slicesNow().map(radii)
 
-    await user.hover(first(hits))
+    await user.hover(first(hitsNow()))
 
-    const during = [...document.querySelectorAll('.donut__seg')].map((one) =>
-      one.getAttribute('stroke-width'),
-    )
+    await vi.waitFor(() => {
+      expect(radii(first(slicesNow())).outer).toBe(97)
+    })
 
-    /* It grows outwards, so the hole in the middle never changes size. The two
-       widths are read through `at`, because a ring drawn with one slice fewer
-       must fail this rather than find nothing on both sides and agree. */
-    expect(Number(first(during))).toBeGreaterThan(Number(first(before)))
-    expect(at(during, 1)).toBe(at(before, 1))
+    const during = slicesNow().map(radii)
 
-    await user.unhover(first(hits))
-    expect(
-      [...document.querySelectorAll('.donut__seg')].map((one) =>
-        one.getAttribute('stroke-width'),
-      ),
-    ).toEqual(before)
+    // The inner edge is the same for every slice at every moment; only the outer edge of the chosen
+    // one moved, by exactly the growth, and the other one did not.
+    expect(during.map((one) => one.inner)).toEqual(before.map((one) => one.inner))
+    expect(at(during, 1).outer).toBe(at(before, 1).outer)
+    expect(first(slicesNow()).getAttribute('class')).not.toContain('dim')
+    expect(at(slicesNow(), 1).getAttribute('class')).toContain('dim')
+
+    await user.unhover(first(hitsNow()))
+
+    await vi.waitFor(() => {
+      expect(slicesNow().map(radii)).toEqual(before)
+    })
+    expect(slicesNow().map((one) => one.getAttribute('class'))).toEqual([
+      'donut__seg',
+      'donut__seg',
+    ])
+  })
+
+  it('moves the outer edge by degrees and never the inner one while it does', () => {
+    vi.useFakeTimers()
+    renderDonut(TWO())
+
+    fireEvent.pointerEnter(first(hitsNow()), { pointerType: 'mouse' })
+    act(() => {
+      vi.advanceTimersByTime(16)
+    })
+    act(() => {
+      vi.advanceTimersByTime(80)
+    })
+
+    const half = radii(first(slicesNow()))
+
+    expect(half.outer).toBeGreaterThan(85)
+    expect(half.outer).toBeLessThan(97)
+    expect(half.inner).toBe(55)
+
+    act(() => {
+      vi.advanceTimersByTime(300)
+    })
+    expect(radii(first(slicesNow())).outer).toBe(97)
+  })
+
+  it('does not move at all for those who ask for less of it', () => {
+    vi.stubGlobal('matchMedia', () => ({ matches: true }))
+    renderDonut(TWO())
+
+    fireEvent.pointerEnter(first(hitsNow()), { pointerType: 'mouse' })
+
+    expect(radii(first(slicesNow())).outer).toBe(97)
   })
 
   it('declines the word in the middle with the number above it', async () => {
     const user = setupUser()
     renderDonut(new Map<RaceCategory, number>([['marathon', 3]]))
 
-    await user.pointer({
-      target: first(document.querySelectorAll('.donut__hit')),
-      keys: '[TouchA]',
-    })
+    await user.pointer({ target: first(hitsNow()), keys: '[TouchA]' })
 
     // Three is the count that tells the forms apart: one and five both take the
     // same one in Serbian.
     expect(document.querySelector('.donut__unit')?.textContent).toBe('maratona')
-  })
-
-  /* The geometry of the growth, which is the whole of the change and which two
-     mutations used to walk straight through: growing on both edges instead of
-     outwards, and measuring the longer arc on the old circle so the slice slides
-     round the ring as it grows. */
-  it('grows outwards, keeps its place on the ring, and stays inside the drawing', async () => {
-    const user = setupUser()
-    renderDonut(
-      new Map<RaceCategory, number>([
-        ['short', 3],
-        ['marathon', 1],
-      ]),
-    )
-
-    const read = (one: Element) => {
-      /* The dash pattern is a pair: the length of line the browser draws, and
-         the circumference it is measured against. Read through `at`, so a slice
-         that has lost the attribute fails here saying which of the two was
-         missing, rather than arriving three assertions further down as a NaN
-         that could have come from any of them. */
-      const dash = (one.getAttribute('stroke-dasharray') ?? '').split(' ').map(Number)
-      const drawn = first(dash)
-      const round = at(dash, 1)
-
-      return {
-        radius: Number(one.getAttribute('r')),
-        width: Number(one.getAttribute('stroke-width')),
-        round,
-        share: drawn / round,
-        offset: Number(one.getAttribute('stroke-dashoffset')) / round,
-      }
-    }
-
-    /* The marathon, which is the smaller of the two slices. Asked for again
-       each time, because hovering draws a new one in its place. */
-    /* The drawing is read; the layer over it is what the pointer touches. They
-     are the same slices in the same order, so index 1 is the marathon in both. */
-  const marathon = () => at(document.querySelectorAll('.donut__seg'), 1)
-  const marathonHit = () => at(document.querySelectorAll('.donut__hit'), 1)
-
-    const before = read(marathon())
-
-    await user.hover(marathonHit())
-
-    const after = read(marathon())
-
-    // Outwards: the middle of the band moves out by half of what the band gains,
-    // so the inner edge stands still.
-    expect(after.radius).toBeCloseTo(before.radius + (after.width - before.width) / 2, 6)
-    // And the slice is the same slice: same share of the circle, same place on it.
-    expect(after.share).toBeCloseTo(before.share, 6)
-    expect(after.offset).toBeCloseTo(before.offset, 6)
-    /* Measured on its own circle, which is what keeps it there. A longer arc
-       measured on the smaller circle is the same length of line laid on a wider
-       ring, so the slice covers fewer degrees and slides round as it grows. */
-    expect(after.round).toBeCloseTo(2 * Math.PI * after.radius, 6)
-    expect(before.round).toBeCloseTo(2 * Math.PI * before.radius, 6)
-    // The outer edge stays inside the square the drawing is given.
-    expect(after.radius + after.width / 2).toBeLessThanOrEqual(100)
   })
 
   it('says which length it is, and how many', () => {
@@ -205,81 +204,116 @@ describe('pointing at a slice', () => {
     expect(document.querySelector('.donut__hit title')?.textContent).toBe('Maraton: 4')
   })
 
-  /* A tooltip is a thing a finger cannot open, and the ring has no names on it
-     any more, so on a telephone it was five unnamed colours (WCAG 2.2 SC 1.4.1).
-     A touch chooses a slice and the middle of the ring answers. */
   it('answers in the middle of the ring, so a finger can ask too', async () => {
     const user = setupUser()
-    renderDonut(
-      new Map<RaceCategory, number>([
-        ['short', 3],
-        ['marathon', 1],
-      ]),
-    )
+    renderDonut(TWO())
 
     // Left alone it is the total and the word for races.
-    expect(screen.getByText('4')).toBeInTheDocument()
-    expect(screen.getByText('trke')).toBeInTheDocument()
+    expect(middle()).toEqual(['4', 'trke'])
 
+    await user.pointer({ target: at(hitsNow(), 1), keys: '[TouchA]' })
+
+    expect(middle()).toEqual(['1', 'maraton'])
+  })
+})
+
+describe('going back to all the races', () => {
+  const ALL = ['4', 'trke']
+
+  it('goes back on a touch in the middle of the ring', async () => {
+    const user = setupUser()
+    renderDonut(TWO())
+
+    await user.pointer({ target: first(hitsNow()), keys: '[TouchA]' })
+    expect(middle()[0]).toBe('3')
+
+    // The middle is not a slice: it is the figure the ring writes there, which no slice covers.
     await user.pointer({
-      target: at(document.querySelectorAll('.donut__hit'), 1),
+      target: must(document.querySelector('.donut__total'), 'the figure in the middle'),
       keys: '[TouchA]',
     })
+    expect(middle()).toEqual(ALL)
+  })
 
-    /* Chosen, it is that length and its own count. Read off the drawing and not
-       off the page, because the name of the length also stands in the table
-       underneath, which is where a screen reader reads it. */
-    const middle = document.querySelector('.donut__unit')
-    const number = document.querySelector('.donut__total')
+  it('goes back on a second touch of the same slice, and not on a touch of another', async () => {
+    const user = setupUser()
+    renderDonut(TWO())
 
-    /* The word declines with the number above it, and it is not in capitals:
-       "ultramaratona" in small caps with spacing does not fit the hole in the
-       middle and loses the shape the eye reads a word by (owner, 31.07.2026). */
-    expect(middle?.textContent).toBe('maraton')
-    expect(number?.textContent).toBe('1')
+    await user.pointer({ target: first(hitsNow()), keys: '[TouchA]' })
+    await user.pointer({ target: at(hitsNow(), 1), keys: '[TouchA]' })
+    expect(middle()).toEqual(['1', 'maraton'])
+
+    await user.pointer({ target: at(hitsNow(), 1), keys: '[TouchA]' })
+    expect(middle()).toEqual(ALL)
+  })
+
+  it('goes back on a touch outside the ring', async () => {
+    const user = setupUser()
+    renderDonut(TWO())
+
+    await user.pointer({ target: first(hitsNow()), keys: '[TouchA]' })
+    expect(middle()[0]).toBe('3')
+    await user.pointer({ target: document.body, keys: '[TouchA]' })
+
+    expect(middle()).toEqual(ALL)
+  })
+
+  it('goes back on Esc, and ignores every other key', async () => {
+    const user = setupUser()
+    renderDonut(TWO())
+
+    await user.pointer({ target: first(hitsNow()), keys: '[TouchA]' })
+    await user.keyboard('a')
+    expect(middle()[0]).toBe('3')
+
+    await user.keyboard('{Escape}')
+    expect(middle()).toEqual(ALL)
+  })
+
+  it('does not take a mouse click on the slice it already rests on for a let-go', async () => {
+    const user = setupUser()
+    renderDonut(TWO())
+
+    await user.hover(first(hitsNow()))
+    await user.click(first(hitsNow()))
+
+    expect(middle()[0]).toBe('3')
+  })
+
+  it('chooses by focus and lets go by blur, and says which one is pressed', async () => {
+    const user = setupUser()
+    renderDonut(TWO())
+
+    await user.tab()
+    expect(first(hitsNow())).toHaveFocus()
+    expect(first(hitsNow())).toHaveAttribute('aria-pressed', 'true')
+    expect(middle()[0]).toBe('3')
+
+    await user.tab()
+    expect(at(hitsNow(), 1)).toHaveAttribute('aria-pressed', 'true')
+    expect(first(hitsNow())).toHaveAttribute('aria-pressed', 'false')
+
+    await user.tab()
+    expect(middle()).toEqual(ALL)
   })
 })
 
 describe('the line between two slices', () => {
-  it('reads the pointer off a layer that never changes shape', () => {
-    /* Reported from a screen recording: with the pointer resting on the line
-       between two slices the ring swapped between them, over and over, without
-       the mouse moving.
+  it('reads the pointer off a layer that never changes shape', async () => {
+    /* Reported from a screen recording: with the pointer resting on the line between two slices the
+       ring swapped between them, over and over, without the mouse moving. The drawing does not take the
+       pointer, and every slice of the layer that does is drawn at the size a chosen one reaches,
+       whatever is chosen. jsdom lays nothing out, so what is held is the arrangement. */
+    renderDonut(TWO())
 
-       The cause is geometric rather than accidental. The drawing caught the
-       pointer, and a slice that grows moves its own edge: choosing the second
-       slice grew it over the line, which put the pointer inside the first
-       slice's grown body, which chose the first, which grew it back over the
-       line, and so on for as long as the mouse stood still.
+    const before = hitsNow().map((one) => one.getAttribute('d'))
 
-       jsdom lays nothing out, so what is held here is the arrangement that makes
-       it impossible: every slice of the layer that reads the pointer is drawn at
-       the resting radius and the resting width, whatever is chosen, and the
-       layer that grows is not touchable at all. */
-    renderDonut(
-      new Map<RaceCategory, number>([
-        ['short', 3],
-        ['marathon', 1],
-      ]),
-    )
+    fireEvent.pointerEnter(first(hitsNow()), { pointerType: 'mouse' })
 
-    const resting = (one: Element) => [one.getAttribute('r'), one.getAttribute('stroke-width')]
-    const hits = [...document.querySelectorAll('.donut__hit')]
-    const before = hits.map(resting)
-    const drawn = [...document.querySelectorAll('.donut__seg')].map(resting)
-
-    expect(hits).toHaveLength(2)
-    expect(new Set(before.map(String)).size).toBe(1)
-
-    fireEvent.pointerEnter(first(hits), { pointerType: 'mouse' })
-
-    /* The chosen slice has grown, and not one of the hit areas has moved. The
-       drawing is compared against its own earlier width rather than against the
-       hit layer's: the hit layer is drawn at the size a chosen slice reaches, so
-       the two are equal once one is chosen and that comparison would prove
-       nothing. */
-    expect([...document.querySelectorAll('.donut__hit')].map(resting)).toEqual(before)
-    expect(Number(first(document.querySelectorAll('.donut__seg')).getAttribute('stroke-width')))
-      .toBeGreaterThan(Number(first(drawn)[1]))
+    await vi.waitFor(() => {
+      expect(radii(first(slicesNow())).outer).toBe(97)
+    })
+    expect(hitsNow().map((one) => one.getAttribute('d'))).toEqual(before)
+    expect(hitsNow().map((one) => radii(one).outer)).toEqual([97, 97])
   })
 })

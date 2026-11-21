@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { CATEGORIES } from '../data/derive'
 import type { RaceCategory } from '../data/types'
 import { formatNumber } from '../i18n/format'
@@ -24,25 +24,28 @@ import './CategoryDonut.css'
  * No charting library: five numbers do not justify one, and the table below,
  * which only a screen reader reads, is what makes the drawing readable without
  * eyes.
+ *
+ * THE RING WORKS QUIETLY AND WITHOUT CHOPPING (owner, 21.11.2026, PDL „Prsten radi suptilno i bez
+ * seckanja"): the slices are true sectors of a ring, the chosen one lifts outwards for about 180 ms
+ * with a soft slowing, the others fade a little, colours are nowhere mixed, and the number in the
+ * middle fades over to the next. A touch in the middle, on the same slice again, or outside the ring,
+ * and Esc, take it back to „all races". No movement for those who ask for less of it.
  */
 
 /** The drawing, in its own units. Square, because the ring is all there is. */
 const SIDE = 200
 const CENTRE = SIDE / 2
-/** Radius of the middle of the band. */
-const RADIUS = 70
-const BAND = 30
+/** The hole in the middle: one number for every slice at every moment, and nothing here ever moves it. */
+const INNER = 55
+/** Where a slice ends when nothing is chosen. */
+const OUTER = 85
 /**
- * How much the slice being pointed at grows, and it grows outwards only (owner,
- * 31.07.2026).
- *
- * It used to grow on both edges, half in and half out, which kept the ring's
- * middle still but ate into the room the figures stand in and made the growth
- * itself half as visible. Outwards it is one clear movement, and the hole in the
- * middle never changes size. The band and the radius came down to make room for
- * it: the outer edge of a grown slice reaches 97 of the 100 there are.
+ * How much the slice being pointed at grows, and it grows outwards only (owner, 31.07.2026): the outer
+ * edge of a grown slice reaches 97 of the 100 there are.
  */
 const GROWTH = 12
+/** The whole of the movement, in milliseconds (owner, 21.11.2026: about 150 to 200). */
+const DURATION = 180
 
 /** The sixth slice (PDL, 14.11.2026, „Ostale discipline kao lična evidencija"): races the league does
  *  not score, which the profile draws in the ring and keeps out of every figure beside it. */
@@ -67,6 +70,101 @@ const COLOURS: Record<SliceKind, string> = {
   unscored: 'var(--text-muted)',
 }
 
+/**
+ * A TRUE SECTOR OF THE RING, NOT A DASHED CIRCLE.
+ *
+ * The slices used to be circles with a dash, and the chosen one grew by animating `r` and `stroke-width`
+ * together. While the radius moves, the circumference moves with it and the dash does not, so for the
+ * length of the movement every slice was a little too short or too long and the colour of its neighbour
+ * showed through at the joins. A sector has both its angles written into the path and only its outer
+ * radius moves: the joins are straight lines through the centre, so no frame can overlap a neighbour or
+ * leave a gap, and the inner edge is the same `INNER` in every frame.
+ *
+ * The movement is a number animated here (`useGrowth`), not `transform: scale` (which would move the
+ * inner edge too) and not the CSS `d` property (which two of the three engines cannot animate).
+ */
+function sector(from: number, share: number, outer: number): string {
+  const point = (radius: number, angle: number) =>
+    `${(CENTRE + radius * Math.cos(angle)).toFixed(3)} ${(CENTRE + radius * Math.sin(angle)).toFixed(3)}`
+
+  if (share >= 1) {
+    // A whole ring has no joins: two half circles each way, and the fill rule leaves the hole.
+    return (
+      `M ${point(outer, 0)} A ${outer} ${outer} 0 1 1 ${point(outer, Math.PI)} ` +
+      `A ${outer} ${outer} 0 1 1 ${point(outer, 0)} Z ` +
+      `M ${point(INNER, 0)} A ${INNER} ${INNER} 0 1 0 ${point(INNER, Math.PI)} ` +
+      `A ${INNER} ${INNER} 0 1 0 ${point(INNER, 0)} Z`
+    )
+  }
+
+  const start = from * 2 * Math.PI
+  const end = (from + share) * 2 * Math.PI
+  const large = share > 0.5 ? 1 : 0
+
+  return (
+    `M ${point(outer, start)} A ${outer} ${outer} 0 ${large} 1 ${point(outer, end)} ` +
+    `L ${point(INNER, end)} A ${INNER} ${INNER} 0 ${large} 0 ${point(INNER, start)} Z`
+  )
+}
+
+/** Soft slowing at the end, with no overshoot. */
+const easeOut = (t: number) => 1 - (1 - t) * (1 - t)
+
+type Levels = Partial<Record<SliceKind, number>>
+
+/** Each slice's own progress, 0 resting to 1 grown, moving to where the chosen one asks over `DURATION`. */
+function useGrowth(pointed: SliceKind | null): Levels {
+  const [levels, setLevels] = useState<Levels>({})
+  const current = useRef<Levels>(levels)
+
+  useEffect(() => {
+    const from = current.current
+    const goal = (one: SliceKind) => (one === pointed ? 1 : 0)
+    const settle = (next: Levels) => {
+      current.current = next
+      setLevels(next)
+    }
+    const arrive = () => settle(Object.fromEntries(KINDS.map((one) => [one, goal(one)])))
+
+    // No movement for those who ask for less of it: it is simply there.
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true) {
+      arrive()
+
+      return
+    }
+
+    let begun: number | undefined
+    let frame = 0
+    const step = (now: number) => {
+      begun ??= now
+      const spent = Math.min(1, (now - begun) / DURATION)
+
+      if (spent >= 1) {
+        arrive()
+
+        return
+      }
+
+      settle(
+        Object.fromEntries(
+          KINDS.map((one) => {
+            const was = from[one] ?? 0
+
+            return [one, was + (goal(one) - was) * spent]
+          }),
+        ),
+      )
+      frame = requestAnimationFrame(step)
+    }
+
+    frame = requestAnimationFrame(step)
+
+    return () => cancelAnimationFrame(frame)
+  }, [pointed])
+
+  return levels
+}
+
 export function CategoryDonut({
   counts,
   caption,
@@ -80,10 +178,40 @@ export function CategoryDonut({
 }) {
   const { locale, t } = useI18n()
   const [pointed, setPointed] = useState<SliceKind | null>(null)
+  const levels = useGrowth(pointed)
   const countOf = (one: SliceKind) => (one === UNSCORED ? unscored : (counts.get(one) ?? 0))
   const nameOf = (one: SliceKind) =>
     one === UNSCORED ? t('profile.unscoredFilter') : t(`category.${one}`)
   const total = KINDS.reduce((sum, one) => sum + countOf(one), 0)
+
+  /* Back to „all races" (owner, 21.11.2026): a touch anywhere that is not a slice, which takes in the
+     middle of the ring and everything outside it, and Esc. Listened to on the document because „outside
+     the ring" is by definition not inside anything here. A slice lets its own touch through, because
+     what a touch on a slice does is decided on the slice. */
+  useEffect(() => {
+    if (pointed === null) {
+      return
+    }
+
+    const away = (event: PointerEvent) => {
+      if (!(event.target instanceof Element) || event.target.closest('.donut__hit') === null) {
+        setPointed(null)
+      }
+    }
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setPointed(null)
+      }
+    }
+
+    document.addEventListener('pointerdown', away)
+    document.addEventListener('keydown', escape)
+
+    return () => {
+      document.removeEventListener('pointerdown', away)
+      document.removeEventListener('keydown', escape)
+    }
+  }, [pointed])
 
   let offset = 0
   const slices: { one: SliceKind; value: number; share: number; offset: number }[] = []
@@ -104,101 +232,98 @@ export function CategoryDonut({
 
   return (
     <div className="donut-block">
-      <svg className="donut" viewBox={`0 0 ${SIDE} ${SIDE}`} aria-hidden="true">
-        {/* The whole ring when nothing has been run, and the gap behind the
-            slices otherwise. */}
-        <circle className="donut__track" cx={CENTRE} cy={CENTRE} r={RADIUS} strokeWidth={BAND} />
+      <svg className="donut" viewBox={`0 0 ${SIDE} ${SIDE}`}>
+        {/* The whole ring when nothing has been run, and the gap behind the slices otherwise. What is
+            drawn is hidden from a reader, who has the table below; what a keyboard can reach, the
+            slices of the layer over it, is not. */}
+        <circle
+          className="donut__track"
+          aria-hidden="true"
+          cx={CENTRE}
+          cy={CENTRE}
+          r={(INNER + OUTER) / 2}
+          strokeWidth={OUTER - INNER}
+        />
 
-        <g className="donut__ring">
-          {slices.map((slice) => {
-            /* Growing outwards means a wider band on a longer radius, so the
-               arc has to be measured on its own circle: the same share of a
-               bigger circle is a longer arc, and a slice drawn to the old
-               measure would slide round as it grew. */
-            const grown = pointed === slice.one
-            const radius = grown ? RADIUS + GROWTH / 2 : RADIUS
-            const round = 2 * Math.PI * radius
-
-            return (
-              <circle
-                key={slice.one}
-                className="donut__seg"
-                cx={CENTRE}
-                cy={CENTRE}
-                r={radius}
-                strokeWidth={grown ? BAND + GROWTH : BAND}
-                stroke={COLOURS[slice.one]}
-                strokeDasharray={`${slice.share * round} ${round}`}
-                strokeDashoffset={-slice.offset * round}
-              />
-            )
-          })}
+        <g className="donut__ring" aria-hidden="true">
+          {slices.map((slice) => (
+            <path
+              key={slice.one}
+              className={
+                pointed !== null && pointed !== slice.one ? 'donut__seg donut__seg--dim' : 'donut__seg'
+              }
+              fill={COLOURS[slice.one]}
+              d={sector(slice.offset, slice.share, OUTER + GROWTH * easeOut(levels[slice.one] ?? 0))}
+            />
+          ))}
         </g>
 
-        {/* What the pointer actually touches: the same slices at the size they
-            are when nothing is chosen, drawn over the top and never seen (owner,
-            01.08.2026).
-
-            The drawing above used to catch the pointer itself, and a slice that
-            grows moves its own edge. On the line between two slices that made
-            the ring flicker: the pointer chose the second slice, the second
-            slice grew over the line, the pointer was now inside the second
-            slice's grown body but the first slice's grown body had already
-            taken the ground back, and the two swapped for as long as the mouse
-            stood still. The hit area cannot be allowed to move, so it is a layer
-            of its own that never does. */}
+        {/* What the pointer actually touches: the slices at the size a chosen one reaches, drawn over
+            the top and never seen (owner, 01.08.2026). A slice that grows moves its own edge, and on the
+            line between two slices that made the ring flicker; the hit area cannot be allowed to move,
+            so it is a layer of its own that never does. */}
         <g className="donut__hits">
-          {slices.map((slice) => {
-            /* Drawn at the size a chosen slice reaches, not at the resting size:
-               the outer growth of the chosen one is visibly the slice, and a hit
-               band that stopped short of it let the pointer walk out of its own
-               slice and snap it back. It still never changes shape, which is the
-               whole point of the layer. */
-            const radius = RADIUS + GROWTH / 2
-            const round = 2 * Math.PI * radius
-
-            return (
-              <circle
-                key={slice.one}
-                className="donut__hit"
-                cx={CENTRE}
-                cy={CENTRE}
-                r={radius}
-                strokeWidth={BAND + GROWTH}
-                strokeDasharray={`${slice.share * round} ${round}`}
-                strokeDashoffset={-slice.offset * round}
-                /* Pointer rather than mouse, so a finger and a stylus choose a
-                   slice the same way. The choice sticks until another slice is
-                   chosen or the ring is left, which is what a touch needs and
-                   what a mouse gets anyway. */
-                onPointerEnter={() => setPointed(slice.one)}
-                onPointerDown={() => setPointed(slice.one)}
-                onPointerLeave={(event) => {
-                  if (event.pointerType === 'mouse') {
-                    setPointed(null)
-                  }
-                }}
-              >
-                {/* On the layer that reads the pointer, because that is the one
-                    the browser draws a tooltip for. It used to sit on the
-                    drawing, which no longer takes pointer events at all, so the
-                    tooltip had quietly stopped appearing. */}
-                <title>
-                  {nameOf(slice.one)}: {formatNumber(slice.value, locale)}
-                </title>
-              </circle>
-            )
-          })}
+          {slices.map((slice) => (
+            <path
+              key={slice.one}
+              className="donut__hit"
+              d={sector(slice.offset, slice.share, OUTER + GROWTH)}
+              role="button"
+              tabIndex={0}
+              aria-pressed={pointed === slice.one}
+              /* A mouse chooses by passing over, as it always did. A finger has no passing over: its
+                 touch chooses, and the same touch again lets go (owner, 21.11.2026). A touch is skipped
+                 here because it fires a `pointerenter` just before its `pointerdown`, which would make
+                 every first touch look like a second. */
+              onPointerEnter={(event) => {
+                if (event.pointerType !== 'touch') {
+                  setPointed(slice.one)
+                }
+              }}
+              onPointerDown={(event) =>
+                setPointed(event.pointerType !== 'mouse' && pointed === slice.one ? null : slice.one)
+              }
+              onPointerLeave={(event) => {
+                if (event.pointerType === 'mouse') {
+                  setPointed(null)
+                }
+              }}
+              onFocus={() => setPointed(slice.one)}
+              onBlur={() => setPointed(null)}
+            >
+              {/* On the layer that reads the pointer, because that is the one the browser draws a
+                  tooltip for, and it names the control for a reader. */}
+              <title>
+                {nameOf(slice.one)}: {formatNumber(slice.value, locale)}
+              </title>
+            </path>
+          ))}
         </g>
 
-        <text className="donut__total" x={CENTRE} y={CENTRE + 6} textAnchor="middle">
+        {/* Keyed by what is chosen, so a new choice is a new element and the stylesheet's fade runs
+            again: the number and the word are crossfaded, not jumped. */}
+        <text
+          key={`total-${pointed ?? 'all'}`}
+          className="donut__total"
+          aria-hidden="true"
+          x={CENTRE}
+          y={CENTRE + 6}
+          textAnchor="middle"
+        >
           {formatNumber(chosen === undefined ? total : chosen.value, locale)}
         </text>
         {/* Whose number it is. Left alone that is the word for races, declined
             with the count the way it is on the front page: 1 trka, 3 trke, 5
             trka. While a slice is chosen it is the name of that length, which is
             the only way somebody on a telephone can find out. */}
-        <text className="donut__unit" x={CENTRE} y={CENTRE + 28} textAnchor="middle">
+        <text
+          key={`unit-${pointed ?? 'all'}`}
+          className="donut__unit"
+          aria-hidden="true"
+          x={CENTRE}
+          y={CENTRE + 28}
+          textAnchor="middle"
+        >
           {chosen === undefined
             ? t('profile.racesWord', { count: total })
             : chosen.one === UNSCORED
