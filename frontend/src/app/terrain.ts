@@ -131,16 +131,22 @@ export const PHONE_CONTOURS: readonly Contour[] = [
   { d: 'M403 362C404 365 404 369 404 372C404 375 404 378 403 381C402 384 402 387 400 389C399 392 398 394 397 396C395 398 393 399 392 401C390 402 389 403 387 405C385 406 383 407 381 408C379 409 377 409 375 409C373 410 371 409 368 408C366 407 364 405 362 403C360 401 359 399 357 396C356 393 355 390 354 387C353 384 352 380 352 377C352 374 352 370 352 368C352 365 353 362 354 359C354 357 355 354 356 352C356 349 356 347 357 344C357 341 357 338 357 334C358 331 359 327 360 324C361 321 363 319 365 317C367 316 370 315 372 316C374 316 377 318 379 319C381 321 383 323 385 325C387 327 388 330 390 332C391 334 393 336 394 338C396 340 397 342 398 345C400 348 401 350 401 353C402 356 403 359 403 362Z', opacity: 1.0 },
 ]
 
-/** The route that runs between the hills: from the top of the left edge, past two waypoints, to the
- *  second of them, and on to the foot of the window. The dot of the page travels the first part of it
- *  (`TRAVEL`). */
+/** The route that runs between the hills: from the top of the left edge, past two waypoints, and on to
+ *  the foot of the window. The dot of the page travels all of it and on past its end (`TRAVEL`). */
 export const ROUTE = 'M53 140C57 152 76 188 78 215C80 242 72 272 64 300C56 328 38 354 30 380C22 406 14 429 17 455C20 481 35 509 45 535C56 561 75 584 80 610C84 636 78 665 71 690C64 715 46 734 38 760C30 786 21 817 23 845C24 873 37 904 45 930C54 956 69 988 74 1000'
 
-/** The stretch of the route the dot travels: the same path cut at the second waypoint, where the
- *  dot stops. Its last curve is the route's, re-drawn to end on the waypoint. */
-export const TRAVEL = 'M53 140C57 152 76 188 78 215C80 242 72 272 64 300C56 328 38 354 30 380C22 406 14 429 17 455C20 481 35 509 45 535C56 561 75 584 80 610C84 636 73 677 71 690'
+/** How far below the foot of the drawing the dot's path ends, in the drawing's own units. The lane shows
+ *  y from 0 to 1000 at most (`LANE_VIEW`, cut to the window by `slice`), so the dot's ring (11 units) must
+ *  be wholly past 1000 where the path ends, and 1040 leaves it that and a margin. */
+export const TRAVEL_END_Y = 1040
 
-/** The two waypoints, the second being where the dot stops. */
+/** What the dot travels (owner, 21.11.2026: it runs through the screen, leaves over the bottom edge of the
+ *  window and is gone): the whole route, then on down along the same line past the foot of the window,
+ *  where the dot cannot be seen. The last curve leaves the route's end in the direction the route arrives
+ *  in, so the dot does not turn or stop where the route ends. */
+export const TRAVEL = `${ROUTE}C77 1006 79 1022 81 ${TRAVEL_END_Y}`
+
+/** The two waypoints the route passes. */
 export const WAYPOINTS: readonly (readonly [number, number])[] = [
   [30, 380],
   [71, 690],

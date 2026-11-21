@@ -250,29 +250,69 @@
 /* THE LANE (owner, 20.11.2026: „Jaka tačka, nikad ispod teksta"). The route and the dot are drawn in a strip
    100 units wide, which is 100px at the browser's own text size, whose right edge is the left edge of the
    column of the page (1100px, `app/Shell.css`). Beside the column there are no words, so the route and the
-   dot are never over one, at any width and at any height of the window. A window narrower than the column
-   has the strip off its left edge, and between 1100px and about 1300px only a part of it shows: where there
-   is no gutter, there is no route. */
+   dot are never over one, at any width and at any height of the window.
+
+   WHAT SHOWS OF IT IS ALL OF IT (owner, 21.11.2026: „suzi putanju tako da ovo ne može da se desi"). The drawing
+   is cut to the strip by `slice`, which scales it by the larger of strip-width over 100 and window-height over
+   1000, so on a window taller than 1000 units the strip must be as many pixels wide as the window is tall over
+   ten, or the left of the drawing is cut off (a 100px strip on a 1380px window showed 72 of its 100 units, and
+   the dot crossed the cut). The strip is therefore `max(6.25rem, 10vh)` wide, and it is as wide as the drawing
+   needs. The gutter beside the column may be narrower than that. What it is short of, the drawing gives up
+   ACROSS and not down: its contents are squeezed towards the column by `--fit`, the room there is, less the two
+   halves of the dot's ring that the squeeze does not take (0,22 of the strip), over the width of the drawing
+   between its leftmost mark and the line it is squeezed about (0,73 of the strip: the dot's centre is at 16 of the
+   100 units and the line at 89, eleven units short of the strip's right edge, so that the ring, which is as wide
+   as it was drawn, is never cut by the strip on the column's side), never more than one; and
+   the marks that are round (waypoints and the dot) are drawn at 1 over `--fit` across, so that they stay round.
+   `--room` keeps a rem clear of the window's edge, and of a scrollbar, which `vw` counts. Where the gutter is
+   too small for even that (see the last rule of this lane), nothing of the lane is drawn, and the dot is not
+   either: the lane is not shown on a window under 1100px plus 5em, or on one taller than its gutter allows. */
 .terrain--lane {
+  --lane-width: max(6.25rem, 10vh);
+  --room: calc((100vw - 1100px) / 2 - 1rem);
+  --fit: clamp(0.25, calc((var(--room) - 0.22 * var(--lane-width)) / (0.73 * var(--lane-width))), 1);
   display: none;
   top: 0;
   right: auto;
   bottom: auto;
-  left: calc((100% - 1100px) / 2 - 6.25rem);
-  width: 6.25rem;
+  left: calc((100% - 1100px) / 2 - var(--lane-width));
+  width: var(--lane-width);
   height: 100%;
+}
+
+/* The contents of the lane, squeezed towards the column (towards unit 89 of the drawing) by `--fit`. */
+.race-lane__fit {
+  transform-box: view-box;
+  transform-origin: 89% 0;
+  scale: var(--fit) 1;
+}
+
+/* The round marks, made round again under the squeeze: about their own centre, 1 over `--fit` across. */
+.terrain__waypoint,
+.terrain__waypoint-ring,
+.race-page__dot-core,
+.race-page__dot-ring {
+  transform-box: fill-box;
+  transform-origin: center;
+  scale: calc(1 / var(--fit)) 1;
 }
 
 /* THE DOT.
  *
- * It runs the route once and stops on the second waypoint, and it is asked for nothing: no control,
- * no repeat (owner, 20.11.2026: once, five seconds at most, on every screen that opens). It stops
- * because the place it rests at is its own (`offset-distance: 100%`), not because the animation holds
- * it there: an animation that fills forwards never ends as far as the browser is concerned, and a
- * page with one that never ends is a page that never settles for the guards that wait for it
- * (`geometry/support/harness.ts`). It is
- * drawn only where the browser both moves along a path and the reader has not asked for less
- * movement: a reader who has gets no dot, not a still one, and a browser that cannot follow a path
+ * It runs the route once, on past its end and out over the bottom edge of the window, where it is gone,
+ * and it is asked for nothing: no control, no repeat (owner, 20.11.2026: once, on every screen that
+ * opens; 21.11.2026: it leaves the screen instead of stopping on it, and the whole run is under five
+ * seconds). It is gone because the place it rests at is its own (`offset-distance: 100%`, the end of
+ * `TRAVEL`, below the foot of the drawing), not because the animation holds it there: an animation that
+ * fills forwards never ends as far as the browser is concerned, and a page with one that never ends is
+ * a page that never settles for the guards that wait for it (`geometry/support/harness.ts`). The curve
+ * is near a straight line (no stop at either end), so the dot goes through the old stopping place and
+ * out without slowing down. It is
+ * drawn only where the lane that holds it is (a window with a gutter for it, and a browser that divides
+ * one length by another, see THE LANE), where the browser both moves along a path and the reader has not
+ * asked for less movement, and all of it stays in
+ * the window and in its strip from its first step to the one that takes it out at the bottom (owner,
+ * 21.11.2026, `--fit`): a reader who has gets no dot, not a still one, and a browser that cannot follow a path
  * would leave it in the corner of the drawing. It starts again on each screen because the component
  * gives it a new key (`app/RaceInMotion.tsx`), which makes a new element, and a new element starts
  * its animation from the beginning. The dot is stronger than the route and is therefore the
@@ -307,8 +347,7 @@
 
 /* From where a telephone stops being one: the wide drawing, with its route. */
 @media (min-width: 35em) {
-  .terrain--wide,
-  .terrain--lane {
+  .terrain--wide {
     display: block;
   }
 
@@ -317,12 +356,35 @@
   }
 }
 
+/* The lane, where there is a gutter to hold it: where the gutter, less the rem kept clear of the edge, is at
+   least four tenths of the strip (`max(6.25rem, 10vh)`), which is what holds the ring and a route squeezed to a
+   quarter (`--fit` is never less). A media query cannot read the strip, which follows the height, so the
+   heights are taken in steps and each asks for the width its tallest window asks for: 1100px of column,
+   twice the rem and twice four tenths of the strip, `max(5em, 8% of the height)` in all. A window taller
+   than 5000px has no lane. A browser that cannot divide one length by another (Firefox 155) cannot work out
+   `--fit`, and a lane that is not squeezed would be cut by the window, so it has no lane and no dot: the
+   rule stands under the one `@supports` that asks for exactly that, as the dot's does for `offset-path`. */
+@supports (width: calc(1px * (1px / 1px))) {
+  @media
+    (min-width: calc(1132px + max(5em, 80px))) and (max-height: 1000px),
+    (min-width: calc(1132px + max(5em, 120px))) and (max-height: 1500px),
+    (min-width: calc(1132px + max(5em, 160px))) and (max-height: 2000px),
+    (min-width: calc(1132px + max(5em, 200px))) and (max-height: 2500px),
+    (min-width: calc(1132px + max(5em, 240px))) and (max-height: 3000px),
+    (min-width: calc(1132px + max(5em, 320px))) and (max-height: 4000px),
+    (min-width: calc(1132px + max(5em, 400px))) and (max-height: 5000px) {
+    .terrain--lane {
+      display: block;
+    }
+  }
+}
+
 @supports (offset-path: path('M0 0')) {
   @media (min-width: 35em) and (prefers-reduced-motion: no-preference) {
     .race-page__dot {
       display: inline;
       offset-distance: 100%;
-      animation: race-dot-run 5s cubic-bezier(0.45, 0, 0.25, 1) 1;
+      animation: race-dot-run 4.5s cubic-bezier(0.3, 0.2, 0.7, 0.8) 1;
     }
   }
 }
