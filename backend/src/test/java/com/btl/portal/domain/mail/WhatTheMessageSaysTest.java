@@ -138,7 +138,7 @@ class WhatTheMessageSaysTest {
 				"",
 				tail));
 
-		assertThat(WhatTheMessageSays.about(Message.INVITED_AS_A_MEMBER, PORTAL, TOKEN).body())
+		assertThat(WhatTheMessageSays.about(Message.INVITED_AS_A_MEMBER, PORTAL, TOKEN, Gender.MAN).body())
 				.isEqualTo(String.join("\n",
 				"Upisali smo te u Balkansku trkačku ligu na osnovu saglasnosti koju si potpisao.",
 				"",
@@ -645,9 +645,9 @@ class WhatTheMessageSaysTest {
 		String confirmedByHim = WhatTheMessageSays.about(Message.CONFIRM_THE_ADDRESS, MailLanguage.SERBIAN, PORTAL,
 				TOKEN, THE_LINK_ENDS, Gender.MAN).body();
 
-		assertThat(confirmedByHer).startsWith("Dobrodošla u Balkansku").contains("nisi se registrovala")
+		assertThat(confirmedByHer).startsWith("Dobrodošla u Balkansku").contains("se nisi registrovala")
 				.doesNotContain("registrovao").doesNotContain("Dobrodošao");
-		assertThat(confirmedByHim).startsWith("Dobrodošao u Balkansku").contains("nisi se registrovao")
+		assertThat(confirmedByHim).startsWith("Dobrodošao u Balkansku").contains("se nisi registrovao")
 				.doesNotContain("registrovala").doesNotContain("Dobrodošla");
 
 		Said invitedHer = WhatTheMessageSays.about(Message.INVITED_AS_A_MEMBER, PORTAL, TOKEN, Gender.WOMAN);
@@ -679,5 +679,51 @@ class WhatTheMessageSaysTest {
 				TOKEN, THE_LINK_ENDS, null)).isInstanceOf(NullPointerException.class).hasMessage("sex");
 		assertThatThrownBy(() -> WhatTheMessageSays.about(Message.CONFIRM_THE_ADDRESS, PORTAL, TOKEN, Gender.MAN))
 				.isInstanceOf(IllegalArgumentException.class).hasMessageContaining("its reader's language");
+	}
+
+	/**
+	 * AN ACCOUNT THAT NAMES NO MEMBER HAS NO SEX (V23), and what the portal says to him in „ti" is the owner's
+	 * question (asked 21.11.2026). Until it is answered he is written the words he was always written, held
+	 * whole here, and English, which has no participle, is the same as for everybody.
+	 */
+	@Test
+	void anAccountThatNamesNoMemberIsWrittenTheWordsTheOwnerApprovedAsTheyWere() {
+		Said serbian = WhatTheMessageSays.aboutToAnAccountThatNamesNoMember(Message.CONFIRM_THE_ADDRESS,
+				MailLanguage.SERBIAN, PORTAL, TOKEN, THE_LINK_ENDS);
+
+		assertThat(serbian.subject()).isEqualTo("Potvrdite svoju adresu");
+		assertThat(serbian.body()).startsWith("Dobrodošli u Balkansku trkačku ligu.")
+				.contains("Adresu potvrđujete otvaranjem ovog linka:")
+				.contains("a sa ove adrese možete da se registrujete ponovo.")
+				.contains("Ako se niste registrovali kod nas, zanemarite ovu poruku.")
+				.contains(linkOf(Message.CONFIRM_THE_ADDRESS, MailLanguage.SERBIAN))
+				.contains("do 17.12.2026. 13:00");
+		assertThat(WhatTheMessageSays.aboutToAnAccountThatNamesNoMember(Message.CONFIRM_THE_ADDRESS,
+				MailLanguage.ENGLISH, PORTAL, TOKEN, THE_LINK_ENDS))
+				.isEqualTo(WhatTheMessageSays.about(Message.CONFIRM_THE_ADDRESS, MailLanguage.ENGLISH, PORTAL, TOKEN,
+						THE_LINK_ENDS, Gender.MAN));
+
+		assertThatThrownBy(() -> WhatTheMessageSays.aboutToAnAccountThatNamesNoMember(Message.SET_A_NEW_PASSWORD,
+				MailLanguage.SERBIAN, PORTAL, TOKEN, THE_LINK_ENDS)).isInstanceOf(IllegalArgumentException.class);
+		assertThatThrownBy(() -> WhatTheMessageSays.aboutToAnAccountThatNamesNoMember(null, MailLanguage.SERBIAN,
+				PORTAL, TOKEN, THE_LINK_ENDS)).isInstanceOf(NullPointerException.class).hasMessage("message");
+		assertThatThrownBy(() -> WhatTheMessageSays.aboutToAnAccountThatNamesNoMember(Message.CONFIRM_THE_ADDRESS,
+				null, PORTAL, TOKEN, THE_LINK_ENDS)).isInstanceOf(NullPointerException.class).hasMessage("reader");
+		assertThatThrownBy(() -> WhatTheMessageSays.aboutToAnAccountThatNamesNoMember(Message.CONFIRM_THE_ADDRESS,
+				MailLanguage.SERBIAN, PORTAL, TOKEN, null)).isInstanceOf(NullPointerException.class)
+				.hasMessage("endsAt");
+	}
+
+	/** The floor over that dictionary: the two keys of the confirmation, with the holes of the masculine one. */
+	@Test
+	void theWordsOfAnAccountThatNamesNoMemberAreTheTwoKeysOfTheConfirmationWithTheSameHoles() {
+		ResourceBundle none = ResourceBundle.getBundle("mail/sr-no-member", java.util.Locale.ROOT);
+		ResourceBundle man = WhatTheMessageSays.words(MailLanguage.SERBIAN);
+
+		assertThat(none.keySet()).containsExactlyInAnyOrder("confirmTheAddress.subject", "confirmTheAddress.body");
+		assertThat(new java.text.MessageFormat(none.getString("confirmTheAddress.body"), java.util.Locale.ROOT)
+				.getFormatsByArgumentIndex().length)
+				.isEqualTo(new java.text.MessageFormat(man.getString("confirmTheAddress.body"), java.util.Locale.ROOT)
+						.getFormatsByArgumentIndex().length);
 	}
 }

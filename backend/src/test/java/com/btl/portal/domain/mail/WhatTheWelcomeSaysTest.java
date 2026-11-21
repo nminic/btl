@@ -128,7 +128,7 @@ class WhatTheWelcomeSaysTest {
 				"Iznos: 3.600,00 RSD",
 				"Svrha uplate: Članarina za 2027. godinu",
 				"",
-				"Uplata nema poziv na broj, jer članski broj još nemate. Članski broj dobijate kad uplata"
+				"Uplata nema poziv na broj, jer članski broj još nemaš. Članski broj dobijaš kad uplata"
 						+ " bude evidentirana.",
 				"",
 				"Iste podatke uvek možeš naći i na strani Moja članarina:"
@@ -143,7 +143,7 @@ class WhatTheWelcomeSaysTest {
 
 		assertThat(c.subject()).isEqualTo("Podaci za uplatu članarine za 2027. godinu");
 		assertThat(c.body()).isEqualTo(String.join("\n", HELLO, "",
-				"Članarinu za 2027. godinu uplaćujete preko PayPal-a:",
+				"Članarinu za 2027. godinu uplaćuješ preko PayPal-a:",
 				"",
 				"PayPal adresa: info@balkanskatrkackaliga.net",
 				"Iznos (sa uračunatom taksom): 32,00 EUR",

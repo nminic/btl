@@ -412,8 +412,33 @@ public final class WhatTheMessageSays {
 		return written(message, reader, sex, portal, token, WhatANoticeSays.moment(endsAt, reader));
 	}
 
+	/**
+	 * THE CONFIRMATION OF AN ADDRESS FOR AN ACCOUNT THAT NAMES NO MEMBER, a moderator who does not race
+	 * (V23): he has no sex in any table of the portal, so what the portal says to him in „ti" is the
+	 * owner's question (asked 21.11.2026), and until it is answered he is written the words the owner
+	 * approved, as they were ({@code mail/sr-no-member}). English has no participle and is the same for
+	 * everybody.
+	 */
+	public static Said aboutToAnAccountThatNamesNoMember(Message message, MailLanguage reader, Portal portal,
+			String token, Instant endsAt) {
+		Objects.requireNonNull(message, "message");
+		Objects.requireNonNull(reader, "reader");
+		Objects.requireNonNull(endsAt, "endsAt");
+
+		if (message != Message.CONFIRM_THE_ADDRESS) {
+			throw new IllegalArgumentException(message + " has no words for an account that names no member");
+		}
+
+		return written(message, reader, null, true, portal, token, WhatANoticeSays.moment(endsAt, reader));
+	}
+
 	private static Said written(Message message, MailLanguage in, Gender sex, Portal portal, String token,
 			String howLong) {
+		return written(message, in, sex, false, portal, token, howLong);
+	}
+
+	private static Said written(Message message, MailLanguage in, Gender sex, boolean noMember, Portal portal,
+			String token, String howLong) {
 		Objects.requireNonNull(portal, "portal");
 		Objects.requireNonNull(token, "token");
 
@@ -445,6 +470,15 @@ public final class WhatTheMessageSays {
 		String link = portal.address() + in.prefix() + message.path() + "?token=" + token;
 
 		ResourceBundle woman = wordsForAWoman(in);
+
+		if (noMember && in != MailLanguage.ENGLISH) {
+			ResourceBundle old = ResourceBundle.getBundle(WORDS + "sr-no-member", ONE_SET_OF_WORDS);
+
+			return new Said(old.getString(message.key() + ".subject"),
+					new MessageFormat(old.getString(message.key() + ".body"), ONE_SET_OF_WORDS)
+							.format(new Object[] {link, howLong}));
+		}
+
 		String subject = sex == null ? Gender.wordsOfNoOne(words, woman, message.key() + ".subject")
 				: sex.words(words, woman, message.key() + ".subject");
 		String body = sex == null ? Gender.wordsOfNoOne(words, woman, message.key() + ".body")

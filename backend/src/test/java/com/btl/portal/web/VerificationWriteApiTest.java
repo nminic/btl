@@ -2414,6 +2414,8 @@ class VerificationWriteApiTest {
 		assertThat(said).as("it names the run's own season instead of the one that closed")
 				.doesNotContain("za sezonu 2027");
 		assertThat(said).contains("prag od " + Category.FIRST_SEASON_POINTS + " bodova");
+		assertThat(said).as("the fixture's member is a woman and the line is hers")
+				.contains("jer si rezultatom sa trke").contains(" prešla prag od ").doesNotContain("prešao");
 	}
 
 	/**
@@ -5971,5 +5973,42 @@ class VerificationWriteApiTest {
 				.as("the scored run kept no points").isTrue();
 		assertThat(db.sql("select count(*) from result_submission where event_kind is not null and race_id"
 						+ " is not null").query(Integer.class).single()).as("a decided run kept a kind").isZero();
+	}
+
+	/**
+	 * THE SAME LINE FOR A MAN (owner, 21.11.2026: „po polu primaoca"): the member of the fixture is a woman,
+	 * and here the row says a man, so a line that says it in the feminine to everybody, or in the masculine,
+	 * fails on one of the two.
+	 */
+	@Test
+	void aManWhoseRunClosedTheNextSeasonIsToldInTheMasculine() throws Exception {
+		db.sql("update competitor set gender = 'M' where member_number = ?").param(ANA).update();
+
+		assertThat(answer(THE_SUPERADMIN, anasMarathon, true, null)).isEqualTo(200);
+
+		assertThat(bodyOfTheMessageTo(ANA)).contains("jer si rezultatom sa trke").contains(" prešao prag od ")
+				.doesNotContain("prešla");
+	}
+
+	/**
+	 * THE ONE A HOLD IS TAKEN FROM IS TOLD IN THE WORDS OF HIS SEX (owner, 21.11.2026: „po polu primaoca"),
+	 * the superadmin's being another's: a woman holding it reads „držala" and a man „držao".
+	 */
+	@Test
+	void theOneAHoldIsTakenFromIsToldByHisSex() throws Exception {
+		db.sql("update competitor set gender = 'F' where member_number = ?").param(DETE).update();
+
+		assertThat(take(PROFILES_MODERATOR, anasText)).isEqualTo(200);
+		assertThat(letGo(THE_SUPERADMIN, anasText)).isEqualTo(204);
+		assertThat(messagesTo(DETE)).containsExactly("Stavka ti je oduzeta | Superadmin je preuzeo stavku koju"
+				+ " si držala u redu za verifikaciju.");
+
+		db.sql("delete from message").update();
+		db.sql("update competitor set gender = 'M' where member_number = ?").param(DETE).update();
+
+		assertThat(take(PROFILES_MODERATOR, anasText)).isEqualTo(200);
+		assertThat(letGo(THE_SUPERADMIN, anasText)).isEqualTo(204);
+		assertThat(messagesTo(DETE)).containsExactly("Stavka ti je oduzeta | Superadmin je preuzeo stavku koju"
+				+ " si držao u redu za verifikaciju.");
 	}
 }

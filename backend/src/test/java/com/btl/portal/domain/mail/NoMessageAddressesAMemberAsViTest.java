@@ -50,15 +50,19 @@ class NoMessageAddressesAMemberAsViTest {
 
 	/**
 	 * THE TEXTS THAT STILL WAIT, and each for a reason that is not the participle (the participle is
-	 * solved: the words go by the sex of who reads, {@link Gender}). Three flows go to an account that
+	 * solved: the words go by the sex of who reads, {@link Gender}). Four flows go to an account that
 	 * may name no member, a moderator who does not race (V23), who has no sex anywhere in the portal:
-	 * the invitation of a moderator, the link to set a new password and the notice that it was changed.
+	 * the invitation of a moderator, the link to set a new password, the notice that it was changed, and
+	 * the confirmation of the address he is sent while he has not yet spent his invitation (that one is
+	 * written to him in the words it always had, {@code mail/sr-no-member}).
 	 * What those say to him is the owner's question, asked on 21.11.2026 and not answered here. The two
 	 * {@code PairWriteApi} sentences are tied sign for sign to {@code pair.endedBody} and
 	 * {@code pair.brokenBody} in {@code frontend/src/i18n/sr.json}, which the move of the screens to
 	 * „ti" rewrites, and they move with it.
 	 */
 	private static final List<String> WAITING = List.of(
+			"mail/sr-no-member.properties#confirmTheAddress.subject",
+			"mail/sr-no-member.properties#confirmTheAddress.body",
 			"mail/sr.properties#setANewPassword.body",
 			"mail/sr.properties#invitedAsAModerator.subject",
 			"mail/sr.properties#invitedAsAModerator.body",

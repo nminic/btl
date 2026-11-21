@@ -779,6 +779,26 @@ class ARaceCorrectedRecountsItsRunsTest {
 		theRookieIsCarriedOverTheThresholdAndToldHisCategoryClosesFor2028();
 	}
 
+	/** What the line says of a man (the fixture's rookie is one) and of a woman: the participle by the sex of who reads. */
+	private String crossed = "prešao prag od 12 bodova";
+
+	private String fell = "pao ispod praga od 12 bodova";
+
+	/**
+	 * THE SAME TWO LINES FOR A WOMAN (owner, 21.11.2026: „po polu primaoca"): the rookie of the fixture is a
+	 * man, and here he is a woman, so a line that says „prešao" to everybody, or reads the sex of anybody but
+	 * the one it is addressed to, fails on one of the two.
+	 */
+	@Test
+	void aWomanCarriedOverTheThresholdIsToldInTheFeminineAndOneCarriedBackUnderItIsToo() throws Exception {
+		db.sql("update competitor set gender = 'F' where id = ?").param(rookie).update();
+		crossed = "prešla prag od 12 bodova";
+		fell = "pala ispod praga od 12 bodova";
+
+		theRookieIsCarriedOverTheThresholdAndToldHisCategoryClosesFor2028();
+		theRookieIsCarriedBackUnderTheThresholdAndToldHisCategoryOpensAgainFor2028();
+	}
+
 	/**
 	 * The ten corrected from 10 to 12 km at whatever instant the clock stands at: the rookie's one
 	 * run of 2027 crosses the threshold, his category closes for 2028 and he is told so, and the
@@ -795,10 +815,10 @@ class ARaceCorrectedRecountsItsRunsTest {
 				.getStatus()).isEqualTo(200);
 
 		assertThat(linesTo(rookie)).extracting(Line::subject).containsExactly(RECOUNTED,
-				"Početnička kategorija vam je zatvorena");
+				"Početnička kategorija ti je zatvorena");
 		assertThat(linesTo(rookie).get(1).body())
 				.contains("Ispravljene su mere trke Desetka od 05.09.2027")
-				.contains("prešli prag od 12 bodova")
+				.contains(crossed)
 				.contains("zatvorena za sezonu 2028.");
 		assertThat(linesTo(third)).extracting(Line::subject).containsExactly(RECOUNTED);
 	}
@@ -831,9 +851,9 @@ class ARaceCorrectedRecountsItsRunsTest {
 				.getStatus()).isEqualTo(200);
 
 		assertThat(linesTo(rookie)).extracting(Line::subject).containsExactly(RECOUNTED,
-				"Početnička kategorija vam je ponovo otvorena");
+				"Početnička kategorija ti je ponovo otvorena");
 		assertThat(linesTo(rookie).get(1).body())
-				.contains("pali ispod praga od 12 bodova")
+				.contains(fell)
 				.contains("ponovo otvorena za sezonu 2028.");
 		assertThat(linesTo(third)).extracting(Line::subject).containsExactly(RECOUNTED);
 	}
@@ -1122,7 +1142,7 @@ class ARaceCorrectedRecountsItsRunsTest {
 				.isEqualTo(countedAt("12", 120, 110, 2700, "short"));
 		assertThat(linesTo(secondRunner)).extracting(Line::subject).containsExactly(RECOUNTED);
 		assertThat(linesTo(rookie)).as("the season of the second race is not its own day's")
-				.extracting(Line::subject).containsExactly(RECOUNTED, "Početnička kategorija vam je zatvorena");
+				.extracting(Line::subject).containsExactly(RECOUNTED, "Početnička kategorija ti je zatvorena");
 		assertThat(linesTo(rookie).get(1).body()).contains("zatvorena za sezonu 2029.");
 	}
 

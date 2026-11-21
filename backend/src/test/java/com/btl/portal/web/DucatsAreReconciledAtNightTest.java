@@ -282,12 +282,12 @@ class DucatsAreReconciledAtNightTest {
 						+ " competitor where member_number in (?, ?, ?, ?, ?))) order by to_id, id")
 				.params(lastMessage, ANA, BOJAN, CELA, DANE, HOLDER).query(String.class).list())
 				.containsExactly(
-						id(BOJAN) + " | Balkanska trkačka liga | Osvojili ste dukat | Odobren vam je rezultat sa trke"
-								+ " dukat-noc-2028-druga od 10.02.2028, i njime ste osvojili dukat \"Mesečni"
-								+ " kilometri\" za februar 2028. Dukat stoji na vašem profilu.",
-						id(DANE) + " | Balkanska trkačka liga | Osvojili ste dukat | Liga vam je unela rezultat sa"
-								+ " trke dukat-noc-2028-prva od 03.02.2028, i njime ste osvojili dukat \"Karmanov"
-								+ " uspon\". Dukat stoji na vašem profilu.");
+						id(BOJAN) + " | Balkanska trkačka liga | Osvojila si dukat | Odobren ti je rezultat sa trke"
+								+ " dukat-noc-2028-druga od 10.02.2028, i njime si osvojila dukat \"Mesečni"
+								+ " kilometri\" za februar 2028. Dukat stoji na tvom profilu.",
+						id(DANE) + " | Balkanska trkačka liga | Osvojila si dukat | Liga vam je unela rezultat sa"
+								+ " trke dukat-noc-2028-prva od 03.02.2028, i njime si osvojila dukat \"Karmanov"
+								+ " uspon\". Dukat stoji na tvom profilu.");
 		assertThat(codesOf(ANA)).as("Ana was not written her ducat, so her silence says nothing")
 				.contains("duk-mesecni-km");
 		assertThat(codesOf(CELA)).as("Cela was not written her ducat, so her silence says nothing")

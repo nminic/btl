@@ -377,9 +377,33 @@ class TheLetterAfterTheAddressTest {
 
 		Opened letter = opened(theOnlyLetterTo("oslobodjen@primer.rs"));
 
-		assertThat(letter.subject()).isEqualTo("Član ste lige za 2027. godinu");
-		assertThat(letter.text()).contains("Članarina za 2027. godinu je izmirena");
+		assertThat(letter.subject()).isEqualTo("Član si lige za 2027. godinu");
+		assertThat(letter.text()).contains("Članarina za 2027. godinu je izmirena")
+				.startsWith("Hvala što si potvrdio svoju adresu, dobrodošao u Balkansku");
 		assertThat(letter.file()).isNull();
+	}
+
+	/**
+	 * THE SAME LETTER FOR A WOMAN (owner, 21.11.2026: „po polu primaoca"): the fixture's member is a man, and
+	 * here the row says a woman, so a letter that greets everybody in the masculine, or by the sex of the
+	 * moderator who records the book (a man in the fixture), fails on one of the two.
+	 */
+	@Test
+	void aWomanFreedOfTheSeasonOnSaleIsGreetedInTheFeminine() throws Exception {
+		long account = aMember("oslobodjena@primer.rs", A_TOWN_IN_SERBIA, "1990-01-01", true);
+
+		db.sql("update competitor set gender = 'F' where id = ?").param(memberOf(account)).update();
+		db.sql("insert into membership (competitor_id, season, basis, payment_id, decided_by,"
+						+ " decided_by_name, decided_at) values (?, ?, 'feeExempt', null,"
+						+ " (select id from account where email = ?), 'Probni Probic', ?)")
+				.params(memberOf(account), ON_SALE, THE_MODERATOR, Timestamp.from(NOW)).update();
+
+		confirm(aConfirmationLink(account));
+
+		Opened letter = opened(theOnlyLetterTo("oslobodjena@primer.rs"));
+
+		assertThat(letter.text()).startsWith("Hvala što si potvrdila svoju adresu, dobrodošla u Balkansku")
+				.doesNotContain("potvrdio").doesNotContain("dobrodošao");
 	}
 
 	/**
@@ -423,7 +447,7 @@ class TheLetterAfterTheAddressTest {
 
 		Opened letter = opened(theOnlyLetterTo("platio@primer.rs"));
 
-		assertThat(letter.subject()).isEqualTo("Član ste lige za 2027. godinu");
+		assertThat(letter.subject()).isEqualTo("Član si lige za 2027. godinu");
 		assertThat(letter.text())
 				.contains("članarina za 2027. godinu je plaćena")
 				.doesNotContain("je izmirena")

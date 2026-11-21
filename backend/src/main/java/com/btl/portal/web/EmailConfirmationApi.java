@@ -338,21 +338,18 @@ class EmailConfirmationApi {
 	private void send(ToSend made) {
 		Optional<Gender> sex = TheSexOfAMember.ofTheAccount(db, made.account());
 
-		/* AN ACCOUNT THAT NAMES NO MEMBER (a moderator who does not race, invited and not yet through
-		   the link) HAS NO SEX, and the letter has words for a woman and for a man. WHAT IT SHOULD SAY
-		   TO HIM IS THE OWNER'S QUESTION (asked 21.11.2026), not an answer chosen here, so until it is
-		   answered nothing is written to him and the route still answers as it does for everybody: an
-		   answer that differed would tell whoever asks that this address is such an account. The road
-		   out is the password reset the moderator's invitation already names. */
-		if (sex.isEmpty()) {
-			LOG.warn("no confirmation message for account {}: it names no member, so there is no sex to write"
-					+ " it for", made.account());
-			return;
-		}
-
 		try {
-			postman.send(WhatTheMessageSays.about(Message.CONFIRM_THE_ADDRESS, made.language(),
-					portal, made.link(), made.endsAt(), sex.get()),
+			/* AN ACCOUNT THAT NAMES NO MEMBER (a moderator who does not race, invited and not yet through
+			   the link) HAS NO SEX, and the letter has words for a woman and for a man. WHAT IT SHOULD SAY
+			   TO HIM IS THE OWNER'S QUESTION (asked 21.11.2026), not an answer chosen here, so until it is
+			   answered he is written the words he was always written, and the route does what it did for
+			   everybody: an answer that differed would tell whoever asks that this address is such an
+			   account. */
+			postman.send(sex.isPresent()
+					? WhatTheMessageSays.about(Message.CONFIRM_THE_ADDRESS, made.language(), portal, made.link(),
+							made.endsAt(), sex.get())
+					: WhatTheMessageSays.aboutToAnAccountThatNamesNoMember(Message.CONFIRM_THE_ADDRESS,
+							made.language(), portal, made.link(), made.endsAt()),
 					made.address());
 		} catch (MailException theRelayDidNotTakeIt) {
 			LOG.warn("a resent confirmation message for account {} did not go out; the token is"

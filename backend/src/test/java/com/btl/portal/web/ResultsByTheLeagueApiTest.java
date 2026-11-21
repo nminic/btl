@@ -549,7 +549,7 @@ class ResultsByTheLeagueApiTest {
 				.getStatus()).isEqualTo(201);
 
 		assertThat(subjectsTo(ANA)).containsExactly("Tvoj rezultat je verifikovan",
-				"Početnička kategorija vam je zatvorena");
+				"Početnička kategorija ti je zatvorena");
 		assertThat(nobodyElseWasWrittenTo(ANA)).isTrue();
 
 		MimeMessage letter = theOneLetterTo(ANAS_ADDRESS);
@@ -1019,18 +1019,42 @@ class ResultsByTheLeagueApiTest {
 		assertThat(answer.getStatus()).isEqualTo(201);
 		assertThat(subjectsTo(VERA)).containsExactly("Tvoj rezultat je verifikovan");
 		assertThat(subjectsTo(ANA)).containsExactly("Tvoj rezultat je verifikovan",
-				"Početnička kategorija vam je zatvorena");
-		assertThat(bodiesTo(ANA).get(1)).isEqualTo("Liga vam je unela rezultat sa trke Desetka od"
-				+ " 08.05.2027. Time ste u zvaničnoj sezoni prešli prag od 12 bodova, pa vam je"
+				"Početnička kategorija ti je zatvorena");
+		assertThat(bodiesTo(ANA).get(1)).isEqualTo("Liga ti je unela rezultat sa trke Desetka od"
+				+ " 08.05.2027. Time si u zvaničnoj sezoni prešla prag od 12 bodova, pa ti je"
 				+ " početnička kategorija zatvorena za sezonu 2028.");
 
 		long anas = new ObjectMapper().readTree(answer.getContentAsString()).path("results").get(1)
 				.asLong();
 
 		assertThat(removed(RESULTS_MODERATOR, theTen, anas).getStatus()).isEqualTo(204);
-		assertThat(subjectsTo(ANA).get(3)).isEqualTo("Početnička kategorija vam je ponovo otvorena");
+		assertThat(subjectsTo(ANA).get(3)).isEqualTo("Početnička kategorija ti je ponovo otvorena");
 		assertThat(bodiesTo(ANA).get(3)).contains("obrisala rezultat sa trke Desetka")
-				.contains("pali ispod praga od 12 bodova").contains("za sezonu 2028.");
+				.contains("pala ispod praga od 12 bodova").contains("za sezonu 2028.");
+	}
+
+	/**
+	 * THE SAME TWO LINES FOR A MAN (owner, 21.11.2026: „po polu primaoca"): the member of the case above is a
+	 * woman, and here the row says a man, so a line that says it in the feminine to everybody, or in the
+	 * masculine, fails on one of the two.
+	 */
+	@Test
+	void aManTakenOverTheThresholdByAnEntryIsToldInTheMasculine() throws Exception {
+		db.sql("update competitor set gender = 'M' where member_number = ?").param(ANA).update();
+
+		MockHttpServletResponse answer = entered(RESULTS_MODERATOR, theTen, rows(
+				row(VERA, null, null, null, AN_HOUR),
+				row(ANA, null, null, null, AN_HOUR)));
+
+		assertThat(answer.getStatus()).isEqualTo(201);
+		assertThat(bodiesTo(ANA).get(1)).contains("Time si u zvaničnoj sezoni prešao prag od 12 bodova")
+				.doesNotContain("prešla");
+
+		long anas = new ObjectMapper().readTree(answer.getContentAsString()).path("results").get(1)
+				.asLong();
+
+		assertThat(removed(RESULTS_MODERATOR, theTen, anas).getStatus()).isEqualTo(204);
+		assertThat(bodiesTo(ANA).get(3)).contains("pao ispod praga od 12 bodova").doesNotContain("pala");
 	}
 
 	/** And the pencil, in both directions: slower opens it again, faster closes it. */
@@ -1042,12 +1066,12 @@ class ResultsByTheLeagueApiTest {
 		changed(RESULTS_MODERATOR, theTen, anas, figuresBody(null, null, null, AN_HOUR));
 
 		assertThat(subjectsTo(ANA)).containsExactly("Tvoj rezultat je izmenjen",
-				"Početnička kategorija vam je zatvorena");
+				"Početnička kategorija ti je zatvorena");
 		assertThat(bodiesTo(ANA).get(1)).contains("izmenila rezultat");
 
 		changed(RESULTS_MODERATOR, theTen, anas, figuresBody(null, null, null, 7200));
 
-		assertThat(subjectsTo(ANA).get(3)).isEqualTo("Početnička kategorija vam je ponovo otvorena");
+		assertThat(subjectsTo(ANA).get(3)).isEqualTo("Početnička kategorija ti je ponovo otvorena");
 	}
 
 	/**
