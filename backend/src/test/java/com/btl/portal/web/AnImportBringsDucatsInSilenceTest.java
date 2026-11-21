@@ -110,7 +110,7 @@ class AnImportBringsDucatsInSilenceTest {
 		broughtIn(ANA, "Uvoz-prva", APPROVED.plusSeconds(3600), "approval");
 
 		assertThat(codes(at().reconcile(id(ANA)))).containsExactly("duk-mesecni-km");
-		assertThat(messages()).containsExactly(id(ANA) + " | Osvojila si dukat | Liga vam je unela rezultat sa"
+		assertThat(messages()).containsExactly(id(ANA) + " | Osvojila si dukat | Liga ti je unela rezultat sa"
 				+ " trke Uvoz-druga od 10.02.2028, i njime si osvojila dukat \"Mesečni kilometri\" za februar 2028."
 				+ " Dukat stoji na tvom profilu.");
 	}

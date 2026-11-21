@@ -790,12 +790,18 @@ class ARaceCorrectedRecountsItsRunsTest {
 	 * the one it is addressed to, fails on one of the two.
 	 */
 	@Test
-	void aWomanCarriedOverTheThresholdIsToldInTheFeminineAndOneCarriedBackUnderItIsToo() throws Exception {
+	void aWomanCarriedOverTheThresholdIsToldInTheFeminine() throws Exception {
 		db.sql("update competitor set gender = 'F' where id = ?").param(rookie).update();
 		crossed = "prešla prag od 12 bodova";
-		fell = "pala ispod praga od 12 bodova";
 
 		theRookieIsCarriedOverTheThresholdAndToldHisCategoryClosesFor2028();
+	}
+
+	@Test
+	void aWomanCarriedBackUnderTheThresholdIsToldInTheFeminineToo() throws Exception {
+		db.sql("update competitor set gender = 'F' where id = ?").param(rookie).update();
+		fell = "pala ispod praga od 12 bodova";
+
 		theRookieIsCarriedBackUnderTheThresholdAndToldHisCategoryOpensAgainFor2028();
 	}
 

@@ -425,7 +425,7 @@ class TheLetterAfterTheAddressTest {
 
 		assertThat(letter.subject()).isEqualTo("Članarina za 2027. godinu je izmirena");
 		assertThat(letter.text())
-				.contains("pokrio je vaš balans iz programa preporuke")
+				.contains("pokrio je tvoj balans iz programa preporuke")
 				.contains("https://probni-portal.primer.rs/moja-clanarina")
 				.doesNotContain("je izmirena")
 				.doesNotContain("je plaćena");

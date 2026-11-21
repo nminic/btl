@@ -285,7 +285,7 @@ class DucatsAreReconciledAtNightTest {
 						id(BOJAN) + " | Balkanska trkačka liga | Osvojila si dukat | Odobren ti je rezultat sa trke"
 								+ " dukat-noc-2028-druga od 10.02.2028, i njime si osvojila dukat \"Mesečni"
 								+ " kilometri\" za februar 2028. Dukat stoji na tvom profilu.",
-						id(DANE) + " | Balkanska trkačka liga | Osvojila si dukat | Liga vam je unela rezultat sa"
+						id(DANE) + " | Balkanska trkačka liga | Osvojila si dukat | Liga ti je unela rezultat sa"
 								+ " trke dukat-noc-2028-prva od 03.02.2028, i njime si osvojila dukat \"Karmanov"
 								+ " uspon\". Dukat stoji na tvom profilu.");
 		assertThat(codesOf(ANA)).as("Ana was not written her ducat, so her silence says nothing")

@@ -588,4 +588,20 @@ class ABeginnersCategoryAMembershipMovesTest {
 		return db.sql("select season from membership where competitor_id = ? order by season")
 				.param(idOf(number)).query(Integer.class).list();
 	}
+
+	/**
+	 * THE SAME LINE FOR A WOMAN (owner, 21.11.2026: „po polu primaoca"): the member of the case above is a man
+	 * and here the row says a woman, so a line that says „prešao" to everybody, or reads the sex of anybody
+	 * but the one it is addressed to, fails on one of the two.
+	 */
+	@Test
+	void aWomanWhoseSeasonClosedTheNextOneIsToldInTheFeminine() throws Exception {
+		db.sql("update competitor set gender = 'F' where member_number = ?").param(CLOSED_BY_2028).update();
+
+		assertThat(written(Road.FREE_OF_THE_FEE, CLOSED_BY_2028).getStatus()).isEqualTo(201);
+
+		assertThat(linesTo(CLOSED_BY_2028)).containsExactly(CLOSED + "|"
+				+ "Početnička kategorija ti je zatvorena za sezonu 2029, jer si u sezoni 2028 prešla prag od"
+				+ " 12 bodova.\n\nBalkanska trkačka liga");
+	}
 }
