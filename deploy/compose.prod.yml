@@ -244,6 +244,12 @@ services:
       # files. Compose prefixes the volume with the project name, so the two
       # stacks cannot reach each other's copies through a shared path.
       BTL_PHOTOS_FOLDER: /var/lib/btl/photos
+      # THE TESTERS WHO MAY REPORT A RUN OF 2026 UNTIL 1 JANUARY 2027, by member number
+      # (PDL P9, owner, 21.11.2026: „sada samo 000002, Marko Jovičić"). Written out and not
+      # taken from deploy/.env, for the reason BTL_PHOTOS_FOLDER gives: it is not a secret,
+      # and a variable would be one more line on the host before the exception exists. From
+      # 1 January 2027 it opens nothing (SeasonClock.seasonsOpenForAReport) and may go.
+      BTL_REPORT_TESTERS: "000002"
       # The JVM sizes the heap from the cgroup limit below, not from the host's
       # 3.7 GB, so this is what keeps it from taking a quarter of the machine.
       # SerialGC is what a 2 vCPU box would pick anyway and costs the least in
