@@ -139,7 +139,7 @@
       "row": 4,
       "groupKey": "registration.group.contact",
       "policyRow": "Telefon, neobavezno",
-      "policyBasis": "Vaš pristanak"
+      "policyBasis": "Tvoj pristanak"
     },
     {
       "name": "viberCommunity",
@@ -149,7 +149,7 @@
       "row": 4,
       "groupKey": "registration.group.contact",
       "policyRow": "Telefon, neobavezno",
-      "policyBasis": "Vaš pristanak"
+      "policyBasis": "Tvoj pristanak"
     },
     {
       "name": "city",
@@ -229,7 +229,7 @@
       "linkKey": "registration.healthStatementLink",
       "linkTo": "pravilnik",
       "required": true,
-      "policyRow": "Izjava da ste upoznati sa pravilnikom i zdravstveno sposobni",
+      "policyRow": "Izjava da poznaješ pravilnik i da ti zdravstveno stanje dozvoljava bavljenje rekreativnim sportom",
       "policyBasis": "Izvršenje ugovora"
     },
     {

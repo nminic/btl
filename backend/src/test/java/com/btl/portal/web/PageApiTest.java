@@ -476,7 +476,7 @@ class PageApiTest {
 	 */
 	@Test
 	void theSentenceThatTheCategoryRevealsTheYearOfBirthIsServedInThePolicyAloneInBothLanguages() throws Exception {
-		String serbian = "Javna je uvek kategorija koja iz njega proizlazi, bez obzira na vaš izbor. Iz prelaska u"
+		String serbian = "Javna je uvek kategorija koja iz njega proizlazi, bez obzira na tvoj izbor. Iz prelaska u"
 				+ " stariju uzrasnu kategoriju između dve sezone vidi se tačna godina rođenja, i kad datum rođenja"
 				+ " nije prikazan.";
 		String english = "The category that follows from it is always public, whatever you choose. Moving to an"
@@ -509,10 +509,10 @@ class PageApiTest {
 	@Test
 	void theRowThatNamesZohoAndTheNewSignOffAreServedInBothLanguages() throws Exception {
 		String[][] asked = {
-				{ "sr", "| Brevo (Sendinblue SAS) | Vaša adresa i sadržaj poruke | Francuska |\n"
-						+ "| Zoho Corporation | Prepiska sa adresom info@: vaša adresa i sadržaj poruka | SAD |\n"
+				{ "sr", "| Brevo (Sendinblue SAS) | Tvoja adresa i sadržaj poruke | Francuska |\n"
+						+ "| Zoho Corporation | Prepiska sa adresom info@: tvoja adresa i sadržaj poruka | SAD |\n"
 						+ "| Poslovna banka Udruženja |",
-						"Poslednja izmena: 16.11.2026." },
+						"Poslednja izmena: 21.11.2026." },
 				{ "en", "| Brevo (Sendinblue SAS) | Your address and the content of the message | France |\n"
 						+ "| Zoho Corporation | Correspondence with info@: your address and the content of the messages"
 						+ " | USA |\n| The Association's business bank |",
@@ -575,7 +575,7 @@ class PageApiTest {
 	@Test
 	void noServedTextCarriesASerbianQuotationMarkAndTheSentencesV61ChangedCarryTheEnglishOne() throws Exception {
 		String[][] changed = {
-				{ "sr", "uslovi-koriscenja", "6", "na vašoj strani \"Moja članarina\", uz sam link." },
+				{ "sr", "uslovi-koriscenja", "6", "na tvojoj strani \"Moja članarina\", uz sam link." },
 				{ "sr", "rec-predsednika", "1", "Sportsko udruženje \"BTL\", pod popularnim imenom" },
 				{ "sr", "pravilnik", "5", "na primer \"Beogradski maraton, štafeta 1\", sa dužinom" },
 				{ "sr", "pravilnik", "12", "- \"Zajednička trka\" znači ista trka" },

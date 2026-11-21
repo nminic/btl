@@ -902,7 +902,16 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   no other: main stood at V105 when it was written.
 
 			   Pinned LAST, when the file was final, off this very assertion. */
-			new Applied("106", "V106__a_member_may_ask_to_join_the_viber_community.sql", 2075345268));
+			new Applied("106", "V106__a_member_may_ask_to_join_the_viber_community.sql", 2075345268),
+
+			/* V107. The Serbian legal pages speak to the reader as „ti" and not as „Vi" (owner, PDL, 21.11.2026, „Pravni
+			   tekstovi prelaze na „ti"": 119 sentences approved as proposed, 27 of them without the gender of the verb),
+			   and the sign-off of the three documents whose words change moves to 21.11.2026. Serbian sections only, the
+			   English is not touched; no schema, row, key or index touched. 107 and no other: main stood at V106 when it
+			   was written.
+
+			   Pinned LAST, when the file was final, off this very assertion. */
+			new Applied("107", "V107__the_legal_pages_speak_to_the_reader_as_ti.sql", -1138381559));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {
