@@ -8,40 +8,419 @@
    has happened here before. */
 @import 'Rankings.css';
 
-/* **A box across the whole page and not half of it** (owner, 07.09.2026): „Lige
-   treba da imaju boksove koji su širine cele strane, a ne polovine, tako da bi
-   primera radi sada tri lige stale u 3 reda."
+/* PROPOSAL B OF `predlozi/lige-nacrt.html` (owner, 21.11.2026, PDL „Strana „Lige” se radi po
+   predlogu B”): a showcase of cards, and under it the sheet of the competition that is chosen.
 
-   One column at every width, which is what taking the media query away leaves. It
-   set two tracks above 700px, and what a competition carries has since grown from
-   a name and two numbers to the terms and the prizes the organiser has written, so
-   half a page was already the wrong measure for it before it was asked about. */
-.leagues__list {
+   „Kartica lige je trećina širine na računaru, polovina na tabletu, cela širina na telefonu; list
+   izabrane lige je preko cele širine (obara odluku od 07.09.2026 o boksu preko cele širine).” Until
+   that day every competition was a box across the whole page, one under another.
+
+   The two widths are on the portal's closed list (`styles/scale.test.ts`): 560, where a telephone
+   stops being one, and 1000, where the Top lists already lay out their own wide shape. In `em`, so a
+   reader who doubles the size of the text gets fewer cards to a row rather than cards too narrow for
+   their names; measured in `geometry/leagueList.geometry.ts`. */
+.leagues__showcase {
   list-style: none;
-  margin: 0;
+  margin: 0 0 var(--space-20);
   padding: 0;
   display: grid;
-  gap: var(--space-14);
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-10);
 }
 
-.leagues__item {
+@media (min-width: 35em) {
+  .leagues__showcase {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 62.5em) {
+  .leagues__showcase {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-12);
+  }
+}
+
+/* One card. The name is the link that chooses it, and its box is stretched over the whole card so
+   the card is the target; the way to the table sits above that box so it stays a link of its own. */
+.leagues__tile {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-4) var(--space-12);
+  padding: var(--space-12) var(--space-14);
   border: 1px solid var(--border);
   border-radius: var(--radius-10);
   background: var(--surface);
-  padding: var(--space-16);
 }
 
-.leagues__item h2 {
-  margin: 0 0 var(--space-4);
-  font-size: 1.05rem;
+.leagues__tile:hover {
+  background: var(--surface-hover);
 }
 
-/* The line of facts under the name: the season, how many events count, how many
-   people are in it. Quieter than the name and quieter than what follows it. */
+.leagues__tile .leagues__mark {
+  grid-row: span 2;
+}
+
+.leagues__tile-name {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.leagues__tile-name a {
+  color: var(--text);
+  text-decoration: none;
+}
+
+.leagues__tile-name a::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-10);
+}
+
+/* The ring of the focus goes round the whole card, which is the target, rather than round the words
+   of its name alone. */
+.leagues__tile-name a:focus-visible {
+  outline: none;
+}
+
+.leagues__tile:has(.leagues__tile-name a:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* The chosen card: a frame in the colour of the links and the words „Otvorena ispod”, so the choice
+   is not said by colour alone (WCAG 2.2 SC 1.4.1). */
+.leagues__tile:has(a[aria-current='true']) {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+  background: var(--surface-hover);
+}
+
+.leagues__tile-open {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.leagues__tile .leagues__year {
+  grid-column: 1 / -1;
+}
+
+.leagues__tile-table {
+  position: relative;
+  z-index: 1;
+  grid-column: 1 / -1;
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  min-block-size: 1.5rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+/* The line of facts under the name on a card: the season, how many events count, how many people
+   are in it. Quieter than the name. */
 .leagues__facts {
   margin: 0;
   color: var(--text-muted);
-  font-size: 0.9rem;
+  font-size: 0.85rem;
+  line-height: 1.3;
+}
+
+/* The sign of a competition, out of the initials of its name for now (owner, 21.11.2026), drawn in
+   the colours of the portal's own sign. */
+.leagues__mark {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  inline-size: 2.5rem;
+  block-size: 2.5rem;
+  border: 2px solid var(--gold-400);
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, var(--blue-600), var(--blue-900));
+  color: var(--white);
+  font-weight: 800;
+  font-size: 0.85rem;
+  letter-spacing: 0.02em;
+}
+
+/* THE SHEET OF THE CHOSEN COMPETITION, ACROSS THE WHOLE PAGE. Its head is the front page's blue box
+   (`styles/counter.css`, the scoreboard), with the same golden marks and blue pills, and the golden
+   way to the table. */
+.leagues__sheet {
+  border: 1px solid color-mix(in srgb, var(--gold-300) 28%, transparent);
+  border-radius: var(--radius-10);
+  background: var(--surface);
+}
+
+.leagues__score {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-12) var(--space-14);
+  padding: var(--space-16);
+  border-start-start-radius: var(--radius-10);
+  border-start-end-radius: var(--radius-10);
+  background: linear-gradient(168deg, var(--blue-800), var(--blue-900) 62%);
+  color: var(--white);
+}
+
+/* On the blue the ring of the focus is gold, since the portal's own blue ring would not be seen. */
+.leagues__score :focus-visible {
+  outline-color: var(--gold-300);
+}
+
+.leagues__score .leagues__mark {
+  inline-size: 3.25rem;
+  block-size: 3.25rem;
+  font-size: 1rem;
+}
+
+.leagues__score-name {
+  min-inline-size: 0;
+}
+
+.leagues__score h2 {
+  margin: 0;
+  font-size: 1.1rem;
+  line-height: 1.3;
+  color: var(--white);
+  overflow-wrap: anywhere;
+}
+
+.leagues__kicker {
+  margin: 0;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gold-300);
+}
+
+.leagues__pills {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.leagues__pills .score__pill {
+  flex: 0 1 auto;
+  padding: var(--space-4) var(--space-12);
+  font-size: 0.95rem;
+}
+
+.leagues__cta {
+  grid-column: 1 / -1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-8);
+  min-block-size: 2.75rem;
+  padding: var(--space-10) var(--space-16);
+  border-radius: var(--radius-8);
+  background: var(--gold-400);
+  color: var(--gold-band-ink);
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.leagues__cta:hover {
+  background: var(--gold-300);
+}
+
+@media (min-width: 51.25em) {
+  .leagues__score {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    padding: var(--space-20) var(--space-24);
+  }
+
+  .leagues__score .leagues__mark {
+    inline-size: 4rem;
+    block-size: 4rem;
+    font-size: 1.2rem;
+  }
+
+  .leagues__score h2 {
+    font-size: 1.3rem;
+  }
+
+  .leagues__pills {
+    grid-column: 2 / 3;
+  }
+
+  .leagues__cta {
+    grid-column: 3;
+    grid-row: 1 / span 2;
+  }
+}
+
+/* Under the head, what the sheet always carried: the terms and the prizes side by side where there is
+   room for both, and the events and races under them. The body keeps the name it had when it was the
+   whole box, so what dresses the words of an organiser inside it stayed where it was. */
+.leagues__item {
+  min-inline-size: 0;
+}
+
+.leagues__texts {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.leagues__texts:empty {
+  display: none;
+}
+
+.leagues__item .leagues__texts > section,
+.leagues__item .leagues__counting {
+  margin: 0;
+  padding: var(--space-14) var(--space-16);
+}
+
+.leagues__item .leagues__texts > section + section,
+.leagues__item .leagues__counting {
+  border-block-start: 1px solid var(--border);
+}
+
+@media (min-width: 51.25em) {
+  .leagues__texts {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  }
+
+  .leagues__item .leagues__texts > section + section {
+    border-block-start: 0;
+    border-inline-start: 1px solid var(--border);
+  }
+
+  .leagues__item .leagues__texts > section,
+  .leagues__item .leagues__counting {
+    padding: var(--space-16) var(--space-24);
+  }
+}
+
+/* THE LINE THROUGH THE YEAR (`league/YearStrip.tsx`): a dot for every event, the held ones filled,
+   the next one gold, the ones ahead hollow, and a mark where today stands. Each dot of the sheet is a
+   link with a target of 1.5rem (24px, WCAG 2.2 SC 2.5.8) around a dot of 0.75rem. */
+.leagues__year {
+  position: relative;
+  block-size: 2.5rem;
+  margin-block: var(--space-8) var(--space-12);
+}
+
+.leagues__year--mini {
+  block-size: 1.25rem;
+  margin-block: var(--space-4) 0;
+}
+
+.leagues__year-line {
+  position: absolute;
+  inset-inline: 0;
+  inset-block-start: 0.7rem;
+  block-size: 2px;
+  border-radius: var(--radius-4);
+  background: var(--border);
+}
+
+.leagues__year--mini .leagues__year-line {
+  inset-block-start: 0.55rem;
+}
+
+.leagues__year-today {
+  position: absolute;
+  inset-block-start: 0.1rem;
+  inset-inline-start: var(--at);
+  inline-size: 2px;
+  block-size: 1.25rem;
+  background: var(--gold-400);
+}
+
+.leagues__year--mini .leagues__year-today {
+  block-size: 1.1rem;
+  inset-block-start: 0;
+}
+
+.leagues__dot {
+  position: absolute;
+  inset-block-start: calc(0.7rem + 1px);
+  inset-inline-start: var(--at);
+  display: grid;
+  place-items: center;
+  inline-size: 1.5rem;
+  block-size: 1.5rem;
+  transform: translate(-50%, -50%);
+}
+
+.leagues__year--mini .leagues__dot {
+  inset-block-start: calc(0.55rem + 1px);
+  inline-size: 0.75rem;
+  block-size: 0.75rem;
+}
+
+.leagues__dot::before {
+  content: '';
+  box-sizing: border-box;
+  inline-size: 0.75rem;
+  block-size: 0.75rem;
+  border: 2px solid var(--accent);
+  border-radius: 50%;
+  background: var(--surface);
+}
+
+.leagues__year--mini .leagues__dot::before {
+  inline-size: 0.625rem;
+  block-size: 0.625rem;
+}
+
+.leagues__dot--held::before {
+  background: var(--accent);
+}
+
+.leagues__dot--next::before {
+  border-color: var(--gold-500);
+  background: var(--gold-300);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--gold-300) 25%, transparent);
+}
+
+.leagues__months {
+  position: absolute;
+  inset-inline: 0;
+  inset-block-start: 1.25rem;
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  line-height: 1.4;
+}
+
+.leagues__months > span {
+  padding-inline-start: var(--space-2);
+}
+
+.leagues__month-long {
+  display: none;
+}
+
+@media (min-width: 35em) {
+  .leagues__month-long {
+    display: inline;
+  }
+
+  .leagues__month-short {
+    display: none;
+  }
 }
 
 /* What the organiser has written, which used to be one screen further in and is

@@ -3,6 +3,7 @@ import { join, relative, sep } from 'node:path'
 import { first, must } from '../test/at'
 import { PLATE_CLASSES } from '../test/plate'
 import {
+  everyRule,
   ruleFor,
   ruleInContainer,
   ruleInMedia,
@@ -499,23 +500,51 @@ describe('the name of a competitor beside their circle', () => {
 })
 
 describe('the list of competitions', () => {
-  it('is one box across the page at every width', () => {
-    /* Owner, 07.09.2026: „Lige treba da imaju boksove koji su širine cele strane, a ne polovine,
-     * tako da bi primera radi sada tri lige stale u 3 reda."
+  it('lays the cards three to a row on a computer, two on a tablet and one on a telephone', () => {
+    /* Owner, 21.11.2026 (PDL „Strana „Lige” se radi po predlogu B”), chosen between the ones offered:
+     * „Kartica lige je trećina širine na računaru, polovina na tabletu, cela širina na telefonu; list
+     * izabrane lige je preko cele širine (obara odluku od 07.09.2026 o boksu preko cele širine).”
+     * Until that day this case held the opposite, that the sheet laid no track of columns at all.
      *
-     * Asked as „this sheet lays no track of columns", over the whole file with its comments
-     * blanked, rather than as „this one media query is not there". A second column can be asked
-     * for at any width and in any of the four properties below, so naming the query that used to
-     * do it would hold against putting that query back and against nothing else.
-     *
-     * **This is the half that reads text, and it knows four ways to lay a track.** A fifth does not
-     * need one (`display: flex; flex-wrap: wrap` with a basis of half the box, or `max-width: 50%` on
-     * the box), so what the sentence says is asked of Chrome in `geometry/leagueList.geometry.ts`:
-     * the width of each box against the width of its list, and whether any stands beside another. */
-    const sheet = unremarked(readFileSync(LEAGUES, 'utf-8'))
-    const found = COLUMNS.filter((property) => sheet.includes(property))
+     * **This is the half that reads text.** What the sentence says about the page is asked of Chrome
+     * in `geometry/leagueList.geometry.ts`: how many cards stand in one row at 360, 768 and 1280, and
+     * that the sheet stands under them across the whole list. */
+    const css = readFileSync(LEAGUES, 'utf-8')
 
-    expect(found, 'the list of competitions is laid out in columns again').toEqual([])
+    expect(ruleFor(css, '.leagues__showcase', 'Leagues.css').getPropertyValue('grid-template-columns')).toBe(
+      'minmax(0, 1fr)',
+    )
+    expect(
+      ruleInMedia(css, '(min-width: 35em)', '.leagues__showcase', 'Leagues.css').getPropertyValue(
+        'grid-template-columns',
+      ),
+    ).toBe('repeat(2, minmax(0, 1fr))')
+    expect(
+      ruleInMedia(css, '(min-width: 62.5em)', '.leagues__showcase', 'Leagues.css').getPropertyValue(
+        'grid-template-columns',
+      ),
+    ).toBe('repeat(3, minmax(0, 1fr))')
+  })
+
+  it('lays the sheet of the chosen competition across the whole page, and no track of sheets', () => {
+    /* The other half of the same sentence: „list izabrane lige je preko cele širine”. One sheet is
+       drawn, so what is held is that nothing lays the sheet itself, or what holds it, into columns. */
+    const css = readFileSync(LEAGUES, 'utf-8')
+
+    for (const selector of ['.leagues__sheet', '.leagues__item']) {
+      const said = everyRule(css, 'Leagues.css').filter((rule) => rule.selectorText === selector)
+
+      expect(said.length, `${selector} is not dressed in Leagues.css, so this asks nothing`).toBeGreaterThan(0)
+
+      for (const rule of said) {
+        for (const property of COLUMNS) {
+          expect(rule.style.cssText, `${selector} is laid out in columns`).not.toContain(property.replace(':', ''))
+        }
+
+        expect(rule.style.getPropertyValue('max-width'), `${selector} is capped`).toBe('')
+        expect(rule.style.getPropertyValue('max-inline-size'), `${selector} is capped`).toBe('')
+      }
+    }
   })
 
   it('reaches the sheet that puts its control beside the heading', () => {
