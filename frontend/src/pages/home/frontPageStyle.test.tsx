@@ -124,6 +124,17 @@ describe('the markup of the front page and the sheets that dress it', () => {
     expect(home).toMatch(/\.home__next > \.card \{\s*container-type: inline-size;/)
   })
 
+  it('lets the row of the title wrap and keeps the link on the right, and the filter half way between the title and the first race', () => {
+    /* Owner, 21.11.2026: the link is in the row of the title, and in a larger text it goes under the title, still on
+       the right. The filter has the same room above and below it: the gap of the card, and the same step more on
+       each side (the margin is on the filter, and it is a step of the scale). */
+    expect(body(home, '.card__head')).toMatch(/display: flex;/)
+    expect(body(home, '.card__head')).toMatch(/flex-wrap: wrap;/)
+    expect(body(home, '.card__head-link')).toMatch(/margin-inline-start: auto;/)
+    expect(body(home, '.seg')).toMatch(/margin-block: var\(--space-6\);/)
+    expect(body(home, '.seg')).not.toMatch(/margin-(top|bottom)/)
+  })
+
   it('steps the podium down from the first to the third, with the first circle the largest', () => {
     const step = (place: number) =>
       Number(/block-size: (\d+)px/.exec(body(home, `.stand__item--${String(place)} .stand__step`))?.[1])

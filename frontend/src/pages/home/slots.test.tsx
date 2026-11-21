@@ -118,6 +118,46 @@ describe('CalendarExtract', () => {
     )
   })
 
+  /* Owner, 21.11.2026 (PDL, „Filter po dužini u „Priprema, pozor, SAD!"): the way to the calendar goes
+     from the bottom of the card into the row of the title, on its right, so the room it took is the
+     list's. It is still a link, in the same row as the heading and before the list, never under it. */
+  it('puts the link to the calendar in the row of the title and nothing under the list', () => {
+    renderWidget(<CalendarExtract events={[]} races={[]} today="2026-07-29" fill />)
+
+    const heading = screen.getByRole('heading', { level: 2, name: 'Priprema, pozor, SAD!' })
+    const link = screen.getByRole('link', { name: 'Ceo kalendar' })
+    const list = screen.getByRole('list')
+
+    expect(link.parentElement, 'the link is not in the row of the title').toBe(heading.parentElement)
+    expect(heading.contains(link), 'the link is inside the heading').toBe(false)
+    expect(
+      heading.compareDocumentPosition(link) & Node.DOCUMENT_POSITION_FOLLOWING,
+      'the link does not follow the title',
+    ).toBeTruthy()
+    expect(
+      list.compareDocumentPosition(link) & Node.DOCUMENT_POSITION_PRECEDING,
+      'the link is under the list',
+    ).toBeTruthy()
+    expect(list.contains(link)).toBe(false)
+    expect(screen.getAllByRole('link', { name: 'Ceo kalendar' })).toHaveLength(1)
+  })
+
+  it('calls the link "Full calendar" in English', () => {
+    render(
+      <I18nProvider locale="en">
+        <MemoryRouter>
+          <CalendarExtract events={[]} races={[]} today="2026-07-29" fill />
+        </MemoryRouter>
+      </I18nProvider>,
+    )
+
+    expect(screen.getByRole('link', { name: 'Full calendar' })).toHaveAttribute(
+      'href',
+      '/en/kalendar?mesec=2026-07',
+    )
+    expect(screen.queryByText('The whole calendar')).toBeNull()
+  })
+
   /* Owner, 08.11.2026 (PDL, „oznaka „i još N termina” se briše zauvek"): „Ne zelim da se ovde
      ispisuje ikad ista slicno, dakle ne zanima korisnika ima li jos neki datum nekad (ako je trka
      kopirana)." A name that runs more than once still takes one row, with its next date, and the

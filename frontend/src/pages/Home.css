@@ -296,6 +296,22 @@
   font-weight: 700;
 }
 
+/* The row of a title with its way on (owner, 21.11.2026: „Veza ka kalendaru prelazi iz dna kartice u red
+   sa naslovom, desno"). It wraps, so a larger text puts the link under the title, and the margin sends
+   the link to the right wherever it ends up. */
+.card__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: var(--space-12);
+  row-gap: var(--space-4);
+}
+
+.card__head-link {
+  margin-inline-start: auto;
+  font-size: 0.9rem;
+}
+
 .card__note,
 .card__empty {
   margin: 0;
@@ -417,7 +433,10 @@
   padding: var(--space-2);
   border: 1px solid var(--control-border);
   border-radius: var(--radius-round);
-  margin-bottom: var(--space-4);
+  /* The filter stands half way between the title and the first race (owner, 21.11.2026): the gap of the
+     card is 10px, and 6px more on each side makes 16px above and 16px below (the scale has 16 and 20,
+     the owner's "oko 18" is between them). */
+  margin-block: var(--space-6);
 }
 
 .seg__b {

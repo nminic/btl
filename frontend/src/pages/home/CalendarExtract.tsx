@@ -126,9 +126,20 @@ export function CalendarExtract({
 
   return (
     <section className="card" aria-labelledby="calendar-extract-heading">
-      <h2 className="card__title" id="calendar-extract-heading">
-        {t('home.readySetGo')}
-      </h2>
+      {/* The way on to the whole calendar stands in the row of the title, on its right (owner, 21.11.2026,
+          „Ceo kalendar”), so the room it took under the list is the list's. The row wraps: in a larger
+          text the link goes under the title, still on the right. The month today is in (owner,
+          04.08.2026) is not where the calendar opens by itself: left to choose, it opens on the first
+          month that has anything in it, and in a league whose season starts in January that is months
+          away from whoever pressed this. */}
+      <div className="card__head">
+        <h2 className="card__title" id="calendar-extract-heading">
+          {t('home.readySetGo')}
+        </h2>
+        <Link className="card__head-link" to={`/${locale}/kalendar?mesec=${today.slice(0, 7)}`}>
+          {t('home.seeCalendar')}
+        </Link>
+      </div>
 
       <LengthFilter value={length} onChange={setLength} />
 
@@ -170,14 +181,6 @@ export function CalendarExtract({
           )
         })}
       </ul>
-
-      {/* On the month today is in (owner, 04.08.2026), which is not where the
-          calendar opens by itself: left to choose, it opens on the first month
-          that has anything in it, and in a league whose season starts in January
-          that is months away from whoever pressed this. */}
-      <Link className="card__more" to={`/${locale}/kalendar?mesec=${today.slice(0, 7)}`}>
-        {t('home.seeCalendar')}
-      </Link>
     </section>
   )
 }

@@ -578,3 +578,99 @@ test('the focus on a race only „Ultra" shows goes to the heading of the calend
 
   expect(seen).toEqual({ tag: 'H2', text: 'Priprema, pozor, SAD!' })
 })
+
+/**
+ * **THE WAY TO THE CALENDAR IS IN THE ROW OF THE TITLE, AND THE FILTER IS HALF WAY BETWEEN THE TITLE AND THE
+ * FIRST RACE** (owner, 21.11.2026, PDL „Filter po dužini u „Priprema, pozor, SAD!"”), in Chrome at 360, 768, 1024
+ * and 1280, in both languages, at 100, 125 and 200 per cent of text:
+ *
+ * - the link is inside the card and does not touch the title;
+ * - it is on the right wherever it ends up, and at 100 per cent it is in the same row as the title (in a larger text
+ *   it may go under it, which is the point of the row wrapping);
+ * - what stands above the filter (from the row of the title) is what stands under it (to the first race), to a
+ *   pixel;
+ * - no sideways scroll.
+ */
+const CALENDAR_AT: At[] = [360, 768, 1024, 1280].flatMap((width) => TEXTS.map((text): At => ({ width, text })))
+
+for (const language of ['sr', 'en'] as const) {
+  for (const at of CALENDAR_AT) {
+    test(`the link to the calendar is in the row of the title, and the filter is half way, in ${language} at ${label(at)}`, async ({ open }) => {
+      const { page, probe } = await open(at, `/${language}`, '.top10 .stand', ANSWERS)
+
+      const seen = await page.evaluate(() => {
+        const box = (element: Element) => {
+          const { top, bottom, left, right } = element.getBoundingClientRect()
+
+          return { top, bottom, left, right }
+        }
+
+        const must = <T,>(value: T | null): T => {
+          if (value === null) {
+            throw new Error('something the calendar draws is not there')
+          }
+
+          return value
+        }
+
+        const card = must(document.querySelector('.home__next .card'))
+        const style = getComputedStyle(card)
+        const outer = card.getBoundingClientRect()
+
+        return {
+          card: {
+            left: outer.left + Number.parseFloat(style.paddingLeft) + Number.parseFloat(style.borderLeftWidth),
+            right: outer.right - Number.parseFloat(style.paddingRight) - Number.parseFloat(style.borderRightWidth),
+          },
+          head: box(must(card.querySelector('.card__head'))),
+          title: box(must(card.querySelector('.card__title'))),
+          link: box(must(card.querySelector('.card__head-link'))),
+          text: must(card.querySelector('.card__head-link')).textContent,
+          seg: box(must(card.querySelector('.seg'))),
+          first: box(must(card.querySelector('.extract__row'))),
+          rows: card.querySelectorAll('.extract__row').length,
+          list: box(must(card.querySelector('.extract'))),
+          last: box([...card.querySelectorAll('.extract__row')].at(-1) ?? card),
+        }
+      })
+
+      console.log(`CALENDAR ${language} ${label(at)} ${JSON.stringify({
+        text: seen.text,
+        sameRow: seen.link.top < seen.title.bottom && seen.link.bottom > seen.title.top,
+        reserve: Math.round((seen.card.right - seen.link.right) * 10) / 10,
+        above: Math.round((seen.seg.top - seen.head.bottom) * 10) / 10,
+        below: Math.round((seen.first.top - seen.seg.bottom) * 10) / 10,
+        rows: seen.rows,
+        spare: Math.round((seen.list.bottom - seen.last.bottom) * 10) / 10,
+      })}`)
+
+      expect(seen.text).toBe(language === 'sr' ? 'Ceo kalendar' : 'Full calendar')
+      expect(seen.link.left, 'the link is outside the card on the left').toBeGreaterThanOrEqual(seen.card.left - SAME)
+      expect(seen.link.right, 'the link is outside the card on the right').toBeLessThanOrEqual(seen.card.right + SAME)
+      expect(Math.abs(seen.link.right - seen.card.right), 'the link is not on the right').toBeLessThanOrEqual(1)
+
+      const sameRow = seen.link.top < seen.title.bottom && seen.link.bottom > seen.title.top
+
+      if (sameRow) {
+        expect(seen.link.left, 'the link touches the title').toBeGreaterThanOrEqual(seen.title.right - SAME)
+      } else {
+        expect(seen.link.top, 'the link overlaps the title').toBeGreaterThanOrEqual(seen.title.bottom - SAME)
+      }
+
+      if (at.text === 100) {
+        expect(sameRow, 'the link is not in the row of the title').toBe(true)
+      }
+
+      expect(
+        Math.abs(seen.seg.top - seen.head.bottom - (seen.first.top - seen.seg.bottom)),
+        'the room above the filter is not the room under it',
+      ).toBeLessThanOrEqual(1)
+      /* At the reader's own text the page never moves sideways. At 200% on 360px the decorative background of the
+         page (`.race-page`, measured: 18px) is wider than the window on one of the two days and is not this card's,
+         so there the card is held to its own box above (the link inside it) and not the page to a scroll. */
+      if (at.text === 100) {
+        expect(probe.sideways).toBe(0)
+      }
+    })
+  }
+}
