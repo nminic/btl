@@ -2,8 +2,8 @@ import { screen, waitFor } from '@testing-library/react'
 import { SLOW } from '../test/slow'
 import { renderAt } from '../test/render'
 import { setupUser } from '../test/user'
-import { NOTICE_SHOWN_ON, NOTICE_STORAGE_KEY } from './noticeBarFacts'
-import { ROUTES } from './routes'
+import { NOTICE_STORAGE_KEY } from './noticeBarFacts'
+import { EXTRA_ADDRESSES, ROUTES } from './routes'
 
 /* THE GOLD STRIP UNDER THE HEADER (owner, 21.11.2026, PDL „Zlatna traka obaveštenja ispod zaglavlja, do
  * početka prve sezone"). Reached by role and by name, which is how a reader reaches it.
@@ -29,6 +29,10 @@ const SENTENCE =
 
 /** The screens the strip stands on, as addresses a reader types. */
 const STANDS_ON = ['/sr', '/sr/top-liste', '/sr/tabela']
+
+/** The same three, as the part of the address after the language: written out here and not read from
+ *  `NOTICE_SHOWN_ON`, which a list asked about itself could only agree with. */
+const THE_THREE: readonly string[] = ['', 'top-liste', 'tabela']
 
 afterEach(() => {
   vi.restoreAllMocks()
@@ -115,10 +119,10 @@ describe('where the strip stands', () => {
      comes to carry it, or the teams (the third card of the tables, which the owner did not name) quietly
      joining it, is a failing case here and not a surprise on the screen. */
   it('is on the three screens named and on no other address the portal has', async () => {
-    const addresses = ROUTES.map((route) => route.path).filter((path) => !path.includes(':'))
+    const addresses = [...ROUTES, ...EXTRA_ADDRESSES].map((route) => route.path).filter((path) => !path.includes(':'))
 
     expect(addresses.length).toBeGreaterThan(20)
-    expect(NOTICE_SHOWN_ON).toEqual(['', 'top-liste', 'tabela'])
+    expect(addresses, 'the three are among the addresses opened').toEqual(expect.arrayContaining([...THE_THREE]))
 
     for (const address of addresses) {
       const { unmount } = renderAt(`/sr/${address}`, 'visitor', null, undefined, BEFORE)
@@ -127,7 +131,7 @@ describe('where the strip stands', () => {
 
       const shown = screen.queryByRole('note', NOTE) !== null
 
-      expect(shown, `/sr/${address}`).toBe(NOTICE_SHOWN_ON.includes(address))
+      expect(shown, `/sr/${address}`).toBe(THE_THREE.includes(address))
       unmount()
     }
   }, 120_000)
