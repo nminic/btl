@@ -57,13 +57,19 @@ a {
   outline-offset: 2px;
 }
 
+/* Under reduced motion nothing is drawn between two states, and `0s` is what says so: `0.01ms` was
+   kept so that `animationend` would still fire, but nothing here listens for it, and a duration above
+   zero turned every element that declares no transition (`transition-property: all`, duration 0) into
+   one that glides, so a box a script places (`left`, `top`) was drawn at the corner for a frame and then
+   jumped to its place (`geometry/actionTip.geometry.ts`, measured in Chrome, 21.11.2026). A zero-length
+   animation still fires its events, so nothing that waits for them is left waiting. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
-    animation-duration: 0.01ms !important;
+    animation-duration: 0s !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+    transition-duration: 0s !important;
     scroll-behavior: auto !important;
   }
 }

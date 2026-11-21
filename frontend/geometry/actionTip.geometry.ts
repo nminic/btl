@@ -48,16 +48,10 @@ const ANSWERS: Answers = {
   '/api/competitors': sample('competitors'),
 }
 
-/* EVERY CASE OF THIS FILE ASKS FOR `no-preference`, which the suite does not by default (`motion` in
-   `geometry/support/harness.ts`). Under `prefers-reduced-motion: reduce` there is a found fault of the portal: the
-   rule of `src/index.css` (60-67) gives every element a transition of 0,01ms, so the box of the word of a symbol is
-   drawn for a frame at the top left corner (`left: 0`) before it jumps to its place (measured 21.11.2026, Chrome,
-   the box at 0 in the first frame on the pointer and on the keyboard). That is not what these cases ask, and a
-   separate change corrects the rule. When it is merged these cases go back to the default. */
 const WIDTHS: At[] = [
-  { width: 360, text: 100, motion: 'no-preference' },
-  { width: 768, text: 100, motion: 'no-preference' },
-  { width: 1280, text: 100, motion: 'no-preference' },
+  { width: 360, text: 100 },
+  { width: 768, text: 100 },
+  { width: 1280, text: 100 },
 ]
 
 /** Eight pixels, what the component holds the box from every edge of the window. */
@@ -152,6 +146,113 @@ for (const at of WIDTHS) {
     }
 
     expect(probe.sideways).toBe(0)
+  })
+}
+
+/**
+ * UNDER REDUCED MOTION THE BOX IS NEVER DRAWN AT THE CORNER ON ITS WAY TO ITS PLACE (21.11.2026).
+ *
+ * `.action-tip` is `position: fixed; top: 0; left: 0` and `place()` writes where it goes in a layout
+ * effect. It declares no transition, so it has `transition-property: all` and a duration of 0, and the
+ * rule for reduced motion in `index.css` gave every element `transition-duration: 0.01ms`: the written
+ * `left` and `top` became a transition, and Chrome drew the box at `left: 0` for a frame before it was
+ * in its place. Measured on the built portal at 1280px under `reduce`, the left edge of the box frame by
+ * frame, on the pointer `12ms: none, 27ms: 0, 43ms: 1123` and on the keyboard `19ms: 0, 30ms: 0,
+ * 46ms: 1123`. Whoever asks for less motion saw it on the live portal.
+ *
+ * Asked here of every frame (`requestAnimationFrame`) from before the box opens until twenty frames
+ * after it is drawn: no frame draws it nearer an edge of the window than `EDGE`, which the corner is,
+ * and at least one frame draws it, so a run that never saw the box passes nothing. The media is
+ * emulated after the page is open, the way a reader who changes the setting meets it, and the page is
+ * asked whether it holds before anything is read.
+ */
+for (const at of WIDTHS) {
+  test(`the box is never drawn at the corner on its way to its place under reduced motion, at ${label(at)}`, async ({
+    open,
+  }) => {
+    const { page } = await open(at, '/sr/administracija/clanovi', 'tbody tr', ANSWERS)
+    const cross = page.getByRole('button', { name: /^Obriši: / }).first()
+
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    expect(await page.evaluate(() => matchMedia('(prefers-reduced-motion: reduce)').matches), 'reduced motion holds').toBe(true)
+
+    await cross.scrollIntoViewIfNeeded()
+    await page.evaluate(() => {
+      const box = document.querySelector('.table-scroll')
+
+      if (box !== null) {
+        box.scrollLeft = box.scrollWidth
+      }
+    })
+
+    for (const how of ['the pointer', 'the keyboard'] as const) {
+      await page.mouse.move(1, 1)
+      await page.keyboard.press('Escape')
+      await expect(page.locator('.action-tip')).toHaveCount(0)
+
+      /* Every frame from here on says where the box stands, or that there is none. */
+      const recorder = await page.evaluateHandle(() => {
+        const state: { frames: (number | null)[]; recording: boolean } = { frames: [], recording: true }
+
+        const frame = () => {
+          const words = document.querySelector('.action-tip__words')
+
+          state.frames.push(words === null ? null : words.getBoundingClientRect().left)
+
+          if (state.recording) {
+            requestAnimationFrame(frame)
+          }
+        }
+
+        requestAnimationFrame(frame)
+
+        return state
+      })
+
+      if (how === 'the pointer') {
+        await cross.hover()
+      } else {
+        await cross.focus()
+        await page.keyboard.press('Shift+Tab')
+        await page.keyboard.press('Tab')
+      }
+
+      await page.locator('.action-tip').waitFor({ state: 'visible' })
+      await recorder.evaluate(
+        (state) =>
+          new Promise<void>((done) => {
+            const drawnAt = state.frames.length
+            const wait = () => (state.frames.length - drawnAt >= 20 ? done() : requestAnimationFrame(wait))
+
+            wait()
+          }),
+      )
+
+      const frames = await recorder.evaluate((state) => {
+        state.recording = false
+
+        return state.frames
+      })
+
+      /* The frames above are a race against one frame of paint, so what they would see is asked of the cause as
+         well: the box has no time to glide in, whatever a frame happened to show. */
+      expect(
+        await page.evaluate(() => {
+          const tip = document.querySelector('.action-tip')
+
+          return tip === null ? null : getComputedStyle(tip).transitionDuration
+        }),
+        `the time the box takes to move on ${how}`,
+      ).toBe('0s')
+
+      const drawn = frames.filter((one): one is number => one !== null)
+
+      expect(drawn.length, `frames that draw the box on ${how}`).toBeGreaterThan(0)
+      expect(
+        drawn.filter((left) => left < EDGE),
+        `the left edge of the box in every frame on ${how}, ${frames.join(', ')}`,
+      ).toEqual([])
+    }
   })
 }
 
@@ -317,7 +418,7 @@ for (const path of QUEUES) {
     [1280, false],
   ] as const) {
     test(`the toggle of a card is ${drawn ? '' : 'not '}drawn on ${path} at ${String(width)}px`, async ({ open }) => {
-      const { page } = await open({ width, text: 100, motion: 'no-preference' }, path, '.action:visible', { ...SAMPLE, '/api/me': SUPERADMIN })
+      const { page } = await open({ width, text: 100 }, path, '.action:visible', { ...SAMPLE, '/api/me': SUPERADMIN })
 
       const toggles = await page.evaluate(() =>
         [...document.querySelectorAll('.pending__toggle')].map((one) => getComputedStyle(one).display !== 'none'),
@@ -354,7 +455,7 @@ const NEIGHBOURS: { path: string; width: number; from: RegExp; to: RegExp; answe
 
 for (const one of NEIGHBOURS) {
   test(`the neighbour of a symbol gets the first press, on ${one.path} at ${String(one.width)}px`, async ({ open }) => {
-    const { page } = await open({ width: one.width, text: 100, motion: 'no-preference' }, one.path, '.action:visible', one.answers)
+    const { page } = await open({ width: one.width, text: 100 }, one.path, '.action:visible', one.answers)
     const row = page.locator('tbody tr').filter({ has: page.getByRole('button', { name: one.to }) }).first()
     const from = row.getByRole('button', { name: one.from })
     const to = row.getByRole('button', { name: one.to })
@@ -505,7 +606,7 @@ for (const at of WIDTHS) {
 for (const path of QUEUES) {
   for (const width of [360, 768]) {
     test(`the toggle of a card stands on the line of its heading on ${path} at ${String(width)}px`, async ({ open }) => {
-      const { page } = await open({ width, text: 100, motion: 'no-preference' }, path, '.action:visible', { ...SAMPLE, '/api/me': SUPERADMIN })
+      const { page } = await open({ width, text: 100 }, path, '.action:visible', { ...SAMPLE, '/api/me': SUPERADMIN })
       const seen = (await page.evaluate(offTheLine)).filter((one) => one.name?.startsWith('Prikaži') === true)
 
       /* Measured, not assumed: at least one toggle stands beside words, so the case is never passed
