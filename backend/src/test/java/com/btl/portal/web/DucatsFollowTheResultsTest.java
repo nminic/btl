@@ -964,4 +964,26 @@ class DucatsFollowTheResultsTest {
 						+ " values ('results', ?, 'Rezultat', '', ?) returning id")
 				.params(id(number), submission).query(Long.class).single();
 	}
+
+	/**
+	 * THE SAME MESSAGE FOR A MAN (owner, 21.11.2026: „po polu primaoca"): every member of the fixture is a
+	 * woman, and here the row says a man, so a message that is always in the feminine fails.
+	 */
+	@Test
+	void aManWhoWonADucatIsToldInTheMasculine() throws Exception {
+		db.sql("update competitor set gender = 'M' where member_number = ?").param(ANA).update();
+
+		long first = race("dukat-okidac-prva", "Prva majska", LocalDate.of(2027, 5, 2));
+		long second = race("dukat-okidac-druga", "Majska trka", LocalDate.of(2027, 5, 20));
+
+		result(ANA, first, "100");
+
+		long item = waiting(ANA, second, "30", null);
+
+		assertThat(decided(item).getStatus()).isEqualTo(200);
+
+		assertThat(ducatMessagesTo(ANA)).containsExactly("Balkanska trkačka liga | Osvojio si dukat | "
+				+ "Odobren ti je rezultat sa trke Majska trka od 20.05.2027, i njime si osvojio dukat"
+				+ " \"Mesečni kilometri\" za maj 2027. Dukat stoji na tvom profilu.");
+	}
 }
