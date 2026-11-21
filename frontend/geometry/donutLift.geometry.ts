@@ -124,14 +124,38 @@ for (const at of WIDTHS) {
         }),
     )
 
-    const box = await hits.first().boundingBox()
+    /* A point in the middle of the band of the first slice, found by asking the browser (the middle of a
+       slice's box lies in the hole for a slice of more than half the ring) and put on the page through the
+       slice's own transform. It is the pointer's place at rest: the drawn slice, not the layer that reads
+       the pointer, so a layer that did not cover it would be a lift that never came. */
+    const at70 = await page.evaluate(() => {
+      const one = document.querySelector<SVGGeometryElement>('.donut__seg')
+      const matrix = one?.getScreenCTM()
 
-    if (box === null) {
-      throw notMeasured('the first slice of the ring has no box')
+      if (!one || !matrix) {
+        return null
+      }
+
+      for (let degrees = 0; degrees < 360; degrees += 1) {
+        const angle = ((degrees + 0.37) * Math.PI) / 180
+        const point = new DOMPoint(100 + 70 * Math.cos(angle), 100 + 70 * Math.sin(angle))
+
+        if (one.isPointInFill(point)) {
+          const there = point.matrixTransform(matrix)
+
+          return { x: there.x, y: there.y }
+        }
+      }
+
+      return null
+    })
+
+    if (at70 === null) {
+      throw notMeasured('no point of the first slice could be found to put the pointer on')
     }
 
-    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
-    await page.mouse.move(box.x + box.width / 2 + 1, box.y + box.height / 2 + 1)
+    await page.mouse.move(at70.x, at70.y)
+    await page.mouse.move(at70.x + 0.5, at70.y)
 
     const frames = await recording
 
