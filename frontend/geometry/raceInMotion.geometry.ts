@@ -640,3 +640,39 @@ test('the page layer stays the size of the window at the foot of a long page', a
   expect(box.top).toBe(0)
   expect(box.bottom).toBe(box.height)
 })
+
+/* WHERE THE DOT IS LEFT, READ OFF WHAT CHROME DRAWS (owner, 21.11.2026: it leaves over the bottom edge of the window
+   and is gone). The sheet's and the component's cases work the end of the path out from the data; only here is
+   the ring's own box read, so a centre moved on the circles, a translate on the group or a taller view of the lane
+   fail here and nowhere else. The window is made as tall as each case says after the page has settled: the dot is
+   resting at the end of its path, and the lane is laid out again for the new height. */
+for (const [width, height] of [
+  [768, 1024],
+  [1280, 650],
+  [1920, 1080],
+  [1440, 1400],
+] as const) {
+  test(`the dot is left wholly below the bottom edge of the window at ${width}x${height}`, async ({ open }) => {
+    const { page } = await open({ width, text: 100, motion: 'no-preference' }, '/sr', 'header .brand', ANSWERS)
+
+    expect(await page.evaluate(() => document.querySelector('.race-page__dot')?.getAnimations().length ?? -1), 'the run is over').toBe(0)
+
+    await page.setViewportSize({ width, height })
+
+    const seen = await page.evaluate(
+      () =>
+        new Promise<{ top: number; window: number }>((resolve) => {
+          requestAnimationFrame(() =>
+            requestAnimationFrame(() => {
+              const ring = document.querySelector('.race-page__dot-ring')
+
+              resolve({ top: ring === null ? Number.NaN : ring.getBoundingClientRect().top, window: window.innerHeight })
+            }),
+          )
+        }),
+    )
+
+    expect(seen.window).toBe(height)
+    expect(seen.top, 'top of the ring against the bottom of the window').toBeGreaterThanOrEqual(height)
+  })
+}
