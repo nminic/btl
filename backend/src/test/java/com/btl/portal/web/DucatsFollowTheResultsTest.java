@@ -982,7 +982,8 @@ class DucatsFollowTheResultsTest {
 
 		assertThat(decided(item).getStatus()).isEqualTo(200);
 
-		assertThat(ducatMessagesTo(ANA)).containsExactly("Balkanska trkačka liga | Osvojio si dukat | "
+		assertThat(db.sql("select from_name || ' | ' || subject || ' | ' || body from message where to_id = ?")
+				.param(id(ANA)).query(String.class).list()).containsExactly("Balkanska trkačka liga | Osvojio si dukat | "
 				+ "Odobren ti je rezultat sa trke Majska trka od 20.05.2027, i njime si osvojio dukat"
 				+ " \"Mesečni kilometri\" za maj 2027. Dukat stoji na tvom profilu.");
 	}
