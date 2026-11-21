@@ -1,3 +1,4 @@
+import { Fragment } from 'react'
 import { ProfileLink } from '../profile/ProfileLink'
 import { Link } from 'react-router'
 import { BOARD_PLACES, boardOfTen, categoryLabelIn, type BoardSlot } from '../../data/derive'
@@ -8,6 +9,29 @@ import { Portrait } from '../../components/Portrait'
 
 /** The three that stand on the podium; the places behind them are the list. */
 const PODIUM = 3
+
+/**
+ * A FIGURE OF THE PODIUM THAT MAY BREAK, AND ONLY WHERE A PERSON WOULD (owner, 21.11.2026, review of PR 768,
+ * WCAG 1.4.4 Resize text): the figure is not drawn on one line whatever the text size is, because at 200% a
+ * column of the podium is narrower than the smallest letter lets the figure be. It is kept whole in the
+ * letter (`Home.css`, `.stand__points`) and, where even the smallest letter does not fit, it breaks after a
+ * thousands separator, and nowhere else, and never ends in dots: a
+ * figure that is cut is a wrong figure, and two lines are better than that.
+ *
+ * The separators are found by their shape and not by the language: a group is a separator followed by exactly
+ * three digits and then by something that is not a digit, and the decimal separator is followed by two.
+ */
+const AFTER_A_THOUSANDS_SEPARATOR = /(?<=[.,])(?=\d{3}(?:\D|$))/
+
+/** The figure as text with a place to break after each thousands separator, for the podium and for the list. */
+function Figure({ text }: { text: string }) {
+  return text.split(AFTER_A_THOUSANDS_SEPARATOR).map((piece, index) => (
+    <Fragment key={piece}>
+      {index > 0 && <wbr />}
+      {piece}
+    </Fragment>
+  ))
+}
 
 /**
  * One face on the board, carrying the number of its place, as a way to that
@@ -64,9 +88,13 @@ function Face({ slot, place }: { slot: Competitor | undefined; place: number }) 
  * **A screen reader hears one name, once.** The link carries „1. Vesna Đoković" and the two lines
  * drawn under it are `aria-hidden`, so the name is neither read twice nor read as two pieces.
  *
+ * **The podium prints the number of points and nothing after it** (owner, 21.11.2026: „Nigde u widgetima Top 10 se
+ * ne pominju bodovi za donje ljude, zašto se pominje za ljude na postolju? Nema ni tu potrebe realno, neka samo
+ * stoji broj bodova bez p / pts"), as the list from the fourth place does. Until 1 January 2027 the figure is
+ * the BTL points of the whole history (owner, 21.11.2026, `boardOfTen`).
+ *
  * **The ring of gold around the first place is for a place that was WON** (PDL, 18.10.2026, „Red
- * bez trke ima redni broj, ali nikad boju postolja", applied by the owner on 20.11.2026 to a
- * podium that says „0,00 BTL poena" until the places are won). A member who only holds the place
+ * bez trke ima redni broj, ali nikad boju postolja", applied by the owner on 20.11.2026). A member who only holds the place
  * until he has a result (`ranked` false) stands on the podium without it.
  */
 function PodiumPlace({
@@ -98,6 +126,7 @@ function PodiumPlace({
   const { competitor } = slot
   const category = categoryLabelIn(competitor, season, t)
   const won = place === 1 && slot.ranked
+  const figure = formatPoints(slot.points, locale)
 
   return (
     <li className={`stand__item stand__item--${place}${won ? ' stand__item--won' : ''}`}>
@@ -112,9 +141,8 @@ function PodiumPlace({
           {competitor.lastName}
         </span>
       </span>
-      <span className="stand__points">
-        {formatPoints(slot.points, locale)}
-        {t('home.pointsUnit')}
+      <span className="stand__points" style={{ '--chars': figure.length }}>
+        <Figure text={figure} />
       </span>
       {category !== '' && <span className="stand__cat">{category}</span>}
       <span className="stand__step" aria-hidden="true">
@@ -165,7 +193,9 @@ function ListedPlace({
         <ProfileLink competitor={competitor}>{name}</ProfileLink>
       </span>
       <span className="kt">{categoryLabelIn(competitor, season, t)}</span>
-      <span className="pt">{formatPoints(slot.points, locale)}</span>
+      <span className="pt">
+        <Figure text={formatPoints(slot.points, locale)} />
+      </span>
     </li>
   )
 }

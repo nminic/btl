@@ -234,4 +234,15 @@
     grid-column: 2;
     grid-row: 5 / span 2;
   }
+
+  /* Three pairs fit, and the foot of the box stays level with the foot of the progress
+     (PDL 21.11.2026, owner: „Da, hoću"). Measured before the decision at 1280px: a row of a
+     pair is 106px, two of them leave 85px under the heading row and a third would run 21px past
+     it. The row is cut to 98px (at most 99), through the padding of its cells alone: the names
+     and the number of shared races keep their words and their size. Written for the pairs and
+     for this width only, because the other boards share `.table td` and a telephone, where the
+     boxes stand one under another, has no foot to keep level. */
+  .boards__board--pairs .table tbody td {
+    padding-block: var(--space-8);
+  }
 }
