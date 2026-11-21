@@ -944,7 +944,7 @@ class ResultWriteApiTest {
 				.isEqualTo(ResultWriteApi.THE_RACE_IS_OUTSIDE_THE_SEASON);
 		assertThat(reasonIn(reportedAs(ME, form(described))))
 				.as("and described").isEqualTo(ResultWriteApi.THE_RACE_IS_OUTSIDE_THE_SEASON);
-		assertThat(howManySubmissions()).isEqualTo(1L);
+		assertThat(howManySubmissions()).as("a run of the member who is not a tester was written").isZero();
 
 		assertThat(bothRoadsOn(TESTER, ofTwentySix, "2026-10-01", "https://rezultati.rs/jesenja-t"))
 				.as("the tester could not send a run of 2026, from the calendar and described")
