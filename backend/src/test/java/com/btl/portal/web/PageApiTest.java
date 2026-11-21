@@ -516,7 +516,7 @@ class PageApiTest {
 				{ "en", "| Brevo (Sendinblue SAS) | Your address and the content of the message | France |\n"
 						+ "| Zoho Corporation | Correspondence with info@: your address and the content of the messages"
 						+ " | USA |\n| The Association's business bank |",
-						"Last amended: 16.11.2026." } };
+						"Last amended: 21.11.2026." } };
 
 		for (String[] each : asked) {
 			JsonNode served = answerIn(each[0]);

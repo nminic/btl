@@ -28,7 +28,7 @@ import static org.assertj.core.api.Assertions.catchThrowable;
  *
  * <p><b>Run twice.</b> A migration whose new text contains its old text would be found once over its own result and would
  * edit again. V107's old texts are whole sentences that the new ones no longer contain, and the case that runs it over the
- * finished text holds it: every one of the 122 edits finds its old text zero times.
+ * finished text holds it: every one of the 125 edits finds its old text zero times.
  */
 class TheWrittenPagesSpeakToTheReaderAsTiCarriedOverTest extends DatabaseTest {
 
@@ -39,9 +39,9 @@ class TheWrittenPagesSpeakToTheReaderAsTiCarriedOverTest extends DatabaseTest {
 	private static final String TERMS = TheWrittenPagesSpeakToTheReaderAsTiTest.TERMS;
 	private static final String RULEBOOK = TheWrittenPagesSpeakToTheReaderAsTiTest.RULEBOOK;
 
-	/** 119 sentences and 3 sign-offs. */
+	/** 119 sentences and 3 sign-offs in each of two languages. */
 	private static int theNumberOfEditsV107Makes() {
-		return 122;
+		return 125;
 	}
 
 	/**
@@ -56,7 +56,8 @@ class TheWrittenPagesSpeakToTheReaderAsTiCarriedOverTest extends DatabaseTest {
 			TERMS + " #9 sr", TERMS + " #11 sr",
 			RULEBOOK + " #1 sr", RULEBOOK + " #2 sr", RULEBOOK + " #5 sr", RULEBOOK + " #8 sr", RULEBOOK + " #9 sr",
 			RULEBOOK + " #12 sr", RULEBOOK + " #15 sr", RULEBOOK + " #17 sr", RULEBOOK + " #18 sr", RULEBOOK + " #19 sr",
-			"rec-predsednika #1 sr");
+			"rec-predsednika #1 sr",
+			POLICY + " #7 en", TERMS + " #11 en", RULEBOOK + " #19 en");
 
 	/** Every heading and body of both tables, by page, place and language, so two readings compare row by row. */
 	private Map<String, String> everyText() {
@@ -139,8 +140,8 @@ class TheWrittenPagesSpeakToTheReaderAsTiCarriedOverTest extends DatabaseTest {
 
 	/**
 	 * V107 OVER THE TEXT IT FOUND GIVES THE TEXT THE PORTAL SERVES, character for character, in every heading and body of
-	 * every page in both languages, and changes exactly the Serbian sections the owner's list names and no other: no English
-	 * section, no section of a page the list does not carry.
+	 * every page in both languages, and changes exactly the Serbian sections the owner's list names, and the three English
+	 * sections that carry a sign-off, and no other: no other English section, no section of a page the list does not carry.
 	 */
 	@Test
 	void v107OverTheTextItFoundGivesTheTextThePortalServesAndChangesNothingElse() {

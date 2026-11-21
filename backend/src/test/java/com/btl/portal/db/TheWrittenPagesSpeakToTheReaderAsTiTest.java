@@ -28,9 +28,10 @@ import static org.assertj.core.api.Assertions.assertThat;
  * „ćete". It measures pronouns and those two verb forms and nothing else: it cannot tell that „pošaljite" is the plural
  * imperative, and it says so rather than pretending. The 119 approved sentences are what carries the verbs.
  *
- * <p><b>The English is not touched</b> (V107 header: English has no „ti" and „Vi", and the decision speaks of the Serbian
- * text), and that is asked here as behaviour: the English sections, and the sign-off of every English page, are the same
- * with V107 undone as with it applied.
+ * <p><b>The English words are not touched</b> (V107 header: English has no „ti" and „Vi", and the decision speaks of the
+ * Serbian text), and that is asked here as behaviour: every English section is the same with V107 undone as with it applied,
+ * except the three that carry a sign-off, and in those only the sign-off differs. The sign-off moves in both languages (PDL,
+ * owner, 14.11.2026: the date is the date of the document and moves in both languages).
  */
 class TheWrittenPagesSpeakToTheReaderAsTiTest extends DatabaseTest {
 
@@ -155,11 +156,11 @@ class TheWrittenPagesSpeakToTheReaderAsTiTest extends DatabaseTest {
 
 	/**
 	 * THE THREE DOCUMENTS WHOSE WORDS CHANGED ARE SIGNED OFF ON THE DAY V107 GIVES THEM, ONCE, and the president's word, which
-	 * carries no sign-off, still carries none. The English sign-offs keep the day of their own last change, because the English
-	 * words did not change (V107 header; PDL 07.11.2026, the day moves when the words of the text change).
+	 * carries no sign-off, still carries none. The English sign-offs move to the same day although no English word changed: the
+	 * date is the date of the document and moves in both languages (PDL, owner, 14.11.2026).
 	 */
 	@Test
-	void theThreeSerbianDocumentsAreSignedOffOnTheTwentyFirstOfNovemberAndTheEnglishKeepTheirDays() {
+	void theThreeDocumentsAreSignedOffOnTheTwentyFirstOfNovemberInBothLanguages() {
 		assertThat(bodyOf(POLICY, 7, "sr")).endsWith("Poslednja izmena: 21.11.2026.").containsOnlyOnce("Poslednja izmena: ")
 				.doesNotContain("16.11.2026");
 		assertThat(bodyOf(TERMS, 11, "sr")).endsWith("Poslednja izmena: 21.11.2026.").containsOnlyOnce("Poslednja izmena: ")
@@ -168,17 +169,20 @@ class TheWrittenPagesSpeakToTheReaderAsTiTest extends DatabaseTest {
 				.doesNotContain("15.11.2026");
 		assertThat(bodyOf(PRESIDENT, 1, "sr")).doesNotContain("Poslednja izmena");
 
-		assertThat(bodyOf(POLICY, 7, "en")).endsWith("Last amended: 16.11.2026.");
-		assertThat(bodyOf(TERMS, 11, "en")).endsWith("Last amended: 11.11.2026.");
-		assertThat(bodyOf(RULEBOOK, 19, "en")).endsWith("Last amended: 15.11.2026.");
+		assertThat(bodyOf(POLICY, 7, "en")).endsWith("Last amended: 21.11.2026.").containsOnlyOnce("Last amended: ")
+				.doesNotContain("16.11.2026");
+		assertThat(bodyOf(TERMS, 11, "en")).endsWith("Last amended: 21.11.2026.").containsOnlyOnce("Last amended: ")
+				.doesNotContain("11.11.2026");
+		assertThat(bodyOf(RULEBOOK, 19, "en")).endsWith("Last amended: 21.11.2026.").containsOnlyOnce("Last amended: ")
+				.doesNotContain("15.11.2026");
 	}
 
 	/**
-	 * V107 EDITS SERBIAN AND NOTHING ELSE, asked as behaviour: with V107 undone, every English section (heading and body) and
-	 * the translation rows as a set are exactly what they are with it applied.
+	 * V107 EDITS NO ENGLISH WORD, asked as behaviour: with V107 undone, every English section (heading and body) is exactly
+	 * what it is with it applied, except the three sections that carry the sign-off, and those differ in the sign-off alone.
 	 */
 	@Test
-	void theEnglishSectionsAreTheSameWithV107UndoneAsWithItApplied() {
+	void theEnglishWordsAreTheSameWithV107UndoneAsWithItAppliedAndOnlyTheSignOffDiffers() {
 		Map<String, String> applied = everyTextByPlace();
 
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "107");
@@ -188,32 +192,47 @@ class TheWrittenPagesSpeakToTheReaderAsTiTest extends DatabaseTest {
 		assertThat(undone).as("undoing V107 changed nothing, so this measures nothing").isNotEqualTo(applied);
 		assertThat(undone.keySet()).isEqualTo(applied.keySet());
 
+		Map<String, String> signOffs = Map.of(
+				POLICY + " #7 en", "Last amended: 16.11.2026.",
+				TERMS + " #11 en", "Last amended: 11.11.2026.",
+				RULEBOOK + " #19 en", "Last amended: 15.11.2026.");
+
 		for (String place : applied.keySet()) {
-			if (place.endsWith(" en")) {
+			if (!place.endsWith(" en")) {
+				continue;
+			}
+
+			if (signOffs.containsKey(place)) {
+				assertThat(undone.get(place)).as("the English sign-off %s", place).endsWith(signOffs.get(place));
+				assertThat(undone.get(place).replace(signOffs.get(place), "Last amended: 21.11.2026."))
+						.as("the English section %s differs by more than its sign-off", place).isEqualTo(applied.get(place));
+			} else {
 				assertThat(undone.get(place)).as("the English text %s depends on V107", place).isEqualTo(applied.get(place));
 			}
 		}
 	}
 
 	/**
-	 * V107 carries every edit the owner approved and the three sign-offs, nothing more: 119 and 3, each written between two
-	 * $old$ marks, and each edit names the Serbian text (a migration that named an English one would change what this file
-	 * says it does not touch).
+	 * V107 carries every edit the owner approved and the three sign-offs in both languages, nothing more: 119, 3 and 3, each
+	 * written between two $old$ marks, and the only English edits are the three sign-offs (a migration that edited an English
+	 * sentence would change what this file says it does not touch).
 	 */
 	@Test
-	void theTableNamesEveryEditV107MakesAndEveryOneIsSerbian() {
+	void theTableNamesEveryEditV107MakesAndTheOnlyEnglishOnesAreTheSignOffs() {
 		String sql = migrationSql("107");
 
 		assertThat(sql.split("\\$old\\$", -1).length - 1)
 				.as("V107 carries an edit that this file does not name (or this file names one V107 lacks): 119 sentences and 3"
-						+ " sign-offs, each written between two $old$ marks")
-				.isEqualTo((119 + 3) * 2);
+						+ " sign-offs in each of two languages, each written between two $old$ marks")
+				.isEqualTo((119 + 3 + 3) * 2);
 
 		List<TheWrittenPagesBeforeV71.Edit> edits = TheWrittenPagesBeforeV71.editsWithAFieldOf(sql);
 
-		assertThat(edits).hasSize(119 + 3);
-		assertThat(edits).extracting(TheWrittenPagesBeforeV71.Edit::language).containsOnly("sr");
-		assertThat(edits).filteredOn(edit -> edit.label().startsWith("TI-SIGNOFF")).hasSize(3);
+		assertThat(edits).hasSize(119 + 3 + 3);
+		assertThat(edits).filteredOn(edit -> edit.language().equals("en")).extracting(TheWrittenPagesBeforeV71.Edit::label)
+				.containsExactlyInAnyOrder("TI-SIGNOFF-EN pravilnik #19 body", "TI-SIGNOFF-EN uslovi-koriscenja #11 body",
+						"TI-SIGNOFF-EN politika-privatnosti #7 body");
+		assertThat(edits).filteredOn(edit -> edit.label().startsWith("TI-SIGNOFF")).hasSize(6);
 		assertThat(edits).filteredOn(edit -> edit.field().equals("heading")).hasSize(2);
 	}
 }

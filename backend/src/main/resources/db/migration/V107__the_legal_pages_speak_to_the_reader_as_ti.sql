@@ -15,18 +15,19 @@
    so, and this file does not tell the two apart: one text goes in, whichever way it was written. Nothing in a sentence was corrected
    here; a sentence that looked wrong would be reported and not changed.
 
-   THE ENGLISH IS NOT TOUCHED. English has no "ti" and "Vi", and the decision speaks of the Serbian text. This file edits the Serbian
-   sections only (a section of the page table, not its translation table), and the English sections stay as they are, the sign-off
-   of the English pages included: the rule of 07.11.2026 moves the day when the WORDS of the text change, and the English words do
-   not. The Serbian and the English sign-off of a document therefore differ from this day on, which is the cost of that reading and
-   is reported to the owner as a question, not decided here.
+   THE ENGLISH WORDS ARE NOT TOUCHED. English has no "ti" and "Vi", and the decision speaks of the Serbian text, so the sentences
+   are edited in the Serbian sections only. The English SIGN-OFF is another matter and moves with the Serbian one, see below.
 
-   THE SIGN-OFF MOVES ON THREE DOCUMENTS, ON THE DAY THIS REACHES QA. PDL, "Datum Poslednja izmena na pravnom tekstu pomera se uvek
-   kad se reči tog teksta promene, na dan kad izmena stiže na QA" (owner, 07.11.2026). The policy (V102: 16.11.2026), the terms
-   (V95: 11.11.2026) and the rulebook (V100: 15.11.2026) all change words here, so all three move to 21.11.2026. The president's
-   word carries no sign-off and has none to move. THE DAY IS WRITTEN AS THE DAY IT IS EXPECTED: 21.11.2026 is the day this file is
-   written; if it reaches QA on another day the date is moved before the merge, in this file and in every place that holds it,
-   which ADL A2 allows because the file has not been applied anywhere.
+   THE SIGN-OFF MOVES ON THREE DOCUMENTS, IN BOTH LANGUAGES, ON THE DAY THIS REACHES QA. PDL, "Datum Poslednja izmena na pravnom
+   tekstu pomera se uvek kad se reči tog teksta promene, na dan kad izmena stiže na QA" (owner, 07.11.2026), and its addition of
+   14.11.2026 (owner, chose between the offered, with the assistant's recommendation): "Datum je datum dokumenta i pomera se na oba
+   jezika i kad se reči promene samo u jednom (povod: PR 723 menja samo engleski Član 36, a datum se pomera i u srpskom Pravilniku).
+   Ponuđeno i neizabrano: pomera se samo datum jezika čije su se reči promenile." So the day moves in English too although no English
+   word changes here: V102 did the same. The policy (V102: 16.11.2026), the terms (V95: 11.11.2026) and the rulebook (V100:
+   15.11.2026) all change words in Serbian, so all three move to 21.11.2026, "Poslednja izmena" and "Last amended" alike. The
+   president's word carries no sign-off and has none to move. THE DAY IS WRITTEN AS THE DAY IT IS EXPECTED: 21.11.2026 is the day
+   this file is written; if it reaches QA on another day the date is moved before the merge, in this file and in every place that
+   holds it, which ADL A2 allows because the file has not been applied anywhere.
 
    HOW. The shape of V93 to V102: every edit is asked how many times its old text stands in the text it is aimed at, and anything but
    exactly once is a problem, and a text that already carries the new words is a problem too, asked of the text with the old words
@@ -38,10 +39,10 @@
 
    MEASURED BEFORE IT WAS WRITTEN, on both servers, by reading only: production and QA both stood at V106 and held the same text
    (the same 105559 bytes of page text), and each of the 119 old texts stood exactly once in the Serbian sections, in the place the
-   list names. The 3 sign-offs stood once each, on the days named above.
+   list names. The 3 sign-offs stood once each in Serbian and once each in English, on the days named above.
 
-   WHAT IT DOES NOT TOUCH: no schema, no constraint, no key, no index, no row added or removed; no English text; no word of a legal text
-   outside the 119 sentences, and no day outside the three sign-offs.
+   WHAT IT DOES NOT TOUCH: no schema, no constraint, no key, no index, no row added or removed; no English word; no word of a legal text
+   outside the 119 sentences, and no day outside the three sign-offs (each in two languages).
 
    WHY A NEW FILE AND NOT AN EDIT OF V93 TO V102: ADL A2. They have been applied, their checksums are in flyway_schema_history, and
    MigrationsAreImmutableTest holds Flyway to it. V107 and not another number: main stood at V106 on 21.11.2026.
@@ -549,16 +550,37 @@ begin
 
             ('TI-SIGNOFF politika-privatnosti #7 body', 'politika-privatnosti', 7, 'sr', 'body',
              $old$Poslednja izmena: 16.11.2026.$old$,
-             $new$Poslednja izmena: 21.11.2026.$new$)
+             $new$Poslednja izmena: 21.11.2026.$new$),
+
+            ('TI-SIGNOFF-EN pravilnik #19 body', 'pravilnik', 19, 'en', 'body',
+             $old$Last amended: 15.11.2026.$old$,
+             $new$Last amended: 21.11.2026.$new$),
+
+            ('TI-SIGNOFF-EN uslovi-koriscenja #11 body', 'uslovi-koriscenja', 11, 'en', 'body',
+             $old$Last amended: 11.11.2026.$old$,
+             $new$Last amended: 21.11.2026.$new$),
+
+            ('TI-SIGNOFF-EN politika-privatnosti #7 body', 'politika-privatnosti', 7, 'en', 'body',
+             $old$Last amended: 16.11.2026.$old$,
+             $new$Last amended: 21.11.2026.$new$)
 
         ) as edits (label, slug, section_position, in_language, field, old_text, new_text)
     loop
         total := total + 1;
 
-        select case edit.field when 'body' then s.body else s.heading end into current_text
-        from static_page_section s
-        join static_page p on p.id = s.page_id
-        where p.slug = edit.slug and s.position = edit.section_position;
+        if edit.in_language = 'sr' then
+            select case edit.field when 'body' then s.body else s.heading end into current_text
+            from static_page_section s
+            join static_page p on p.id = s.page_id
+            where p.slug = edit.slug and s.position = edit.section_position;
+        else
+            select case edit.field when 'body' then t.body else t.heading end into current_text
+            from static_page_section_translation t
+            join static_page_section s on s.id = t.section_id
+            join static_page p on p.id = s.page_id
+            where p.slug = edit.slug and s.position = edit.section_position
+              and t.language = edit.in_language;
+        end if;
 
         if not found then
             problems := problems + 1;
@@ -585,11 +607,21 @@ begin
             continue;
         end if;
 
-        update static_page_section s
-        set body    = case when edit.field = 'body' then replace(s.body, edit.old_text, edit.new_text) else s.body end,
-            heading = case when edit.field = 'heading' then replace(s.heading, edit.old_text, edit.new_text) else s.heading end
-        from static_page p
-        where p.id = s.page_id and p.slug = edit.slug and s.position = edit.section_position;
+        if edit.in_language = 'sr' then
+            update static_page_section s
+            set body    = case when edit.field = 'body' then replace(s.body, edit.old_text, edit.new_text) else s.body end,
+                heading = case when edit.field = 'heading' then replace(s.heading, edit.old_text, edit.new_text) else s.heading end
+            from static_page p
+            where p.id = s.page_id and p.slug = edit.slug and s.position = edit.section_position;
+        else
+            update static_page_section_translation t
+            set body    = case when edit.field = 'body' then replace(t.body, edit.old_text, edit.new_text) else t.body end,
+                heading = case when edit.field = 'heading' then replace(t.heading, edit.old_text, edit.new_text) else t.heading end
+            from static_page_section s, static_page p
+            where s.id = t.section_id and p.id = s.page_id
+              and p.slug = edit.slug and s.position = edit.section_position
+              and t.language = edit.in_language;
+        end if;
     end loop;
 
     if problems > 0 then
