@@ -21,9 +21,12 @@ import './LengthFilter.css'
 export function LengthFilter({
   value,
   onChange,
+  fit = false,
 }: {
   value: RaceCategory | null
   onChange: (value: RaceCategory | null) => void
+  /** As wide as the buttons ask, from the left, with the room between them the BTL tables have (`Segmented`). */
+  fit?: boolean
 }) {
   const { t } = useI18n()
   const options = [
@@ -62,6 +65,7 @@ export function LengthFilter({
       value={value ?? 'all'}
       onChange={(key) => onChange(key === 'all' ? null : key)}
       label={t('profile.length')}
+      fit={fit}
     />
   )
 }

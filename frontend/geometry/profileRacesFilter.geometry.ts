@@ -69,6 +69,8 @@ for (const screen of SCREENS) {
         const parent = group.parentElement?.getBoundingClientRect()
 
         return {
+          fit: group.classList.contains('seg--fit'),
+          pad: Math.min(...[...group.querySelectorAll('.seg__b')].map((one) => parseFloat(getComputedStyle(one).paddingLeft))),
           viewport: document.documentElement.clientWidth,
           parent: parent === undefined ? null : box(parent),
           group: box(group.getBoundingClientRect()),
@@ -104,6 +106,15 @@ for (const screen of SCREENS) {
       }
 
       expect(seen.buttons, 'six buttons').toHaveLength(6)
+
+      /* The profile's filter is the one of the BTL tables (`fit`, owner, 21.11.2026) and has the room that one has;
+         the front page's is not, and stays at the 6px it had. */
+      expect(seen.fit, `the filter of the ${screen.name} is ${screen.name === 'profile' ? '' : 'not '}fit`).toBe(screen.name === 'profile')
+      expect(seen.pad, 'room at the sides of a button').toBeGreaterThanOrEqual(screen.name === 'profile' ? (at.width >= 35 * 16 * (at.text / 100) ? 14 : 8) : 6)
+
+      if (screen.name === 'front page') {
+        expect(seen.pad, 'the front page filter was given room it does not have').toBeLessThanOrEqual((6 * at.text) / 100 + SLACK)
+      }
 
       for (const one of seen.buttons) {
         expect(one.overflow, `the words of „${one.text}" run out of their button`).toBeLessThanOrEqual(SLACK)

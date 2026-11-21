@@ -309,7 +309,7 @@ describe('the list of competitions, for a competition that counts some of the ra
     renderAt(LIST)
 
     const box = must(
-      (await screen.findByRole('heading', { level: 2, name: /Brdska liga 2019/ })).closest('li'),
+      (await screen.findByRole('heading', { level: 2, name: /Brdska liga 2019/ })).closest('article'),
       'the box of the competition',
     )
 
@@ -337,7 +337,7 @@ describe('the list of competitions, for a competition that counts some of the ra
     renderAt(LIST)
 
     const box = must(
-      (await screen.findByRole('heading', { level: 2, name: /Brdska liga 2019/ })).closest('li'),
+      (await screen.findByRole('heading', { level: 2, name: /Brdska liga 2019/ })).closest('article'),
       'the box of the competition',
     )
 
@@ -370,10 +370,10 @@ describe('the list of competitions, for a competition that counts some of the ra
        Waited on a shorter clock than the case, because the case's own clock is the same twenty
        seconds `waitFor` is given and a real difference would then report as a bare timeout
        (`pages/publicScreens.test.tsx` measured that). */
-    expect(box.textContent).toContain('Događaja: 3')
+    expect(box.textContent).toMatch(/(^|\D)3 događaja/)
     await waitFor(
       () => {
-        expect(box.textContent).toContain('Učesnika: 2')
+        expect(box.textContent).toMatch(/(^|\D)2 učesnika/)
       },
       { timeout: SLOW / 4 },
     )
@@ -405,7 +405,7 @@ describe('the list of competitions, for a competition that counts some of the ra
     renderAt(LIST)
 
     const box = must(
-      (await screen.findByRole('heading', { level: 2, name: /Brdska liga 2019/ })).closest('li'),
+      (await screen.findByRole('heading', { level: 2, name: /Brdska liga 2019/ })).closest('article'),
       'the box of the competition',
     )
     const opens = within(box).getByRole('button', { name: /Događaji i trke/ })

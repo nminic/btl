@@ -55,6 +55,7 @@ for (const at of WIDTHS) {
         viewport: document.documentElement.clientWidth,
         field: field === undefined ? null : box(field),
         group: box(root.getBoundingClientRect()),
+        gap: parseFloat(frame.columnGap),
         frame:
           parseFloat(frame.paddingLeft) + parseFloat(frame.paddingRight) + parseFloat(frame.borderLeftWidth) + parseFloat(frame.borderRightWidth),
         buttons: [...root.querySelectorAll('.seg__b')].map((one) => {
@@ -62,7 +63,11 @@ for (const at of WIDTHS) {
           const walk = document.createTreeWalker(one, NodeFilter.SHOW_TEXT)
 
           for (let node = walk.nextNode(); node !== null; node = walk.nextNode()) {
-            if ((node.textContent ?? '').trim() !== '') {
+            /* A name clipped to a pixel (`.seg__long` where the short form is drawn) is only read, as in the
+               profile's guard: its text is not drawn and has no place in the button. */
+            const clipped = node.parentElement?.classList.contains('seg__long') === true && node.parentElement.getBoundingClientRect().width <= 2
+
+            if ((node.textContent ?? '').trim() !== '' && !clipped) {
               const range = document.createRange()
 
               range.selectNodeContents(node)
@@ -70,7 +75,15 @@ for (const at of WIDTHS) {
             }
           }
 
+          const long = one.querySelector('.seg__long')
+          const short = one.querySelector('.seg__short')
+          const style = getComputedStyle(one)
+
           return {
+            pad: Math.min(parseFloat(style.paddingLeft), parseFloat(style.paddingRight)),
+            /* Drawn means a box wider than the pixel a clipped name is left with, and not `display: none`. */
+            longDrawn: long === null ? null : long.getBoundingClientRect().width > 2,
+            shortDrawn: short === null ? null : getComputedStyle(short).display !== 'none',
             text: (one.textContent ?? '').trim(),
             box: box(one.getBoundingClientRect()),
             overflow: one.scrollWidth - one.clientWidth,
@@ -116,8 +129,44 @@ for (const at of WIDTHS) {
     expect(probe.sideways, 'the page scrolls sideways').toBe(0)
     expect(probe.widened, 'the page was widened by something running off its right edge').toBe(0)
 
+    /* MORE ROOM BETWEEN THE BUTTONS (owner, 21.11.2026): the words stand at least 8px from the edge of their button
+       on a telephone and 14px from 560px up, and two buttons of one row are at least 4px apart. `Segmented.css`
+       says it on `.seg--fit`; the front page's filter, which is not `fit`, is held where it was by `frontPage`. */
+    const MIN_PAD = at.width >= 35 * 16 * (at.text / 100) ? 14 : 8
+
+    for (const one of seen.buttons) {
+      expect(one.pad, `„${one.text}" has less room at its sides than the filter is given`).toBeGreaterThanOrEqual(MIN_PAD)
+    }
+
+    for (const [index, one] of seen.buttons.entries()) {
+      const next = seen.buttons[index + 1]
+
+      if (next !== undefined && Math.abs(next.box.top - one.box.top) < 1) {
+        expect(next.box.left - one.box.right, `„${one.text}" and „${next.text}" touch`).toBeGreaterThanOrEqual(4 - SLACK)
+      }
+    }
+
+    /* THE MARK OF THE GENDER COMES OFF WHERE THE FULL NAMES WOULD NOT STAND IN ONE ROW (owner, 21.11.2026): at
+       1280 and 768 the full names are drawn, at 360 the short ones, and the full name is the one a reader hears
+       either way (`.seg__long` is clipped, not taken away). At the ordinary text only: at 200% the room is
+       measured in `rem` and the form turns over at the width it should, which is not the point of this check. */
+    if (at.text === 100) {
+      const both = seen.buttons.filter((one) => one.longDrawn !== null)
+
+      expect(both.length, 'no button carries both forms').toBeGreaterThan(0)
+
+      for (const one of both) {
+        expect(one.longDrawn, `„${one.text}": the full name is ${at.width < 560 ? 'drawn' : 'clipped'} at ${String(at.width)}px`).toBe(at.width >= 560)
+        expect(one.shortDrawn, `„${one.text}": the short form is ${at.width < 560 ? 'clipped' : 'drawn'} at ${String(at.width)}px`).toBe(at.width < 560)
+      }
+
+      const tops = seen.buttons.map((one) => one.box.top)
+
+      expect(Math.max(...tops) - Math.min(...tops), 'one row at the ordinary text size').toBeLessThanOrEqual(SLACK)
+    }
+
     if (at.width === 1280 && at.text === 100) {
-      const asked = seen.buttons.reduce((sum, one) => sum + (one.box.right - one.box.left), 0) + seen.frame
+      const asked = seen.buttons.reduce((sum, one) => sum + (one.box.right - one.box.left), 0) + seen.frame + seen.gap * (seen.buttons.length - 1)
 
       expect(seen.group.right - seen.group.left, 'the group is wider than its buttons ask').toBeLessThanOrEqual(asked + SLACK)
 

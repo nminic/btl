@@ -326,14 +326,20 @@ class ResultWriteApi {
 	 *  statement silently never ran. */
 	private final TransactionTemplate inOneTransaction;
 
+	/** Whether the member sending the run is on the server's list of testers, who may send a run of
+	 *  2026 until 1 January 2027 (PDL P9, owner, 21.11.2026; {@link ReportTesters}). Asked of the
+	 *  member the session resolved, on both roads a run is sent by. */
+	private final ReportTesters testers;
+
 	ResultWriteApi(JdbcClient db, ActiveMemberOrAdministration readers, Postman postman, Clock clock,
-			TransactionTemplate inOneTransaction, DucatsFollowTheResults ducats) {
+			TransactionTemplate inOneTransaction, DucatsFollowTheResults ducats, ReportTesters testers) {
 		this.db = db;
 		this.ducats = ducats;
 		this.readers = readers;
 		this.postman = postman;
 		this.clock = clock;
 		this.inOneTransaction = inOneTransaction;
+		this.testers = testers;
 	}
 
 	/**
@@ -632,7 +638,7 @@ class ResultWriteApi {
 			return no(THE_RACE_HAS_NOT_BEEN_RUN);
 		}
 
-		if (!SeasonClock.aRunMayBeSentFor(race.day().getYear(), now())) {
+		if (!SeasonClock.aRunMayBeSentFor(race.day().getYear(), now(), testers.is(me))) {
 			return no(THE_RACE_IS_OUTSIDE_THE_SEASON);
 		}
 
@@ -766,7 +772,7 @@ class ResultWriteApi {
 			return no(THE_RACE_HAS_NOT_BEEN_RUN);
 		}
 
-		if (!SeasonClock.aRunMayBeSentFor(typed.day().getYear(), now())) {
+		if (!SeasonClock.aRunMayBeSentFor(typed.day().getYear(), now(), testers.is(me))) {
 			return no(THE_RACE_IS_OUTSIDE_THE_SEASON);
 		}
 

@@ -577,7 +577,7 @@ function offTheLine(): { name: string | null; words: string | null; off: number 
           .map((line) => ({ ...line, gap: Math.max(0, line.left - box.right, box.left - line.right) }))
           .sort((left, right) => left.gap - right.gap)[0]
 
-        if (scope.matches('td, th')) {
+        if (scope.matches('td, th, section')) {
           break
         }
 

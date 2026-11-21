@@ -2371,8 +2371,17 @@ describe('nothing is filtered off the list of competitions', () => {
     for (const season of seasons) {
       const { unmount } = renderAt(`/sr/lige?sezona=${season}`)
 
+      /* Since 21.11.2026 a competition is named twice where a season has more than one, by its card
+         and by the way to its table on that card (PDL „Strana „Lige” se radi po predlogu B”), so
+         every link that names it is read rather than the one. */
       for (const league of leagues.filter((one) => one.season === season)) {
-        expect(await screen.findByRole('link', { name: new RegExp(league.name) })).toBeVisible()
+        const named = await screen.findAllByRole('link', { name: new RegExp(league.name) })
+
+        expect(named.length).toBeGreaterThan(0)
+
+        for (const one of named) {
+          expect(one).toBeVisible()
+        }
       }
 
       unmount()
@@ -2424,7 +2433,9 @@ describe('nothing is filtered off the list of competitions', () => {
     clearResourceCache()
     renderAt(`/sr/lige?sezona=${SEASON}`)
 
-    expect(await screen.findByRole('link', { name: /Liga na toj adresi/ })).toBeVisible()
+    for (const one of await screen.findAllByRole('link', { name: /Liga na toj adresi/ })) {
+      expect(one).toBeVisible()
+    }
 
     globalThis.fetch = real
     clearResourceCache()

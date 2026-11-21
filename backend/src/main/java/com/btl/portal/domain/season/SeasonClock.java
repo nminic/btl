@@ -7,6 +7,7 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 /**
  * The moments a season turns on, all of them in Central European time.
@@ -580,6 +581,47 @@ public final class SeasonClock {
 	/** Whether a run of that season may be sent at this moment ({@link #seasonsOpenForAReport}). */
 	public static boolean aRunMayBeSentFor(int season, ZonedDateTime at) {
 		return seasonsOpenForAReport(at).contains(season);
+	}
+
+	/**
+	 * THE ONE SEASON BEFORE THE LEAGUE A TESTER MAY SEND A RUN OF: 2026, the year before
+	 * {@link #FIRST_SEASON}.
+	 *
+	 * <p>PDL P9, owner, 21.11.2026, chosen among the outcomes offered: „Izuzetak za testiranje: članovi
+	 * sa spiska testera u podešavanjima servera (sada samo 000002, Marko Jovičić) smeju da prijavljuju
+	 * rezultate trka iz 2026, do 1.1.2027, kada se izuzetak sam gasi; za sve ostale ova odluka stoji kako
+	 * jeste." Who is on the list is the server's configuration and not this class's
+	 * ({@code web/ReportTesters}); this answers only what the exception opens and until when.
+	 */
+	public static final int A_TESTERS_SEASON = FIRST_SEASON - 1;
+
+	/**
+	 * THE SEASONS OPEN FOR A REPORT TO A MEMBER WHO MAY OR MAY NOT BE A TESTER.
+	 *
+	 * <p>For anybody who is not a tester this is {@link #seasonsOpenForAReport(ZonedDateTime)} and
+	 * nothing else. For a tester {@link #A_TESTERS_SEASON} is open as well, until the moment its races
+	 * end ({@link #racesEnd}, 1 January 2027 at 00:00 in the league's zone), when the exception goes out
+	 * by itself, which is the owner's „do 1.1.2027, kada se izuzetak sam gasi". No other season before
+	 * the league is ever opened by it.
+	 *
+	 * @param at       the moment being asked about, in any zone: it is read in the league's
+	 * @param aTester  whether the member asking is on the server's list of testers
+	 * @return the seasons in ascending order, possibly none
+	 */
+	public static List<Integer> seasonsOpenForAReport(ZonedDateTime at, boolean aTester) {
+		List<Integer> open = seasonsOpenForAReport(at);
+
+		if (!aTester || !at.isBefore(racesEnd(A_TESTERS_SEASON))) {
+			return open;
+		}
+
+		return Stream.concat(Stream.of(A_TESTERS_SEASON), open.stream()).toList();
+	}
+
+	/** Whether a run of that season may be sent at this moment by a member who may be a tester
+	 *  ({@link #seasonsOpenForAReport(ZonedDateTime, boolean)}). */
+	public static boolean aRunMayBeSentFor(int season, ZonedDateTime at, boolean aTester) {
+		return seasonsOpenForAReport(at, aTester).contains(season);
 	}
 
 	/**

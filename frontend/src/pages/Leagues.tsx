@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link } from 'react-router'
+import { useFilterParams } from '../app/useFilterParams'
 import { Resource } from '../components/Resource'
 import { SeasonPicker } from '../components/SeasonPicker'
 import { offeredSeason, useSeason } from '../components/season'
@@ -20,12 +21,16 @@ import {
 } from '../data/useResource'
 import { useFrozenTables } from '../data/useFrozenTables'
 import { useToday } from '../clock/useClock'
+import { formatNumber } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 import { useMay } from './admin/rights'
 import { EditableText } from './league/EditableText'
 import { LeagueEvents } from './league/LeagueEvents'
+import { LeagueMark } from './league/LeagueMark'
+import { YearStrip } from './league/YearStrip'
 import { leagueRaces, racesByEvent } from './league/leagueCounting'
 import { leagueTable } from './league/leagueTable'
+import '../styles/counter.css'
 import './Leagues.css'
 
 /**
@@ -67,7 +72,7 @@ import './Leagues.css'
  * The cases in this file still run against the generated file, so the arrangement that made the two
  * readings differ is still measured.
  */
-function CountedEvents({ league }: { league: League }) {
+function CountedEvents({ league, say }: { league: League; say: Say }) {
   const { t } = useI18n()
   const eventsState = useEvents()
   const racesState = useRaces()
@@ -81,12 +86,15 @@ function CountedEvents({ league }: { league: League }) {
     return null
   }
 
-  return (
-    <>
-      {racesByEvent(leagueRaces(league, dataOr(racesState, [])), dataOr(eventsState, [])).length}
-    </>
-  )
+  return <>{say(racesByEvent(leagueRaces(league, dataOr(racesState, [])), dataOr(eventsState, [])).length)}</>
 }
+
+/**
+ * How a count is written where it stands: „8 događaja" in a pill and on a card, with the word that
+ * fits the number (`units.raceCount` is the precedent). Handed in so that each count is still worked
+ * out in one place, and only its wording differs between the two places that show it.
+ */
+type Say = (count: number) => ReactNode
 
 /**
  * How many people are placed in one competition.
@@ -107,7 +115,7 @@ function CountedEvents({ league }: { league: League }) {
  * `leagueTable` and not a count of its own, because the owner said what this number is by pointing
  * at the table („Koliko ih je u tabeli"), and two ways of counting one thing are two answers.
  */
-function Entrants({ league }: { league: League }) {
+function Entrants({ league, say }: { league: League; say: Say }) {
   const { t } = useI18n()
   const frozen = useFrozenSeasons()
 
@@ -123,14 +131,14 @@ function Entrants({ league }: { league: League }) {
   }
 
   return frozen.data.some((one) => one.season === league.season) ? (
-    <FrozenEntrants league={league} />
+    <FrozenEntrants league={league} say={say} />
   ) : (
-    <LiveEntrants league={league} />
+    <LiveEntrants league={league} say={say} />
   )
 }
 
 /** How many stand in the snapshot of a frozen competition, both genders: the rows of its grid. */
-function FrozenEntrants({ league }: { league: League }) {
+function FrozenEntrants({ league, say }: { league: League; say: Say }) {
   const { t } = useI18n()
   const state = useFrozenTables(league.season)
 
@@ -142,10 +150,10 @@ function FrozenEntrants({ league }: { league: League }) {
     return null
   }
 
-  return <>{state.data.leagues.find((one) => one.slug === league.slug)?.standings.length ?? 0}</>
+  return <>{say(state.data.leagues.find((one) => one.slug === league.slug)?.standings.length ?? 0)}</>
 }
 
-function LiveEntrants({ league }: { league: League }) {
+function LiveEntrants({ league, say }: { league: League; say: Say }) {
   const { t } = useI18n()
   const eventsState = useEvents()
   const racesState = useRaces()
@@ -173,17 +181,36 @@ function LiveEntrants({ league }: { league: League }) {
     dataOr(competitorsState, []),
   )
 
-  return <>{standing.rows.length}</>
+  return <>{say(standing.rows.length)}</>
 }
 
 /**
- * Every competition that runs alongside the league, one under another.
+ * Every competition that runs alongside the league: a showcase of cards, and under it the sheet of
+ * the one that is chosen.
  *
- * **A box across the whole page and not half of it** (owner, 07.09.2026): „Lige treba da imaju
- * boksove koji su širine cele strane, a ne polovine, tako da bi primera radi sada tri lige stale u
- * 3 reda." What each box carries is the season, how many events count towards it, how many people
- * are in it, and what the organiser has written: the terms and the prizes, which used to live one
- * screen further in and are read here now.
+ * **Proposal B of `predlozi/lige-nacrt.html`** (owner, 21.11.2026, PDL „Strana „Lige” se radi po
+ * predlogu B”: „Za Ligu, B je predobro!!! Hocu!”), with what he chose between the ones offered:
+ * „Kartica lige je trećina širine na računaru, polovina na tabletu, cela širina na telefonu; list
+ * izabrane lige je preko cele širine (obara odluku od 07.09.2026 o boksu preko cele širine).” And:
+ * „Propozicije, nagrade i događaji se ispisuju samo za izabranu ligu; kad se strana otvori, izabrana
+ * je prva kartica, a izbor se pamti u adresi”. Until that day each competition was a box across the
+ * whole page, one under another, with its terms, prizes and events written out in every one.
+ *
+ * **A card carries** the sign of the competition, its name, the season, how many events count towards
+ * it, how many people are in it (owner, 07.09.2026), a small line through the year and the way to its
+ * table. **The sheet carries** the same facts in the shape of the front page's blue box, the golden
+ * way to the table, and then what it always carried, in the order he set on 13.09.2026: the terms, the
+ * prizes, and the events and races.
+ *
+ * **One competition in the season draws no showcase**, only its sheet: a showcase of one card says
+ * nothing the sheet under it does not, which is how the draft the owner chose draws it („Sa jednom
+ * ligom vitrine nema i strana je samo list”).
+ *
+ * **Which one is chosen lives in the address** (`?liga=<slug>`), beside the season, so a link names
+ * exactly that competition and the back button walks the choice. A slug that is not among the season's
+ * competitions falls to the first, the way a season the control does not offer falls to its default
+ * (`components/season.ts`, `offeredSeason`), and the address is not rewritten, for the reason given
+ * there.
  *
  * **And, since 13.09.2026, which events and races it counts**, in a box of its own that folds
  * (`league/LeagueEvents.tsx`). The owner: „na pregledu svih liga ispisuje ono što i sad (naziv,
@@ -205,6 +232,37 @@ export function Leagues() {
   const may = useMay()
   const running = today.slice(0, 4)
   const asked = useSeason(running)
+  const [params] = useFilterParams()
+  const askedLeague = params.get('liga')
+
+  /**
+   * WHERE THE READER IS PUT AFTER CHOOSING A CARD: ON THE NAME OF THE SHEET THAT OPENED.
+   *
+   * The draft the owner chose says it for the telephone („na telefonu dodir na karticu skače na list
+   * ispod vitrine”), and the same move answers the keyboard and the screen reader, whose next step
+   * after choosing is reading what was chosen (WCAG 2.2 SC 2.4.3). Moving the focus is what scrolls
+   * the sheet into view, and only as far as it is out of view, so on a wide screen where the sheet
+   * already shows nothing moves. Only after a press on a card: a sheet drawn because the address named
+   * it, on arrival or on the back button, leaves the focus where the router put it.
+   */
+  const jumping = useRef(false)
+  const sheetName = useRef<HTMLHeadingElement>(null)
+
+  useEffect(() => {
+    if (jumping.current) {
+      jumping.current = false
+      sheetName.current?.focus()
+    }
+  }, [askedLeague])
+
+  /** The address of a card: this one chosen, the season and every other filter kept. */
+  function choosing(slug: string): string {
+    const merged = new URLSearchParams(params)
+
+    merged.set('liga', slug)
+
+    return `?${merged.toString()}`
+  }
 
   /**
    * WHAT A MODERATOR HAS WRITTEN HERE THIS VISIT, AND SINCE 25.09.2026 IT IS WHAT THE
@@ -323,6 +381,10 @@ export function Leagues() {
           )
           const season = offeredSeason(asked, seasons, String(seasons[0] ?? running))
           const shown = leagues.filter((one) => one.season === Number(season))
+          /* The one the address names, if it is one of this season's, and the first card otherwise:
+             a slug of another season or of nothing at all is read as no choice (owner, 21.11.2026:
+             „kad se strana otvori, izabrana je prva kartica”). */
+          const chosen = shown.find((one) => one.slug === askedLeague) ?? shown[0]
 
           return (
             <>
@@ -334,27 +396,127 @@ export function Leagues() {
                 />
               </div>
 
-              {shown.length === 0 ? (
+              {chosen === undefined ? (
                 <p className="profile__empty">{t('leagues.none')}</p>
               ) : (
-                <ul className="leagues__list">
-                  {shown.map((league) => (
-                    <li key={league.id} className="leagues__item">
-                      <h2>
-                        <Link to={`/${locale}/liga/${league.slug}`}>{league.name}</Link>
-                      </h2>
-                      <p className="leagues__facts">
-                        {t('leagues.season', { season: league.season })}
-                        {' · '}
-                        {t('leagues.events')}
-                        {': '}
-                        <CountedEvents league={league} />
-                        {' · '}
-                        {t('leagues.entrants')}
-                        {': '}
-                        <Entrants league={league} />
-                      </p>
+                chosenOf(shown, chosen)
+              )}
+            </>
+          )
+        }}
+      </Resource>
+    </div>
+  )
 
+  /**
+   * The showcase and the sheet of the chosen competition.
+   *
+   * **Called, and not drawn as a component of its own.** What it draws is this screen's own state
+   * (what a moderator wrote this visit and what the server said about it), and a component declared
+   * inside a component is a new type on every render: React would take the sheet down and build it
+   * again on each keystroke of a save, and the box being edited would close under the moderator.
+   */
+  function chosenOf(shown: League[], league: League) {
+    const events: Say = (count) => t('leagues.eventCount', { count, number: formatNumber(count, locale) })
+    const entrants: Say = (count) =>
+      t('leagues.entrantCount', { count, number: formatNumber(count, locale) })
+
+    return (
+      <>
+        {shown.length > 1 && (
+          <ul className="leagues__showcase" aria-label={t('leagues.showcase', { season: league.season })}>
+            {shown.map((one) => (
+              <li key={one.id} className="leagues__tile">
+                {/* Said for the eye; a reader by ear is told by `aria-current` on the link. */}
+                {one.id === league.id && (
+                  <p className="leagues__tile-open" aria-hidden="true">
+                    {t('leagues.openBelow')}
+                  </p>
+                )}
+                <LeagueMark name={one.name} />
+                <p className="leagues__tile-name">
+                  <Link
+                    to={choosing(one.slug)}
+                    preventScrollReset
+                    aria-current={one.id === league.id ? 'true' : undefined}
+                    onClick={() => {
+                      if (one.id === league.id) {
+                        sheetName.current?.focus()
+                      } else {
+                        jumping.current = true
+                      }
+                    }}
+                  >
+                    {one.name}
+                  </Link>
+                </p>
+                <p className="leagues__facts">
+                  {one.season}
+                  {' · '}
+                  <CountedEvents league={one} say={events} />
+                  {' · '}
+                  <Entrants league={one} say={entrants} />
+                </p>
+                <TileYear league={one} />
+                <Link className="leagues__tile-table" to={`/${locale}/liga/${one.slug}`}>
+                  {t('leagues.table')}
+                  {' '}<span className="visually-hidden">{one.name}</span>
+                  <span aria-hidden="true"> →</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {/* Keyed by the competition, so a sheet opened for another one is a sheet of its own: the box
+            of events arrives open for each (owner, 03.11.2026), and a box folded or being written in
+            one competition is not carried over into the next. */}
+        <article
+          key={league.id}
+          className="leagues__sheet"
+          aria-labelledby={`league-name-${league.id}`}
+        >
+          <div className="leagues__score">
+            <LeagueMark name={league.name} />
+            <div className="leagues__score-name">
+              <p className="leagues__kicker">{t('leagues.kicker')}</p>
+              <h2 id={`league-name-${league.id}`} ref={sheetName} tabIndex={-1}>
+                {league.name}
+              </h2>
+            </div>
+            <ul className="leagues__pills">
+              <li className="score">
+                <span className="score__mark" aria-hidden="true">
+                  <CalendarSign />
+                </span>
+                <span className="score__pill">{t('leagues.season', { season: league.season })}</span>
+              </li>
+              <li className="score">
+                <span className="score__mark" aria-hidden="true">
+                  <FlagSign />
+                </span>
+                <span className="score__pill">
+                  <CountedEvents league={league} say={events} />
+                </span>
+              </li>
+              <li className="score">
+                <span className="score__mark" aria-hidden="true">
+                  <PeopleSign />
+                </span>
+                <span className="score__pill">
+                  <Entrants league={league} say={entrants} />
+                </span>
+              </li>
+            </ul>
+            <Link className="leagues__cta" to={`/${locale}/liga/${league.slug}`}>
+              {t('leagues.table')}
+              {' '}<span className="visually-hidden">{league.name}</span>
+              <span aria-hidden="true">→</span>
+            </Link>
+          </div>
+
+          <div className="leagues__item">
+            <div className="leagues__texts">
                       <EditableText
                         value={standing(league, 'rules')}
                         field="rules"
@@ -374,21 +536,77 @@ export function Leagues() {
                         onSave={(text) => save(league, 'prizes', text)}
                         said={saidAbout(league, 'prizes')}
                       />
+            </div>
 
-                      {/* And after the prizes, the events and races the competition counts, in a
-                          box that folds (owner, 13.09.2026: „pa onda ide i sekcijica DOGAĐAJI /
-                          TRKE koja se može ekspandovati tako da se vide sve označene").
-                          Read-only: what a moderator changes here is the terms and the prizes,
-                          and which events count is set in the administration. */}
-                      <LeagueEvents league={league} />
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </>
-          )
-        }}
-      </Resource>
-    </div>
+            {/* And after the prizes, the events and races the competition counts, in a box that
+                folds (owner, 13.09.2026: „pa onda ide i sekcijica DOGAĐAJI / TRKE koja se može
+                ekspandovati tako da se vide sve označene"), with the line through the year at its
+                head. Read-only: what a moderator changes here is the terms and the prizes, and which
+                events count is set in the administration. */}
+            <LeagueEvents league={league} today={today} />
+          </div>
+        </article>
+      </>
+    )
+  }
+}
+
+/**
+ * The line through the year on a card, drawn once the events and the races are in and not before:
+ * like the two counts beside it, it is a picture that fills in behind the name rather than holding the
+ * card back. Hidden from a reader by ear, because the card already says how many events there are.
+ */
+function TileYear({ league }: { league: League }) {
+  const today = useToday()
+  const eventsState = useEvents()
+  const racesState = useRaces()
+
+  if (eventsState.status !== 'ready' || racesState.status !== 'ready') {
+    return null
+  }
+
+  return (
+    <YearStrip
+      counting={racesByEvent(leagueRaces(league, racesState.data), eventsState.data)}
+      season={league.season}
+      today={today}
+      mini
+    />
+  )
+}
+
+/* The three signs of the pills, drawn as the front page draws its own (`pages/home/Counters.tsx`):
+   a line in the colour of the mark, hidden from a reader by ear because the pill says it in words. */
+function CalendarSign() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" aria-hidden="true">
+      <rect x="3.5" y="5" width="17" height="15" rx="2.5" />
+      <path d="M3.5 10h17M8 3v4M16 3v4" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+function FlagSign() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" aria-hidden="true">
+      <path d="M6 21V4" strokeLinecap="round" />
+      <path d="M6 4.5h10l-2 3.2 2 3.3H6z" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+function PeopleSign() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.9"
+      strokeLinecap="round"
+      aria-hidden="true"
+    >
+      <circle cx="9" cy="8" r="3.2" />
+      <path d="M3 20c.5-4 2.8-5.8 6-5.8s5.5 1.8 6 5.8M15.5 4.8a3 3 0 0 1 0 5.6M18 14.6c1.8.7 2.8 2.4 3 5.4" />
+    </svg>
   )
 }

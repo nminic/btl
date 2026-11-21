@@ -89,9 +89,9 @@ describe('the table of a frozen season', () => {
       ['1', 'BNBogoljub Nikolajević000005'],
       ['2', 'RMRelja Momčilović'],
     ])
-    expect(screen.getAllByRole('button', { pressed: false }).map((one) => one.textContent)).toEqual(
-      expect.arrayContaining(['M 40-54']),
-    )
+    /* By the name a reader hears: the button carries the full name and, for a narrow row, the short one drawn
+       beside it (owner, 21.11.2026), so its text content is both. */
+    expect(screen.getByRole('button', { name: 'M 40-54', pressed: false })).toBeInTheDocument()
   })
 
   it('is read live where the record does not say the season is frozen', async () => {

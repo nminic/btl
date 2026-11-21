@@ -122,7 +122,7 @@ function serving(leagues: League[], toTheWrite: () => Response = () => answeredW
  *  answered by whichever one came first. */
 const boxOf = async (name: RegExp): Promise<HTMLElement> =>
   must(
-    (await screen.findByRole('heading', { level: 2, name })).closest('li'),
+    (await screen.findByRole('heading', { level: 2, name })).closest('article'),
     'the box of the competition',
   )
 
@@ -135,7 +135,7 @@ describe('an address in the terms or in the prizes of a competition', () => {
     'is a link in the box of the competition it was written in, drawn as it was typed, for a %s',
     async (role) => {
       serving(LEAGUES)
-      renderAt('/sr/lige?sezona=2027', role)
+      const { router } = renderAt('/sr/lige?sezona=2027', role)
 
       const runtrace = await boxOf(/Proba RunTrace/)
       const rules = sectionOf(runtrace, 'Propozicije')
@@ -154,7 +154,15 @@ describe('an address in the terms or in the prizes of a competition', () => {
       expect(prizes.getByRole('link')).toHaveAttribute('href', 'https://nagrade.example/runtrace')
       expect(prizes.getByRole('paragraph').textContent).toBe(RUNTRACE_PRIZES)
 
-      /* The second competition, whose terms are empty and whose prizes sit in brackets and blanks. */
+      /* The second competition, whose terms are empty and whose prizes sit in brackets and blanks:
+         the list draws the sheet of the chosen one only, so it is chosen through the address. */
+      /* Read before the sheet is changed: the sheet of another competition is a sheet of its own. */
+      if (role === 'superadmin') {
+        expect(rules.getByRole('button', { name: 'Izmeni' })).toBeVisible()
+      }
+
+      await router.navigate('/sr/lige?sezona=2027&liga=proba-2')
+
       const planinska = await boxOf(/Proba Planinska/)
       const bracketed = sectionOf(planinska, 'Nagrade')
 
@@ -172,7 +180,6 @@ describe('an address in the terms or in the prizes of a competition', () => {
       if (role === 'superadmin') {
         expect(sectionOf(planinska, 'Propozicije').queryAllByRole('link')).toEqual([])
         expect(sectionOf(planinska, 'Propozicije').getByText('Još nije napisano.')).toBeVisible()
-        expect(rules.getByRole('button', { name: 'Izmeni' })).toBeVisible()
       } else {
         expect(within(planinska).queryByRole('heading', { name: 'Propozicije' })).toBeNull()
       }
@@ -182,14 +189,20 @@ describe('an address in the terms or in the prizes of a competition', () => {
 
   it('opens in a window of its own and tells the other end nothing about where it came from', async () => {
     serving(LEAGUES)
-    renderAt('/sr/lige?sezona=2027')
+    const { router } = renderAt('/sr/lige?sezona=2027')
 
     const runtrace = await boxOf(/Proba RunTrace/)
+    const fromRunTrace = [sectionOf(runtrace, 'Propozicije'), sectionOf(runtrace, 'Nagrade')].flatMap(
+      (section) => section.getAllByRole('link'),
+    )
+
+    /* The sheet of the second competition is the one the address names. */
+    await router.navigate('/sr/lige?sezona=2027&liga=proba-2')
+
     const found = [
-      sectionOf(runtrace, 'Propozicije'),
-      sectionOf(runtrace, 'Nagrade'),
-      sectionOf(await boxOf(/Proba Planinska/), 'Nagrade'),
-    ].flatMap((section) => section.getAllByRole('link'))
+      ...fromRunTrace,
+      ...sectionOf(await boxOf(/Proba Planinska/), 'Nagrade').getAllByRole('link'),
+    ]
 
     /* Three boxes, three addresses: a sweep that found nothing would pass every line below it. */
     expect(found).toHaveLength(3)
@@ -206,7 +219,7 @@ describe('an address in the terms or in the prizes of a competition', () => {
 
   it('is not made of words that only look like one, and the text stays as it was written', async () => {
     serving(LEAGUES)
-    renderAt('/sr/lige?sezona=2027')
+    renderAt('/sr/lige?sezona=2027&liga=proba-3')
 
     const brdska = await boxOf(/Proba Brdska/)
 
@@ -356,7 +369,7 @@ describe('an address in the terms or in the prizes of a competition', () => {
 
   it('draws no link in the sentence the portal says for a box with nothing written in it', async () => {
     serving(LEAGUES)
-    renderAt('/sr/lige?sezona=2027', 'superadmin')
+    renderAt('/sr/lige?sezona=2027&liga=proba-2', 'superadmin')
 
     const empty = sectionOf(await boxOf(/Proba Planinska/), 'Propozicije')
     const paragraph = empty.getByRole('paragraph')

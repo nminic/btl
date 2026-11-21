@@ -286,7 +286,7 @@ function ProfileBody({
           {t('profile.racesHeading')} <span className="profile__count">{shown.length}</span>
         </h2>
 
-        <LengthFilter value={length} onChange={changeLength} />
+        <LengthFilter fit value={length} onChange={changeLength} />
 
         {shown.length === 0 ? (
           <div className="profile__results-empty">

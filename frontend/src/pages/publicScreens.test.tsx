@@ -575,8 +575,13 @@ describe('Rankings', () => {
     await screen.findByRole('table')
 
     const buttons = within(screen.getByRole('group', { name: 'Kategorija' })).getAllByRole('button')
-    const names = buttons.map((one) => one.textContent ?? '')
+    /* The full name is what a button is called; the short form (`24-`, drawn instead of it on a narrow row) is
+       `aria-hidden` and is checked below. */
+    const names = buttons.map((one) => (one.querySelector('.seg__long') ?? one).textContent ?? '')
 
+    expect(buttons.slice(1).map((one) => one.querySelector('.seg__short')?.textContent ?? null)).toEqual(
+      names.slice(1).map((one) => (/ /.test(one) ? one.slice(one.indexOf(' ') + 1) : null)),
+    )
     expect(first(names)).toBe('Sve')
     expect(names.length).toBeGreaterThan(2)
     const letter = first(names.slice(1)).charAt(0)
@@ -3321,9 +3326,12 @@ describe('Leagues', () => {
          nothing written in it is drawn to **nobody else**: `EditableText` returns
          nothing at all when the value is empty and the reader cannot edit, so the
          sentence „Još nije napisano." and anything put beside it is invisible to a
-         visitor and passed the whole gate (measured 01.09.2026). Both competitions of
-         2027 stand on this one screen, one written and one empty. */
+         visitor and passed the whole gate (measured 01.09.2026). Until 21.11.2026 both
+         competitions of 2027 stood on this one screen, one written and one empty; since
+         the owner chose that only the chosen one is written out (PDL „Strana „Lige” se
+         radi po predlogu B”), the empty one is its own seat, opened by the address. */
       ['/sr/lige', 'RunTrace liga 2027', 'superadmin'],
+      ['/sr/lige?liga=planinska-2027', 'Planinska liga 2027', 'superadmin'],
       /* The other season, which is the whole of what the control beside the heading
          does. Read without it, a competition of 2019 is on no seat at all. */
       ['/sr/lige?sezona=2019', 'Brdska liga 2019', 'visitor'],

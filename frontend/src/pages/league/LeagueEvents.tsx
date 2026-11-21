@@ -7,6 +7,7 @@ import { combinePair, useEvents, useRaces } from '../../data/useResource'
 import { formatShortDate } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import { leagueRaces, racesByEvent } from './leagueCounting'
+import { YearStrip } from './YearStrip'
 import '../Leagues.css'
 
 /**
@@ -61,7 +62,11 @@ import '../Leagues.css'
  *  that no length is rounded on its way to the line, only stripped of the noughts it ends in. */
 const LENGTH_AS_STORED = 4
 
-export function LeagueEvents({ league }: { league: League }) {
+/* **The line through the year stands at the head of the open box** (owner, 21.11.2026, proposal B of
+   `predlozi/lige-nacrt.html`), drawn from the same list the box writes out (`YearStrip.tsx`), so it
+   folds away with the list it is a picture of. `today` is handed in by the screen that reads the clock
+   once, so the gold dot and the screen agree on what day it is. */
+export function LeagueEvents({ league, today }: { league: League; today: string }) {
   const { locale, t } = useI18n()
   const [open, setOpen] = useState(true)
   const panelId = `league-counting-${league.id}`
@@ -101,6 +106,8 @@ export function LeagueEvents({ league }: { league: League }) {
             }
 
             return (
+              <>
+              <YearStrip counting={counting} season={league.season} today={today} />
               <ul className="leagues__events">
                 {counting.map(({ event, races: mine }) => {
                   const measures = mine
@@ -118,6 +125,7 @@ export function LeagueEvents({ league }: { league: League }) {
                   )
                 })}
               </ul>
+              </>
             )
           }}
         </Resource>

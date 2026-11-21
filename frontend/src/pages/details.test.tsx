@@ -364,7 +364,7 @@ describe('LeagueDetail', () => {
     renderAt('/sr/lige?sezona=2019')
 
     const box = must(
-      (await screen.findByRole('heading', { level: 2, name: /Brdska liga 2019/ })).closest('li'),
+      (await screen.findByRole('heading', { level: 2, name: /Brdska liga 2019/ })).closest('article'),
       'the box of the competition',
     )
     const leagues = await loadResource<League[]>('leagues')
@@ -373,7 +373,7 @@ describe('LeagueDetail', () => {
       'takmičenje brdska-2019',
     )
 
-    expect(within(box).getByText(new RegExp(`Sezona 2019`))).toBeVisible()
+    expect(within(box).getByText(/Sezona 2019/)).toBeVisible()
     /* **The number of days is held against the BOX and not against `eventIds`**, since
        13.09.2026. A review measured the two apart the day the folding box arrived beside the row:
        the row said „Događaja: 11" and the box listed ten. The eleventh is an event whose races
@@ -400,7 +400,9 @@ describe('LeagueDetail', () => {
     )
     const days = await within(panel).findAllByRole('listitem')
     expect(days.length).toBeGreaterThan(1)
-    expect(box.textContent).toContain(`Događaja: ${days.length}`)
+    /* Said as a number and the word that fits it since 21.11.2026 (a pill of the sheet), so the number
+       must stand whole: not the tail of a longer one. */
+    expect(box.textContent).toMatch(new RegExp(`(^|\\D)${days.length} događa`))
 
     /* And it is not the same as counting `eventIds`, which is what says the line above measures
        something. `brdska-2019` holds an event with no races entered, on purpose. */
@@ -412,7 +414,7 @@ describe('LeagueDetail', () => {
        number fills in behind them. Read at once, it is still empty, which is what the screen
        deliberately shows while the answer is coming. */
     await waitFor(() => {
-      expect(box.textContent).toMatch(/Učesnika: \d/)
+      expect(box.textContent).toMatch(/\d+ učesni/)
     })
 
     const said = must(box.textContent, 'the line of facts')
@@ -435,7 +437,7 @@ describe('LeagueDetail', () => {
 
     expect(men, 'the men are the whole field').toBeGreaterThan(0)
     expect(women, 'the women are the whole field').toBeGreaterThan(0)
-    expect(said).toContain(`Učesnika: ${String(men + women)}`)
+    expect(said).toMatch(new RegExp(`(^|\\D)${String(men + women)} učesnik`))
   }, SLOW)
 
   it('hides both sections while neither has been written', async () => {
@@ -462,37 +464,29 @@ describe('LeagueDetail', () => {
        apart needs two. The two held in 2027 are RunTrace and Planinska; nothing is filtered
        off this screen since 24.09.2026, when the decision the filter rested on was settled
        the other way (PDL P15a). */
-    renderAt('/sr/lige?sezona=2027')
+    /* **One sheet at a time since 21.11.2026** (owner: „Propozicije, nagrade i događaji se ispisuju
+       samo za izabranu ligu"), so the two competitions are chosen one after the other, and what is
+       held against each other is what they point at: the ids of their panels. */
+    const ids: string[] = []
 
-    const boxes = await screen.findAllByRole('heading', { level: 2, name: /liga/i })
-    expect(boxes.length).toBeGreaterThan(1)
+    for (const slug of ['runtrace-2027', 'planinska-2027']) {
+      renderAt(`/sr/lige?sezona=2027&liga=${slug}`)
 
-    const cards = boxes.map((one) => must(one.closest('li'), 'the box of a competition'))
-    const toggles = cards.map((card) =>
-      within(card).getByRole('button', { name: /Događaji i trke/ }),
-    )
+      const heading = await screen.findByRole('heading', { level: 2, name: /liga/i })
+      const card = must(heading.closest('article'), 'the sheet of a competition')
+      const toggle = within(card).getByRole('button', { name: /Događaji i trke/ })
 
-    /* From a heading, so the box is in a screen reader's list of them. */
-    for (const toggle of toggles) {
+      /* From a heading, so the box is in a screen reader's list of them. */
       expect(must(toggle.parentElement, 'what the button sits in').tagName).toBe('H3')
-    }
 
-    /* Pointing at something, and at something that is really there whether the box is open or
-       folded, which is the reason the panel carries `hidden` rather than being taken out. */
-    const panels = toggles.map((toggle) => {
+      /* Pointing at something, and at something that is really there whether the box is open or
+         folded, which is the reason the panel carries `hidden` rather than being taken out. */
       const id = toggle.getAttribute('aria-controls')
       expect(id).toBeTruthy()
       expect(toggle).toHaveAttribute('aria-expanded', 'true')
-      return must(document.getElementById(String(id)), `the panel ${id} points at`)
-    })
+      const panel = must(document.getElementById(String(id)), `the panel ${id} points at`)
 
-    /* And at its own, not at a neighbour's. Three buttons pointing at one panel is the shape a
-       constant id produces, and a reader following either of the other two lands on this box. */
-    expect(new Set(panels).size).toBe(panels.length)
-
-    for (const [index, panel] of panels.entries()) {
-      const card = at(cards, index)
-      const toggle = at(toggles, index)
+      ids.push(String(id))
 
       /* **And the thing it points at is the thing that folds.** Without this the case is happy
          with the button's own ancestor: move the id onto the section that wraps the button and
@@ -509,7 +503,13 @@ describe('LeagueDetail', () => {
         false,
       )
       expect(card.contains(panel)).toBe(true)
+
+      cleanup()
     }
+
+    /* And at its own, not at a neighbour's. Two competitions pointing at one panel is the shape a
+       constant id produces, and a reader following either lands on the other's box. */
+    expect(new Set(ids).size).toBe(ids.length)
   })
 
   it('holds up for a league with no events yet', async () => {
@@ -552,7 +552,7 @@ describe('LeagueDetail', () => {
   }, SLOW)
 
   it('draws each box out of its own competition, and folds it alone', async () => {
-    /* **Two competitions on the screen and the one asked for is the second**, which is the whole
+    /* **Two competitions in the season and the one asked for is the second**, which is the whole
        of this case: a box reading `leagues[0]` instead of its own competition draws RunTrace's
        eight events under Planinska's name, and every question about „is something listed" stays
        green while the screen tells a lie. Planinska has no event at all, so what its box says is
@@ -562,12 +562,11 @@ describe('LeagueDetail', () => {
        fold all of them together. */
     const user = setupUser()
 
-    renderAt('/sr/lige?sezona=2027')
+    renderAt('/sr/lige?sezona=2027&liga=planinska-2027')
 
     const mine = await screen.findByRole('button', {
       name: 'Događaji i trke, Planinska liga 2027',
     })
-    const other = screen.getByRole('button', { name: 'Događaji i trke, RunTrace liga 2027' })
 
     const panel = must(
       document.getElementById(must(mine.getAttribute('aria-controls'), 'what the button opens')),
@@ -581,8 +580,16 @@ describe('LeagueDetail', () => {
 
     expect(mine).toHaveAttribute('aria-expanded', 'false')
     expect(panel).not.toBeVisible()
+
+    /* **Since 21.11.2026 only the chosen sheet draws a box**, so „the other box stays open" is
+       measured by choosing the other competition on its card: its box is open on arrival and holds
+       its own events, and the fold of Planinska is not carried over to it. */
+    await user.click(screen.getByRole('link', { name: 'RunTrace liga 2027' }))
+
+    const other = await screen.findByRole('button', { name: 'Događaji i trke, RunTrace liga 2027' })
+
     expect(other).toHaveAttribute('aria-expanded', 'true')
-    expect(screen.getByRole('link', { name: 'Podgorička desetka' })).toBeVisible()
+    expect(await screen.findByRole('link', { name: 'Podgorička desetka' })).toBeVisible()
   }, SLOW)
 
   it('lists each event that counts in one line: its day, and the measures of its races that count', async () => {
@@ -757,13 +764,24 @@ describe('LeagueDetail', () => {
     const user = setupUser()
     renderAt('/sr/lige?sezona=2027')
 
-    await user.click(await screen.findByRole('link', { name: /RunTrace liga/ }))
+    /* The name of a card now chooses the competition (owner, 21.11.2026); what leads to its page is
+       „Tabela lige", on the card and on the sheet, and both lead to the same address. */
+    /* The name is read without the space the hidden word carries, so the words are told apart by
+       what is between them and not by one space. */
+    const ways = await screen.findAllByRole('link', { name: /^Tabela lige\s*RunTrace liga/ })
+
+    expect(ways.length, 'the card and the sheet each lead to the table').toBe(2)
+    for (const way of ways) {
+      expect(way).toHaveAttribute('href', '/sr/liga/runtrace-2027')
+    }
+
+    await user.click(first(ways))
 
     expect(await screen.findByRole('heading', { level: 1, name: /RunTrace liga/ })).toBeVisible()
     /* No nav between parts, and no button to the results: „a ni dugme rezultati jer se odmah
        prikazuju rezultati" (owner, 07.09.2026). */
     expect(screen.queryByRole('navigation', { name: 'Delovi takmičenja' })).toBeNull()
-  })
+  }, SLOW)
 })
 
 

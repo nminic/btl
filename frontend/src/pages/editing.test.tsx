@@ -141,7 +141,7 @@ describe('the text of a competition', () => {
   const boxOf = async (name: RegExp) =>
     within(
       must(
-        (await screen.findByRole('heading', { level: 2, name })).closest('li'),
+        (await screen.findByRole('heading', { level: 2, name })).closest('article'),
         'the box of the competition',
       ),
     )
@@ -166,7 +166,7 @@ describe('the text of a competition', () => {
   it('is written by whoever runs it, and only by them', async () => {
     const server = serving()
     const user = setupUser()
-    renderAt('/sr/lige?sezona=2027', 'superadmin')
+    renderAt('/sr/lige?sezona=2027&liga=planinska-2027', 'superadmin')
 
     const box = await boxOf(/Planinska liga/)
 
@@ -280,7 +280,7 @@ describe('the text of a competition', () => {
        a competition whose season has frozen is not changed at all (PDL P15a point 2). */
     const server = serving(() => refused('theSeasonIsFrozen', 409))
     const user = setupUser()
-    renderAt('/sr/lige?sezona=2027', 'superadmin')
+    renderAt('/sr/lige?sezona=2027&liga=planinska-2027', 'superadmin')
 
     const box = await boxOf(/Planinska liga/)
     const rules = must(box.getByRole('heading', { name: 'Propozicije' }).closest('section'), 'sec')
@@ -307,7 +307,7 @@ describe('the text of a competition', () => {
        two boxes each, and one sentence somewhere on the page answers none of them. */
     const server = serving()
     const user = setupUser()
-    renderAt('/sr/lige?sezona=2027', 'superadmin')
+    renderAt('/sr/lige?sezona=2027&liga=planinska-2027', 'superadmin')
 
     const box = await boxOf(/Planinska liga/)
     const rules = must(box.getByRole('heading', { name: 'Propozicije' }).closest('section'), 'sec')
@@ -324,7 +324,7 @@ describe('the text of a competition', () => {
   }, SLOW)
 
   it('is not offered to a visitor, and an empty one is not shown at all', async () => {
-    renderAt('/sr/lige?sezona=2027')
+    renderAt('/sr/lige?sezona=2027&liga=planinska-2027')
 
     const box = await boxOf(/Planinska liga/)
 
@@ -433,7 +433,7 @@ describe('the last few branches these screens have', () => {
     renderAt('/sr/lige?sezona=2027', 'superadmin')
 
     const box = must(
-      (await screen.findByRole('heading', { level: 2, name: /RunTrace liga/ })).closest('li'),
+      (await screen.findByRole('heading', { level: 2, name: /RunTrace liga/ })).closest('article'),
       'the box of the competition',
     )
     const prizes = must(
