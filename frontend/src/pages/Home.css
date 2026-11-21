@@ -683,6 +683,8 @@
   font-weight: 600;
   color: var(--text-muted);
   white-space: nowrap;
+  /* Every category in capitals, so „Početnice" reads as large as „M 40-54" (owner, 21.11.2026). */
+  text-transform: uppercase;
 }
 
 /* The steps: gold, silver and bronze, 64, 44 and 28px, with the place on them. */
@@ -809,6 +811,7 @@
   line-height: 1.15;
   color: var(--text-muted);
   text-align: left;
+  text-transform: uppercase;
 }
 
 .toprows .pt {
