@@ -226,13 +226,18 @@ class MeApi {
 
 	private final LeavingBeforeBecomingAMember leaving;
 
+	/** Whether the member asking is on the server's list of testers (PDL P9, 21.11.2026), which opens
+	 *  2026 in {@code seasonsOpenForAReport} for him alone until 1 January 2027. */
+	private final ReportTesters testers;
+
 	MeApi(JdbcClient db, MemberOfAccount memberOfAccount, Clock clock, CategoryOfASeason categories,
-			LeavingBeforeBecomingAMember leaving) {
+			LeavingBeforeBecomingAMember leaving, ReportTesters testers) {
 		this.db = db;
 		this.memberOfAccount = memberOfAccount;
 		this.clock = clock;
 		this.categories = categories;
 		this.leaving = leaving;
+		this.testers = testers;
 	}
 
 	/**
@@ -538,7 +543,8 @@ class MeApi {
 		ZonedDateTime now = ZonedDateTime.now(clock);
 
 		return new WhoIAm(member.role(), member.account(), me == null ? null : recordOf(me, now),
-				mailLanguage, SeasonClock.seasonsOpenForAReport(now), me != null && leaving.may(me));
+				mailLanguage, SeasonClock.seasonsOpenForAReport(now, me != null && testers.is(me)),
+				me != null && leaving.may(me));
 	}
 
 	/**

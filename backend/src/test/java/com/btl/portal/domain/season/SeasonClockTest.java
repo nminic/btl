@@ -1153,6 +1153,39 @@ class SeasonClockTest {
 				.containsExactly(2027);
 	}
 
+	/**
+	 * A TESTER MAY SEND A RUN OF 2026, AND OF NO OTHER YEAR BEFORE THE LEAGUE, UNTIL MIDNIGHT OF NEW
+	 * YEAR'S EVE IN THE LEAGUE'S HOUR; EVERYBODY ELSE IS ANSWERED EXACTLY AS BEFORE.
+	 *
+	 * <p>PDL P9, owner, 21.11.2026: „Izuzetak za testiranje: članovi sa spiska testera u podešavanjima
+	 * servera (sada samo 000002, Marko Jovičić) smeju da prijavljuju rezultate trka iz 2026, do 1.1.2027,
+	 * kada se izuzetak sam gasi; za sve ostale ova odluka stoji kako jeste." The edge is written in UTC,
+	 * so midnight in Belgrade is eleven on the clock and an edge read in the instant's own zone moves by
+	 * an hour.
+	 */
+	@Test
+	void aTesterMaySendARunOf2026UntilMidnightOfNewYearsEveInTheLeaguesHour() {
+		ZonedDateTime autumn = ZonedDateTime.of(2026, 11, 21, 17, 0, 0, 0, UTC);
+		ZonedDateTime lastSecond = ZonedDateTime.of(2026, 12, 31, 22, 59, 59, 0, UTC);
+		ZonedDateTime midnightInBelgrade = ZonedDateTime.of(2026, 12, 31, 23, 0, 0, 0, UTC);
+
+		assertThat(SeasonClock.seasonsOpenForAReport(autumn, true)).containsExactly(2026);
+		assertThat(SeasonClock.seasonsOpenForAReport(autumn, false))
+				.as("somebody who is not a tester was offered a season before the league").isEmpty();
+		assertThat(SeasonClock.seasonsOpenForAReport(lastSecond, true))
+				.as("at 23:59:59 in Belgrade the tester could no longer send a run of 2026")
+				.containsExactly(2026);
+		assertThat(SeasonClock.seasonsOpenForAReport(midnightInBelgrade, true))
+				.as("at midnight in Belgrade the exception had not gone out by itself")
+				.containsExactly(2027);
+		assertThat(SeasonClock.seasonsOpenForAReport(midnightInBelgrade, false)).containsExactly(2027);
+		assertThat(SeasonClock.aRunMayBeSentFor(2026, autumn, true)).isTrue();
+		assertThat(SeasonClock.aRunMayBeSentFor(2026, autumn, false)).isFalse();
+		assertThat(SeasonClock.aRunMayBeSentFor(2025, autumn, true))
+				.as("the exception opened a year before 2026").isFalse();
+		assertThat(SeasonClock.aRunMayBeSentFor(2026, midnightInBelgrade, true)).isFalse();
+	}
+
 	/** A moment in the league's own zone, read back in UTC so that a rule reading the zone it is handed is caught. */
 	private static ZonedDateTime belgrade(int year, int month, int day, int hour, int minute, int second, int nano) {
 		return ZonedDateTime.of(year, month, day, hour, minute, second, nano, SeasonClock.ZONE).withZoneSameInstant(UTC);

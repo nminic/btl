@@ -43,6 +43,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -52,6 +53,7 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 
@@ -114,7 +116,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 @TestPropertySource(properties = {
 		"spring.mail.host=127.0.0.1",
 		"spring.mail.port=3332",
-		"spring.mail.properties.mail.smtp.auth=false"})
+		"spring.mail.properties.mail.smtp.auth=false",
+		/* THE TESTERS (PDL P9, 21.11.2026), and the list is never only him: a number nobody holds
+		   first, and a blank entry that must name nobody. */
+		"btl.report-testers=000999, ," + ResultWriteApiTest.TESTER})
 @Transactional
 class ResultWriteApiTest {
 
@@ -130,6 +135,15 @@ class ResultWriteApiTest {
 
 	/** The member every case writes with, written third and never first. */
 	private static final String ME = "000300";
+
+	/**
+	 * THE ONE MEMBER ON THE SERVER'S LIST OF TESTERS (the property above), who may send a run of 2026
+	 * until 1 January 2027 (PDL P9, owner, 21.11.2026). Written only by the cases about him, and fourth,
+	 * after {@link #ME}, so he is never the first or the only member.
+	 */
+	static final String TESTER = "000400";
+
+	private static final String THE_TESTERS_ADDRESS = "marko@primer.rs";
 
 	private static final String MY_ADDRESS = "vera@primer.rs";
 
@@ -884,6 +898,129 @@ class ResultWriteApiTest {
 		assertThat(reasonIn(reportedAs(ME, form(Map.of("raceId", nextYear, "seconds", 1500,
 				"link", "https://rezultati.rs/sledece")))))
 				.isEqualTo(ResultWriteApi.THE_RACE_HAS_NOT_BEEN_RUN);
+	}
+
+	/*
+	 * THE TESTERS' EXCEPTION, PDL P9, owner, 21.11.2026: „Izuzetak za testiranje: članovi sa spiska
+	 * testera u podešavanjima servera (sada samo 000002, Marko Jovičić) smeju da prijavljuju rezultate
+	 * trka iz 2026, do 1.1.2027, kada se izuzetak sam gasi; za sve ostale ova odluka stoji kako jeste."
+	 */
+
+	/** The tester, written fourth, with a membership of 2027 as every member of this fixture has. */
+	private void theTester() {
+		competitor(TESTER, "Marko", "Tester");
+		account(THE_TESTERS_ADDRESS, TESTER);
+	}
+
+	/** Both roads at once for one day: a race of the calendar on it, and a described run of it. */
+	private List<Integer> bothRoadsOn(String member, long race, String day, String link)
+			throws Exception {
+		Map<String, Object> described = aDescribedRun();
+
+		described.put("day", day);
+		described.put("link", link + "-opisana");
+
+		return List.of(reportedAs(member, form(Map.of("raceId", race, "seconds", 1500, "link", link)))
+				.getStatus(), reportedAs(member, form(described)).getStatus());
+	}
+
+	/**
+	 * THE TESTER SENDS A RUN OF 2026 ON BOTH ROADS, AND A MEMBER WHO IS NOT ONE IS REFUSED THE SAME RUN
+	 * AS BEFORE: the same race, the same day, both with a membership of 2027, and the only difference
+	 * between them is the list.
+	 */
+	@Test
+	void aTesterSendsARunOf2026OnBothRoadsAndNobodyElseDoes() throws Exception {
+		theTester();
+		long ofTwentySix = race("Jesenja 2026", "2026-10-01", "length", 0, new BigDecimal("5.00"), 0, 0);
+		Map<String, Object> described = aDescribedRun();
+
+		described.put("day", "2026-10-01");
+		clock.moveTo(Instant.parse("2026-11-21T17:35:00Z"));
+
+		assertThat(reasonIn(reportedAs(ME, form(Map.of("raceId", ofTwentySix, "seconds", 1500,
+				"link", "https://rezultati.rs/jesenja")))))
+				.as("a member who is not a tester sent a run of 2026 from the calendar")
+				.isEqualTo(ResultWriteApi.THE_RACE_IS_OUTSIDE_THE_SEASON);
+		assertThat(reasonIn(reportedAs(ME, form(described))))
+				.as("and described").isEqualTo(ResultWriteApi.THE_RACE_IS_OUTSIDE_THE_SEASON);
+		assertThat(howManySubmissions()).isEqualTo(1L);
+
+		assertThat(bothRoadsOn(TESTER, ofTwentySix, "2026-10-01", "https://rezultati.rs/jesenja-t"))
+				.as("the tester could not send a run of 2026, from the calendar and described")
+				.containsExactly(201, 201);
+		assertThat(db.sql("select count(*) from result_submission s join competitor c"
+						+ " on c.id = s.competitor_id where c.member_number = ?"
+						+ " and s.race_date = date '2026-10-01'")
+				.param(TESTER).query(Long.class).single())
+				.as("the tester's two runs were not written as his").isEqualTo(2L);
+		assertThat(db.sql("select count(*) from verification v join competitor c"
+						+ " on c.id = v.competitor_id where c.member_number = ?"
+						+ " and v.queue = 'results' and v.state = 'waiting'")
+				.param(TESTER).query(Long.class).single())
+				.as("the tester's runs went past the verification").isEqualTo(2L);
+	}
+
+	/**
+	 * THE EXCEPTION GOES OUT BY ITSELF AT MIDNIGHT OF NEW YEAR'S EVE IN THE LEAGUE'S HOUR, on both roads,
+	 * and it never opened a year before 2026. Written in UTC, so midnight in Belgrade is eleven.
+	 */
+	@Test
+	void theTestersExceptionGoesOutAtMidnightInBelgradeAndNeverOpened2025() throws Exception {
+		theTester();
+		long newYearsEve = race("Silvestarska 2026", "2026-12-31", "length", 0, new BigDecimal("5.00"),
+				0, 0);
+		long ofTwentyFive = race("Jesenja 2025", "2025-10-01", "length", 0, new BigDecimal("5.00"), 0, 0);
+
+		clock.moveTo(Instant.parse("2026-12-31T22:59:59Z"));
+
+		assertThat(bothRoadsOn(TESTER, newYearsEve, "2026-12-31", "https://rezultati.rs/silvestarska"))
+				.as("at 23:59:59 in Belgrade the tester could no longer send a run of 2026")
+				.containsExactly(201, 201);
+		assertThat(bothRoadsOn(TESTER, ofTwentyFive, "2025-10-01", "https://rezultati.rs/jesenja-2025"))
+				.as("the exception opened 2025").containsExactly(400, 400);
+		assertThat(reasonIn(reportedAs(TESTER, form(Map.of("raceId", ofTwentyFive, "seconds", 1500,
+				"link", "https://rezultati.rs/jesenja-2025-razlog")))))
+				.isEqualTo(ResultWriteApi.THE_RACE_IS_OUTSIDE_THE_SEASON);
+
+		clock.moveTo(Instant.parse("2026-12-31T23:00:00Z"));
+
+		assertThat(bothRoadsOn(TESTER, newYearsEve, "2026-12-31",
+				"https://rezultati.rs/silvestarska-kasno"))
+				.as("at midnight in Belgrade the exception had not gone out").containsExactly(400, 400);
+		assertThat(reasonIn(reportedAs(TESTER, form(Map.of("raceId", newYearsEve, "seconds", 1500,
+				"link", "https://rezultati.rs/silvestarska-razlog")))))
+				.isEqualTo(ResultWriteApi.THE_RACE_IS_OUTSIDE_THE_SEASON);
+	}
+
+	/**
+	 * AND THE FORM OFFERS 2026 TO THE TESTER ALONE, which it reads off {@code GET /api/me}
+	 * ({@code seasonsOpenForAReport}), and to him only until midnight in Belgrade.
+	 */
+	@Test
+	void theFormOffers2026ToTheTesterAloneAndOnlyUntilMidnight() throws Exception {
+		theTester();
+		clock.moveTo(Instant.parse("2026-11-21T17:35:00Z"));
+
+		assertThat(seasonsOfferedTo(TESTER)).containsExactly(2026);
+		assertThat(seasonsOfferedTo(ME))
+				.as("a member who is not a tester was offered a season before the league").isEmpty();
+
+		clock.moveTo(Instant.parse("2026-12-31T23:00:00Z"));
+
+		assertThat(seasonsOfferedTo(TESTER)).containsExactly(2027);
+		assertThat(seasonsOfferedTo(ME)).containsExactly(2027);
+	}
+
+	private List<Integer> seasonsOfferedTo(String member) throws Exception {
+		MockHttpServletResponse answer = sent(get("/api/me"), cookieOf(member));
+		List<Integer> seasons = new ArrayList<>();
+
+		assertThat(answer.getStatus()).isEqualTo(200);
+		mapper.readTree(answer.getContentAsString()).path("seasonsOpenForAReport")
+				.forEach(one -> seasons.add(one.asInt()));
+
+		return seasons;
 	}
 
 	@Test
