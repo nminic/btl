@@ -77,7 +77,16 @@ export type Text = 100 | 125 | 150 | 175 | 200
  *  asks for less movement gets no dot (`app/RaceInMotion.css`), so no case waits for it. What a case measures is
  *  where things stand, which does not depend on movement; a case that measures the dot itself says
  *  `motion: 'no-preference'` and pays the five seconds. */
-export type At = { width: number; text: Text; theme?: 'light' | 'dark'; motion?: 'reduce' | 'no-preference' }
+export type At = {
+  width: number
+  text: Text
+  theme?: 'light' | 'dark'
+  motion?: 'reduce' | 'no-preference'
+  /** The window's height, 900 unless a case says otherwise: a screen shorter than the window draws no scrollbar
+   *  and the harness refuses to measure a desktop without one, so a short screen (the sign in form) asks for a
+   *  window short enough to scroll in. */
+  height?: number
+}
 
 /** What `/api` answers with 200, by path. Everything else is a 404, and `/api/me` a 401. */
 export type Answers = Readonly<Record<string, unknown>>
@@ -200,7 +209,7 @@ export const test = base.extend<Geometry, Worker>({
 
     await provide(async (at, path, ready, answers) => {
       const context = await browser.newContext({
-        viewport: { width: at.width, height: 900 },
+        viewport: { width: at.width, height: at.height ?? 900 },
         deviceScaleFactor: 1,
         isMobile: at.width < 1000,
         colorScheme: at.theme ?? 'light',
