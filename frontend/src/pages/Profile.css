@@ -1112,8 +1112,19 @@
 }
 
 .profile__acts > .button.profile__act:not(.profile__act--icon) {
-  order: 1;
+  order: 3;
   margin-inline-start: auto;
+}
+
+/* THE LINE BREAK AFTER THE ICONS: the name and the icons are one row, and everything of the acts that is a word
+   or a sentence falls under it, at the right. Measured 21.11.2026 on a telephone: with the word of the pair
+   beside the name the icon fell to a row of its own under it, which is not „na kraju reda sa imenom". A
+   pseudo-element of a box that gives up its own is an item of the row, and it is empty and has no height. */
+.profile__acts::after {
+  content: '';
+  order: 2;
+  flex-basis: 100%;
+  block-size: 0;
 }
 
 /* Written once more with three classes: the icon is a `.button` too, and the padding of the word above would
@@ -1151,12 +1162,12 @@
 /* ON A TELEPHONE THE WORD „GODINA" IS NOT DRAWN, and stays the name of the field for a reader who hears it
    (owner, 21.11.2026: „na telefonu se reč „Godina” sakriva i ostaje izbor „Sve ▾""). Hidden the way
    `.visually-hidden` hides (`index.css`), not removed: `display: none` would take the name of the field away. */
-@media (max-width: 34.99em) {
+@media (max-width: 559.98px) {
   .profile__season .rankings__field > span {
     position: absolute;
     inline-size: 1px;
     block-size: 1px;
-    margin: -1px;
+    margin: 0;
     padding: 0;
     overflow: hidden;
     clip-path: inset(50%);
@@ -1165,11 +1176,11 @@
   }
 }
 
-/* THE FILTER OF THE RACES IS AS WIDE AS ITS BUTTONS ASK, AND LEFT, from a tablet up (owner, 21.11.2026, PDL „Na
+/* THE FILTER OF THE RACES IS AS WIDE AS ITS BUTTONS ASK, AND LEFT, from 560px up (owner, 21.11.2026, PDL „Na
    desktopu filter trka na profilu nije širok kao strana nego koliko mu dugmad traže, levo"). Written on the
    profile's own box and not on `.seg` (`components/LengthFilter.css` is shared with the tables of the league).
    On a telephone it is the whole row, as it was, and breaks into rows at an enlarged text. */
-@media (min-width: 43.75em) {
+@media (min-width: 35em) {
   .profile__results .seg {
     inline-size: fit-content;
     max-inline-size: 100%;

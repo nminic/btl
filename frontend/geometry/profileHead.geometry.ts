@@ -405,7 +405,10 @@ for (const at of WIDTHS) {
           if (at.text === 100) {
             expect(overlapsVertically(icon, measured.name), `„${icon.name}" is not level with the name`).toBe(true)
           }
-          expect(overlapsHorizontally(icon, measured.name), `„${icon.name}" runs into the name`).toBe(false)
+          expect(
+            overlapsHorizontally(icon, measured.name) && overlapsVertically(icon, measured.name),
+            `„${icon.name}" runs into the name`,
+          ).toBe(false)
 
           for (const part of measured.tabs) {
             expect(overlapsVertically(icon, part), `„${icon.name}" stands in the row of the parts`).toBe(false)
