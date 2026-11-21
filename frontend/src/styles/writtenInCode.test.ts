@@ -338,6 +338,10 @@ describe('what a screen says in its own voice', () => {
          „lane", which a reader never meets: the drawing is hidden from him as a whole. Same kind of
          name as `look` below. */
       'kind',
+      /* THE ID OF THE WORD THAT NAMES A SEGMENTED CONTROL, 21.11.2026, and it is machinery: a prop of
+         `components/Segmented.tsx` that becomes `aria-labelledby`, which is already above. It carries the id
+         „rankings-categories", which nobody hears; what is heard is the word it points at. */
+      'labelledBy',
       'leftId',
       'loading',
       'look',
