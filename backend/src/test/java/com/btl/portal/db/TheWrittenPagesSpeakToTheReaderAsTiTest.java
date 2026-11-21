@@ -139,11 +139,11 @@ class TheWrittenPagesSpeakToTheReaderAsTiTest extends DatabaseTest {
 		}
 
 		assertThat(found).as("the sweep found nothing in the text before V107, so it measures nothing").hasSizeGreaterThan(50);
-		assertThat(found).as("the sweep did not reach the policy, the terms, the rulebook or the president's word")
+		/* The president's word has no pronoun to find (its one sentence is a verb), so it is the three long documents. */
+		assertThat(found).as("the sweep did not reach the policy, the terms or the rulebook")
 				.anyMatch(place -> place.startsWith(POLICY))
 				.anyMatch(place -> place.startsWith(TERMS))
-				.anyMatch(place -> place.startsWith(RULEBOOK))
-				.anyMatch(place -> place.startsWith(PRESIDENT));
+				.anyMatch(place -> place.startsWith(RULEBOOK));
 	}
 
 	/** THE TWO HEADINGS (the owner approved 6. and 8. as sentences 118 and 119), asked of the heading and not of a body. */
