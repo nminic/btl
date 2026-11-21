@@ -238,6 +238,17 @@ for (const at of WIDTHS) {
 
         return holder.frames
       })
+      /* The frames above are a race against one frame of paint, so what they would see is asked of the cause as
+         well: the box has no time to glide in, whatever a frame happened to show. */
+      expect(
+        await page.evaluate(() => {
+          const tip = document.querySelector('.action-tip')
+
+          return tip === null ? null : getComputedStyle(tip).transitionDuration
+        }),
+        `the time the box takes to move on ${how}`,
+      ).toBe('0s')
+
       const drawn = frames.filter((one): one is number => one !== null)
 
       expect(drawn.length, `frames that draw the box on ${how}`).toBeGreaterThan(0)
