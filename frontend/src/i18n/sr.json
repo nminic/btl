@@ -299,7 +299,8 @@
     "topMen": "Top 10 muškarci",
     "topWomen": "Top 10 žene",
     "place": "{place}.",
-    "wholeStanding": "Cela tabela",
+    "wholeStandingMen": "Kompletan poredak muškaraca",
+    "wholeStandingWomen": "Kompletan poredak žena",
     "byCategory": "Trke po distanci",
     "calculator": "BTL kalkulator",
     "calcLength": "Dužina (km)",
@@ -327,6 +328,15 @@
       "ultra": "Najviše ultramaratona"
     },
     "pointsUnit": " BTL poena",
+    "pointsUnitShort": " p",
+    "cities": "Gradova iz kojih dolaze članovi",
+    "lengthKm": "km",
+    "lengthNumber": {
+      "half": "21,1",
+      "marathon": "42,2"
+    },
+    "lengthsRest": "distance",
+    "noneOfLength": "Nema predstojećih trka ove distance.",
     "ascentUnit": " m+",
     "descentUnit": " m-",
     "members": "Članova lige",
@@ -479,14 +489,19 @@
       "other": "{count} trka"
     },
     "memberCount": {
-      "one": "{count} član",
-      "few": "{count} člana",
-      "other": "{count} članova"
+      "one": "{number} član",
+      "few": "{number} člana",
+      "other": "{number} članova"
+    },
+    "cityCount": {
+      "one": "{number} grad",
+      "few": "{number} grada",
+      "other": "{number} gradova"
     },
     "resultCount": {
-      "one": "{count} rezultat",
-      "few": "{count} rezultata",
-      "other": "{count} rezultata"
+      "one": "{number} rezultat",
+      "few": "{number} rezultata",
+      "other": "{number} rezultata"
     }
   },
   "rankings": {

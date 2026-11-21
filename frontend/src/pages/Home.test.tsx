@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { citiesOf } from '../data/derive'
 import { SLOW } from '../test/slow'
 import { matchingMedia } from '../test/media'
 import { must } from '../test/at'
@@ -9,7 +12,7 @@ import { setupUser } from '../test/user'
 describe('Home', () => {
   /* Two thirds of standing and prose against one third of figures and things to
      do (owner, 31.07.2026). */
-  it('lays the widgets out in the order a phone reads them', async () => {
+  it('writes the widgets in the order a phone shows them', async () => {
     renderAt('/sr')
 
     await screen.findByRole('heading', { level: 2, name: 'Priprema, pozor, SAD!' })
@@ -21,10 +24,10 @@ describe('Home', () => {
       .getAllByRole('heading', { level: 2 })
       .map((heading) => heading.textContent)
 
-    /* The order in the markup is the order on a phone (owner, 31.07.2026): the
-       two boards, the figures of the season, the turning chart, what is next,
-       the address, the calculator. On a wide screen the grid puts them in two
-       columns without moving them in the markup.
+    /* The markup is the order it is seen in (ADL A7, owner, 21.11.2026: „Kod prati ekran"): here the one
+       column of a phone, which is what a window with no wide query is, so the two boards, the figures of the
+       season, the turning chart, what is next, the address, the calculator. The two columns of a wide
+       window are held in `frontPageOrder.test.tsx`.
 
        The widget of membership stood at the end of it until 04.08.2026, when the
        owner had it removed: "nećemo ga koristiti do daljnjeg". */
@@ -72,6 +75,18 @@ describe('Home', () => {
       // is the whole of PDL P11 on the front page.
       expect(await screen.findByText(/^31 član$/, {}, { timeout: 10_000 })).toBeVisible()
       expect(screen.queryByText(/^32 člana$/)).not.toBeInTheDocument()
+
+      /* The tile beside it counts the places those same thirty one come from, as they wrote them (owner,
+         20.11.2026): the list of the answer and not the file's thirty two, and not the number of members. */
+      const file: { active: boolean; city: string; country: string }[] = JSON.parse(
+        readFileSync(join(process.cwd(), 'src/test/mock/competitors.json'), 'utf-8'),
+      )
+      const served = file.filter((one) => one.active)
+      const places = citiesOf(served)
+
+      expect(places).not.toBe(31)
+      expect(places).toBeGreaterThan(1)
+      expect(screen.getByText(new RegExp(`^${String(places)} grad(a|ova)?$`))).toBeVisible()
     } finally {
       stop()
       window.matchMedia = previous
@@ -146,7 +161,7 @@ describe('Home', () => {
        the suite's days, one on each side of that. Who is on the board is held in `publicScreens.test.tsx`. */
     expect(within(men).getAllByRole('listitem', { hidden: true })).toHaveLength(10)
     // The standing moved to /tabela; /top-liste is the page of Top 10 boards now.
-    expect(within(men).getByRole('link', { name: 'Cela tabela' })).toHaveAttribute(
+    expect(within(men).getByRole('link', { name: 'Kompletan poredak muškaraca' })).toHaveAttribute(
       'href',
       '/sr/tabela?pol=m',
     )

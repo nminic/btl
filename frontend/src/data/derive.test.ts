@@ -14,6 +14,8 @@ import {
   monthsWithEvents,
   bestOfficialSeason,
   bestSingleRaces,
+  citiesOf,
+  upcomingSeries,
   memberOf,
   membersOf,
   rankingFor,
@@ -2438,5 +2440,107 @@ describe('the span of an event', () => {
     /* And the day they were ENTERED under holds nothing, which is the whole difference:
        read off `event.date` this would answer with both of them. */
     expect(eventsOnDay(events, races, '2027-05-10')).toEqual([])
+  })
+})
+
+/**
+ * HOW MANY PLACES THE MEMBERS COME FROM, the eighth tile of the front page (PDL, owner, 20.11.2026).
+ *
+ * **As the member wrote it**: Zemun is not Beograd, a town written twice is one town, and one town name in two
+ * countries is two places. Nothing is counted where no town was written. Every case has a different answer
+ * from every other, so no reading satisfies one by being another.
+ */
+describe('citiesOf', () => {
+  const at = (city: string, country = 'RS') => competitor(`${city}${country}`, { city, country })
+
+  it('counts a town once however many members live in it', () => {
+    expect(citiesOf([at('Beograd'), at('Beograd'), at('Beograd')])).toBe(1)
+  })
+
+  it('counts the town as it was written, so Zemun is not Beograd', () => {
+    expect(citiesOf([at('Beograd'), at('Zemun'), at('Pančevo')])).toBe(3)
+  })
+
+  it('counts one town name in two countries as two places', () => {
+    expect(citiesOf([at('Novi Grad', 'BA'), at('Novi Grad', 'RS'), at('Novi Grad', 'RS')])).toBe(2)
+  })
+
+  it('counts nothing for a member who wrote no town, and does not take spaces for one', () => {
+    expect(citiesOf([at(''), at('   '), at('Niš')])).toBe(1)
+  })
+
+  it('does not count a town twice for the spaces round it', () => {
+    expect(citiesOf([at('Niš'), at(' Niš ')])).toBe(1)
+  })
+
+  it('is nought for nobody', () => {
+    expect(citiesOf([])).toBe(0)
+  })
+})
+
+/**
+ * THE FILTER OF „Priprema, pozor, SAD!" AS THE DATA ANSWERS IT (PDL, owner, 20.11.2026): the runs that hold a
+ * race of a length, and for each name the nearest of THOSE.
+ */
+describe('upcomingSeries by a length', () => {
+  const run = (id: number, name: string, date: string): BtlEvent => ({
+    id,
+    slug: `trka-${String(id)}`,
+    name,
+    date,
+    city: 'Beograd',
+    country: 'RS',
+    kind: 'race',
+    description: '',
+    link: '',
+    copiedFrom: null,
+    featured: false,
+  })
+  const held = (eventId: number, ...dots: Race['dots']): Pick<Race, 'eventId' | 'dots'> => ({ eventId, dots })
+
+  const events = [
+    run(1, 'Prva', '2027-05-01'),
+    run(2, 'Dvaput', '2027-06-01'),
+    run(3, 'Dvaput', '2027-09-01'),
+    run(4, 'Treća', '2027-07-01'),
+  ]
+  const races = [held(1, 'short'), held(2, 'short'), held(3, 'ultra', 'short'), held(4, 'ultra')]
+
+  it('is every run, as before, where no length is asked for', () => {
+    expect(upcomingSeries(events, '2027-04-01', 10).map((one) => [one.name, one.next.id])).toEqual([
+      ['Prva', 1],
+      ['Dvaput', 2],
+      ['Treća', 4],
+    ])
+  })
+
+  it('keeps the names that hold the length, each at its nearest run that holds it', () => {
+    expect(
+      upcomingSeries(events, '2027-04-01', 10, { length: 'ultra', races }).map((one) => [one.name, one.next.id]),
+    ).toEqual([
+      ['Treća', 4],
+      ['Dvaput', 3],
+    ])
+  })
+
+  it('takes the nearest run of a length that two runs hold, and not the later one', () => {
+    expect(
+      upcomingSeries(events, '2027-04-01', 10, { length: 'short', races }).map((one) => [one.name, one.next.id]),
+    ).toEqual([
+      ['Prva', 1],
+      ['Dvaput', 2],
+    ])
+  })
+
+  it('is nothing for a length no run ahead holds', () => {
+    expect(upcomingSeries(events, '2027-04-01', 10, { length: 'half', races })).toEqual([])
+  })
+
+  it('does not look at a run that is behind', () => {
+    expect(upcomingSeries(events, '2027-08-01', 10, { length: 'ultra', races }).map((one) => one.next.id)).toEqual([3])
+  })
+
+  it('still stops at the limit', () => {
+    expect(upcomingSeries(events, '2027-04-01', 1, { length: 'ultra', races }).map((one) => one.next.id)).toEqual([4])
   })
 })

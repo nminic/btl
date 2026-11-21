@@ -25,6 +25,29 @@
   gap: var(--space-8);
 }
 
+/* A tile is a container, and the shape of its text is decided by the tile's own width and not by the
+   window's (owner, 20.11.2026, the tile of the points: „Na velikom prikazu ovde treba da ostane BTL poena").
+   The one tile that has two shapes of its figure (`pages/home/Counters.tsx`) draws the whole sentence
+   where it stands in one line and the short one where it would not, and a tile that is narrow on a
+   telephone or in the right column of 860px is the second. */
+.score {
+  container-type: inline-size;
+}
+
+.score__short {
+  display: none;
+}
+
+@container (max-width: 15.25rem) {
+  .score__full {
+    display: none;
+  }
+
+  .score__short {
+    display: inline;
+  }
+}
+
 .score__mark {
   flex: 0 0 auto;
   width: 2.15rem;

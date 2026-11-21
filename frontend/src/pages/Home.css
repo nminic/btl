@@ -43,95 +43,176 @@
   }
 }
 
-/* Eight hundred and sixty, and not the eight hundred and twenty the rest of the
-   portal switches at. This one is set by its content rather than by the page:
-   the turning chart stands ten faces wide, and in the two thirds column it is
-   given at 820 each column comes out 45,4px under a 46,4px face. Measured after
-   this sweep, not before it: the gap and the padding around those columns both
-   moved onto the scale, so the clearance this decision rests on moved with them,
-   from 1,64px to 1,0px. It still holds, and it is thinner than it was.
-   Narrowing the faces instead would make ten of them unreadable, which is what
-   the phone rule already does by dropping four.
+/* The figures on a phone are a grid of two columns, eight tiles in four rows (owner, 20.11.2026: „2×4,
+   jer statistika dobija osmu pločicu", which overturns the 2×3 of 31.07.2026), so they do not eat the
+   first screen. Every tile is one line high and the same height; where its figure would not fit the
+   tile breaks no word and wraps nowhere, because the long one is the points and it is drawn short in a
+   tile this narrow (`styles/counter.css`). Under 560px, which is where the two boards stand one under
+   the other: the front page's figures only, a profile keeps its column. */
+@media (max-width: 34.99875em) {
+  .home .scoreboard {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: var(--space-8);
+    row-gap: var(--space-10);
+    padding: var(--space-12);
+  }
 
-   Under the top row, variant A (PDL P24, owner 18.11.2026): the chart and the
-   address on the left, and on the right the calendar, the sponsor of the day and
-   the calculator as one column beside both of them („Tri desna boksa su zajedno
-   visoka kao leva kolona."). The three on the right do not share rows with the
-   two on the left, so each of the left two stands across two rows and the right
-   ones across the lines between, and both columns end on the last line of the
-   grid whatever their heights: the columns line up by construction and not by
-   a number.
+  .home .scoreboard__title {
+    grid-column: 1 / -1;
+    margin: 0;
+  }
 
-   Which row takes the difference is said by its sizing. With a sponsor it is the
-   row the address shares with the box (`1fr`), so the box takes what is left and
-   centres its logo and name in it, as the draft does („Preostalih 15,50 px upija
-   prostor oko znaka i naziva"); the row under the chart is sized by the chart
-   alone (`auto`), so the calendar keeps the height of its four rows. Without a
-   sponsor it is the row the address shares with the calendar, and the calendar
-   runs into it: as many races as fit to the bottom (`.extract` below, and
-   `home/rowsThatFit.ts`). */
+  .home .score {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: var(--space-4);
+    align-items: center;
+  }
+
+  .home .score__mark {
+    inline-size: 1.75rem;
+    block-size: 1.75rem;
+  }
+
+  .home .score__mark svg {
+    inline-size: 1rem;
+    block-size: 1rem;
+  }
+
+  .home .score__pill {
+    display: grid;
+    align-items: center;
+    min-block-size: 1.75rem;
+    padding: var(--space-4) var(--space-6);
+    font-size: 0.8125rem;
+    line-height: 1.2;
+    overflow-wrap: normal;
+    text-wrap: balance;
+  }
+}
+
+/* Two columns, each its own column of boxes (owner, 20.11.2026, PDL „Četiri dodatka naslovne iz
+   tuđeg nacrta": „Desna kolona je zaseban stub: statistika je visoka koliko njen sadržaj, a
+   kalendar počinje odmah ispod nje"). Until then the page was one grid whose rows both columns
+   shared, and the figures were as tall as the two boards beside them, which with eight tiles was
+   taller than the figures need: the calendar began where the boards ended and not where the
+   figures did.
+
+   Eight hundred and sixty, and not the eight hundred and twenty the rest of the portal switches at.
+   This one is set by its content rather than by the page: the turning chart stands ten faces wide,
+   and in the two thirds column it is given at 820 each column comes out 45,4px under a 46,4px face.
+   Measured after this sweep, not before it: the gap and the padding around those columns both moved
+   onto the scale, so the clearance this decision rests on moved with them, from 1,64px to 1,0px. It
+   still holds, and it is thinner than it was. Narrowing the faces instead would make ten of them
+   unreadable, which is what the phone rule already does by dropping four.
+
+   **Below it the two columns do not exist, and the markup says so** (owner, 21.11.2026, „Kod prati
+   ekran"): `Home.tsx` writes the boxes one after another in the order a phone shows them (ADL A7) and this
+   sheet puts nothing in another place with `order`, so the focus and a screen reader go as the eye goes.
+
+   Under the top row, variant A (PDL P24, owner 18.11.2026): „Tri desna boksa su zajedno visoka kao
+   leva kolona." The right column is what it was: the figures, the calendar, the sponsor of the day
+   and the calculator, and the left one is the boards, the chart and the address. Both columns stretch
+   to the taller of the two, and each has the box that takes the difference:
+
+   - The left one is the address (`flex: 1 1 auto`), so it ends where the right one ends whatever the
+     right one came out at.
+   - The right one is the calendar while there is no sponsor, which runs into the room as many races
+     as fit (`.extract` below, and `home/rowsThatFit.ts`), and the sponsor of the day while there is
+     one, which takes what is left and centres its logo and name in it („Preostalih 15,50 px upija
+     prostor oko znaka i naziva"). The calendar then keeps the height of its four rows. */
+.home__split--cols {
+  display: grid;
+  gap: var(--space-20);
+}
+
 @media (min-width: 53.75em) {
-  .home__split {
+  .home__split--cols {
     grid-template-columns: 2fr 1fr;
-    grid-template-rows: auto auto 1fr auto;
-    grid-template-areas:
-      'boards figures'
-      'chart next'
-      'address next'
-      'address calc';
     align-items: stretch;
   }
 
-  .home__split--sponsored {
-    grid-template-rows: auto auto auto 1fr auto;
-    grid-template-areas:
-      'boards figures'
-      'chart next'
-      'chart sponsor'
-      'address sponsor'
-      'address calc';
+  .home__colL,
+  .home__colR {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-20);
+    min-width: 0;
   }
 
-  .home__boards { grid-area: boards; }
-  .home__address { grid-area: address; }
-  .home__figures { grid-area: figures; }
-  .home__next { grid-area: next; }
-  .home__sponsor { grid-area: sponsor; }
+  /* Every widget is as tall as it is, not as the row it stands in: there are no rows shared between
+     the columns any more, and a box that took the whole height of its column would be the one that
+     pushed the others out of it. */
+  .home__colL > *,
+  .home__colR > * {
+    block-size: auto;
+  }
 
-  /* As tall as the chart was beside a calendar of six rows, which is what it
-     stood at until the calendar stopped having six (draft of variant A,
-     „Grafikon zadržava današnjih 394,45 px kao sopstvenu najmanju visinu"). It
-     took that height from the row it shared with the calendar; with four races
-     beside it it would fall to its own and the left column would come out
-     shorter, and the owner keeps the left column as it is („Ne planiram da
-     menjam reč predsednika"). */
+  /* As tall as the chart was beside a calendar of six rows, which is what it stood at until the
+     calendar stopped having six (draft of variant A, „Grafikon zadržava današnjih 394,45 px kao
+     sopstvenu najmanju visinu"). The owner keeps the left column as it is („Ne planiram da menjam
+     reč predsednika"), and the address takes what is over. */
   .home__chart {
-    grid-area: chart;
+    flex: none;
     min-block-size: 24.65rem;
   }
 
-  /* As tall as the column leaves it and no taller: the rows drawn in it do not
-     count towards its height (`contain: size`), so how many of them there are
-     cannot move the row they are counted in, and `home/rowsThatFit.ts` draws as
-     many whole rows as stand in it. Without a sponsor and in two columns only:
-     in one column there is no bottom to run to, and a list that weighs nothing
-     there would be a list of nought. */
+  .home__address {
+    flex: 1 1 auto;
+  }
+
+  .home__address > .card {
+    block-size: 100%;
+  }
+
+  /* The calendar runs into whatever the column has left under the figures: as tall as the column
+     leaves it and no taller, because the rows drawn in it do not count towards its height
+     (`contain: size`), so how many of them there are cannot move the box they are counted in, and
+     `home/rowsThatFit.ts` draws as many whole rows as stand in it. Without a sponsor and in two
+     columns only: in one column there is no bottom to run to, and a list that weighs nothing there
+     would be a list of nought. */
+  .home__next {
+    flex: 1 1 0;
+    min-block-size: 0;
+  }
+
+  .home__next > .card {
+    block-size: 100%;
+  }
+
   .home__split:not(.home__split--sponsored) .home__next .extract {
     flex: 1 1 0;
     min-block-size: 0;
     contain: size;
   }
 
-  /* As tall as it is, and no taller (owner, 04.08.2026). It shared its row with
-     the address of the president until variant A, and every widget on this page
-     fills the row it was given: the calculator was six fields and a line of
-     answer stretched over a column of text, with the fields at the top and
-     nothing under them. Since 18.11.2026 it is the last box of the right column
-     and its row is sized by it alone, so this holds the same decision against a
-     row that is ever given more. */
+  /* With a sponsor the calendar is its four rows and no more, and the box of the day takes what the
+     taller column has over. */
+  .home__split--sponsored .home__next {
+    flex: none;
+  }
+
+  .home__split--sponsored .home__next > .card {
+    block-size: auto;
+  }
+
+  .home__sponsor {
+    flex: 1 1 auto;
+  }
+
+  .home__sponsor > .card {
+    block-size: 100%;
+  }
+
+  /* As tall as it is, and no taller (owner, 04.08.2026). It shared its row with the address of the
+     president until variant A, and every widget on this page fills the row it was given: the
+     calculator was six fields and a line of answer stretched over a column of text, with the fields
+     at the top and nothing under them. Since 18.11.2026 it is the last box of the right column and
+     it is sized by itself alone, so this holds the same decision against a column that is ever
+     taller. */
   .home__calc {
-    grid-area: calc;
-    align-self: start;
+    flex: none;
   }
 }
 
@@ -318,86 +399,150 @@
   text-decoration: none;
 }
 
+/* The filter by length (owner, 20.11.2026, PDL „Četiri dodatka naslovne iz tuđeg nacrta"): six buttons
+   in one row, as one control with a rounded outline, and the one chosen is a capsule inside it.
+   All of the same height and none of them breaks its text.
+
+   **Only the „km" goes when the card is narrow, and the card decides, not the window** (owner:
+   „Gde ne staje, otpada samo km"): 21,1 and 42,2 stay. The card is the container, so the rule is the
+   same on the right column at 860px and on a phone where the card is as wide as the page. */
+.home__next > .card {
+  container-type: inline-size;
+}
+
+.seg {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  padding: var(--space-2);
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius-round);
+  margin-bottom: var(--space-4);
+}
+
+.seg__b {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-block-size: 1.75rem;
+  padding: var(--space-4) var(--space-6);
+  border: 0;
+  border-radius: var(--radius-round);
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  text-align: center;
+  cursor: pointer;
+}
+
+.seg__b:hover {
+  color: var(--text);
+}
+
+.seg__b--on {
+  background: var(--surface-hover);
+  color: var(--text);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+@container (max-width: 16.875rem) {
+  .seg__km {
+    display: none;
+  }
+
+  .seg__b {
+    padding-inline: var(--space-4);
+    font-size: 0.72rem;
+  }
+}
+
 /* The seasonal slot that stood at the foot of the right column was removed on
    04.08.2026 (owner), and its styles with it. */
 
-/* Top ten, in the shape the old portal had (owner, 31.07.2026): round faces
-   carrying the number of their place, and nothing else. The heading and the
-   leader share the first line, the other nine are a three by three block. */
+/* Top ten (owner, 20.11.2026, PDL „Četiri dodatka naslovne iz tuđeg nacrta"): the first three on a
+   stepped podium, the rest in a list. It was round faces carrying the number of their place and
+   nothing else (owner, 31.07.2026), ten of them in a block of three by three, with a gold bar over
+   them that named the board.
 
-/* One grid of three columns holds the heading and all ten places: the heading
-   takes the first two cells of the first row, the leader takes the third, and
-   the other nine fill the rows under it. The list itself lays out nothing, so
-   the places are cells of the block rather than of a grid inside it. */
+   The board is a container, and what it asks of itself it asks of its own width and not of the
+   window's: two boards stand side by side from 560px and are as narrow as 247px at 560, and one
+   under the other at 360 they are 313 (the plan, „Table se ne slažu jedna ispod druge pre 560 px"). */
+.top10 {
+  container-type: inline-size;
+}
+
 .top10__block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+}
+
+/* The heading is there for a screen reader and is not drawn (`visually-hidden` on it, owner,
+   20.11.2026: „da li su uopšte potrebni žuti naslovi sekcija top 10 muškarci i žene? Možda se uzalud
+   baca prostor"); the link at the foot says whose standing it is. */
+
+/* ---- the podium ---- */
+
+/* Named `stand` and not `podium`: `styles/table.css` already has a `.podium`, the gold of the first three
+   rows of a table of standing, and one name in two sheets is a name in both (`styles/tableScroll.test.ts`). */
+
+/* The first in the middle and the widest, the second on the left and the third on the right, in the
+   order of the markup (the first, the second, the third), which is the order they are read in. They
+   stand on the line they end on: the circle of the first is the highest because its step is the
+   tallest and its circle the largest, not because anything is pushed up. */
+.stand {
+  list-style: none;
+  margin: 0;
+  padding: 0;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: var(--space-10) var(--space-6);
+  grid-template-columns: 1fr 1.15fr 1fr;
+  grid-template-areas: 'two one three';
+  column-gap: var(--space-6);
+  align-items: end;
+}
+
+.stand__item {
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-items: center;
+  justify-content: flex-end;
+  text-align: center;
+  min-width: 0;
+  gap: var(--space-2);
 }
 
-/* The title as a block of gold with dark ink, in the shape the old portal had
-   and at a size that reads as the name of the board rather than as a caption
-   over it (owner, 31.07.2026). The same treatment is on the band under the
-   turning chart, so the two read as one family. */
-.top10__block .card__title {
-  grid-column: span 2;
-  justify-self: stretch;
-  align-self: center;
-  padding: var(--space-8) var(--space-12);
-  border-radius: var(--radius-8);
-  background: linear-gradient(180deg, var(--gold-400), var(--gold-500));
-  color: var(--gold-band-ink);
-  font-size: 1.15rem;
-  font-weight: 700;
-  line-height: 1.15;
-  letter-spacing: -0.01em;
-  text-transform: none;
+.stand__item--1 { grid-area: one; }
+.stand__item--2 { grid-area: two; }
+.stand__item--3 { grid-area: three; }
+
+.stand__no {
+  position: relative;
+  display: inline-grid;
 }
 
-/* The faces are as large as the block will take them, so a board that fills its
-   column fills it with circles rather than with air (owner, 31.07.2026). A
-   fixed size rather than a share of the cell: the cells centre what is in them,
-   so a share of the cell is a share of whatever the circle already is, and the
-   circle collapses to its own text. Written with the page in the selector
-   because the plain rule further down sets a size too, and two selectors of the
-   same weight are settled by which came last. */
-.home .top10 .portrait {
+/* The circle of the first is the largest, and the other two are the size the faces of the board were
+   (`.home .top10 .portrait` weighs what this does, so the page is in the selector for the reason
+   Portrait.css gives for its own). */
+.home .top10 .stand__item .portrait {
   inline-size: 4rem;
   block-size: 4rem;
   font-size: 1.15rem;
 }
 
-.top10__block {
-  align-content: space-between;
-  block-size: 100%;
+.home .top10 .stand__item--1 .portrait {
+  inline-size: 5.25rem;
+  block-size: 5.25rem;
 }
 
-.top10__places {
-  display: contents;
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-/* The number sits on the corner of the face, as it did on the old portal, so a
-   place is one thing to look at rather than a circle with a caption.
-
-   The ring of card colour around the number is what separates it from the face,
-   and it is there because the two on their own do not: gold on a face measured
-   1,62:1 on the light theme, and the face wears one of three hundred and sixty
-   colours, so no pair of values can be relied on. Against the card it is 5,53:1
-   and 8,12:1. Same reasoning as the disc on the turning chart. */
-/* A place keeps its height whether or not somebody is standing in it, so the
-   block is the same height all season. */
-.top10__cell {
-  position: relative;
-  display: grid;
-  justify-items: center;
-  align-content: center;
-  min-block-size: 4.6rem;
-  min-width: 0;
+/* The ring of gold is for a place that was won (PDL, 18.10.2026, „Red bez trke ima redni broj, ali
+   nikad boju postolja"): `stand__item--won` is put on the first place only when it was ranked. The
+   ring of card colour inside the gold is what keeps it apart from the picture, as it was with the
+   number on the old board. */
+.stand__item--won .portrait {
+  box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--gold-text);
 }
 
 .top10__face {
@@ -410,21 +555,237 @@
   box-shadow: 0 0 0 2px var(--accent);
 }
 
-.top10__place {
-  position: absolute;
-  inset-block-start: -0.2rem;
-  inset-inline-start: -0.2rem;
-  inline-size: 1.35rem;
-  block-size: 1.35rem;
+/* **The name is two lines, the first name over the surname, and a surname never breaks** (owner,
+   20.11.2026, over a screenshot of one name on one line and another on two: the circle of the second
+   climbed to the level of the first; and on 21.11.2026, chosen with the recommendation put to him, „Manje
+   slovo za dugo prezime": always exactly two lines, and a name that does not fit the width of its column
+   is set in a smaller letter, small enough to fit, with no break, no third line and no gap).
+
+   **The letter is worked out from the width that is there**: a column of the podium is
+   `(100cqi - 2 gaps) / 3.15` wide (`.stand` is `1fr 1.15fr 1fr`, so the side ones are one share and the
+   middle one 1.15 of it; the share is taken for all three, which is the narrow one), the page writes the
+   number of letters of each line in `--chars`, and a letter of this weight is about 0,66em wide on
+   average. The size is what fits that many of them in the share, never above the size of the place
+   (`--base`) and never under a floor (0,65rem, 10,4px). The two lines are the height of two lines of the
+   size of the place whatever is set in them, so the step decides how high a circle stands and the name
+   never does. **Where even the floor is not enough the line ends in three dots** (owner, 21.11.2026, „Tri tacke
+   na granici”, adding that he will get the long surnames, double ones for instance, solved in the data
+   itself): `overflow: hidden` and `text-overflow: ellipsis`, for the first name and the surname alike, and
+   the whole name stays in the `title` of the line and in the link above it. Measured with the longest surnames of the sample at 360, 560, 860, 1024 and 1280 in
+   `geometry/frontPage.geometry.ts`. */
+.stand__name {
+  --base: 0.85rem;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: var(--space-4);
+  min-block-size: 2.5em;
+  font-size: var(--base);
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--text);
+}
+
+.stand__item--1 .stand__name {
+  --base: 0.95rem;
+}
+
+/* The block is never wider than its column, so what does not fit even in the smallest letter is cut by
+   the line it is in and not by the page. */
+.stand__name {
+  max-inline-size: 100%;
+  min-inline-size: 0;
+}
+
+.stand__first,
+.stand__last {
+  display: block;
+  max-inline-size: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: clamp(
+    0.65rem,
+    calc((100cqi - 2 * var(--space-6)) / 3.15 / (var(--chars) * 0.66)),
+    var(--base)
+  );
+}
+
+/* Two lines are kept for the points as well, so that a figure that wraps at 313px and one that does
+   not cannot lift one circle against its neighbour: the steps are 20px and 16px apart and a line of
+   this text is 16px. */
+.stand__points {
+  min-block-size: 2.6em;
+  font-size: 0.8rem;
+  line-height: 1.3;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+}
+
+.stand__cat {
+  margin-top: var(--space-2);
+  padding: 0 var(--space-8);
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius-round);
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* The steps: gold, silver and bronze, 64, 44 and 28px, with the place on them. */
+.stand__step {
+  inline-size: 100%;
+  margin-top: var(--space-8);
   display: grid;
-  place-items: center;
-  border-radius: 50%;
-  background: var(--gold-button);
-  color: var(--gold-button-ink);
-  box-shadow: 0 0 0 2px var(--surface);
-  font-size: 0.68rem;
-  font-weight: 700;
+  place-items: start center;
+  padding-top: var(--space-6);
+  border-radius: var(--radius-8) var(--radius-8) 0 0;
+  font-weight: 800;
+  font-size: 1.25rem;
   line-height: 1;
+  color: var(--text);
+}
+
+.stand__item--1 .stand__step {
+  block-size: 64px;
+  background: linear-gradient(180deg, rgba(240, 205, 99, 0.55), rgba(214, 174, 62, 0.08));
+}
+
+.stand__item--2 .stand__step {
+  block-size: 44px;
+  background: linear-gradient(180deg, rgba(196, 207, 228, 0.38), rgba(196, 207, 228, 0.04));
+}
+
+.stand__item--3 .stand__step {
+  block-size: 28px;
+  padding-top: var(--space-4);
+  font-size: 1.05rem;
+  background: linear-gradient(180deg, rgba(205, 127, 70, 0.45), rgba(205, 127, 70, 0.05));
+}
+
+/* ---- the list, from the fourth place ---- */
+
+/* One grid for the whole list and every row a subgrid of it, so the number, the circle, the name,
+   the category and the points stand in the same columns in every row (the plan: „Lista je prava
+   mreža sa zajedničkim kolonama"). The number is right-aligned in digits of one width, so „10."
+   stands exactly under „9.". */
+.toprows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--border);
+  display: grid;
+  grid-template-columns: 1.6rem 1.75rem minmax(0, 1fr) max-content max-content;
+  column-gap: var(--space-8);
+}
+
+.toprows li {
+  display: grid;
+  grid-template-columns: subgrid;
+  grid-column: 1 / -1;
+  align-items: center;
+  column-gap: var(--space-8);
+  padding: var(--space-6) 0;
+  border-bottom: 1px solid var(--border);
+  min-block-size: 2.75rem;
+}
+
+.toprows .no {
+  color: var(--text-muted);
+  font-weight: 700;
+  font-size: 0.85rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.home .top10 .toprows .portrait {
+  inline-size: 1.75rem;
+  block-size: 1.75rem;
+  font-size: 0.6rem;
+  box-shadow: none;
+}
+
+/* The name wraps where it must and is never cut: a list of rows in which `Radoslav Milovanović` ended in
+   an ellipsis at 1024px cut the one thing the row is for (measured, 20.11.2026, with the sample of the
+   portal). The columns are a subgrid, so a row of two lines changes nothing in the alignment of the rest. */
+.toprows .nm {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 0.9rem;
+  line-height: 1.25;
+  text-align: left;
+}
+
+.toprows .kt {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  text-align: left;
+}
+
+.toprows .pt {
+  font-weight: 700;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 34.99875em) {
+  .toprows,
+  .toprows li {
+    column-gap: var(--space-6);
+  }
+}
+
+/* **A board narrower than about 300px puts the category under the name** (owner, 20.11.2026, chosen
+   with the recommendation put to him: „kategorija ide ispod imena kad god je tabla uža od oko 300 px,
+   bez obzira na širinu ekrana, jer su table uske i na 860 px"), so the name is not cut to a few
+   letters. The columns are still shared, and the points stay on the right. It is the board's own
+   width that decides, which is why this is a container query: at 860px the two boards are 254px each
+   and at 360px one board is 313. */
+@container (max-width: 16.625rem) {
+  .toprows {
+    grid-template-columns: 1.6rem 1.75rem minmax(0, 1fr) max-content;
+  }
+
+  .toprows li {
+    min-block-size: 3rem;
+    row-gap: 0;
+  }
+
+  .toprows .no {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+  }
+
+  .toprows .top10__face,
+  .toprows .toprow--empty .portrait {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+  }
+
+  .toprows .nm {
+    grid-column: 3;
+    grid-row: 1;
+    align-self: end;
+  }
+
+  .toprows .kt {
+    grid-column: 3;
+    grid-row: 2;
+    align-self: start;
+    line-height: 1.2;
+  }
+
+  .toprows .pt {
+    grid-column: 4;
+    grid-row: 1 / span 2;
+  }
 }
 
 /* The face itself is a shared building block and is styled beside the component
@@ -641,7 +1002,7 @@
 /* The calculator's rows eight pixels apart rather than the ten of every other
    card, the last of the ways variant A draws it shorter (draft, „između redova 8
    umesto 10"). */
-.home__calc > .card {
+.home__calc .card {
   gap: var(--space-8);
 }
 

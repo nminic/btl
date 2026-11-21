@@ -178,26 +178,172 @@ describe('TopTen', () => {
     competitor('000005'),
   ]
 
-  /* The board in the shape the old portal had (owner, 31.07.2026): round faces
-     carrying the number of their place, and nothing else. No names under the
-     circles, no points beside them, no sentence underneath. */
-  it('is faces and numbers, and says nothing else', () => {
+  /* Ten, each with points of their own, so that the podium and the list behind it are both full and
+     every place is a different person. */
+  const ten = Array.from({ length: 10 }, (_, index) => competitor(String(index + 1).padStart(6, '0')))
+  const tenResults = ten.map((one, index) => result(one.memberNumber, 100 - index * 10))
+
+  /** The two lists of a board, the podium and the rows behind it, whichever of their items are read. */
+  function lists() {
+    const found = screen.getAllByRole('list', { hidden: true })
+
+    expect(found).toHaveLength(2)
+
+    return { podium: at(found, 0), rows: at(found, 1) }
+  }
+
+  /* The board of 20.11.2026 (owner, PDL „Četiri dodatka naslovne iz tuđeg nacrta"): the first three on a
+     podium with a name, points and a category each, and the seven behind them as a list. It stood as faces
+     and numbers and nothing else from 31.07.2026, and that is overturned. */
+  it('puts the first three on a podium, each with a name, points and a category', () => {
     renderWidget(
-      <TopTen
-        competitors={competitors}
-        results={[result('000001', 30), result('000002', 20)]}
-        season={2027}
-        today={THE_DAY_BEFORE}
-        gender="M"
-      />,
+      <TopTen competitors={ten} results={tenResults} season={2027} today={THE_DAY_BEFORE} gender="M" />,
     )
 
-    // The leader is a link called by their place and their name, and the name
-    // is nowhere on the card as text.
-    expect(screen.getByRole('link', { name: '1. Ime 000001' })).toBeVisible()
-    expect(screen.queryByText('Ime 000001')).not.toBeInTheDocument()
-    expect(screen.queryByText(/BTL poena/)).not.toBeInTheDocument()
-    expect(screen.queryByText(/30,00/)).not.toBeInTheDocument()
+    const { podium } = lists()
+    const items = within(podium).getAllByRole('listitem')
+
+    // The order of the markup is the order they are read in: the first, the second, the third.
+    expect(items).toHaveLength(3)
+    expect(items.map((one) => within(one).getByRole('link').getAttribute('aria-label'))).toEqual([
+      '1. Ime 000001',
+      '2. Ime 000002',
+      '3. Ime 000003',
+    ])
+    expect(items.map((one) => within(one).getByText(/BTL poena$/).textContent)).toEqual([
+      '100,00 BTL poena',
+      '90,00 BTL poena',
+      '80,00 BTL poena',
+    ])
+    expect(items.map((one) => within(one).getByText('M 40-54').textContent)).toEqual([
+      'M 40-54',
+      'M 40-54',
+      'M 40-54',
+    ])
+    // The step has the place on it.
+    expect(items.map((one) => within(one).getByText(/^\d\.$/).textContent)).toEqual(['1.', '2.', '3.'])
+  })
+
+  /* **Two lines, always, and one name to a screen reader** (owner, 20.11.2026). The first name is its own
+     element and the surname is its own element, which is what keeps a long name from making its block
+     taller than a short one; and the two are drawn for the eye only, since the link already says the
+     name. */
+  it('writes the name as two lines, the first name and the surname, and reads it once', () => {
+    renderWidget(
+      <TopTen competitors={ten} results={tenResults} season={2027} today={THE_DAY_BEFORE} gender="M" />,
+    )
+
+    const item = at(within(lists().podium).getAllByRole('listitem'), 0)
+    const surname = within(item).getByText('000001')
+    const name = must(surname.parentElement, 'the block of the name')
+
+    expect(within(name).getByText('Ime')).not.toBe(surname)
+    expect(name.children).toHaveLength(2)
+    expect(name).toHaveAttribute('aria-hidden', 'true')
+    // One link, called by place and name: the two lines are not a second reading of it.
+    expect(within(item).getByRole('link', { name: '1. Ime 000001' })).toBeVisible()
+    expect(within(item).queryByText('Ime 000001')).not.toBeInTheDocument()
+  })
+
+  /* **A place that was not won has no gold and says nought** (PDL, 18.10.2026, „Red bez trke ima redni broj,
+     ali nikad boju postolja"; owner, 20.11.2026, chose „0,00 BTL poena" for the podium until the places are
+     won). Nobody has raced, so the three hold their places and the ring is on none of them. */
+  it('says 0,00 BTL poena and draws no gold ring while the places are held and not won', () => {
+    renderWidget(
+      <TopTen competitors={competitors} results={[]} season={2027} today={THE_DAY_BEFORE} gender="M" />,
+    )
+
+    const items = within(lists().podium).getAllByRole('listitem')
+
+    expect(items.map((one) => within(one).getByText(/BTL poena$/).textContent)).toEqual([
+      '0,00 BTL poena',
+      '0,00 BTL poena',
+      '0,00 BTL poena',
+    ])
+
+    for (const one of items) {
+      expect(one).not.toHaveClass('stand__item--won')
+    }
+  })
+
+  it('draws the gold ring round the first place when it was won, and round nobody else', () => {
+    renderWidget(
+      <TopTen competitors={ten} results={tenResults} season={2027} today={THE_DAY_BEFORE} gender="M" />,
+    )
+
+    const items = within(lists().podium).getAllByRole('listitem')
+
+    expect(items.map((one) => one.classList.contains('stand__item--won'))).toEqual([true, false, false])
+  })
+
+  /* One member has won a place and the others hold theirs: the first is ranked and the second is not, so
+     it is the second that must have no ring, and the first, held and not won, none either. */
+  it('draws no ring round a first place that only holds it', () => {
+    renderWidget(
+      <TopTen competitors={competitors} results={[result('000002', 20)]} season={2027} today={THE_DAY_BEFORE} gender="M" />,
+    )
+
+    const items = within(lists().podium).getAllByRole('listitem')
+
+    // 000002 has the points and is first; the other two are held.
+    expect(within(at(items, 0)).getByRole('link', { name: '1. Ime 000002' })).toBeVisible()
+    expect(at(items, 0)).toHaveClass('stand__item--won')
+    expect(within(at(items, 1)).getByText('0,00 BTL poena')).toBeVisible()
+    expect(at(items, 1)).not.toHaveClass('stand__item--won')
+  })
+
+  it('lists the seven behind the podium as rows: number, name, category and points', () => {
+    renderWidget(
+      <TopTen competitors={ten} results={tenResults} season={2027} today={THE_DAY_BEFORE} gender="M" />,
+    )
+
+    const rows = within(lists().rows).getAllByRole('listitem')
+
+    expect(rows).toHaveLength(7)
+    expect(rows.map((one) => one.textContent)).toEqual([
+      '4.I0Ime 000004M 40-5470,00',
+      '5.I0Ime 000005M 40-5460,00',
+      '6.I0Ime 000006M 40-5450,00',
+      '7.I0Ime 000007M 40-5440,00',
+      '8.I0Ime 000008M 40-5430,00',
+      '9.I0Ime 000009M 40-5420,00',
+      '10.I0Ime 000010M 40-5410,00',
+    ])
+    // The name of the row is a link to the member, and so is the circle beside it.
+    expect(within(at(rows, 0)).getByRole('link', { name: 'Ime 000004' })).toHaveAttribute(
+      'href',
+      '/sr/takmicar/000004-ime-000004',
+    )
+    expect(lists().rows).toHaveAttribute('start', '4')
+  })
+
+  it('keeps the heading for a screen reader and does not draw it', () => {
+    renderWidget(
+      <TopTen competitors={ten} results={tenResults} season={2027} today={THE_DAY_BEFORE} gender="M" />,
+    )
+
+    expect(screen.getByRole('heading', { name: 'Top 10 muškarci' })).toHaveClass('visually-hidden')
+  })
+
+  /* „Kompletan poredak muškaraca →" and „žena →", to the same address the link „Cela tabela" went to. */
+  it('ends in a link to the whole standing of its own gender', () => {
+    renderWidget(
+      <TopTen competitors={ten} results={tenResults} season={2027} today={THE_DAY_BEFORE} gender="M" />,
+    )
+
+    expect(screen.getByRole('link', { name: 'Kompletan poredak muškaraca' })).toHaveAttribute(
+      'href',
+      '/sr/tabela?pol=m',
+    )
+  })
+
+  it('ends in the link of the women on a board of the women', () => {
+    renderWidget(<TopTen competitors={[]} results={[]} season={2027} today={THE_DAY_BEFORE} gender="F" />)
+
+    expect(screen.getByRole('link', { name: 'Kompletan poredak žena' })).toHaveAttribute(
+      'href',
+      '/sr/tabela?pol=z',
+    )
   })
 
   /* The ten places are the height of the widget, so the two boards standing side
@@ -216,12 +362,14 @@ describe('TopTen', () => {
       />,
     )
 
-    const block = screen.getByRole('list')
+    const { podium, rows } = lists()
 
-    /* Ten places in one list, the leader among them: a board headed "Top 10"
+    /* Ten places in two lists, the podium and the seven behind it: a board headed "Top 10"
        that reports nine to a screen reader is not the board it says it is. */
-    expect(within(block).getAllByRole('listitem', { hidden: true })).toHaveLength(10)
-    expect(within(block).getAllByRole('listitem')).toHaveLength(4)
+    expect(within(podium).getAllByRole('listitem', { hidden: true })).toHaveLength(3)
+    expect(within(rows).getAllByRole('listitem', { hidden: true })).toHaveLength(7)
+    expect(within(podium).getAllByRole('listitem')).toHaveLength(3)
+    expect(within(rows).getAllByRole('listitem')).toHaveLength(1)
     expect(screen.getAllByRole('link', { name: /^\d+\. Ime/ })).toHaveLength(4)
   })
 
@@ -320,8 +468,8 @@ describe('TopTen', () => {
       })
 
       expect(must(said.closest('li'), 'the place on the board')).toBeVisible()
-      /* **And out of the way of the eye**, which is the whole of what keeps this widget what the
-         owner asked for: „no names under the circles" (31.07.2026). The class is the only thing
+      /* **And out of the way of the eye**: the circle is the picture and the name beside it is drawn by
+         the podium itself, so the words of the link are only for a reader. The class is the only thing
          doing that, and `.top10__face` has neither a size nor an `overflow` (`pages/Home.css`), so
          without it the words drop below the circle and stretch the cell. Held the way the portal
          already holds this elsewhere (`pages/Home.test.tsx`, `components/Resource.test.tsx`). */
@@ -337,14 +485,16 @@ describe('TopTen', () => {
       const { container } = renderWidget(
         <TopTen competitors={competitors} results={[]} season={2027} today={THE_FIRST_DAY} gender="M" />,
       )
-      const block = screen.getByRole('list')
+      const { podium, rows } = lists()
 
       expect(screen.queryAllByRole('link', { name: /Ime/ })).toHaveLength(0)
       expect(container.querySelectorAll('.portrait:not(.portrait--empty)')).toHaveLength(0)
       /* The ten places are still drawn, so the two boards stay the height they are, and every
          one of them is out of the reading. */
-      expect(within(block).getAllByRole('listitem', { hidden: true })).toHaveLength(10)
-      expect(within(block).queryAllByRole('listitem')).toHaveLength(0)
+      expect(within(podium).getAllByRole('listitem', { hidden: true })).toHaveLength(3)
+      expect(within(rows).getAllByRole('listitem', { hidden: true })).toHaveLength(7)
+      expect(within(podium).queryAllByRole('listitem')).toHaveLength(0)
+      expect(within(rows).queryAllByRole('listitem')).toHaveLength(0)
     })
 
     it('shows the two who have scored and nobody behind them', () => {
@@ -357,13 +507,14 @@ describe('TopTen', () => {
           gender="M"
         />,
       )
-      const block = screen.getByRole('list')
+      const { podium, rows } = lists()
 
       expect(screen.getAllByRole('link', { name: /^\d+\. Ime/ })).toHaveLength(2)
       expect(screen.getByRole('link', { name: '1. Ime 000001' })).toBeVisible()
       expect(screen.getByRole('link', { name: '2. Ime 000004' })).toBeVisible()
-      expect(within(block).getAllByRole('listitem', { hidden: true })).toHaveLength(10)
-      expect(within(block).getAllByRole('listitem')).toHaveLength(2)
+      expect(within(podium).getAllByRole('listitem', { hidden: true })).toHaveLength(3)
+      expect(within(rows).getAllByRole('listitem', { hidden: true })).toHaveLength(7)
+      expect(within(podium).getAllByRole('listitem')).toHaveLength(2)
     })
 
     it('is empty on a later day as well', () => {
@@ -389,10 +540,12 @@ describe('TopTen', () => {
     expect(screen.queryByRole('link', { name: /Ime/ })).not.toBeInTheDocument()
     /* Ten empty places, and every one of them out of the reading: a board of ten
        circles with nobody in them is not ten facts. */
-    const block = screen.getByRole('list')
+    const { podium, rows } = lists()
 
-    expect(within(block).getAllByRole('listitem', { hidden: true })).toHaveLength(10)
-    expect(within(block).queryAllByRole('listitem')).toHaveLength(0)
+    expect(within(podium).getAllByRole('listitem', { hidden: true })).toHaveLength(3)
+    expect(within(rows).getAllByRole('listitem', { hidden: true })).toHaveLength(7)
+    expect(within(podium).queryAllByRole('listitem')).toHaveLength(0)
+    expect(within(rows).queryAllByRole('listitem')).toHaveLength(0)
   })
 })
 
@@ -448,6 +601,109 @@ describe('Counters', () => {
     // than merely late.
     expect(screen.getByText(/3 rezultata/)).toBeVisible()
     expect(screen.queryByText(/član/)).not.toBeInTheDocument()
+  })
+
+  /* The eighth tile, second after the members (owner, 20.11.2026): where they come from. */
+  it('counts the cities the members come from, second after the members, when it is given them', () => {
+    renderWidget(<Counters totals={totals} title="Sezona 2027." members={30} cities={11} countMs={0} />)
+
+    const tiles = within(screen.getByRole('region', { name: 'Sezona 2027.' })).getAllByText(/:/, {
+      selector: '.visually-hidden',
+    })
+
+    expect(tiles.map((one) => one.textContent)).toEqual([
+      'Članova lige: ',
+      'Gradova iz kojih dolaze članovi: ',
+      'Prijavljenih rezultata: ',
+      'Kilometara: ',
+      'Uspona: ',
+      'Spusta: ',
+      'Na stazi: ',
+      'BTL poeni: ',
+    ])
+    expect(screen.getByText(/^11 gradova$/)).toBeVisible()
+  })
+
+  it('declines the word for the cities by the number', () => {
+    const { rerender } = renderWidget(<Counters totals={totals} title="Sezona 2027." cities={1} countMs={0} />)
+
+    expect(screen.getByText(/^1 grad$/)).toBeVisible()
+
+    rerender(inAVisit(<Counters totals={totals} title="Sezona 2027." cities={3} countMs={0} />))
+    expect(screen.getByText(/^3 grada$/)).toBeVisible()
+  })
+
+  it('counts no cities where nobody hands them in', () => {
+    renderWidget(<Counters totals={totals} title="Sezona 2027." members={30} countMs={0} />)
+
+    expect(screen.queryByText(/grad/)).not.toBeInTheDocument()
+  })
+
+  /* A fault that was there: the figure of the results and the hours went out without the point for the
+     thousands, and every other tile had it. The word is still chosen by the number. */
+  it('writes every figure with the point for the thousands, and the word still goes by the number', () => {
+    renderWidget(
+      <Counters
+        totals={{ ...totals, races: 2356, seconds: 8872 * 3600 + 5 * 60 + 28 }}
+        title="Sezona 2027."
+        members={1234}
+        countMs={0}
+      />,
+    )
+
+    expect(screen.getByText(/^2\.356 rezultata$/)).toBeVisible()
+    expect(screen.getByText(/^8\.872 h 05' 28''$/)).toBeVisible()
+    expect(screen.getByText(/^1\.234 člana$/)).toBeVisible()
+  })
+
+  it('writes it with the comma in English', () => {
+    render(
+      <I18nProvider locale="en">
+        <MemoryRouter>
+          <Counters
+            totals={{ ...totals, races: 2356, seconds: 8872 * 3600 }}
+            title="Season 2027"
+            members={1234}
+            cities={3000}
+            countMs={0}
+          />
+        </MemoryRouter>
+      </I18nProvider>,
+    )
+
+    expect(screen.getByText(/^2,356 results$/)).toBeVisible()
+    expect(screen.getByText(/^8,872 h 00' 00''$/)).toBeVisible()
+    expect(screen.getByText(/^1,234 members$/)).toBeVisible()
+    expect(screen.getByText(/^3,000 cities$/)).toBeVisible()
+  })
+
+  /* „Na velikom prikazu ovde treba da ostane BTL poena" and „da piše XX.XXX p / pts (zaokruženo bez decimala)":
+     both shapes are in the markup and the stylesheet draws one of them by the width of the tile, so what is held
+     here is what each says and that a screen reader is given the whole name either way. */
+  it('has the points in two shapes: the whole sentence, and the rounded figure with a short unit', () => {
+    renderWidget(
+      <Counters totals={{ ...totals, points: 34921.69 }} title="Sezona 2027." countMs={0} />,
+    )
+
+    expect(screen.getByText('34.921,69 BTL poena')).toBeVisible()
+    // Rounded, not cut: 34921,69 is 34.922.
+    expect(screen.getByText('34.922 p')).toHaveAttribute('aria-hidden', 'true')
+    // And what is read out of the short one is the whole name, rounded the same.
+    expect(screen.getByText('34.922 BTL poena')).toHaveClass('visually-hidden')
+  })
+
+  it('writes the short unit in English as „pts"', () => {
+    render(
+      <I18nProvider locale="en">
+        <MemoryRouter>
+          <Counters totals={{ ...totals, points: 34921.69 }} title="Season 2027" countMs={0} />
+        </MemoryRouter>
+      </I18nProvider>,
+    )
+
+    expect(screen.getByText('34,921.69 BTL points')).toBeVisible()
+    expect(screen.getByText('34,922 pts')).toHaveAttribute('aria-hidden', 'true')
+    expect(screen.getByText('34,922 BTL points')).toHaveClass('visually-hidden')
   })
 
   it('gives the numbers straight away to anyone who asked for less motion', () => {
