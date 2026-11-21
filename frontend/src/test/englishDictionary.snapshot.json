@@ -976,7 +976,32 @@
     "noneOfThese": "There is no result in this competition in the division chosen.",
     "unknown": "unknown",
     "notWritten": "Not written yet.",
-    "name": "Competition"
+    "name": "Competition",
+    "eventCount": {
+      "one": "{number} event",
+      "few": "{number} events",
+      "other": "{number} events"
+    },
+    "entrantCount": {
+      "one": "{number} entrant",
+      "few": "{number} entrants",
+      "other": "{number} entrants"
+    },
+    "showcase": "Competitions in the {season} season",
+    "kicker": "Accompanying competition",
+    "table": "Competition table",
+    "months": "Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec",
+    "yearNext": {
+      "one": "{number} event through the year, the next on {next}",
+      "few": "{number} events through the year, the next on {next}",
+      "other": "{number} events through the year, the next on {next}"
+    },
+    "yearHeld": {
+      "one": "{number} event through the year, all of them held",
+      "few": "{number} events through the year, all of them held",
+      "other": "{number} events through the year, all of them held"
+    },
+    "openBelow": "Open below"
   },
   "pricing": {
     "rows": {

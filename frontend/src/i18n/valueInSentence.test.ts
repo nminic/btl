@@ -425,7 +425,17 @@ describe('a sentence with a value put into it', () => {
          and races, and inside the wait under it. Nominative, because the competition is what the
          box is about and nothing governs it: „Događaji i trke, RunTrace liga 2027". */
       'leagues.countingOf',
+      /* The counts on a card and in the pills of the sheet of a competition (owner, 21.11.2026,
+         proposal B): a number before its noun, whose form the number picks, „8 događaja". */
+      'leagues.entrantCount <- formatNumber',
+      'leagues.eventCount <- formatNumber',
       'leagues.season',
+      /* The name of the showcase, a bare year after „u sezoni": „Lige u sezoni 2027". */
+      'leagues.showcase',
+      /* The sentence a reader by ear is given for the line through the year: a count, and the day of
+         the next event in the shape every day of the portal is written, which nothing governs. */
+      'leagues.yearHeld',
+      'leagues.yearNext <- formatShortDate',
       'membership.active',
       /* The season on sale a member already holds, a bare year after „za" (PDL P8, 18.10.2026). */
       'membership.alreadyPaid',

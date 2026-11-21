@@ -840,11 +840,11 @@ describe('a competition made, changed and taken away', () => {
         await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
         await screen.findByRole('status', { name: 'Sačuvano' })
 
-        await router.navigate('/sr/lige?sezona=2027')
+        await router.navigate(`/sr/lige?sezona=2027&liga=${ITS_ADDRESS}`)
 
         const box = must(
           (await screen.findByRole('heading', { level: 2, name: new RegExp(ITS_NAME) })).closest(
-            'li',
+            'article',
           ),
           'the box of the competition just changed',
         )

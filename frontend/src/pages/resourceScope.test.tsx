@@ -20,10 +20,16 @@ import { SLOW } from '../test/slow'
 /** The two resources a screen may lose without the screen itself going. */
 const BOTH: [ResourceName][] = [['races'], ['events']]
 
-/** The one line of facts under the name of a competition, whole. The words and the number are two
- *  nodes, so a query for either says nothing about the other. */
+/** The one line of facts on the card of the first competition, whole. Since 21.11.2026 it reads
+ *  „2027 · 8 događaja · 3 učesnika": the season, the events and the people, with no label before a
+ *  number, so the three are told apart by their place in the line and not by a word. */
 const facts = () =>
   must(document.querySelector('.leagues__facts'), 'the line of facts').textContent ?? ''
+
+/** One of the three places of the line of facts: 1 is the events and 2 the people. A place that is
+ *  still on its way is empty, one that never comes says „nepoznato", and one that arrived has a
+ *  number and the word that fits it. */
+const placeInFacts = (place: 1 | 2) => facts().split(' · ')[place]?.trim() ?? 'no such place'
 
 /** Serves every resource off disk as usual, except the one named, which fails. */
 function breakResource(name: ResourceName) {
@@ -157,16 +163,16 @@ describe('a part of a screen waits without covering the page', () => {
       'nothing landed, so the assertions below are about the first render',
     ).not.toHaveLength(0)
 
-    expect(facts()).toContain('Učesnika:')
-    expect(facts(), 'the number arrived while the file was held').not.toMatch(/Učesnika: \d/)
+    expect(facts().split(' · '), 'the line of facts lost a place').toHaveLength(3)
+    expect(placeInFacts(2), 'the number arrived while the file was held').toBe('')
     /* **And the third state, which this case went without until 13.09.2026.** Without it the
        two early branches can be swapped: a member whose results file died would read
        „Učesnika:" forever, told to wait for something that will never come, while
        everybody else read „nepoznato" over a file that was simply on its way. The copy of
        this case below was given the assertion and the original was not, so the class was
        swept in one of its two homes. */
-    expect(facts(), 'a file still on its way was reported as one that will not come').not
-      .toContain('Učesnika: nepoznato')
+    expect(placeInFacts(2), 'a file still on its way was reported as one that will not come').not
+      .toBe('nepoznato')
   }, SLOW)
 
   it.each(BOTH)(
@@ -201,12 +207,12 @@ describe('a part of a screen waits without covering the page', () => {
       ).not.toHaveLength(0)
 
       expect(document.querySelector('.loader:not(.loader--inline)')).toBeNull()
-      expect(facts()).toContain('Događaja:')
-      expect(facts(), 'the number arrived while the file was held').not.toMatch(/Događaja: \d/)
+      expect(facts().split(' · '), 'the line of facts lost a place').toHaveLength(3)
+      expect(placeInFacts(1), 'the number arrived while the file was held').toBe('')
       expect(
-        facts(),
+        placeInFacts(1),
         'a file still on its way was reported as one that will not come',
-      ).not.toContain('Događaja: nepoznato')
+      ).not.toBe('nepoznato')
     },
     SLOW,
   )
@@ -244,7 +250,7 @@ describe('a part of a screen waits without covering the page', () => {
       ).not.toHaveLength(0)
 
       await waitFor(() => {
-        expect(facts()).toContain('Događaja: nepoznato')
+        expect(placeInFacts(1)).toBe('nepoznato')
       })
       await theFailureStaysInTheBoxes()
     },
@@ -320,7 +326,7 @@ describe('a part of a screen waits without covering the page', () => {
     /* Waited for: the word arrives when the request gives up, which is a moment after the screen
        is drawn out of the small file it does wait on. */
     await waitFor(() => {
-      expect(facts()).toContain('Učesnika: nepoznato')
+      expect(placeInFacts(2)).toBe('nepoznato')
     })
     /* And the screen is not replaced by an error: what failed is one number of one line. */
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
@@ -352,7 +358,7 @@ describe('a part of a screen waits without covering the page', () => {
        races file that failed would otherwise have every competition on the screen claiming it
        counts no days at all. */
     await waitFor(() => {
-      expect(facts()).toContain('Događaja: nepoznato')
+      expect(placeInFacts(1)).toBe('nepoznato')
     })
   }, SLOW)
 
