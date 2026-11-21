@@ -302,7 +302,9 @@ for (const at of WIDTHS.flatMap((one): At[] => [one, { ...one, theme: 'dark' }])
  * (owner, 20.11.2026: „Jaka tačka, nikad ispod teksta").
  *
  * <p>The route is sampled along its length every few units and each sample is placed on the screen through
- * the path's own matrix, so the drawing is read where Chrome puts it at this width, slice and all. A word
+ * the path's own matrix, so the drawing is read where Chrome puts it at this width, slice and all; the dot is
+ * read at each two per cent of its way from its own box, wherever Chrome draws it; the route is as wide as the
+ * ring of the dot is. A word
  * is every line box of every text node of the page outside the layer, read the way the browser lays it out
  * (`Range.getClientRects`). Words that stand on something opaque are not measured: a card, the header, the
  * footer and the menus are painted over the layer, so nothing is under them to read. What is left are the
@@ -316,43 +318,52 @@ for (const at of WIDTHS.flatMap((one): At[] => [one, { ...one, theme: 'dark' }])
 async function routeTouches(page: Page): Promise<{ words: number; points: number; touches: string[] }> {
   return page.evaluate(() => {
     const route = document.querySelector('.terrain--lane .terrain__route')
-    const dotRadius = 11 + 2
-
     if (!(route instanceof SVGGeometryElement)) {
       return { words: 0, points: 0, touches: ['no route'] }
     }
 
     const matrix = route.getScreenCTM()
     const length = route.getTotalLength()
-    const columns: number[] = []
+    const spans: { left: number; right: number }[] = []
+    const ring = document.querySelector('.race-page__dot-ring')
+    const dot = document.querySelector('.race-page__dot')
+
+    if (ring === null || !(dot instanceof SVGElement)) {
+      return { words: 0, points: 0, touches: ['no dot'] }
+    }
+
+    /* How far the dot reaches to each side is the box Chrome draws its ring in, not a number written here. */
+    const radius = ring.getBoundingClientRect().width / 2
+
+    if (!(radius > 0)) {
+      return { words: 0, points: 0, touches: ['the dot has no box'] }
+    }
 
     for (let at = 0; at <= length; at += 4) {
       const point = route.getPointAtLength(at)
 
-      columns.push(matrix === null ? Number.NaN : new DOMPoint(point.x, point.y).matrixTransform(matrix).x)
+      const x = matrix === null ? Number.NaN : new DOMPoint(point.x, point.y).matrixTransform(matrix).x
+
+      spans.push({ left: x - radius, right: x + radius })
     }
 
-    /* And the path the dot itself is sent along, which is its own data and not the route's, so a dot sent
-       somewhere the route does not go is seen as well. It is read from what Chrome computed for the dot. */
-    const dot = document.querySelector('.race-page__dot')
-    const travel = dot === null ? null : /path\("([^"]+)"\)/.exec(getComputedStyle(dot).offsetPath)?.[1]
+    /* And the dot itself, where Chrome DRAWS it: it is stopped at each two per cent of its way and the box of
+       the whole dot is read. Reading the path it is sent along would miss everything that moves the drawn dot
+       without touching the path (a centre on the circles, a translate on the group, an anchor); this does
+       not. The animation is taken off for the reading, which puts the dot where the style says. */
+    dot.style.animation = 'none'
 
-    if (travel === undefined || travel === null) {
-      return { words: 0, points: 0, touches: ['no path for the dot'] }
+    for (let percent = 0; percent <= 100; percent += 2) {
+      dot.style.offsetDistance = `${percent}%`
+
+      /* The box of the whole group, so a circle moved on its own is read as well as the group. */
+      const box = dot.getBoundingClientRect()
+
+      spans.push({ left: box.left, right: box.right })
     }
 
-    const own = document.createElementNS('http://www.w3.org/2000/svg', 'path')
-
-    own.setAttribute('d', travel)
-    route.parentElement?.append(own)
-
-    for (let at = 0; at <= own.getTotalLength(); at += 4) {
-      const point = own.getPointAtLength(at)
-
-      columns.push(matrix === null ? Number.NaN : new DOMPoint(point.x, point.y).matrixTransform(matrix).x)
-    }
-
-    own.remove()
+    dot.style.animation = ''
+    dot.style.offsetDistance = ''
 
     /* Nothing of this word is seen on the bare page: it stands on something painted over the layer, or it is
        taken out of sight (the visually hidden words of a screen, which are one pixel and cut). The colour is
@@ -394,10 +405,10 @@ async function routeTouches(page: Page): Promise<{ words: number; points: number
     }
 
     const touches = words
-      .filter((word) => columns.some((x) => x + dotRadius > word.left && x - dotRadius < word.right))
+      .filter((word) => spans.some((span) => span.right > word.left && span.left < word.right))
       .map((word) => `„${word.text.slice(0, 40)}" at ${Math.round(word.left)}-${Math.round(word.right)}`)
 
-    return { words: words.length, points: columns.length, touches }
+    return { words: words.length, points: spans.length, touches }
   })
 }
 
