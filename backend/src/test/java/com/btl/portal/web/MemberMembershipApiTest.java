@@ -102,9 +102,9 @@ class MemberMembershipApiTest {
 			+ " referral_code, referred_by, bio, profile_hidden, birthday_shown,"
 			+ " father_name, address, shirt_size, health_statement_at";
 
-	private static final String CANCELLED = "Stornirano je vaše članstvo";
+	private static final String CANCELLED = "Stornirano je tvoje članstvo";
 
-	private static final String CHANGED = "Promenjen je osnov vašeg članstva";
+	private static final String CHANGED = "Promenjen je osnov tvog članstva";
 
 	@Autowired
 	private MockMvc http;
@@ -407,7 +407,7 @@ class MemberMembershipApiTest {
 				+ " Mira Clanovic");
 		assertThat(messages()).containsExactly(member + " " + CANCELLED);
 		assertThat(db.sql("select body from message").query(String.class).single())
-				.isEqualTo("Za sezonu 2028 stornirano je vaše članstvo.\n\nZa sezonu 2028 više niste član lige.\n"
+				.isEqualTo("Za sezonu 2028 stornirano je tvoje članstvo.\n\nZa sezonu 2028 više nisi član lige.\n"
 						+ "\nBalkanska trkačka liga");
 
 		verifyNoInteractions(postman);
@@ -713,7 +713,7 @@ class MemberMembershipApiTest {
 				+ accountOf(OVER_THE_MEMBERS) + " Mira Clanovic");
 		assertThat(messages()).containsExactly(member + " " + CHANGED);
 		assertThat(db.sql("select body from message").query(String.class).single())
-				.contains("osnov vašeg članstva je sada: oslobođenje od članarine.");
+				.contains("osnov tvog članstva je sada: oslobođenje od članarine.");
 	}
 
 	@Test
@@ -822,7 +822,7 @@ class MemberMembershipApiTest {
 				+ accountOf(OVER_THE_MEMBERS) + " Mira Clanovic");
 		assertThat(messages()).containsExactly(member + " " + CHANGED);
 		assertThat(db.sql("select body from message").query(String.class).single())
-				.contains("osnov vašeg članstva je sada: uplata.");
+				.contains("osnov tvog članstva je sada: uplata.");
 	}
 
 	/** What the payments screen refuses about a payment, refused here in its words, with nothing moved. */
@@ -898,7 +898,7 @@ class MemberMembershipApiTest {
 	   AN EXEMPTION GRANTED ON A ROW THAT HOLDS NO SEASON ON SALE (20.10.2026)
 	   ------------------------------------------------------------------------------------ */
 
-	private static final String GRANTED = "Oslobođeni ste članarine";
+	private static final String GRANTED = "Oslobođen si članarine";
 
 	@Test
 	void aGrantIsRefusedToAVisitorAndToAnybodyWithoutTheRight() throws Exception {
@@ -946,9 +946,29 @@ class MemberMembershipApiTest {
 		assertThat(trail()).isEmpty();
 		assertThat(messages()).containsExactly(member + " " + GRANTED);
 		assertThat(db.sql("select body from message").query(String.class).single())
-				.isEqualTo("Za sezonu 2028 oslobođeni ste plaćanja članarine i član ste lige.\n\nBalkanska trkačka liga");
+				.isEqualTo("Za sezonu 2028 oslobođen si plaćanja članarine i član si lige.\n\nBalkanska trkačka liga");
 
 		verifyNoInteractions(postman);
+	}
+
+	/**
+	 * THE EXEMPTION IS TOLD BY THE SEX OF THE ONE WHO IS EXEMPTED (owner, 21.11.2026: „po polu primaoca"),
+	 * and not of the administrator who grants it: the fixture's member is a man, here she is a woman, and the
+	 * one who decides is the same account as in the case above.
+	 */
+	@Test
+	void aWomanGrantedTheExemptionIsToldInTheFeminine() throws Exception {
+		long woman = competitor("000014", "c4", referrer);
+
+		db.sql("update competitor set gender = 'F' where id = ?").param(woman).update();
+
+		assertThat(granted("000014", "feeExempt", OVER_THE_MEMBERS).getStatus()).isEqualTo(201);
+
+		assertThat(db.sql("select subject || '|' || body from message where to_id = ? and subject like 'Oslobo%'")
+				.param(woman).query(String.class).single())
+				.startsWith("Oslobođena si članarine|Za sezonu ")
+				.endsWith(" oslobođena si plaćanja članarine i član si lige.\n\nBalkanska trkačka liga")
+				.doesNotContain("Oslobođen si");
 	}
 
 	/** A lapsed member is made active again, and a referrer never rewarded for him is rewarded now. */

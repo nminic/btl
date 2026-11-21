@@ -359,7 +359,7 @@ class MemberPictureAndWordsApiTest {
 		assertThat(textsWaitingOf(aThird)).isOne();
 		assertThat(digestStandingOn(aThird)).isEqualTo(String.format("%064x", 2));
 
-		assertThat(messages()).containsExactly(him + ": Promenjena je vaša profilna slika");
+		assertThat(messages()).containsExactly(him + ": Promenjena je tvoja profilna slika");
 	}
 
 	/**
@@ -401,7 +401,7 @@ class MemberPictureAndWordsApiTest {
 	void aPictureForAMemberWithNoneAndNothingWaitingStandsToo() throws Exception {
 		assertThat(picture("000002", OVER_THE_MEMBERS).getStatus()).isEqualTo(200);
 		assertThat(count("select count(*) from competitor where id = ? and photo_id is not null", first)).isOne();
-		assertThat(messages()).containsExactly(first + ": Promenjena je vaša profilna slika");
+		assertThat(messages()).containsExactly(first + ": Promenjena je tvoja profilna slika");
 	}
 
 	@Test
@@ -446,7 +446,7 @@ class MemberPictureAndWordsApiTest {
 		assertThat(textsWaitingOf(him)).as("his waiting words are not the picture's business").isOne();
 		assertThat(picturesWaitingOf(aThird)).as("nobody else's waiting picture goes").isOne();
 		assertThat(digestStandingOn(aThird)).isEqualTo(String.format("%064x", 2));
-		assertThat(messages()).containsExactly(him + ": Uklonjena je vaša profilna slika");
+		assertThat(messages()).containsExactly(him + ": Uklonjena je tvoja profilna slika");
 	}
 
 	@Test
@@ -455,7 +455,7 @@ class MemberPictureAndWordsApiTest {
 
 		assertThat(takenDown("000002", OVER_THE_MEMBERS).getStatus()).isEqualTo(200);
 		assertThat(picturesWaitingOf(first)).isZero();
-		assertThat(messages()).containsExactly(first + ": Uklonjena je vaša profilna slika");
+		assertThat(messages()).containsExactly(first + ": Uklonjena je tvoja profilna slika");
 	}
 
 	@Test
@@ -482,14 +482,14 @@ class MemberPictureAndWordsApiTest {
 		assertThat(textsWaitingOf(aThird)).as("nobody else's waiting words go").isOne();
 		assertThat(bioOf(aThird)).isEqualTo("Tekst treceg.");
 
-		assertThat(messages()).containsExactly(him + ": Promenjen je vaš tekst o sebi");
+		assertThat(messages()).containsExactly(him + ": Promenjen je tvoj tekst o sebi");
 	}
 
 	@Test
 	void blankWordsAreARemoval() throws Exception {
 		assertThat(words(HIS_NUMBER, "{\"bio\":\"   \"}", OVER_THE_MEMBERS).getStatus()).isEqualTo(200);
 		assertThat(bioOf(him)).isEmpty();
-		assertThat(messages()).containsExactly(him + ": Promenjen je vaš tekst o sebi");
+		assertThat(messages()).containsExactly(him + ": Promenjen je tvoj tekst o sebi");
 	}
 
 	@Test
@@ -505,7 +505,7 @@ class MemberPictureAndWordsApiTest {
 
 		assertThat(words(HIS_NUMBER, "{\"bio\":\"Odobren tekst.\"}", OVER_THE_MEMBERS).getStatus()).isEqualTo(200);
 		assertThat(textsWaitingOf(him)).isZero();
-		assertThat(messages()).containsExactly(him + ": Promenjen je vaš tekst o sebi");
+		assertThat(messages()).containsExactly(him + ": Promenjen je tvoj tekst o sebi");
 	}
 
 	@Test

@@ -296,6 +296,7 @@ class TheLetterAfterTheAddressTest {
 				.contains("Račun: 105-0000000003284-71")
 				.contains("Svrha uplate: Članarina za 2027. godinu")
 				.contains("https://probni-portal.primer.rs/moja-clanarina");
+		assertThat(letter.text()).startsWith("Hvala što si potvrdio svoju adresu, dobrodošao u Balkansku");
 		assertThat(letter.fileName()).isEqualTo("uplatnica-2027.png");
 		assertThat(ReadingTheCode.in(letter.file()).bytes())
 				.isEqualTo(IpsSlip.payload(ON_SALE, fee).getBytes(StandardCharsets.UTF_8));
@@ -360,6 +361,7 @@ class TheLetterAfterTheAddressTest {
 				.doesNotContain("nalog")
 				.contains("Iznos (sa uračunatom taksom): " + com.btl.portal.domain.mail.WhatTheWelcomeSays
 						.amount(total, "EUR", com.btl.portal.domain.mail.MailLanguage.SERBIAN));
+		assertThat(letter.text()).startsWith("Hvala što si potvrdio svoju adresu, dobrodošao u Balkansku");
 		assertThat(letter.file()).isNull();
 	}
 
@@ -377,9 +379,33 @@ class TheLetterAfterTheAddressTest {
 
 		Opened letter = opened(theOnlyLetterTo("oslobodjen@primer.rs"));
 
-		assertThat(letter.subject()).isEqualTo("Član ste lige za 2027. godinu");
-		assertThat(letter.text()).contains("Članarina za 2027. godinu je izmirena");
+		assertThat(letter.subject()).isEqualTo("Član si lige za 2027. godinu");
+		assertThat(letter.text()).contains("Članarina za 2027. godinu je izmirena")
+				.startsWith("Hvala što si potvrdio svoju adresu, dobrodošao u Balkansku");
 		assertThat(letter.file()).isNull();
+	}
+
+	/**
+	 * THE SAME LETTER FOR A WOMAN (owner, 21.11.2026: „po polu primaoca"): the fixture's member is a man, and
+	 * here the row says a woman, so a letter that greets everybody in the masculine, or by the sex of the
+	 * moderator who records the book (a man in the fixture), fails on one of the two.
+	 */
+	@Test
+	void aWomanFreedOfTheSeasonOnSaleIsGreetedInTheFeminine() throws Exception {
+		long account = aMember("oslobodjena@primer.rs", A_TOWN_IN_SERBIA, "1990-01-01", true);
+
+		db.sql("update competitor set gender = 'F' where id = ?").param(memberOf(account)).update();
+		db.sql("insert into membership (competitor_id, season, basis, payment_id, decided_by,"
+						+ " decided_by_name, decided_at) values (?, ?, 'feeExempt', null,"
+						+ " (select id from account where email = ?), 'Probni Probic', ?)")
+				.params(memberOf(account), ON_SALE, THE_MODERATOR, Timestamp.from(NOW)).update();
+
+		confirm(aConfirmationLink(account));
+
+		Opened letter = opened(theOnlyLetterTo("oslobodjena@primer.rs"));
+
+		assertThat(letter.text()).startsWith("Hvala što si potvrdila svoju adresu, dobrodošla u Balkansku")
+				.doesNotContain("potvrdio").doesNotContain("dobrodošao");
 	}
 
 	/**
@@ -401,7 +427,7 @@ class TheLetterAfterTheAddressTest {
 
 		assertThat(letter.subject()).isEqualTo("Članarina za 2027. godinu je izmirena");
 		assertThat(letter.text())
-				.contains("pokrio je vaš balans iz programa preporuke")
+				.contains("pokrio je tvoj balans iz programa preporuke")
 				.contains("https://probni-portal.primer.rs/moja-clanarina")
 				.doesNotContain("je izmirena")
 				.doesNotContain("je plaćena");
@@ -423,7 +449,7 @@ class TheLetterAfterTheAddressTest {
 
 		Opened letter = opened(theOnlyLetterTo("platio@primer.rs"));
 
-		assertThat(letter.subject()).isEqualTo("Član ste lige za 2027. godinu");
+		assertThat(letter.subject()).isEqualTo("Član si lige za 2027. godinu");
 		assertThat(letter.text())
 				.contains("članarina za 2027. godinu je plaćena")
 				.doesNotContain("je izmirena")
@@ -599,5 +625,38 @@ class TheLetterAfterTheAddressTest {
 		assertThat(confirm(aConfirmationLink(account))).isEqualTo(204);
 		assertThat(db.sql("select email_confirmed_at is not null from account where id = ?")
 				.param(account).query(Boolean.class).single()).isTrue();
+	}
+
+	/**
+	 * THE LETTER WITH THE SLIP AND THE LETTER WITH PAYPAL GO BY THE SEX OF THE MEMBER TOO (owner, 21.11.2026:
+	 * „po polu primaoca"): the letters above are a man's, here the row says a woman, and each door that carries a
+	 * payment has to say it in the feminine, as the one without a payment does.
+	 */
+	@Test
+	void aWomanFromSerbiaIsSentTheSlipInTheFeminine() throws Exception {
+		Opened letter = aWomanConfirms("zena-iz-srbije@primer.rs", A_TOWN_IN_SERBIA);
+
+		assertThat(letter.subject()).isEqualTo("Uplatnica za članarinu za 2027. godinu");
+		assertThat(letter.text()).startsWith("Hvala što si potvrdila svoju adresu, dobrodošla u Balkansku")
+				.doesNotContain("potvrdio").doesNotContain("dobrodošao");
+	}
+
+	@Test
+	void aWomanFromAbroadIsSentPayPalInTheFeminine() throws Exception {
+		Opened letter = aWomanConfirms("zena-iz-inostranstva@primer.rs", A_TOWN_ABROAD);
+
+		assertThat(letter.subject()).isEqualTo("Podaci za uplatu članarine za 2027. godinu");
+		assertThat(letter.text()).startsWith("Hvala što si potvrdila svoju adresu, dobrodošla u Balkansku")
+				.doesNotContain("potvrdio").doesNotContain("dobrodošao");
+	}
+
+	private Opened aWomanConfirms(String email, String town) throws Exception {
+		long account = aMember(email, town, "1990-01-01", true);
+
+		db.sql("update competitor set gender = 'F' where id = ?").param(memberOf(account)).update();
+
+		assertThat(confirm(aConfirmationLink(account))).isEqualTo(204);
+
+		return opened(theOnlyLetterTo(email));
 	}
 }

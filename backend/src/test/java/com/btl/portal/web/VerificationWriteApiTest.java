@@ -1634,8 +1634,8 @@ class VerificationWriteApiTest {
 
 		assertThat(db.sql("select subject || ' | ' || body from message where to_id = ?")
 				.param(memberId(BOJAN)).query(String.class).list())
-				.containsExactly("Tim je prihvaćen | Vaš tim \"" + THE_TEAM
-						+ "\" je prihvaćen i od sada ga vodite.");
+				.containsExactly("Tim je prihvaćen | Tvoj tim \"" + THE_TEAM
+						+ "\" je prihvaćen i od sada ga vodiš.");
 	}
 
 	/**
@@ -2414,6 +2414,8 @@ class VerificationWriteApiTest {
 		assertThat(said).as("it names the run's own season instead of the one that closed")
 				.doesNotContain("za sezonu 2027");
 		assertThat(said).contains("prag od " + Category.FIRST_SEASON_POINTS + " bodova");
+		assertThat(said).as("the fixture's member is a woman and the line is hers")
+				.contains("jer si rezultatom sa trke").contains(" prešla prag od ").doesNotContain("prešao");
 	}
 
 	/**
@@ -4282,7 +4284,7 @@ class VerificationWriteApiTest {
 
 		MimeMessage toTheSerbian = theOneLetterTo(A_COMPETITOR);
 
-		assertThat(toTheSerbian.getSubject()).isEqualTo("Vaš rezultat je verifikovan");
+		assertThat(toTheSerbian.getSubject()).isEqualTo("Tvoj rezultat je verifikovan");
 		assertThat(toTheSerbian.getContent().toString()).contains("uspon ").doesNotContain("ascent");
 	}
 
@@ -4302,9 +4304,9 @@ class VerificationWriteApiTest {
 
 		MimeMessage toTheSerbian = theOneLetterTo(A_COMPETITOR);
 
-		assertThat(toTheSerbian.getSubject()).isEqualTo("Verifikovan vam je rezultat");
-		assertThat(toTheSerbian.getContent().toString()).startsWith("Verifikovan vam je rezultat:")
-			.contains("Rezultat je upisan u vašu istoriju. Tabela zamrznute sezone 2027 ostaje ista.")
+		assertThat(toTheSerbian.getSubject()).isEqualTo("Verifikovan ti je rezultat");
+		assertThat(toTheSerbian.getContent().toString()).startsWith("Verifikovan ti je rezultat:")
+			.contains("Rezultat je upisan u tvoju istoriju. Tabela zamrznute sezone 2027 ostaje ista.")
 			.doesNotContain("Od ovog trenutka rezultat ulazi");
 	}
 
@@ -4334,7 +4336,7 @@ class VerificationWriteApiTest {
 		clock.moveTo(Instant.parse("2028-01-01T14:59:59Z"));
 
 		assertThat(answer(RESULTS_MODERATOR, anasMarathon, true, null)).isEqualTo(200);
-		assertThat(theOneLetterTo(A_COMPETITOR).getSubject()).isEqualTo("Vaš rezultat je verifikovan");
+		assertThat(theOneLetterTo(A_COMPETITOR).getSubject()).isEqualTo("Tvoj rezultat je verifikovan");
 	}
 
 	@Test
@@ -4342,7 +4344,7 @@ class VerificationWriteApiTest {
 		clock.moveTo(Instant.parse("2028-01-01T15:00:00Z"));
 
 		assertThat(answer(RESULTS_MODERATOR, anasMarathon, true, null)).isEqualTo(200);
-		assertThat(theOneLetterTo(A_COMPETITOR).getSubject()).isEqualTo("Verifikovan vam je rezultat");
+		assertThat(theOneLetterTo(A_COMPETITOR).getSubject()).isEqualTo("Verifikovan ti je rezultat");
 	}
 
 	/**
@@ -4366,7 +4368,7 @@ class VerificationWriteApiTest {
 
 		MimeMessage letter = theOneLetterTo(A_COMPETITOR);
 
-		assertThat(letter.getSubject()).isEqualTo("Vaš rezultat je verifikovan");
+		assertThat(letter.getSubject()).isEqualTo("Tvoj rezultat je verifikovan");
 		assertThat(letter.getContent().toString()).doesNotContain("zamrznuta");
 	}
 
@@ -4396,7 +4398,7 @@ class VerificationWriteApiTest {
 
 		MimeMessage notFrozen = theOneLetterTo(A_COMPETITOR);
 
-		assertThat(notFrozen.getSubject()).isEqualTo("Vaš rezultat je verifikovan");
+		assertThat(notFrozen.getSubject()).isEqualTo("Tvoj rezultat je verifikovan");
 		assertThat(notFrozen.getContent().toString()).doesNotContain("zamrznuta");
 	}
 
@@ -4410,7 +4412,7 @@ class VerificationWriteApiTest {
 
 		MimeMessage frozen = theOneLetterTo(A_COMPETITOR);
 
-		assertThat(frozen.getSubject()).isEqualTo("Verifikovan vam je rezultat");
+		assertThat(frozen.getSubject()).isEqualTo("Verifikovan ti je rezultat");
 		assertThat(frozen.getContent().toString()).contains("Tabela zamrznute sezone 2027 ostaje ista")
 			.doesNotContain("2028");
 	}
@@ -5971,5 +5973,42 @@ class VerificationWriteApiTest {
 				.as("the scored run kept no points").isTrue();
 		assertThat(db.sql("select count(*) from result_submission where event_kind is not null and race_id"
 						+ " is not null").query(Integer.class).single()).as("a decided run kept a kind").isZero();
+	}
+
+	/**
+	 * THE SAME LINE FOR A MAN (owner, 21.11.2026: „po polu primaoca"): the member of the fixture is a woman,
+	 * and here the row says a man, so a line that says it in the feminine to everybody, or in the masculine,
+	 * fails on one of the two.
+	 */
+	@Test
+	void aManWhoseRunClosedTheNextSeasonIsToldInTheMasculine() throws Exception {
+		db.sql("update competitor set gender = 'M' where member_number = ?").param(ANA).update();
+
+		assertThat(answer(THE_SUPERADMIN, anasMarathon, true, null)).isEqualTo(200);
+
+		assertThat(bodyOfTheMessageTo(ANA)).contains("jer si rezultatom sa trke").contains(" prešao prag od ")
+				.doesNotContain("prešla");
+	}
+
+	/**
+	 * THE ONE A HOLD IS TAKEN FROM IS TOLD IN THE WORDS OF HIS SEX (owner, 21.11.2026: „po polu primaoca"),
+	 * the superadmin's being another's: a woman holding it reads „držala" and a man „držao".
+	 */
+	@Test
+	void theOneAHoldIsTakenFromIsToldByHisSex() throws Exception {
+		db.sql("update competitor set gender = 'F' where member_number = ?").param(DETE).update();
+
+		assertThat(take(PROFILES_MODERATOR, anasText)).isEqualTo(200);
+		assertThat(letGo(THE_SUPERADMIN, anasText)).isEqualTo(204);
+		assertThat(messagesTo(DETE)).containsExactly("Stavka ti je oduzeta | Superadmin je preuzeo stavku koju"
+				+ " si držala u redu za verifikaciju.");
+
+		db.sql("delete from message").update();
+		db.sql("update competitor set gender = 'M' where member_number = ?").param(DETE).update();
+
+		assertThat(take(PROFILES_MODERATOR, anasText)).isEqualTo(200);
+		assertThat(letGo(THE_SUPERADMIN, anasText)).isEqualTo(204);
+		assertThat(messagesTo(DETE)).containsExactly("Stavka ti je oduzeta | Superadmin je preuzeo stavku koju"
+				+ " si držao u redu za verifikaciju.");
 	}
 }

@@ -940,7 +940,7 @@ class CompetitorWriteApi {
 	 *              where the account does not live
 	 * @param link  the secret half, which exists here and in the letter and nowhere else
 	 */
-	private record ToSend(String to, String link) {
+	private record ToSend(String to, String link, long account) {
 	}
 
 	/**
@@ -987,7 +987,7 @@ class CompetitorWriteApi {
 
 		for (int row = 0; row < read.size(); row++) {
 			memberFor(read.get(row), made.get(row).id(), now, today, from);
-			invitations.add(new ToSend(made.get(row).email(), invitationFor(made.get(row).id())));
+			invitations.add(new ToSend(made.get(row).email(), invitationFor(made.get(row).id()), made.get(row).id()));
 		}
 
 		return new Written(ResponseEntity.status(HttpStatus.CREATED)
@@ -1119,7 +1119,7 @@ class CompetitorWriteApi {
 	private void send(ToSend invitation) {
 		try {
 			postman.send(WhatTheMessageSays.about(Message.INVITED_AS_A_MEMBER, portal,
-					invitation.link()), invitation.to());
+					invitation.link(), TheSexOfAMember.ofTheAccount(db, invitation.account()).orElseThrow()), invitation.to());
 		} catch (MailException theRelayDidNotTakeIt) {
 			LOG.warn("an invitation to somebody entered in a group did not go out; a password"
 					+ " reset request at the same address is what gets him another link",

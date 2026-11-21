@@ -5,6 +5,7 @@ import com.btl.portal.domain.event.EventAddress;
 import com.btl.portal.domain.event.WhatARaceCarries;
 import com.btl.portal.domain.event.WhatARaceCarries.Figures;
 import com.btl.portal.domain.event.WhatAnEventCarries;
+import com.btl.portal.domain.mail.Gender;
 import com.btl.portal.domain.mail.WhatAResultChangeSays;
 import com.btl.portal.domain.mail.WhatAResultChangeSays.Run;
 import com.btl.portal.domain.scoring.BtlScoreCalculator;
@@ -772,10 +773,10 @@ class RaceWriteApi {
 	 * here is my proposal and awaits his word.
 	 */
 	private void tellHimHisRunWasCountedAgain(long member, Run was, Run is, boolean inAFrozenSeason) {
-		tell(member, "Vaš rezultat je preračunat",
+		tell(member, "Tvoj rezultat je preračunat",
 				"Ispravljene su mere trke " + is.raceName() + " od "
 						+ WhatAResultChangeSays.asADay(is.day())
-						+ ", pa je vaš rezultat sa nje ponovo bodovan.\n\nStara vrednost:\n"
+						+ ", pa je tvoj rezultat sa nje ponovo bodovan.\n\nStara vrednost:\n"
 						+ WhatAResultChangeSays.inWords(was) + "\n\nNova vrednost:\n"
 						+ WhatAResultChangeSays.inWords(is) + (inAFrozenSeason
 								? "\n\nTabela zamrznute sezone " + is.day().getYear() + " ostaje ista."
@@ -793,13 +794,16 @@ class RaceWriteApi {
 	 * may have more than one run at it; each of them has its own line above.
 	 */
 	private void tellHimHisCategoryMoved(long member, int season, boolean open, Checked race) {
-		tell(member, open ? "Početnička kategorija vam je ponovo otvorena"
-						: "Početnička kategorija vam je zatvorena",
+		boolean woman = TheSexOfAMember.of(db, member) == Gender.WOMAN;
+
+		tell(member, open ? "Početnička kategorija ti je ponovo otvorena"
+						: "Početnička kategorija ti je zatvorena",
 				"Ispravljene su mere trke " + race.name() + " od "
 						+ WhatAResultChangeSays.asADay(race.date())
-						+ ", pa su vaši bodovi sa nje preračunati. Time ste u zvaničnoj sezoni "
-						+ (open ? "pali ispod praga od " : "prešli prag od ")
-						+ Category.FIRST_SEASON_POINTS + " bodova, pa vam je početnička kategorija "
+						+ ", pa su tvoji bodovi sa nje preračunati. Time si u zvaničnoj sezoni "
+						+ (open ? (woman ? "pala ispod praga od " : "pao ispod praga od ")
+								: (woman ? "prešla prag od " : "prešao prag od "))
+						+ Category.FIRST_SEASON_POINTS + " bodova, pa ti je početnička kategorija "
 						+ (open ? "ponovo otvorena" : "zatvorena") + " za sezonu " + season + ".");
 	}
 

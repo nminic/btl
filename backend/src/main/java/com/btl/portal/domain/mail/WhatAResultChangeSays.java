@@ -108,6 +108,13 @@ public final class WhatAResultChangeSays {
 	 */
 	private static final String ENGLISH_WORDS = "notices/results-en";
 
+	/**
+	 * THE WORDS A WOMAN READS, only where they differ (owner, 21.11.2026: „po polu primaoca"). A
+	 * dictionary of its own, with the keys of {@link #WORDS} it changes and none other, because the
+	 * floor over {@link #WORDS} demands exactly the keys of {@link Told}.
+	 */
+	private static final String WORDS_FOR_A_WOMAN = "notices/results-female";
+
 	/** {@code Locale.ROOT}: the language is chosen by naming its file, and
 	 *  {@link WhatTheMessageSays} carries the reason at length and this does not repeat it. */
 	private static final Locale ONE_SET_OF_WORDS = Locale.ROOT;
@@ -301,11 +308,12 @@ public final class WhatAResultChangeSays {
 	 * odobren". So the mandatory mail „unet rezultat" is no longer these words but
 	 * {@link #approved}, sent when the run counts.
 	 */
-	public static Said entered(Run sent, MailLanguage in) {
+	public static Said entered(Run sent, MailLanguage in, Gender reader) {
 		Objects.requireNonNull(sent, "sent");
+		Objects.requireNonNull(reader, "reader");
 
-		return said(sent.scored() ? Told.A_RESULT_WAS_ENTERED : Told.A_RESULT_WAS_ENTERED_UNSCORED, in,
-				inWords(sent, in));
+		return saidTo(sent.scored() ? Told.A_RESULT_WAS_ENTERED : Told.A_RESULT_WAS_ENTERED_UNSCORED, in,
+				reader, inWords(sent, in));
 	}
 
 	/**
@@ -314,14 +322,15 @@ public final class WhatAResultChangeSays {
 	 * <p>The old one first and the new one after it, which is the order the decision is
 	 * about: what the member has to be able to prove years later is what the figures WERE.
 	 */
-	public static Said changed(Run before, Run after, MailLanguage in) {
+	public static Said changed(Run before, Run after, MailLanguage in, Gender reader) {
 		Objects.requireNonNull(before, "before");
 		Objects.requireNonNull(after, "after");
+		Objects.requireNonNull(reader, "reader");
 
 		/* By the run as it will stand, which is at the same race as before: a correction does not move a
 		   run to another race („Menja se sve osim trke"), so the two are scored alike. */
-		return said(after.scored() ? Told.A_RESULT_WAS_CHANGED : Told.A_RESULT_WAS_CHANGED_UNSCORED, in,
-				inWords(before, in), inWords(after, in));
+		return saidTo(after.scored() ? Told.A_RESULT_WAS_CHANGED : Told.A_RESULT_WAS_CHANGED_UNSCORED, in,
+				reader, inWords(before, in), inWords(after, in));
 	}
 
 	/** A RESULT HAS BEEN DELETED, and what it said is the whole of the message. */
@@ -393,13 +402,32 @@ public final class WhatAResultChangeSays {
 	/** The words of one occasion, filled in. Package visible so the floor over the
 	 *  dictionary can ask for every occasion rather than for the three somebody remembers. */
 	static Said said(Told told, MailLanguage in, Object... values) {
+		return saidTo(told, in, null, values);
+	}
+
+	/**
+	 * The words of one occasion for one reader. A null reader is asked for only by the occasions
+	 * that have no feminine words, and an occasion that has them refuses it.
+	 */
+	static Said saidTo(Told told, MailLanguage in, Gender reader, Object... values) {
 		Objects.requireNonNull(in, "in");
 
 		ResourceBundle words = words(in);
+		ResourceBundle woman = wordsForAWoman(in);
+		String subjectKey = told.key() + ".subject";
+		String bodyKey = told.key() + ".body";
 
-		return new Said(words.getString(told.key() + ".subject"),
-				new MessageFormat(words.getString(told.key() + ".body"), ONE_SET_OF_WORDS)
-						.format(values));
+		String subject = reader == null ? Gender.wordsOfNoOne(words, woman, subjectKey)
+				: reader.words(words, woman, subjectKey);
+		String body = reader == null ? Gender.wordsOfNoOne(words, woman, bodyKey)
+				: reader.words(words, woman, bodyKey);
+
+		return new Said(subject, new MessageFormat(body, ONE_SET_OF_WORDS).format(values));
+	}
+
+	/** The words a woman reads where they differ; none for English, which has no participle to agree. */
+	static ResourceBundle wordsForAWoman(MailLanguage in) {
+		return in == MailLanguage.ENGLISH ? null : ResourceBundle.getBundle(WORDS_FOR_A_WOMAN, ONE_SET_OF_WORDS);
 	}
 
 	/** The dictionary of one language, which the floor over the dictionaries reads too. */

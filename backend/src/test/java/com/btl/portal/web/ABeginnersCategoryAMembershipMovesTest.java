@@ -103,14 +103,14 @@ class ABeginnersCategoryAMembershipMovesTest {
 
 	private static final String THE_LEAGUE = "Balkanska trkačka liga";
 
-	private static final String CLOSED = "Početnička kategorija vam je zatvorena";
+	private static final String CLOSED = "Početnička kategorija ti je zatvorena";
 
-	private static final String REOPENED = "Početnička kategorija vam je ponovo otvorena";
+	private static final String REOPENED = "Početnička kategorija ti je ponovo otvorena";
 
-	private static final String CLOSED_2027 = "Početnička kategorija vam je zatvorena za sezonu 2028,"
-			+ " jer ste u sezoni 2027 prešli prag od 12 bodova.\n\nBalkanska trkačka liga";
+	private static final String CLOSED_2027 = "Početnička kategorija ti je zatvorena za sezonu 2028,"
+			+ " jer si u sezoni 2027 prešao prag od 12 bodova.\n\nBalkanska trkačka liga";
 
-	private static final String REOPENED_2027 = "Početnička kategorija vam je ponovo otvorena za sezonu"
+	private static final String REOPENED_2027 = "Početnička kategorija ti je ponovo otvorena za sezonu"
 			+ " 2028, jer je članstvo za sezonu 2027 poništeno.\n\nBalkanska trkačka liga";
 
 	private static final String A_TOWN_ABROAD = "(select id from place where rank = 1)";
@@ -312,7 +312,7 @@ class ABeginnersCategoryAMembershipMovesTest {
 		assertThat(written(Road.FREE_OF_THE_FEE, CLOSED_BEFORE).getStatus()).isEqualTo(201);
 
 		assertThat(linesTo(CLOSED_BY_2028)).containsExactly(CLOSED + "|"
-				+ "Početnička kategorija vam je zatvorena za sezonu 2029, jer ste u sezoni 2028 prešli prag od"
+				+ "Početnička kategorija ti je zatvorena za sezonu 2029, jer si u sezoni 2028 prešao prag od"
 				+ " 12 bodova.\n\nBalkanska trkačka liga");
 		assertThat(linesTo(CLOSED_BEFORE)).isEmpty();
 	}
@@ -587,5 +587,22 @@ class ABeginnersCategoryAMembershipMovesTest {
 	private List<Integer> seasonsOf(String number) {
 		return db.sql("select season from membership where competitor_id = ? order by season")
 				.param(idOf(number)).query(Integer.class).list();
+	}
+
+	/**
+	 * THE SAME LINE FOR A WOMAN (owner, 21.11.2026: „po polu primaoca"): the member of the case above is a man
+	 * and here the row says a woman, so a line that says „prešao" to everybody, or reads the sex of anybody
+	 * but the one it is addressed to, fails on one of the two.
+	 */
+	@Test
+	void aWomanWhoseSeasonClosedTheNextOneIsToldInTheFeminine() throws Exception {
+		clock.moveTo(SEPTEMBER_2028);
+		db.sql("update competitor set gender = 'F' where member_number = ?").param(CLOSED_BY_2028).update();
+
+		assertThat(written(Road.FREE_OF_THE_FEE, CLOSED_BY_2028).getStatus()).isEqualTo(201);
+
+		assertThat(linesTo(CLOSED_BY_2028)).containsExactly(CLOSED + "|"
+				+ "Početnička kategorija ti je zatvorena za sezonu 2029, jer si u sezoni 2028 prešla prag od"
+				+ " 12 bodova.\n\nBalkanska trkačka liga");
 	}
 }

@@ -874,8 +874,8 @@ class PairWriteApi {
 	 * @param season the season the pair held for
 	 */
 	static String theBrokenPairByDeletionReads(String gone, int season) {
-		return "Vaš trkački par za sezonu " + season + " je raskinut, jer je nalog "
-				+ (MAN.equals(gone) ? "vašeg partnera" : "vaše partnerke") + " obrisan.";
+		return "Tvoj trkački par za sezonu " + season + " je raskinut, jer je nalog "
+				+ (MAN.equals(gone) ? "tvog partnera" : "tvoje partnerke") + " obrisan.";
 	}
 
 	/**

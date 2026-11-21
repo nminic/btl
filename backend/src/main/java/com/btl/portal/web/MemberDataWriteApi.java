@@ -1,6 +1,7 @@
 package com.btl.portal.web;
 
 import com.btl.portal.domain.account.WhatAnAddressLooksLike;
+import com.btl.portal.domain.mail.Gender;
 import com.btl.portal.domain.mail.MailLanguage;
 import com.btl.portal.domain.mail.WhatTheMessageSays;
 import com.btl.portal.domain.mail.WhatTheMessageSays.Message;
@@ -348,9 +349,11 @@ class MemberDataWriteApi {
 		try {
 			/* THE INVITATION IS ALWAYS SERBIAN and has no language to be given (owner, 10.10.2026,
 			   Q4, `Message#followsTheReader`); the confirmation follows its reader. */
+			Gender sex = TheSexOfAMember.ofTheAccount(db, made.account()).orElseThrow();
+
 			postman.send(made.message().saysWhenItEnds()
-					? WhatTheMessageSays.about(made.message(), made.language(), portal, made.link(), made.endsAt())
-					: WhatTheMessageSays.about(made.message(), portal, made.link()), made.address());
+					? WhatTheMessageSays.about(made.message(), made.language(), portal, made.link(), made.endsAt(), sex)
+					: WhatTheMessageSays.about(made.message(), portal, made.link(), sex), made.address());
 		} catch (MailException theRelayDidNotTakeIt) {
 			LOG.warn("a link for account {} after the administration corrected its address did not go out;"
 					+ " the token is written and asking again is what gets him out of it",

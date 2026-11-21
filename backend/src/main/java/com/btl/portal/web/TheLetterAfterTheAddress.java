@@ -1,6 +1,7 @@
 package com.btl.portal.web;
 
 import com.btl.portal.domain.balance.Balance;
+import com.btl.portal.domain.mail.Gender;
 import com.btl.portal.domain.mail.MailLanguage;
 import com.btl.portal.domain.mail.WhatTheMessageSays.Portal;
 import com.btl.portal.domain.mail.WhatTheMessageSays.Said;
@@ -82,7 +83,7 @@ class TheLetterAfterTheAddress {
 	}
 
 	/** The account, as much of it as the letter needs. */
-	private record Reader(String address, MailLanguage language, Long member) {
+	private record Reader(String address, MailLanguage language, Long member, Gender gender) {
 	}
 
 	/**
@@ -110,10 +111,11 @@ class TheLetterAfterTheAddress {
 	}
 
 	private Written written(long account) {
-		Reader reader = db.sql("select email, mail_language, competitor_id from account where id = ?")
+		Reader reader = db.sql("select a.email, a.mail_language, a.competitor_id, c.gender from account a"
+				+ " left join competitor c on c.id = a.competitor_id where a.id = ?")
 				.param(account)
 				.query((row, i) -> new Reader(row.getString(1), MailLanguage.ofTheColumn(row.getString(2)),
-						row.getObject(3, Long.class)))
+						row.getObject(3, Long.class), row.getString(4) == null ? null : Gender.ofTheColumn(row.getString(4))))
 				.single();
 
 		/* AN ACCOUNT THAT NAMES NO MEMBER HAS NO MEMBERSHIP TO BE TOLD ABOUT: a moderator who does
@@ -145,7 +147,7 @@ class TheLetterAfterTheAddress {
 			String payload = IpsSlip.payload(owed.season(), slip.toTransfer().amount());
 
 			return new Written(reader.address(),
-					WhatTheWelcomeSays.withASlip(in, owed.season(), IpsSlip.recipientAsWritten(),
+					WhatTheWelcomeSays.withASlip(in, reader.gender(), owed.season(), IpsSlip.recipientAsWritten(),
 							IpsSlip.accountAsWritten(), amount, purpose, portal),
 					new Postman.Attachment("uplatnica-" + owed.season() + ".png", "image/png",
 							() -> IpsPicture.png(payload,
@@ -159,10 +161,10 @@ class TheLetterAfterTheAddress {
 					slip.toTransfer().currency().name(), in);
 
 			return new Written(reader.address(), WhatTheWelcomeSays.withPayPal(in,
-					owed.season(), IpsSlip.PAYPAL_ADDRESS, amount, IpsSlip.RECIPIENT_NAME, portal), null);
+					reader.gender(), owed.season(), IpsSlip.PAYPAL_ADDRESS, amount, IpsSlip.RECIPIENT_NAME, portal), null);
 		}
 
 		return new Written(reader.address(),
-				WhatTheWelcomeSays.about(letter, in, owed.season(), portal), null);
+				WhatTheWelcomeSays.about(letter, in, owed.season(), portal, reader.gender()), null);
 	}
 }

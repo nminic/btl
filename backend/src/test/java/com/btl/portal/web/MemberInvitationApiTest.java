@@ -210,6 +210,35 @@ class MemberInvitationApiTest {
 		assertThat(linksOf("password_reset_token", invited)).isEqualTo(2);
 	}
 
+	/**
+	 * THE INVITATION IS WRITTEN BY THE SEX OF THE ONE INVITED (owner, 21.11.2026: „po polu primaoca"), and
+	 * not of the administrator who presses the button: the member of the fixture is a man, here the row says
+	 * a woman, so an invitation that is always the masculine, or always the feminine, fails on one of the two.
+	 */
+	@Test
+	void aWomanIsInvitedInTheFeminine() throws Exception {
+		db.sql("update competitor set gender = 'F' where member_number = '000005'").update();
+
+		assertThat(invite("000005", THE_SUPERADMIN).getStatus()).isEqualTo(200);
+
+		ArgumentCaptor<Said> letter = ArgumentCaptor.forClass(Said.class);
+
+		verify(postman, times(1)).send(letter.capture(), org.mockito.ArgumentMatchers.anyString());
+		assertThat(letter.getValue().subject()).isEqualTo("Upisana si u Balkansku trkačku ligu");
+		assertThat(letter.getValue().body()).contains("koju si potpisala.").contains("postavi je sama:");
+	}
+
+	@Test
+	void aManIsInvitedInTheMasculine() throws Exception {
+		assertThat(invite("000005", THE_SUPERADMIN).getStatus()).isEqualTo(200);
+
+		ArgumentCaptor<Said> letter = ArgumentCaptor.forClass(Said.class);
+
+		verify(postman, times(1)).send(letter.capture(), org.mockito.ArgumentMatchers.anyString());
+		assertThat(letter.getValue().subject()).isEqualTo("Upisan si u Balkansku trkačku ligu");
+		assertThat(letter.getValue().body()).contains("koju si potpisao.").contains("postavi je sam:");
+	}
+
 	@Test
 	void theInvitationGoesToHimWithTheOnlyLinkHeHasAndItLastsSevenDays() throws Exception {
 		for (String asking : List.of(THE_SUPERADMIN, OVER_THE_MEMBERS)) {
@@ -228,7 +257,8 @@ class MemberInvitationApiTest {
 		assertThat(to.getAllValues()).containsExactly(HIS_ADDRESS, HIS_ADDRESS);
 
 		/* THE INVITATION AS IT STANDS, its words unchanged (owner, 25.10.2026). */
-		Said asItStands = WhatTheMessageSays.about(Message.INVITED_AS_A_MEMBER, new Portal(portalAddress), "SECRET");
+		Said asItStands = WhatTheMessageSays.about(Message.INVITED_AS_A_MEMBER, new Portal(portalAddress), "SECRET",
+				com.btl.portal.domain.mail.Gender.MAN);
 		Said sent = letter.getAllValues().get(1);
 
 		assertThat(sent.subject()).isEqualTo(asItStands.subject());

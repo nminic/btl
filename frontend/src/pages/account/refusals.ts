@@ -67,6 +67,31 @@ export const WHEN_REGISTERING: Record<string, string> = {
   theFormIsNotComplete: 'registration.formIsNotComplete',
   thePasswordHasLeaked: 'registration.passwordHasLeaked',
   theAddressIsTaken: 'registration.addressIsTaken',
+  /* The fourth since 21.11.2026: five attempts an hour from one network, every attempt counted,
+     answered 429 (owner, ADL, „Ograničenje broja pokušaja"). */
+  tooManyAttempts: 'server.tooManyAttempts',
+}
+
+/**
+ * `POST /api/email-confirmation/resend`, which names one, and only since 21.11.2026.
+ *
+ * <p>Every other answer of that route is 204, on purpose: an address nobody holds, one already
+ * confirmed and one waiting on exactly this letter are told the same thing. The one reason is three
+ * letters for one address within the hour (owner, 21.11.2026), and it too is the same for all three,
+ * because the server counts the address as typed before it looks it up. It lived beside the screen,
+ * empty, until it had a name in it; here the guard in `refusals.test.ts` reads it.
+ */
+export const WHEN_ASKING_FOR_THE_LINK_AGAIN: Record<string, string> = {
+  tooManyAttempts: 'server.tooManyAttempts',
+}
+
+/**
+ * `POST /api/password-reset/request`, which names one, the same one and for the same reason as the
+ * route above: three letters with a new password's link for one address within the hour (owner,
+ * 21.11.2026), refused alike whether the address belongs to anybody or not.
+ */
+export const WHEN_ASKING_FOR_A_NEW_PASSWORD: Record<string, string> = {
+  tooManyAttempts: 'server.tooManyAttempts',
 }
 
 /**

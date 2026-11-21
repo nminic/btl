@@ -158,10 +158,10 @@ class WhatAResultChangeSaysTest {
 			String other = WhatAResultChangeSays.inWords(ANOTHER_RUN, in);
 			boolean serbian = in == MailLanguage.SERBIAN;
 
-			assertThat(WhatAResultChangeSays.entered(A_RUN, in).body())
+			assertThat(WhatAResultChangeSays.entered(A_RUN, in, Gender.MAN).body())
 					.as("the message about a result that was sent, in %s", in)
 					.isEqualTo(lines(
-							serbian ? "Primili smo rezultat koji ste poslali:"
+							serbian ? "Primili smo rezultat koji si poslao:"
 									: "We have received the result you sent:",
 							"",
 							run,
@@ -171,10 +171,10 @@ class WhatAResultChangeSaysTest {
 							"",
 							"Balkanska trkačka liga"));
 
-			assertThat(WhatAResultChangeSays.changed(A_RUN, ANOTHER_RUN, in).body())
+			assertThat(WhatAResultChangeSays.changed(A_RUN, ANOTHER_RUN, in, Gender.MAN).body())
 					.as("the message about a change, in %s", in)
 					.isEqualTo(lines(
-							serbian ? "Zatražili ste izmenu svog rezultata."
+							serbian ? "Zatražio si izmenu svog rezultata."
 									: "You have asked for a change to your result.",
 							"",
 							serbian ? "Stara vrednost:" : "Old value:",
@@ -191,13 +191,13 @@ class WhatAResultChangeSaysTest {
 			assertThat(WhatAResultChangeSays.approved(A_RUN, in).body())
 					.as("the message about an approval, in %s", in)
 					.isEqualTo(serbian
-							? lines("Vaš rezultat je verifikovan:", "", run, "", "Balkanska trkačka liga")
+							? lines("Tvoj rezultat je verifikovan:", "", run, "", "Balkanska trkačka liga")
 							: lines("Your result has been verified:", "", run, "", "Balkanska trkačka liga"));
 
 			assertThat(WhatAResultChangeSays.deleted(A_RUN, in).body())
 					.as("the message about a deletion, in %s", in)
 					.isEqualTo(serbian
-							? lines("Sa portala je obrisan vaš rezultat:", "", run, "", "Balkanska trkačka liga")
+							? lines("Sa portala je obrisan tvoj rezultat:", "", run, "", "Balkanska trkačka liga")
 							: lines("Your result has been deleted from the portal:", "", run, "", "Balkanska trkačka liga"));
 		}
 	}
@@ -220,17 +220,17 @@ class WhatAResultChangeSaysTest {
 
 			Said before = WhatAResultChangeSays.enteredBeforeTheLeague(A_RUN, in);
 
-			assertThat(before.subject()).isEqualTo(serbian ? "Unet vam je rezultat"
+			assertThat(before.subject()).isEqualTo(serbian ? "Unet ti je rezultat"
 					: "A result has been entered for you");
 			assertThat(before.body())
 					.as("the message about a run before the first season, in %s", in)
 					.isEqualTo(lines(
-							serbian ? "Liga vam je unela rezultat:" : "The league has entered a result for you:",
+							serbian ? "Liga ti je unela rezultat:" : "The league has entered a result for you:",
 							"",
 							run,
 							"",
 							serbian ? "Trka je održana pre prve zvanične sezone lige (2027). Rezultat je upisan"
-									+ " u vašu istoriju."
+									+ " u tvoju istoriju."
 									: "The race was run before the first official season of the league (2027)."
 									+ " The result is entered in your history.",
 							"",
@@ -238,12 +238,12 @@ class WhatAResultChangeSaysTest {
 
 			Said changed = WhatAResultChangeSays.changedByTheLeague(A_RUN, ANOTHER_RUN, in);
 
-			assertThat(changed.subject()).isEqualTo(serbian ? "Vaš rezultat je izmenjen"
+			assertThat(changed.subject()).isEqualTo(serbian ? "Tvoj rezultat je izmenjen"
 					: "Your result has been changed");
 			assertThat(changed.body())
 					.as("the message about a change the league made, in %s", in)
 					.isEqualTo(lines(
-							serbian ? "Liga je izmenila vaš rezultat." : "The league has changed your result.",
+							serbian ? "Liga je izmenila tvoj rezultat." : "The league has changed your result.",
 							"",
 							serbian ? "Stara vrednost:" : "Old value:",
 							run,
@@ -274,28 +274,28 @@ class WhatAResultChangeSaysTest {
 			String run = WhatAResultChangeSays.inWords(A_RUN, in);
 			boolean serbian = in == MailLanguage.SERBIAN;
 			String sentence = serbian
-					? "Rezultat je upisan u vašu istoriju. Tabela zamrznute sezone 2027 ostaje ista."
+					? "Rezultat je upisan u tvoju istoriju. Tabela zamrznute sezone 2027 ostaje ista."
 					: "The result is entered in your history. The table of the frozen season 2027 stays"
 					+ " the same.";
 
 			Said entered = WhatAResultChangeSays.enteredInAFrozenSeason(A_RUN, in);
 
-			assertThat(entered.subject()).isEqualTo(serbian ? "Unet vam je rezultat"
+			assertThat(entered.subject()).isEqualTo(serbian ? "Unet ti je rezultat"
 					: "A result has been entered for you");
 			assertThat(entered.body())
 					.as("the message about a run entered in a frozen season, in %s", in)
 					.isEqualTo(lines(
-							serbian ? "Liga vam je unela rezultat:" : "The league has entered a result for you:",
+							serbian ? "Liga ti je unela rezultat:" : "The league has entered a result for you:",
 							"", run, "", sentence, "", "Balkanska trkačka liga"));
 
 			Said approved = WhatAResultChangeSays.approvedInAFrozenSeason(A_RUN, in);
 
-			assertThat(approved.subject()).isEqualTo(serbian ? "Verifikovan vam je rezultat"
+			assertThat(approved.subject()).isEqualTo(serbian ? "Verifikovan ti je rezultat"
 					: "A result has been verified for you");
 			assertThat(approved.body())
 					.as("the message about a run approved in a frozen season, in %s", in)
 					.isEqualTo(lines(
-							serbian ? "Verifikovan vam je rezultat:"
+							serbian ? "Verifikovan ti je rezultat:"
 									: "A result has been verified for you:",
 							"", run, "", sentence, "", "Balkanska trkačka liga"));
 		}
@@ -366,7 +366,7 @@ class WhatAResultChangeSaysTest {
 	@Test
 	void theMessageAboutAChangeCarriesTheOldRunBeforeTheNewOne() {
 		for (MailLanguage in : MailLanguage.values()) {
-			String body = WhatAResultChangeSays.changed(A_RUN, ANOTHER_RUN, in).body();
+			String body = WhatAResultChangeSays.changed(A_RUN, ANOTHER_RUN, in, Gender.MAN).body();
 
 			assertThat(body.indexOf("Dugi maraton"))
 					.as("the old run is missing in %s, or it comes after the new one", in)
@@ -459,11 +459,11 @@ class WhatAResultChangeSaysTest {
 	/** A run that is not there at all is refused here rather than rendered as „null". */
 	@Test
 	void nothingIsWrittenAboutARunThatIsNotThere() {
-		assertThatThrownBy(() -> WhatAResultChangeSays.entered(null, MailLanguage.SERBIAN))
+		assertThatThrownBy(() -> WhatAResultChangeSays.entered(null, MailLanguage.SERBIAN, Gender.MAN))
 				.isInstanceOf(NullPointerException.class);
-		assertThatThrownBy(() -> WhatAResultChangeSays.changed(null, A_RUN, MailLanguage.SERBIAN))
+		assertThatThrownBy(() -> WhatAResultChangeSays.changed(null, A_RUN, MailLanguage.SERBIAN, Gender.MAN))
 				.isInstanceOf(NullPointerException.class);
-		assertThatThrownBy(() -> WhatAResultChangeSays.changed(A_RUN, null, MailLanguage.SERBIAN))
+		assertThatThrownBy(() -> WhatAResultChangeSays.changed(A_RUN, null, MailLanguage.SERBIAN, Gender.MAN))
 				.isInstanceOf(NullPointerException.class);
 		assertThatThrownBy(() -> WhatAResultChangeSays.deleted(null, MailLanguage.SERBIAN))
 				.isInstanceOf(NullPointerException.class);
@@ -505,19 +505,19 @@ class WhatAResultChangeSaysTest {
 		assertThat(WhatAResultChangeSays.inWords(AN_UNSCORED_RUN, MailLanguage.ENGLISH))
 				.endsWith("time 1:00:00").doesNotContain("points");
 
-		Said entered = WhatAResultChangeSays.entered(AN_UNSCORED_RUN, MailLanguage.SERBIAN);
+		Said entered = WhatAResultChangeSays.entered(AN_UNSCORED_RUN, MailLanguage.SERBIAN, Gender.MAN);
 
-		assertThat(entered.subject()).isEqualTo("Primili smo vaš rezultat");
-		assertThat(entered.body()).isEqualTo(String.join("\n", "Primili smo rezultat koji ste poslali:", "",
+		assertThat(entered.subject()).isEqualTo("Primili smo tvoj rezultat");
+		assertThat(entered.body()).isEqualTo(String.join("\n", "Primili smo rezultat koji si poslao:", "",
 				"Plivanje, 06.05.2027, 3,00 km, uspon 0 m, spust 0 m, vreme 1:00:00", "", "Balkanska trkačka liga"));
-		assertThat(WhatAResultChangeSays.changed(AN_UNSCORED_RUN, ANOTHER_UNSCORED_RUN, MailLanguage.SERBIAN).body())
-				.contains("Izmena se vidi na vašem profilu kad bude potvrđena.").doesNotContain("poretku")
+		assertThat(WhatAResultChangeSays.changed(AN_UNSCORED_RUN, ANOTHER_UNSCORED_RUN, MailLanguage.SERBIAN, Gender.MAN).body())
+				.contains("Izmena se vidi na tvom profilu kad bude potvrđena.").doesNotContain("poretku")
 				.doesNotContain("bod");
-		assertThat(WhatAResultChangeSays.changed(AN_UNSCORED_RUN, ANOTHER_UNSCORED_RUN, MailLanguage.ENGLISH).body())
+		assertThat(WhatAResultChangeSays.changed(AN_UNSCORED_RUN, ANOTHER_UNSCORED_RUN, MailLanguage.ENGLISH, Gender.MAN).body())
 				.contains("The change shows on your profile once it is confirmed.").doesNotContain("standings")
 				.doesNotContain("points");
 		assertThat(WhatAResultChangeSays.approved(AN_UNSCORED_RUN, MailLanguage.SERBIAN).body()).doesNotContain("bod");
-		assertThat(WhatAResultChangeSays.entered(A_RUN, MailLanguage.SERBIAN).body())
+		assertThat(WhatAResultChangeSays.entered(A_RUN, MailLanguage.SERBIAN, Gender.MAN).body())
 				.as("a scored run lost the sentence about its points")
 				.contains("Bodovi su konačni kad rezultat bude potvrđen.").contains("123,45 bodova");
 	}
@@ -531,15 +531,89 @@ class WhatAResultChangeSaysTest {
 
 	private static Said[] everyOneOfThem(MailLanguage in) {
 		return new Said[] {
-				WhatAResultChangeSays.entered(A_RUN, in),
-				WhatAResultChangeSays.entered(AN_UNSCORED_RUN, in),
-				WhatAResultChangeSays.changed(A_RUN, ANOTHER_RUN, in),
-				WhatAResultChangeSays.changed(AN_UNSCORED_RUN, ANOTHER_UNSCORED_RUN, in),
+				WhatAResultChangeSays.entered(A_RUN, in, Gender.MAN),
+				WhatAResultChangeSays.entered(AN_UNSCORED_RUN, in, Gender.MAN),
+				WhatAResultChangeSays.changed(A_RUN, ANOTHER_RUN, in, Gender.MAN),
+				WhatAResultChangeSays.changed(AN_UNSCORED_RUN, ANOTHER_UNSCORED_RUN, in, Gender.MAN),
 				WhatAResultChangeSays.deleted(A_RUN, in),
 				WhatAResultChangeSays.approved(A_RUN, in),
 				WhatAResultChangeSays.enteredBeforeTheLeague(A_RUN, in),
 				WhatAResultChangeSays.changedByTheLeague(A_RUN, ANOTHER_RUN, in),
 				WhatAResultChangeSays.enteredInAFrozenSeason(A_RUN, in),
 				WhatAResultChangeSays.approvedInAFrozenSeason(A_RUN, in)};
+	}
+
+	/**
+	 * THE SEX OF WHO READS DECIDES THE PARTICIPLE (owner, 21.11.2026: „po polu primaoca").
+	 *
+	 * <p>The feminine words are a dictionary of their own, so that the floor over the masculine one,
+	 * which demands exactly the keys of {@link Told}, stays what it was. THIS is the floor over the
+	 * feminine one: every key it holds is a key of the masculine one, with the same holes and other
+	 * words, and the four occasions that carry a participle are the ones it holds.
+	 */
+	@Test
+	void theWordsAWomanReadsAreFourOfTheMasculineKeysWithTheSameHolesAndOtherWords() {
+		ResourceBundle man = words();
+		ResourceBundle woman = WhatAResultChangeSays.wordsForAWoman(MailLanguage.SERBIAN);
+
+		assertThat(woman.keySet()).containsExactlyInAnyOrder("resultEntered.body", "resultEnteredUnscored.body",
+				"resultChanged.body", "resultChangedUnscored.body");
+
+		for (String key : woman.keySet()) {
+			assertThat(man.containsKey(key)).as(key).isTrue();
+			assertThat(woman.getString(key)).as(key).isNotEqualTo(man.getString(key));
+			assertThat(new MessageFormat(woman.getString(key), Locale.ROOT).getFormatsByArgumentIndex().length)
+					.as("holes of %s", key)
+					.isEqualTo(new MessageFormat(man.getString(key), Locale.ROOT).getFormatsByArgumentIndex().length);
+		}
+
+		assertThat(WhatAResultChangeSays.wordsForAWoman(MailLanguage.ENGLISH)).isNull();
+	}
+
+	/**
+	 * THE READER'S SEX, AND NOBODY ELSE'S, PICKS THE WORDS: the same run, the same language, and a
+	 * woman reads „poslala" where a man reads „poslao". The two are asked of every occasion that has
+	 * words for a woman, so a method that forgot to pass the reader on (and wrote everybody in the
+	 * masculine) fails on the woman, and one that always wrote the feminine fails on the man.
+	 */
+	@Test
+	void aWomanReadsTheFeminineAndAManTheMasculineAndEnglishCaresForNeither() {
+		assertThat(WhatAResultChangeSays.entered(A_RUN, MailLanguage.SERBIAN, Gender.WOMAN).body())
+				.contains("koji si poslala:").doesNotContain("poslao");
+		assertThat(WhatAResultChangeSays.entered(A_RUN, MailLanguage.SERBIAN, Gender.MAN).body())
+				.contains("koji si poslao:").doesNotContain("poslala");
+		assertThat(WhatAResultChangeSays.entered(AN_UNSCORED_RUN, MailLanguage.SERBIAN, Gender.WOMAN).body())
+				.contains("koji si poslala:");
+		assertThat(WhatAResultChangeSays.changed(A_RUN, ANOTHER_RUN, MailLanguage.SERBIAN, Gender.WOMAN).body())
+				.startsWith("Zatražila si izmenu svog rezultata.").contains("u poretku");
+		assertThat(WhatAResultChangeSays.changed(A_RUN, ANOTHER_RUN, MailLanguage.SERBIAN, Gender.MAN).body())
+				.startsWith("Zatražio si izmenu svog rezultata.");
+		assertThat(WhatAResultChangeSays.changed(AN_UNSCORED_RUN, ANOTHER_UNSCORED_RUN, MailLanguage.SERBIAN,
+				Gender.WOMAN).body()).startsWith("Zatražila si").contains("na tvom profilu");
+
+		assertThat(WhatAResultChangeSays.entered(A_RUN, MailLanguage.ENGLISH, Gender.WOMAN))
+				.isEqualTo(WhatAResultChangeSays.entered(A_RUN, MailLanguage.ENGLISH, Gender.MAN));
+	}
+
+	@Test
+	void anOccasionWithWordsForAWomanIsNotAskedForWithoutAReaderAndOneWithoutIsNot() {
+		assertThatThrownBy(() -> WhatAResultChangeSays.said(Told.A_RESULT_WAS_ENTERED, MailLanguage.SERBIAN, "x"))
+				.isInstanceOf(IllegalStateException.class).hasMessageContaining("resultEntered");
+		assertThatThrownBy(() -> WhatAResultChangeSays.entered(A_RUN, MailLanguage.SERBIAN, null))
+				.isInstanceOf(NullPointerException.class);
+		assertThatThrownBy(() -> WhatAResultChangeSays.changed(A_RUN, ANOTHER_RUN, MailLanguage.SERBIAN, null))
+				.isInstanceOf(NullPointerException.class);
+		assertThat(WhatAResultChangeSays.said(Told.A_RESULT_WAS_DELETED, MailLanguage.SERBIAN, "x").subject())
+				.isEqualTo("Tvoj rezultat je obrisan");
+	}
+
+	@Test
+	void theColumnNamesTheReadersSexAndNothingElseDoes() {
+		assertThat(Gender.ofTheColumn("M")).isEqualTo(Gender.MAN);
+		assertThat(Gender.ofTheColumn("F")).isEqualTo(Gender.WOMAN);
+		assertThat(Gender.MAN.letter()).isEqualTo("M");
+		assertThat(Gender.WOMAN.letter()).isEqualTo("F");
+		assertThatThrownBy(() -> Gender.ofTheColumn("X")).isInstanceOf(IllegalStateException.class);
+		assertThatThrownBy(() -> Gender.ofTheColumn(null)).isInstanceOf(NullPointerException.class);
 	}
 }

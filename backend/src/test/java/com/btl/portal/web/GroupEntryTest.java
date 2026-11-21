@@ -1385,4 +1385,18 @@ class GroupEntryTest {
 			return Clock.fixed(NOW, ZoneOffset.UTC);
 		}
 	}
+
+	/**
+	 * EACH INVITATION GOES BY THE SEX OF THE ONE ENTERED (owner, 21.11.2026: „po polu primaoca"): the group is a
+	 * man, a woman and a man, and the letter to each is in his or her words, so an invitation that is always in
+	 * the one sex, or in the sex of the row before, fails.
+	 */
+	@Test
+	void eachOneEnteredIsWrittenToByHisOrHerOwnSex() throws Exception {
+		assertThat(enter(aGroupOf(3), EVERYTHING).getStatus()).isEqualTo(201);
+
+		assertThat(theLetterTo("clan0@primer.rs")).contains("koju si potpisao.").contains("postavi je sam:");
+		assertThat(theLetterTo("clan1@primer.rs")).contains("koju si potpisala.").contains("postavi je sama:");
+		assertThat(theLetterTo("clan2@primer.rs")).contains("koju si potpisao.");
+	}
 }

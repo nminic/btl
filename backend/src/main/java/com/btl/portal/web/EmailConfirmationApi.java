@@ -3,6 +3,7 @@ package com.btl.portal.web;
 import com.btl.portal.domain.account.EmailConfirmation;
 import com.btl.portal.domain.account.EmailConfirmation.Outcome;
 import com.btl.portal.domain.account.WhatAnAddressLooksLike;
+import com.btl.portal.domain.mail.Gender;
 import com.btl.portal.domain.mail.MailLanguage;
 import com.btl.portal.domain.mail.WhatTheMessageSays;
 import com.btl.portal.domain.mail.WhatTheMessageSays.Message;
@@ -59,6 +60,12 @@ import java.util.Optional;
  * owner's covers this specific question and none was invented for it; see the PR this
  * class shipped with for the question actually asked of him.</b>
  *
+ * <p><b>The one answer beside 204 is 429, and it is no exception to the above</b> (owner,
+ * 21.11.2026: three letters of confirmation per address in an hour). The count is kept by the
+ * address as typed and before the lookup, so the fourth request within the hour is refused alike
+ * for an address nobody holds, one already confirmed and one waiting on this letter
+ * ({@link AttemptsAtTheDoor}).
+ *
  * <p><b>What that uniformity does NOT close: a network timing difference.</b> The
  * branch that finds an unconfirmed account calls the mail relay before answering; the
  * other two branches do not, and a relay is slower than a row that is never read.
@@ -90,6 +97,13 @@ class EmailConfirmationApi {
 	 */
 	static final String THE_LINK_IS_NOT_VALID = "theLinkIsNotValid";
 
+	/**
+	 * More attempts for one address within the hour than the owner allows (21.11.2026), by {@link #resend}, answered 429
+	 * with {@code Retry-After}. {@link AttemptsAtTheDoor} counts; this route only says so, and says it
+	 * for an address nobody holds exactly as for one somebody does.
+	 */
+	static final String TOO_MANY_ATTEMPTS = "tooManyAttempts";
+
 	private final JdbcClient db;
 
 	private final Postman postman;
@@ -102,9 +116,13 @@ class EmailConfirmationApi {
 
 	private final Clock clock;
 
+	private final AttemptsAtTheDoor door;
+
 	EmailConfirmationApi(JdbcClient db, Postman postman, TransactionTemplate inOneTransaction,
-			TheLetterAfterTheAddress welcome, Clock clock, @Value("${btl.portal.address}") String address) {
+			TheLetterAfterTheAddress welcome, Clock clock, AttemptsAtTheDoor door,
+			@Value("${btl.portal.address}") String address) {
 		this.clock = clock;
+		this.door = door;
 		this.db = db;
 		this.postman = postman;
 		this.inOneTransaction = inOneTransaction;
@@ -257,7 +275,30 @@ class EmailConfirmationApi {
 	 * not the exception {@code RegistrationApi} made of itself.
 	 */
 	@PostMapping("/api/email-confirmation/resend")
-	ResponseEntity<Void> resend(@RequestBody ResendTyped typed) {
+	ResponseEntity<Refused> resend(@RequestBody ResendTyped typed) {
+		/* AN ADDRESS NO ACCOUNT CAN HOLD IS ANSWERED 204 AT ONCE, NEITHER COUNTED NOR LOOKED UP
+		   (security review of PR 763, 21.11.2026). `account_email_shape` (V6) lets no row carry
+		   anything but this shape, so the answer is the one a lookup would have given and says
+		   nothing more. It closes two holes the count had: a key of half a megabyte, kept in memory
+		   for every request, and a letter `İ` that Java folds into two characters and PostgreSQL's
+		   `lower()` into one, so the count and the lookup disagreed about which address it was and
+		   the allowance of three could be spent again. Only ASCII passes the shape, and on ASCII the
+		   two folds agree. */
+		if (typed.email() == null
+				|| !WhatAnAddressLooksLike.itDoes(WhatAnAddressLooksLike.asItIsStored(typed.email()))) {
+
+			return ResponseEntity.noContent().build();
+		}
+
+		/* COUNTED BY THE ADDRESS AS TYPED, BEFORE IT IS LOOKED UP, so the fourth request within the
+		   hour is the same 429 for an address nobody holds, one already confirmed and one waiting on
+		   this very letter, and the refusal tells nobody which of the three it was. */
+		Optional<ResponseEntity<Refused>> tooMany = door.aConfirmationLetter(typed.email(), new Refused(TOO_MANY_ATTEMPTS));
+
+		if (tooMany.isPresent()) {
+			return tooMany.orElseThrow();
+		}
+
 		ToSend made = inOneTransaction.execute(committing -> write(typed));
 
 		if (made != null) {
@@ -277,11 +318,8 @@ class EmailConfirmationApi {
 	private record ToSend(long account, String address, String link, MailLanguage language, Instant endsAt) {
 	}
 
+	/** Only ever asked with an address of the shape an account can hold; {@link #resend} sees to it. */
 	private ToSend write(ResendTyped typed) {
-		if (typed.email() == null || typed.email().isBlank()) {
-			return null;
-		}
-
 		/* `lower(email) = lower(?)` AND NOT A FOLDED VALUE COMPARED WITH `=`, the same
 		   choice `SignInApi` makes and for the same reason: this is a lookup over rows
 		   this route did not write, so the floor under a row that reached the table
@@ -335,9 +373,21 @@ class EmailConfirmationApi {
 	 * nothing to anybody who is not the one connection waiting on it.
 	 */
 	private void send(ToSend made) {
+		Optional<Gender> sex = TheSexOfAMember.ofTheAccount(db, made.account());
+
 		try {
-			postman.send(WhatTheMessageSays.about(Message.CONFIRM_THE_ADDRESS, made.language(),
-					portal, made.link(), made.endsAt()), made.address());
+			/* AN ACCOUNT THAT NAMES NO MEMBER (a moderator who does not race, invited and not yet through
+			   the link) HAS NO SEX, and the letter has words for a woman and for a man. WHAT IT SHOULD SAY
+			   TO HIM IS THE OWNER'S QUESTION (asked 21.11.2026), not an answer chosen here, so until it is
+			   answered he is written the words he was always written, and the route does what it did for
+			   everybody: an answer that differed would tell whoever asks that this address is such an
+			   account. */
+			postman.send(sex.isPresent()
+					? WhatTheMessageSays.about(Message.CONFIRM_THE_ADDRESS, made.language(), portal, made.link(),
+							made.endsAt(), sex.get())
+					: WhatTheMessageSays.aboutToAnAccountThatNamesNoMember(Message.CONFIRM_THE_ADDRESS,
+							made.language(), portal, made.link(), made.endsAt()),
+					made.address());
 		} catch (MailException theRelayDidNotTakeIt) {
 			LOG.warn("a resent confirmation message for account {} did not go out; the token is"
 					+ " written and asking again is what gets him out of it",
