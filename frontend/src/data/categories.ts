@@ -122,3 +122,17 @@ export function categoryLabel(code: string, t: (key: string) => string): string 
 
   return code.startsWith('Ž') ? `${t('category.markFemale')} ${band}` : code
 }
+
+/**
+ * The same label without the mark of the gender in front of it (owner, 21.11.2026, PDL: where the category filter
+ * of the BTL tables would break into a second row, the categories are written „24-", „40-54" and not „M 24-",
+ * because the gender is said by the control above). Derived from `categoryLabel` and not written out again: the
+ * mark is what the dictionary gives for that gender (`category.markMale`, `category.markFemale`), and a label that
+ * does not begin with it (`Početnici`, a code that is not a band) is already as short as it gets.
+ */
+export function categoryShortLabel(code: string, t: (key: string) => string): string {
+  const full = categoryLabel(code, t)
+  const mark = `${t(code.startsWith('M') ? 'category.markMale' : 'category.markFemale')} `
+
+  return full.startsWith(mark) ? full.slice(mark.length) : full
+}

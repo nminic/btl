@@ -1176,17 +1176,6 @@
   }
 }
 
-/* THE FILTER OF THE RACES IS AS WIDE AS ITS BUTTONS ASK, AND LEFT, from 560px up (owner, 21.11.2026, PDL „Na
-   desktopu filter trka na profilu nije širok kao strana nego koliko mu dugmad traže, levo"). Written on the
-   profile's own box and not on `.seg` (`components/LengthFilter.css` is shared with the tables of the league).
-   On a telephone it is the whole row, as it was, and breaks into rows at an enlarged text. */
-@media (min-width: 35em) {
-  .profile__results .seg {
-    inline-size: fit-content;
-    max-inline-size: 100%;
-  }
-}
-
 /* **THE ROW OF A MEMBER'S RESULT, EVERY CELL ON ONE CENTRE** (owner, 20.10.2026, from a screenshot of
    QA: „Red sa rezultatom člana nije centriran, ikonice su niže nego vrednosti u redu"). For whoever
    checks results the last cell of every row of „Rezultati članova" holds the pencil and the x, two

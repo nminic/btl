@@ -2,7 +2,7 @@ import en from '../i18n/en.json'
 import sr from '../i18n/sr.json'
 import { translate } from '../i18n/translate'
 import { sources } from '../test/sources'
-import { AGE_BANDS, categoryCodeFor, categoryLabel, firstSeasonAllowed } from './categories'
+import { AGE_BANDS, categoryCodeFor, categoryLabel, categoryShortLabel, firstSeasonAllowed } from './categories'
 
 /** The smallest number of drawn screens that can still be all of them. There are
  *  around a hundred and twenty today and the largest single folder holds under
@@ -174,5 +174,26 @@ describe('the category code never reaches the screen on its own', () => {
     }
 
     expect(loose).toEqual([])
+  })
+})
+
+describe('categoryShortLabel', () => {
+  const inSerbian = (key: string) => translate(sr, 'sr', key)
+  const inEnglish = (key: string) => translate(en, 'en', key)
+
+  it('takes the mark of the gender off an age band, in both languages and for both genders', () => {
+    expect(categoryShortLabel('M40-54', inSerbian)).toBe('40-54')
+    expect(categoryShortLabel('Ž24-', inSerbian)).toBe('24-')
+    expect(categoryShortLabel('Ž55+', inEnglish)).toBe('55+')
+  })
+
+  it('takes the letter off the English rookies and leaves the Serbian ones as they are', () => {
+    expect(categoryShortLabel('M R', inEnglish)).toBe('Rookies')
+    expect(categoryShortLabel('M R', inSerbian)).toBe('Početnici')
+    expect(categoryShortLabel('Ž R', inSerbian)).toBe('Početnice')
+  })
+
+  it('leaves what is not a band as it is', () => {
+    expect(categoryShortLabel('MR', inSerbian)).toBe('MR')
   })
 })

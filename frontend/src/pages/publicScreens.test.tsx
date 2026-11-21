@@ -575,8 +575,13 @@ describe('Rankings', () => {
     await screen.findByRole('table')
 
     const buttons = within(screen.getByRole('group', { name: 'Kategorija' })).getAllByRole('button')
-    const names = buttons.map((one) => one.textContent ?? '')
+    /* The full name is what a button is called; the short form (`24-`, drawn instead of it on a narrow row) is
+       `aria-hidden` and is checked below. */
+    const names = buttons.map((one) => (one.querySelector('.seg__long') ?? one).textContent ?? '')
 
+    expect(buttons.slice(1).map((one) => one.querySelector('.seg__short')?.textContent ?? null)).toEqual(
+      names.slice(1).map((one) => (/ /.test(one) ? one.slice(one.indexOf(' ') + 1) : null)),
+    )
     expect(first(names)).toBe('Sve')
     expect(names.length).toBeGreaterThan(2)
     const letter = first(names.slice(1)).charAt(0)
