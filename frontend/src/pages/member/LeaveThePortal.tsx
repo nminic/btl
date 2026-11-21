@@ -25,7 +25,7 @@ import { ServerSaid } from '../account/ServerSaid'
  * a second person signing in on the same laptop is never shown the first man's yes.
  *
  * <p><b>WHEN HE IS GONE</b> the portal forgets him and goes back to a visitor, as „Odjavi se" does
- * (`app/AccountMenu.tsx`), and opens the front page with „Vaš nalog je obrisan." The server has already put
+ * (`app/AccountMenu.tsx`), and opens the front page with „Tvoj nalog je obrisan." The server has already put
  * his cookie out (`MeLeavingApi`), so nothing is asked of it again.
  */
 export function LeaveThePortal({ account }: { account: number }) {

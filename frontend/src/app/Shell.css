@@ -739,6 +739,15 @@
   visibility: hidden;
 }
 
+/* The person that stands for „Prijavi se" on a desktop (owner, 21.11.2026, PDL „Zaglavlje za posetioca"): the
+   link keeps the height and the shape of the button beside it, and holds the drawing with room to spare on
+   both sides, so the pressed area is the whole button and not the line of the drawing. */
+.shell__person {
+  flex: none;
+  inline-size: 1.25rem;
+  block-size: 1.25rem;
+}
+
 /* The one control in the header that brings the league any money (PDL P28a).
 
    Gold rather than the accent blue: blue is already the colour of every link,

@@ -399,7 +399,7 @@ class PairWriteApi {
 	 *
 	 * @param other  the other half, who is the one told about it
 	 * @param myName the leaver's name AS THE MESSAGE NAMES HIM, which is the whole of why it
-	 *               is here: the message is "{who} je raskinuo/raskinula vaš trkački par za sezonu
+	 *               is here: the message is "{who} je raskinuo/raskinula tvoj trkački par za sezonu
 	 *               {season}", and {who} is the one who pressed
 	 * @param myGender his own letter in {@code competitor.gender}, which picks the verb: read in
 	 *               the same statement as the name, off the column he is in, and never the
@@ -857,7 +857,7 @@ class PairWriteApi {
 	 */
 	static String theBrokenPairReads(String who, String gender, int season) {
 		return who + " je " + (MAN.equals(gender) ? "raskinuo" : "raskinula")
-				+ " vaš trkački par za sezonu " + season + ".";
+				+ " tvoj trkački par za sezonu " + season + ".";
 	}
 
 	/**
@@ -907,7 +907,7 @@ class PairWriteApi {
 	 * @param season the season the new pair holds for, off the row rather than off the clock
 	 */
 	static String theSupersededPairReads(String who, int season) {
-		return "Vaš trkački par za sezonu " + season + " je raskinut. " + who
+		return "Tvoj trkački par za sezonu " + season + " je raskinut. " + who
 				+ " je od te sezone u drugom paru.";
 	}
 

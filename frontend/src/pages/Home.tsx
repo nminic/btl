@@ -111,7 +111,7 @@ export function Home() {
   useLayoutEffect(() => {
     putBack(document, remembered.current)
   }, [twoColumns])
-  /* „Vaš nalog je obrisan.", for the one arrival his own deletion opens this page with (owner, 20.11.2026), in
+  /* „Tvoj nalog je obrisan.", for the one arrival his own deletion opens this page with (owner, 20.11.2026), in
      the shape the list of teams says „Tim je obrisan." in (`Teams.tsx`, `teamDeleted.ts`). */
   const arrived = useLocation().state
   const [said, setSaid] = useState(() => (accountWasDeleted(arrived) ? t('home.accountDeleted') : ''))

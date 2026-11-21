@@ -502,7 +502,7 @@ describe('a pair that is ended', () => {
        2027 and this is read in 2026, so a notice that named the running season would say 2026 and
        the case can tell the two apart. */
     expect(
-      screen.getByText(/Katarina Novaković je raskinula vaš trkački par za sezonu 2027\./),
+      screen.getByText(/Katarina Novaković je raskinula tvoj trkački par za sezonu 2027\./),
     ).toBeVisible()
 
     await user.click(screen.getByRole('button', { name: 'postani 000004' }))
@@ -549,7 +549,7 @@ describe('a pair that is ended', () => {
     await user.click(must(hers[0], 'the notice'))
 
     expect(
-      screen.getByText(/Relja Momčilović je raskinuo vaš trkački par za sezonu 2027\./),
+      screen.getByText(/Relja Momčilović je raskinuo tvoj trkački par za sezonu 2027\./),
     ).toBeVisible()
   }, SLOW)
 })
@@ -1078,7 +1078,7 @@ describe('the day a notice about a broken pair carries', () => {
        unnamed. */
     const body = must(document.querySelector('.messages__body'), 'the notice').textContent ?? ''
 
-    expect(body).toContain('Katarina Novaković je raskinula vaš trkački par za sezonu 2027.')
+    expect(body).toContain('Katarina Novaković je raskinula tvoj trkački par za sezonu 2027.')
     expect(body).not.toContain('2028')
   }, SLOW)
 })
@@ -1175,7 +1175,7 @@ describe('a member who holds a pair for this season and one for the next', () =>
     await user.click(must(first(told), 'his notice'))
 
     expect(
-      screen.getByText(/Katarina Novaković je raskinula vaš trkački par za sezonu 2028\./),
+      screen.getByText(/Katarina Novaković je raskinula tvoj trkački par za sezonu 2028\./),
     ).toBeVisible()
 
     await user.click(screen.getByRole('button', { name: 'postani 000002' }))

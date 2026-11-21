@@ -16,7 +16,8 @@ import { ErrorBoundary } from './ErrorBoundary'
 import { LanguageMenu } from './LanguageMenu'
 import { MessagesMenu } from './MessagesMenu'
 import { PageMetaContext } from './pageMetaContext'
-import { NavSymbolIcon } from './icons'
+import { NavSymbolIcon, PersonIcon } from './icons'
+import { NoticeBar } from './NoticeBar'
 import { NAV_SYMBOL, type NavSymbol } from './navSymbol'
 import { usePhoneHeader } from './phoneHeader'
 import { HeaderDecoration, PageBackgroundDecoration } from './RaceInMotion'
@@ -295,7 +296,18 @@ export function Shell() {
           to={`/${locale}/prijava`}
           {...(asking ? NOT_OFFERED : {})}
         >
-          <Face symbol={NAV_SYMBOL.signIn} word={t('shell.signIn')} phone={phone} />
+          {/* A PERSON ON A DESKTOP, THE ARROW INTO THE DOOR ON A TELEPHONE (owner, 21.11.2026, PDL „Zaglavlje
+              za posetioca"): „Prijavi se" stops being a word beside the gold „Učlani se" and becomes the person
+              every portal draws for it. The word stays in the link, out of sight, so the name is the same
+              „Prijavi se" at every width; a telephone keeps what it has (`Face`). */}
+          {phone ? (
+            <Face symbol={NAV_SYMBOL.signIn} word={t('shell.signIn')} phone />
+          ) : (
+            <>
+              <PersonIcon className="shell__person" />
+              <span className="visually-hidden">{t('shell.signIn')}</span>
+            </>
+          )}
         </Link>
         <Link
           className={waitingFor('button--cta', asking)}
@@ -373,6 +385,12 @@ export function Shell() {
           navigation
         )}
       </header>
+
+      {/* THE GOLD STRIP, AFTER THE HEADER AND NOT IN IT (owner, 21.11.2026, PDL „Zlatna traka obaveštenja
+          ispod zaglavlja"): the height of the header and every measure taken of it stay what they were. It
+          is given the main content, which the focus goes to when the cross has been pressed
+          (`app/NoticeBar.tsx`). */}
+      <NoticeBar main={main} />
 
       {/* Back to the top on a new screen, and back where it was on the way back.
           A data router turns the browser's own handling off, so without this

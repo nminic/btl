@@ -1766,7 +1766,7 @@ class PairWriteApiTest {
 						+ " has run yet")
 				.containsExactly("Balkanska trkačka liga | Trkački par je raskinut |"
 						+ " Ime" + HE_ASKED_HER + " Probic" + HE_ASKED_HER
-						+ " je raskinuo vaš trkački par za sezonu " + STILL_RUNNING + ".");
+						+ " je raskinuo tvoj trkački par za sezonu " + STILL_RUNNING + ".");
 
 		assertThat(seasonsPairedIn(HE_ASKED_HER))
 				.as("the pair of the season being formed went instead of the one that was named")

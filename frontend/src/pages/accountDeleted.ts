@@ -1,5 +1,5 @@
 /**
- * THE WORD HIS OWN DELETION LEAVES FOR THE FRONT PAGE WITH: „Vaš nalog je obrisan." (the owner, 20.11.2026, „Obriši
+ * THE WORD HIS OWN DELETION LEAVES FOR THE FRONT PAGE WITH: „Tvoj nalog je obrisan." (the owner, 20.11.2026, „Obriši
  * nalog" at the end of „Moja članarina").
  *
  * <p>Carried in the state of the navigation, the shape `teamDeleted.ts` keeps for the same reason: it belongs to that one

@@ -3162,10 +3162,10 @@ describe('the row of whoever is signed in', () => {
        the one that numbers it; the results of an event have no such column, so
        there it is the cell with the name in it. */
     for (const [path, said] of [
-      [`/sr/tabela?sezona=${String(inLeague(2019))}`, 'vaš red'],
-      [`/sr/top-liste?sezona=${String(inLeague(2015))}`, 'vaš red'],
-      ['/sr/kalendar/beogradski-maraton-2019', 'vaš red'],
-      ['/sr/timovi', 'vaš tim'],
+      [`/sr/tabela?sezona=${String(inLeague(2019))}`, 'tvoj red'],
+      [`/sr/top-liste?sezona=${String(inLeague(2015))}`, 'tvoj red'],
+      ['/sr/kalendar/beogradski-maraton-2019', 'tvoj red'],
+      ['/sr/timovi', 'tvoj tim'],
     ] as const) {
       cleanup()
       renderAt(path, 'competitor', ME)
