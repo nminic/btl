@@ -449,6 +449,79 @@ const SAMPLE_NAMES: Answers = {
 
 const TEXTS: At['text'][] = [100, 125, 200]
 
+/**
+ * THE FIGURE OF THE PODIUM STANDS IN ITS COLUMN AT EVERY TEXT SIZE, IN BOTH LANGUAGES (owner, 21.11.2026, review of
+ * PR 768, WCAG 1.4.4 Resize text): the floor of the letter is in `rem`, so at 200% a figure like 399.999,99 p
+ * no longer fits a column of 60px, and a figure kept on one line spilled 14px out of its column and over the
+ * next one. What is measured is the text a person sees (the rectangles of its range, since a box that
+ * overflows does not make its element wider): inside its own column, clear of the figure beside it and of
+ * every circle, and cut by nothing.
+ */
+for (const width of [360, 540, 768, 1280]) {
+  for (const text of [100, 125, 150, 175, 200] as At['text'][]) {
+    for (const language of ['sr', 'en']) {
+      const here: At = { width, text }
+
+      test(`the figures of the podium stay in their columns, at ${label(here)}, in ${language}`, async ({ open, theDay }) => {
+        test.skip(theDay !== THE_DAY_THE_SUITE_IS_READ_AS, 'no figure stands on the podium on this day')
+
+        const { page } = await open(here, `/${language}`, '.top10 .stand', ANSWERS)
+
+        const seen = await page.evaluate(() =>
+          [...document.querySelectorAll('.top10')].map((board) => {
+            const items = [...board.querySelectorAll('.stand__item')]
+            const rectsOf = (element: Element) => {
+              const range = document.createRange()
+
+              range.selectNodeContents(element)
+
+              return [...range.getClientRects()].filter((one) => one.width > 0)
+            }
+            const circles = [...board.querySelectorAll('.stand .portrait')].map((one) => one.getBoundingClientRect())
+
+            return items.map((item, index) => {
+              const figure = item.querySelector('.stand__points')
+              const column = item.getBoundingClientRect()
+              const rects = figure === null ? [] : rectsOf(figure)
+
+              return {
+                index,
+                text: figure?.textContent ?? '',
+                over: Math.max(0, ...rects.map((one) => Math.max(column.left - one.left, one.right - column.right))),
+                rects: rects.map((one) => ({ left: one.left, right: one.right, top: one.top, bottom: one.bottom })),
+                circles: circles.map((one) => ({ left: one.left, right: one.right, top: one.top, bottom: one.bottom })),
+              }
+            })
+          }),
+        )
+
+        const meets = (
+          a: { left: number; right: number; top: number; bottom: number },
+          b: { left: number; right: number; top: number; bottom: number },
+        ) => Math.min(a.right, b.right) - Math.max(a.left, b.left) > SAME && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > SAME
+
+        for (const board of seen) {
+          for (const place of board.filter((one) => one.text !== '')) {
+            expect(place.over, `the figure sticks out of its column: ${place.text}`).toBeLessThanOrEqual(SAME)
+
+            for (const rect of place.rects) {
+              for (const circle of place.circles) {
+                expect(meets(rect, circle), `the figure runs into a circle: ${place.text}`).toBe(false)
+              }
+
+              for (const other of board.filter((one) => one.index !== place.index)) {
+                for (const beside of other.rects) {
+                  expect(meets(rect, beside), `the figure runs into the one beside it: ${place.text}`).toBe(false)
+                }
+              }
+            }
+          }
+        }
+      })
+    }
+  }
+}
+
 for (const width of [360, 540, 560, 768, 860, 1024, 1280]) {
   for (const text of TEXTS) {
     const here: At = { width, text }

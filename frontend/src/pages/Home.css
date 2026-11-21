@@ -631,7 +631,13 @@
   line-height: 1.3;
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
-  white-space: nowrap;
+  /* **Where even the smallest letter does not fit, the figure breaks, and only at the places `TopTen.tsx` marks**
+     (owner, 21.11.2026, review of PR 768, WCAG 1.4.4: the floor is in `rem`, so at 200% it is 20,8px and a
+     figure no longer fits a column): at the space before the unit, then after a thousands separator, a
+     break the markup puts in with `<wbr>`. `overflow-wrap` stays `normal`, so nothing is broken inside a
+     group of digits, and nothing is cut, hidden or ended in dots. */
+  overflow-wrap: normal;
+  hyphens: none;
 }
 
 .stand__cat {

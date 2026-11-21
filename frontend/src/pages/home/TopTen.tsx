@@ -1,3 +1,4 @@
+import { Fragment } from 'react'
 import { ProfileLink } from '../profile/ProfileLink'
 import { Link } from 'react-router'
 import { BOARD_PLACES, boardOfTen, categoryLabelIn, type BoardSlot } from '../../data/derive'
@@ -8,6 +9,19 @@ import { Portrait } from '../../components/Portrait'
 
 /** The three that stand on the podium; the places behind them are the list. */
 const PODIUM = 3
+
+/**
+ * A FIGURE OF THE PODIUM THAT MAY BREAK, AND ONLY WHERE A PERSON WOULD (owner, 21.11.2026, review of PR 768,
+ * WCAG 1.4.4 Resize text): the figure is not drawn on one line whatever the text size is, because at 200% a
+ * column of the podium is narrower than the smallest letter lets the figure be. It is kept whole in the
+ * letter (`Home.css`, `.stand__points`) and, where even the smallest letter does not fit, it breaks at the
+ * space before the unit and then after a thousands separator, and nowhere else, and never ends in dots: a
+ * figure that is cut is a wrong figure, and two lines are better than that.
+ *
+ * The separators are found by their shape and not by the language: a group is a separator followed by exactly
+ * three digits and then by something that is not a digit, and the decimal separator is followed by two.
+ */
+const AFTER_A_THOUSANDS_SEPARATOR = /(?<=[.,])(?=\d{3}(?:\D|$))/
 
 /**
  * One face on the board, carrying the number of its place, as a way to that
@@ -103,7 +117,8 @@ function PodiumPlace({
   const { competitor } = slot
   const category = categoryLabelIn(competitor, season, t)
   const won = place === 1 && slot.ranked
-  const points = `${formatPoints(slot.points, locale)}${t('home.podiumPointsUnit')}`
+  const figure = formatPoints(slot.points, locale)
+  const unit = t('home.podiumPointsUnit')
 
   return (
     <li className={`stand__item stand__item--${place}${won ? ' stand__item--won' : ''}`}>
@@ -118,8 +133,14 @@ function PodiumPlace({
           {competitor.lastName}
         </span>
       </span>
-      <span className="stand__points" style={{ '--chars': points.length }}>
-        {points}
+      <span className="stand__points" style={{ '--chars': figure.length + unit.length }}>
+        {figure.split(AFTER_A_THOUSANDS_SEPARATOR).map((piece, index) => (
+          <Fragment key={piece}>
+            {index > 0 && <wbr />}
+            {piece}
+          </Fragment>
+        ))}
+        {unit}
       </span>
       {category !== '' && <span className="stand__cat">{category}</span>}
       <span className="stand__step" aria-hidden="true">

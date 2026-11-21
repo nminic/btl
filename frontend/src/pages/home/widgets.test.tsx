@@ -377,6 +377,28 @@ describe('TopTen', () => {
     /* A result of 2027 read on the day before is not something production holds, but a fixture can, and the
        rule is „every member", so the member who has points of the season prints the history too: 60,75 and
        12,34 are 73,09, a figure neither of the two is. */
+    /* A figure of thousands may break after the thousands separator and nowhere else (review of PR 768, WCAG
+       1.4.4): the text is the same as ever, and a break is marked after every group but not inside the
+       decimals, so „34.921,69" has one and „1.234.567,89" has two and „60,75" has none. */
+    it('marks a place to break after each thousands separator, and does not change the text', () => {
+      const big = [
+        { ...before('000001', '2019-03-01', 34921.69) },
+        { ...before('000002', '2019-03-01', 1234567.89) },
+        { ...before('000003', '2019-03-01', 60.75) },
+      ]
+
+      renderWidget(
+        <TopTen competitors={field} results={big} season={2027} today={THE_DAY_BEFORE} gender="M" />,
+      )
+
+      const figures = within(lists().podium)
+        .getAllByRole('listitem', { hidden: true })
+        .map((one) => must(one.querySelector('.stand__points'), 'the figure of a place'))
+
+      expect(figures.map((one) => one.textContent)).toEqual(['1.234.567,89 p', '34.921,69 p', '60,75 p'])
+      expect(figures.map((one) => one.querySelectorAll('wbr').length)).toEqual([2, 1, 0])
+    })
+
     it('prints the history of a member who already has points of the season as well', () => {
       const raced = [...history, { ...result('000001', 12.34), date: '2027-03-01' }]
 
