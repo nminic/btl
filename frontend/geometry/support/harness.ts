@@ -67,8 +67,17 @@ export const SLACK = 0.5
  *  guard asks for where a width turns over with the text (`tableCards.geometry.ts`). */
 export type Text = 100 | 125 | 150 | 175 | 200
 
-/** One screen to measure: how wide, at what text size, and in which theme. */
-export type At = { width: number; text: Text; theme?: 'light' | 'dark' }
+/** One screen to measure: how wide, at what text size, in which theme, and for a reader who asks for what
+ *  movement.
+ *
+ *  **`motion` is `'reduce'` unless a case says otherwise** (20.11.2026, review of PR 760). `settle` waits for
+ *  every animation on the page to end, and the dot that runs the route on every screen from 560px up takes five
+ *  seconds, so the suite, which opens a page for each case, went from about 32 minutes to 1,6 hours with the
+ *  dot on the page (the suite of `tableCards.geometry.ts`: 15 s on `main`, 2,4 min on the branch). A reader who
+ *  asks for less movement gets no dot (`app/RaceInMotion.css`), so no case waits for it. What a case measures is
+ *  where things stand, which does not depend on movement; a case that measures the dot itself says
+ *  `motion: 'no-preference'` and pays the five seconds. */
+export type At = { width: number; text: Text; theme?: 'light' | 'dark'; motion?: 'reduce' | 'no-preference' }
 
 /** What `/api` answers with 200, by path. Everything else is a 404, and `/api/me` a 401. */
 export type Answers = Readonly<Record<string, unknown>>
@@ -195,6 +204,7 @@ export const test = base.extend<Geometry, Worker>({
         deviceScaleFactor: 1,
         isMobile: at.width < 1000,
         colorScheme: at.theme ?? 'light',
+        reducedMotion: at.motion ?? 'reduce',
       })
 
       contexts.push(context)

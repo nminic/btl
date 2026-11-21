@@ -293,7 +293,9 @@ for (const at of WIDTHS.flatMap((one): At[] => [one, { ...one, theme: 'dark' }])
     expect(seen.wide, 'the wide ground').toBe(reads >= 560)
     expect(seen.narrow, 'the ground of a telephone').toBe(reads < 560)
     expect(seen.route, 'the route').toBe(reads >= 560)
-    expect(seen.dot, 'the dot').toBe(reads >= 560)
+    /* The suite reads as somebody who asked for less movement (`motion` in `geometry/support/harness.ts`), who gets no
+       dot at any width; where it is drawn is asked below, with the reader who has not. */
+    expect(seen.dot, 'the dot').toBe(false)
   })
 }
 
@@ -332,6 +334,10 @@ async function routeTouches(page: Page): Promise<{ words: number; points: number
       return { words: 0, points: 0, touches: ['no dot'] }
     }
 
+    /* It is not drawn for the reader of this suite (`motion` in the harness), so it is shown for the reading: the
+       question is where it goes, and the sheet's own reasons for not drawing it are asked elsewhere. */
+    dot.style.display = 'inline'
+
     /* How far the dot reaches to each side is the box Chrome draws its ring in, not a number written here. */
     const radius = ring.getBoundingClientRect().width / 2
 
@@ -364,6 +370,7 @@ async function routeTouches(page: Page): Promise<{ words: number; points: number
 
     dot.style.animation = ''
     dot.style.offsetDistance = ''
+    dot.style.display = ''
 
     /* Nothing of this word is seen on the bare page: it stands on something painted over the layer, or it is
        taken out of sight (the visually hidden words of a screen, which are one pixel and cut). The colour is
@@ -437,36 +444,65 @@ for (const at of WIDTHS.flatMap((one): At[] => [one, { ...one, theme: 'dark' }])
 }
 
 test('the dot is not drawn for a reader who asked for less movement, and the ground still is', async ({ open }) => {
-  const { page } = await open({ width: 1280, text: 100 }, '/sr', 'header .brand', ANSWERS)
-
-  await page.emulateMedia({ reducedMotion: 'reduce' })
-
+  const { page } = await open({ width: 1280, text: 100, motion: 'reduce' }, '/sr', 'header .brand', ANSWERS)
   const seen = {
     wide: await isDrawn(page, '.terrain--wide'),
     dot: await isDrawn(page, '.race-page__dot'),
-    running: await page.evaluate(() => document.getAnimations().length),
+    /* The dot's own, and not every animation of the page: another one may be running on a slow runner. */
+    running: await page.evaluate(() => document.querySelector('.race-page__dot')?.getAnimations().length ?? 0),
   }
 
   expect(seen).toEqual({ wide: true, dot: false, running: 0 })
 })
 
+/* The dot is drawn from 560px for a reader who has not asked for less movement, and at no width under it. Each of
+   these pays for the five seconds it runs before the page settles. */
+for (const width of [320, 600, 1280]) {
+  test(`the dot is drawn for a reader who has not asked for less movement, from 560px, at ${width}px`, async ({ open }) => {
+    const { page } = await open({ width, text: 100, motion: 'no-preference' }, '/sr', 'header .brand', ANSWERS)
+
+    expect(await isDrawn(page, '.race-page__dot')).toBe(width >= 560)
+  })
+}
+
 test('the dot runs once, for five seconds at most, and starts again on the next screen', async ({ open }) => {
-  const { page } = await open({ width: 1280, text: 100 }, '/sr', 'header .brand', ANSWERS)
-  const timing = () =>
-    page.evaluate(() => {
-      const run = document.querySelector('.race-page__dot')?.getAnimations()[0]
-      const effect = run?.effect?.getComputedTiming()
+  const { page } = await open({ width: 1280, text: 100, motion: 'no-preference' }, '/sr', 'header .brand', ANSWERS)
 
-      return { at: Number(run?.currentTime ?? Number.NaN), duration: Number(effect?.duration), iterations: effect?.iterations }
-    })
+  /* The page has settled, so the first run is over and nothing of the dot runs: it rests where it stopped. */
+  expect(await page.evaluate(() => document.querySelector('.race-page__dot')?.getAnimations().length ?? -1)).toBe(0)
 
-  /* The page has settled, so the first run is over and nothing runs: the dot rests where it stopped. */
-  expect((await timing()).at).toBeNaN()
+  /* The click and the reading are ONE step in the page: a reading made a round trip later, on a slow runner,
+     can find the new run already over (the first version of this case failed so on CI, 20.11.2026). */
+  const after = await page.evaluate(
+    () =>
+      new Promise<{ at: number; duration: number; iterations: number | undefined }>((resolve) => {
+        const old = document.querySelector('.race-page__dot')
+        const link = [...document.querySelectorAll('nav[aria-label="Glavna navigacija"] a')].find((one) => one.textContent?.trim() === 'Kalendar')
 
-  await page.getByRole('navigation', { name: 'Glavna navigacija' }).getByRole('link', { name: 'Kalendar' }).click()
-  await page.waitForURL(/kalendar/)
+        if (!(link instanceof HTMLElement)) {
+          resolve({ at: Number.NaN, duration: Number.NaN, iterations: undefined })
+          return
+        }
 
-  const after = await timing()
+        link.click()
+
+        const look = () => {
+          const now = document.querySelector('.race-page__dot')
+          const run = now === old ? undefined : now?.getAnimations()[0]
+
+          if (run === undefined) {
+            requestAnimationFrame(look)
+            return
+          }
+
+          const effect = run.effect?.getComputedTiming()
+
+          resolve({ at: Number(run.currentTime), duration: Number(effect?.duration), iterations: effect?.iterations })
+        }
+
+        look()
+      }),
+  )
 
   expect(after.duration, 'seconds the dot runs').toBeLessThanOrEqual(5000)
   expect(after.iterations).toBe(1)
