@@ -92,7 +92,7 @@ class ABeginnersCategoryAMembershipMoves {
 		}
 
 		Said said = WhatAMembershipChangeSays.beginnersCategoryMoved(open, before.season(),
-				before.theSeasonAfter());
+				before.theSeasonAfter(), TheSexOfAMember.of(db, before.member()));
 
 		/* ALWAYS ADDRESSED: `message.to_id` left empty means EVERYBODY (V13). */
 		db.sql("insert into message (to_id, from_id, from_name, subject, body) values (?, null, ?, ?, ?)")

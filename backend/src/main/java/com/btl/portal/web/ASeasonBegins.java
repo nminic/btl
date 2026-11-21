@@ -77,7 +77,7 @@ class ASeasonBegins implements WhatFollowsTheFreeze {
 	private static final Logger LOG = LoggerFactory.getLogger(ASeasonBegins.class);
 
 	/** The subject of the message to the member a team now has as its administrator, approved 05.11.2026. */
-	static final String YOU_ADMINISTER = "Vi ste administrator tima ";
+	static final String YOU_ADMINISTER = "Ti si administrator tima ";
 
 	/**
 	 * THE FIRST SEASON THAT BEGINS WITH THE DROPPING OUT: the first job runs on 1 January 2028 (PDL 05.11.2026,
@@ -427,20 +427,20 @@ class ASeasonBegins implements WhatFollowsTheFreeze {
 	 */
 	static String thePairReads(String who, String gender, int season) {
 		return who + " nije " + (Objects.equals("M", gender) ? "produžio" : "produžila") + " članarinu za sezonu "
-				+ season + ", pa je vaš trkački par raskinut.";
+				+ season + ", pa je tvoj trkački par raskinut.";
 	}
 
 	/** WHAT THE NEW ADMINISTRATOR OF A TEAM READS, approved by the owner on 05.11.2026. */
 	static String theSeatReads(String team, int season) {
-		return "Od 1. januara " + season + " vi ste administrator tima " + team + ", jer je dosadašnjem"
-				+ " administratoru istekla članarina, a vi ste član koji je najduže u timu. Ako ne želite ovu"
-				+ " ulogu, javite se ligi.";
+		return "Od 1. januara " + season + " ti si administrator tima " + team + ", jer je dosadašnjem"
+				+ " administratoru istekla članarina, a ti si član koji je najduže u timu. Ako ne želiš ovu"
+				+ " ulogu, javi se ligi.";
 	}
 
 	/** WHAT THE NEW ADMINISTRATOR OF A TEAM READS AFTER A CANCELLATION IN THE YEAR, approved by the owner on 05.11.2026. */
 	static String theSeatReadsFromToday(String team) {
-		return "Od danas vi ste administrator tima " + team + ", jer je dosadašnjem administratoru istekla"
-				+ " članarina, a vi ste član koji je najduže u timu. Ako ne želite ovu ulogu, javite se ligi.";
+		return "Od danas ti si administrator tima " + team + ", jer je dosadašnjem administratoru istekla"
+				+ " članarina, a ti si član koji je najduže u timu. Ako ne želiš ovu ulogu, javi se ligi.";
 	}
 
 	/** The portal writing in the league's name, as {@link PairWriteApi} does. */

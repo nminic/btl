@@ -10,6 +10,7 @@ import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.text.MessageFormat;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.ResourceBundle;
 
@@ -129,18 +130,18 @@ public final class WhatTheWelcomeSays {
 	 * @throws IllegalArgumentException for B and C, which carry the slip and are asked for by
 	 *                                  {@link #withASlip} and {@link #withPayPal}
 	 */
-	public static Said about(Letter letter, MailLanguage in, int season, Portal portal) {
+	public static Said about(Letter letter, MailLanguage in, int season, Portal portal, Gender reader) {
 		if (letter == Letter.WITH_A_SLIP || letter == Letter.WITH_PAYPAL) {
 			throw new IllegalArgumentException(letter + " carries a payment and is asked for with it");
 		}
 
-		return written(letter, in, String.valueOf(season), membershipPage(portal, in));
+		return written(letter, in, reader, String.valueOf(season), membershipPage(portal, in));
 	}
 
 	/** B, with the payee and the amount written out beside the code in the attachment. */
-	public static Said withASlip(MailLanguage in, int season, String recipient, String account,
+	public static Said withASlip(MailLanguage in, Gender reader, int season, String recipient, String account,
 			String amount, String purpose, Portal portal) {
-		return written(Letter.WITH_A_SLIP, in, String.valueOf(season), recipient, account, amount,
+		return written(Letter.WITH_A_SLIP, in, reader, String.valueOf(season), recipient, account, amount,
 				purpose, membershipPage(portal, in));
 	}
 
@@ -150,9 +151,9 @@ public final class WhatTheWelcomeSays {
 	 * the note that it is a business address of the association, with my recommendation (PDL
 	 * 24.10.2026), as a choice of their own.
 	 */
-	public static Said withPayPal(MailLanguage in, int season, String paypal, String amount,
+	public static Said withPayPal(MailLanguage in, Gender reader, int season, String paypal, String amount,
 			String recipient, Portal portal) {
-		return written(Letter.WITH_PAYPAL, in, String.valueOf(season), paypal, amount,
+		return written(Letter.WITH_PAYPAL, in, reader, String.valueOf(season), paypal, amount,
 				membershipPage(portal, in), recipient);
 	}
 
@@ -179,12 +180,24 @@ public final class WhatTheWelcomeSays {
 				+ " " + currency;
 	}
 
-	private static Said written(Letter letter, MailLanguage in, Object... values) {
+	private static Said written(Letter letter, MailLanguage in, Gender reader, Object... values) {
+		Objects.requireNonNull(reader, "reader");
+
 		ResourceBundle words = words(in);
+		ResourceBundle woman = wordsForAWoman(in);
 
 		return new Said(
-				new MessageFormat(words.getString(letter.key() + ".subject"), Locale.ROOT).format(values),
-				new MessageFormat(words.getString(letter.key() + ".body"), Locale.ROOT).format(values));
+				new MessageFormat(reader.words(words, woman, letter.key() + ".subject"), Locale.ROOT).format(values),
+				new MessageFormat(reader.words(words, woman, letter.key() + ".body"), Locale.ROOT).format(values));
+	}
+
+	/**
+	 * THE WORDS A WOMAN READS, only where they differ (owner, 21.11.2026: „po polu primaoca"). A
+	 * dictionary of its own because the floor over {@code mail/welcome} demands exactly the keys of
+	 * {@link Letter}. None for English, which has no participle to agree.
+	 */
+	static ResourceBundle wordsForAWoman(MailLanguage in) {
+		return in == MailLanguage.ENGLISH ? null : ResourceBundle.getBundle("mail/welcome-female", Locale.ROOT);
 	}
 
 	/**

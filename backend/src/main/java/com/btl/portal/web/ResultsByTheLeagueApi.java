@@ -6,6 +6,7 @@ import com.btl.portal.domain.event.WhatAnEventCarries;
 import com.btl.portal.domain.event.WhatARaceCarries;
 import com.btl.portal.domain.event.WhatARaceCarries.Figures;
 import com.btl.portal.domain.mail.MailLanguage;
+import com.btl.portal.domain.mail.Gender;
 import com.btl.portal.domain.mail.WhatAResultChangeSays;
 import com.btl.portal.domain.mail.WhatAResultChangeSays.Run;
 import com.btl.portal.domain.mail.WhatTheMessageSays.Said;
@@ -1157,12 +1158,15 @@ class ResultsByTheLeagueApi {
 			return;
 		}
 
-		tell(member, open ? "Početnička kategorija vam je ponovo otvorena"
-						: "Početnička kategorija vam je zatvorena",
-				"Liga vam je " + act.verb + " rezultat sa trke " + run.raceName() + " od "
-						+ WhatAResultChangeSays.asADay(run.day()) + ". Time ste u zvaničnoj sezoni "
-						+ (open ? "pali ispod praga od " : "prešli prag od ")
-						+ Category.FIRST_SEASON_POINTS + " bodova, pa vam je početnička kategorija "
+		boolean woman = TheSexOfAMember.of(db, member) == Gender.WOMAN;
+
+		tell(member, open ? "Početnička kategorija ti je ponovo otvorena"
+						: "Početnička kategorija ti je zatvorena",
+				"Liga ti je " + act.verb + " rezultat sa trke " + run.raceName() + " od "
+						+ WhatAResultChangeSays.asADay(run.day()) + ". Time si u zvaničnoj sezoni "
+						+ (open ? (woman ? "pala ispod praga od " : "pao ispod praga od ")
+								: (woman ? "prešla prag od " : "prešao prag od "))
+						+ Category.FIRST_SEASON_POINTS + " bodova, pa ti je početnička kategorija "
 						+ (open ? "ponovo otvorena" : "zatvorena") + " za sezonu " + season + ".");
 	}
 

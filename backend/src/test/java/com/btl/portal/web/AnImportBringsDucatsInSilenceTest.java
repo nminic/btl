@@ -80,9 +80,9 @@ class AnImportBringsDucatsInSilenceTest {
 		broughtIn(ANA, "Uvoz-druga", APPROVED, "approval");
 
 		assertThat(codes(at().reconcile(id(ANA)))).containsExactly("duk-mesecni-km");
-		assertThat(messages()).containsExactly(id(ANA) + " | Osvojili ste dukat | Odobren vam je rezultat sa trke"
-				+ " Uvoz-druga od 10.02.2028, i njime ste osvojili dukat \"Mesečni kilometri\" za februar 2028. Dukat"
-				+ " stoji na vašem profilu.");
+		assertThat(messages()).containsExactly(id(ANA) + " | Osvojila si dukat | Odobren ti je rezultat sa trke"
+				+ " Uvoz-druga od 10.02.2028, i njime si osvojila dukat \"Mesečni kilometri\" za februar 2028. Dukat"
+				+ " stoji na tvom profilu.");
 	}
 
 	@Test
@@ -110,9 +110,9 @@ class AnImportBringsDucatsInSilenceTest {
 		broughtIn(ANA, "Uvoz-prva", APPROVED.plusSeconds(3600), "approval");
 
 		assertThat(codes(at().reconcile(id(ANA)))).containsExactly("duk-mesecni-km");
-		assertThat(messages()).containsExactly(id(ANA) + " | Osvojili ste dukat | Liga vam je unela rezultat sa"
-				+ " trke Uvoz-druga od 10.02.2028, i njime ste osvojili dukat \"Mesečni kilometri\" za februar 2028."
-				+ " Dukat stoji na vašem profilu.");
+		assertThat(messages()).containsExactly(id(ANA) + " | Osvojila si dukat | Liga ti je unela rezultat sa"
+				+ " trke Uvoz-druga od 10.02.2028, i njime si osvojila dukat \"Mesečni kilometri\" za februar 2028."
+				+ " Dukat stoji na tvom profilu.");
 	}
 
 	@Test
@@ -123,7 +123,7 @@ class AnImportBringsDucatsInSilenceTest {
 		broughtIn(ANA, "Uvoz-prva", APPROVED.minusSeconds(60), "import");
 
 		assertThat(codes(at().reconcile(id(ANA)))).containsExactly("duk-mesecni-km");
-		assertThat(messages()).hasSize(1).first().asString().startsWith(id(ANA) + " | Osvojili ste dukat");
+		assertThat(messages()).hasSize(1).first().asString().startsWith(id(ANA) + " | Osvojila si dukat");
 	}
 
 	/**

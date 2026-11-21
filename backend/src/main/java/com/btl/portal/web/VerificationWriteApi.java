@@ -6,6 +6,7 @@ import com.btl.portal.domain.event.WhatARaceCarries;
 import com.btl.portal.domain.event.WhatARaceCarries.Figures;
 import com.btl.portal.domain.event.WhatAnEventCarries;
 import com.btl.portal.domain.mail.MailLanguage;
+import com.btl.portal.domain.mail.Gender;
 import com.btl.portal.domain.mail.WhatAResultChangeSays;
 import com.btl.portal.domain.mail.WhatAResultChangeSays.Run;
 import com.btl.portal.domain.mail.WhatTheMessageSays.Said;
@@ -1046,8 +1047,9 @@ class VerificationWriteApi {
 			   write to: a moderator who does not race has no `competitor` row (V23) and
 			   `message.to_id` points at one. */
 			if (!his) {
-				tell(memberOfAccount.competitorId(hold.heldBy()), "Stavka vam je oduzeta",
-						"Superadmin je preuzeo stavku koju ste držali u redu za verifikaciju.");
+				tellBySex(memberOfAccount.competitorId(hold.heldBy()), "Stavka ti je oduzeta",
+						"Superadmin je preuzeo stavku koju si držao u redu za verifikaciju.",
+						"Superadmin je preuzeo stavku koju si držala u redu za verifikaciju.");
 			}
 
 			return ResponseEntity.noContent().build();
@@ -2451,10 +2453,12 @@ class VerificationWriteApi {
 	 * was not asking for is a smaller fault than staying silent towards somebody who was.
 	 */
 	private void tellHimHisCategoryMoved(long member, int season, Run counted) {
-		tell(member, "Početnička kategorija vam je zatvorena",
-				"Početnička kategorija vam je zatvorena za sezonu " + season
-						+ ", jer ste rezultatom sa trke " + counted.raceName() + " od "
-						+ WhatAResultChangeSays.asADay(counted.day()) + " prešli prag od "
+		boolean woman = TheSexOfAMember.of(db, member) == Gender.WOMAN;
+
+		tell(member, "Početnička kategorija ti je zatvorena",
+				"Početnička kategorija ti je zatvorena za sezonu " + season
+						+ ", jer si rezultatom sa trke " + counted.raceName() + " od "
+						+ WhatAResultChangeSays.asADay(counted.day()) + (woman ? " prešla" : " prešao") + " prag od "
 						+ Category.FIRST_SEASON_POINTS + " bodova.");
 	}
 
@@ -2623,7 +2627,7 @@ class VerificationWriteApi {
 				.update();
 
 		tell(proposal.competitorId(), "Tim je prihvaćen",
-				"Vaš tim \"" + proposal.name() + "\" je prihvaćen i od sada ga vodite.");
+				"Tvoj tim \"" + proposal.name() + "\" je prihvaćen i od sada ga vodiš.");
 
 		/* AND THE TEAMS THAT HAD ALREADY ASKED HIM ARE TOLD, because the approval is the third door a
 		   member goes into a team by. PDL 06.09.2026: „Tim čiji je poziv ostao neodgovoren dobija poruku
@@ -2700,6 +2704,19 @@ class VerificationWriteApi {
 						+ " values (?, null, ?, ?, ?)")
 				.params(member, THE_PORTAL, subject, body)
 				.update();
+	}
+
+	/**
+	 * THE SAME LINE WITH THE PARTICIPLE OF WHO READS IT (owner, 21.11.2026: „po polu primaoca"): the
+	 * inbox of {@code member}, in his words when he is a man and in hers when she is a woman. Nothing
+	 * for a member that is not there, as {@link #tell(Long, String, String)}.
+	 */
+	private void tellBySex(Long member, String subject, String forHim, String forHer) {
+		if (member == null) {
+			return;
+		}
+
+		tell(member, subject, TheSexOfAMember.of(db, member) == Gender.WOMAN ? forHer : forHim);
 	}
 
 	/** The road an address that is not there already takes (ADL A8; {@link RightsAtTheDoor}). */

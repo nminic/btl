@@ -1,6 +1,8 @@
 package com.btl.portal.domain.membership;
 
+import java.util.ResourceBundle;
 import com.btl.portal.domain.balance.Balance;
+import com.btl.portal.domain.mail.Gender;
 import com.btl.portal.domain.mail.WhatTheMessageSays.Said;
 import com.btl.portal.domain.membership.WhatAMembershipChangeSays.Told;
 import com.btl.portal.domain.pricing.Currency;
@@ -73,41 +75,41 @@ class WhatAMembershipChangeSaysTest {
 	@Test
 	void whatEachOfThemSays() {
 		assertThat(WhatAMembershipChangeSays.paymentRecorded(SEASON)).isEqualTo(new Said(
-				"Evidentirana je vaša uplata članarine",
-				"Za sezonu 2028 evidentirana je vaša uplata članarine.\n\n"
-						+ "Za sezonu 2028 ste član lige.\n\n"
+				"Evidentirana je tvoja uplata članarine",
+				"Za sezonu 2028 evidentirana je tvoja uplata članarine.\n\n"
+						+ "Za sezonu 2028 si član lige.\n\n"
 						+ "Balkanska trkačka liga"));
 
 		assertThat(WhatAMembershipChangeSays.basisChanged(SEASON, Basis.FEE_EXEMPT)).isEqualTo(new Said(
-				"Promenjen je osnov vašeg članstva",
-				"Za sezonu 2028 promenjen je osnov vašeg članstva.\n\n"
-						+ "Za sezonu 2028 ste i dalje član lige, a osnov vašeg članstva je sada:"
+				"Promenjen je osnov tvog članstva",
+				"Za sezonu 2028 promenjen je osnov tvog članstva.\n\n"
+						+ "Za sezonu 2028 si i dalje član lige, a osnov tvog članstva je sada:"
 						+ " oslobođenje od članarine.\n\n"
 						+ "Balkanska trkačka liga"));
 
 		assertThat(WhatAMembershipChangeSays.cancelled(SEASON)).isEqualTo(new Said(
-				"Stornirano je vaše članstvo",
-				"Za sezonu 2028 stornirano je vaše članstvo.\n\n"
-						+ "Za sezonu 2028 više niste član lige.\n\n"
+				"Stornirano je tvoje članstvo",
+				"Za sezonu 2028 stornirano je tvoje članstvo.\n\n"
+						+ "Za sezonu 2028 više nisi član lige.\n\n"
 						+ "Balkanska trkačka liga"));
 
-		assertThat(WhatAMembershipChangeSays.beginnersCategoryMoved(false, SEASON, 2029)).isEqualTo(new Said(
-				"Početnička kategorija vam je zatvorena",
-				"Početnička kategorija vam je zatvorena za sezonu 2029, jer ste u sezoni 2028 prešli prag od 12"
+		assertThat(WhatAMembershipChangeSays.beginnersCategoryMoved(false, SEASON, 2029, Gender.MAN)).isEqualTo(new Said(
+				"Početnička kategorija ti je zatvorena",
+				"Početnička kategorija ti je zatvorena za sezonu 2029, jer si u sezoni 2028 prešao prag od 12"
 						+ " bodova.\n\n"
 						+ "Balkanska trkačka liga"));
 
-		assertThat(WhatAMembershipChangeSays.beginnersCategoryMoved(true, SEASON, 2029)).isEqualTo(new Said(
-				"Početnička kategorija vam je ponovo otvorena",
-				"Početnička kategorija vam je ponovo otvorena za sezonu 2029, jer je članstvo za sezonu 2028"
+		assertThat(WhatAMembershipChangeSays.beginnersCategoryMoved(true, SEASON, 2029, Gender.MAN)).isEqualTo(new Said(
+				"Početnička kategorija ti je ponovo otvorena",
+				"Početnička kategorija ti je ponovo otvorena za sezonu 2029, jer je članstvo za sezonu 2028"
 						+ " poništeno.\n\n"
 						+ "Balkanska trkačka liga"));
 
 		assertThat(WhatAMembershipChangeSays.referralThanked("Ime Prezime", SEASON,
-				new Balance.Money(new BigDecimal("4200.00"), Currency.RSD))).isEqualTo(new Said(
+				new Balance.Money(new BigDecimal("4200.00"), Currency.RSD), Gender.MAN)).isEqualTo(new Said(
 				"Hvala na preporuci",
-				"Osoba koju ste preporučili, Ime Prezime, postala je deo lige za sezonu 2028, pa smo vam na"
-						+ " balans upisali 4.200,00 RSD. Hvala vam na preporuci.\n\n"
+				"Osoba koju si preporučio, Ime Prezime, postala je deo lige za sezonu 2028, pa smo ti na"
+						+ " balans upisali 4.200,00 RSD. Hvala ti na preporuci.\n\n"
 						+ "Balkanska trkačka liga"));
 	}
 
@@ -119,11 +121,11 @@ class WhatAMembershipChangeSaysTest {
 	@Test
 	void theNameTheSeasonAndTheAmountOfTheThanksAreThreeFacts() {
 		String dinars = WhatAMembershipChangeSays.referralThanked("Ana Anic", 2031,
-				new Balance.Money(new BigDecimal("876.00"), Currency.RSD)).body();
+				new Balance.Money(new BigDecimal("876.00"), Currency.RSD), Gender.MAN).body();
 		String euro = WhatAMembershipChangeSays.referralThanked("Ana Anic", 2031,
-				new Balance.Money(new BigDecimal("7.30"), Currency.EUR)).body();
+				new Balance.Money(new BigDecimal("7.30"), Currency.EUR), Gender.MAN).body();
 
-		assertThat(dinars).contains("preporučili, Ana Anic, postala").contains("za sezonu 2031, pa")
+		assertThat(dinars).contains("preporučio, Ana Anic, postala").contains("za sezonu 2031, pa")
 				.contains("upisali 876,00 RSD.").doesNotContain("2,031").doesNotContain("EUR");
 		assertThat(euro).contains("upisali 7,30 EUR.").doesNotContain("RSD");
 	}
@@ -137,9 +139,9 @@ class WhatAMembershipChangeSaysTest {
 	@Test
 	void theSeasonOfTheMembershipAndTheSeasonOfTheCategoryAreTwoFacts() {
 		for (boolean open : new boolean[] {false, true}) {
-			String body = WhatAMembershipChangeSays.beginnersCategoryMoved(open, 2031, 2035).body();
+			String body = WhatAMembershipChangeSays.beginnersCategoryMoved(open, 2031, 2035, Gender.MAN).body();
 
-			assertThat(body).contains(open ? "članstvo za sezonu 2031 poništeno" : "u sezoni 2031 prešli")
+			assertThat(body).contains(open ? "članstvo za sezonu 2031 poništeno" : "u sezoni 2031 prešao")
 					.contains("za sezonu 2035")
 					.doesNotContain("sezonu 2032").doesNotContain("sezonu 2036").doesNotContain("2,03");
 		}
@@ -151,7 +153,7 @@ class WhatAMembershipChangeSaysTest {
 		for (Said said : List.of(WhatAMembershipChangeSays.paymentRecorded(2031),
 				WhatAMembershipChangeSays.basisChanged(2031, Basis.PAYMENT),
 				WhatAMembershipChangeSays.cancelled(2031),
-				WhatAMembershipChangeSays.referralThanked("Ana Anic", 2031, SOME_MONEY))) {
+				WhatAMembershipChangeSays.referralThanked("Ana Anic", 2031, SOME_MONEY, Gender.MAN))) {
 			assertThat(said.body()).contains("sezonu 2031").doesNotContain("2028").doesNotContain("2,031");
 		}
 	}
@@ -211,10 +213,63 @@ class WhatAMembershipChangeSaysTest {
 		return Stream.concat(
 				Stream.of(WhatAMembershipChangeSays.paymentRecorded(SEASON),
 						WhatAMembershipChangeSays.cancelled(SEASON),
-						WhatAMembershipChangeSays.referralThanked("Ana Anic", SEASON, SOME_MONEY),
-						WhatAMembershipChangeSays.beginnersCategoryMoved(false, SEASON, SEASON + 1),
-						WhatAMembershipChangeSays.beginnersCategoryMoved(true, SEASON, SEASON + 1)),
+						WhatAMembershipChangeSays.referralThanked("Ana Anic", SEASON, SOME_MONEY, Gender.MAN),
+						WhatAMembershipChangeSays.beginnersCategoryMoved(false, SEASON, SEASON + 1, Gender.MAN),
+						WhatAMembershipChangeSays.beginnersCategoryMoved(true, SEASON, SEASON + 1, Gender.MAN)),
 				Arrays.stream(Basis.values()).map(one -> WhatAMembershipChangeSays.basisChanged(SEASON, one)))
 				.toList();
+	}
+
+	/**
+	 * THE SEX OF WHO READS PICKS THE PARTICIPLE (owner, 21.11.2026: „po polu primaoca"), and the dictionary of
+	 * the words a woman reads is held from this side: the four keys that carry a participle, each a key of
+	 * {@code notices/membership} with the same holes and other words.
+	 */
+	@Test
+	void theWordsAWomanReadsAreFourOfTheMasculineKeysWithTheSameHolesAndOtherWords() {
+		ResourceBundle man = WhatAMembershipChangeSays.words();
+		ResourceBundle woman = WhatAMembershipChangeSays.wordsForAWoman();
+
+		assertThat(woman.keySet()).containsExactlyInAnyOrder("exemptionGranted.subject", "exemptionGranted.body",
+				"beginnersCategoryClosed.body", "referralThanked.body");
+
+		for (String key : woman.keySet()) {
+			assertThat(man.containsKey(key)).as(key).isTrue();
+			assertThat(woman.getString(key)).as(key).isNotEqualTo(man.getString(key));
+			assertThat(new MessageFormat(woman.getString(key), Locale.ROOT).getFormatsByArgumentIndex().length)
+					.as("holes of %s", key)
+					.isEqualTo(new MessageFormat(man.getString(key), Locale.ROOT).getFormatsByArgumentIndex().length);
+		}
+	}
+
+	@Test
+	void aWomanReadsTheFeminineAndAManTheMasculineInTheThreeNoticesThatHaveBoth() {
+		assertThat(WhatAMembershipChangeSays.exemptionGranted(SEASON, Gender.WOMAN)).isEqualTo(new Said(
+				"Oslobođena si članarine",
+				"Za sezonu 2028 oslobođena si plaćanja članarine i član si lige.\n\nBalkanska trkačka liga"));
+		assertThat(WhatAMembershipChangeSays.exemptionGranted(SEASON, Gender.MAN)).isEqualTo(new Said(
+				"Oslobođen si članarine",
+				"Za sezonu 2028 oslobođen si plaćanja članarine i član si lige.\n\nBalkanska trkačka liga"));
+
+		assertThat(WhatAMembershipChangeSays.beginnersCategoryMoved(false, SEASON, 2029, Gender.WOMAN).body())
+				.contains("jer si u sezoni 2028 prešla prag").doesNotContain("prešao");
+		assertThat(WhatAMembershipChangeSays.beginnersCategoryMoved(false, SEASON, 2029, Gender.MAN).body())
+				.contains("jer si u sezoni 2028 prešao prag").doesNotContain("prešla");
+		assertThat(WhatAMembershipChangeSays.beginnersCategoryMoved(true, SEASON, 2029, Gender.WOMAN))
+				.as("the line that reopens it has no participle, so it is the same for both")
+				.isEqualTo(WhatAMembershipChangeSays.beginnersCategoryMoved(true, SEASON, 2029, Gender.MAN));
+
+		assertThat(WhatAMembershipChangeSays.referralThanked("Ime Prezime", SEASON, SOME_MONEY, Gender.WOMAN).body())
+				.startsWith("Osoba koju si preporučila, Ime Prezime,").doesNotContain("preporučio");
+		assertThat(WhatAMembershipChangeSays.referralThanked("Ime Prezime", SEASON, SOME_MONEY, Gender.MAN).body())
+				.startsWith("Osoba koju si preporučio, Ime Prezime,").doesNotContain("preporučila");
+	}
+
+	@Test
+	void aNoticeWithWordsForAWomanIsNotAskedForWithoutAReaderAndOneWithoutIsNot() {
+		assertThatThrownBy(() -> WhatAMembershipChangeSays.said(Told.AN_EXEMPTION_WAS_GRANTED, "2028"))
+				.isInstanceOf(IllegalStateException.class).hasMessageContaining("exemptionGranted");
+		assertThat(WhatAMembershipChangeSays.said(Told.A_PAYMENT_WAS_RECORDED, "2028").subject())
+				.isEqualTo("Evidentirana je tvoja uplata članarine");
 	}
 }

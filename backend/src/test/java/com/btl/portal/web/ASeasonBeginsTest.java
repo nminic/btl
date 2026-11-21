@@ -258,20 +258,20 @@ class ASeasonBeginsTest {
 		assertThat(pairs()).containsExactly("2027 Aca Hana", "2028 Boban Ceca");
 
 		assertThat(messages()).containsExactlyInAnyOrder(
-				ceca + " Vi ste administrator tima Prvi tim | Od 1. januara 2028 vi ste administrator tima Prvi tim,"
-						+ " jer je dosadašnjem administratoru istekla članarina, a vi ste član koji je najduže u timu."
-						+ " Ako ne želite ovu ulogu, javite se ligi.",
-				kosta + " Vi ste administrator tima Cetvrti tim | Od 1. januara 2028 vi ste administrator tima"
-						+ " Cetvrti tim, jer je dosadašnjem administratoru istekla članarina, a vi ste član koji je"
-						+ " najduže u timu. Ako ne želite ovu ulogu, javite se ligi.",
+				ceca + " Ti si administrator tima Prvi tim | Od 1. januara 2028 ti si administrator tima Prvi tim,"
+						+ " jer je dosadašnjem administratoru istekla članarina, a ti si član koji je najduže u timu."
+						+ " Ako ne želiš ovu ulogu, javi se ligi.",
+				kosta + " Ti si administrator tima Cetvrti tim | Od 1. januara 2028 ti si administrator tima"
+						+ " Cetvrti tim, jer je dosadašnjem administratoru istekla članarina, a ti si član koji je"
+						+ " najduže u timu. Ako ne želiš ovu ulogu, javi se ligi.",
 				pera + " " + PairWriteApi.THE_PAIR_IS_BROKEN + " | Nena Nenic nije produžila članarinu za sezonu"
-						+ " 2028, pa je vaš trkački par raskinut.",
+						+ " 2028, pa je tvoj trkački par raskinut.",
 				vesna + " " + PairWriteApi.THE_PAIR_IS_BROKEN + " | Aca Acic nije produžio članarinu za sezonu 2028,"
-						+ " pa je vaš trkački par raskinut.",
+						+ " pa je tvoj trkački par raskinut.",
 				vlada + " " + PairWriteApi.THE_PAIR_IS_BROKEN + " | Eva Evic nije produžila članarinu za sezonu 2028,"
-						+ " pa je vaš trkački par raskinut.",
+						+ " pa je tvoj trkački par raskinut.",
 				wanda + " " + PairWriteApi.THE_PAIR_IS_BROKEN + " | Joca Jocic nije produžio članarinu za sezonu"
-						+ " 2028, pa je vaš trkački par raskinut.");
+						+ " 2028, pa je tvoj trkački par raskinut.");
 		assertThat(messages()).hasSize(6);
 		assertThat(messages()).noneMatch(one -> one.startsWith(zora + " "));
 		assertThat(db.sql("select count(*) from message where from_name <> ?").param(PairWriteApi.THE_LEAGUE)
@@ -339,11 +339,11 @@ class ASeasonBeginsTest {
 				.containsExactly("Cetvrti tim Kosta", "Deveti tim -", "Prvi tim Boban", "Treci tim Hana");
 		assertThat(pairs()).containsExactly("2027 Aca Hana");
 		assertThat(messages()).contains(
-				boban + " Vi ste administrator tima Prvi tim | Od danas vi ste administrator tima Prvi tim, jer je"
-						+ " dosadašnjem administratoru istekla članarina, a vi ste član koji je najduže u timu. Ako ne"
-						+ " želite ovu ulogu, javite se ligi.",
+				boban + " Ti si administrator tima Prvi tim | Od danas ti si administrator tima Prvi tim, jer je"
+						+ " dosadašnjem administratoru istekla članarina, a ti si član koji je najduže u timu. Ako ne"
+						+ " želiš ovu ulogu, javi se ligi.",
 				boban + " " + PairWriteApi.THE_PAIR_IS_BROKEN + " | Ceca Cecic nije produžila članarinu za sezonu"
-						+ " 2028, pa je vaš trkački par raskinut.");
+						+ " 2028, pa je tvoj trkački par raskinut.");
 	}
 
 	/**
@@ -386,7 +386,7 @@ class ASeasonBeginsTest {
 		assertThat(teams()).as("a team he was alone in goes with him").noneMatch(one -> one.startsWith("Osmi tim"));
 		assertThat(pairs()).doesNotContain("2028 Ivan Zora");
 		assertThat(messages()).contains(ivan + " " + PairWriteApi.THE_PAIR_IS_BROKEN
-				+ " | Zora Zoric nije produžila članarinu za sezonu 2028, pa je vaš trkački par raskinut.");
+				+ " | Zora Zoric nije produžila članarinu za sezonu 2028, pa je tvoj trkački par raskinut.");
 	}
 
 	/**
@@ -500,11 +500,11 @@ class ASeasonBeginsTest {
 		assertThat(pairs()).doesNotContain("2029 Yoze Wera");
 		assertThat(adminOf("tim-2029")).isEqualTo(zeka);
 		assertThat(messages()).contains(
-				zeka + " Vi ste administrator tima Tim 2029 | Od danas vi ste administrator tima Tim 2029, jer je"
-						+ " dosadašnjem administratoru istekla članarina, a vi ste član koji je najduže u timu. Ako ne"
-						+ " želite ovu ulogu, javite se ligi.",
+				zeka + " Ti si administrator tima Tim 2029 | Od danas ti si administrator tima Tim 2029, jer je"
+						+ " dosadašnjem administratoru istekla članarina, a ti si član koji je najduže u timu. Ako ne"
+						+ " želiš ovu ulogu, javi se ligi.",
 				wera + " " + PairWriteApi.THE_PAIR_IS_BROKEN + " | Yoze Yozic nije produžio članarinu za sezonu"
-						+ " 2029, pa je vaš trkački par raskinut.");
+						+ " 2029, pa je tvoj trkački par raskinut.");
 	}
 
 	/* ------------------------------------------------------------------------------------

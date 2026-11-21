@@ -203,7 +203,7 @@ class TheReferrerIsThankedTest {
 
 	private long competitor(String first, String last, String memberNumber, String town,
 			Long broughtInBy) {
-		return db.sql("insert into competitor (" + COMPETITOR_COLUMNS + ") values (?, ?, ?, 'M',"
+		return db.sql("insert into competitor (" + COMPETITOR_COLUMNS + ") values (?, ?, ?, '" + (first.equals("Ruzica") || first.equals("Tamara") ? "F" : "M") + "',"
 						+ " date '1990-05-15', " + town + ", null, null, 2027, ?, ?, '', false,"
 						+ " 'none', 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00')"
 						+ " returning id")
@@ -248,9 +248,9 @@ class TheReferrerIsThankedTest {
 	}
 
 	private static String theThanks(String amount) {
-		return "Balkanska trkačka liga | " + THE_SUBJECT + " | Osoba koju ste preporučili, Nenad Novajlija,"
-				+ " postala je deo lige za sezonu 2028, pa smo vam na balans upisali " + amount
-				+ ". Hvala vam na preporuci.\n\nBalkanska trkačka liga";
+		return "Balkanska trkačka liga | " + THE_SUBJECT + " | Osoba koju si preporučila, Nenad Novajlija,"
+				+ " postala je deo lige za sezonu 2028, pa smo ti na balans upisali " + amount
+				+ ". Hvala ti na preporuci.\n\nBalkanska trkačka liga";
 	}
 
 	/** Nobody but the referrer was told anything, and the table holds exactly the messages counted. */
@@ -278,6 +278,23 @@ class TheReferrerIsThankedTest {
 	 * A BOOKED PAYMENT THANKS HIM, in his money - dinars for a referrer in Serbia whose newcomer pays in
 	 * euro - and a second season of the same member says nothing.
 	 */
+	/**
+	 * THE THANKS GO BY THE SEX OF THE REFERRER, WHO READS THEM, AND NOT OF THE ONE HE BROUGHT IN (owner,
+	 * 21.11.2026: „po polu primaoca"). The fixture's referrer is a woman and the newcomer a man, which
+	 * measures one side; here it is the other way round, so that a message written by the newcomer's sex, or
+	 * always in the one sex, reads differently from the sentence.
+	 */
+	@Test
+	void aManWhoBroughtAWomanInIsThankedInTheMasculine() throws Exception {
+		thePeople(IN_SERBIA, ABROAD);
+		db.sql("update competitor set gender = 'M' where id = ?").param(referrer).update();
+		db.sql("update competitor set gender = 'F' where id = ?").param(newcomer).update();
+
+		assertThat(confirmForTheNewcomer().getStatus()).isEqualTo(201);
+
+		assertThat(thanksTo(referrer)).isEqualTo(theThanks("876,00 RSD").replace("preporučila", "preporučio"));
+	}
+
 	@Test
 	void aBookedPaymentThanksTheReferrerAndASecondSeasonDoesNot() throws Exception {
 		thePeople(IN_SERBIA, ABROAD);
