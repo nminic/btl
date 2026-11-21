@@ -398,8 +398,8 @@ describe('TopTen', () => {
       expect(figures.map((one) => one.textContent)).toEqual(['1.234.567,89 p', '34.921,69 p', '60,75 p'])
       expect(figures.map((one) => one.querySelectorAll('wbr').length)).toEqual([2, 1, 0])
       /* The letter is worked out from the number of characters the page writes, and the unit is among them. */
-      expect(figures.map((one) => (one as HTMLElement).style.getPropertyValue('--chars'))).toEqual(
-        figures.map((one) => String(one.textContent?.length)),
+      expect(figures.map((one) => one.getAttribute('style'))).toEqual(
+        figures.map((one) => `--chars: ${one.textContent?.length};`),
       )
     })
 

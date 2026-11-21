@@ -448,6 +448,7 @@ const SAMPLE_NAMES: Answers = {
 }
 
 const TEXTS: At['text'][] = [100, 125, 200]
+const ALL_TEXTS: At['text'][] = [100, 125, 150, 175, 200]
 
 /**
  * THE FIGURE OF THE PODIUM STANDS IN ITS COLUMN AT EVERY TEXT SIZE, IN BOTH LANGUAGES (owner, 21.11.2026, review of
@@ -458,7 +459,7 @@ const TEXTS: At['text'][] = [100, 125, 200]
  * every circle, and cut by nothing.
  */
 for (const width of [360, 540, 768, 1280]) {
-  for (const text of [100, 125, 150, 175, 200] as At['text'][]) {
+  for (const text of ALL_TEXTS) {
     for (const language of ['sr', 'en']) {
       const here: At = { width, text }
 
