@@ -117,6 +117,11 @@ describe('the markup of the front page and the sheets that dress it', () => {
     }
   })
 
+  it('writes every category of the podium and of the list in capitals (owner, 21.11.2026: „Možeš sve kategorije velikim")', () => {
+    expect(body(home, '.stand__cat')).toMatch(/text-transform: uppercase;/)
+    expect(body(home, '.toprows .kt')).toMatch(/text-transform: uppercase;/)
+  })
+
   it('draws the whole sentence of the points by default and the short one only in a narrow tile', () => {
     expect(body(counter, '.score__short')).toContain('display: none')
     expect(counter).toMatch(/@container \(max-width: [\d.]+rem\) \{\s*\.score__full \{\s*display: none;/)
