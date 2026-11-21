@@ -205,7 +205,7 @@ class PostmanTest {
 	@Test
 	void theMessageArrivesAndItIsTheOneThatWasWritten() throws Exception {
 		Said said = WhatTheMessageSays.about(Message.CONFIRM_THE_ADDRESS, MailLanguage.SERBIAN, PORTAL,
-				"AbCd-EfGh_1234", java.time.Instant.parse("2026-12-17T12:00:00Z"));
+				"AbCd-EfGh_1234", java.time.Instant.parse("2026-12-17T12:00:00Z"), com.btl.portal.domain.mail.Gender.MAN);
 
 		postman.send(said, "clan@primer.rs");
 

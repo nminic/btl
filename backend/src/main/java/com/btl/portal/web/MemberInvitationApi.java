@@ -1,5 +1,6 @@
 package com.btl.portal.web;
 
+import com.btl.portal.domain.mail.Gender;
 import com.btl.portal.domain.mail.WhatTheMessageSays;
 import com.btl.portal.domain.mail.WhatTheMessageSays.Message;
 import com.btl.portal.domain.mail.WhatTheMessageSays.Portal;
@@ -98,7 +99,7 @@ class MemberInvitationApi {
 	}
 
 	/** What the transaction decided: a refusal, or the letter to send once it has committed. */
-	private record Decided(ResponseEntity<?> refused, String address, String link) {
+	private record Decided(ResponseEntity<?> refused, String address, String link, Gender sex) {
 	}
 
 	@PostMapping("/api/members/{memberNumber}/invitation")
@@ -111,7 +112,7 @@ class MemberInvitationApi {
 		}
 
 		try {
-			postman.send(WhatTheMessageSays.about(Message.INVITED_AS_A_MEMBER, portal, decided.link()),
+			postman.send(WhatTheMessageSays.about(Message.INVITED_AS_A_MEMBER, portal, decided.link(), decided.sex()),
 					decided.address());
 		} catch (MailException theRelayDidNotTakeIt) {
 			/* An account and never an address in the log: an address is a personal datum (ADL A12). */
@@ -130,7 +131,7 @@ class MemberInvitationApi {
 				.param(memberNumber).query(Long.class).optional();
 
 		if (member.isEmpty()) {
-			return new Decided(ResponseEntity.notFound().build(), null, null);
+			return new Decided(ResponseEntity.notFound().build(), null, null, null);
 		}
 
 		/* THE ACCOUNT HELD FIRST, and whether it has a password asked under the hold: a password set in
@@ -146,11 +147,11 @@ class MemberInvitationApi {
 				.optional();
 
 		if (held.isEmpty()) {
-			return new Decided(conflict(THERE_IS_NO_ACCOUNT), null, null);
+			return new Decided(conflict(THERE_IS_NO_ACCOUNT), null, null, null);
 		}
 
 		if (!held.get().hasNoPassword()) {
-			return new Decided(conflict(THE_PASSWORD_IS_SET), null, null);
+			return new Decided(conflict(THE_PASSWORD_IS_SET), null, null, null);
 		}
 
 		long account = held.get().id();
@@ -162,7 +163,7 @@ class MemberInvitationApi {
 
 		AnInvitationOfAMember.mint(db, account, invitation);
 
-		return new Decided(null, held.get().email(), invitation.secret());
+		return new Decided(null, held.get().email(), invitation.secret(), TheSexOfAMember.of(db, member.get()));
 	}
 
 	private static ResponseEntity<?> conflict(String reason) {

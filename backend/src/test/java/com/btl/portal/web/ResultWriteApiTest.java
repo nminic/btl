@@ -1652,7 +1652,10 @@ class ResultWriteApiTest {
 
 		assertThat(theLineInTheInboxOf(ME).get(0))
 				.as("sending a run in did not tell him in his inbox")
-				.isEqualTo("Primili smo vaš rezultat");
+				.isEqualTo("Primili smo tvoj rezultat");
+		assertThat(theLineInTheInboxOf(ME).get(1))
+				.as("the fixture's member is a woman, and the line is hers: the participle is by her sex")
+				.contains("koji si poslala:").doesNotContain("poslao");
 		assertThat(SMTP.getReceivedMessages())
 				.as("a letter went out when the run was sent in, and the letter belongs to the"
 						+ " approval")
@@ -1664,7 +1667,29 @@ class ResultWriteApiTest {
 		assertThat(theMessageThatWentOut().getSubject())
 				.as("the letter about the correction did not arrive, so the absence above says"
 						+ " nothing about the route")
-				.isEqualTo("Primili smo izmenu vašeg rezultata");
+				.isEqualTo("Primili smo izmenu tvog rezultata");
+		assertThat(bodyOfTheMessageThatWentOut())
+				.as("the fixture's member is a woman, and the letter about her correction is hers")
+				.startsWith("Zatražila si izmenu svog rezultata.").doesNotContain("Zatražio");
+	}
+
+	/**
+	 * THE SAME TWO FOR A MAN (owner, 21.11.2026: „po polu primaoca"): the fixture's member is a woman, and
+	 * here the row says a man, so words that go to everybody in the feminine, or in the masculine, fail on one
+	 * of the two.
+	 */
+	@Test
+	void aManWhoSendsOneInAndCorrectsItIsToldInTheMasculine() throws Exception {
+		db.sql("update competitor set gender = 'M' where member_number = ?").param(ME).update();
+
+		assertThat(reportedAs(ME, ordinaryReport()).getStatus()).isEqualTo(201);
+		assertThat(theLineInTheInboxOf(ME).get(1)).contains("koji si poslao:").doesNotContain("poslala");
+
+		correctedAs(ME, myResult, correction("42.20", 350, 410, 11400,
+				"https://rezultati.rs/ispravka", ""));
+
+		assertThat(bodyOfTheMessageThatWentOut()).startsWith("Zatražio si izmenu svog rezultata.")
+				.doesNotContain("Zatražila");
 	}
 
 	/**
@@ -1749,19 +1774,19 @@ class ResultWriteApiTest {
 
 		assertThat(db.sql("select count(*) from message m join competitor c on c.id = m.to_id"
 						+ " where c.member_number = ? and m.from_id is null"
-						+ " and m.subject = 'Primili smo vaš rezultat'")
+						+ " and m.subject = 'Primili smo tvoj rezultat'")
 				.param(ME).query(Long.class).single())
 				.as("the member was not told, or was told in somebody else's inbox")
 				.isEqualTo(1);
 
 		assertThat(db.sql("select count(*) from message where to_id is null"
-						+ " and subject = 'Primili smo vaš rezultat'")
+						+ " and subject = 'Primili smo tvoj rezultat'")
 				.query(Long.class).single())
 				.as("a member's own result was posted to the whole league")
 				.isZero();
 
 		assertThat(db.sql("select count(*) from message m join competitor c on c.id = m.to_id"
-						+ " where c.member_number = ? and m.subject = 'Primili smo vaš rezultat'")
+						+ " where c.member_number = ? and m.subject = 'Primili smo tvoj rezultat'")
 				.param(SOMEONE_ELSE).query(Long.class).single())
 				.as("somebody else was told about this member's result")
 				.isZero();
@@ -1786,7 +1811,7 @@ class ResultWriteApiTest {
 		assertThat(stillThere(myResult)).isFalse();
 		assertThat(theLineInTheInboxOf(ME).get(0))
 				.as("the relay being down cost the league its record")
-				.isEqualTo("Vaš rezultat je obrisan");
+				.isEqualTo("Tvoj rezultat je obrisan");
 	}
 
 	/**
@@ -1828,7 +1853,7 @@ class ResultWriteApiTest {
 
 		MimeMessage arrived = theMessageThatWentOut();
 
-		assertThat(arrived.getSubject()).isEqualTo("Vaš rezultat je obrisan");
+		assertThat(arrived.getSubject()).isEqualTo("Tvoj rezultat je obrisan");
 		assertThat(theLineInTheInboxOf(ME)).containsExactly(arrived.getSubject(), asItWasWritten(arrived));
 	}
 
@@ -2361,7 +2386,7 @@ class ResultWriteApiTest {
 		assertThat(corrected.getStatus()).as(corrected.getContentAsString()).isEqualTo(200);
 		assertThat(theClimbOf(idIn(corrected))).containsEntry("ascent_m", 0).containsEntry("descent_m", 0);
 		assertThat(linesAboutHisResults(ME).get(0)).doesNotContain("bod")
-				.contains("Izmena se vidi na vašem profilu kad bude potvrđena.")
+				.contains("Izmena se vidi na tvom profilu kad bude potvrđena.")
 				.doesNotContain("poretku");
 
 		assertThat(reasonIn(correctedAs(ME, myOtherResult, correction("12.00", null, null, 3000,

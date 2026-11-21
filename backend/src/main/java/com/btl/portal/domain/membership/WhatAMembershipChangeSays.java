@@ -2,6 +2,7 @@ package com.btl.portal.domain.membership;
 
 import com.btl.portal.domain.balance.Balance;
 import com.btl.portal.domain.category.Category;
+import com.btl.portal.domain.mail.Gender;
 import com.btl.portal.domain.mail.MailLanguage;
 import com.btl.portal.domain.mail.WhatTheMessageSays.Said;
 import com.btl.portal.domain.mail.WhatTheWelcomeSays;
@@ -54,6 +55,9 @@ public final class WhatAMembershipChangeSays {
 	/** Its own dictionary, for the reason {@code notices/results} has its own: each dictionary is held
 	 *  to exactly its occasions, in both directions, by a floor of its own. */
 	private static final String WORDS = "notices/membership";
+
+	/** The words a woman reads, only where they differ ({@link Gender} carries the reason). */
+	private static final String WORDS_FOR_A_WOMAN = "notices/membership-female";
 
 	/** {@code Locale.ROOT}: the words are chosen by naming their file, never by the server's locale. */
 	private static final Locale ONE_SET_OF_WORDS = Locale.ROOT;
@@ -140,8 +144,8 @@ public final class WhatAMembershipChangeSays {
 	}
 
 	/** He was freed of the fee for this season, and is a member of it. */
-	public static Said exemptionGranted(int season) {
-		return said(Told.AN_EXEMPTION_WAS_GRANTED, aSeason(season));
+	public static Said exemptionGranted(int season, Gender reader) {
+		return saidTo(Told.AN_EXEMPTION_WAS_GRANTED, reader, aSeason(season));
 	}
 
 	/**
@@ -164,9 +168,9 @@ public final class WhatAMembershipChangeSays {
 	 * @param season        the season of the membership
 	 * @param theSeasonAfter the season the category is closed or opened for
 	 */
-	public static Said beginnersCategoryMoved(boolean open, int season, int theSeasonAfter) {
-		return said(open ? Told.THE_BEGINNERS_CATEGORY_WAS_REOPENED : Told.THE_BEGINNERS_CATEGORY_WAS_CLOSED,
-				aSeason(season), Integer.toString(Category.FIRST_SEASON_POINTS), aSeason(theSeasonAfter));
+	public static Said beginnersCategoryMoved(boolean open, int season, int theSeasonAfter, Gender reader) {
+		return saidTo(open ? Told.THE_BEGINNERS_CATEGORY_WAS_REOPENED : Told.THE_BEGINNERS_CATEGORY_WAS_CLOSED,
+				reader, aSeason(season), Integer.toString(Category.FIRST_SEASON_POINTS), aSeason(theSeasonAfter));
 	}
 
 	/**
@@ -186,11 +190,11 @@ public final class WhatAMembershipChangeSays {
 	 * @param season   the season of the membership that was activated
 	 * @param written  what was written onto the referrer's balance
 	 */
-	public static Said referralThanked(String newcomer, int season, Balance.Money written) {
+	public static Said referralThanked(String newcomer, int season, Balance.Money written, Gender reader) {
 		Objects.requireNonNull(newcomer, "newcomer");
 		Objects.requireNonNull(written, "written");
 
-		return said(Told.A_REFERRAL_WAS_THANKED, newcomer, aSeason(season),
+		return saidTo(Told.A_REFERRAL_WAS_THANKED, reader, newcomer, aSeason(season),
 				WhatTheWelcomeSays.amount(written.amount(), written.currency().name(), MailLanguage.SERBIAN));
 	}
 
@@ -201,11 +205,30 @@ public final class WhatAMembershipChangeSays {
 
 	/** The words of one occasion, filled in. Package visible so the floor can ask for every one. */
 	static Said said(Told told, Object... values) {
-		ResourceBundle words = words();
+		return saidTo(told, null, values);
+	}
 
-		return new Said(words.getString(told.key() + ".subject"),
-				new MessageFormat(words.getString(told.key() + ".body"), ONE_SET_OF_WORDS)
-						.format(values));
+	/**
+	 * The words of one occasion for one reader. A null reader is asked for only by the occasions that
+	 * have no words for a woman, and an occasion that has them refuses it.
+	 */
+	static Said saidTo(Told told, Gender reader, Object... values) {
+		ResourceBundle words = words();
+		ResourceBundle woman = wordsForAWoman();
+		String subjectKey = told.key() + ".subject";
+		String bodyKey = told.key() + ".body";
+
+		String subject = reader == null ? Gender.wordsOfNoOne(words, woman, subjectKey)
+				: reader.words(words, woman, subjectKey);
+		String body = reader == null ? Gender.wordsOfNoOne(words, woman, bodyKey)
+				: reader.words(words, woman, bodyKey);
+
+		return new Said(subject, new MessageFormat(body, ONE_SET_OF_WORDS).format(values));
+	}
+
+	/** The words a woman reads where they differ from {@link #words()}. */
+	static ResourceBundle wordsForAWoman() {
+		return ResourceBundle.getBundle(WORDS_FOR_A_WOMAN, ONE_SET_OF_WORDS);
 	}
 
 	/** The one dictionary, which the floor over it reads too. */

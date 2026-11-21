@@ -230,6 +230,26 @@ describe('what one answer is taken to mean', () => {
     expect(await askTheServer('/api/registration', {})).toEqual({ got: 'wrong', status: 409 })
   })
 
+  it('carries a refusal named by a 429 exactly as one named by a 400', async () => {
+    /* The three doors that send a letter to an address the caller names refuse past their hourly
+       allowance with 429 and the reason in the body (`AttemptsAtTheDoor`, owner 21.11.2026). */
+    server = serverThat(() => refused('tooManyAttempts', 429))
+
+    expect(await askTheServer('/api/email-confirmation/resend', {})).toEqual({
+      got: 'refused',
+      reason: 'tooManyAttempts',
+    })
+  })
+
+  it('leaves a 429 with no reason in it the bare number, which is the proxy speaking', async () => {
+    /* nginx's own per-minute limit answers 429 with a page of its own (`frontend/nginx.conf`). Read
+       as `tooManyAttempts` it would tell the reader to wait an hour over a limit that lets him in
+       twelve seconds later; the general sentence for a number is the true one. */
+    server = serverThat(() => new Response('<html>429 Too Many Requests</html>', { status: 429 }))
+
+    expect(await askTheServer('/api/registration', {})).toEqual({ got: 'wrong', status: 429 })
+  })
+
   it('says nothing came back when the request never got an answer', async () => {
     server = serverThat(() => {
       throw new TypeError('Failed to fetch')

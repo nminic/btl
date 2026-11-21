@@ -108,7 +108,7 @@ class DucatsFollowTheResultsTest {
 
 	private static final String THE_MONTHLY = "duk-mesecni-km";
 
-	private static final String THE_SUBJECT = "Osvojili ste dukat";
+	private static final String THE_SUBJECT = "Osvojila si dukat";
 
 	@Autowired
 	private MockMvc http;
@@ -199,8 +199,8 @@ class DucatsFollowTheResultsTest {
 
 		assertThat(ducatsOf(ANA)).containsExactly(THE_MONTHLY + " 2027/5");
 		assertThat(ducatMessagesTo(ANA)).containsExactly("Balkanska trkačka liga | " + THE_SUBJECT + " | "
-				+ "Odobren vam je rezultat sa trke Majska trka od 20.05.2027, i njime ste osvojili dukat"
-				+ " \"Mesečni kilometri\" za maj 2027. Dukat stoji na vašem profilu.");
+				+ "Odobren ti je rezultat sa trke Majska trka od 20.05.2027, i njime si osvojila dukat"
+				+ " \"Mesečni kilometri\" za maj 2027. Dukat stoji na tvom profilu.");
 		assertThat(nobodyElseGotADucat()).isTrue();
 	}
 
@@ -222,7 +222,7 @@ class DucatsFollowTheResultsTest {
 
 		assertThat(ducatsOf(ANA)).containsExactly(THE_MONTHLY + " 2027/5");
 		assertThat(ducatMessagesTo(ANA)).singleElement().asString()
-				.contains("Odobren vam je rezultat sa trke Majska trka od 20.05.2027");
+				.contains("Odobren ti je rezultat sa trke Majska trka od 20.05.2027");
 		assertThat(nobodyElseGotADucat()).isTrue();
 	}
 
@@ -255,7 +255,7 @@ class DucatsFollowTheResultsTest {
 				.isEqualTo("approval " + db.sql("select ?::timestamptz::text").param(Timestamp.from(IN_JUNE))
 						.query(String.class).single());
 		assertThat(ducatMessagesTo(ANA)).singleElement().asString()
-				.startsWith("Balkanska trkačka liga | " + THE_SUBJECT + " | Odobren vam je rezultat sa trke Majska trka"
+				.startsWith("Balkanska trkačka liga | " + THE_SUBJECT + " | Odobren ti je rezultat sa trke Majska trka"
 						+ " od 20.05.2027");
 	}
 
@@ -279,8 +279,8 @@ class DucatsFollowTheResultsTest {
 		assertThat(ducatsOf(ANA)).containsExactly(THE_MONTHLY + " 2027/5");
 		assertThat(ducatsOf(VERA)).containsExactly(THE_MONTHLY + " 2027/5");
 		assertThat(ducatMessagesTo(ANA)).containsExactly("Balkanska trkačka liga | " + THE_SUBJECT + " | "
-				+ "Liga vam je unela rezultat sa trke Majska trka od 20.05.2027, i njime ste osvojili dukat"
-				+ " \"Mesečni kilometri\" za maj 2027. Dukat stoji na vašem profilu.");
+				+ "Liga ti je unela rezultat sa trke Majska trka od 20.05.2027, i njime si osvojila dukat"
+				+ " \"Mesečni kilometri\" za maj 2027. Dukat stoji na tvom profilu.");
 		assertThat(ducatMessagesTo(VERA)).hasSize(1);
 		assertThat(ducatsOf(BOJAN)).isEmpty();
 	}
@@ -303,7 +303,7 @@ class DucatsFollowTheResultsTest {
 
 		assertThat(ducatsOf(ANA)).containsExactly(THE_MONTHLY + " 2027/5");
 		assertThat(ducatMessagesTo(ANA)).singleElement().asString()
-				.contains("Liga vam je unela rezultat sa trke Nova majska od 20.05.2027");
+				.contains("Liga ti je unela rezultat sa trke Nova majska od 20.05.2027");
 		assertThat(nobodyElseGotADucat()).isTrue();
 	}
 
@@ -356,10 +356,10 @@ class DucatsFollowTheResultsTest {
 		reconciled(ANA);
 
 		assertThat(ducatMessagesTo(ANA)).containsExactly("Balkanska trkačka liga | " + THE_SUBJECT + " | "
-				+ "Odobren vam je rezultat sa trke Prva majska od 02.05.2027, i njime ste osvojili dukate"
+				+ "Odobren ti je rezultat sa trke Prva majska od 02.05.2027, i njime si osvojila dukate"
 				+ " \"Mesečni kilometri\" za maj 2027, \"Mesečni sati\" za maj 2027, \"Sezonski kilometri\" za"
 				+ " sezonu 2027, \"Sezonski sati\" za sezonu 2027 i \"Karmanov uspon\"."
-				+ " Dukati stoje na vašem profilu.");
+				+ " Dukati stoje na tvom profilu.");
 		assertThat(nobodyElseGotADucat()).isTrue();
 	}
 
@@ -388,8 +388,8 @@ class DucatsFollowTheResultsTest {
 
 		assertThat(ducatsOf(ANA)).containsExactly("duk-uspon always");
 		assertThat(ducatMessagesTo(ANA)).containsExactly("Balkanska trkačka liga | " + THE_SUBJECT + " | "
-				+ "Odobren vam je rezultat sa trke Prva majska od 02.05.2027, i njime ste osvojili dukat"
-				+ " \"Karmanov uspon\". Dukat stoji na vašem profilu.");
+				+ "Odobren ti je rezultat sa trke Prva majska od 02.05.2027, i njime si osvojila dukat"
+				+ " \"Karmanov uspon\". Dukat stoji na tvom profilu.");
 	}
 
 	/**
@@ -436,8 +436,8 @@ class DucatsFollowTheResultsTest {
 		assertThat(decided(item).getStatus()).isEqualTo(200);
 
 		assertThat(ducatMessagesTo(ANA)).containsExactly("Balkanska trkačka liga | " + THE_SUBJECT + " | "
-				+ "Liga vam je unela rezultat sa trke Majska trka od 20.05.2027, i njime ste osvojili dukat"
-				+ " \"Mesečni kilometri\" za maj 2027. Dukat stoji na vašem profilu.");
+				+ "Liga ti je unela rezultat sa trke Majska trka od 20.05.2027, i njime si osvojila dukat"
+				+ " \"Mesečni kilometri\" za maj 2027. Dukat stoji na tvom profilu.");
 		assertThat(nobodyElseGotADucat()).isTrue();
 	}
 
@@ -463,12 +463,12 @@ class DucatsFollowTheResultsTest {
 
 		assertThat(ducatsOf(ANA)).containsExactly(THE_MONTHLY + " 2027/5", THE_MONTHLY + " 2027/6");
 		assertThat(ducatMessagesTo(ANA)).containsExactly(
-				"Balkanska trkačka liga | " + THE_SUBJECT + " | Liga vam je unela rezultat sa trke Prva majska od"
-						+ " 02.05.2027, i njime ste osvojili dukat \"Mesečni kilometri\" za maj 2027. Dukat stoji"
-						+ " na vašem profilu.",
-				"Balkanska trkačka liga | " + THE_SUBJECT + " | Odobren vam je rezultat sa trke Junska trka od"
-						+ " 12.06.2027, i njime ste osvojili dukat \"Mesečni kilometri\" za jun 2027. Dukat stoji"
-						+ " na vašem profilu.");
+				"Balkanska trkačka liga | " + THE_SUBJECT + " | Liga ti je unela rezultat sa trke Prva majska od"
+						+ " 02.05.2027, i njime si osvojila dukat \"Mesečni kilometri\" za maj 2027. Dukat stoji"
+						+ " na tvom profilu.",
+				"Balkanska trkačka liga | " + THE_SUBJECT + " | Odobren ti je rezultat sa trke Junska trka od"
+						+ " 12.06.2027, i njime si osvojila dukat \"Mesečni kilometri\" za jun 2027. Dukat stoji"
+						+ " na tvom profilu.");
 		assertThat(nobodyElseGotADucat()).isTrue();
 	}
 
@@ -508,7 +508,7 @@ class DucatsFollowTheResultsTest {
 
 		assertThat(ducatsOf(ANA)).containsExactly(THE_MONTHLY + " 2027/5");
 		assertThat(ducatMessagesTo(ANA)).singleElement().asString()
-				.contains("Odobren vam je rezultat sa trke Majska trka od 20.05.2027");
+				.contains("Odobren ti je rezultat sa trke Majska trka od 20.05.2027");
 	}
 
 	/**
@@ -577,8 +577,8 @@ class DucatsFollowTheResultsTest {
 
 		assertThat(ducatsOf(ANA)).containsExactly(THE_MONTHLY + " 2027/5");
 		assertThat(ducatMessagesTo(ANA)).containsExactly("Balkanska trkačka liga | " + THE_SUBJECT + " | "
-				+ "Liga vam je unela rezultat sa trke Majska trka od 20.05.2027, i njime ste osvojili dukat"
-				+ " \"Mesečni kilometri\" za maj 2027. Dukat stoji na vašem profilu.");
+				+ "Liga ti je unela rezultat sa trke Majska trka od 20.05.2027, i njime si osvojila dukat"
+				+ " \"Mesečni kilometri\" za maj 2027. Dukat stoji na tvom profilu.");
 		assertThat(nobodyElseGotADucat()).isTrue();
 	}
 
@@ -963,5 +963,28 @@ class DucatsFollowTheResultsTest {
 		return db.sql("insert into verification (queue, competitor_id, subject, body, result_submission_id)"
 						+ " values ('results', ?, 'Rezultat', '', ?) returning id")
 				.params(id(number), submission).query(Long.class).single();
+	}
+
+	/**
+	 * THE SAME MESSAGE FOR A MAN (owner, 21.11.2026: „po polu primaoca"): every member of the fixture is a
+	 * woman, and here the row says a man, so a message that is always in the feminine fails.
+	 */
+	@Test
+	void aManWhoWonADucatIsToldInTheMasculine() throws Exception {
+		db.sql("update competitor set gender = 'M' where member_number = ?").param(ANA).update();
+
+		long first = race("dukat-okidac-prva", "Prva majska", LocalDate.of(2027, 5, 2));
+		long second = race("dukat-okidac-druga", "Majska trka", LocalDate.of(2027, 5, 20));
+
+		result(ANA, first, "100");
+
+		long item = waiting(ANA, second, "30", null);
+
+		assertThat(decided(item).getStatus()).isEqualTo(200);
+
+		assertThat(db.sql("select from_name || ' | ' || subject || ' | ' || body from message where to_id = ?")
+				.param(id(ANA)).query(String.class).list()).containsExactly("Balkanska trkačka liga | Osvojio si dukat | "
+				+ "Odobren ti je rezultat sa trke Majska trka od 20.05.2027, i njime si osvojio dukat"
+				+ " \"Mesečni kilometri\" za maj 2027. Dukat stoji na tvom profilu.");
 	}
 }

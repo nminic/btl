@@ -845,7 +845,7 @@ class CompetitorWriteApiTest {
 	 *
 	 * <p><b>And the message carries no name of his at all</b> (PDL P18, 18.10.2026, "Raskid
 	 * para: ime u nominativu"): the sentence is the portal's own
-	 * ({@code PairWriteApi.theBrokenPairByDeletionReads}) and it says "vašeg partnera" for a
+	 * ({@code PairWriteApi.theBrokenPairByDeletionReads}) and it says "tvog partnera" for a
 	 * man who is gone. Written with his name, the message would be a row created BY the deletion
 	 * that says who was deleted.
 	 */
@@ -856,10 +856,10 @@ class CompetitorWriteApiTest {
 		assertThat(whatTheLeagueWrote())
 				.as("who was told a pair of his had ended, and what they read")
 				.containsExactly(
-						HIS_FIRST_PARTNER + ": Vaš trkački par za sezonu " + A_SEASON_BEING_RUN
-								+ " je raskinut, jer je nalog vašeg partnera obrisan.",
-						HIS_SECOND_PARTNER + ": Vaš trkački par za sezonu " + THE_SEASON_AFTER
-								+ " je raskinut, jer je nalog vašeg partnera obrisan.");
+						HIS_FIRST_PARTNER + ": Tvoj trkački par za sezonu " + A_SEASON_BEING_RUN
+								+ " je raskinut, jer je nalog tvog partnera obrisan.",
+						HIS_SECOND_PARTNER + ": Tvoj trkački par za sezonu " + THE_SEASON_AFTER
+								+ " je raskinut, jer je nalog tvog partnera obrisan.");
 
 		assertThat(db.sql("select count(*) from racing_pair").query(Long.class).single())
 				.as("the pair that is not his went with the two that are")
@@ -869,8 +869,8 @@ class CompetitorWriteApiTest {
 	/**
 	 * AND WHEN IT IS A WOMAN WHO GOES, THE OTHER WORD IS THE ONE THAT IS WRITTEN.
 	 *
-	 * <p>PDL P18, 18.10.2026, "Raskid para: ime u nominativu": "vaše partnerke" for a woman who is
-	 * gone and "vašeg partnera" for a man. A fixture of one sex measures one of the two, and the
+	 * <p>PDL P18, 18.10.2026, "Raskid para: ime u nominativu": "tvoje partnerke" for a woman who is
+	 * gone and "tvog partnera" for a man. A fixture of one sex measures one of the two, and the
 	 * branch that picks between them is read off the column the recipient is NOT in.
 	 *
 	 * <p>Her comment and her message are not in the fixture, so the trigger's own choice
@@ -883,8 +883,8 @@ class CompetitorWriteApiTest {
 
 		assertThat(whatTheLeagueWrote())
 				.as("her partner was told with the man's word, or was not told at all")
-				.containsExactly(HER_PARTNER + ": Vaš trkački par za sezonu " + A_SEASON_BEING_RUN
-						+ " je raskinut, jer je nalog vaše partnerke obrisan.");
+				.containsExactly(HER_PARTNER + ": Tvoj trkački par za sezonu " + A_SEASON_BEING_RUN
+						+ " je raskinut, jer je nalog tvoje partnerke obrisan.");
 
 		assertThat(db.sql("select count(*) from racing_pair").query(Long.class).single())
 				.as("the two pairs that are not hers went with hers")

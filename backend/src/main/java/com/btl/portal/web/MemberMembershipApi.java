@@ -371,7 +371,7 @@ class MemberMembershipApi {
 		granting.grant(member.get(), number, season, Basis.FEE_EXEMPT.word(),
 				Balance.Money.nothingIn(currencyOf.of(member.get())), true, asking.account());
 
-		tell(member.get(), WhatAMembershipChangeSays.exemptionGranted(season));
+		tell(member.get(), WhatAMembershipChangeSays.exemptionGranted(season, TheSexOfAMember.of(db, member.get())));
 		category.tellHimIfItMoved(before);
 
 		return ResponseEntity.status(HttpStatus.CREATED).body(new Changed(season, Basis.FEE_EXEMPT.word()));

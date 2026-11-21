@@ -3,6 +3,7 @@ package com.btl.portal.web;
 import com.btl.portal.domain.event.WhatAnEventCarries;
 import com.btl.portal.domain.event.WhatARaceCarries;
 import com.btl.portal.domain.event.WhatARaceCarries.Figures;
+import com.btl.portal.domain.mail.Gender;
 import com.btl.portal.domain.mail.MailLanguage;
 import com.btl.portal.domain.mail.WhatAResultChangeSays;
 import com.btl.portal.domain.mail.WhatAResultChangeSays.Run;
@@ -522,7 +523,7 @@ class ResultWriteApi {
 								figures.descentM(), figures.seconds())));
 
 		Recipient him = recipient(asking.account());
-		Said said = WhatAResultChangeSays.changed(before.run(), after, him.language());
+		Said said = WhatAResultChangeSays.changed(before.run(), after, him.language(), him.gender());
 
 		Long made = inOneTransaction.execute(committing -> {
 			long submission = writeTheSubmission(me, before.raceId(), before.day(), null, null,
@@ -906,9 +907,12 @@ class ResultWriteApi {
 		   messages about a result follows the language of the letter). There is no letter for a
 		   run sent in, and so no address to read the language beside; it is read off the account
 		   whose member this is, which `account_competitor_unique` (V23) makes one row. */
-		Said said = WhatAResultChangeSays.entered(run, MailLanguage.ofTheColumn(db.sql(
-						"select mail_language from account where competitor_id = ?")
-				.param(me).query(String.class).single()));
+		Recipient him = db.sql("select a.email, a.mail_language, c.gender from account a"
+				+ " join competitor c on c.id = a.competitor_id where a.competitor_id = ?")
+				.param(me)
+				.query(ResultWriteApi::aRecipient)
+				.single();
+		Said said = WhatAResultChangeSays.entered(run, him.language(), him.gender());
 
 		Long made = inOneTransaction.execute(committing -> {
 			long submission = writeTheSubmission(me, raceId, day, raceName, raceKind, theTownsKey,
@@ -1060,15 +1064,25 @@ class ResultWriteApi {
 	 * {@link Said} goes into his inbox inside the transaction and to the relay after it.
 	 */
 	private Recipient recipient(long account) {
-		return db.sql("select email, mail_language from account where id = ?")
+		return db.sql("select a.email, a.mail_language, c.gender from account a"
+				+ " join competitor c on c.id = a.competitor_id where a.id = ?")
 				.param(account)
-				.query((row, one) -> new Recipient(row.getString(1),
-						MailLanguage.ofTheColumn(row.getString(2))))
+				.query(ResultWriteApi::aRecipient)
 				.single();
 	}
 
-	/** An address and the language of what is written to it, off one row of {@code account}. */
-	private record Recipient(String address, MailLanguage language) {
+	private static Recipient aRecipient(java.sql.ResultSet row, int one) throws java.sql.SQLException {
+		return new Recipient(row.getString(1), MailLanguage.ofTheColumn(row.getString(2)),
+				Gender.ofTheColumn(row.getString(3)));
+	}
+
+	/**
+	 * An address, the language of what is written to it and the sex of who reads it, off one row of
+	 * {@code account} and the member it belongs to (owner, 21.11.2026: the words follow the sex of the
+	 * reader, which the registration asked for). Every member who sends a result has an account that
+	 * names him (V23), so the join loses nobody who can reach this code.
+	 */
+	private record Recipient(String address, MailLanguage language, Gender gender) {
 	}
 
 	/** What the proof rule is asked about, and the photograph is always absent - see the

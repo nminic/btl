@@ -438,4 +438,41 @@ class EmailConfirmationApiTest {
 				.as("the fresh token did not survive a relay that refused the message")
 				.isOne();
 	}
+
+	/**
+	 * A RESENT LINK GOES BY THE SEX OF THE MEMBER THE ACCOUNT BELONGS TO (owner, 21.11.2026: „po polu
+	 * primaoca"), a woman reading „registrovala" and a man „registrovao"; the cases above are accounts that
+	 * name no member and are written the words they were always written.
+	 */
+	@Test
+	void aResentLinkIsWrittenByTheSexOfTheMemberTheAccountBelongsTo() throws Exception {
+		for (String sex : new String[] {"F", "M"}) {
+			SMTP.reset();
+
+			long member = db.sql("insert into competitor (first_name, last_name, gender, birth_date, place_id,"
+							+ " first_season, referral_code, bio, profile_hidden, birthday_shown, father_name,"
+							+ " address, shirt_size, health_statement_at) values ('Probni', 'Clan', ?,"
+							+ " date '1990-01-01', (select id from place where rank = 1), 2027, ?, '', false,"
+							+ " 'none', 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00')"
+							+ " returning id")
+					.params(sex, String.format("%016x", System.nanoTime())).query(Long.class).single();
+			String email = aFreshAddress();
+			long account = anAccount(email);
+
+			try {
+				db.sql("update account set competitor_id = ? where id = ?").params(member, account).update();
+
+				assertThat(resend(email).getStatus()).isEqualTo(204);
+
+				String body = waitForOne().getContent().toString();
+
+				assertThat(body).startsWith(sex.equals("F") ? "Dobrodošla u Balkansku" : "Dobrodošao u Balkansku")
+						.contains(sex.equals("F") ? "se nisi registrovala" : "se nisi registrovao");
+			} finally {
+				db.sql("delete from email_verification_token where account_id = ?").param(account).update();
+				db.sql("delete from account where id = ?").param(account).update();
+				db.sql("delete from competitor where id = ?").param(member).update();
+			}
+		}
+	}
 }

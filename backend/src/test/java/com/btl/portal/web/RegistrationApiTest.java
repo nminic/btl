@@ -762,6 +762,22 @@ class RegistrationApiTest {
 						com.btl.portal.domain.mail.MailLanguage.SERBIAN) + ". Posle toga");
 	}
 
+	/**
+	 * THE LETTER GOES BY THE SEX THE FORM GAVE (owner, 21.11.2026: „po polu primaoca ... jer pol znamo iz
+	 * registracije"): the case below registers a man, here it is a woman, so a letter that greets everybody in
+	 * the masculine, or always in the feminine, fails on one of the two.
+	 */
+	@Test
+	void aWomanWhoRegistersIsGreetedInTheFeminine() throws Exception {
+		Map<String, Object> woman = aGrownUp();
+
+		woman.put("gender", "F");
+
+		assertThat(register(woman).getStatus()).isEqualTo(204);
+		assertThat(waitForOne().getContent().toString()).startsWith("Dobrodošla u Balkansku")
+				.contains("se nisi registrovala").doesNotContain("Dobrodošao").doesNotContain("registrovao");
+	}
+
 	@Test
 	void aRegistrationOnTheSerbianPageOrWithNoLanguageIsSerbian() throws Exception {
 		Map<String, Object> onTheSerbianPage = aGrownUp();
@@ -774,9 +790,10 @@ class RegistrationApiTest {
 
 		MimeMessage first = waitForOne();
 
-		assertThat(first.getSubject()).isEqualTo("Potvrdite svoju adresu");
+		assertThat(first.getSubject()).isEqualTo("Potvrdi svoju adresu");
 		assertThat(first.getContent().toString())
 				.contains(portal + Message.CONFIRM_THE_ADDRESS.path() + "?token=")
+				.startsWith("Dobrodošao u Balkansku").contains("se nisi registrovao")
 				.doesNotContain("/en/");
 
 		Map<String, Object> withNoLanguage = aGrownUp();

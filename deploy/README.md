@@ -906,7 +906,20 @@ is attached to.
   on the host rather than here. The reference database it builds is a throwaway
   `postgres:18` container, which on this 3.7 GB host next to the live site is a
   decision of its own.
-- Security headers are set only at the edge. Setting the non-TLS ones
-  (`X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`) in
-  `frontend/nginx.conf` as well would keep them if the edge config is ever
-  rewritten.
+- ~~Security headers are set only at the edge.~~ Since 21.11.2026 one of them is
+  not: `Content-Security-Policy` is set by `frontend/nginx.conf`, on every answer,
+  because there it is in the repository, under a test
+  (`TheProxyInFrontOfThePortalTest` runs the file in a real nginx and
+  `contentSecurityPolicy.test.ts` holds the digest of the inline theme script to
+  `index.html`) and moves in the same commit as the script it names. The edge was
+  not touched for it. The other four (HSTS, `X-Content-Type-Options`,
+  `X-Frame-Options`, `Referrer-Policy`) are still set only at the edge; setting the
+  non-TLS ones in `frontend/nginx.conf` as well would keep them if the edge config
+  is ever rewritten.
+- **Who is asking is worked out in `frontend/nginx.conf`, not at the edge.** The
+  edge proxy has no `trusted_proxies` (read 21.11.2026), so the address it hands on
+  is the Cloudflare machine that called it. nginx believes `CF-Connecting-IP` only
+  when that address is one of Cloudflare's published ranges, listed in the file
+  by hand: when Cloudflare adds a range, its visitors are counted as Cloudflare
+  until the list is brought up to date. Every rate limit in nginx is keyed on the
+  result, and the backend is handed it as `X-Btl-Client-Address`.
