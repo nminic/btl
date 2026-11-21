@@ -472,6 +472,13 @@
    under the other at 360 they are 313 (the plan, „Table se ne slažu jedna ispod druge pre 560 px"). */
 .top10 {
   container-type: inline-size;
+  /* **The figure of points is one shape on the podium and in the list** (owner, 21.11.2026: „Nema mi smisla da za
+     najbolja 3 bude manji font poena nego za 4-10 mesto u tabeli ispod gde su veliki beli brojevi"): both columns
+     read these three, so the two cannot drift apart. The podium sets the letter smaller only as the way out of a
+     narrow column, and never under 0,65rem (10,4px). */
+  --points-size: 0.9rem;
+  --points-weight: 700;
+  --points-color: var(--text);
 }
 
 .top10__block {
@@ -617,12 +624,27 @@
    this text is 16px. */
 .stand__points {
   min-block-size: 2.6em;
-  font-size: 0.8rem;
+  /* **A figure never breaks and is set in a smaller letter where it does not fit** (owner, 21.11.2026, "Manje
+     slovo za dugo prezime", applied to the points by the same rule as the surname above: the letter is worked
+     out from the share of the column and the number of characters the page writes in `--chars`, never above
+     the size of the list (`--points-size`) and never under the floor of the surname, 0,65rem, 10,4px). A digit of tabular figures is about
+     0,62em wide, narrower than a letter of the name, so the figure is counted at that. The two lines of height
+     stay, so a circle is never lifted against its neighbour. */
+  font-size: clamp(
+    0.65rem,
+    calc((100cqi - 2 * var(--space-6)) / 3.15 / (var(--chars) * 0.62)),
+    var(--points-size)
+  );
+  font-weight: var(--points-weight);
   line-height: 1.3;
-  color: var(--text-muted);
+  color: var(--points-color);
   font-variant-numeric: tabular-nums;
-  text-wrap: balance;
-  overflow-wrap: anywhere;
+  /* **Where even the smallest letter does not fit, the figure breaks, and only at the places `TopTen.tsx` marks**
+     (owner, 21.11.2026, review of PR 768, WCAG 1.4.4: the floor is in `rem`, so at 200% it is 20,8px and a
+     figure no longer fits a column): after a thousands separator, a break the markup puts in with `<wbr>`. `overflow-wrap` stays `normal`, so nothing is broken inside a
+     group of digits, and nothing is cut, hidden or ended in dots. */
+  overflow-wrap: normal;
+  hyphens: none;
 }
 
 .stand__cat {
@@ -679,7 +701,9 @@
   padding: 0;
   border-top: 1px solid var(--border);
   display: grid;
-  grid-template-columns: 1.6rem 1.75rem minmax(0, 1fr) max-content max-content;
+  /* The points column is as wide as the widest figure, and no wider than 35% of the list: a figure that does not
+     fit even then breaks after a thousands separator (`TopTen.tsx`, `Figure`) and does not push the list out. */
+  grid-template-columns: max-content 28px minmax(0, 1fr) fit-content(35%);
   column-gap: var(--space-8);
 }
 
@@ -692,9 +716,12 @@
   padding: var(--space-6) 0;
   border-bottom: 1px solid var(--border);
   min-block-size: 2.75rem;
+  row-gap: 0;
 }
 
 .toprows .no {
+  grid-column: 1;
+  grid-row: 1 / span 2;
   color: var(--text-muted);
   font-weight: 700;
   font-size: 0.85rem;
@@ -702,35 +729,68 @@
   font-variant-numeric: tabular-nums;
 }
 
+.toprows .top10__face,
+.toprows .toprow--empty .portrait {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+}
+
 .home .top10 .toprows .portrait {
-  inline-size: 1.75rem;
-  block-size: 1.75rem;
+  /* In pixels and not in rem: a picture does not have to grow with the reader's text size (WCAG 1.4.4 is about
+     text), and at 200% a circle of 56px was what left the name no column at all on a telephone. */
+  inline-size: 28px;
+  block-size: 28px;
   font-size: 0.6rem;
   box-shadow: none;
 }
 
-/* The name wraps where it must and is never cut: a list of rows in which `Radoslav Milovanović` ended in
-   an ellipsis at 1024px cut the one thing the row is for (measured, 20.11.2026, with the sample of the
-   portal). The columns are a subgrid, so a row of two lines changes nothing in the alignment of the rest. */
+/* **The category stands under the name, on every width** (owner, 21.11.2026, chosen with the recommendation put to
+   him: „Može li ovako kao u prilogu da stoji ime i prezime sa kategorijom ispod u Top 10 widgetima na naslovnoj,
+   kako bi se oslobodio prostor za duža imena i prezimena, a pritom i za bodove koji mogu biti i četvorocifreni,
+   plus . , i decimale?"). It replaces the rule of 20.11.2026 that did it only where the board was narrower
+   than about 300px, which is gone and not kept as a query nothing meets. The shape is the one of a name with the
+   member number under it that the portal has elsewhere (`Rankings.css`, `.rankings__member-name` over
+   `.rankings__member-number`, `table__member-number`: two blocks under each other, the second smaller and
+   muted, no gap between them); the sizes are the list's own, the name 0.9rem and the category 0.75rem.
+
+   **A name is never cut** (owner, 21.11.2026, chosen between the offered, with the recommendation put to him,
+   after the review of PR 768: „Ime se nikad ne seče: gde ne staje u jedan red (na 560 i 860 px), prelazi u dva
+   reda i red postaje viši"): the name wraps where it must and the row grows with it. Where it fits (768, 1024 and
+   1280 at the browser's own text size) the row is the 2.75rem (44px) it always was: two lines of 0.9rem and 0.75rem
+   at a line height of 1.15 are 30px, the padding 12px, the border 1px. Nothing here clips, so the ring of focus
+   of the link (`index.css`, 2px and an offset of 2px) is drawn whole. The columns are a subgrid of one grid, so
+   the points stay on one line at the right in every row, and two boards side by side stay one height because
+   the grid they stand in stretches both. */
 .toprows .nm {
+  grid-column: 3;
+  grid-row: 1;
+  align-self: end;
   min-width: 0;
   overflow-wrap: anywhere;
   font-size: 0.9rem;
-  line-height: 1.25;
+  line-height: 1.15;
   text-align: left;
 }
 
 .toprows .kt {
+  grid-column: 3;
+  grid-row: 2;
+  align-self: start;
+  min-width: 0;
+  overflow-wrap: anywhere;
   font-size: 0.75rem;
+  line-height: 1.15;
   color: var(--text-muted);
-  white-space: nowrap;
   text-align: left;
 }
 
 .toprows .pt {
-  font-weight: 700;
-  font-size: 0.9rem;
-  white-space: nowrap;
+  grid-column: 4;
+  grid-row: 1 / span 2;
+  font-weight: var(--points-weight);
+  font-size: var(--points-size);
+  color: var(--points-color);
+  overflow-wrap: normal;
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
@@ -739,52 +799,6 @@
   .toprows,
   .toprows li {
     column-gap: var(--space-6);
-  }
-}
-
-/* **A board narrower than about 300px puts the category under the name** (owner, 20.11.2026, chosen
-   with the recommendation put to him: „kategorija ide ispod imena kad god je tabla uža od oko 300 px,
-   bez obzira na širinu ekrana, jer su table uske i na 860 px"), so the name is not cut to a few
-   letters. The columns are still shared, and the points stay on the right. It is the board's own
-   width that decides, which is why this is a container query: at 860px the two boards are 254px each
-   and at 360px one board is 313. */
-@container (max-width: 16.625rem) {
-  .toprows {
-    grid-template-columns: 1.6rem 1.75rem minmax(0, 1fr) max-content;
-  }
-
-  .toprows li {
-    min-block-size: 3rem;
-    row-gap: 0;
-  }
-
-  .toprows .no {
-    grid-column: 1;
-    grid-row: 1 / span 2;
-  }
-
-  .toprows .top10__face,
-  .toprows .toprow--empty .portrait {
-    grid-column: 2;
-    grid-row: 1 / span 2;
-  }
-
-  .toprows .nm {
-    grid-column: 3;
-    grid-row: 1;
-    align-self: end;
-  }
-
-  .toprows .kt {
-    grid-column: 3;
-    grid-row: 2;
-    align-self: start;
-    line-height: 1.2;
-  }
-
-  .toprows .pt {
-    grid-column: 4;
-    grid-row: 1 / span 2;
   }
 }
 

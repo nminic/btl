@@ -53,8 +53,24 @@ const LONG_LAST = ['Stamenkovska', 'Gvozdenović', 'Milovanović', 'Jovanovićev
 const LONG_FIRST = ['Aleksandar', 'Strahinja', 'Radoslava', 'Aleksandra', 'Ivona', 'Dragoslav']
 
 const MEMBERS = everyAnswer()['/api/competitors']
+
+/**
+ * The first result of every member raised by 399.000 points (owner, 21.11.2026: the podium prints the BTL
+ * points of the whole history while the league warms up, as the number alone, "399.999,99"), so the figure
+ * the podium and the list have to hold is of that length and not the two-digit one of the sample.
+ */
+const RESULTS = everyAnswer()['/api/results']
+const SEEN = new Set<unknown>()
+
 const ANSWERS: Answers = {
   ...everyAnswer(),
+  '/api/results': (Array.isArray(RESULTS) ? RESULTS : []).map((one: Record<string, unknown>) => {
+    const first = !SEEN.has(one.memberNumber)
+
+    SEEN.add(one.memberNumber)
+
+    return first && typeof one.points === 'number' ? { ...one, points: one.points + 399000 } : one
+  }),
   '/api/competitors': (Array.isArray(MEMBERS) ? MEMBERS : []).map((one: Record<string, unknown>, index: number) => ({
     ...one,
     firstName: LONG_FIRST[index % LONG_FIRST.length],
@@ -65,7 +81,7 @@ const ANSWERS: Answers = {
 /** Half a pixel: a box of a fraction of a pixel is the same box. */
 const SAME = 0.5
 
-const WIDTHS: At[] = [360, 560, 768, 860, 1024, 1280].map((width): At => ({ width, text: 100 }))
+const WIDTHS: At[] = [360, 540, 560, 768, 860, 1024, 1280].map((width): At => ({ width, text: 100 }))
 
 type Box = { top: number; bottom: number; left: number; right: number; width: number; height: number }
 
@@ -157,6 +173,16 @@ for (const at of WIDTHS) {
           circle: box(must(item.querySelector('.portrait'))),
           step: box(must(item.querySelector('.stand__step'))),
           name: box(must(item.querySelector('.stand__name'))),
+          /* A place nobody stands on has no figure to measure (the other day the podium is empty). */
+          pointsLines: item.querySelector('.stand__points') === null ? 0 : lines(must(item.querySelector('.stand__points'))),
+          pointsText: item.querySelector('.stand__points')?.textContent ?? '',
+          pointsOver: (() => {
+            const figure = item.querySelector('.stand__points')
+
+            return figure === null
+              ? 0
+              : Math.round((box(figure).right - item.getBoundingClientRect().right) * 10) / 10
+          })(),
           who: (item.querySelector('.stand__name')?.textContent ?? '') + ' | ' + (item.querySelector('.stand__points')?.textContent ?? ''),
           nameLines: [...item.querySelectorAll('.stand__first, .stand__last')].map((one) => Math.round(one.getBoundingClientRect().height)),
           lines: [...item.querySelectorAll('.stand__first, .stand__last')].map((one) => lines(one)),
@@ -338,6 +364,13 @@ for (const at of WIDTHS) {
       const [first, second, third] = board.places
 
       expect(board.places).toHaveLength(3)
+
+      /* The figure of the podium is the number and no letter after it (owner, 21.11.2026): one line, not wider than its place. */
+      for (const place of board.places.filter((one) => one.pointsText !== '')) {
+        expect(place.pointsText, 'the podium prints something besides the number').toMatch(/^\d[\d.,]*,\d\d$/)
+        expect(place.pointsLines, `the points break into lines: ${place.who}`).toBe(1)
+        expect(place.pointsOver, `the points are wider than their place: ${place.who}`).toBeLessThanOrEqual(SAME)
+      }
       expect(first?.circle.top, 'the first is not above the second').toBeLessThan((second?.circle.top ?? 0) - 1)
       expect(second?.circle.top, 'the second is not above the third').toBeLessThan((third?.circle.top ?? 0) - 1)
       expect(first?.circle.width).toBeGreaterThan((second?.circle.width ?? 0) + 1)
@@ -364,8 +397,14 @@ for (const at of WIDTHS) {
       expect(level(column('category', 'left')), 'the categories do not start on one line').toBeLessThanOrEqual(SAME)
       expect(level(column('points', 'right')), 'the points do not end on one line').toBeLessThanOrEqual(SAME)
 
+      /* The category stands under the name on every width, in the name's own column (owner, 21.11.2026), and the
+         row is no taller than the 2.75rem it always was (44px, and a pixel of border), so the two boards stay one
+         height and the two lines stand inside the height of the circle's row. */
       for (const row of board.rows) {
-        expect(row.cut, 'a name of the list is wider than its cell').toBe(false)
+        expect(row.category.top, 'the category is not under the name').toBeGreaterThanOrEqual(row.name.bottom - SAME)
+        expect(Math.abs(row.category.left - row.name.left), 'the category does not start where the name does').toBeLessThanOrEqual(SAME)
+        expect(row.cut, 'a name of the list is cut').toBe(false)
+
       }
     }
 
@@ -415,8 +454,83 @@ const SAMPLE_NAMES: Answers = {
 }
 
 const TEXTS: At['text'][] = [100, 125, 200]
+const ALL_TEXTS: At['text'][] = [100, 125, 150, 175, 200]
+const BOTH_TEXTS: At['text'][] = [100, 200]
 
-for (const width of [360, 560, 768, 860, 1024, 1280]) {
+/**
+ * THE FIGURE OF THE PODIUM STANDS IN ITS COLUMN AT EVERY TEXT SIZE, IN BOTH LANGUAGES (owner, 21.11.2026, review of
+ * PR 768, WCAG 1.4.4 Resize text): the floor of the letter is in `rem`, so at 200% a figure like 399.999,99
+ * no longer fits a column of 60px, and a figure kept on one line spilled 14px out of its column and over the
+ * next one. What is measured is the text a person sees (the rectangles of its range, since a box that
+ * overflows does not make its element wider): inside its own column, clear of the figure beside it and of
+ * every circle, and cut by nothing.
+ */
+for (const width of [360, 540, 768, 1280]) {
+  for (const text of ALL_TEXTS) {
+    for (const language of ['sr', 'en']) {
+      const here: At = { width, text }
+
+      test(`the figures of the podium stay in their columns, at ${label(here)}, in ${language}`, async ({ open, theDay }) => {
+        test.skip(theDay !== THE_DAY_THE_SUITE_IS_READ_AS, 'no figure stands on the podium on this day')
+
+        const { page } = await open(here, `/${language}`, '.top10 .stand', ANSWERS)
+
+        const seen = await page.evaluate(() =>
+          [...document.querySelectorAll('.top10')].map((board) => {
+            const items = [...board.querySelectorAll('.stand__item')]
+            const rectsOf = (element: Element) => {
+              const range = document.createRange()
+
+              range.selectNodeContents(element)
+
+              return [...range.getClientRects()].filter((one) => one.width > 0)
+            }
+            const circles = [...board.querySelectorAll('.stand .portrait')].map((one) => one.getBoundingClientRect())
+
+            return items.map((item, index) => {
+              const figure = item.querySelector('.stand__points')
+              const column = item.getBoundingClientRect()
+              const rects = figure === null ? [] : rectsOf(figure)
+
+              return {
+                index,
+                text: figure?.textContent ?? '',
+                over: Math.max(0, ...rects.map((one) => Math.max(column.left - one.left, one.right - column.right))),
+                rects: rects.map((one) => ({ left: one.left, right: one.right, top: one.top, bottom: one.bottom })),
+                circles: circles.map((one) => ({ left: one.left, right: one.right, top: one.top, bottom: one.bottom })),
+              }
+            })
+          }),
+        )
+
+        const meets = (
+          a: { left: number; right: number; top: number; bottom: number },
+          b: { left: number; right: number; top: number; bottom: number },
+        ) => Math.min(a.right, b.right) - Math.max(a.left, b.left) > SAME && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > SAME
+
+        for (const board of seen) {
+          for (const place of board.filter((one) => one.text !== '')) {
+            expect(place.over, `the figure sticks out of its column: ${place.text}`).toBeLessThanOrEqual(SAME)
+
+            for (const rect of place.rects) {
+              for (const circle of place.circles) {
+                expect(meets(rect, circle), `the figure runs into a circle: ${place.text}`).toBe(false)
+              }
+
+              for (const other of board.filter((one) => one.index !== place.index)) {
+                for (const beside of other.rects) {
+                  expect(meets(rect, beside), `the figure runs into the one beside it: ${place.text}`).toBe(false)
+                }
+              }
+            }
+          }
+        }
+      })
+    }
+  }
+}
+
+for (const width of [360, 540, 560, 768, 860, 1024, 1280]) {
   for (const text of TEXTS) {
     const here: At = { width, text }
 
@@ -578,3 +692,234 @@ test('the focus on a race only „Ultra" shows goes to the heading of the calend
 
   expect(seen).toEqual({ tag: 'H2', text: 'Priprema, pozor, SAD!' })
 })
+
+/**
+ * THE LIST FROM THE FOURTH PLACE AT EVERY WIDTH, EVERY TEXT SIZE AND IN BOTH LANGUAGES (owner, 21.11.2026: the
+ * category under the name on every width): nothing in a row overlaps anything else, the points do not leave
+ * their column, and the page does not move sideways. A name that does not fit ends in three dots, so it is
+ * measured by the box it is drawn in, and the figure by the text a person sees.
+ */
+for (const width of [360, 560, 768, 860, 1024, 1280]) {
+  for (const text of ALL_TEXTS) {
+    for (const language of ['sr', 'en']) {
+      const here: At = { width, text }
+
+      test(`the list of the board has nothing on anything, at ${label(here)}, in ${language}`, async ({ open, theDay }) => {
+        test.skip(theDay !== THE_DAY_THE_SUITE_IS_READ_AS, 'no row stands in the list on this day')
+
+        const { page } = await open(here, `/${language}`, '.top10 .stand', ANSWERS)
+
+        const rows = await page.evaluate(() =>
+          [...document.querySelectorAll('.toprow:not(.toprow--empty)')].map((row) => {
+            const rect = (element: Element) => {
+              const { left, right, top, bottom } = element.getBoundingClientRect()
+
+              return { left, right, top, bottom }
+            }
+            const figure = must(row.querySelector('.pt'))
+            const range = document.createRange()
+
+            range.selectNodeContents(figure)
+
+            const text = [...range.getClientRects()].filter((one) => one.width > 0)
+
+            function must<T>(value: T | null): T {
+              if (value === null) {
+                throw new Error('something the list draws is not there')
+              }
+
+              return value
+            }
+
+            const nameBox = must(row.querySelector('.nm'))
+
+            return {
+              text: figure.textContent ?? '',
+              nameCut: nameBox.scrollWidth - nameBox.clientWidth,
+              row: rect(row),
+              parts: {
+                no: rect(must(row.querySelector('.no'))),
+                circle: rect(must(row.querySelector('.portrait'))),
+                name: rect(must(row.querySelector('.nm'))),
+                category: rect(must(row.querySelector('.kt'))),
+                figure: text.length === 0 ? rect(figure) : { left: Math.min(...text.map((one) => one.left)), right: Math.max(...text.map((one) => one.right)), top: Math.min(...text.map((one) => one.top)), bottom: Math.max(...text.map((one) => one.bottom)) },
+              },
+              figureOver: Math.max(0, ...text.map((one) => one.right - figure.getBoundingClientRect().right), ...text.map((one) => figure.getBoundingClientRect().left - one.left)),
+            }
+          }),
+        )
+
+        expect(rows.length, 'the list has no rows to measure').toBeGreaterThan(0)
+        /* The list's own contribution to a sideways scroll, and not the page's: at 360px and 175% the decorative
+           background of the route (`.race-page`, PR 760 and 767) is wider than the window, which is not this list
+           and is reported apart. */
+        const spill = await page.evaluate(() =>
+          [...document.querySelectorAll('.toprows')].map((list) => ({
+            scrolls: list.scrollWidth - list.clientWidth,
+            beyond: list.getBoundingClientRect().right - document.documentElement.clientWidth,
+          })),
+        )
+
+        for (const one of spill) {
+          expect(one.scrolls, 'a list scrolls sideways inside itself').toBeLessThanOrEqual(SAME)
+          expect(one.beyond, 'a list is wider than the window').toBeLessThanOrEqual(SAME)
+        }
+
+
+        type Rect = { left: number; right: number; top: number; bottom: number }
+
+        const meets = (a: Rect, b: Rect) =>
+          Math.min(a.right, b.right) - Math.max(a.left, b.left) > SAME && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > SAME
+
+        for (const row of rows) {
+          const { no, circle, name, category, figure } = row.parts
+          const pairs: [string, Rect, Rect][] = [
+            ['the name and the category', name, category],
+            ['the name and the points', name, figure],
+            ['the category and the points', category, figure],
+            ['the circle and the name', circle, name],
+            ['the circle and the category', circle, category],
+            ['the number and the circle', no, circle],
+          ]
+
+          for (const [what, one, other] of pairs) {
+            expect(meets(one, other), `${what} are on each other: ${row.text}`).toBe(false)
+          }
+
+          expect(row.nameCut, `a name of the list is cut: ${row.text}`).toBeLessThanOrEqual(SAME)
+          expect(figure.left, `the points leave the row on the left: ${row.text}`).toBeGreaterThanOrEqual(row.row.left - SAME)
+          expect(figure.right, `the points leave the row on the right: ${row.text}`).toBeLessThanOrEqual(row.row.right + SAME)
+          expect(row.figureOver, `the points stick out of their own column: ${row.text}`).toBeLessThanOrEqual(SAME)
+        }
+      })
+    }
+  }
+}
+
+/**
+ * THE FIGURE ON THE PODIUM IS THE SHAPE OF THE FIGURE IN THE LIST (owner, 21.11.2026: "Nema mi smisla da za
+ * najbolja 3 bude manji font poena nego za 4-10 mesto u tabeli ispod gde su veliki beli brojevi"): the same
+ * weight and the same colour always, and the same size wherever the figure fits its column without being set
+ * smaller. The letter goes down only as the way out of a narrow column, and then never under the floor of the
+ * names (0,65rem). Measured as the browser computes it, since the two rules read three shared properties and
+ * a rule that stopped reading one of them would not be seen in the stylesheet by a case that reads the text.
+ */
+for (const width of [768, 1280]) {
+  test(`the figure of the podium has the shape of the figure of the list, at ${label({ width, text: 100 })}`, async ({ open, theDay }) => {
+    test.skip(theDay !== THE_DAY_THE_SUITE_IS_READ_AS, 'no figure stands on the podium on this day')
+
+    const { page } = await open({ width, text: 100 }, '/sr', '.top10 .stand', ANSWERS)
+
+    const seen = await page.evaluate(() => {
+      const shape = (element: Element) => {
+        const style = getComputedStyle(element)
+
+        return { size: Number.parseFloat(style.fontSize), weight: style.fontWeight, color: style.color }
+      }
+
+      return {
+        podium: [...document.querySelectorAll('.stand__points')].map(shape),
+        list: [...document.querySelectorAll('.toprows .pt')].slice(0, 1).map(shape),
+        root: Number.parseFloat(getComputedStyle(document.documentElement).fontSize),
+      }
+    })
+
+    const list = seen.list[0]
+
+    expect(list, 'the list has no figure to measure').toBeDefined()
+    expect(seen.podium.length).toBeGreaterThan(0)
+
+    for (const place of seen.podium) {
+      expect(place.weight, 'the podium figure is not as heavy as the list one').toBe(list?.weight)
+      expect(place.color, 'the podium figure is not the colour of the list one').toBe(list?.color)
+      expect(place.size, 'the podium figure is larger than the list one').toBeLessThanOrEqual((list?.size ?? 0) + 0.05)
+      expect(place.size, 'the podium figure is under the floor').toBeGreaterThanOrEqual(0.65 * seen.root - 0.05)
+    }
+
+    // At least one figure of the podium fits its column and is the very size of the list's.
+    expect(
+      seen.podium.some((place) => Math.abs(place.size - (list?.size ?? 0)) <= 0.05),
+      'no figure of the podium is the size of the list one: it is set smaller everywhere',
+    ).toBe(true)
+  })
+}
+
+/**
+ * THE RING OF FOCUS OF A NAME IN THE LIST IS DRAWN WHOLE (WCAG 2.4.7, review of PR 768): a link is focused from the
+ * keyboard, and its ring (`index.css`, the outline and its offset) grown round the link must lie inside the box of
+ * every ancestor that clips what is drawn outside it. A name in a box that hides its overflow had a ring cut to a
+ * thin line, and at 860px no ring at all.
+ */
+for (const width of [360, 560, 768, 860, 1024, 1280]) {
+  for (const text of BOTH_TEXTS) {
+    test(`the ring of focus of the names of the list is not clipped, at ${label({ width, text })}`, async ({ open, theDay }) => {
+      test.skip(theDay !== THE_DAY_THE_SUITE_IS_READ_AS, 'no row stands in the list on this day')
+
+      const { page } = await open({ width, text }, '/sr', '.top10 .stand', ANSWERS)
+
+      await page.keyboard.press('Tab')
+
+      const seen = await page.evaluate(() => {
+        const links = [...document.querySelectorAll('.toprows .nm a')]
+
+        return links.map((link) => {
+          if (link instanceof HTMLElement) {
+            link.focus()
+          }
+
+          const style = getComputedStyle(link)
+          const grow = Number.parseFloat(style.outlineWidth) + Number.parseFloat(style.outlineOffset)
+          const box = link.getBoundingClientRect()
+          const ring = { left: box.left - grow, right: box.right + grow, top: box.top - grow, bottom: box.bottom + grow }
+          let cut = 0
+
+          for (let up = link.parentElement; up !== null && up !== document.documentElement; up = up.parentElement) {
+            const own = getComputedStyle(up)
+
+            if (own.overflowX !== 'visible' || own.overflowY !== 'visible') {
+              const clip = up.getBoundingClientRect()
+
+              cut = Math.max(cut, clip.left - ring.left, ring.right - clip.right, clip.top - ring.top, ring.bottom - clip.bottom)
+            }
+          }
+
+          return { name: link.textContent ?? '', cut, ringWidth: Number.parseFloat(style.outlineWidth), focused: document.activeElement === link }
+        })
+      })
+
+      expect(seen.length, 'the list has no name to focus').toBeGreaterThan(0)
+
+      for (const one of seen) {
+        expect(one.focused, `${one.name} cannot be focused`).toBe(true)
+        expect(one.ringWidth, `${one.name} has no ring of focus`).toBeGreaterThan(0)
+        expect(one.cut, `the ring of focus of ${one.name} is clipped`).toBeLessThanOrEqual(SAME)
+      }
+    })
+  }
+}
+
+/**
+ * WHERE THE NAME FITS, THE ROW IS THE 44px IT ALWAYS WAS (owner, 21.11.2026: a name is never cut, and where it does not
+ * fit it wraps and the row grows): with the names of the portal, at the three widths where they stand in one line at the
+ * browser's own text size, a row of the list is the 2.75rem and a pixel of border, and the two boards are one height.
+ */
+for (const width of [768, 1024, 1280]) {
+  test(`a row of the list is one row high where the name fits, at ${label({ width, text: 100 })}`, async ({ open, theDay }) => {
+    test.skip(theDay !== THE_DAY_THE_SUITE_IS_READ_AS, 'no row stands in the list on this day')
+
+    const { page } = await open({ width, text: 100 }, '/sr', '.top10 .stand', everyAnswer())
+
+    const seen = await page.evaluate(() => ({
+      rows: [...document.querySelectorAll('.toprow:not(.toprow--empty)')].map((row) => Math.round(row.getBoundingClientRect().height * 10) / 10),
+      boards: [...document.querySelectorAll('.top10')].map((board) => Math.round(board.getBoundingClientRect().height * 10) / 10),
+    }))
+
+    expect(seen.rows.length).toBeGreaterThan(0)
+
+    for (const height of seen.rows) {
+      expect(height, 'a row of the list is taller than it was').toBeLessThanOrEqual(45)
+    }
+
+    expect(Math.max(...seen.boards) - Math.min(...seen.boards), 'the two boards are not one height').toBeLessThanOrEqual(SAME)
+  })
+}
