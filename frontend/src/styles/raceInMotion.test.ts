@@ -2,7 +2,7 @@ import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { at, must } from '../test/at'
 import { contrast } from '../test/contrast'
-import { bodyOf, closes, everyRule, ruleFor, ruleInMedia, rulesInMedia, unremarked } from '../test/stylesheet'
+import { bodyOf, everyRule, ruleFor, rulesInMedia, unremarked } from '../test/stylesheet'
 
 /* The decoration of „Race in Motion" (owner, 14.11.2026, PDL „Vizuelno osveženje „Race in
  * Motion""), and the things about it no screen test can see.
@@ -17,8 +17,10 @@ import { bodyOf, closes, everyRule, ruleFor, ruleInMedia, rulesInMedia, unremark
  * at its full strength, and the text of that ground is held at 4,5:1 against the result (WCAG 2.2
  * SC 1.4.3), in both themes. On the page that is four grounds: the page under its glow, a contour over it,
  * the route over it, and the place where a contour and the route cross, both at full strength (the weakest
- * ground there is). The header's own text is measured under the glow and the lanes. A ground the layers can make
- * and this does not measure is not measured at all.
+ * ground there is). The dot that runs the route (20.11.2026) is gold and meant to be seen, 3:1 against the
+ * page, and no word stands on it: that is Chrome's to ask. The header's own text is measured under the glow
+ * and the lanes. A ground the layers
+ * can make and this does not measure is not measured at all.
  */
 
 const FLOOR = 4.5
@@ -251,7 +253,7 @@ describe('the text of the page, over the decoration', () => {
     it(`keeps 4,5:1 on the page colour under the glow, the contours, the route, and where a contour crosses the route, ${theme}`, () => {
       const glowing = over(own('--race-page-glow', theme), portal('--bg', theme))
       const contour = over(own('--race-contour', theme), glowing)
-      /* The two layers are two pseudo-elements one over the other (`.race-page::before` and `::after`), so where a
+      /* The contours and the route are painted in one drawing, the route over the contours, so where a
          contour and the route cross a word stands on both at once, each at its full strength: that is the last
          ground, and the weakest one (PR 736 review, 15.11.2026; the owner's choice of 16.11.2026 was to keep the
          lines as they are and to give the inks that fell short colours that clear 4,5:1 on it). */
@@ -263,6 +265,25 @@ describe('the text of the page, over the decoration', () => {
           expect(contrast(portal(ink, theme), ground), `${ink} on ${ground}, ${theme}`).toBeGreaterThanOrEqual(FLOOR)
         }
       }
+    })
+  }
+})
+
+describe('the dot, as a colour', () => {
+  for (const theme of ['light', 'dark'] as const) {
+    it(`is the gold of the header's line, and stands out of the page at least 3:1, ${theme}`, () => {
+      /* Owner, 20.11.2026: „Jaka tačka, nikad ispod teksta". The dot is meant to be seen, so it owes the page
+         what a mark owes it (WCAG 2.2 SC 1.4.11, MARK), and it is the gold of the header's line, not a
+         colour of its own. NO WORD IS MEASURED AGAINST IT, and that is the point of the decision: a word
+         never stands on the dot or on the route it runs, which Chrome is asked about
+         (geometry/raceInMotion.geometry.ts, „the route and the dot touch no word"). The text of the page
+         keeps 4,5:1 on every ground that is left. */
+      expect(written('.race-page__dot-core').getPropertyValue('fill')).toBe('var(--race-gold)')
+      expect(written('.race-page__dot-ring').getPropertyValue('stroke')).toBe('var(--race-gold)')
+
+      const glowing = over(own('--race-page-glow', theme), portal('--bg', theme))
+
+      expect(contrast(over(own('--race-gold', theme), glowing), glowing), `the dot against the page, ${theme}`).toBeGreaterThanOrEqual(MARK)
     })
   }
 })
@@ -322,56 +343,129 @@ describe('what is drawn at which width', () => {
     expect(hiding.map((rule) => rule.selectorText)).toEqual([])
   })
 
-  it('keeps the gold route off a telephone', () => {
-    expect(
-      ruleInMedia(decoration, '(min-width: 35em)', '.race-page::after', 'RaceInMotion.css').getPropertyValue('display'),
-    ).toBe('block')
-    expect(unremarked(decoration)).toMatch(/\.race-page::after \{\s*display: none;/)
+  it('draws the hills and the lane of the route and the dot from 560px and a telephone its own', () => {
+    expect(written('.terrain--wide').getPropertyValue('display')).toBe('none')
+    expect(written('.terrain--lane').getPropertyValue('display')).toBe('none')
+    expect(writtenIn('(min-width: 35em)', '.terrain--wide, .terrain--lane').getPropertyValue('display')).toBe('block')
+    expect(writtenIn('(min-width: 35em)', '.terrain--narrow').getPropertyValue('display')).toBe('none')
+
+    /* The telephone's drawing is drawn by nothing else, so it has no way to be drawn wide: no rule gives
+       it a display outside the one that takes it away. */
+    const narrow = everyRule(decoration, 'RaceInMotion.css').filter((rule) => flat(rule.selectorText) === '.terrain--narrow')
+
+    expect(narrow.map((rule) => rule.style.getPropertyValue('display'))).toEqual(['none'])
   })
 })
 
-describe('the drawing of the page', () => {
-  it('covers the whole window, the middle as well as the edges, and repeats across and down it', () => {
-    /* Owner, 15.11.2026: the drawing goes between the boxes and behind the middle of the page, and
-       not only along the two sides. So both drawings take the layer's whole box, which is the
-       window, and no rule narrows either of them to a band at any width. */
-    const drawings = everyRule(decoration, 'RaceInMotion.css').filter((rule) => /\.race-page::(before|after)/.test(rule.selectorText))
-    const both = must(
-      drawings.find((rule) => flat(rule.selectorText) === '.race-page::before, .race-page::after'),
-      'the one rule of both drawings',
+describe('the ground of the page', () => {
+  it('covers the whole window, the middle as well as the edges, and is one drawing, not a tile that repeats', () => {
+    /* Owner, 15.11.2026: the drawing goes between the boxes and behind the middle of the page, and not only
+       along the two sides. Both drawings take the layer's whole box, which is the window; and nothing in the
+       sheet is a mask or a repeated image any more (20.11.2026), which is what a tile was. */
+    const ground = written('.terrain')
+
+    expect(ground.getPropertyValue('inset')).toMatch(/^0(px)?$/)
+    expect(ground.getPropertyValue('width')).toBe('100%')
+    expect(ground.getPropertyValue('height')).toBe('100%')
+    expect(unremarked(decoration)).not.toMatch(/mask|repeat|url\(/)
+  })
+
+  it('draws no stroke wider than the sheet says whatever the drawing is scaled to', () => {
+    expect(flat(written('.terrain path, .terrain circle').getPropertyValue('vector-effect'))).toBe('non-scaling-stroke')
+  })
+
+  it('paints the lines in the tokens and only in them', () => {
+    expect(written('.terrain__hills').getPropertyValue('stroke')).toBe('var(--race-contour)')
+    expect(written('.terrain__route').getPropertyValue('stroke')).toBe('var(--race-route)')
+    expect(written('.terrain__waypoint').getPropertyValue('fill')).toBe('var(--race-route)')
+    expect(written('.terrain__waypoint-ring').getPropertyValue('stroke')).toBe('var(--race-route)')
+  })
+})
+
+describe('the lane of the route', () => {
+  it('lies beside the column of the page, its right edge on the edge of the column, so no word is ever over it', () => {
+    /* Owner, 20.11.2026: „Jaka tačka, nikad ispod teksta". The strip is 100 units wide and drawn 100px wide
+       (6,25rem), and the column is the 1100px the shell gives the page; what is asked of Chrome is that no
+       word is over the route (geometry/raceInMotion.geometry.ts), and what is asked here is why that holds. */
+    const lane = written('.terrain--lane')
+
+    /* jsdom writes the calc back in its own order, so the three numbers are asked for and not the spelling:
+       half of what is left of the window beside a column of 1100px, less the width of the strip. */
+    const left = lane.getPropertyValue('left')
+
+    expect(left).toMatch(/^calc\(/)
+    expect(left).toContain('100% - 1100px')
+    expect(left).toContain('6.25rem')
+    expect(left).toMatch(/0\.5|\/ 2/)
+    expect(lane.getPropertyValue('width')).toBe('6.25rem')
+    expect(lane.getPropertyValue('height')).toBe('100%')
+    expect(shell).toMatch(/max-width: 1100px;/)
+  })
+})
+
+describe('the dot', () => {
+  const CONDITION = '(min-width: 35em) and (prefers-reduced-motion: no-preference)'
+
+  /** The rules that name the dot itself, with the question each one is asked inside. */
+  function dotRules() {
+    return everyRule(decoration, 'RaceInMotion.css')
+      .filter((rule) => flat(rule.selectorText) === '.race-page__dot')
+      .map((rule) => {
+        const asks: string[] = []
+
+        for (let up = rule.parentRule; up !== null; up = up.parentRule) {
+          asks.push(flat(up.cssText.slice(0, up.cssText.indexOf('{'))))
+        }
+
+        return { style: rule.style, asks }
+      })
+  }
+
+  it('is not drawn unless the width, the reader and the browser all allow it', () => {
+    const rules = dotRules()
+
+    expect(rules).toHaveLength(2)
+
+    const plain = rules.filter((rule) => rule.asks.length === 0)
+    const moving = rules.filter((rule) => rule.asks.length > 0)
+
+    expect(plain.map((rule) => rule.style.getPropertyValue('display'))).toEqual(['none'])
+    expect(moving).toHaveLength(1)
+    expect(must(moving[0], 'the rule that draws the dot').style.getPropertyValue('display')).toBe('inline')
+
+    /* From 560px and for a reader who has not asked for less movement: a reader who has gets no dot at all,
+       not a still one. And only in a browser that moves things along a path, which would otherwise leave it
+       in the corner of the drawing. */
+    expect(must(moving[0], 'the rule that draws the dot').asks).toEqual([`@media ${CONDITION}`, "@supports (offset-path: path('M0 0'))"])
+  })
+
+  it('runs once, for five seconds at most, and stays where it stops', () => {
+    const moving = must(
+      dotRules().find((rule) => rule.asks.length > 0),
+      'the rule that draws the dot',
     )
+    const animation = moving.style.getPropertyValue('animation')
+    const [name, duration, curve, count, ...more] = animation.split(/\s+(?![^(]*\))/)
 
-    /* jsdom hands `inset: 0` back as `0px`. */
-    expect(both.style.getPropertyValue('inset')).toMatch(/^0(px)?$/)
-    expect(both.style.getPropertyValue('mask-repeat')).toBe('repeat')
-
-    for (const rule of drawings) {
-      for (const narrows of ['width', 'max-width', 'left', 'right', 'inset-inline', 'transform']) {
-        expect(rule.style.getPropertyValue(narrows), `${rule.selectorText} sets ${narrows}`).toBe('')
-      }
-    }
-
-    for (const rule of drawings.filter((one) => one !== both)) {
-      expect(rule.style.getPropertyValue('mask-repeat'), `${rule.selectorText} repeats otherwise`).toBe('')
-    }
+    expect(more, animation).toEqual([])
+    expect(name).toBe('race-dot-run')
+    expect(duration).toMatch(/^\d+(\.\d+)?s$/)
+    expect(Number.parseFloat(must(duration, 'the duration')), 'seconds the dot runs').toBeLessThanOrEqual(5)
+    expect(Number.parseFloat(must(duration, 'the duration')), 'seconds the dot runs').toBeGreaterThan(0)
+    expect(curve).toMatch(/^cubic-bezier\(/)
+    /* One run and no more: nothing but a number one, so „infinite" and „2" both fail. */
+    expect(count).toBe('1')
+    /* It rests on the waypoint by its own style and not by an animation that fills forwards, which never
+       ends and so never lets a page settle. */
+    expect(moving.style.getPropertyValue('offset-distance')).toBe('100%')
   })
-})
 
-describe('a browser that does not know masks', () => {
-  it('meets every mask inside the one question that asks whether it does', () => {
-    /* Outside it, the token colour under the mask would be painted as a solid band. */
+  it('is the only thing in the sheet that moves, and it moves along the route from the start to the end', () => {
     const plain = unremarked(decoration)
-    const asks = plain.indexOf('@supports (mask-image: none) {')
 
-    expect(asks).toBeGreaterThan(-1)
+    expect([...plain.matchAll(/\s(animation[a-z-]*|transition[a-z-]*):/g)].map((one) => at(one, 1))).toEqual(['animation'])
+    expect(plain.match(/@keyframes/g)).toHaveLength(1)
+    expect(plain).toMatch(/@keyframes race-dot-run \{\s*from \{\s*offset-distance: 0%;\s*\}\s*to \{\s*offset-distance: 100%;\s*\}\s*\}/)
 
-    const end = closes(decoration, asks)
-    const masks = [...plain.matchAll(/mask-image|background-color/g)].map((one) => one.index)
-
-    expect(masks.length).toBeGreaterThan(3)
-
-    for (const index of masks) {
-      expect(index > asks && index < end, `a mask or its colour at ${index}, outside the question`).toBe(true)
-    }
   })
 })
