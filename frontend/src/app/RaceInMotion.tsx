@@ -107,7 +107,8 @@ export function HeaderDecoration() {
  *  bottom edge of the window (owner,
  *  14.11.2026 and the approved draft of 20.11.2026). The route and the dot are in a lane of their own,
  *  a strip in the gutter beside the column of the page (owner, 20.11.2026: „Jaka tačka, nikad ispod
- *  teksta"), so they are never over a word. A telephone gets a drawing of its own, long
+ *  teksta"), so they are never over a word, and the drawing is squeezed across where the gutter is narrower
+ *  than the window is tall (`--fit`, `app/RaceInMotion.css`), so none of it is cut off by the window or the strip. A telephone gets a drawing of its own, long
  *  lines along both edges and two small hills, with no route and no dot. The shapes are data
  *  (`app/terrain.ts`); how strong they are, which of the two drawings is drawn and when the dot
  *  moves are the sheet's (`app/RaceInMotion.css`). The cards and tables stay opaque, so the ground
@@ -128,16 +129,18 @@ export function PageBackgroundDecoration({ screen }: { screen: string }) {
         </g>
       </svg>
       <svg className="terrain terrain--lane" viewBox={LANE_VIEW} preserveAspectRatio="xMaxYMid slice" focusable="false">
-        <path className="terrain__route" d={ROUTE} />
-        {WAYPOINTS.map(([x, y]) => (
-          <g key={`${x},${y}`}>
-            <circle className="terrain__waypoint" r="3" cx={x} cy={y} />
-            <circle className="terrain__waypoint-ring" r="7.5" cx={x} cy={y} />
+        <g className="race-lane__fit">
+          <path className="terrain__route" d={ROUTE} />
+          {WAYPOINTS.map(([x, y]) => (
+            <g key={`${x},${y}`}>
+              <circle className="terrain__waypoint" r="3" cx={x} cy={y} />
+              <circle className="terrain__waypoint-ring" r="7.5" cx={x} cy={y} />
+            </g>
+          ))}
+          <g key={screen} className="race-page__dot" style={{ offsetPath: `path('${TRAVEL}')` }}>
+            <circle className="race-page__dot-ring" r="11" />
+            <circle className="race-page__dot-core" r="5" />
           </g>
-        ))}
-        <g key={screen} className="race-page__dot" style={{ offsetPath: `path('${TRAVEL}')` }}>
-          <circle className="race-page__dot-ring" r="11" />
-          <circle className="race-page__dot-core" r="5" />
         </g>
       </svg>
       <svg className="terrain terrain--narrow" viewBox={PHONE_VIEW} preserveAspectRatio="xMidYMid slice" focusable="false">

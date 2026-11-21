@@ -78,7 +78,7 @@ const ALLOWED = new Map([
     'not a step: the runner of the reference stands as far in from the edge as the gutter beside the column (1100px, app/Shell.css) less the 145px the reference leaves between him and the last tool, owner 15.11.2026',
   ],
   [
-    'app/RaceInMotion.css | left | calc((100% - 1100px) / 2 - 6.25rem)',
+    'app/RaceInMotion.css | left | calc((100% - 1100px) / 2 - var(--lane-width))',
     'not a step: the lane of the route ends where the column of the page begins (1100px, app/Shell.css), so that no word is ever over the route or the dot, owner 20.11.2026',
   ],
   ['pages/Home.css | inset-inline-start | -0.2rem', 'a mark pulled out over the corner it sits on'],
@@ -329,7 +329,15 @@ describe('space and corners are chosen from the scale, not typed', () => {
        * query: the note above the container query in TopBoards.css says why it
        * is not an `@media` one, and saying so made this guard count a width the
        * sheet does not have and fail on a sentence. */
-      const conditions = [...unremarked(sheet.css).matchAll(/@media([^{]*)\{/g)].map((one) => one[1] ?? '').join(' ')
+      /* The one family of queries that is not a width of its own: the steps by which the lane of the route is drawn
+         (`app/RaceInMotion.css`, owner 21.11.2026). Each asks for 1132px and the gutter its tallest window needs, which
+         follows the height of the window and so is not a place where the portal changes shape; the steps are pinned in
+         `styles/raceInMotion.test.ts`, „is drawn only where the gutter holds it". They are read out of the text here
+         by their exact spelling, so any other width written in this form still fails this guard. */
+      const LANE_STEP = /\(min-width: calc\(1132px \+ max\(5em, \d+px\)\)\)/g
+      const conditions = [...unremarked(sheet.css).matchAll(/@media([^{]*)\{/g)]
+        .map((one) => (one[1] ?? '').replaceAll(LANE_STEP, '(lane step)'))
+        .join(' ')
       const found = [...conditions.matchAll(WIDTH)]
 
       /* Every way of asking about a width, or the guard is a guard against one
