@@ -568,14 +568,24 @@ function byNumber(left: Competitor, right: Competitor): number {
   return left.memberNumber.localeCompare(right.memberNumber)
 }
 
-function byHistoryThenNumber(results: Result[]): (left: Competitor, right: Competitor) => number {
+/**
+ * THE BTL POINTS OF ALL THE HISTORY OF A MEMBER, as one function, so that the order a board is drawn in
+ * and the figure it prints are the same figure and never two sums that agree by coincidence (owner,
+ * 21.11.2026: „Dok je zagrevanje ... BTL bodovi ukupni kroz istoriju"). Read by `byHistoryThenNumber`
+ * (the order) and by `boardOfTen` (the figure of the front page). A member with no result has 0.
+ */
+function historyOf(results: Result[]): (competitor: Competitor) => number {
   const history = new Map<string, number>()
 
   for (const result of numbered(results)) {
     history.set(result.memberNumber, plusHundredths(history.get(result.memberNumber) ?? 0, result.points))
   }
 
-  const of = (competitor: Competitor) => history.get(competitor.memberNumber) ?? 0
+  return (competitor) => history.get(competitor.memberNumber) ?? 0
+}
+
+function byHistoryThenNumber(results: Result[]): (left: Competitor, right: Competitor) => number {
+  const of = historyOf(results)
 
   return (left, right) => of(right) - of(left) || left.memberNumber.localeCompare(right.memberNumber)
 }
@@ -1442,7 +1452,9 @@ export type BoardSlot = {
  * the year for the portal to look deserted.
  *
  * A member who is only holding a place is marked, so nothing downstream can show
- * them as having come fifth.
+ * them as having come fifth. **Until 1 January 2027 the figure on every row is the BTL points of the
+ * member's whole history** (owner, 21.11.2026), the sum the waiting are ordered by; it was 0 for the waiting
+ * from 20.11.2026 until that day.
  *
  * **And the topping up ends on 1 January 2027** (owner, 17.10.2026, against the
  * recommendation put to him): from that day the board holds only members with points,
@@ -1461,13 +1473,21 @@ export function boardOfTen(
 ): BoardSlot[] {
   const ranked = rankingFor(competitors, results, { season, gender }).slice(0, BOARD_PLACES)
   const taken = new Set(ranked.map((row) => row.competitor.memberNumber))
+  /* **What a board prints depends on the day it is read, as the topping up does** (owner, 21.11.2026,
+     „Dok je zagrevanje, ... ukupni kroz istoriju"): until 1 January 2027 every row carries the BTL points
+     of the member's whole history, `historyOf`, the very sum `byHistoryThenNumber` orders the waiting
+     by; from that day the points of the season. A member WITH points of the season cannot exist before
+     1 January 2027 (no result is counted in a season that has not begun), so the ranked rows keep the
+     order of the season and the figure of the history is only ever printed under an order it agrees with. */
+  const warmingUp = boardsAreToppedUp(today)
+  const historyPoints = historyOf(results)
   const board: BoardSlot[] = ranked.map((row) => ({
     competitor: row.competitor,
-    points: row.points,
+    points: warmingUp ? historyPoints(row.competitor) : row.points,
     ranked: true,
   }))
 
-  if (!boardsAreToppedUp(today)) {
+  if (!warmingUp) {
     return board
   }
 
@@ -1483,7 +1503,7 @@ export function boardOfTen(
        number is handed out on activation, so its order is the order people joined in. */
     .sort(byHistoryThenNumber(results))
     .slice(0, BOARD_PLACES - board.length)
-    .map((competitor) => ({ competitor, points: 0, ranked: false }))
+    .map((competitor) => ({ competitor, points: historyPoints(competitor), ranked: false }))
 
   return [...board, ...waiting]
 }
