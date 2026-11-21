@@ -596,6 +596,7 @@ class ABeginnersCategoryAMembershipMovesTest {
 	 */
 	@Test
 	void aWomanWhoseSeasonClosedTheNextOneIsToldInTheFeminine() throws Exception {
+		clock.moveTo(SEPTEMBER_2028);
 		db.sql("update competitor set gender = 'F' where member_number = ?").param(CLOSED_BY_2028).update();
 
 		assertThat(written(Road.FREE_OF_THE_FEE, CLOSED_BY_2028).getStatus()).isEqualTo(201);
