@@ -1717,7 +1717,7 @@ class PairWriteApiTest {
 						+ " a portal telling through one door and staying silent through another")
 				.containsExactly("Balkanska trkačka liga | Trkački par je raskinut |"
 						+ " Ime" + who + " Probic" + who + " je " + verb
-						+ " vaš trkački par za sezonu " + BEING_FORMED + ".");
+						+ " tvoj trkački par za sezonu " + BEING_FORMED + ".");
 
 		assertThat(postFor(who))
 				.as("the one who pressed the button was told about his own press")
