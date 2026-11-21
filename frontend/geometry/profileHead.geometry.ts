@@ -6,34 +6,28 @@ import { SLACK, label, notMeasured, test } from './support/harness.ts'
 import type { Answers, At } from './support/harness.ts'
 
 /**
- * THE HEAD OF A PROFILE, ITS PARTS AND THE INVITATIONS IN THEIR ROW, ASKED OF CHROME (owner, 06.11.2026,
- * PDL „Profil: forma „Podaci" po obliku forme za prijavu"; ADL A63).
+ * THE HEAD OF A PROFILE, ITS PARTS, THE SEASON AND THE INVITATION, ASKED OF CHROME (owner, 21.11.2026, PDL
+ * „Zaglavlje profila: izbor „Godina” (podrazumevano „Sve”) stoji u redu sa karticama, desno, na svim uređajima;
+ * „Pozovi u tim” postaje ikonica na kraju reda sa imenom"; ADL A63). It replaces the guard of 06.11.2026, which
+ * asked where the buttons stood in the row of the parts: they stand in the row of the name now.
  *
- * <p>His words: „malo normalno dugme alignovano desno, istog formata i reda gde se nalaze i Pregled,
- * Priznanja i nagrade, i podaci". `pages/profile/invitesInTheRow.test.tsx` holds where the buttons are in
- * the document and on which parts; this holds where they LAND:
+ * <p>What it holds, where jsdom cannot say it (`pages/profile/invitesInTheRow.test.tsx` holds the document):
  *
  * <ol>
- * <li><b>Inside the head</b>: every button inside the box of the head's belt.
- * <li><b>On a telephone (360px) in a line of their own</b>, together, UNDER the parts and UNDER the season,
- * the last ending where the row ends (owner, 06.11.2026: „Na telefonu (360 px) dugmad za poziv stoje
- * zajedno u svom redu, desno, ispod kartica i izbora godine, jer tamo ne staju u red kartica").
- * <li><b>From 768 in the line of the parts</b>, to the right: each button overlaps a part vertically,
- * which is what „istog reda" means and which a button under the parts, inside the same box, does not do
- * („Od širine na kojoj staju (768 i šire) stoje u istom redu sa karticama, desno").
- * <li><b>To the right</b>: the last button ends where the row ends.
- * <li><b>Small</b>: no button is as wide as the row, unless its own words are.
- * <li><b>The format of the parts</b> („istog formata"): the same height as a part, the same letter and the
- * same rounding.
- * <li><b>The page does not move sideways and nothing of the head runs off its edge</b>, at a telephone of
- * 360px at the browser's own text and at 200%, a tablet, and a desktop at both (PDL P24, WCAG 2.2 SC
- * 1.4.10).
+ * <li><b>THE PARTS AND THE SEASON IN ONE ROW</b>, at the browser's own text and at every width: the season
+ * overlaps a part vertically and stands to the right of every part it overlaps.
+ * <li><b>ON A TELEPHONE THE WORD „GODINA" IS NOT DRAWN</b> (a box of a pixel) and is still the name of the field;
+ * from 560px it is drawn.
+ * <li><b>„POZOVI U TIM" IS AN ICON AT THE END OF THE ROW OF THE NAME</b>: no wider than a square, at least 24px
+ * on each side (WCAG 2.2 SC 2.5.8), level with the name, ending where the row ends, above the belt of the parts
+ * and with no word drawn in it, and named „Pozovi u tim" for a reader who hears it.
+ * <li><b>THREE PARTS AND THE SEASON ON A TELEPHONE</b>: where they do not fit in one row (360px at the browser's
+ * own text, measured below), „Podaci" is an icon beside the invitation and the parts are two; from 768 it is a part.
+ * <li><b>THE FILTER OF THE RACES</b> at 768 and 1280 is as wide as its buttons ask and starts where its parent
+ * does; at 360 it is the whole row, as it was.
+ * <li><b>The page does not move sideways and nothing of the head runs off its edge</b>, at 360px at the
+ * browser's own text and at 200%, a tablet, and a desktop at both (PDL P24, WCAG 2.2 SC 1.4.10).
  * </ol>
- *
- * <p>Asked with no button (a visitor), with one („Pozovi u trkački par") and with two (and „Pozovi u tim",
- * which is offered only inside the transfer window, so only on a day that is inside it), on „Rezultati",
- * which carries the season, on „Priznanja", and on „Podaci", which carries neither the season nor a button and
- * which only the administration opens since 07.11.2026 (PDL „Član svojim podacima pristupa iz glavnog menija”).
  *
  * <p><b>Relations, never pixels</b>, as in `settings.geometry.ts`.
  */
@@ -183,38 +177,37 @@ const THE_LISTS: Answers = {
   '/api/teams/2/invitations': [],
 }
 
-type Reader = { name: string; buttons: 0 | 1 | 2; tabs: 2 | 3; answers: Answers }
+type Reader = { name: string; pair: boolean; team: boolean; data: boolean; answers: Answers }
 
 /** The superadmin, who races for nobody and holds every right, so he is offered the card „Podaci" of a member. */
 const THE_SUPERADMIN = { role: 'superadmin', account: 11, mailLanguage: 'sr' }
 
 const READERS: Reader[] = [
-  { name: 'a visitor', buttons: 0, tabs: 2, answers: THE_LISTS },
-  /* THE MEMBER ON HER OWN PROFILE: two parts and no invitation. „Podaci" was hers until 07.11.2026, when her data
-     went to „Moji podaci" in the menu (owner: „na svom profilu član vidi samo „Rezultati” i „Priznanja”"). */
-  { name: 'the member on her own page', buttons: 0, tabs: 2, answers: { ...THE_LISTS, '/api/me': meAs(HER) } },
-  /* THE ADMINISTRATION: three parts („Podaci" is the administration's on somebody else's profile) and no
-     invitation, since the superadmin races for nobody. The reader of the season-beside-the-parts claim with three
-     parts on „Rezultati", which the belt rule that keeps the two on one line is about. */
-  { name: 'the administration', buttons: 0, tabs: 3, answers: { ...THE_LISTS, '/api/me': THE_SUPERADMIN } },
+  { name: 'a visitor', pair: false, team: false, data: false, answers: THE_LISTS },
+  /* THE MEMBER ON HER OWN PROFILE: two parts and no invitation (owner, 07.11.2026). */
+  { name: 'the member on her own page', pair: false, team: false, data: false, answers: { ...THE_LISTS, '/api/me': meAs(HER) } },
+  /* THE ADMINISTRATION: „Podaci" is his on somebody else's profile, and he races for nobody. */
+  { name: 'the administration', pair: false, team: false, data: true, answers: { ...THE_LISTS, '/api/me': THE_SUPERADMIN } },
   {
     name: 'a member who may ask her into a pair',
-    buttons: 1,
-    tabs: 2,
+    pair: true,
+    team: false,
+    data: false,
     answers: { ...THE_LISTS, '/api/me': meAs(ONE_BUTTON) },
   },
   {
     name: 'a member who may ask her into a pair and into his team',
-    buttons: 2,
-    tabs: 2,
+    pair: true,
+    team: true,
+    data: false,
     answers: { ...THE_LISTS, '/api/me': meAs(TWO_BUTTONS) },
   },
 ]
 
 const PARTS = [
   /* `ready` is what only that part draws, under the head, so the page is read once it is whole. */
-  { part: 'Rezultati', path: HER_PAGE, season: true, ready: '#profile-results' },
-  { part: 'Priznanja', path: `${HER_PAGE}/priznanja`, season: true, ready: '#awards-trophies' },
+  { part: 'Rezultati', path: HER_PAGE, ready: '#profile-results' },
+  { part: 'Priznanja', path: `${HER_PAGE}/priznanja`, ready: '#awards-trophies' },
 ] as const
 
 const WIDTHS: At[] = [
@@ -225,23 +218,26 @@ const WIDTHS: At[] = [
   { width: 1280, text: 200 },
 ]
 
+/** The width under which three parts and the season are not in one row at the browser's own text
+ *  (`THREE_PARTS_DO_NOT_FIT`, `pages/profile/ProfileHead.tsx`): 24em. */
+const THREE_PARTS_FIT_FROM = 24
+
 type Box = { left: number; right: number; top: number; bottom: number; width: number; height: number }
 
 type Measured = {
   viewport: number
-  gap: number
+  root: number
   row: Box
   name: Box
-  tabs: (Box & { fontSize: string; fontWeight: string; radius: string })[]
-  /** The gap between the parts and the season, as drawn. */
-  beltGap: number
-  buttons: (Box & { text: string; natural: number; fontSize: string; fontWeight: string; radius: string })[]
+  /** The links of the nav of the parts. */
+  tabs: Box[]
+  /** Every control of the head that is not a part and not the season: the icons and the word of the pair. */
+  acts: (Box & { name: string; text: string; icon: boolean; link: boolean })[]
   season: Box | null
-  /** The box that holds the season with its label, which is what stands in the line. */
-  seasonSlot: Box | null
-  /** The letter of the page, one rem. */
-  root: number
+  /** The box of the word „Godina", which is a pixel on a telephone. */
+  seasonWord: Box | null
   head: Box[]
+  filter: { group: Box; parent: Box; buttons: Box[] } | null
 }
 
 /** Every box of the head this guard reads, in one pass over the page. */
@@ -253,55 +249,44 @@ const measure = (page: Page): Promise<Measured | null> =>
       return { left: box.left, right: box.right, top: box.top, bottom: box.bottom, width: box.width, height: box.height }
     }
     const nav = document.querySelector('nav[aria-label="Delovi profila"]')
-    /* The head, and not the box of the parts: below the breakpoint that box gives up its own
-       (`display: contents`), and a box that is not drawn has no edges to measure. The head is as wide as
-       the row at every width, so „where the row ends" is where it ends. */
     const row = document.querySelector('.profile__top')
     const name = document.querySelector('.profile__top h1')
 
-    if (nav === null || row === null || row === undefined || name === null) {
+    if (nav === null || row === null || name === null) {
       return null
     }
 
-    const look = (one: Element) => {
-      const style = getComputedStyle(one)
-
-      return { fontSize: style.fontSize, fontWeight: style.fontWeight, radius: style.borderTopLeftRadius }
-    }
-    const buttons = [...row.querySelectorAll('button')].filter((one) => !nav.contains(one))
+    const acts = [...row.querySelectorAll('.profile__acts > *')]
+      .filter((one) => one.matches('button, a'))
+      .map((one) => ({
+        ...boxOf(one),
+        name: one.getAttribute('aria-label') ?? one.textContent ?? '',
+        text: (one.textContent ?? '').trim(),
+        icon: one.classList.contains('profile__act--icon'),
+        link: one.tagName === 'A',
+      }))
     const season = document.querySelector('.profile__top select')
-    const slot = document.querySelector('.profile__top .profile__season')
+    const word = document.querySelector('.profile__season .rankings__field > span')
+    const group = document.querySelector('.profile__results .seg')
 
     return {
       viewport: document.documentElement.clientWidth,
-      /* `--space-6`, the gap between the buttons, at the letter this page is drawn in. */
-      gap: 0.375 * parseFloat(getComputedStyle(document.documentElement).fontSize),
+      root: parseFloat(getComputedStyle(document.documentElement).fontSize),
       row: boxOf(row),
       name: boxOf(name),
-      tabs: [...nav.querySelectorAll('a')].map((one) => ({ ...boxOf(one), ...look(one) })),
-      beltGap: parseFloat(getComputedStyle(document.querySelector('.profile__belt') ?? nav).columnGap) || 0,
-      buttons: buttons.map((one) => {
-        /* How wide its own words make it, so „not as wide as the row" can be asked of a button whose
-           words are shorter than the row and not of one whose words are not. */
-        const copy = one.cloneNode(true)
-
-        if (!(copy instanceof HTMLElement)) {
-          return { ...boxOf(one), ...look(one), text: one.textContent ?? '', natural: 0 }
-        }
-
-        copy.style.position = 'absolute'
-        copy.style.width = 'max-content'
-        copy.style.visibility = 'hidden'
-        one.parentElement?.appendChild(copy)
-        const natural = copy.getBoundingClientRect().width
-        copy.remove()
-
-        return { ...boxOf(one), ...look(one), text: one.textContent ?? '', natural }
-      }),
+      tabs: [...nav.querySelectorAll('a')].map(boxOf),
+      acts,
       season: season === null ? null : boxOf(season),
-      seasonSlot: slot === null ? null : boxOf(slot),
-      root: parseFloat(getComputedStyle(document.documentElement).fontSize),
-      head: [...(document.querySelector('.profile__top')?.querySelectorAll('h1, a, button, select') ?? [])].map(boxOf),
+      seasonWord: word === null ? null : boxOf(word),
+      head: [...row.querySelectorAll('h1, a, button, select')].map(boxOf),
+      filter:
+        group === null || group.parentElement === null
+          ? null
+          : {
+              group: boxOf(group),
+              parent: boxOf(group.parentElement),
+              buttons: [...group.querySelectorAll('.seg__b')].map(boxOf),
+            },
     }
   })
 
@@ -316,26 +301,36 @@ function standsInsideThePage(measured: Measured, probe: { widened: number; sidew
   expect(probe.sideways, 'the page scrolls sideways').toBe(0)
 }
 
+const overlapsVertically = (one: Box, other: Box): boolean => one.top < other.bottom - SLACK && one.bottom > other.top + SLACK
+
+const overlapsHorizontally = (one: Box, other: Box): boolean => one.left < other.right - SLACK && one.right > other.left + SLACK
+
 for (const at of WIDTHS) {
-  for (const { part, path, season, ready } of PARTS) {
+  for (const { part, path, ready } of PARTS) {
     for (const reader of READERS) {
-      test(`„${part}" for ${reader.name}: ${reader.buttons} button(s) in the row of the parts, ${label(at)}`, async ({
+      test(`„${part}" for ${reader.name}: the parts and the season in one row, the invitation at the end of the name, ${label(at)}`, async ({
         open,
         theDay,
       }) => {
         test.skip(
-          reader.buttons === 2 && !inYearlyWindow(theDay),
+          reader.team && !inYearlyWindow(theDay),
           `„Pozovi u tim" is offered only inside the transfer window, and ${theDay} is outside it`,
         )
 
         const { page, probe } = await open(at, path, ready, reader.answers)
 
-        if (reader.buttons > 0) {
+        if (reader.pair) {
           await page.getByRole('button', { name: 'Pozovi u trkački par' }).waitFor({ state: 'visible', timeout: 15_000 })
         }
 
-        if (reader.buttons > 1) {
+        if (reader.team) {
+          /* By NAME: a button that carries no word is found by what it is called, and an icon that lost its
+             name is not found at all, which is what this line is for. */
           await page.getByRole('button', { name: 'Pozovi u tim' }).waitFor({ state: 'visible', timeout: 15_000 })
+        }
+
+        if (reader.data) {
+          await page.getByRole('link', { name: 'Podaci' }).waitFor({ state: 'visible', timeout: 15_000 })
         }
 
         const measured = await measure(page)
@@ -344,104 +339,92 @@ for (const at of WIDTHS) {
           throw notMeasured(`„${part}" drew no head with its parts`)
         }
 
-        expect(measured.buttons, 'how many buttons stand in the row').toHaveLength(reader.buttons)
-        expect(measured.tabs, 'how many parts stand in the row').toHaveLength(reader.tabs)
-        expect(measured.season !== null, 'whether the season stands in the head').toBe(season)
+        /* THREE PARTS ARE NOT IN THE ROW WHERE THE ROW HAS NO ROOM FOR THEM: „Podaci" is then an icon. */
+        const dataAsIcon = reader.data && at.width / (16 * (at.text / 100)) < THREE_PARTS_FIT_FROM
+        const expectedTabs = reader.data && !dataAsIcon ? 3 : 2
 
-        const tab = measured.tabs[0]
+        expect(measured.tabs, 'how many parts stand in the row').toHaveLength(expectedTabs)
+        expect(measured.season, 'the season stands in the head').not.toBeNull()
 
-        if (tab === undefined) {
-          throw notMeasured(`„${part}" drew no parts`)
+        const season = measured.season
+
+        if (season === null) {
+          throw notMeasured(`„${part}" drew no season`)
         }
 
-        for (const button of measured.buttons) {
-          expect(button.top, `„${button.text}" stands above the row`).toBeGreaterThanOrEqual(measured.row.top - SLACK)
-          expect(button.bottom, `„${button.text}" stands under the row`).toBeLessThanOrEqual(measured.row.bottom + SLACK)
-          /* As tall as a part wherever its words fit on one line of the row. At 360px and 200% text
-             „Pozovi u trkački par" does not, and wraps inside the button rather than pushing the page
-             sideways, which is what WCAG 2.2 SC 1.4.10 asks for. */
-          if (button.natural <= measured.row.width + SLACK) {
-            expect(Math.abs(button.height - tab.height), `„${button.text}" is not as tall as a part`).toBeLessThanOrEqual(SLACK)
+        /* THE PARTS AND THE SEASON IN ONE ROW (owner, 21.11.2026) wherever the row is planned to hold both: at
+           the browser's own text, which is the case asked ("pri tekstu od 100 odsto"). At 200% the belt wraps by
+           design, so the season may fall under the parts, and the page must still not move sideways. */
+        if (at.text === 100) {
+          const beside = measured.tabs.filter((one) => overlapsVertically(season, one))
+
+          expect(beside.length, 'the season is not in the row of any part').toBeGreaterThan(0)
+
+          for (const one of beside) {
+            expect(season.left, 'the season does not stand to the right of a part it shares a row with').toBeGreaterThanOrEqual(one.right - SLACK)
           }
-          expect(button.fontSize, `„${button.text}" is not in the letter of the parts`).toBe(tab.fontSize)
-          expect(button.fontWeight, `„${button.text}" is not in the weight of the parts`).toBe(tab.fontWeight)
-          expect(button.radius, `„${button.text}" is not rounded as the parts are`).toBe(tab.radius)
+
+          const shortest = Math.min(...measured.tabs.map((one) => one.height))
+
+          for (const one of measured.tabs) {
+            expect(one.height - shortest, 'a part is taller than another, so it wrapped its own words').toBeLessThanOrEqual(SLACK)
+          }
+
+          expect(Math.abs(season.right - measured.row.right), 'the season does not end where the row ends').toBeLessThanOrEqual(SLACK)
+        }
+
+        /* THE WORD „GODINA": not drawn on a telephone, drawn from 560px, and in both the name of the field. */
+        const word = measured.seasonWord
+
+        if (word === null) {
+          throw notMeasured(`„${part}" drew no word for the season`)
+        }
+
+        if (at.width < 560) {
+          expect(word.width, 'the word „Godina" is drawn on a telephone').toBeLessThanOrEqual(1 + SLACK)
+        } else {
+          expect(word.width, 'the word „Godina" is not drawn where there is room').toBeGreaterThan(8)
+        }
+
+        await expect(page.getByLabel('Godina'), 'the season has lost its name').toHaveCount(1)
+
+        /* THE ICONS: at the end of the row of the name, square, above the belt, and no word in them. */
+        const icons = measured.acts.filter((one) => one.icon)
+        const wordsOfActs = measured.acts.filter((one) => !one.icon)
+
+        expect(icons, 'how many icons stand at the end of the row of the name').toHaveLength((reader.team ? 1 : 0) + (dataAsIcon ? 1 : 0))
+        expect(wordsOfActs, 'how many buttons with words stand in the row of the name').toHaveLength(reader.pair ? 1 : 0)
+
+        for (const icon of icons) {
+          expect(icon.text, `„${icon.name}" draws a word beside its icon`).toBe('')
+          expect(icon.width, `„${icon.name}" is under 24px wide`).toBeGreaterThanOrEqual(24)
+          expect(icon.height, `„${icon.name}" is under 24px high`).toBeGreaterThanOrEqual(24)
+          expect(Math.abs(icon.width - icon.height), `„${icon.name}" is not a square`).toBeLessThanOrEqual(SLACK)
+          /* At 200% the name wraps and the icon may fall under it, still at the right: the row breaks, it does not
+             overflow. */
+          if (at.text === 100) {
+            expect(overlapsVertically(icon, measured.name), `„${icon.name}" is not level with the name`).toBe(true)
+          }
           expect(
-            button.width,
-            `„${button.text}" is wider than its own words, so it was stretched`,
-          ).toBeLessThanOrEqual(Math.min(button.natural, measured.row.width) + SLACK)
-        }
+            overlapsHorizontally(icon, measured.name) && overlapsVertically(icon, measured.name),
+            `„${icon.name}" runs into the name`,
+          ).toBe(false)
 
-        /* THE SEASON IN THE LINE OF THE PARTS, on a telephone, wherever the line is planned to hold both (PDL
-           23.08.2026: „Sezona silazi u red sa karticama kad se ekran skupi"; owner, 06.11.2026, refused „izbor
-           godine u drugi red"). The line is planned around the floor of the parts, eight rem (`Profile.css`,
-           `.profile__belt .parts`), the gap and the season with its label. Measured 06.11.2026 at 360px: at 100%
-           text that is 266px of 328, so the season stands beside the parts for a visitor (two parts, one line)
-           and for the administration (three parts, which wrap onto two lines beside it); at 200% the
-           floor alone is 256px and the belt wraps by design, the season falls under the parts, which is the
-           one case this does not ask. What is asked: no part is a taller box than another (asked of a season
-           that merely overlaps a part, a part made tall by wrapping its own words would satisfy it alone),
-           and the season overlaps a part vertically and stands to the right of every part it overlaps. */
-        if (at.width < 560 && measured.season !== null && measured.seasonSlot !== null) {
-          const slot = measured.seasonSlot
-          const planned = measured.root * 8 + measured.beltGap + slot.width
-
-          if (planned <= measured.row.width + SLACK) {
-            const shortest = Math.min(...measured.tabs.map((one) => one.height))
-            const beside = measured.tabs.filter((one) => slot.top < one.bottom - SLACK && slot.bottom > one.top + SLACK)
-
-            for (const one of measured.tabs) {
-              expect(one.height - shortest, 'a part is taller than another, so it wrapped its own words').toBeLessThanOrEqual(SLACK)
-            }
-
-            expect(beside.length, 'the season is not in the line of any part').toBeGreaterThan(0)
-
-            for (const one of beside) {
-              expect(slot.left, 'the season does not stand to the right of a part it shares a line with').toBeGreaterThanOrEqual(one.right - SLACK)
-            }
+          for (const part of measured.tabs) {
+            expect(overlapsVertically(icon, part), `„${icon.name}" stands in the row of the parts`).toBe(false)
           }
+
+          expect(icon.bottom, `„${icon.name}" stands under the belt of the parts`).toBeLessThanOrEqual(season.top + SLACK)
         }
 
-        const together = measured.buttons.reduce((sum, one) => sum + one.natural, 0) + measured.gap * Math.max(0, measured.buttons.length - 1)
-        const first = measured.buttons[0]
-
-        if (first !== undefined) {
-          if (at.width < 768) {
-            /* ON A TELEPHONE: under the parts and under the season, the two together in one line wherever
-               their words fit on one (at 200% they cannot, and then each is a line of its own). */
-            const season = measured.season
-
-            if (season === null) {
-              throw notMeasured(`„${part}" drew no season to stand under`)
-            }
-
-            const under = Math.max(season.bottom, ...measured.tabs.map((one) => one.bottom))
-
-            for (const button of measured.buttons) {
-              expect(button.top, `„${button.text}" does not stand under the parts and the season`).toBeGreaterThanOrEqual(under - SLACK)
-            }
-
-            if (together <= measured.row.width + SLACK) {
-              for (const button of measured.buttons) {
-                expect(Math.abs(button.top - first.top), `„${button.text}" is not in one line with the other button`).toBeLessThanOrEqual(SLACK)
-              }
-            }
-          } else {
-            /* FROM 768: in the line of a part. Asked as an overlap on the vertical axis, because a button
-               that is merely inside the box that holds the parts can be on a line under them. */
-            for (const button of measured.buttons) {
-              expect(
-                measured.tabs.some((one) => button.top < one.bottom - SLACK && button.bottom > one.top + SLACK),
-                `„${button.text}" is not in the line of the parts`,
-              ).toBe(true)
-            }
-          }
-        }
-
-        const last = measured.buttons.at(-1)
+        const last = icons.at(-1)
 
         if (last !== undefined) {
-          expect(Math.abs(measured.row.right - last.right), 'the last button does not end where the row ends').toBeLessThanOrEqual(SLACK)
+          expect(Math.abs(measured.row.right - last.right), 'the last icon does not end where the row ends').toBeLessThanOrEqual(SLACK)
+        }
+
+        if (dataAsIcon) {
+          expect(icons.some((one) => one.link && one.name === 'Podaci'), '„Podaci" is not an icon in the row of the name').toBe(true)
         }
 
         standsInsideThePage(measured, probe)
@@ -450,8 +433,7 @@ for (const at of WIDTHS) {
   }
 
   test(`„Podaci" carries neither the season nor a button, ${label(at)}`, async ({ open }) => {
-    /* Read by the administration, the one reader the card has since 07.11.2026: the member herself is sent from
-       this address to „Moji podaci", which draws no head (`myData.geometry.ts`). */
+    /* Read by the administration, the one reader the card has since 07.11.2026. */
     const { page, probe } = await open(at, `${HER_PAGE}/podaci`, 'section[aria-labelledby="form-podaci-clana-title"]', {
       ...THE_LISTS,
       '/api/me': THE_SUPERADMIN,
@@ -463,8 +445,45 @@ for (const at of WIDTHS) {
       throw notMeasured('„Podaci" drew no head with its parts')
     }
 
-    expect(measured.buttons, 'a button stands on „Podaci"').toHaveLength(0)
+    expect(measured.acts.filter((one) => !one.icon), 'a button with words stands on „Podaci"').toHaveLength(0)
     expect(measured.season, 'the season stands on „Podaci"').toBeNull()
+    standsInsideThePage(measured, probe)
+  })
+}
+
+/** THE FILTER OF THE RACES ON THE PROFILE (owner, 21.11.2026: „na desktopu filter trka na profilu nije širok kao
+ *  strana nego koliko mu dugmad traže, levo"). */
+const FILTER_WIDTHS: At[] = [
+  { width: 360, text: 100 },
+  { width: 768, text: 100 },
+  { width: 1280, text: 100 },
+]
+
+for (const at of FILTER_WIDTHS) {
+  test(`the filter of the races on the profile is as wide as its buttons ask from a tablet up, ${label(at)}`, async ({ open }) => {
+    const { page, probe } = await open(at, HER_PAGE, '#profile-results', THE_LISTS)
+    const measured = await measure(page)
+
+    if (measured === null || measured.filter === null) {
+      throw notMeasured('the profile drew no filter of the races')
+    }
+
+    const { group, parent, buttons } = measured.filter
+
+    expect(buttons, 'six buttons').toHaveLength(6)
+    expect(group.left, 'the filter does not start where its parent starts').toBeLessThanOrEqual(parent.left + SLACK)
+
+    if (at.width >= 700) {
+      const asked = buttons.reduce((sum, one) => sum + one.width, 0)
+
+      /* The buttons, the gap between none of them, and the padding and the border of the group (`.seg`): a few
+         pixels, never the width of the page. */
+      expect(group.width, 'the filter is wider than its buttons ask').toBeLessThanOrEqual(asked + 12)
+      expect(group.width, 'the filter is as wide as the page').toBeLessThan(parent.width - 100)
+    } else {
+      expect(group.width, 'on a telephone the filter is the whole row').toBeGreaterThanOrEqual(parent.width - SLACK)
+    }
+
     standsInsideThePage(measured, probe)
   })
 }

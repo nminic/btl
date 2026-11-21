@@ -3,10 +3,12 @@ import { join } from 'node:path'
 import { act, configure, getConfig, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 import sr from '../../i18n/sr.json'
+import { matchingMedia } from '../../test/media'
 import { moderatorWith, renderAt } from '../../test/render'
 import { did, serverThat, type Asked } from '../../test/serverAnswers'
 import { SLOW } from '../../test/slow'
 import { setupUser } from '../../test/user'
+import { THREE_PARTS_DO_NOT_FIT } from './ProfileHead'
 import { OVER_THE_MEMBERS } from './whoReadsTheData'
 
 /**
@@ -112,27 +114,33 @@ function aServer(): Asked[] {
 
 const theParts = () => screen.findByRole('navigation', { name: sr.profile.parts.label })
 
-/** The row the parts stand in: what holds the nav and nothing above it. */
-function rowOf(parts: HTMLElement): HTMLElement {
-  const row = parts.parentElement
+/** The head of the profile: what holds the name, the line under it and the invitations, and not the parts. */
+function headOf(): HTMLElement {
+  const head = screen.getByRole('heading', { level: 1 }).closest('header')
 
-  if (row === null) {
-    throw new Error('the parts stand in no row')
+  if (head === null) {
+    throw new Error('the name stands in no head')
   }
 
-  return row
+  return head
 }
 
 /**
- * IN THE ROW OF THE PARTS, AFTER THEM, AND NOT INSIDE THE NAV. „After" is asked as following and not
- * contained, because `compareDocumentPosition` says „follows" of a descendant too.
+ * IN THE ROW OF THE NAME, AFTER IT, AND NOT IN THE NAV (owner, 21.11.2026, PDL „Zaglavlje profila": „Pozovi u
+ * tim" is an icon „na kraju reda sa imenom"). „After" is asked as following and not contained, because
+ * `compareDocumentPosition` says „follows" of a descendant too, and the invitation is asked of the heading
+ * itself and of the nav, so it cannot pass by standing inside either.
  */
-function standsInTheRowAfterTheParts(parts: HTMLElement, what: HTMLElement): void {
+function standsAtTheEndOfTheRowOfTheName(parts: HTMLElement, what: HTMLElement): void {
+  const name = screen.getByRole('heading', { level: 1 })
+
   expect(parts.contains(what), 'it stands inside the nav, which is a list of where to go').toBe(false)
-  expect(rowOf(parts).contains(what), 'it does not stand in the row of the parts').toBe(true)
+  expect(name.contains(what), 'it stands inside the heading').toBe(false)
+  expect(headOf().contains(what), 'it does not stand in the head, with the name').toBe(true)
+  expect(name.compareDocumentPosition(what) & Node.DOCUMENT_POSITION_FOLLOWING, 'it stands before the name').not.toBe(0)
   expect(
-    parts.compareDocumentPosition(what) & Node.DOCUMENT_POSITION_FOLLOWING,
-    'it stands before the parts',
+    parts.compareDocumentPosition(what) & Node.DOCUMENT_POSITION_PRECEDING,
+    'it stands after the parts, and the name comes first',
   ).not.toBe(0)
 }
 
@@ -147,26 +155,26 @@ async function settled(): Promise<void> {
   })
 }
 
-describe('the invitations in the row of the parts of a profile', () => {
-  it('stand on „Rezultati" in the row of the parts, after them and outside the nav', async () => {
+describe('the invitations in the row of the name of a profile', () => {
+  it('stand on „Rezultati" in the row of the name, after it and outside the nav', async () => {
     aServer()
     renderAt(HER_PAGE, 'competitor', READER, undefined, DAY)
 
     const parts = await theParts()
     const button = await screen.findByRole('button', { name: sr.pair.invite })
 
-    standsInTheRowAfterTheParts(parts, button)
+    standsAtTheEndOfTheRowOfTheName(parts, button)
     expect(within(parts).getByRole('link', { name: 'Rezultati' })).toHaveAttribute('aria-current', 'page')
   }, SLOW)
 
-  it('stand on „Priznanja" in the same row', async () => {
+  it('stand on „Priznanja" in the same row of the name', async () => {
     aServer()
     renderAt(`${HER_PAGE}/priznanja`, 'competitor', READER, undefined, DAY)
 
     const parts = await theParts()
     const button = await screen.findByRole('button', { name: sr.pair.invite })
 
-    standsInTheRowAfterTheParts(parts, button)
+    standsAtTheEndOfTheRowOfTheName(parts, button)
     expect(within(parts).getByRole('link', { name: 'Priznanja' })).toHaveAttribute('aria-current', 'page')
   }, SLOW)
 
@@ -198,7 +206,7 @@ describe('the invitations in the row of the parts of a profile', () => {
     expect(readsOfWhatHeWaitsOn(onTheData), 'the card asked what he waits on, which only the button needs').toBe(0)
   }, SLOW)
 
-  it('leave „Poziv ... je poslat" in the row, where the button stood', async () => {
+  it('leave „Poziv ... je poslat" in the row of the name, where the button stood', async () => {
     const user = setupUser()
 
     aServer()
@@ -210,10 +218,68 @@ describe('the invitations in the row of the parts of a profile', () => {
 
     const said = await screen.findByText(sr.pair.asked)
 
-    standsInTheRowAfterTheParts(parts, said)
+    standsAtTheEndOfTheRowOfTheName(parts, said)
     await waitFor(() => {
       expect(screen.queryByRole('button', { name: sr.pair.invite })).toBeNull()
     })
+  }, SLOW)
+
+  /* „PODACI" WHERE THE ROW HAS NO ROOM FOR THREE PARTS AND THE SEASON (owner, 21.11.2026, PDL „Zaglavlje
+     profila": „ako ni tada tri kartice i izbor ne staju u red, „Podaci" prelazi u ikonicu pored „Pozovi u tim""),
+     asked of the reader who has the card, in both widths. The question is the one the stylesheet is not asked:
+     in the document the card is one thing in one place, a part or an icon at the end of the row of the name,
+     never both and never neither. */
+  it.each([
+    ['a part of the nav', false],
+    ['an icon in the row of the name', true],
+  ])('draws „Podaci" as %s', async (_where, narrow) => {
+    const real = window.matchMedia
+
+    window.matchMedia = matchingMedia((query) => narrow && query === THREE_PARTS_DO_NOT_FIT)
+
+    try {
+      aServer()
+      renderAt(HER_PAGE, 'moderator', READER, moderatorWith([OVER_THE_MEMBERS]), DAY)
+
+      const parts = await theParts()
+      const card = await screen.findAllByRole('link', { name: sr.profile.parts.data })
+
+      expect(card, 'the card is drawn once').toHaveLength(1)
+      expect(within(parts).queryAllByRole('link').length, 'how many parts the nav holds').toBe(narrow ? 2 : 3)
+
+      const [only] = card
+
+      if (only === undefined) {
+        throw new Error('the card is not drawn')
+      }
+
+      if (narrow) {
+        standsAtTheEndOfTheRowOfTheName(parts, only)
+        expect(only, 'the icon has no word of its own').toHaveTextContent('')
+        expect(only, 'the icon has no name for a pointer').toHaveAttribute('title', sr.profile.parts.data)
+      } else {
+        expect(parts.contains(only), 'the card is not a part').toBe(true)
+      }
+    } finally {
+      window.matchMedia = real
+    }
+  }, SLOW)
+
+  it('leaves the card „Podaci" where it is when the page shows it, as an icon', async () => {
+    const real = window.matchMedia
+
+    window.matchMedia = matchingMedia((query) => query === THREE_PARTS_DO_NOT_FIT)
+
+    try {
+      aServer()
+      renderAt(`${HER_PAGE}/podaci`, 'moderator', READER, moderatorWith([OVER_THE_MEMBERS]), DAY)
+
+      const card = await screen.findByRole('link', { name: sr.profile.parts.data })
+
+      expect(card).toHaveAttribute('aria-current', 'page')
+    } finally {
+      window.matchMedia = real
+    }
   }, SLOW)
 
   it('gives every wait half of the time a case has', () => {

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useToday } from '../../clock/useClock'
+import { InviteIcon } from '../../app/icons'
 import { Unreadable } from '../../components/Unreadable'
 import { teamOf } from '../../data/derive'
 import { inYearlyWindow } from '../../data/season'
@@ -223,13 +224,15 @@ function AskingHimIn({ team, member, woman }: { team: Team; member: string; woma
         type="button"
         /* The shape of the parts beside it (owner, 06.11.2026, „istog formata"), and its own class:
            a button is not a link, so the class of the parts is not worn here. */
-        className="button button--secondary profile__act"
+        className="button button--secondary profile__act profile__act--icon"
+        aria-label={t('teams.invite')}
+        title={t('teams.invite')}
         aria-disabled={sending ? true : undefined}
         onClick={() => {
           void send()
         }}
       >
-        {t('teams.invite')}
+        <InviteIcon />
       </button>
       {/* Under the button and never in its place: refused, the button is still the way to ask,
           and the one refusal that means „he has been asked" is said in the words that stand in
