@@ -27,7 +27,7 @@ const CLOSE = { name: 'Zatvori obaveštenje' }
 /** The sentence the owner approved, word for word (PDL 21.11.2026, „Tekst"). Written out here and not read
  *  from the dictionary, so a changed word in the dictionary is a failing case and not a quiet edit. */
 const SENTENCE =
-  'Trenutno prikazani podaci su istorijski podaci članova, prikazani zabave radi. ' +
+  'Trenutno prikazani podaci su istorijski podaci članova. ' +
   'Zvanična sezona počinje 1. januara u ponoć: tada brojači i poredak kreću od nule za sve, ' +
   'a ono što je ranije istrčano ostaje na profilima.'
 
