@@ -103,7 +103,8 @@ export function HeaderDecoration() {
 }
 
 /** The ground of the page: four hills of their own along the edges, each a set of nested contour
- *  lines, with a route that runs between them, and a dot that runs the route once (owner,
+ *  lines, with a route that runs between them, and a dot that runs the route once and leaves over the
+ *  bottom edge of the window (owner,
  *  14.11.2026 and the approved draft of 20.11.2026). The route and the dot are in a lane of their own,
  *  a strip in the gutter beside the column of the page (owner, 20.11.2026: „Jaka tačka, nikad ispod
  *  teksta"), so they are never over a word. A telephone gets a drawing of its own, long

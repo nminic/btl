@@ -456,7 +456,7 @@ test('the dot is not drawn for a reader who asked for less movement, and the gro
 })
 
 /* The dot is drawn from 560px for a reader who has not asked for less movement, and at no width under it. Each of
-   these pays for the five seconds it runs before the page settles. */
+   these pays for the seconds it runs before the page settles. */
 for (const width of [320, 600, 1280]) {
   test(`the dot is drawn for a reader who has not asked for less movement, from 560px, at ${width}px`, async ({ open }) => {
     const { page } = await open({ width, text: 100, motion: 'no-preference' }, '/sr', 'header .brand', ANSWERS)
@@ -465,7 +465,7 @@ for (const width of [320, 600, 1280]) {
   })
 }
 
-test('the dot runs once, for five seconds at most, and starts again on the next screen', async ({ open }) => {
+test('the dot runs once, in under five seconds, and starts again on the next screen', async ({ open }) => {
   const { page } = await open({ width: 1280, text: 100, motion: 'no-preference' }, '/sr', 'header .brand', ANSWERS)
 
   /* The page has settled, so the first run is over and nothing of the dot runs: it rests where it stopped. */
@@ -504,7 +504,7 @@ test('the dot runs once, for five seconds at most, and starts again on the next 
       }),
   )
 
-  expect(after.duration, 'seconds the dot runs').toBeLessThanOrEqual(5000)
+  expect(after.duration, 'seconds the dot runs').toBeLessThan(5000)
   expect(after.iterations).toBe(1)
   expect(after.at, 'a new screen started the dot from the beginning').toBeLessThan(2000)
 })

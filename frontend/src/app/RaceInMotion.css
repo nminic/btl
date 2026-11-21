@@ -265,12 +265,15 @@
 
 /* THE DOT.
  *
- * It runs the route once and stops on the second waypoint, and it is asked for nothing: no control,
- * no repeat (owner, 20.11.2026: once, five seconds at most, on every screen that opens). It stops
- * because the place it rests at is its own (`offset-distance: 100%`), not because the animation holds
- * it there: an animation that fills forwards never ends as far as the browser is concerned, and a
- * page with one that never ends is a page that never settles for the guards that wait for it
- * (`geometry/support/harness.ts`). It is
+ * It runs the route once, on past its end and out over the bottom edge of the window, where it is gone,
+ * and it is asked for nothing: no control, no repeat (owner, 20.11.2026: once, on every screen that
+ * opens; 21.11.2026: it leaves the screen instead of stopping on it, and the whole run is under five
+ * seconds). It is gone because the place it rests at is its own (`offset-distance: 100%`, the end of
+ * `TRAVEL`, below the foot of the drawing), not because the animation holds it there: an animation that
+ * fills forwards never ends as far as the browser is concerned, and a page with one that never ends is
+ * a page that never settles for the guards that wait for it (`geometry/support/harness.ts`). The curve
+ * is near a straight line (no stop at either end), so the dot goes through the old stopping place and
+ * out without slowing down. It is
  * drawn only where the browser both moves along a path and the reader has not asked for less
  * movement: a reader who has gets no dot, not a still one, and a browser that cannot follow a path
  * would leave it in the corner of the drawing. It starts again on each screen because the component
@@ -322,7 +325,7 @@
     .race-page__dot {
       display: inline;
       offset-distance: 100%;
-      animation: race-dot-run 5s cubic-bezier(0.45, 0, 0.25, 1) 1;
+      animation: race-dot-run 4.5s cubic-bezier(0.3, 0.2, 0.7, 0.8) 1;
     }
   }
 }

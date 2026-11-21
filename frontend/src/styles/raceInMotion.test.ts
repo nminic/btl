@@ -439,7 +439,7 @@ describe('the dot', () => {
     expect(must(moving[0], 'the rule that draws the dot').asks).toEqual([`@media ${CONDITION}`, "@supports (offset-path: path('M0 0'))"])
   })
 
-  it('runs once, for five seconds at most, and stays where it stops', () => {
+  it('runs once, in under five seconds, and rests where its path ends', () => {
     const moving = must(
       dotRules().find((rule) => rule.asks.length > 0),
       'the rule that draws the dot',
@@ -450,12 +450,12 @@ describe('the dot', () => {
     expect(more, animation).toEqual([])
     expect(name).toBe('race-dot-run')
     expect(duration).toMatch(/^\d+(\.\d+)?s$/)
-    expect(Number.parseFloat(must(duration, 'the duration')), 'seconds the dot runs').toBeLessThanOrEqual(5)
+    expect(Number.parseFloat(must(duration, 'the duration')), 'seconds the dot runs').toBeLessThan(5)
     expect(Number.parseFloat(must(duration, 'the duration')), 'seconds the dot runs').toBeGreaterThan(0)
     expect(curve).toMatch(/^cubic-bezier\(/)
     /* One run and no more: nothing but a number one, so „infinite" and „2" both fail. */
     expect(count).toBe('1')
-    /* It rests on the waypoint by its own style and not by an animation that fills forwards, which never
+    /* It rests at the end of its path by its own style and not by an animation that fills forwards, which never
        ends and so never lets a page settle. */
     expect(moving.style.getPropertyValue('offset-distance')).toBe('100%')
   })
