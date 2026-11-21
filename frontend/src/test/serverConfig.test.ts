@@ -233,8 +233,8 @@ describe('what the server in front of the portal is told', () => {
     const blocks = new Map<string, string>()
 
     for (const [which, language, locale, other] of [
-      [String(include?.[2]), 'sr', 'sr_RS', 'en_US'],
-      [String(include?.[1]), 'en', 'en_US', 'sr_RS'],
+      [String(include?.[2]), 'sr', 'sr_RS', 'en_GB'],
+      [String(include?.[1]), 'en', 'en_GB', 'sr_RS'],
     ] as const) {
       const block = new RegExp(
         `<!--# block name="${which}" -->([\\s\\S]*?)<!--# endblock -->`,

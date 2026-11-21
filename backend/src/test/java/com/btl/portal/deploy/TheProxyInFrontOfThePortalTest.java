@@ -247,7 +247,7 @@ class TheProxyInFrontOfThePortalTest {
 		String head = theHeadOf(path);
 
 		assertThat(head).as(path).contains(ENGLISH_TITLE)
-				.contains("<meta property=\"og:locale\" content=\"en_US\" />")
+				.contains("<meta property=\"og:locale\" content=\"en_GB\" />")
 				.contains("<meta property=\"og:locale:alternate\" content=\"sr_RS\" />")
 				.contains("every race counts!\" />")
 				.contains("content=\"Every race counts. The race calendar,")
@@ -262,7 +262,7 @@ class TheProxyInFrontOfThePortalTest {
 
 		assertThat(head).as(path).contains(SERBIAN_TITLE)
 				.contains("<meta property=\"og:locale\" content=\"sr_RS\" />")
-				.contains("<meta property=\"og:locale:alternate\" content=\"en_US\" />")
+				.contains("<meta property=\"og:locale:alternate\" content=\"en_GB\" />")
 				.contains("<meta property=\"og:image:alt\" content=\"Logo Balkanske trkačke lige\" />")
 				.doesNotContain("every race counts")
 				.doesNotContain("PROFILE-PREVIEW");
