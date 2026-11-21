@@ -1,5 +1,6 @@
 package com.btl.portal.domain.mail;
 
+import java.util.ResourceBundle;
 import com.btl.portal.domain.mail.WhatTheMessageSays.Portal;
 import com.btl.portal.domain.mail.WhatTheMessageSays.Said;
 import com.btl.portal.domain.mail.WhatTheWelcomeSays.Letter;
@@ -32,7 +33,7 @@ class WhatTheWelcomeSaysTest {
 	private static final String TAIL = "Balkanska trkačka liga";
 
 	private static final String HELLO =
-			"Hvala što ste potvrdili svoju adresu, dobrodošli u Balkansku trkačku ligu.";
+			"Hvala što si potvrdio svoju adresu, dobrodošao u Balkansku trkačku ligu.";
 
 	private static Optional<Letter> nothingOwedYet(boolean euro) {
 		return WhatTheWelcomeSays.which(null, false, false, false, euro);
@@ -80,46 +81,46 @@ class WhatTheWelcomeSaysTest {
 
 	@Test
 	void dAndFAreTheOwnersWordsAndPromiseNothingMore() {
-		Said d = WhatTheWelcomeSays.about(Letter.FREED_OF_THE_FEE, MailLanguage.SERBIAN, 2027, PORTAL);
-		Said f = WhatTheWelcomeSays.about(Letter.PAID, MailLanguage.SERBIAN, 2027, PORTAL);
+		Said d = WhatTheWelcomeSays.about(Letter.FREED_OF_THE_FEE, MailLanguage.SERBIAN, 2027, PORTAL, Gender.MAN);
+		Said f = WhatTheWelcomeSays.about(Letter.PAID, MailLanguage.SERBIAN, 2027, PORTAL, Gender.MAN);
 
-		assertThat(d.subject()).isEqualTo("Član ste lige za 2027. godinu");
+		assertThat(d.subject()).isEqualTo("Član si lige za 2027. godinu");
 		assertThat(d.body()).isEqualTo(String.join("\n", HELLO, "",
 				"Članarina za 2027. godinu je izmirena.",
 				"", TAIL));
 
-		assertThat(f.subject()).isEqualTo("Član ste lige za 2027. godinu");
+		assertThat(f.subject()).isEqualTo("Član si lige za 2027. godinu");
 		assertThat(f.body()).isEqualTo(String.join("\n", HELLO, "",
-				"Vaša članarina za 2027. godinu je plaćena.", "", TAIL));
+				"Tvoja članarina za 2027. godinu je plaćena.", "", TAIL));
 	}
 
 	@Test
 	void eAndGAreTheOwnersWordsWithTheLinkToHisPage() {
-		Said e = WhatTheWelcomeSays.about(Letter.PAID_FROM_THE_BALANCE, MailLanguage.SERBIAN, 2028, PORTAL);
-		Said g = WhatTheWelcomeSays.about(Letter.THE_BALANCE_COVERS, MailLanguage.SERBIAN, 2027, PORTAL);
+		Said e = WhatTheWelcomeSays.about(Letter.PAID_FROM_THE_BALANCE, MailLanguage.SERBIAN, 2028, PORTAL, Gender.MAN);
+		Said g = WhatTheWelcomeSays.about(Letter.THE_BALANCE_COVERS, MailLanguage.SERBIAN, 2027, PORTAL, Gender.MAN);
 
 		assertThat(e.subject()).isEqualTo("Članarina za 2028. godinu je izmirena");
 		assertThat(e.body()).isEqualTo(String.join("\n", HELLO, "",
-				"Članarinu za 2028. godinu pokrio je vaš balans iz programa preporuke. Stanje balansa je na"
+				"Članarinu za 2028. godinu pokrio je tvoj balans iz programa preporuke. Stanje balansa je na"
 						+ " strani Moja članarina: https://balkanskatrkackaliga.net/moja-clanarina",
 				"", TAIL));
 
 		assertThat(g.subject()).isEqualTo("Balans pokriva članarinu za 2027. godinu");
 		assertThat(g.body()).isEqualTo(String.join("\n", HELLO, "",
-				"Vaš balans iz programa preporuke pokriva članarinu za 2027. godinu. Aktivirajte članstvo"
+				"Tvoj balans iz programa preporuke pokriva članarinu za 2027. godinu. Aktiviraj članstvo"
 						+ " jednim klikom na strani Moja članarina: https://balkanskatrkackaliga.net/moja-clanarina",
 				"", TAIL));
 	}
 
 	@Test
 	void bIsTheExampleWithItsFactsFilledIn() {
-		Said b = WhatTheWelcomeSays.withASlip(MailLanguage.SERBIAN, 2027,
+		Said b = WhatTheWelcomeSays.withASlip(MailLanguage.SERBIAN, Gender.MAN, 2027,
 				"Sportsko udruženje BTL, Bulevar Arsenija Čarnojevića 77, 11070 Novi Beograd",
 				"105-0000000003284-71", "3.600,00 RSD", "Članarina za 2027. godinu", PORTAL);
 
 		assertThat(b.subject()).isEqualTo("Uplatnica za članarinu za 2027. godinu");
 		assertThat(b.body()).isEqualTo(String.join("\n", HELLO, "",
-				"Članarinu za 2027. godinu možete da uplatite skeniranjem QR koda iz priloga u aplikaciji"
+				"Članarinu za 2027. godinu možeš da uplatiš skeniranjem QR koda iz priloga u aplikaciji"
 						+ " svoje banke, ili ručno, sa ovim podacima:",
 				"",
 				"Primalac: Sportsko udruženje BTL, Bulevar Arsenija Čarnojevića 77, 11070 Novi Beograd",
@@ -130,14 +131,14 @@ class WhatTheWelcomeSaysTest {
 				"Uplata nema poziv na broj, jer članski broj još nemate. Članski broj dobijate kad uplata"
 						+ " bude evidentirana.",
 				"",
-				"Iste podatke uvek možete naći i na strani Moja članarina:"
+				"Iste podatke uvek možeš naći i na strani Moja članarina:"
 						+ " https://balkanskatrkackaliga.net/moja-clanarina",
 				"", TAIL));
 	}
 
 	@Test
 	void cIsTheExampleWithItsFactsFilledIn() {
-		Said c = WhatTheWelcomeSays.withPayPal(MailLanguage.SERBIAN, 2027, "info@balkanskatrkackaliga.net",
+		Said c = WhatTheWelcomeSays.withPayPal(MailLanguage.SERBIAN, Gender.MAN, 2027, "info@balkanskatrkackaliga.net",
 				"32,00 EUR", "Sportsko udruženje BTL", PORTAL);
 
 		assertThat(c.subject()).isEqualTo("Podaci za uplatu članarine za 2027. godinu");
@@ -150,9 +151,9 @@ class WhatTheWelcomeSaysTest {
 				"PayPal adresa je poslovna, na Sportsko udruženje BTL. Kursnu razliku i naknadu banke plaća"
 						+ " uplatilac.",
 				"",
-				"Uplatu ćemo prepoznati po vašem imenu. Članski broj dobijate kad uplata bude evidentirana.",
+				"Uplatu ćemo prepoznati po tvom imenu. Članski broj dobijaš kad uplata bude evidentirana.",
 				"",
-				"Iste podatke uvek možete naći i na strani Moja članarina:"
+				"Iste podatke uvek možeš naći i na strani Moja članarina:"
 						+ " https://balkanskatrkackaliga.net/moja-clanarina",
 				"", TAIL));
 	}
@@ -165,18 +166,18 @@ class WhatTheWelcomeSaysTest {
 	@EnumSource(Letter.class)
 	void everyLetterIsWrittenInEnglishTooAndLeadsToTheEnglishPage(Letter letter) {
 		Said english = switch (letter) {
-			case WITH_A_SLIP -> WhatTheWelcomeSays.withASlip(MailLanguage.ENGLISH, 2027, "R", "A",
+			case WITH_A_SLIP -> WhatTheWelcomeSays.withASlip(MailLanguage.ENGLISH, Gender.MAN, 2027, "R", "A",
 					"3,600.00 RSD", "Članarina za 2027. godinu", PORTAL);
-			case WITH_PAYPAL -> WhatTheWelcomeSays.withPayPal(MailLanguage.ENGLISH, 2027, "P", "32.00 EUR",
+			case WITH_PAYPAL -> WhatTheWelcomeSays.withPayPal(MailLanguage.ENGLISH, Gender.MAN, 2027, "P", "32.00 EUR",
 					"U", PORTAL);
-			default -> WhatTheWelcomeSays.about(letter, MailLanguage.ENGLISH, 2027, PORTAL);
+			default -> WhatTheWelcomeSays.about(letter, MailLanguage.ENGLISH, 2027, PORTAL, Gender.MAN);
 		};
 		Said serbian = switch (letter) {
-			case WITH_A_SLIP -> WhatTheWelcomeSays.withASlip(MailLanguage.SERBIAN, 2027, "R", "A",
+			case WITH_A_SLIP -> WhatTheWelcomeSays.withASlip(MailLanguage.SERBIAN, Gender.MAN, 2027, "R", "A",
 					"3.600,00 RSD", "Članarina za 2027. godinu", PORTAL);
-			case WITH_PAYPAL -> WhatTheWelcomeSays.withPayPal(MailLanguage.SERBIAN, 2027, "P", "32,00 EUR",
+			case WITH_PAYPAL -> WhatTheWelcomeSays.withPayPal(MailLanguage.SERBIAN, Gender.MAN, 2027, "P", "32,00 EUR",
 					"U", PORTAL);
-			default -> WhatTheWelcomeSays.about(letter, MailLanguage.SERBIAN, 2027, PORTAL);
+			default -> WhatTheWelcomeSays.about(letter, MailLanguage.SERBIAN, 2027, PORTAL, Gender.MAN);
 		};
 
 		assertThat(english.subject()).contains("2027").isNotEqualTo(serbian.subject());
@@ -211,9 +212,9 @@ class WhatTheWelcomeSaysTest {
 
 	@Test
 	void aLetterThatCarriesAPaymentIsNotAskedForWithoutIt() {
-		assertThatThrownBy(() -> WhatTheWelcomeSays.about(Letter.WITH_A_SLIP, MailLanguage.SERBIAN, 2027, PORTAL))
+		assertThatThrownBy(() -> WhatTheWelcomeSays.about(Letter.WITH_A_SLIP, MailLanguage.SERBIAN, 2027, PORTAL, Gender.MAN))
 				.isInstanceOf(IllegalArgumentException.class);
-		assertThatThrownBy(() -> WhatTheWelcomeSays.about(Letter.WITH_PAYPAL, MailLanguage.SERBIAN, 2027, PORTAL))
+		assertThatThrownBy(() -> WhatTheWelcomeSays.about(Letter.WITH_PAYPAL, MailLanguage.SERBIAN, 2027, PORTAL, Gender.MAN))
 				.isInstanceOf(IllegalArgumentException.class);
 	}
 
@@ -234,5 +235,59 @@ class WhatTheWelcomeSaysTest {
 					.as("the words in %s and the six letters no longer name the same things", in)
 					.isEqualTo(expected);
 		}
+	}
+
+	/**
+	 * THE SEX OF WHO READS PICKS THE PARTICIPLE (owner, 21.11.2026: „po polu primaoca"). The dictionary of
+	 * the words a woman reads is held here: exactly the six bodies, every one with the holes of the
+	 * masculine one and other words, and no subject, because none of the six carries a participle.
+	 */
+	@Test
+	void theWordsAWomanReadsAreTheSixBodiesWithTheSameHolesAndOtherWords() {
+		ResourceBundle man = WhatTheWelcomeSays.words(MailLanguage.SERBIAN);
+		ResourceBundle woman = WhatTheWelcomeSays.wordsForAWoman(MailLanguage.SERBIAN);
+
+		assertThat(woman.keySet()).containsExactlyInAnyOrderElementsOf(
+				Arrays.stream(Letter.values()).map(one -> one.key() + ".body").toList());
+
+		for (String key : woman.keySet()) {
+			assertThat(woman.getString(key)).as(key).isNotEqualTo(man.getString(key));
+			assertThat(new java.text.MessageFormat(woman.getString(key), java.util.Locale.ROOT)
+					.getFormatsByArgumentIndex().length).as("holes of %s", key)
+					.isEqualTo(new java.text.MessageFormat(man.getString(key), java.util.Locale.ROOT)
+							.getFormatsByArgumentIndex().length);
+		}
+
+		assertThat(WhatTheWelcomeSays.wordsForAWoman(MailLanguage.ENGLISH)).isNull();
+	}
+
+	@Test
+	void aWomanIsGreetedInTheFeminineAndAManInTheMasculineInEveryOneOfTheSixLetters() {
+		for (Said her : new Said[] {
+				WhatTheWelcomeSays.about(Letter.FREED_OF_THE_FEE, MailLanguage.SERBIAN, 2027, PORTAL, Gender.WOMAN),
+				WhatTheWelcomeSays.about(Letter.PAID, MailLanguage.SERBIAN, 2027, PORTAL, Gender.WOMAN),
+				WhatTheWelcomeSays.about(Letter.PAID_FROM_THE_BALANCE, MailLanguage.SERBIAN, 2027, PORTAL, Gender.WOMAN),
+				WhatTheWelcomeSays.about(Letter.THE_BALANCE_COVERS, MailLanguage.SERBIAN, 2027, PORTAL, Gender.WOMAN),
+				WhatTheWelcomeSays.withASlip(MailLanguage.SERBIAN, Gender.WOMAN, 2027, "R", "A", "1,00 RSD", "P", PORTAL),
+				WhatTheWelcomeSays.withPayPal(MailLanguage.SERBIAN, Gender.WOMAN, 2027, "P", "1,00 EUR", "R", PORTAL)}) {
+			assertThat(her.body()).startsWith("Hvala što si potvrdila svoju adresu, dobrodošla u Balkansku")
+					.doesNotContain("potvrdio").doesNotContain("dobrodošao");
+		}
+
+		for (Said him : new Said[] {
+				WhatTheWelcomeSays.about(Letter.FREED_OF_THE_FEE, MailLanguage.SERBIAN, 2027, PORTAL, Gender.MAN),
+				WhatTheWelcomeSays.about(Letter.PAID, MailLanguage.SERBIAN, 2027, PORTAL, Gender.MAN),
+				WhatTheWelcomeSays.about(Letter.PAID_FROM_THE_BALANCE, MailLanguage.SERBIAN, 2027, PORTAL, Gender.MAN),
+				WhatTheWelcomeSays.about(Letter.THE_BALANCE_COVERS, MailLanguage.SERBIAN, 2027, PORTAL, Gender.MAN),
+				WhatTheWelcomeSays.withASlip(MailLanguage.SERBIAN, Gender.MAN, 2027, "R", "A", "1,00 RSD", "P", PORTAL),
+				WhatTheWelcomeSays.withPayPal(MailLanguage.SERBIAN, Gender.MAN, 2027, "P", "1,00 EUR", "R", PORTAL)}) {
+			assertThat(him.body()).startsWith("Hvala što si potvrdio svoju adresu, dobrodošao u Balkansku")
+					.doesNotContain("potvrdila").doesNotContain("dobrodošla");
+		}
+
+		assertThat(WhatTheWelcomeSays.about(Letter.PAID, MailLanguage.ENGLISH, 2027, PORTAL, Gender.WOMAN))
+				.isEqualTo(WhatTheWelcomeSays.about(Letter.PAID, MailLanguage.ENGLISH, 2027, PORTAL, Gender.MAN));
+		assertThatThrownBy(() -> WhatTheWelcomeSays.about(Letter.PAID, MailLanguage.SERBIAN, 2027, PORTAL, null))
+				.isInstanceOf(NullPointerException.class).hasMessage("reader");
 	}
 }

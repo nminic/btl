@@ -12,6 +12,7 @@ import com.btl.portal.domain.award.DucatReconciliation.Run;
 import com.btl.portal.domain.award.RaceDone;
 import com.btl.portal.domain.award.WhetherADucatIsTold;
 import com.btl.portal.domain.award.WhetherADucatIsTold.Arrival;
+import com.btl.portal.domain.mail.Gender;
 import com.btl.portal.domain.mail.WhatAResultChangeSays;
 import com.btl.portal.domain.season.SeasonClock;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -135,8 +136,8 @@ class AwardingDucats {
 	 * sentence, because a ducat it carries over is never told (owner, 16.11.2026, „Potpuno tiho”).
 	 */
 	enum Brought {
-		APPROVAL("approval", "Odobren vam je rezultat sa trke "),
-		LEAGUE("league", "Liga vam je unela rezultat sa trke "),
+		APPROVAL("approval", "Odobren ti je rezultat sa trke "),
+		LEAGUE("league", "Liga ti je unela rezultat sa trke "),
 		IMPORT("import", null);
 
 		private final String word;
@@ -312,11 +313,16 @@ class AwardingDucats {
 				? String.join(", ", each.subList(0, each.size() - 1)) + " i " + each.getLast()
 				: each.getFirst();
 
+		/* BY THE SEX OF WHO READS (owner, 21.11.2026), which is the row of the member the ducat is
+		   written to and not of anybody the message is about. */
+		boolean woman = TheSexOfAMember.of(db, competitorId) == Gender.WOMAN;
+
 		db.sql("insert into message (to_id, from_id, from_name, subject, body) values (?, null, ?, ?, ?)")
-				.params(competitorId, PairWriteApi.THE_LEAGUE, "Osvojili ste dukat",
+				.params(competitorId, PairWriteApi.THE_LEAGUE, woman ? "Osvojila si dukat" : "Osvojio si dukat",
 						carried.by().opening + carried.race() + " od " + WhatAResultChangeSays.asADay(carried.day())
-								+ ", i njime ste osvojili " + (many ? "dukate " : "dukat ") + listed + ". "
-								+ (many ? "Dukati stoje na vašem profilu." : "Dukat stoji na vašem profilu."))
+								+ (woman ? ", i njime si osvojila " : ", i njime si osvojio ")
+								+ (many ? "dukate " : "dukat ") + listed + ". "
+								+ (many ? "Dukati stoje na tvom profilu." : "Dukat stoji na tvom profilu."))
 				.update();
 	}
 

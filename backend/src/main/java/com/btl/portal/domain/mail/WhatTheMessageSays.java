@@ -338,7 +338,24 @@ public final class WhatTheMessageSays {
 					+ " so it is asked for with one");
 		}
 
-		return written(message, MailLanguage.SERBIAN, portal, token,
+		return written(message, MailLanguage.SERBIAN, null, portal, token,
+				howLong(message.lasts(), MailLanguage.SERBIAN));
+	}
+
+	/**
+	 * A MESSAGE THAT IS ALWAYS SERBIAN AND CARRIES A PARTICIPLE, asked for with the sex of who reads it
+	 * (owner, 21.11.2026: „po polu primaoca").
+	 */
+	public static Said about(Message message, Portal portal, String token, Gender reader) {
+		Objects.requireNonNull(message, "message");
+		Objects.requireNonNull(reader, "reader");
+
+		if (message.followsTheReader()) {
+			throw new IllegalArgumentException(message + " is written in its reader's language,"
+					+ " so it is asked for with one");
+		}
+
+		return written(message, MailLanguage.SERBIAN, reader, portal, token,
 				howLong(message.lasts(), MailLanguage.SERBIAN));
 	}
 
@@ -365,7 +382,7 @@ public final class WhatTheMessageSays {
 					+ " for with one");
 		}
 
-		return written(message, reader, portal, token, howLong(message.lasts(), reader));
+		return written(message, reader, null, portal, token, howLong(message.lasts(), reader));
 	}
 
 	/**
@@ -381,20 +398,21 @@ public final class WhatTheMessageSays {
 	 * @throws IllegalArgumentException for a message that says how long it lasts
 	 */
 	public static Said about(Message message, MailLanguage reader, Portal portal, String token,
-			Instant endsAt) {
+			Instant endsAt, Gender sex) {
 		Objects.requireNonNull(message, "message");
 		Objects.requireNonNull(reader, "reader");
 		Objects.requireNonNull(endsAt, "endsAt");
+		Objects.requireNonNull(sex, "sex");
 
 		if (!message.saysWhenItEnds()) {
 			throw new IllegalArgumentException(message + " says how long its link lasts, not the moment"
 					+ " it ends, so it is not asked for with one");
 		}
 
-		return written(message, reader, portal, token, WhatANoticeSays.moment(endsAt, reader));
+		return written(message, reader, sex, portal, token, WhatANoticeSays.moment(endsAt, reader));
 	}
 
-	private static Said written(Message message, MailLanguage in, Portal portal, String token,
+	private static Said written(Message message, MailLanguage in, Gender sex, Portal portal, String token,
 			String howLong) {
 		Objects.requireNonNull(portal, "portal");
 		Objects.requireNonNull(token, "token");
@@ -426,9 +444,23 @@ public final class WhatTheMessageSays {
 		   of. */
 		String link = portal.address() + in.prefix() + message.path() + "?token=" + token;
 
-		return new Said(words.getString(message.key() + ".subject"),
-				new MessageFormat(words.getString(message.key() + ".body"), ONE_SET_OF_WORDS)
-						.format(new Object[] {link, howLong}));
+		ResourceBundle woman = wordsForAWoman(in);
+		String subject = sex == null ? Gender.wordsOfNoOne(words, woman, message.key() + ".subject")
+				: sex.words(words, woman, message.key() + ".subject");
+		String body = sex == null ? Gender.wordsOfNoOne(words, woman, message.key() + ".body")
+				: sex.words(words, woman, message.key() + ".body");
+
+		return new Said(subject, new MessageFormat(body, ONE_SET_OF_WORDS).format(new Object[] {link, howLong}));
+	}
+
+	/**
+	 * THE WORDS A WOMAN READS, only where they differ (owner, 21.11.2026: „po polu primaoca"). A
+	 * dictionary of its own because the floor over {@code mail/sr} demands exactly the keys of
+	 * {@link Message}. None for English, which has no participle to agree.
+	 */
+	static ResourceBundle wordsForAWoman(MailLanguage in) {
+		return in == MailLanguage.ENGLISH ? null
+				: ResourceBundle.getBundle(WORDS + "sr-female", ONE_SET_OF_WORDS);
 	}
 
 	/**

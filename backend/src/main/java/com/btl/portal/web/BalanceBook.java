@@ -653,7 +653,7 @@ class BalanceBook {
 				.param(newMember).query(String.class).single();
 
 		Said thanks = WhatAMembershipChangeSays.referralThanked(newcomer, season,
-				reward.orElseThrow().money());
+				reward.orElseThrow().money(), TheSexOfAMember.of(db, reward.orElseThrow().referrer()));
 
 		/* ALWAYS ADDRESSED: `message.to_id` left empty means EVERYBODY (V13). */
 		db.sql("insert into message (to_id, from_id, from_name, subject, body) values (?, null, ?, ?, ?)")

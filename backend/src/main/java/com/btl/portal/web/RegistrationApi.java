@@ -549,7 +549,8 @@ class RegistrationApi {
 	private void send(Made made) {
 		try {
 			postman.send(WhatTheMessageSays.about(Message.CONFIRM_THE_ADDRESS, made.language(),
-					portal, made.link(), made.endsAt()), made.address());
+					portal, made.link(), made.endsAt(), TheSexOfAMember.ofTheAccount(db, made.account()).orElseThrow()),
+					made.address());
 		} catch (MailException theRelayDidNotTakeIt) {
 			LOG.warn("the confirmation message for account {} did not go out, so nobody has"
 					+ " told him his address; the token is written and asking for the link"

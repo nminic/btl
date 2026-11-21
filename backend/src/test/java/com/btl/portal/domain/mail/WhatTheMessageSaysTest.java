@@ -39,11 +39,11 @@ class WhatTheMessageSaysTest {
 	 */
 	private static Said said(Message message, MailLanguage in) {
 		if (message.saysWhenItEnds()) {
-			return WhatTheMessageSays.about(message, in, PORTAL, TOKEN, THE_LINK_ENDS);
+			return WhatTheMessageSays.about(message, in, PORTAL, TOKEN, THE_LINK_ENDS, Gender.MAN);
 		}
 
 		return message.followsTheReader() ? WhatTheMessageSays.about(message, in, PORTAL, TOKEN)
-				: WhatTheMessageSays.about(message, PORTAL, TOKEN);
+				: WhatTheMessageSays.about(message, PORTAL, TOKEN, Gender.MAN);
 	}
 
 	/** 12:00 UTC, which is 13:00 in Belgrade in December, on a day that is neither today nor any
@@ -87,10 +87,10 @@ class WhatTheMessageSaysTest {
 	 */
 	@Test
 	void theInvitationOfAMemberSaysWhatHappensAfterAWeekInTheOwnersSentence() {
-		assertThat(WhatTheMessageSays.about(Message.INVITED_AS_A_MEMBER, PORTAL, TOKEN).body())
-				.contains("Link važi sedam dana i može da se upotrebi jednom. Ako ga za to vreme ne otvorite,"
-						+ " vaš upis se briše, osim ako je članarina već evidentirana; u tom slučaju pišite na"
-						+ " info@balkanskatrkackaliga.net i poslaćemo vam novi.")
+		assertThat(WhatTheMessageSays.about(Message.INVITED_AS_A_MEMBER, PORTAL, TOKEN, Gender.MAN).body())
+				.contains("Link važi sedam dana i može da se upotrebi jednom. Ako ga za to vreme ne otvoriš,"
+						+ " tvoj upis se briše, osim ako je članarina već evidentirana; u tom slučaju piši na"
+						+ " info@balkanskatrkackaliga.net i poslaćemo ti novi.")
 				.doesNotContain("Zaboravljena lozinka");
 	}
 
@@ -99,16 +99,16 @@ class WhatTheMessageSaysTest {
 		String tail = "Balkanska trkačka liga";
 
 		assertThat(WhatTheMessageSays.about(Message.CONFIRM_THE_ADDRESS, MailLanguage.SERBIAN, PORTAL,
-				TOKEN, THE_LINK_ENDS).body()).isEqualTo(String.join("\n",
-				"Dobrodošli u Balkansku trkačku ligu.",
+				TOKEN, THE_LINK_ENDS, Gender.MAN).body()).isEqualTo(String.join("\n",
+				"Dobrodošao u Balkansku trkačku ligu.",
 				"",
-				"Adresu potvrđujete otvaranjem ovog linka:",
+				"Adresu potvrđuješ otvaranjem ovog linka:",
 				linkOf(Message.CONFIRM_THE_ADDRESS, MailLanguage.SERBIAN),
 				"",
-				"Link važi do 17.12.2026. 13:00. Posle toga se nepotvrđena prijava briše, a sa ove adrese možete da se"
-						+ " registrujete ponovo.",
+				"Link važi do 17.12.2026. 13:00. Posle toga se nepotvrđena prijava briše, a sa ove adrese možeš da se"
+						+ " registruješ ponovo.",
 				"",
-				"Ako se niste registrovali kod nas, zanemarite ovu poruku.",
+				"Ako se nisi registrovao kod nas, zanemari ovu poruku.",
 				"",
 				tail));
 
@@ -140,19 +140,19 @@ class WhatTheMessageSaysTest {
 
 		assertThat(WhatTheMessageSays.about(Message.INVITED_AS_A_MEMBER, PORTAL, TOKEN).body())
 				.isEqualTo(String.join("\n",
-				"Upisani smo vas u Balkansku trkačku ligu na osnovu saglasnosti koju ste potpisali.",
+				"Upisali smo te u Balkansku trkačku ligu na osnovu saglasnosti koju si potpisao.",
 				"",
-				"Vaš nalog postoji, ali još nema lozinku. Otvorite ovaj link i postavite je sami:",
+				"Tvoj nalog postoji, ali još nema lozinku. Otvori ovaj link i postavi je sam:",
 				linkOf(Message.INVITED_AS_A_MEMBER, MailLanguage.SERBIAN),
 				"",
-				"Link važi sedam dana i može da se upotrebi jednom. Ako ga za to vreme ne otvorite, vaš upis"
-						+ " se briše, osim ako je članarina već evidentirana; u tom slučaju pišite na"
-						+ " info@balkanskatrkackaliga.net i poslaćemo vam novi.",
+				"Link važi sedam dana i može da se upotrebi jednom. Ako ga za to vreme ne otvoriš, tvoj upis"
+						+ " se briše, osim ako je članarina već evidentirana; u tom slučaju piši na"
+						+ " info@balkanskatrkackaliga.net i poslaćemo ti novi.",
 				"",
 				tail));
 
 		assertThat(WhatTheMessageSays.about(Message.CONFIRM_THE_ADDRESS, MailLanguage.ENGLISH, PORTAL,
-				TOKEN, THE_LINK_ENDS).body()).isEqualTo(String.join("\n",
+				TOKEN, THE_LINK_ENDS, Gender.MAN).body()).isEqualTo(String.join("\n",
 				"Welcome to BTL.",
 				"",
 				"You confirm the address by opening this link:",
@@ -237,7 +237,7 @@ class WhatTheMessageSaysTest {
 						.hasMessageContaining("always written in Serbian");
 			}
 
-			assertThat(WhatTheMessageSays.about(invitation, PORTAL, TOKEN).body())
+			assertThat(WhatTheMessageSays.about(invitation, PORTAL, TOKEN, Gender.MAN).body())
 					.as("%s did not lead to the Serbian page", invitation)
 					.contains(PORTAL.address() + invitation.path() + "?token=");
 		}
@@ -499,7 +499,7 @@ class WhatTheMessageSaysTest {
 
 		/* AND A MESSAGE THAT SAYS A LENGTH IS NOT HANDED A MOMENT it would have no place for. */
 		assertThatThrownBy(() -> WhatTheMessageSays.about(Message.SET_A_NEW_PASSWORD, MailLanguage.SERBIAN,
-				PORTAL, TOKEN, THE_LINK_ENDS)).isInstanceOf(IllegalArgumentException.class)
+				PORTAL, TOKEN, THE_LINK_ENDS, Gender.MAN)).isInstanceOf(IllegalArgumentException.class)
 				.hasMessageContaining("says how long its link lasts");
 	}
 
@@ -514,15 +514,15 @@ class WhatTheMessageSaysTest {
 		assertThatThrownBy(() -> WhatTheMessageSays.about(Message.CONFIRM_THE_ADDRESS, null, PORTAL,
 				TOKEN)).isInstanceOf(NullPointerException.class).hasMessage("reader");
 		assertThatThrownBy(() -> WhatTheMessageSays.about(Message.CONFIRM_THE_ADDRESS,
-				MailLanguage.SERBIAN, null, TOKEN, THE_LINK_ENDS))
+				MailLanguage.SERBIAN, null, TOKEN, THE_LINK_ENDS, Gender.MAN))
 				.isInstanceOf(NullPointerException.class).hasMessage("portal");
 		assertThatThrownBy(() -> WhatTheMessageSays.about(Message.CONFIRM_THE_ADDRESS,
-				MailLanguage.SERBIAN, PORTAL, TOKEN, null))
+				MailLanguage.SERBIAN, PORTAL, TOKEN, null, Gender.MAN))
 				.isInstanceOf(NullPointerException.class).hasMessage("endsAt");
-		assertThatThrownBy(() -> WhatTheMessageSays.about(Message.INVITED_AS_A_MEMBER, null, TOKEN))
+		assertThatThrownBy(() -> WhatTheMessageSays.about(Message.INVITED_AS_A_MEMBER, null, TOKEN, Gender.MAN))
 				.isInstanceOf(NullPointerException.class).hasMessage("portal");
 		assertThatThrownBy(() -> WhatTheMessageSays.about(Message.CONFIRM_THE_ADDRESS,
-				MailLanguage.SERBIAN, PORTAL, null, THE_LINK_ENDS))
+				MailLanguage.SERBIAN, PORTAL, null, THE_LINK_ENDS, Gender.MAN))
 				.isInstanceOf(NullPointerException.class).hasMessage("token");
 	}
 
@@ -611,5 +611,73 @@ class WhatTheMessageSaysTest {
 				.as("the Serbian dictionary is not the one under mail/sr")
 				.isEqualTo(ResourceBundle.getBundle("mail/sr", Locale.ROOT)
 						.getString("confirmTheAddress.subject"));
+	}
+
+	/**
+	 * THE SEX OF WHO READS PICKS THE PARTICIPLE (owner, 21.11.2026: „po polu primaoca"), and the dictionary
+	 * of the words a woman reads is held from the other side too: it holds exactly the keys that carry a
+	 * participle, every one a key of {@code mail/sr} with the same holes and other words.
+	 */
+	@Test
+	void theWordsAWomanReadsAreThreeOfTheMasculineKeysWithTheSameHolesAndOtherWords() {
+		ResourceBundle man = WhatTheMessageSays.words(MailLanguage.SERBIAN);
+		ResourceBundle woman = WhatTheMessageSays.wordsForAWoman(MailLanguage.SERBIAN);
+
+		assertThat(woman.keySet()).containsExactlyInAnyOrder("confirmTheAddress.body", "invitedAsAMember.subject",
+				"invitedAsAMember.body");
+
+		for (String key : woman.keySet()) {
+			assertThat(man.containsKey(key)).as(key).isTrue();
+			assertThat(woman.getString(key)).as(key).isNotEqualTo(man.getString(key));
+			assertThat(new java.text.MessageFormat(woman.getString(key), java.util.Locale.ROOT)
+					.getFormatsByArgumentIndex().length).as("holes of %s", key)
+					.isEqualTo(new java.text.MessageFormat(man.getString(key), java.util.Locale.ROOT)
+							.getFormatsByArgumentIndex().length);
+		}
+
+		assertThat(WhatTheMessageSays.wordsForAWoman(MailLanguage.ENGLISH)).isNull();
+	}
+
+	@Test
+	void aWomanReadsTheFeminineAndAManTheMasculineInTheTwoMessagesThatHaveBoth() {
+		String confirmedByHer = WhatTheMessageSays.about(Message.CONFIRM_THE_ADDRESS, MailLanguage.SERBIAN, PORTAL,
+				TOKEN, THE_LINK_ENDS, Gender.WOMAN).body();
+		String confirmedByHim = WhatTheMessageSays.about(Message.CONFIRM_THE_ADDRESS, MailLanguage.SERBIAN, PORTAL,
+				TOKEN, THE_LINK_ENDS, Gender.MAN).body();
+
+		assertThat(confirmedByHer).startsWith("Dobrodošla u Balkansku").contains("nisi se registrovala")
+				.doesNotContain("registrovao").doesNotContain("Dobrodošao");
+		assertThat(confirmedByHim).startsWith("Dobrodošao u Balkansku").contains("nisi se registrovao")
+				.doesNotContain("registrovala").doesNotContain("Dobrodošla");
+
+		Said invitedHer = WhatTheMessageSays.about(Message.INVITED_AS_A_MEMBER, PORTAL, TOKEN, Gender.WOMAN);
+		Said invitedHim = WhatTheMessageSays.about(Message.INVITED_AS_A_MEMBER, PORTAL, TOKEN, Gender.MAN);
+
+		assertThat(invitedHer.subject()).isEqualTo("Upisana si u Balkansku trkačku ligu");
+		assertThat(invitedHer.body()).contains("koju si potpisala.").contains("postavi je sama:")
+				.doesNotContain("potpisao").doesNotContain("sam:");
+		assertThat(invitedHim.subject()).isEqualTo("Upisan si u Balkansku trkačku ligu");
+		assertThat(invitedHim.body()).contains("koju si potpisao.").contains("postavi je sam:")
+				.doesNotContain("potpisala").doesNotContain("sama:");
+
+		assertThat(WhatTheMessageSays.about(Message.CONFIRM_THE_ADDRESS, MailLanguage.ENGLISH, PORTAL, TOKEN,
+				THE_LINK_ENDS, Gender.WOMAN))
+				.isEqualTo(WhatTheMessageSays.about(Message.CONFIRM_THE_ADDRESS, MailLanguage.ENGLISH, PORTAL,
+						TOKEN, THE_LINK_ENDS, Gender.MAN));
+		assertThat(WhatTheMessageSays.about(Message.INVITED_AS_A_MODERATOR, PORTAL, TOKEN, Gender.WOMAN))
+				.as("a message with no feminine words is the same for both")
+				.isEqualTo(WhatTheMessageSays.about(Message.INVITED_AS_A_MODERATOR, PORTAL, TOKEN, Gender.MAN));
+	}
+
+	@Test
+	void aMessageWithWordsForAWomanIsNotAskedForWithoutAReaderAndNobodyIsAReaderByDefault() {
+		assertThatThrownBy(() -> WhatTheMessageSays.about(Message.INVITED_AS_A_MEMBER, PORTAL, TOKEN))
+				.isInstanceOf(IllegalStateException.class).hasMessageContaining("invitedAsAMember");
+		assertThatThrownBy(() -> WhatTheMessageSays.about(Message.INVITED_AS_A_MEMBER, PORTAL, TOKEN, null))
+				.isInstanceOf(NullPointerException.class).hasMessage("reader");
+		assertThatThrownBy(() -> WhatTheMessageSays.about(Message.CONFIRM_THE_ADDRESS, MailLanguage.SERBIAN, PORTAL,
+				TOKEN, THE_LINK_ENDS, null)).isInstanceOf(NullPointerException.class).hasMessage("sex");
+		assertThatThrownBy(() -> WhatTheMessageSays.about(Message.CONFIRM_THE_ADDRESS, PORTAL, TOKEN, Gender.MAN))
+				.isInstanceOf(IllegalArgumentException.class).hasMessageContaining("its reader's language");
 	}
 }

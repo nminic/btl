@@ -690,7 +690,7 @@ class MemberDataWriteApiTest {
 		verify(postman, times(1)).send(letter.capture(), to.capture());
 		assertThat(to.getValue()).isEqualTo("nova.adresa@primer.rs");
 		assertThat(letter.getValue().subject()).isEqualTo(WhatTheMessageSays.about(Message.CONFIRM_THE_ADDRESS,
-				MailLanguage.SERBIAN, new Portal(portalAddress), "x", java.time.Instant.EPOCH).subject());
+				MailLanguage.SERBIAN, new Portal(portalAddress), "x", java.time.Instant.EPOCH, com.btl.portal.domain.mail.Gender.MAN).subject());
 
 		Matcher token = Pattern.compile("potvrda-adrese\\?token=([A-Za-z0-9_-]+)").matcher(letter.getValue().body());
 
@@ -864,7 +864,7 @@ class MemberDataWriteApiTest {
 
 		verify(postman, times(1)).send(letter.capture(), anyString());
 		assertThat(letter.getValue().subject()).isEqualTo(WhatTheMessageSays.about(Message.CONFIRM_THE_ADDRESS,
-				MailLanguage.ENGLISH, new Portal(portalAddress), "x", java.time.Instant.EPOCH).subject());
+				MailLanguage.ENGLISH, new Portal(portalAddress), "x", java.time.Instant.EPOCH, com.btl.portal.domain.mail.Gender.MAN).subject());
 	}
 
 	/**
@@ -895,7 +895,7 @@ class MemberDataWriteApiTest {
 		verify(postman, times(1)).send(letter.capture(), to.capture());
 		assertThat(to.getValue()).isEqualTo("nova.bez.lozinke@primer.rs");
 		assertThat(letter.getValue().subject()).isEqualTo(WhatTheMessageSays.about(Message.INVITED_AS_A_MEMBER,
-				new Portal(portalAddress), "x").subject());
+				new Portal(portalAddress), "x", com.btl.portal.domain.mail.Gender.MAN).subject());
 
 		Matcher token = Pattern.compile("nova-lozinka\\?token=([A-Za-z0-9_-]+)").matcher(letter.getValue().body());
 

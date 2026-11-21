@@ -25,17 +25,11 @@ import org.junit.jupiter.api.Test;
  * {@code src/main/java}. A word of the second person plural (vaš, vam, ste, možete ...) in any of
  * them fails here, unless the text is one of the {@link #WAITING} below.
  *
- * <p>WHY THERE IS A LIST AT ALL, AND WHY IT HAS ITS OWN FLOOR. The texts that carry a past participle
- * after „ste" ( „ste potvrdili", „Upisani ste", „koju ste poslali") cannot be moved to „ti" by
- * changing the address alone: the participle has a gender, and neither the letters nor most of the
- * inbox know the reader's. The owner has been asked which of the ways out he wants; until he
- * answers, those texts stay as he approved them and stand here. The list is the SAME size as what
- * the scan finds, in both directions: a text that is moved to „ti" and left on the list fails the
- * floor (so the list shrinks and never outlives its reason), and a new text with a „vi" form that is
- * not on the list fails it too (so the list never grows by accident). The two PairWriteApi
- * sentences are on it for a different reason: {@code PairWriteApiTest} ties them sign for sign to
- * {@code pair.endedBody} and {@code pair.brokenBody} in {@code frontend/src/i18n/sr.json}, which
- * the screens' own move to „ti" rewrites.
+ * <p>WHY THERE IS A LIST AT ALL, AND WHY IT HAS ITS OWN FLOOR. The texts that wait stand on {@link #WAITING}
+ * with the reason. The list is the SAME size as what the scan finds, in both directions: a text that
+ * is moved to „ti" and left on the list fails the floor (so the list shrinks and never outlives its
+ * reason), and a new text with a „vi" form that is not on the list fails it too (so the list never
+ * grows by accident).
  *
  * <p>THE WORD LIST IS MEASURED, NOT GUESSED. Over the whole of {@code src/main/java} string
  * literals and the non-English dictionaries it finds only the texts below, and every one of them is a
@@ -54,60 +48,24 @@ class NoMessageAddressesAMemberAsViTest {
 					+ "|potvrđujete|uplaćujete|registrujete|kliknite|prijavite|odjavite|proverite|pročitajte"
 					+ "|sačuvajte|nastavite|pokušajte|kontaktirajte|obnovite|platite|popunite)(?![\\p{L}\\p{N}])");
 
-	/** Texts whose participle after „ste" or whose pinned twin keeps them from moving yet. */
+	/**
+	 * THE TEXTS THAT STILL WAIT, and each for a reason that is not the participle (the participle is
+	 * solved: the words go by the sex of who reads, {@link Gender}). Three flows go to an account that
+	 * may name no member, a moderator who does not race (V23), who has no sex anywhere in the portal:
+	 * the invitation of a moderator, the link to set a new password and the notice that it was changed.
+	 * What those say to him is the owner's question, asked on 21.11.2026 and not answered here. The two
+	 * {@code PairWriteApi} sentences are tied sign for sign to {@code pair.endedBody} and
+	 * {@code pair.brokenBody} in {@code frontend/src/i18n/sr.json}, which the move of the screens to
+	 * „ti" rewrites, and they move with it.
+	 */
 	private static final List<String> WAITING = List.of(
-			"mail/sr.properties#confirmTheAddress.subject",
-			"mail/sr.properties#confirmTheAddress.body",
 			"mail/sr.properties#setANewPassword.body",
 			"mail/sr.properties#invitedAsAModerator.subject",
 			"mail/sr.properties#invitedAsAModerator.body",
-			"mail/sr.properties#invitedAsAMember.subject",
-			"mail/sr.properties#invitedAsAMember.body",
-			"mail/welcome.properties#welcomeWithASlip.body",
-			"mail/welcome.properties#welcomeWithPayPal.body",
-			"mail/welcome.properties#welcomeFreedOfTheFee.subject",
-			"mail/welcome.properties#welcomeFreedOfTheFee.body",
-			"mail/welcome.properties#welcomePaidFromTheBalance.body",
-			"mail/welcome.properties#welcomePaid.subject",
-			"mail/welcome.properties#welcomePaid.body",
-			"mail/welcome.properties#welcomeTheBalanceCovers.body",
-			"notices/membership.properties#exemptionGranted.subject",
-			"notices/membership.properties#exemptionGranted.body",
-			"notices/membership.properties#beginnersCategoryClosed.subject",
-			"notices/membership.properties#beginnersCategoryClosed.body",
-			"notices/membership.properties#referralThanked.body",
-			"notices/results.properties#resultEntered.subject",
-			"notices/results.properties#resultEntered.body",
-			"notices/results.properties#resultEnteredUnscored.subject",
-			"notices/results.properties#resultEnteredUnscored.body",
-			"notices/results.properties#resultChangedUnscored.subject",
-			"notices/results.properties#resultChangedUnscored.body",
-			"notices/results.properties#resultChanged.subject",
-			"notices/results.properties#resultChanged.body",
 			"notices/sr.properties#thePasswordHasChanged.subject",
 			"notices/sr.properties#thePasswordHasChanged.body",
-			"java/web/AwardingDucats.java :: , i njime ste osvojili ",
-			"java/web/AwardingDucats.java :: Osvojili ste dukat",
-			"java/web/AwardingDucats.java :: Liga vam je unela rezultat sa trke ",
-			"java/web/AwardingDucats.java :: Odobren vam je rezultat sa trke ",
-			"java/web/AwardingDucats.java :: Dukat stoji na vašem profilu.",
-			"java/web/AwardingDucats.java :: Dukati stoje na vašem profilu.",
 			"java/web/PairWriteApi.java ::  vaš trkački par za sezonu ",
-			"java/web/PairWriteApi.java :: Vaš trkački par za sezonu ",
-			"java/web/RaceWriteApi.java :: , pa su vaši bodovi sa nje preračunati. Time ste u zvaničnoj sezoni ",
-			"java/web/RaceWriteApi.java ::  bodova, pa vam je početnička kategorija ",
-			"java/web/RaceWriteApi.java :: Početnička kategorija vam je ponovo otvorena",
-			"java/web/RaceWriteApi.java :: Početnička kategorija vam je zatvorena",
-			"java/web/ResultsByTheLeagueApi.java :: . Time ste u zvaničnoj sezoni ",
-			"java/web/ResultsByTheLeagueApi.java ::  bodova, pa vam je početnička kategorija ",
-			"java/web/ResultsByTheLeagueApi.java :: Liga vam je ",
-			"java/web/ResultsByTheLeagueApi.java :: Početnička kategorija vam je ponovo otvorena",
-			"java/web/ResultsByTheLeagueApi.java :: Početnička kategorija vam je zatvorena",
-			"java/web/VerificationWriteApi.java :: , jer ste rezultatom sa trke ",
-			"java/web/VerificationWriteApi.java :: Superadmin je preuzeo stavku koju ste držali u redu za verifikaciju.",
-			"java/web/VerificationWriteApi.java :: Početnička kategorija vam je zatvorena",
-			"java/web/VerificationWriteApi.java :: Početnička kategorija vam je zatvorena za sezonu ",
-			"java/web/VerificationWriteApi.java :: Stavka vam je oduzeta");
+			"java/web/PairWriteApi.java :: Vaš trkački par za sezonu ");
 
 	@Test
 	void everyTextWithAViFormIsOneOfTheOnesWaitingForTheOwnersAnswerAndEveryOneWaitingStillHasOne()
