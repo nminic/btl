@@ -3345,6 +3345,10 @@ describe('Leagues', () => {
       /* And the competition that is not there, which is its own screen. */
       ['/sr/liga/ne-postoji', 'Ove lige nema.', 'visitor'],
       ['/sr/administracija/lige', 'RunTrace liga 2027', 'superadmin'],
+      /* The same list with one competition open for change, which is where its box of races lives since
+         the races moved from the list into the form of the competition, under the prizes. The plain seat
+         above can no longer see them, so without this one every word of that box is held by nothing. */
+      ['/sr/administracija/lige?izmena=1', 'Izmena lige', 'superadmin'],
     ] as const
 
     const drawn: Record<string, unknown> = screens

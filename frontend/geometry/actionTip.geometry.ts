@@ -346,7 +346,10 @@ const SCREENS: { path: string; me: unknown; least: number; extra?: Record<string
   { path: '/sr/administracija/verifikacija/trkacki-profil', me: SUPERADMIN, least: 3 },
   { path: '/sr/administracija/verifikacija/komentari', me: SUPERADMIN, least: 3 },
   { path: '/sr/kalendar/zimski-nocni-polumaraton-2020', me: SUPERADMIN, least: 20 },
-  { path: '/sr/lige', me: SUPERADMIN, least: 2 },
+  /* One: the pencil in the head of the sheet, drawn for the one competition that is written out (owner,
+     21.11.2026, PDL „Strana „Lige” se radi po predlogu B”). The edit of the terms and the one of the
+     prizes went with the writing in place, and the list is not a table with a symbol to a row. */
+  { path: '/sr/lige', me: SUPERADMIN, least: 1 },
   { path: '/sr/tim/dunavski-trkaci', me: member('000001'), least: 1 },
   { path: '/sr/moji-rezultati', me: member('000021'), least: 30 },
   { path: '/sr/moja-clanarina', me: member('000021'), least: 1 },
