@@ -443,6 +443,9 @@ for (const width of [360, 560, 768, 860, 1024, 1280]) {
               outRight: Math.round((box.right - column.right) * 10) / 10,
               cut: line.scrollWidth > line.clientWidth + 0.5,
               font: Number.parseFloat(getComputedStyle(line).fontSize),
+              floor: 0.65 * Number.parseFloat(getComputedStyle(document.documentElement).fontSize),
+              overflow: getComputedStyle(line).overflow,
+              dots: getComputedStyle(line).textOverflow,
             }
           })
         }),
@@ -458,6 +461,14 @@ for (const width of [360, 560, 768, 860, 1024, 1280]) {
         expect(line.outRight, `${line.text} sticks out of its column on the right`).toBeLessThanOrEqual(SAME)
         expect(line.title, `${line.text} has not its whole name in the title`).toBe(line.text)
         expect(line.link, `the link over ${line.text} does not say it`).toContain(line.text)
+
+        /* What does not fit is cut by its own line and ends in three dots, and only after the letter has gone
+           down to the floor: a line that is cut in a letter above the floor was not made small enough. */
+        if (line.cut) {
+          expect(line.overflow, `${line.text} is cut and not clipped by its line`).toBe('hidden')
+          expect(line.dots, `${line.text} is cut and does not end in three dots`).toBe('ellipsis')
+          expect(line.font, `${line.text} is cut above the floor`).toBeLessThanOrEqual(line.floor + 0.1)
+        }
       }
     })
   }
@@ -505,7 +516,11 @@ test('the focus in a widget that is written again goes back to the same button o
   await page.setViewportSize({ width: 768, height: 900 })
   await page.locator('.home__colL').waitFor({ state: 'detached' })
 
-  const focus = await page.evaluate(() => document.activeElement?.textContent ?? '')
+  const focus = await page.evaluate(() => ({
+    tag: document.activeElement?.tagName ?? '',
+    text: document.activeElement?.textContent ?? '',
+  }))
 
-  expect(focus).toContain('Ultra')
+  expect(focus.tag).toBe('BUTTON')
+  expect(focus.text).toContain('Ultra')
 })
