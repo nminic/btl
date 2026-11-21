@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useCallback, useLayoutEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useLocation } from 'react-router'
 import { useToday } from '../clock/useClock'
 import { accountWasDeleted } from './accountDeleted'
@@ -16,6 +17,7 @@ import { SPONSORS } from './home/content'
 import { President } from './home/President'
 import { Sponsor, SponsorStrip } from './home/Sponsor'
 import { TopTen } from './home/TopTen'
+import { putBack, whereIs, type Remembered } from './home/keepTheFocus'
 import { useTwoColumns } from './home/useTwoColumns'
 import './Home.css'
 
@@ -72,13 +74,63 @@ export function Home() {
   const state = combineFour(useCompetitors(), useEvents(), useResults(), useRaces())
   const today = useToday()
   const twoColumns = useTwoColumns()
+
+  /* **THE CALCULATOR IS NOT WRITTEN AGAIN WHEN THE PAGE CHANGES ITS COLUMNS** (owner, 21.11.2026: only the
+     chosen length and the chart go back to their beginning). It holds what somebody typed in its boxes, and
+     those are not a thing to lose by turning a phone: it is drawn once into an element of its own (`held`),
+     and the box of the page that stands where it belongs takes that element in (`takeIn`), whichever of the
+     two writings of the page is there. The element and what is in it are the same ones before and after, so
+     the values, the cursor and the focus stay; a focus that the move itself drops is put back on the same
+     box. */
+  const [held] = useState(() => {
+    const holder = document.createElement('div')
+
+    holder.style.display = 'contents'
+
+    return holder
+  })
+  const inside = useRef<Element | null>(null)
+  const takeIn = useCallback(
+    (slot: HTMLElement | null) => {
+      if (slot === null) {
+        return
+      }
+
+      slot.append(held)
+
+      if (inside.current !== null && held.contains(inside.current) && inside.current instanceof HTMLElement) {
+        inside.current.focus()
+      }
+    },
+    [held],
+  )
+
+  /* And where the focus is in the boxes that ARE written again, which is put back when the writing changes. */
+  const remembered = useRef<Remembered | null>(null)
+
+  useLayoutEffect(() => {
+    putBack(document, remembered.current)
+  }, [twoColumns])
   /* „Vaš nalog je obrisan.", for the one arrival his own deletion opens this page with (owner, 20.11.2026), in
      the shape the list of teams says „Tim je obrisan." in (`Teams.tsx`, `teamDeleted.ts`). */
   const arrived = useLocation().state
   const [said, setSaid] = useState(() => (accountWasDeleted(arrived) ? t('home.accountDeleted') : ''))
 
   return (
-    <div className="home">
+    <div
+      className="home"
+      onFocus={(event) => {
+        remembered.current = whereIs(event.target)
+
+        if (event.target.closest('.home__calc') !== null) {
+          inside.current = event.target
+        }
+      }}
+      onBlur={() => {
+        remembered.current = null
+        inside.current = null
+      }}
+    >
       {/* Not shown, but present: the header already says the name in full right
           above, and repeating it was what the owner had removed. A page with no
           h1 at all is still a page a screen reader cannot name. */}
@@ -145,11 +197,7 @@ export function Home() {
                 <Sponsor sponsor={ofTheDay} />
               </div>
             )
-          const calc = (
-            <div className="home__calc">
-              <Calculator />
-            </div>
-          )
+          const calc = <div className="home__calc" ref={takeIn} />
 
           return (
             <>
@@ -186,6 +234,8 @@ export function Home() {
                   </>
                 )}
               </div>
+
+              {createPortal(<Calculator />, held)}
 
               {ofTheDay !== undefined && <SponsorStrip sponsors={SPONSORS} />}
             </>

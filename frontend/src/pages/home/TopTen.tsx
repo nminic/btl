@@ -57,7 +57,9 @@ function Face({ slot, place }: { slot: Competitor | undefined; place: number }) 
  * a height of their own (`Home.css`, `.stand__name`) make the step decide the height and the name
  * never. **And a name that does not fit its column is set in a smaller letter, not broken** (owner,
  * 21.11.2026, „Manje slovo za dugo prezime"): the number of letters of each line goes to the stylesheet
- * in `--chars`, which works the size out from the width of the column.
+ * in `--chars`, which works the size out from the width of the column. **And where even the smallest letter
+ * does not fit, the line ends in three dots** (owner, 21.11.2026, „Tri tacke na granici”), the whole name
+ * staying in the `title` of the line and in the link.
  *
  * **A screen reader hears one name, once.** The link carries „1. Vesna Đoković" and the two lines
  * drawn under it are `aria-hidden`, so the name is neither read twice nor read as two pieces.
@@ -103,10 +105,10 @@ function PodiumPlace({
         <Face slot={competitor} place={place} />
       </span>
       <span className="stand__name" aria-hidden="true">
-        <span className="stand__first" style={{ '--chars': competitor.firstName.length }}>
+        <span className="stand__first" title={competitor.firstName} style={{ '--chars': competitor.firstName.length }}>
           {competitor.firstName}
         </span>
-        <span className="stand__last" style={{ '--chars': competitor.lastName.length }}>
+        <span className="stand__last" title={competitor.lastName} style={{ '--chars': competitor.lastName.length }}>
           {competitor.lastName}
         </span>
       </span>

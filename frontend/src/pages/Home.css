@@ -568,7 +568,10 @@
    average. The size is what fits that many of them in the share, never above the size of the place
    (`--base`) and never under a floor (0,65rem, 10,4px). The two lines are the height of two lines of the
    size of the place whatever is set in them, so the step decides how high a circle stands and the name
-   never does. Measured with the longest surnames of the sample at 360, 560, 860, 1024 and 1280 in
+   never does. **Where even the floor is not enough the line ends in three dots** (owner, 21.11.2026, „Tri tacke
+   na granici”, adding that he will get the long surnames, double ones for instance, solved in the data
+   itself): `overflow: hidden` and `text-overflow: ellipsis`, for the first name and the surname alike, and
+   the whole name stays in the `title` of the line and in the link above it. Measured with the longest surnames of the sample at 360, 560, 860, 1024 and 1280 in
    `geometry/frontPage.geometry.ts`. */
 .stand__name {
   --base: 0.85rem;
@@ -588,9 +591,19 @@
   --base: 0.95rem;
 }
 
+/* The block is never wider than its column, so what does not fit even in the smallest letter is cut by
+   the line it is in and not by the page. */
+.stand__name {
+  max-inline-size: 100%;
+  min-inline-size: 0;
+}
+
 .stand__first,
 .stand__last {
   display: block;
+  max-inline-size: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
   font-size: clamp(
     0.65rem,
@@ -989,7 +1002,7 @@
 /* The calculator's rows eight pixels apart rather than the ten of every other
    card, the last of the ways variant A draws it shorter (draft, „između redova 8
    umesto 10"). */
-.home__calc > .card {
+.home__calc .card {
   gap: var(--space-8);
 }
 

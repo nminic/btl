@@ -2,6 +2,7 @@ import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { expect } from '@playwright/test'
+import { THE_DAY_THE_SUITE_IS_READ_AS } from '../src/test/theDay.ts'
 import { label, test } from './support/harness.ts'
 import type { Answers, At } from './support/harness.ts'
 
@@ -160,9 +161,12 @@ for (const at of WIDTHS) {
           nameLines: [...item.querySelectorAll('.stand__first, .stand__last')].map((one) => Math.round(one.getBoundingClientRect().height)),
           lines: [...item.querySelectorAll('.stand__first, .stand__last')].map((one) => lines(one)),
           fonts: [...item.querySelectorAll('.stand__first, .stand__last')].map((one) => Number.parseFloat(getComputedStyle(one).fontSize)),
-          wider: [...item.querySelectorAll('.stand__first, .stand__last')].map(
-            (one) => Math.round((one.scrollWidth - item.getBoundingClientRect().width) * 10) / 10,
-          ),
+          wider: [...item.querySelectorAll('.stand__first, .stand__last')].map((one) => {
+            const line = one.getBoundingClientRect()
+            const column = item.getBoundingClientRect()
+
+            return Math.round(Math.max(column.left - line.left, line.right - column.right) * 10) / 10
+          }),
           first: box(item.querySelector('.stand__first') ?? must(item.querySelector('.stand__name'))),
           last: box(item.querySelector('.stand__last') ?? must(item.querySelector('.stand__name'))),
           item: box(item),
@@ -380,3 +384,128 @@ for (const at of WIDTHS) {
     }
   })
 }
+
+/**
+ * **THE LONGEST NAMES THE SAMPLE HAS, AT 100, 125 AND 200 PER CENT OF TEXT** (review, 21.11.2026: „Hadžiahmetović"
+ * stuck out 4,9px of a column at 560 and 860, „Karađorđević-Obrenović" 30px, and at 125 per cent of text names stuck
+ * out at 360, 768 and 1280 as well).
+ *
+ * Owner, 21.11.2026, „Tri tačke na granici": the letter is made smaller down to the floor, and a name that does not
+ * fit even there ends in three dots (`overflow: hidden`, `text-overflow: ellipsis`), the first name and the
+ * surname alike, with the whole name in the `title` of the line and in the link over it. He added that he would
+ * get the long surnames, double ones for instance, solved in the data.
+ *
+ * **The names are the sample's own and not a list written here**: the six longest surnames and the six longest first
+ * names of `src/test/mock/competitors.json` (the longest of them is a double one), put on the first six members.
+ * What is held at every width and every size of text: nothing of a line is outside its column, the whole name is in
+ * its `title`, and the link over it says it.
+ */
+const SAMPLE = Array.isArray(MEMBERS) ? MEMBERS.map((one: Record<string, unknown>) => ({ first: String(one.firstName), last: String(one.lastName) })) : []
+const longest = (names: string[]) => [...new Set(names)].sort((a, b) => b.length - a.length).slice(0, 6)
+const FIRST_OF_THE_SAMPLE = longest(SAMPLE.map((one) => one.first))
+const LAST_OF_THE_SAMPLE = longest(SAMPLE.map((one) => one.last))
+
+const SAMPLE_NAMES: Answers = {
+  ...everyAnswer(),
+  '/api/competitors': (Array.isArray(MEMBERS) ? MEMBERS : []).map((one: Record<string, unknown>, index: number) => ({
+    ...one,
+    firstName: FIRST_OF_THE_SAMPLE[index % FIRST_OF_THE_SAMPLE.length],
+    lastName: LAST_OF_THE_SAMPLE[index % LAST_OF_THE_SAMPLE.length],
+  })),
+}
+
+const TEXTS: At['text'][] = [100, 125, 200]
+
+for (const width of [360, 560, 768, 860, 1024, 1280]) {
+  for (const text of TEXTS) {
+    const here: At = { width, text }
+
+    test(`the longest names of the sample stay inside their columns, at ${label(here)}`, async ({ open, theDay }) => {
+      /* The places are held for members who have not raced only until 1.1.2027 (PDL P14, owner 17.10.2026); on the
+         other day the podium of the sample is empty and has no name to measure. */
+      test.skip(theDay !== THE_DAY_THE_SUITE_IS_READ_AS, 'no name stands on the podium on this day')
+
+      const { page } = await open(here, '/sr', '.top10 .stand', SAMPLE_NAMES)
+
+      const seen = await page.evaluate(() =>
+        [...document.querySelectorAll('.stand__item')].flatMap((item) => {
+          const column = item.getBoundingClientRect()
+          const link = item.querySelector('.top10__face')
+
+          return [...item.querySelectorAll('.stand__first, .stand__last')].map((line) => {
+            const box = line.getBoundingClientRect()
+
+            return {
+              text: line.textContent ?? '',
+              title: line.getAttribute('title') ?? '',
+              link: link?.getAttribute('aria-label') ?? '',
+              outLeft: Math.round((column.left - box.left) * 10) / 10,
+              outRight: Math.round((box.right - column.right) * 10) / 10,
+              cut: line.scrollWidth > line.clientWidth + 0.5,
+              font: Number.parseFloat(getComputedStyle(line).fontSize),
+            }
+          })
+        }),
+      )
+
+      expect(seen).toHaveLength(12)
+      expect(LAST_OF_THE_SAMPLE.some((one) => one.includes('-')), 'the sample has no double surname').toBe(true)
+
+      console.log(`NAMES ${label(here)} cut ${String(seen.filter((one) => one.cut).length)} of ${String(seen.length)} smallest ${String(Math.min(...seen.map((one) => one.font)))} outLeft ${String(Math.max(...seen.map((one) => one.outLeft)))} outRight ${String(Math.max(...seen.map((one) => one.outRight)))} cutOnes ${seen.filter((one) => one.cut).map((one) => one.text).join(',')}`)
+
+      for (const line of seen) {
+        expect(line.outLeft, `${line.text} sticks out of its column on the left`).toBeLessThanOrEqual(SAME)
+        expect(line.outRight, `${line.text} sticks out of its column on the right`).toBeLessThanOrEqual(SAME)
+        expect(line.title, `${line.text} has not its whole name in the title`).toBe(line.text)
+        expect(line.link, `the link over ${line.text} does not say it`).toContain(line.text)
+      }
+    })
+  }
+}
+
+/**
+ * **WHAT WAS TYPED IN THE CALCULATOR AND WHERE THE CURSOR WAS SURVIVE THE WIDTH OF TWO COLUMNS** (review,
+ * 21.11.2026: on 1280, 10, 100 and 50 typed and the focus in „Spust", then 768: the boxes empty and the focus on
+ * the body). Owner, 21.11.2026: only a chosen length and the chart go back to their beginning.
+ */
+test('the calculator keeps its values and the focus across the width of two columns', async ({ open }) => {
+  const { page } = await open({ width: 1280, text: 100 }, '/sr', '.top10 .stand', ANSWERS)
+
+  await page.getByLabel('Dužina (km)').fill('10')
+  await page.getByLabel('Uspon (m)').fill('100')
+  await page.getByLabel('Spust (m)').fill('50')
+  await page.getByLabel('Spust (m)').focus()
+
+  await page.setViewportSize({ width: 768, height: 900 })
+  await page.locator('.home__colL').waitFor({ state: 'detached' })
+
+  const seen = await page.evaluate(() => {
+    const here = document.activeElement
+
+    return {
+      values: ['Dužina (km)', 'Uspon (m)', 'Spust (m)'].map((name) => {
+        const input = [...document.querySelectorAll('.home__calc input')].find(
+          (one) => one instanceof HTMLInputElement && one.labels?.[0]?.textContent === name,
+        )
+
+        return input instanceof HTMLInputElement ? input.value : null
+      }),
+      focus: here instanceof HTMLInputElement ? (here.labels?.[0]?.textContent ?? '') : (here?.tagName ?? ''),
+    }
+  })
+
+  expect(seen.values).toEqual(['10', '100', '50'])
+  expect(seen.focus).toBe('Spust (m)')
+})
+
+test('the focus in a widget that is written again goes back to the same button of it', async ({ open }) => {
+  const { page } = await open({ width: 1280, text: 100 }, '/sr', '.top10 .stand', ANSWERS)
+
+  await page.getByRole('button', { name: /^Ultra/ }).click()
+  await page.setViewportSize({ width: 768, height: 900 })
+  await page.locator('.home__colL').waitFor({ state: 'detached' })
+
+  const focus = await page.evaluate(() => document.activeElement?.textContent ?? '')
+
+  expect(focus).toContain('Ultra')
+})
