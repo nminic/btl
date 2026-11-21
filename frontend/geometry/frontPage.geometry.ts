@@ -985,6 +985,14 @@ for (const language of ['sr', 'en'] as const) {
             return box(range)
           })(),
           icon: getComputedStyle(must(card.querySelector('.card__head-icon'))).display !== 'none',
+          iconBox: box(must(card.querySelector('.card__head-icon'))),
+          titleText: (() => {
+            const range = document.createRange()
+
+            range.selectNodeContents(must(card.querySelector('.card__title')))
+
+            return box(range)
+          })(),
           word: getComputedStyle(must(card.querySelector('.card__head-word'))).display !== 'none',
           name: card.querySelector('.card__head-link')?.textContent ?? '',
           rows: card.querySelectorAll('.extract__row').length,
@@ -1023,6 +1031,13 @@ for (const language of ['sr', 'en'] as const) {
 
       /* The icon is a target of 24 by 24 at least (WCAG 2.2 SC 2.5.8). */
       if (seen.icon) {
+        /* And it stands level with the words of the title, not above them (owner, 21.11.2026). */
+        const iconMiddle = (seen.iconBox.top + seen.iconBox.bottom) / 2
+        const titleMiddle = (seen.titleText.top + seen.titleText.bottom) / 2
+
+        if (seen.link.top < seen.title.bottom && seen.link.bottom > seen.title.top) {
+          expect(Math.abs(iconMiddle - titleMiddle), 'the icon does not stand level with the title').toBeLessThanOrEqual(2)
+        }
         expect(seen.link.right - seen.link.left, 'the icon is narrower than 24px').toBeGreaterThanOrEqual(24 - SAME)
         expect(seen.link.bottom - seen.link.top, 'the icon is lower than 24px').toBeGreaterThanOrEqual(24 - SAME)
       }

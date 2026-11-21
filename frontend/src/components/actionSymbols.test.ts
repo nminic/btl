@@ -192,7 +192,6 @@ const STAYS_A_WORD = new Map([
   ['pair.invite', LISTED],
   ['picture.send', FORM],
   ['profile.clearFilters', LISTED],
-  ['rankings.allCategories', NOT_AN_ACTION],
   ['rankings.men', NOT_AN_ACTION],
   ['rankings.women', NOT_AN_ACTION],
   ['registration.resend', FORM],

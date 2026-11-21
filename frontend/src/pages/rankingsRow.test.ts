@@ -54,41 +54,18 @@ describe('the row the filters stand in', () => {
     expect(row).toContain('align-items: start')
   })
 
-  it('lets the chips give way rather than push the row', () => {
-    /* The chips are as wide as the chips until the row runs out, and then they
-       shrink and scroll inside themselves: unshrinkable, ten of them pushed the
-       page sideways and the row's own scroll never engaged.
+  it('lets the categories give way rather than push the row, and draws them with the segmented control', () => {
+    /* The categories are `components/Segmented` (owner, 21.11.2026), as wide as its buttons ask and from the left,
+       wrapping where the room runs out. The field may go below the width its content asks for, which is what lets
+       the wrapping happen; the old chip row scrolled inside itself, and nothing here does. */
+    const field = bodyOf('.rankings__field--categories')
 
-       This asked one more thing of a search box that took whatever was left of
-       the row, until the box went (owner, 31.07.2026). The rule outlived it by
-       a commit, and a review found the pair: a stylesheet block that no element
-       on the portal wears, held in place by a test that made it look wanted. A
-       guard over something that is not drawn is worse than no guard, because
-       whoever comes to tidy the sheet has to delete the test to do it. */
-    const chips = bodyOf('.rankings__field--categories')
-
-    expect(chips).toContain('flex: 0 1 auto')
-    expect(chips).toContain('min-inline-size: 0')
-  })
-
-  it('lets the chips scroll inside themselves rather than pushing the page', () => {
-    /* The other half of the pair: `min-inline-size: 0` lets the field shrink,
-       and this is what the shrinking is for. Without it a season with ten
-       categories pushes the page sideways at 560px, which is the fault the
-       shrinking was written to fix. */
-    /* Read out of the rule that declares it, not the last rule of that name:
-       the chip row is written twice, once for the row it stands in and once for
-       itself, and `bodyOf` answers with the later. */
-    const rows = SHEET.slice(SHEET.indexOf('.rankings__categories {'))
-
-    expect(rows.slice(0, rows.indexOf('}'))).toContain('overflow-x: auto')
-  })
-
-  it('stands the categories as tall as the controls beside them', () => {
-    /* The chips are shorter than a select, so without this they sat between the
-       top and the bottom of the row and the two controls shared neither. */
-    expect(bodyOf('.rankings__field--categories .rankings__categories')).toContain(
-      'min-height: 2.5rem',
+    expect(field).toContain('flex: 0 1 auto')
+    expect(field).toContain('min-inline-size: 0')
+    expect(SHEET).not.toContain('.rankings__categories')
+    expect(SHEET).not.toContain('.rankings__category')
+    expect(readFileSync(join(process.cwd(), 'src/components/Segmented.css'), 'utf-8')).toMatch(
+      /\.seg--fit \{\s*inline-size: fit-content;\s*max-inline-size: 100%;/,
     )
   })
 })
