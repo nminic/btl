@@ -768,7 +768,7 @@
     "descent": "Descent",
     "time": "Time on course",
     "points": "Points",
-    "results": "Results",
+    "racesHeading": "Races",
     "noResults": "There is no result on this profile yet.",
     "columns": {
       "date": "Date",
@@ -821,7 +821,6 @@
     "bio": "In their own words",
     "bioEmpty": "This competitor has not written anything about themselves yet.",
     "length": "Distance",
-    "allLengths": "All distances",
     "lengthsShort": {
       "all": "All",
       "short": "Short",
@@ -832,7 +831,6 @@
     },
     "noneInLength": "There is no result of the chosen distance.",
     "unscoredFilter": "Unscored races",
-    "unscoredShort": "Unscored",
     "unscoredWord": {
       "one": "unscored race",
       "few": "unscored races",
@@ -844,8 +842,6 @@
       "other": "unscored"
     },
     "noPoints": "No points",
-    "noneUnscored": "There is no unscored race.",
-    "noneUnscoredInFilter": "There is no unscored race in the chosen year.",
     "clearFilters": "Clear the filters",
     "parts": {
       "label": "Parts of the profile",

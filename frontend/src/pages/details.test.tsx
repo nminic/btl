@@ -259,7 +259,7 @@ describe('EventDetail, the results of the league members who ran it', () => {
     // Whose profile this is, taken from the screen rather than written down, so
     // the test does not have to be edited when the generated names change.
     const runner = must((await screen.findByRole('heading', { level: 1 })).textContent, 'text')
-    const results = screen.getByRole('table', { name: 'Rezultati' })
+    const results = screen.getByRole('table', { name: 'Trke' })
     // Row 1 is the first result under the heading row, whichever race it is.
     const firstResult = at(within(results).getAllByRole('row'), 1)
     const race = first(within(firstResult).getAllByRole('link'))

@@ -43,8 +43,8 @@ describe('arriving on a new screen', () => {
     const user = setupUser()
     renderAt('/sr/takmicar/000002?sezona=sve')
 
-    await screen.findByRole('table', { name: 'Rezultati' })
-    const chip = screen.getByRole('button', { name: 'Polumaraton 21,1 km' })
+    await screen.findByRole('table', { name: 'Trke' })
+    const chip = screen.getByRole('button', { name: '21,1 km, Polumaraton' })
     await user.click(chip)
 
     /* Choosing a filter is not arriving anywhere. Moving the focus on every
@@ -90,13 +90,13 @@ describe('the scroll, on the way between screens', () => {
     const user = setupUser()
     renderAt('/sr/takmicar/000002?sezona=sve')
 
-    await screen.findByRole('table', { name: 'Rezultati' })
+    await screen.findByRole('table', { name: 'Trke' })
 
     Object.defineProperty(window, 'scrollY', { value: 800, writable: true, configurable: true })
     Object.defineProperty(window, 'pageYOffset', { value: 800, writable: true, configurable: true })
     vi.mocked(window.scrollTo).mockClear()
 
-    await user.click(screen.getByRole('button', { name: 'Polumaraton 21,1 km' }))
+    await user.click(screen.getByRole('button', { name: '21,1 km, Polumaraton' }))
     await new Promise((wait) => setTimeout(wait, 50))
 
     expect(window.scrollTo).not.toHaveBeenCalled()

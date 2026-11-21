@@ -20,8 +20,11 @@ import { TopTen } from './TopTen'
  */
 
 const home = readFileSync(join(process.cwd(), 'src/pages/Home.css'), 'utf-8').replaceAll('\r\n', '\n')
+const lengthFilter = readFileSync(join(process.cwd(), 'src/components/LengthFilter.css'), 'utf-8').replaceAll('\r\n', '\n')
 const counter = readFileSync(join(process.cwd(), 'src/styles/counter.css'), 'utf-8').replaceAll('\r\n', '\n')
-const sheets = `${home}\n${counter}`
+const sheets = `${home}
+${counter}
+${lengthFilter}`
 
 const person = (memberNumber: string): Competitor => ({
   memberNumber,
@@ -120,7 +123,7 @@ describe('the markup of the front page and the sheets that dress it', () => {
   })
 
   it('takes only the unit off the filter when the card is narrow, and asks the card and not the window', () => {
-    expect(home).toMatch(/@container \(max-width: [\d.]+rem\) \{\s*\.seg__km \{\s*display: none;/)
+    expect(lengthFilter).toMatch(/@container \(max-width: [\d.]+rem\) \{\s*\.seg__km \{\s*display: none;/)
     expect(home).toMatch(/\.home__next > \.card \{\s*container-type: inline-size;/)
   })
 
@@ -131,8 +134,8 @@ describe('the markup of the front page and the sheets that dress it', () => {
     expect(body(home, '.card__head')).toMatch(/display: flex;/)
     expect(body(home, '.card__head')).toMatch(/flex-wrap: wrap;/)
     expect(body(home, '.card__head-link')).toMatch(/margin-inline-start: auto;/)
-    expect(body(home, '.seg')).toMatch(/margin-block: var\(--space-6\) var\(--space-4\);/)
-    expect(body(home, '.seg')).not.toMatch(/margin-(top|bottom)/)
+    expect(body(home, '.home__next .seg')).toMatch(/margin-block: var\(--space-6\) var\(--space-4\);/)
+    expect(body(home, '.home__next .seg')).not.toMatch(/margin-(top|bottom)/)
     /* The room under the filter is counted to the text of the first race, so the row's own padding is taken back. */
     expect(body(home, '.seg + .extract')).toMatch(/margin-block-start: calc\(-1 \* var\(--space-12\)\);/)
   })

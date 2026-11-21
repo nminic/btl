@@ -359,7 +359,7 @@ describe('my profile', () => {
        places for one of them to come back. */
     renderAt('/sr/moj-profil', 'competitor', '000007')
 
-    expect(await screen.findByRole('table', { name: 'Rezultati' })).toBeVisible()
+    expect(await screen.findByRole('table', { name: 'Trke' })).toBeVisible()
 
     const main = within(screen.getByRole('main'))
 
@@ -390,7 +390,7 @@ describe('my profile', () => {
     const user = setupUser()
     renderAt('/sr/moj-profil', 'competitor', '000007')
 
-    await screen.findByRole('table', { name: 'Rezultati' })
+    await screen.findByRole('table', { name: 'Trke' })
 
     const menu = within(await openAccount(user))
     /* By where each leads, because the name of „Moji podaci" (second, owner 07.11.2026) is his profile's to

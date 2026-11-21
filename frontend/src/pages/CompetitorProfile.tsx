@@ -16,6 +16,7 @@ import { useSession } from '../session/useSession'
 import { profileFor } from './profile/visible'
 import { useGrowing } from '../components/growing'
 import { LoadMore } from '../components/LoadMore'
+import { LengthFilter } from '../components/LengthFilter'
 import { Counters } from './home/Counters'
 import {
   CATEGORIES,
@@ -25,7 +26,7 @@ import {
   totalsOf,
   pairsNow,
 } from '../data/derive'
-import type { Competitor, Gender, RacingPair, Result, Team } from '../data/types'
+import type { Competitor, Gender, RaceCategory, RacingPair, Result, Team } from '../data/types'
 import {
   combineFour,
   combinePair,
@@ -42,17 +43,6 @@ import { ProfileTop } from './profile/ProfileHead'
 import { ALL_SEASONS, offeredSeason, useSeason } from '../components/season'
 import { useFilterParams } from '../app/useFilterParams'
 import './Profile.css'
-
-/** What the address says when no length is chosen. The same word the season
- *  uses, and a constant of its own: they are two filters that happen to spell
- *  their "everything" the same way, and one of them changing its mind must not
- *  silently change the other. */
-const ALL_LENGTHS = 'sve'
-
-/** What the address says when the filter is „Nebodovane trke" (PDL, 14.11.2026, „Ostale discipline kao
- *  lična evidencija"). The seventh value of the same parameter as the five lengths: it is chosen
- *  from the same row and it excludes them, so it is one choice and not a second filter. */
-const UNSCORED_LENGTH = 'nebodovane'
 
 /** One line of the table: a result and whether the league scored it. A pair rather than a flag on
  *  `Result`, because the type is the one `/api/results` serves and an unscored result is the very
@@ -124,61 +114,6 @@ function Biography({ text, gender }: { text: string | null; gender: Gender }) {
 }
 
 /**
- * The length filter, as one row rather than a list that has to be opened: „Sve", the five lengths,
- * and since 14.11.2026 a seventh, „Nebodovane trke".
- *
- * Two clicks became one (owner, 31.07.2026), and the row takes the same height
- * the closed select took, so nothing below it moved. The set is closed (seven, and
- * the seventh is a kind of race and not a length), which is what makes this shape
- * safe: a filter with an open-ended set of values could not be laid out flat.
- *
- * Each one carries two names: the length as the rest of the portal says it, and
- * the short form that fits on a telephone, where six controls have to share
- * three hundred and sixty pixels. Both are always read out and only one is ever
- * on screen, which the stylesheet decides. Hiding the other one from the reading
- * as well would leave the control with no name at all on the width where it is
- * used most.
- */
-function LengthFilter({
-  value,
-  onChange,
-}: {
-  value: string
-  onChange: (value: string) => void
-}) {
-  const { t } = useI18n()
-  const options = [
-    { key: ALL_LENGTHS, full: t('profile.allLengths'), short: t('profile.lengthsShort.all') },
-    ...CATEGORIES.map((one) => ({
-      key: one,
-      full: t(`category.${one}`),
-      short: t(`profile.lengthsShort.${one}`),
-    })),
-    /* The races the league does not score, last: it is not a length and does not sit among them. */
-    { key: UNSCORED_LENGTH, full: t('profile.unscoredFilter'), short: t('profile.unscoredShort') },
-  ]
-
-  return (
-    <div className="profile__lengths" role="group" aria-label={t('profile.length')}>
-      {options.map((option) => (
-        <button
-          key={option.key}
-          type="button"
-          className={
-            value === option.key ? 'profile__length profile__length--on' : 'profile__length'
-          }
-          aria-pressed={value === option.key}
-          onClick={() => onChange(option.key)}
-        >
-          <span className="profile__length-full">{option.full}</span>{' '}
-          <span className="profile__length-short">{option.short}</span>
-        </button>
-      ))}
-    </div>
-  )
-}
-
-/**
  * The profile, as one page of two parts (the design decision of 30.07.2026).
  *
  * This is the first: who the person is, then one row of three answering who they
@@ -238,13 +173,10 @@ function ProfileBody({
 
   /* The length has no such treatment as the season: an unknown length is nothing
      the row of six can show as chosen and nothing a table can narrow by, so it
-     is ignored. */
+     is ignored, and the address that used to ask for „Nebodovane trke" (`duzina=nebodovane`, until
+     21.11.2026) opens on „Sve" like any other it does not know. */
   const askedLength = params.get('duzina')
-  const length =
-    askedLength !== null &&
-    (askedLength === UNSCORED_LENGTH || CATEGORIES.some((one) => one === askedLength))
-      ? askedLength
-      : ALL_LENGTHS
+  const length: RaceCategory | null = CATEGORIES.find((one) => one === askedLength) ?? null
 
   const inSeason = useMemo(
     () => mine.filter((result) => season === ALL_SEASONS || result.date.startsWith(season)),
@@ -254,23 +186,19 @@ function ProfileBody({
     () => unscoredMine.filter((result) => season === ALL_SEASONS || result.date.startsWith(season)),
     [unscoredMine, season],
   )
-  /* WHAT THE TABLE HOLDS, by the owner's decision of 14.11.2026: „Sve" shows the scored and the
-     unscored together, a length shows only the scored ones of that length, and „Nebodovane trke"
-     shows only those. Newest first, and on one day the scored one first (the sort is stable and the
+  /* WHAT THE TABLE HOLDS, by the owner's decisions of 14.11.2026 and 21.11.2026: „Sve" shows the scored
+     and the unscored together, a length shows only the scored ones of that length, and there is no
+     button for the unscored ones alone. Newest first, and on one day the scored one first (the sort is stable and the
      scored ones are put in first). */
   const shown = useMemo<Line[]>(() => {
     const scored = (): Line[] =>
       inSeason
-        .filter((result) => length === ALL_LENGTHS || result.category === length)
+        .filter((result) => length === null || result.category === length)
         .map((result) => ({ result, unscored: false }))
     const unscoredLines = (): Line[] =>
       unscoredInSeason.map((result) => ({ result, unscored: true }))
 
-    if (length === UNSCORED_LENGTH) {
-      return unscoredLines()
-    }
-
-    return length === ALL_LENGTHS
+    return length === null
       ? [...scored(), ...unscoredLines()].sort((left, right) =>
           right.result.date.localeCompare(left.result.date),
         )
@@ -305,10 +233,10 @@ function ProfileBody({
     more,
   } = useGrowing(shown.length, AT_FIRST, params.toString())
 
-  function changeLength(value: string) {
+  function changeLength(value: RaceCategory | null) {
     const merged = new URLSearchParams(params)
 
-    if (value === ALL_LENGTHS) {
+    if (value === null) {
       merged.delete('duzina')
     } else {
       merged.set('duzina', value)
@@ -355,15 +283,15 @@ function ProfileBody({
 
       <section className="profile__results" aria-labelledby="profile-results">
         <h2 className="profile__section" id="profile-results">
-          {t('profile.results')} <span className="profile__count">{shown.length}</span>
+          {t('profile.racesHeading')} <span className="profile__count">{shown.length}</span>
         </h2>
 
         <LengthFilter value={length} onChange={changeLength} />
 
         {shown.length === 0 ? (
           <div className="profile__results-empty">
-            <p>{emptyText(t, mine.length + unscoredMine.length, season, length)}</p>
-            {(season !== ALL_SEASONS || length !== ALL_LENGTHS) && (
+            <p>{emptyText(t, mine.length + unscoredMine.length, season)}</p>
+            {(season !== ALL_SEASONS || length !== null) && (
               <button
                 type="button"
                 className="button button--secondary"
@@ -376,7 +304,7 @@ function ProfileBody({
         ) : (
           <div className="table-scroll">
             <table className="table">
-              <caption className="visually-hidden">{t('profile.results')}</caption>
+              <caption className="visually-hidden">{t('profile.racesHeading')}</caption>
               <thead>
                 <tr>
                   <th scope="col">{t('profile.columns.date')}</th>
@@ -492,14 +420,7 @@ function emptyText(
   t: (key: string, params?: Record<string, string | number>) => string,
   raced: number,
   season: string,
-  length: string,
 ): string {
-  if (length === UNSCORED_LENGTH && raced > 0) {
-    /* Its own pair of sentences, because „nema rezultata izabrane distance" is about a length and
-       the unscored races are not one. */
-    return season === ALL_SEASONS ? t('profile.noneUnscored') : t('profile.noneUnscoredInFilter')
-  }
-
   if (raced === 0) {
     /* Written without a gender, unlike the biography above it. The portal has
        exactly one member who has never raced, so one of the two forms of this

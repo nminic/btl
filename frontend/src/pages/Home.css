@@ -465,18 +465,16 @@
   container-type: inline-size;
 }
 
-.seg {
-  display: flex;
-  align-items: stretch;
-  gap: 0;
-  padding: var(--space-2);
-  border: 1px solid var(--control-border);
-  border-radius: var(--radius-round);
-  /* The filter stands half way between the title and the TEXT of the first race (owner, 21.11.2026): the
-     gap of the card is 10px, so 6px above makes 16px under the title. Under it the text of the first race
-     is 1px in from the frame of its row once the row's own padding is taken back (below), so 4px makes
-     10 + 4 + 1 = 15px to the text: the scale has only even steps, and one pixel is the least it can be
-     off. Measured: 16 and 15 at the reader's own text, and twice that at 200 per cent. */
+/* The filter itself lives in `components/LengthFilter.css`, shared with the profile. What is the card's own
+   is the room around it, and it is asked of the card of the calendar only (`.home__next`), so the filter of
+   the profile keeps the room it has.
+
+   The filter stands half way between the title and the TEXT of the first race (owner, 21.11.2026): the
+   gap of the card is 10px, so 6px above makes 16px under the title. Under it the text of the first race
+   is 1px in from the frame of its row once the row's own padding is taken back (below), so 4px makes
+   10 + 4 + 1 = 15px to the text: the scale has only even steps, and one pixel is the least it can be
+   off. Measured: 16 and 15 at the reader's own text, and twice that at 200 per cent. */
+.home__next .seg {
   margin-block: var(--space-6) var(--space-4);
 }
 
@@ -486,45 +484,6 @@
    rows as they are and gives the room to the list, so the count of rows by height is still of whole rows. */
 .seg + .extract {
   margin-block-start: calc(-1 * var(--space-12));
-}
-
-.seg__b {
-  flex: 1 1 auto;
-  min-width: 0;
-  min-block-size: 1.75rem;
-  padding: var(--space-4) var(--space-6);
-  border: 0;
-  border-radius: var(--radius-round);
-  background: transparent;
-  color: var(--text-muted);
-  font: inherit;
-  font-size: 0.75rem;
-  font-weight: 600;
-  line-height: 1.2;
-  white-space: nowrap;
-  text-align: center;
-  cursor: pointer;
-}
-
-.seg__b:hover {
-  color: var(--text);
-}
-
-.seg__b--on {
-  background: var(--surface-hover);
-  color: var(--text);
-  box-shadow: 0 0 0 1px var(--accent);
-}
-
-@container (max-width: 16.875rem) {
-  .seg__km {
-    display: none;
-  }
-
-  .seg__b {
-    padding-inline: var(--space-4);
-    font-size: 0.72rem;
-  }
 }
 
 /* The seasonal slot that stood at the foot of the right column was removed on

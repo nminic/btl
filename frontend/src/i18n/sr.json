@@ -768,7 +768,7 @@
     "descent": "Spust",
     "time": "Vreme na stazi",
     "points": "Bodova",
-    "results": "Rezultati",
+    "racesHeading": "Trke",
     "noResults": "Na ovom profilu još nema nijednog rezultata.",
     "columns": {
       "date": "Datum",
@@ -821,7 +821,6 @@
     "bio": "Svojim rečima",
     "bioEmpty": "Ovaj takmičar još nije napisao ništa o sebi.",
     "length": "Distanca",
-    "allLengths": "Sve distance",
     "lengthsShort": {
       "all": "Sve",
       "short": "Kratke",
@@ -832,7 +831,6 @@
     },
     "noneInLength": "Nema nijednog rezultata izabrane distance.",
     "unscoredFilter": "Nebodovane trke",
-    "unscoredShort": "Nebodovane",
     "unscoredWord": {
       "one": "nebodovana trka",
       "few": "nebodovane trke",
@@ -844,8 +842,6 @@
       "other": "nebodovanih"
     },
     "noPoints": "Bez bodova",
-    "noneUnscored": "Nema nijedne nebodovane trke.",
-    "noneUnscoredInFilter": "Za izabranu godinu nema nijedne nebodovane trke.",
     "clearFilters": "Poništi filtere",
     "parts": {
       "label": "Delovi profila",
