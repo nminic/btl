@@ -150,6 +150,106 @@ for (const at of WIDTHS) {
 }
 
 /**
+ * UNDER REDUCED MOTION THE BOX IS NEVER DRAWN AT THE CORNER ON ITS WAY TO ITS PLACE (21.11.2026).
+ *
+ * `.action-tip` is `position: fixed; top: 0; left: 0` and `place()` writes where it goes in a layout
+ * effect. It declares no transition, so it has `transition-property: all` and a duration of 0, and the
+ * rule for reduced motion in `index.css` gave every element `transition-duration: 0.01ms`: the written
+ * `left` and `top` became a transition, and Chrome drew the box at `left: 0` for a frame before it was
+ * in its place. Measured on the built portal at 1280px under `reduce`, the left edge of the box frame by
+ * frame, on the pointer `12ms: none, 27ms: 0, 43ms: 1123` and on the keyboard `19ms: 0, 30ms: 0,
+ * 46ms: 1123`. Whoever asks for less motion saw it on the live portal.
+ *
+ * Asked here of every frame (`requestAnimationFrame`) from before the box opens until twenty frames
+ * after it is drawn: no frame draws it nearer an edge of the window than `EDGE`, which the corner is,
+ * and at least one frame draws it, so a run that never saw the box passes nothing. The media is
+ * emulated after the page is open, the way a reader who changes the setting meets it, and the page is
+ * asked whether it holds before anything is read.
+ */
+for (const at of WIDTHS) {
+  test(`the box is never drawn at the corner on its way to its place under reduced motion, at ${label(at)}`, async ({
+    open,
+  }) => {
+    const { page } = await open(at, '/sr/administracija/clanovi', 'tbody tr', ANSWERS)
+    const cross = page.getByRole('button', { name: /^Obriši: / }).first()
+
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    expect(await page.evaluate(() => matchMedia('(prefers-reduced-motion: reduce)').matches), 'reduced motion holds').toBe(true)
+
+    await cross.scrollIntoViewIfNeeded()
+    await page.evaluate(() => {
+      const box = document.querySelector('.table-scroll')
+
+      if (box !== null) {
+        box.scrollLeft = box.scrollWidth
+      }
+    })
+
+    for (const how of ['the pointer', 'the keyboard'] as const) {
+      await page.mouse.move(1, 1)
+      await page.keyboard.press('Escape')
+      await expect(page.locator('.action-tip')).toHaveCount(0)
+
+      /* Every frame from here on says where the box stands, or that there is none. */
+      await page.evaluate(() => {
+        const frames: (number | null)[] = []
+        const holder = window as unknown as { frames: (number | null)[]; recording: boolean }
+
+        holder.frames = frames
+        holder.recording = true
+
+        const frame = () => {
+          const words = document.querySelector('.action-tip__words')
+
+          frames.push(words === null ? null : words.getBoundingClientRect().left)
+
+          if (holder.recording) {
+            requestAnimationFrame(frame)
+          }
+        }
+
+        requestAnimationFrame(frame)
+      })
+
+      if (how === 'the pointer') {
+        await cross.hover()
+      } else {
+        await cross.focus()
+        await page.keyboard.press('Shift+Tab')
+        await page.keyboard.press('Tab')
+      }
+
+      await page.locator('.action-tip').waitFor({ state: 'visible' })
+      await page.evaluate(
+        () =>
+          new Promise<void>((done) => {
+            const holder = window as unknown as { frames: (number | null)[] }
+            const drawnAt = holder.frames.length
+            const wait = () => (holder.frames.length - drawnAt >= 20 ? done() : requestAnimationFrame(wait))
+
+            wait()
+          }),
+      )
+
+      const frames = await page.evaluate(() => {
+        const holder = window as unknown as { frames: (number | null)[]; recording: boolean }
+
+        holder.recording = false
+
+        return holder.frames
+      })
+      const drawn = frames.filter((one): one is number => one !== null)
+
+      expect(drawn.length, `frames that draw the box on ${how}`).toBeGreaterThan(0)
+      expect(
+        drawn.filter((left) => left < EDGE),
+        `the left edge of the box in every frame on ${how}, ${frames.join(', ')}`,
+      ).toEqual([])
+    }
+  })
+}
+
+/**
  * EVERY SYMBOL STANDS IN THE MIDDLE OF ITS SQUARE, ON EVERY SCREEN THAT DRAWS ONE (review of PR 593).
  *
  * **Two sizes since 25.10.2026, and which one is read off the page, not off a list**: 28px for a symbol on
