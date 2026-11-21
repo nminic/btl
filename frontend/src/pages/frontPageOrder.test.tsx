@@ -1,4 +1,5 @@
 import { act, screen, within } from '@testing-library/react'
+import { at } from '../test/at'
 import { setupUser } from '../test/user'
 import { matchingMedia } from '../test/media'
 import { renderAt } from '../test/render'
@@ -205,5 +206,78 @@ describe('the front page while its window changes width', () => {
     view.become(false)
 
     expect(document.body).toHaveFocus()
+  })
+})
+
+/**
+ * **THE FOCUS GOES BACK TO WHAT IT WAS ON, OR TO THE HEADING OF ITS WIDGET, AND NEVER TO ANOTHER LINK** (review,
+ * 21.11.2026: with „Ultra" chosen the focus on „Ceo kalendar" ended on „A:Splitski maraton", and the focus on
+ * „Ultramaraton Palić" ended on „Šidski novogodišnji maraton", because the place in the list was kept and the
+ * filter had gone back to „Sve", so the same place was another race and Enter opened it).
+ */
+describe('the focus after the front page is written again', () => {
+  const previous = window.matchMedia
+
+  afterEach(() => {
+    window.matchMedia = previous
+  })
+
+  const calendar = () => screen.getByRole('region', { name: 'Priprema, pozor, SAD!' })
+  const races = () => within(calendar()).getAllByRole('listitem').map((one) => within(one).getByRole('link'))
+
+  it('stays on „Ceo kalendar" when the filter was „Ultra" and goes back to „Sve"', async () => {
+    const user = setupUser()
+    const view = aWindow(true)
+
+    renderAt('/sr')
+    await screen.findByRole('heading', { level: 2, name: 'Priprema, pozor, SAD!' })
+    await user.click(within(calendar()).getByRole('button', { name: 'Ultra, Ultramaraton' }))
+
+    const more = within(calendar()).getByRole('link', { name: 'Ceo kalendar' })
+
+    act(() => more.focus())
+    view.become(false)
+
+    expect(within(calendar()).getByRole('link', { name: 'Ceo kalendar' })).toHaveFocus()
+  })
+
+  it('goes to the heading of the calendar, and to no other race, when the race it was on is not under „Sve"', async () => {
+    const user = setupUser()
+    const view = aWindow(true)
+
+    renderAt('/sr')
+    await screen.findByRole('heading', { level: 2, name: 'Priprema, pozor, SAD!' })
+
+    const underAll = races().map((one) => one.textContent)
+
+    await user.click(within(calendar()).getByRole('button', { name: 'Ultra, Ultramaraton' }))
+
+    // The case needs a race that only „Ultra" shows, or it asks nothing.
+    const only = races().find((one) => !underAll.includes(one.textContent))
+
+    expect(only, 'every race under „Ultra" is under „Sve" as well').toBeDefined()
+
+    act(() => only?.focus())
+    view.become(false)
+
+    expect(races().map((one) => one.textContent)).not.toContain(only?.textContent)
+    expect(screen.getByRole('heading', { level: 2, name: 'Priprema, pozor, SAD!' })).toHaveFocus()
+    expect(document.activeElement?.tagName).not.toBe('A')
+  })
+
+  it('stays on the same race when it is under „Sve" as well', async () => {
+    const view = aWindow(true)
+
+    renderAt('/sr')
+    await screen.findByRole('heading', { level: 2, name: 'Priprema, pozor, SAD!' })
+
+    const third = at(races(), 2)
+    const name = third.textContent
+
+    act(() => third.focus())
+    view.become(false)
+
+    expect(document.activeElement?.tagName).toBe('A')
+    expect(document.activeElement?.textContent).toBe(name)
   })
 })

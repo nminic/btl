@@ -524,3 +524,57 @@ test('the focus in a widget that is written again goes back to the same button o
   expect(focus.tag).toBe('BUTTON')
   expect(focus.text).toContain('Ultra')
 })
+
+/**
+ * **THE FOCUS GOES BACK TO WHAT IT WAS ON, OR TO THE HEADING OF ITS WIDGET, NEVER TO ANOTHER LINK** (review,
+ * 21.11.2026), in Chrome: „Ultra" chosen on 1280, the focus on „Ceo kalendar" or on a race only „Ultra" shows,
+ * then 768, where the filter is back at „Sve". The place in the list used to be kept, and it was another race.
+ */
+test('the focus on „Ceo kalendar" stays on it when the filter goes back to „Sve"', async ({ open }) => {
+  const { page } = await open({ width: 1280, text: 100 }, '/sr', '.top10 .stand', ANSWERS)
+
+  await page.locator('.home__next').getByRole('button', { name: /^Ultra/ }).click()
+  await page.locator('.home__next').getByRole('link', { name: 'Ceo kalendar' }).focus()
+  await page.setViewportSize({ width: 768, height: 900 })
+  await page.locator('.home__colL').waitFor({ state: 'detached' })
+
+  const seen = await page.evaluate(() => ({
+    tag: document.activeElement?.tagName ?? '',
+    text: (document.activeElement?.textContent ?? '').trim(),
+  }))
+
+  expect(seen).toEqual({ tag: 'A', text: 'Ceo kalendar' })
+})
+
+test('the focus on a race only „Ultra" shows goes to the heading of the calendar, and to no other race', async ({
+  open,
+  theDay,
+}) => {
+  /* The calendar of the sample is read as of the day, and on the other one every race under „Ultra" is also among
+     the nine of „Sve", so there is no race that only „Ultra" shows. */
+  test.skip(theDay !== THE_DAY_THE_SUITE_IS_READ_AS, 'no race is only under Ultra on this day')
+
+  const { page } = await open({ width: 1280, text: 100 }, '/sr', '.top10 .stand', ANSWERS)
+  const names = () => page.locator('.home__next .extract__name a').allTextContents()
+
+  const underAll = await names()
+
+  await page.locator('.home__next').getByRole('button', { name: /^Ultra/ }).click()
+
+  const only = (await names()).find((one) => !underAll.includes(one))
+
+  expect(only, 'every race under „Ultra" is under „Sve" as well').toBeDefined()
+
+  await page.locator('.home__next .extract__name a', { hasText: only ?? '' }).first().focus()
+  await page.setViewportSize({ width: 768, height: 900 })
+  await page.locator('.home__colL').waitFor({ state: 'detached' })
+
+  expect(await names()).not.toContain(only)
+
+  const seen = await page.evaluate(() => ({
+    tag: document.activeElement?.tagName ?? '',
+    text: (document.activeElement?.textContent ?? '').trim(),
+  }))
+
+  expect(seen).toEqual({ tag: 'H2', text: 'Priprema, pozor, SAD!' })
+})
