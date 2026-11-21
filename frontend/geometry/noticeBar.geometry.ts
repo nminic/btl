@@ -63,7 +63,8 @@ for (const at of WIDTHS) {
       const box = (selector: string) => document.querySelector(selector)?.getBoundingClientRect()
       const note = box('.notice')
       const header = box('header')
-      const main = box('main')
+      /* The strip is the first thing in `main`, so the content starts where the thing after it starts. */
+      const main = document.querySelector('.notice')?.nextElementSibling?.getBoundingClientRect()
       const text = document.querySelector<HTMLElement>('.notice__text')
       const close = box('.notice__close')
 

@@ -2,7 +2,7 @@
  * početka prve sezone": „zamišljam zlatnu liniju odmah ispod headera a iznad sadržaja tela strane tako da se
  * može ugasiti na neki krstić desno").
  *
- * It is not part of the header, and that is why nothing the header's geometry is measured by moves: the
+ * It is not part of the header (it is the first thing in `main`, see `.notice` below), and that is why nothing the header's geometry is measured by moves: the
  * strip stands after it in the document and takes its own height from its own text. It carries no
  * `z-index`, so the panels that hang from the header (language, messages, account) go over it and not under
  * it. Its line is the gold line of the header (`--race-gold`, `app/RaceInMotion.css`), thin, and fading
@@ -31,6 +31,13 @@
 
 .notice {
   position: relative;
+  /* The strip stands in `main` (axe's `region` rule), whose column is narrower than the window, so it is
+     drawn out to the window's own edges: as wide as the window and centred on the column, which is centred
+     on the window. The two vertical margins undo and give back `main`'s own top padding, so it stays
+     exactly where it was under the header, with the same space below it. The few pixels a classic
+     scrollbar adds to `100vw` are cut off by `.shell` (`overflow-x: clip`). */
+  inline-size: 100vw;
+  margin: calc(var(--space-20) * -1) calc(50% - 50vw) var(--space-20);
   background: var(--notice-face);
   color: var(--text);
 }

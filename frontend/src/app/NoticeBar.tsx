@@ -61,7 +61,8 @@ function forgetIt(): void {
  *
  * **Not a header, and not a landmark.** `role="note"` with a name, which is not a region: one more
  * landmark would change the count every screen reader announces, and `alert` or `status` would interrupt a
- * reader for a sentence that is not urgent. After the cross the focus goes to the main content, because the
+ * reader for a sentence that is not urgent. It stands inside `main`, as its first child, because axe's `region` rule asks for all content to be inside a
+ * landmark; the header is not where it goes, so the header's height and every measure taken of it stay what they were. After the cross the focus goes to the main content, because the
  * button it was on is gone.
  */
 export function NoticeBar({ main }: { main: RefObject<HTMLElement | null> }) {

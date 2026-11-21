@@ -387,12 +387,6 @@ export function Shell() {
         )}
       </header>
 
-      {/* THE GOLD STRIP, AFTER THE HEADER AND NOT IN IT (owner, 21.11.2026, PDL „Zlatna traka obaveštenja
-          ispod zaglavlja"): the height of the header and every measure taken of it stay what they were. It
-          is given the main content, which the focus goes to when the cross has been pressed
-          (`app/NoticeBar.tsx`). */}
-      <NoticeBar main={main} />
-
       {/* Back to the top on a new screen, and back where it was on the way back.
           A data router turns the browser's own handling off, so without this
           every screen opened from halfway down a table opened halfway down.
@@ -418,6 +412,12 @@ export function Shell() {
           two directions at once. */}
       <PageMetaContext.Provider value={declare}>
         <main id="content" className="shell__main" ref={main} tabIndex={-1}>
+          {/* THE GOLD STRIP, THE FIRST THING IN THE MAIN CONTENT, which is where it stands under the header
+              (owner, 21.11.2026, PDL „Zlatna traka obaveštenja ispod zaglavlja"). It is in `main` and not
+              beside it because axe's `region` rule asks for all content to be inside a landmark, and the
+              strip is a note and not one (`app/NoticeBar.tsx`); the header is left alone, so its height and
+              every measure taken of it stay what they were. */}
+          <NoticeBar main={main} />
           <ErrorBoundary
             fallback={
               <div role="alert">

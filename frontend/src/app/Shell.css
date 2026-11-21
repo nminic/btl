@@ -8,6 +8,9 @@
   flex-direction: column;
   min-width: 0;
   isolation: isolate;
+  /* The gold strip is drawn as wide as `100vw`, which with a classic scrollbar is a little wider than the
+     window; clipped here so that makes no sideways scrolling (`app/NoticeBar.css`). */
+  overflow-x: clip;
 }
 
 .shell__skip {
