@@ -374,6 +374,21 @@ describe('TopTen', () => {
       ])
     })
 
+    /* A result of 2027 read on the day before is not something production holds, but a fixture can, and the
+       rule is „every member", so the member who has points of the season prints the history too: 60,75 and
+       12,34 are 73,09, a figure neither of the two is. */
+    it('prints the history of a member who already has points of the season as well', () => {
+      const raced = [...history, { ...result('000001', 12.34), date: '2027-03-01' }]
+
+      renderWidget(
+        <TopTen competitors={field} results={raced} season={2027} today={THE_DAY_BEFORE} gender="M" />,
+      )
+
+      expect(shown().podium.slice(0, 1).map((one) => /Ime(\d{6})(\d+,\d\d p)/.exec(one ?? '')?.slice(1))).toEqual([
+        ['000001', '73,09 p'],
+      ])
+    })
+
     it('prints the points of the season, and not the history, from the first day of 2027', () => {
       const raced = [
         ...history,
