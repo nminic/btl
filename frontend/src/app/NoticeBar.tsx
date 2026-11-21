@@ -36,7 +36,8 @@ function forgetIt(): void {
 /**
  * THE GOLD STRIP UNDER THE HEADER, UNTIL THE FIRST SEASON BEGINS (owner, 21.11.2026, PDL „Zlatna traka
  * obaveštenja ispod zaglavlja, do početka prve sezone"). It tells whoever arrives that the figures on the
- * screen are history, shown for fun, and that the official season begins on 1 January at midnight.
+ * screen are history and that the official season begins on 1 January at midnight. „shown for fun" was
+ * taken out of the text by the owner on 21.11.2026.
  *
  * **Where it stands: on the screens that show those figures, and nowhere else** (owner, answer 1): the front
  * page, the Top lists and the three cards of the BTL tables, Muškarci, Žene and Timovi (owner, 21.11.2026,
