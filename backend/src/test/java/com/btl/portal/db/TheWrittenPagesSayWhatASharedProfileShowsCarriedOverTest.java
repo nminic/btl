@@ -1,5 +1,6 @@
 package com.btl.portal.db;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.postgresql.util.PSQLException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,6 +31,16 @@ import static org.assertj.core.api.Assertions.catchThrowable;
  * finished text holds it.
  */
 class TheWrittenPagesSayWhatASharedProfileShowsCarriedOverTest extends DatabaseTest {
+
+	/**
+	 * V107 (21.11.2026) later changed the pronoun of the sentences this file asks about, and moved the sign-off of the three
+	 * documents, so what is asked here is asked of the text as V106 left it. The text the portal serves now is held by
+	 * {@link TheWrittenPagesSpeakToTheReaderAsTiTest}.
+	 */
+	@BeforeEach
+	void theTextAsV106LeftIt() {
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "107");
+	}
 
 	@Autowired
 	JdbcTemplate jdbc;

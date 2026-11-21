@@ -500,6 +500,42 @@ describe('the header, which is the one thing that differs for a signed in member
   })
 })
 
+describe('the way to joining, for somebody who has no account yet', () => {
+  /* PDL, owner, 21.11.2026, „Zaglavlje za posetioca": the header of a visitor on a desktop draws „Prijavi se"
+     as a person, and the sign in screen carries the way to registration: „Nemaš nalog? Učlani se". */
+
+  it('is a link under the form, named as the owner wrote it, and it leads to the registration', async () => {
+    aServerWhere(null)
+
+    const { router } = openSignIn()
+    const user = setupUser()
+    const way = await screen.findByRole('link', { name: 'Nemaš nalog? Učlani se' })
+
+    expect(way).toHaveAttribute('href', '/sr/registracija')
+    await user.click(way)
+
+    expect(router.state.location.pathname).toBe('/sr/registracija')
+  }, SLOW)
+
+  it('stands outside the form, so a reader tabbing from the password meets the button that signs in first', async () => {
+    aServerWhere(null)
+    openSignIn()
+
+    const way = await screen.findByRole('link', { name: 'Nemaš nalog? Učlani se' })
+
+    expect(way.closest('form')).toBeNull()
+  })
+
+  it('says it in English on the English address and leads to the English registration', async () => {
+    aServerWhere(null)
+    openSignIn('/en/prijava')
+
+    const way = await screen.findByRole('link', { name: 'No account yet? Join' })
+
+    expect(way).toHaveAttribute('href', '/en/registracija')
+  })
+})
+
 describe('a visit that arrives already carrying a session', () => {
   it('is signed in without anybody touching the form', async () => {
     aServerWhere({ role: 'moderator', account: 11 }, true)

@@ -244,6 +244,11 @@
     "openAccount": "Open an account",
     "openMyMenu": "Open my menu"
   },
+  "notice": {
+    "label": "Notice",
+    "text": "The data shown at the moment are the historical data of members, shown for fun. The official season begins on 1 January at midnight: then the counters and the standings start from zero for everyone, and whatever was run earlier stays on the profiles.",
+    "close": "Close the notice"
+  },
   "nav": {
     "home": "Home",
     "calendar": "Calendar",
@@ -1013,7 +1018,8 @@
     "needsBoth": "Enter an address and a password.",
     "refused": "The sign-in did not succeed. The address or the password is wrong, or the account is locked for a while after too many failed attempts.",
     "noWho": "Sign-in did not finish. Refresh the page and try again, and if it happens again, write to info@balkanskatrkackaliga.net.",
-    "forgotten": "A forgotten password"
+    "forgotten": "A forgotten password",
+    "noAccount": "No account yet? Join"
   },
   "newPassword": {
     "title": "A new password",
