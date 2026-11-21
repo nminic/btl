@@ -732,7 +732,7 @@
   display: grid;
   /* The points column is as wide as the widest figure, and no wider than 35% of the list: a figure that does not
      fit even then breaks after a thousands separator (`TopTen.tsx`, `Figure`) and does not push the list out. */
-  grid-template-columns: max-content 28px minmax(0, 1fr) fit-content(35%);
+  grid-template-columns: max-content 30px minmax(0, 1fr) fit-content(35%);
   column-gap: var(--space-8);
 }
 
@@ -742,10 +742,12 @@
   grid-column: 1 / -1;
   align-items: center;
   column-gap: var(--space-8);
-  padding: var(--space-6) 0;
+  /* Two pixels between the name and the category and a circle two pixels larger (owner, 21.11.2026), in the same
+     44px: the padding gives back what the gap takes, and the row stays the height it was. */
+  padding: var(--space-4) 0;
   border-bottom: 1px solid var(--border);
   min-block-size: 2.75rem;
-  row-gap: 0;
+  row-gap: var(--space-2);
 }
 
 .toprows .no {
@@ -767,8 +769,8 @@
 .home .top10 .toprows .portrait {
   /* In pixels and not in rem: a picture does not have to grow with the reader's text size (WCAG 1.4.4 is about
      text), and at 200% a circle of 56px was what left the name no column at all on a telephone. */
-  inline-size: 28px;
-  block-size: 28px;
+  inline-size: 30px;
+  block-size: 30px;
   font-size: 0.6rem;
   box-shadow: none;
 }
@@ -786,7 +788,7 @@
    after the review of PR 768: „Ime se nikad ne seče: gde ne staje u jedan red (na 560 i 860 px), prelazi u dva
    reda i red postaje viši"): the name wraps where it must and the row grows with it. Where it fits (768, 1024 and
    1280 at the browser's own text size) the row is the 2.75rem (44px) it always was: two lines of 0.9rem and 0.75rem
-   at a line height of 1.15 are 30px, the padding 12px, the border 1px. Nothing here clips, so the ring of focus
+   at a line height of 1.15 are 30px, the gap between them 2px, the padding 8px, the border 1px. Nothing here clips, so the ring of focus
    of the link (`index.css`, 2px and an offset of 2px) is drawn whole. The columns are a subgrid of one grid, so
    the points stay on one line at the right in every row, and two boards side by side stay one height because
    the grid they stand in stretches both. */
