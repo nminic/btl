@@ -38,8 +38,10 @@ function forgetIt(): void {
  * obaveštenja ispod zaglavlja, do početka prve sezone"). It tells whoever arrives that the figures on the
  * screen are history, shown for fun, and that the official season begins on 1 January at midnight.
  *
- * **Where it stands: on the three screens that show those figures, and nowhere else** (owner, answer 1):
- * the front page, the Top lists and the table (`NOTICE_SHOWN_ON`, one list of addresses, and
+ * **Where it stands: on the screens that show those figures, and nowhere else** (owner, answer 1): the front
+ * page, the Top lists and the three cards of the BTL tables, Muškarci, Žene and Timovi (owner, 21.11.2026,
+ * „„BTL tabela” znači sve tri kartice”: a strip on two cards and not on the third moves the cards when one is
+ * pressed). `NOTICE_SHOWN_ON` is one list of addresses, and
  * `app/noticeBar.test.tsx` asks every address the portal has which of them it is). A screen the owner did
  * not name is a screen where the sentence says nothing about anything on it.
  *

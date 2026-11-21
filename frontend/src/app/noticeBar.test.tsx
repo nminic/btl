@@ -31,12 +31,13 @@ const SENTENCE =
   'Zvanična sezona počinje 1. januara u ponoć: tada brojači i poredak kreću od nule za sve, ' +
   'a ono što je ranije istrčano ostaje na profilima.'
 
-/** The screens the strip stands on, as addresses a reader types. */
-const STANDS_ON = ['/sr', '/sr/top-liste', '/sr/tabela']
+/** The screens the strip stands on, as addresses a reader types: the front page, the Top lists and the three
+ *  cards of the BTL tables (Muškarci and Žene at `tabela`, Timovi at `timovi`; owner, 21.11.2026). */
+const STANDS_ON = ['/sr', '/sr/top-liste', '/sr/tabela', '/sr/timovi', '/en/timovi']
 
-/** The same three, as the part of the address after the language: written out here and not read from
+/** The same, as the part of the address after the language: written out here and not read from
  *  `NOTICE_SHOWN_ON`, which a list asked about itself could only agree with. */
-const THE_THREE: readonly string[] = ['', 'top-liste', 'tabela']
+const WHERE_IT_STANDS: readonly string[] = ['', 'top-liste', 'tabela', 'timovi']
 
 afterEach(() => {
   vi.restoreAllMocks()
@@ -123,14 +124,17 @@ describe('where the strip stands', { timeout: SLOW }, () => {
   })
 
   /* THE FLOOR, asked of the router rather than written out. Every address the portal has without a
-     parameter is opened, and the strip is on exactly the three the owner named: a fourth screen that
-     comes to carry it, or the teams (the third card of the tables, which the owner did not name) quietly
-     joining it, is a failing case here and not a surprise on the screen. */
-  it('is on the three screens named and on no other address the portal has', async () => {
+     parameter is opened, and the strip is on exactly the screens the owner named: the front page, the Top
+     lists and the three cards of the BTL tables. Another screen that comes to carry it, or the teams (the
+     third card) dropping out and moving the cards by the height of the strip when one is pressed, is a
+     failing case here and not a surprise on the screen. */
+  it('is on the screens named, the teams as the third card among them, and on no other address the portal has', async () => {
     const addresses = [...ROUTES, ...EXTRA_ADDRESSES].map((route) => route.path).filter((path) => !path.includes(':'))
 
     expect(addresses.length).toBeGreaterThan(20)
-    expect(addresses, 'the three are among the addresses opened').toEqual(expect.arrayContaining([...THE_THREE]))
+    expect(addresses, 'the named ones are among the addresses opened').toEqual(
+      expect.arrayContaining([...WHERE_IT_STANDS]),
+    )
 
     for (const address of addresses) {
       const { unmount } = renderAt(`/sr/${address}`, 'visitor', null, undefined, BEFORE)
@@ -139,7 +143,7 @@ describe('where the strip stands', { timeout: SLOW }, () => {
 
       const shown = screen.queryByRole('note', NOTE) !== null
 
-      expect(shown, `/sr/${address}`).toBe(THE_THREE.includes(address))
+      expect(shown, `/sr/${address}`).toBe(WHERE_IT_STANDS.includes(address))
       unmount()
     }
   }, 120_000)
@@ -243,7 +247,7 @@ describe('closing it', { timeout: SLOW }, () => {
     expect(screen.queryByRole('note', NOTE)).toBeNull()
   })
 
-  it('stays closed on a later visit, on any of the three screens, until the warm-up ends', async () => {
+  it('stays closed on a later visit, on any of the screens it stands on, until the warm-up ends', async () => {
     const user = setupUser()
     const first = renderAt('/sr', 'visitor', null, undefined, BEFORE)
 

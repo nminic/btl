@@ -172,14 +172,10 @@ type Box = { x: number; y: number; width: number; height: number }
 /** Where the three cards and the season stand, read off the page as it was drawn. */
 async function whereTheyStand(page: Page): Promise<{ cards: Box[]; season: Box }> {
   return page.evaluate((selector) => {
-    /* From the top of the main content and not of the page: the gold strip stands in the header on the screens the
-       owner named (`app/NoticeBar.tsx`) and the teams are not one of them, so measured from the page the same
-       card is a strip's height lower on the tables than on the teams, which is not a card that moved. */
-    const top = (document.querySelector('main')?.getBoundingClientRect().top ?? 0) + scrollY
     const box = (element: Element): Box => {
       const { x, y, width, height } = element.getBoundingClientRect()
 
-      return { x: x + scrollX, y: y + scrollY - top, width, height }
+      return { x: x + scrollX, y: y + scrollY, width, height }
     }
     const group = document.querySelector(selector)
     const season = [...document.querySelectorAll('label')].find((one) => one.textContent?.startsWith('Sezona'))
