@@ -390,15 +390,17 @@ describe('LeagueDetail', () => {
        the accessibility tree. */
     const opens = within(box).getByRole('button', { name: /Događaji i trke/ })
 
-    /* Open on arrival since 03.11.2026, so nothing is pressed. One line to an event since the same
-       day, so the events are the lines of the panel this button opens, read off its own
-       `aria-controls` rather than off anything else in the box. */
+    /* Open on arrival since 03.11.2026, so nothing is pressed. A tile to an event since 21.11.2026,
+       so the events are the tiles of the panel this button opens, read off its own `aria-controls`
+       rather than off anything else in the box. */
     expect(opens).toHaveAttribute('aria-expanded', 'true')
     const panel = must(
       document.getElementById(must(opens.getAttribute('aria-controls'), 'what the button opens')),
       'the panel of the box',
     )
-    const days = await within(panel).findAllByRole('listitem')
+    const days = tilesOf(
+      must(first(await within(panel).findAllByRole('link')).closest('ul'), 'the list of the tiles'),
+    )
     expect(days.length).toBeGreaterThan(1)
     /* Said as a number and the word that fits it since 21.11.2026 (a pill of the sheet), so the number
        must stand whole: not the tail of a longer one. */
@@ -592,10 +594,12 @@ describe('LeagueDetail', () => {
     expect(await screen.findByRole('link', { name: 'Podgorička desetka' })).toBeVisible()
   }, SLOW)
 
-  it('lists each event that counts in one line: its day, and the measures of its races that count', async () => {
+  it('gives each event that counts a tile: its day, and the measures of its races that count', async () => {
     /* Owner, 03.11.2026: „u jednom redu formata BBKT (10.1.2027.) - 12 km, 6 km, 3 km", with no
        nought after the decimal comma that can be left off, and the day written as the rest of the
-       portal writes one (he chose that the same day).
+       portal writes one (he chose that the same day). A tile to an event since 21.11.2026 („u prvom
+       redu stanje levo … i datum desno, u drugom naziv levo i dužine desno"), which carries the same
+       three things.
 
        **Built out of the races and not out of the events**, which is what the competition's own
        data is arranged to measure: `brdska-2019` holds an event whose races have never been
@@ -621,7 +625,7 @@ describe('LeagueDetail', () => {
       (await screen.findByRole('link', { name: 'Mrazijada' })).closest('ul'),
       'the list of events',
     )
-    const lines = within(list).getAllByRole('listitem')
+    const lines = tilesOf(list)
 
     /* Every event of the competition that has a race, and only those, each a link. Held as the
        whole list rather than as „does it hold X": a list drawn out of `eventIds` contains
@@ -635,19 +639,19 @@ describe('LeagueDetail', () => {
     )
     expect(within(list).queryByRole('link', { name: empty.name })).toBeNull()
 
-    /* **One line to an event, and nothing nested in it.** The races stood under each event one to
-       a line until 03.11.2026; a list that still drew them would hold more items than links. */
+    /* **One tile to an event.** The races stood under each event one to a line until 03.11.2026; a
+       list that still drew them would hold more tiles than links. */
     expect(lines).toHaveLength(within(list).getAllByRole('link').length)
 
-    /* **And the line itself, letter by letter.** Zimski noćni polumaraton counts a race of 21,1
+    /* **And the tile itself, letter by letter.** Zimski noćni polumaraton counts a race of 21,1
        km and one of 7,0, so one line holds a decimal that stays and a nought that goes; BTL
        trening trek runs three, of 16,47, 34,57 and 42,53 km, which are written whole, since only
        noughts go and nothing is rounded (owner, 03.11.2026: „ako trka ima 7.03 km, nema
        skracivanja"). */
-    expect(lines.map((one) => one.textContent)).toEqual(
+    expect(lines.map(tileLine)).toEqual(
       expect.arrayContaining([
-        'Zimski noćni polumaraton (9. 2. 2019.) - 21,1 km, 7 km',
-        'BTL trening trek (27. 1. 2019.) - 42,53 km, 34,57 km, 16,47 km',
+        'Zimski noćni polumaraton | 9. 2. 2019. | 21,1 km | 7 km',
+        'BTL trening trek | 27. 1. 2019. | 42,53 km | 34,57 km | 16,47 km',
       ]),
     )
   }, SLOW)
@@ -656,7 +660,7 @@ describe('LeagueDetail', () => {
     /* No race of a competition in the file is timed or free, so the answer is served with three
        of them changed. A timed race is measured by how long it lasts and a free one by nothing
        (owner, 03.11.2026, the same answer a race's name gives in brackets), and an event whose
-       counted races are all free has no dash after its day.
+       counted races are all free has no lengths on its tile at all.
 
        **And a race of a counted event that the competition does not count** stays off the line,
        which is the whole of what the line is for: „da član vidi zašto mu neka trka sa tog dana
@@ -695,22 +699,24 @@ describe('LeagueDetail', () => {
     try {
       renderAt('/sr/lige?sezona=2019')
 
-      const lines = within(
-        must(
-          (await screen.findByRole('link', { name: 'Mrazijada' })).closest('ul'),
-          'the list of events',
-        ),
+      const list = must(
+        (await screen.findByRole('link', { name: 'Mrazijada' })).closest('ul'),
+        'the list of events',
       )
-        .getAllByRole('listitem')
-        .map((one) => one.textContent)
+      const lines = tilesOf(list).map(tileLine)
 
       expect(lines).toEqual(
         expect.arrayContaining([
-          'Mrazijada (5. 1. 2019.)',
-          'Šidski novogodišnji maraton (14. 1. 2019.) - 42,195 km, 24 h',
-          'Zimski noćni polumaraton (9. 2. 2019.) - 21,1 km, 7,0325 km',
+          'Mrazijada | 5. 1. 2019.',
+          'Šidski novogodišnji maraton | 14. 1. 2019. | 42,195 km | 24 h',
+          'Zimski noćni polumaraton | 9. 2. 2019. | 21,1 km | 7,0325 km',
         ]),
       )
+      /* No list at all on the tile of the event whose counted races are all free, and not an empty
+         one. */
+      expect(
+        within(must(within(list).getByRole('link', { name: 'Mrazijada' }).closest('li'), 'its tile')).queryByRole('list'),
+      ).toBeNull()
     } finally {
       globalThis.fetch = real
       clearResourceCache('races')
@@ -765,10 +771,11 @@ describe('LeagueDetail', () => {
     renderAt('/sr/lige?sezona=2027')
 
     /* The name of a card now chooses the competition (owner, 21.11.2026); what leads to its page is
-       „Tabela lige", on the card and on the sheet, and both lead to the same address. */
+       „Tabela", on the card and on the sheet, and both lead to the same address (called „Tabela lige" until
+       21.11.2026, when the owner took the word „lige" and the arrow off it). */
     /* The name is read without the space the hidden word carries, so the words are told apart by
        what is between them and not by one space. */
-    const ways = await screen.findAllByRole('link', { name: /^Tabela lige\s*RunTrace liga/ })
+    const ways = await screen.findAllByRole('link', { name: /^Tabela\s*RunTrace liga/ })
 
     expect(ways.length, 'the card and the sheet each lead to the table').toBe(2)
     for (const way of ways) {
@@ -784,6 +791,24 @@ describe('LeagueDetail', () => {
   }, SLOW)
 })
 
+
+/** The tiles of the box of events on the list of competitions (owner, 21.11.2026): the items of the
+ *  list itself, and not the lengths inside each, which are items of a list of their own. */
+const tilesOf = (list: HTMLElement): HTMLElement[] =>
+  within(list)
+    .getAllByRole('listitem')
+    .filter((one) => one.parentElement === list)
+
+/** A tile read as one line: its name, its day, and each length it measures. */
+const tileLine = (tile: HTMLElement): string => {
+  const lengths = within(tile).queryByRole('list')
+
+  return [
+    within(tile).getByRole('link').textContent,
+    within(tile).getByText(/^\d{1,2}\. \d{1,2}\. \d{4}\.$/).textContent,
+    ...(lengths === null ? [] : within(lengths).getAllByRole('listitem').map((one) => one.textContent)),
+  ].join(' | ')
+}
 
 /**
  * The rows of the competition grid that are people.

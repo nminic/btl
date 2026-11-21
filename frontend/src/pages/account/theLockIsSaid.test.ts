@@ -306,11 +306,6 @@ const OPENING: { file: string; how: How; why: string }[] = [
     why: 'MY REASONING, read off the code on 25.10.2026: the deletion of a result keeps the answer beside its row and draws it through `ServerSaid`. No case puts the lock on this screen; what says it is drawn is `ServerSaid`\'s own case in `theSiteIsLocked.test.tsx`.',
   },
   {
-    file: 'pages/Leagues.tsx',
-    how: 'says',
-    why: 'MY REASONING, read off the code on 25.10.2026: the terms and the prizes keep the answer beside the box that was saved and draw it through `ServerSaid`. No case puts the lock on this screen; what says it is drawn is `ServerSaid`\'s own case in `theSiteIsLocked.test.tsx`.',
-  },
-  {
     file: 'pages/Registration.tsx',
     how: 'says',
     why: 'MY REASONING, read off the code on 25.10.2026: registering and asking for the letter again each keep the answer and draw it through `ServerSaid`. No case puts the lock on this screen; what says it is drawn is `ServerSaid`\'s own case in `theSiteIsLocked.test.tsx`.',

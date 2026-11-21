@@ -1,13 +1,13 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 import { Link } from 'react-router'
+import { SYMBOL } from '../app/actionSymbol'
 import { useFilterParams } from '../app/useFilterParams'
+import { ActionLink } from '../components/ActionButton'
 import { Resource } from '../components/Resource'
 import { SeasonPicker } from '../components/SeasonPicker'
 import { offeredSeason, useSeason } from '../components/season'
-import { askTheServer, type Answer } from './account/askTheServer'
-import { ServerSaid } from './account/ServerSaid'
-import { WHEN_WRITING_A_LEAGUE, upsertOf, type LeagueWords } from './admin/leagueWrites'
-import { clearResourceCache } from '../data/client'
+import { LEAGUES } from './admin/entityForms'
+import { useMayOpen } from './admin/mayOpen'
 import type { League } from '../data/types'
 import {
   dataOr,
@@ -23,10 +23,9 @@ import { useFrozenTables } from '../data/useFrozenTables'
 import { useToday } from '../clock/useClock'
 import { formatNumber } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
-import { useMay } from './admin/rights'
-import { EditableText } from './league/EditableText'
 import { LeagueEvents } from './league/LeagueEvents'
 import { LeagueMark } from './league/LeagueMark'
+import { LeagueText } from './league/LeagueText'
 import { YearStrip } from './league/YearStrip'
 import { leagueRaces, racesByEvent } from './league/leagueCounting'
 import { leagueTable } from './league/leagueTable'
@@ -202,6 +201,17 @@ function LiveEntrants({ league, say }: { league: League; say: Say }) {
  * way to the table, and then what it always carried, in the order he set on 13.09.2026: the terms, the
  * prizes, and the events and races.
  *
+ * **The head of the sheet is one row on a computer** (owner, 21.11.2026, PDL „Glava lista lige: na
+ * desktopu sve u jednom redu”, chosen between the ones offered, on my recommendation for the button and
+ * for taking away the small „Izmeni”): „na desktopu sve u jednom redu (znak, ime, tri statistike,
+ * ikonica za izmenu, dugme); dugme se zove samo „Tabela”, bez strelice, svuda; na telefonu ostaje
+ * raspored kao danas, a ikonica za izmenu stoji u gornjem redu uz naziv lige.” The pencil is drawn only
+ * for somebody the administration of competitions opens for (`useMayOpen`, the very question its door
+ * asks, `admin/needs.ts`), and it leads to the form of this competition there, opened by the address
+ * (`?izmena=`, the shape `event/EventActions.tsx` already sends to the administration of events). In his
+ * words: „Klikom na taj Edit (ko ga vidi, svakako ima privilegije) treba da se ode na Izmenu te lige u
+ * Administraciji.” Nothing on this screen writes since that day (`league/LeagueText.tsx`).
+ *
  * **One competition in the season draws no showcase**, only its sheet: a showcase of one card says
  * nothing the sheet under it does not, which is how the draft the owner chose draws it („Sa jednom
  * ligom vitrine nema i strana je samo list”).
@@ -229,7 +239,7 @@ function LiveEntrants({ league, say }: { league: League; say: Say }) {
 export function Leagues() {
   const { locale, t } = useI18n()
   const today = useToday()
-  const may = useMay()
+  const mayOpen = useMayOpen()
   const running = today.slice(0, 4)
   const asked = useSeason(running)
   const [params] = useFilterParams()
@@ -262,99 +272,6 @@ export function Leagues() {
     merged.set('liga', slug)
 
     return `?${merged.toString()}`
-  }
-
-  /**
-   * WHAT A MODERATOR HAS WRITTEN HERE THIS VISIT, AND SINCE 25.09.2026 IT IS WHAT THE
-   * SERVER ACCEPTED RATHER THAN WHAT THE SESSION REMEMBERED.
-   *
-   * **Why this moved in the same increment as the administration form, and not after
-   * it.** The terms and the prizes of a competition are ONE fact with two places to
-   * change it: this list, where they are read, and the form in the administration.
-   * Moving only the form would have left the administration writing to `league` while
-   * this screen wrote to an overlay nobody serves, so a moderator correcting the
-   * propositions where he reads them would watch them appear and never leave the
-   * browser. That is the „two homes of one fact" class, and it would have been created
-   * by the very commit that fixed the other half.
-   *
-   * **Held here rather than re-read**: a screen that is still mounted never asks its
-   * resource again, so there is nothing here to re-read the moment a write comes back.
-   * Only what the route accepted is put in.
-   *
-   * **AND, SINCE 25.09.2026, THE CACHE BEHIND IT DOES NOT OUTLIVE A SUCCESSFUL WRITE
-   * EITHER.** Held only here and never invalidated anywhere, this would have become the
-   * very „two homes" this comment already warns about, one visit later rather than one
-   * screen over: a moderator who wrote the terms here, left, and came back would have
-   * read them served as they stood before he wrote them, and an administrator who
-   * changed them on `AdminLeagues.tsx` would open this list and find the same stale
-   * array. `save` below calls `clearResourceCache('leagues')` once the route confirms
-   * it, so the next mount of either screen asks the server again.
-   */
-  const [written, setWritten] = useState<Record<number, Partial<Record<LeagueWords, string>>>>({})
-
-  /** Which box was last answered and what was said about it, drawn where it was pressed. */
-  const [answer, setAnswer] = useState<{
-    id: number
-    field: LeagueWords
-    answer: Answer
-  } | null>(null)
-
-  /**
-   * ONE BOX CHANGED, SENT AS THE WHOLE RECORD, WHICH IS WHAT THE ROUTE TAKES.
-   *
-   * `LeagueWriteApi.change` writes all five columns in one `update` and refuses a form
-   * that is missing any of the three required ones, so the other four travel unchanged
-   * beside the one that moved (`admin/leagueWrites.ts`, `upsertOf`). That is the
-   * opposite of `PUT /api/me`, which coalesces, and the difference is the route's and
-   * not this screen's to hold an opinion about.
-   */
-  async function save(league: League, field: LeagueWords, text: string): Promise<boolean> {
-    /* Both boxes as they STAND and not as they were served, so a moderator who corrects
-       the terms and then the prizes does not send the first correction back undone with
-       the second. `standing` is the same read the boxes are drawn from, which is what
-       keeps „what is on the screen" and „what is sent" one answer. */
-    const sent = upsertOf(league, {
-      rules: standing(league, 'rules'),
-      prizes: standing(league, 'prizes'),
-      [field]: text,
-    })
-    const said = await askTheServer(`/api/leagues/${league.id}`, sent, 'PUT')
-
-    setAnswer({ id: league.id, field, answer: said })
-
-    if (said.got !== 'done') {
-      return false
-    }
-
-    /* THE NEXT MOUNT READS THE SERVER, HERE AS MUCH AS ON THE ADMINISTRATION SCREEN.
-       Cleared before the local overlay is written, for the same reason `AdminLeagues.tsx`
-       clears it: this state does not survive the screen being unmounted, and a cache that
-       did would let a remounted screen - this one or the other - go on showing what stood
-       before this write (review, 25.09.2026). */
-    clearResourceCache('leagues')
-    setWritten((was) => ({ ...was, [league.id]: { ...was[league.id], [field]: text } }))
-
-    return true
-  }
-
-  /** What the box holds now: what this visit wrote into it, or what was served. */
-  function standing(league: League, field: LeagueWords): string {
-    return written[league.id]?.[field] ?? league[field]
-  }
-
-  /** What was said about the last press on this very box, or nothing. */
-  function saidAbout(league: League, field: LeagueWords) {
-    if (answer === null || answer.id !== league.id || answer.field !== field) {
-      return null
-    }
-
-    return answer.answer.got === 'done' ? (
-      <p className="member__note" role="status">
-        {t('admin.leagueTextSaved')}
-      </p>
-    ) : (
-      <ServerSaid answer={answer.answer} refusals={WHEN_WRITING_A_LEAGUE} />
-    )
   }
 
   return (
@@ -411,15 +328,19 @@ export function Leagues() {
   /**
    * The showcase and the sheet of the chosen competition.
    *
-   * **Called, and not drawn as a component of its own.** What it draws is this screen's own state
-   * (what a moderator wrote this visit and what the server said about it), and a component declared
+   * **Called, and not drawn as a component of its own.** What it draws reads this screen's own hold
+   * on the focus (`jumping`, `sheetName`) and its addresses (`choosing`), and a component declared
    * inside a component is a new type on every render: React would take the sheet down and build it
-   * again on each keystroke of a save, and the box being edited would close under the moderator.
+   * again each time, and the focus put on its name would be lost with it.
    */
   function chosenOf(shown: League[], league: League) {
     const events: Say = (count) => t('leagues.eventCount', { count, number: formatNumber(count, locale) })
     const entrants: Say = (count) =>
       t('leagues.entrantCount', { count, number: formatNumber(count, locale) })
+    /* Whether the pencil is drawn: asked of the door of the administration of competitions itself, so
+       the pencil and the form behind it cannot disagree about who may come in (ADL A8: anybody else
+       would be answered as though the address did not exist). */
+    const mayChange = mayOpen(LEAGUES.path)
 
     return (
       <>
@@ -427,12 +348,9 @@ export function Leagues() {
           <ul className="leagues__showcase" aria-label={t('leagues.showcase', { season: league.season })}>
             {shown.map((one) => (
               <li key={one.id} className="leagues__tile">
-                {/* Said for the eye; a reader by ear is told by `aria-current` on the link. */}
-                {one.id === league.id && (
-                  <p className="leagues__tile-open" aria-hidden="true">
-                    {t('leagues.openBelow')}
-                  </p>
-                )}
+                {/* Which card is chosen is said by its frame alone, and by `aria-current` to a reader by
+                    ear (owner, 21.11.2026, PDL „ne dobija natpis „Otvorena ispod””): „Dovoljno je što je
+                    uokvireno, veoma je intuitivno i bez te labele.” */}
                 <LeagueMark name={one.name} />
                 <p className="leagues__tile-name">
                   <Link
@@ -461,7 +379,6 @@ export function Leagues() {
                 <Link className="leagues__tile-table" to={`/${locale}/liga/${one.slug}`}>
                   {t('leagues.table')}
                   {' '}<span className="visually-hidden">{one.name}</span>
-                  <span aria-hidden="true"> →</span>
                 </Link>
               </li>
             ))}
@@ -469,14 +386,14 @@ export function Leagues() {
         )}
 
         {/* Keyed by the competition, so a sheet opened for another one is a sheet of its own: the box
-            of events arrives open for each (owner, 03.11.2026), and a box folded or being written in
+            of events arrives open for each (owner, 03.11.2026), and a box folded in
             one competition is not carried over into the next. */}
         <article
           key={league.id}
           className="leagues__sheet"
           aria-labelledby={`league-name-${league.id}`}
         >
-          <div className="leagues__score">
+          <div className={mayChange ? 'leagues__score leagues__score--changes' : 'leagues__score'}>
             <LeagueMark name={league.name} />
             <div className="leagues__score-name">
               <p className="leagues__kicker">{t('leagues.kicker')}</p>
@@ -508,41 +425,45 @@ export function Leagues() {
                 </span>
               </li>
             </ul>
+            {/* Before „Tabela”, in his words: „da pre njega bude dugme za Edit (ikonica)”. The symbol and the
+                box with its word are the portal's own for a press that changes one thing
+                (`components/ActionButton.tsx`); the name says which competition, as „Tabela” beside it
+                does. */}
+            {mayChange && (
+              <ActionLink
+                symbol={SYMBOL.pencil}
+                word={t('admin.change')}
+                name={t('leagues.change', { name: league.name })}
+                className="leagues__edit"
+                to={`/${locale}/${LEAGUES.path}?izmena=${String(league.id)}`}
+              />
+            )}
             <Link className="leagues__cta" to={`/${locale}/liga/${league.slug}`}>
               {t('leagues.table')}
               {' '}<span className="visually-hidden">{league.name}</span>
-              <span aria-hidden="true">→</span>
             </Link>
           </div>
 
           <div className="leagues__item">
             <div className="leagues__texts">
-                      <EditableText
-                        value={standing(league, 'rules')}
-                        field="rules"
-                        headingId={`league-rules-${league.id}`}
-                        heading={t('leagues.rules')}
-                        canEdit={may('entity:leagues')}
-                        onSave={(text) => save(league, 'rules', text)}
-                        said={saidAbout(league, 'rules')}
-                      />
+              <LeagueText
+                value={league.rules}
+                headingId={`league-rules-${league.id}`}
+                heading={t('leagues.rules')}
+              />
 
-                      <EditableText
-                        value={standing(league, 'prizes')}
-                        field="prizes"
-                        headingId={`league-prizes-${league.id}`}
-                        heading={t('leagues.prizes')}
-                        canEdit={may('entity:leagues')}
-                        onSave={(text) => save(league, 'prizes', text)}
-                        said={saidAbout(league, 'prizes')}
-                      />
+              <LeagueText
+                value={league.prizes}
+                headingId={`league-prizes-${league.id}`}
+                heading={t('leagues.prizes')}
+              />
             </div>
 
             {/* And after the prizes, the events and races the competition counts, in a box that
                 folds (owner, 13.09.2026: „pa onda ide i sekcijica DOGAĐAJI / TRKE koja se može
                 ekspandovati tako da se vide sve označene"), with the line through the year at its
-                head. Read-only: what a moderator changes here is the terms and the prizes, and which
-                events count is set in the administration. */}
+                head. Read-only, like the whole sheet: which events count is set in the
+                administration, where the pencil above leads. */}
             <LeagueEvents league={league} today={today} />
           </div>
         </article>

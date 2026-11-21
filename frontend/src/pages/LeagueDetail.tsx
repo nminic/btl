@@ -16,9 +16,9 @@ import './Profile.css'
  * **Nothing else, since 07.09.2026.** The owner: „na strani Lige ne postoje
  * propozicije i nagrade (one se vide samo na listi svih liga), pa ni događaji koji
  * ulaze u ligu, a ni dugme rezultati jer se odmah prikazuju rezultati." What the
- * organiser has written is read on the list of competitions, where it is also
- * changed; the events that count are the terms of the competition and are read
- * there too.
+ * organiser has written is read on the list of competitions, and changed in the
+ * administration since 21.11.2026; the events that count are the terms of the
+ * competition and are read there too.
  *
  * **Overturned on 12.09.2026 and put back on 13.09.2026, and the trace is kept here on
  * purpose.** On the 12th the owner asked for the terms, the prizes and a two-level list of the

@@ -40,8 +40,8 @@ export type LinkDialogProps = {
  * text, where the link now is.
  *
  * Drawn inside the editor and not at the end of the document, so the cursor going into it is not the
- * cursor leaving the editor, which is when a box of a competition keeps its text
- * (`pages/league/EditableText.tsx`).
+ * cursor leaving the editor, which is when a caller that keeps its text on leaving keeps it
+ * (`onLeave`, `props.ts`).
  *
  * **Enter keeps the link and does not send the form the editor stands in**: a field inside a form
  * sends it on Enter, and the event's form would be sent with the link not made yet.

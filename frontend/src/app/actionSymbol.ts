@@ -12,8 +12,8 @@
  * carries which of them is held over the whole portal by
  * `components/actionSymbols.test.ts`.
  *
- * - `pencil`: Izmeni, Izmena, Otvori, Ispravi, and changing the rules and the
- *   prizes of a competition.
+ * - `pencil`: Izmeni, Izmena, Otvori, Ispravi, and the way from the sheet of a
+ *   competition to its form in the administration.
  * - `cross`: Obriši, Brisanje, Izbaci, clearing the photograph in a form,
  *   deleting a comment, refusing an invitation or a request to join a team.
  * - `copy`: two documents, for Kopiranje and for the button that copies a value.

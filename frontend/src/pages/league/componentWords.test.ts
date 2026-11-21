@@ -37,7 +37,8 @@ const FILES = sources()
   .map((one) => one.path.slice(process.cwd().length + 1).split(sep).join('/'))
   /* **The whole path and not the name of the file**, since 07.09.2026. It read the name alone,
      and on that day the terms and the prizes of a competition moved out of `LeagueDetail.tsx`
-     into `league/EditableText.tsx`, which draws them on the list of competitions. The words went
+     into `league/EditableText.tsx` (`league/LeagueText.tsx` since 21.11.2026, when changing them
+     there went to the administration), which draws them on the list of competitions. The words went
      with them and the sweep stopped reading them, silently: a component in the folder of a
      competition, drawing what a competition says, and outside every guard that exists for it.
      The folder is as much a statement of what a file is about as its name.

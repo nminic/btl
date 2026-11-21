@@ -305,9 +305,10 @@ describe('what a screen says in its own voice', () => {
       'describedBy',
       /* A DIRECTION, 03.10.2026, and it is machinery rather than speech. It carries the word
          "ltr", which a reader never meets: what he meets is an address drawn in the order it was
-         typed. The portal's first one, and `pages/league/EditableText.tsx` is the only thing that
-         writes it, on the link it draws for an address in the terms or the prizes of a competition
-         (`pages/league/linkDirection.test.tsx` holds that every such link carries it). Same kind
+         typed. The portal's first one, written on the link drawn for an address in the terms or
+         the prizes of a competition and in the words a member sent beside a result
+         (`components/Markdown.tsx`, `components/AddressesAsLinks.tsx`;
+         `pages/league/linkDirection.test.tsx` holds that every such link carries it). Same kind
          of name as `aria-modal` above and `role` below. */
       'dir',
       'field',

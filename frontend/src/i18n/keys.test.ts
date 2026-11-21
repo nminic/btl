@@ -18,6 +18,7 @@ import { JUNIOR, PRICES } from '../data/pricing'
 import { ENTITY_FORMS, RACES } from '../pages/admin/entityForms'
 import { basisWordOf } from '../pages/admin/memberMembership'
 import { QUEUES } from '../pages/admin/queues'
+import { EVENT_STATES } from '../pages/league/leagueCounting'
 import en from './en.json'
 import sr from './sr.json'
 import { sources } from '../test/sources'
@@ -213,6 +214,9 @@ describe('the names the portal composes out of a list', () => {
     { of: 'topBoards.byLength', each: CATEGORIES },
     { of: 'event.rating', each: RATING_MARKS },
     { of: 'language', each: LOCALES },
+    /* The state a tile of an event says on the list of competitions (owner, 21.11.2026: „Održan /
+       Sledeći / Predstoji”), off the list `statesOf` answers from (`pages/league/leagueCounting.ts`). */
+    { of: 'leagues.state', each: EVENT_STATES },
   ]
 
   it('has every one of them, for every value on the list it is built from', () => {

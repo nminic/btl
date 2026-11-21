@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
 import { Resource } from '../../components/Resource'
 import { raceMeasure } from '../../data/raceLabel'
@@ -6,13 +6,13 @@ import type { League } from '../../data/types'
 import { combinePair, useEvents, useRaces } from '../../data/useResource'
 import { formatShortDate } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
-import { leagueRaces, racesByEvent } from './leagueCounting'
+import { leagueRaces, racesByEvent, statesOf } from './leagueCounting'
 import { YearStrip } from './YearStrip'
 import '../Leagues.css'
 
 /**
- * Which events count towards a competition and, under each of them, which of its races do,
- * inside a box that folds.
+ * Which events count towards a competition and, in each of them, which of its races do, inside a box
+ * that folds, with the line through the year at its head.
  *
  * **On the list of all competitions, under the prizes** (owner, 13.09.2026): „na pregledu svih
  * liga ispisuje ono što i sad (naziv, opšti detalji, PROPOZICIJE, NAGRADE, pa onda ide i
@@ -20,38 +20,54 @@ import '../Leagues.css'
  * the page of a single competition for one day, on his word of 12.09.2026, and he corrected
  * himself the next morning: „ne vidi se na pojedinačnim stranama lige."
  *
- * **One line to an event** (owner, 03.11.2026, „u jednom redu formata BBKT (10.1.2027.) - 12 km,
- * 6 km, 3 km"): the name of the event as a link, its day in brackets, and after a dash the
- * measures of the races of it that count, with no nought after the decimal comma that can be left
- * off. Only noughts go: a length is never rounded (owner, the same day: „ako trka ima 7.03 km,
- * nema skracivanja"), so 7,03 km and 21,1 km and 12 km. The day is written the way the rest of the portal writes one (he chose it the same day,
- * between the two offered, on my recommendation). Until 03.11.2026 the races stood under the event
- * one to a line and by name (owner, 12.09.2026). What that was for still holds: „da član vidi
- * zašto mu neka trka sa tog dana nije u tabeli". Only the races that count are measured here, so
- * a member who ran the short race of a morning whose long race counts reads its length missing
- * from the line.
+ * **A tile to an event, two to a row where there is room for two, since 21.11.2026** (owner, PDL
+ * „„Događaji i trke” na listu lige: pločice u dve kolone”, chosen between the ones offered, variant A of
+ * `predlozi/lige-dogadjaji-nacrt.html`): „pločice u dve kolone na računaru (jedna na telefonu) … u prvom
+ * redu stanje levo („Održan / Sledeći / Predstoji”) i datum desno, u drugom naziv levo i dužine desno;
+ * oba reda su vertikalno poravnata (stanje i datum u istoj liniji, naziv i dužine u istoj liniji).” And
+ * in his words: „prvi red mora biti vertikalno aligned (SLEDEĆI, DATUM) kao i drugi BBKT, DUŽINE”. Until
+ * that day an event was one line, its name, its day in brackets and its lengths after a dash (owner,
+ * 03.11.2026). What that line carried is carried still:
  *
- * **The measure is the one a race's name carries in brackets** (`data/raceLabel.ts`,
- * `raceMeasure`): a length for a race of a length, how long it lasts for a timed race, and nothing
- * for a free one, which he chose on 03.11.2026 between the two offered, on my recommendation. An
- * event whose races counting are all free has no dash after its day, since a dash with nothing
- * after it says nothing.
+ * - **the name of the event is the link to it**;
+ * - **the day is the event's**, written the way the rest of the portal writes one (chosen 03.11.2026,
+ *   between the two offered, on my recommendation), and never the day of one of its races;
+ * - **only the races that count are measured**, so what the box was first built for still holds: „da
+ *   član vidi zašto mu neka trka sa tog dana nije u tabeli". A member who ran the short race of a
+ *   morning whose long race counts reads its length missing from the tile;
+ * - **a length is never rounded** (owner, 03.11.2026: „ako trka ima 7.03 km, nema skracivanja"), only
+ *   stripped of the noughts it ends in, so 7,03 km and 21,1 km and 12 km;
+ * - **the measure is the one a race's name carries in brackets** (`data/raceLabel.ts`, `raceMeasure`):
+ *   a length for a race of a length, how long it lasts for a timed race, and nothing for a free one,
+ *   which he chose on 03.11.2026 between the two offered, on my recommendation. An event whose counted
+ *   races are all free has no lengths on its tile at all, rather than an empty list.
+ *
+ * **Which state a tile says is the dot's own answer** (`leagueCounting.ts`, `statesOf`), and the state
+ * is said in words and not by colour alone (WCAG 2.2 SC 1.4.1): the gold edge of the next one and the
+ * broken frame of the ones ahead only repeat it.
+ *
+ * **A tile and its dot light together, in both directions** (the same decision): „Prelaz mišem ili fokus
+ * na tačku na traci obasja i njenu pločicu, i obrnuto; dodir na tačku na telefonu ističe pločicu i
+ * dovodi je u vidno polje.” Which one is lit is held here, by the identity of its event, because this is
+ * the one component that draws both. A pointer that hovers lights it while it is over the tile or the
+ * dot; the focus on the name of a tile lights it while the focus stays, which is how the keyboard
+ * reaches it, since the dots are out of the order of the keyboard and hidden from a reader by ear
+ * (`YearStrip.tsx` says why). A touch on a dot lights its tile and brings it into view, smoothly unless
+ * the reader asked for less motion, and the tile stays lit until a finger touches anything else. The
+ * light is a picture and nothing more: what it points at is already said by the tile itself.
  *
  * **Open on arrival, and folded on a press** (owner, 03.11.2026: „kutija treba da bude default
- * otvorena (expanded), ne collapsed"). Until that day it was folded until somebody asked, on the
- * reasoning that this screen carries every competition of a season at once; one line to an event
- * is what made the open box short enough to stand. Each box keeps its own state. What is
- * open is said by `aria-expanded` rather than by the words on the button, which is what a
- * disclosure is; the shape is the portal's own (`app/Dropdown.tsx`, `admin/PendingQueue.tsx`):
- * a button, `aria-controls` naming the panel, and the panel carrying `hidden` rather than being
- * taken out of the document, so what the button points at is there to be pointed at.
+ * otvorena (expanded), ne collapsed"). What is open is said by `aria-expanded` rather than by the words
+ * on the button, which is what a disclosure is; the shape is the portal's own (`app/Dropdown.tsx`,
+ * `admin/PendingQueue.tsx`): a button, `aria-controls` naming the panel, and the panel carrying
+ * `hidden` rather than being taken out of the document, so what the button points at is there to be
+ * pointed at.
  *
- * **Named after its own competition.** Four of these stand on one screen, and four buttons
- * reading „Događaji i trke" are four controls a screen reader cannot tell apart (WCAG 2.2 SC
- * 2.4.4). The words on the button stay the short ones and the name adds the competition, which is
- * how this portal already names a control that repeats (`components/GenderTabs.tsx`,
- * `admin/PendingQueue.tsx`), and the visible words are the first half of the name, which is what
- * SC 2.5.3 asks.
+ * **Named after its own competition**, so its control can be told apart from any other of its kind
+ * (WCAG 2.2 SC 2.4.4). The words on the button stay the short ones and the name adds the competition,
+ * which is how this portal already names a control that repeats (`components/GenderTabs.tsx`,
+ * `admin/PendingQueue.tsx`), and the visible words are the first half of the name, which is what SC
+ * 2.5.3 asks.
  *
  * **The standing's own heading is untouched by this.** There a column is one event and its head
  * is the day alone, with the names of the events read out over it (owner, 07.09.2026, and again
@@ -69,10 +85,43 @@ const LENGTH_AS_STORED = 4
 export function LeagueEvents({ league, today }: { league: League; today: string }) {
   const { locale, t } = useI18n()
   const [open, setOpen] = useState(true)
+  /* The event whose dot and tile are lit, and whether a finger lit it: a finger has no leaving, so
+     what it lit stays lit until it touches something else. */
+  const [lit, setLit] = useState<{ event: number; byTouch: boolean } | null>(null)
   const panelId = `league-counting-${league.id}`
   /* Said once and read twice: on the button and on the wait, so a reader working by ear hears the
      same competition named either way. */
   const named = t('leagues.countingOf', { name: league.name })
+  const tileOf = (event: number) => `league-${league.id}-event-${event}`
+
+  const light = (event: number | null) => setLit(event === null ? null : { event, byTouch: false })
+
+  /* A touch anywhere but on a dot lets the tile go; a touch on a dot lights its own (below). */
+  useEffect(() => {
+    if (lit === null || !lit.byTouch) {
+      return
+    }
+
+    function away(down: PointerEvent) {
+      if (down.pointerType === 'touch' && !(down.target instanceof Element && down.target.closest('.leagues__dot') !== null)) {
+        setLit(null)
+      }
+    }
+
+    document.addEventListener('pointerdown', away)
+
+    return () => document.removeEventListener('pointerdown', away)
+  }, [lit])
+
+  /** A finger on a dot: its tile is lit and brought into view, without motion for a reader who asked
+   *  for less of it. „Into view" and no further, so a tile already in sight does not move. */
+  function touched(event: number) {
+    setLit({ event, byTouch: true })
+    document.getElementById(tileOf(event))?.scrollIntoView({
+      block: 'nearest',
+      behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+    })
+  }
 
   return (
     <section className="leagues__counting">
@@ -92,10 +141,11 @@ export function LeagueEvents({ league, today }: { league: League; today: string 
         </button>
       </h3>
 
-      <div id={panelId} hidden={!open}>
+      <div id={panelId} className="leagues__counting-panel" hidden={!open}>
         <Resource state={combinePair(useEvents(), useRaces())} inline label={named}>
           {([events, races]) => {
             const counting = racesByEvent(leagueRaces(league, races), events)
+            const stateOf = statesOf(counting, today)
 
             /* A competition with nothing in it yet says so. Two silences end up here and one
                sentence is true of both: a competition no event has been given, and one whose
@@ -107,24 +157,63 @@ export function LeagueEvents({ league, today }: { league: League; today: string 
 
             return (
               <>
-              <YearStrip counting={counting} season={league.season} today={today} />
-              <ul className="leagues__events">
-                {counting.map(({ event, races: mine }) => {
-                  const measures = mine
-                    .map((race) => raceMeasure(race, locale, LENGTH_AS_STORED, 0))
-                    .filter((measure) => measure !== '')
+                <YearStrip
+                  counting={counting}
+                  season={league.season}
+                  today={today}
+                  lit={lit?.event ?? null}
+                  onLight={light}
+                  touched={touched}
+                />
+                <ul className="leagues__event-tiles">
+                  {counting.map(({ event, races: mine }) => {
+                    const state = stateOf(event)
+                    const measures = mine
+                      .map((race) => raceMeasure(race, locale, LENGTH_AS_STORED, 0))
+                      .filter((measure) => measure !== '')
+                    const look = `leagues__event-tile leagues__event-tile--${state}`
 
-                  return (
-                    <li key={event.id} className="leagues__event-line">
-                      <Link to={`/${locale}/kalendar/${event.slug}`}>{event.name}</Link>{' '}
-                      <span className="leagues__event-what">
-                        ({formatShortDate(event.date, locale)})
-                        {measures.length > 0 && ` - ${measures.join(', ')}`}
-                      </span>
-                    </li>
-                  )
-                })}
-              </ul>
+                    return (
+                      <li
+                        key={event.id}
+                        id={tileOf(event.id)}
+                        className={lit?.event === event.id ? `${look} leagues__event-tile--lit` : look}
+                        onPointerEnter={(entered) => {
+                          if (entered.pointerType !== 'touch') {
+                            light(event.id)
+                          }
+                        }}
+                        onPointerLeave={(left) => {
+                          if (left.pointerType !== 'touch') {
+                            light(null)
+                          }
+                        }}
+                        onFocus={() => light(event.id)}
+                        onBlur={() => light(null)}
+                      >
+                        <div className="leagues__event-top">
+                          <p className="leagues__event-state">
+                            <span className="leagues__event-pip" aria-hidden="true" />
+                            {t(`leagues.state.${state}`)}
+                          </p>
+                          <p className="leagues__event-when">
+                            <time dateTime={event.date}>{formatShortDate(event.date, locale)}</time>
+                          </p>
+                        </div>
+                        <div className="leagues__event-mid">
+                          <Link to={`/${locale}/kalendar/${event.slug}`}>{event.name}</Link>
+                          {measures.length > 0 && (
+                            <ul className="leagues__event-lengths">
+                              {measures.map((measure, index) => (
+                                <li key={index}>{measure}</li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                      </li>
+                    )
+                  })}
+                </ul>
               </>
             )
           }}
