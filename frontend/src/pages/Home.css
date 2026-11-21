@@ -472,6 +472,13 @@
    under the other at 360 they are 313 (the plan, „Table se ne slažu jedna ispod druge pre 560 px"). */
 .top10 {
   container-type: inline-size;
+  /* **The figure of points is one shape on the podium and in the list** (owner, 21.11.2026: „Nema mi smisla da za
+     najbolja 3 bude manji font poena nego za 4-10 mesto u tabeli ispod gde su veliki beli brojevi"): both columns
+     read these three, so the two cannot drift apart. The podium sets the letter smaller only as the way out of a
+     narrow column, and never under 0,65rem (10,4px). */
+  --points-size: 0.9rem;
+  --points-weight: 700;
+  --points-color: var(--text);
 }
 
 .top10__block {
@@ -620,16 +627,17 @@
   /* **A figure never breaks and is set in a smaller letter where it does not fit** (owner, 21.11.2026, "Manje
      slovo za dugo prezime", applied to the points by the same rule as the surname above: the letter is worked
      out from the share of the column and the number of characters the page writes in `--chars`, never above
-     0,8rem and never under the floor of the surname, 0,65rem, 10,4px). A digit of tabular figures is about
+     the size of the list (`--points-size`) and never under the floor of the surname, 0,65rem, 10,4px). A digit of tabular figures is about
      0,62em wide, narrower than a letter of the name, so the figure is counted at that. The two lines of height
      stay, so a circle is never lifted against its neighbour. */
   font-size: clamp(
     0.65rem,
     calc((100cqi - 2 * var(--space-6)) / 3.15 / (var(--chars) * 0.62)),
-    0.8rem
+    var(--points-size)
   );
+  font-weight: var(--points-weight);
   line-height: 1.3;
-  color: var(--text-muted);
+  color: var(--points-color);
   font-variant-numeric: tabular-nums;
   /* **Where even the smallest letter does not fit, the figure breaks, and only at the places `TopTen.tsx` marks**
      (owner, 21.11.2026, review of PR 768, WCAG 1.4.4: the floor is in `rem`, so at 200% it is 20,8px and a
@@ -781,8 +789,9 @@
 .toprows .pt {
   grid-column: 4;
   grid-row: 1 / span 2;
-  font-weight: 700;
-  font-size: 0.9rem;
+  font-weight: var(--points-weight);
+  font-size: var(--points-size);
+  color: var(--points-color);
   overflow-wrap: normal;
   text-align: right;
   font-variant-numeric: tabular-nums;

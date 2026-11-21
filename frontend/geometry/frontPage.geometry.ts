@@ -789,3 +789,51 @@ for (const width of [360, 768, 1024, 1280]) {
     }
   }
 }
+
+/**
+ * THE FIGURE ON THE PODIUM IS THE SHAPE OF THE FIGURE IN THE LIST (owner, 21.11.2026: "Nema mi smisla da za
+ * najbolja 3 bude manji font poena nego za 4-10 mesto u tabeli ispod gde su veliki beli brojevi"): the same
+ * weight and the same colour always, and the same size wherever the figure fits its column without being set
+ * smaller. The letter goes down only as the way out of a narrow column, and then never under the floor of the
+ * names (0,65rem). Measured as the browser computes it, since the two rules read three shared properties and
+ * a rule that stopped reading one of them would not be seen in the stylesheet by a case that reads the text.
+ */
+for (const width of [768, 1280]) {
+  test(`the figure of the podium has the shape of the figure of the list, at ${label({ width, text: 100 })}`, async ({ open, theDay }) => {
+    test.skip(theDay !== THE_DAY_THE_SUITE_IS_READ_AS, 'no figure stands on the podium on this day')
+
+    const { page } = await open({ width, text: 100 }, '/sr', '.top10 .stand', ANSWERS)
+
+    const seen = await page.evaluate(() => {
+      const shape = (element: Element) => {
+        const style = getComputedStyle(element)
+
+        return { size: Number.parseFloat(style.fontSize), weight: style.fontWeight, color: style.color }
+      }
+
+      return {
+        podium: [...document.querySelectorAll('.stand__points')].map(shape),
+        list: [...document.querySelectorAll('.toprows .pt')].slice(0, 1).map(shape),
+        root: Number.parseFloat(getComputedStyle(document.documentElement).fontSize),
+      }
+    })
+
+    const list = seen.list[0]
+
+    expect(list, 'the list has no figure to measure').toBeDefined()
+    expect(seen.podium.length).toBeGreaterThan(0)
+
+    for (const place of seen.podium) {
+      expect(place.weight, 'the podium figure is not as heavy as the list one').toBe(list?.weight)
+      expect(place.color, 'the podium figure is not the colour of the list one').toBe(list?.color)
+      expect(place.size, 'the podium figure is larger than the list one').toBeLessThanOrEqual((list?.size ?? 0) + 0.05)
+      expect(place.size, 'the podium figure is under the floor').toBeGreaterThanOrEqual(0.65 * seen.root - 0.05)
+    }
+
+    // At least one figure of the podium fits its column and is the very size of the list's.
+    expect(
+      seen.podium.some((place) => Math.abs(place.size - (list?.size ?? 0)) <= 0.05),
+      'no figure of the podium is the size of the list one: it is set smaller everywhere',
+    ).toBe(true)
+  })
+}
