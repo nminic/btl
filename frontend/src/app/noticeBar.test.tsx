@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react'
+import { configure, screen, waitFor } from '@testing-library/react'
 import { SLOW } from '../test/slow'
 import { renderAt } from '../test/render'
 import { setupUser } from '../test/user'
@@ -12,6 +12,10 @@ import { EXTRA_ADDRESSES, ROUTES } from './routes'
  * `LAST_DAY` is the last one, and `FIRST_DAY` is the first on which „počinje 1. januara" would be false.
  * Every case that is about the strip being there asks for a day on which it should be, and every case about
  * it being gone asks for the one after, so a condition read off any other clock fails one of the two. */
+
+/* Every wait of this file is given half of the time a case has, so a wait that never succeeds ends the case with the
+   assertion's own words and not with the case's clock (`btl/CLAUDE.md`, section 25). */
+configure({ asyncUtilTimeout: SLOW / 2 })
 
 const BEFORE = '2026-11-21'
 const LAST_DAY = '2026-12-31'
