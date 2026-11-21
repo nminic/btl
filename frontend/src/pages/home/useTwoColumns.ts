@@ -23,12 +23,8 @@ function subscribe(changed: () => void): () => void {
  * mounted again when a window crosses the query, so a length chosen in the calendar and the turning chart go
  * back to their beginning.
  *
- * Nothing to ask where there is no `matchMedia` to ask, and the answer there is one column.
+ * The page is drawn in the browser only (`createRoot`), so there is no server answer to give.
  */
 export function useTwoColumns(): boolean {
-  return useSyncExternalStore(
-    subscribe,
-    () => window.matchMedia(TWO_COLUMNS).matches,
-    () => false,
-  )
+  return useSyncExternalStore(subscribe, () => window.matchMedia(TWO_COLUMNS).matches)
 }

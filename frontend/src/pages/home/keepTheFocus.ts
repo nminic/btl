@@ -27,17 +27,17 @@ const BOXES = ['boards', 'figures', 'chart', 'next', 'address', 'sponsor']
 const FOCUSABLE = 'a[href], button, input, select, textarea, [tabindex]:not([tabindex="-1"])'
 
 /** The kind of the thing, where it leads, what it is called to a reader and what it says. */
-function identityOf(element: Element): string {
+function identityOf(element: HTMLElement): string {
   return [
     element.tagName,
     element.getAttribute('href') ?? '',
     element.getAttribute('aria-label') ?? '',
-    (element.textContent ?? '').trim(),
+    element.textContent.trim(),
   ].join('|')
 }
 
 /** Where an element that has just got the focus is, or nothing where it is in no box that is written again. */
-export function whereIs(element: Element): Remembered | null {
+export function whereIs(element: HTMLElement): Remembered | null {
   const box = element.closest(BOXES.map((name) => `.home__${name}`).join(', '))
   const name = BOXES.find((one) => box?.classList.contains(`home__${one}`))
 
@@ -57,11 +57,11 @@ export function whereIs(element: Element): Remembered | null {
  * otherwise on the heading of the widget, or on the box where the widget has none.
  */
 export function putBack(root: Document, was: Remembered | null): void {
-  if (was === null || (root.activeElement !== null && root.activeElement !== root.body)) {
+  if (was === null || root.activeElement !== root.body) {
     return
   }
 
-  const box = root.querySelector(`.home__${was.box}`)
+  const box = root.querySelector<HTMLElement>(`.home__${was.box}`)
   const heading = was.heading === null ? null : root.getElementById(was.heading)
   const scope = heading?.closest('section') ?? box
 
@@ -77,7 +77,7 @@ export function putBack(root: Document, was: Remembered | null): void {
 
   const fallback = heading ?? box
 
-  if (fallback instanceof HTMLElement) {
+  if (fallback !== null) {
     fallback.tabIndex = -1
     fallback.focus()
   }

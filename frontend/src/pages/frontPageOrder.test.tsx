@@ -218,6 +218,10 @@ describe('the front page while its window changes width', () => {
 describe('the focus after the front page is written again', () => {
   const previous = window.matchMedia
 
+  /* The day is the test's own and not the clock's: whether a race is shown only under "Ultra" turns on which races
+     are ahead, and the suite is read on two days (`homeSponsored.test.tsx` says the same of its own). */
+  const A_DAY_WITH_RACES_AHEAD = '2026-11-01'
+
   afterEach(() => {
     window.matchMedia = previous
   })
@@ -229,7 +233,7 @@ describe('the focus after the front page is written again', () => {
     const user = setupUser()
     const view = aWindow(true)
 
-    renderAt('/sr')
+    renderAt('/sr', 'visitor', null, undefined, A_DAY_WITH_RACES_AHEAD)
     await screen.findByRole('heading', { level: 2, name: 'Priprema, pozor, SAD!' })
     await user.click(within(calendar()).getByRole('button', { name: 'Ultra, Ultramaraton' }))
 
@@ -245,7 +249,7 @@ describe('the focus after the front page is written again', () => {
     const user = setupUser()
     const view = aWindow(true)
 
-    renderAt('/sr')
+    renderAt('/sr', 'visitor', null, undefined, A_DAY_WITH_RACES_AHEAD)
     await screen.findByRole('heading', { level: 2, name: 'Priprema, pozor, SAD!' })
 
     const underAll = races().map((one) => one.textContent)
@@ -268,7 +272,7 @@ describe('the focus after the front page is written again', () => {
   it('stays on the same race when it is under „Sve" as well', async () => {
     const view = aWindow(true)
 
-    renderAt('/sr')
+    renderAt('/sr', 'visitor', null, undefined, A_DAY_WITH_RACES_AHEAD)
     await screen.findByRole('heading', { level: 2, name: 'Priprema, pozor, SAD!' })
 
     const third = at(races(), 2)
