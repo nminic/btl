@@ -1,40 +1,15 @@
-import type { League } from '../../data/types'
-import { identityIn, upsertFrom, upsertOf } from './leagueWrites'
+import { identityIn, upsertFrom } from './leagueWrites'
 
 /**
- * WHAT THE TWO SCREENS THAT WRITE A COMPETITION SEND, AND WHAT THEY READ BACK.
+ * WHAT THE ADMINISTRATION SENDS WHEN IT WRITES A COMPETITION, AND WHAT IT READS BACK.
  *
  * <p>A module rather than a screen, for the reason `pages/member/myAccount.test.ts` gives
  * about its own: a question about a body and about an answer is asked of the function that
  * builds and reads them, not by mounting React round it. What the screens do with these is
- * measured where the screens are (`adminLeagues.test.tsx`, `pages/editing.test.tsx`).
+ * measured where the screen is (`adminLeagues.test.tsx`).
  */
 
-const SERVED: League = {
-  id: 9,
-  slug: 'druga-2027',
-  name: 'Druga liga 2027',
-  season: 2027,
-  raceIds: [125],
-  eventIds: [1133],
-  rules: 'Propozicije druge',
-  prizes: 'Nagrade druge',
-}
-
 describe('the body a competition is written with', () => {
-  it('carries all five columns off the record, with the one that moved replaced', () => {
-    /* The route writes all five in one statement and refuses a form missing any of the
-       three required ones, so a body carrying only what changed would blank the rest.
-       That is the opposite of `PUT /api/me`, which coalesces. */
-    expect(upsertOf(SERVED, { prizes: 'Medalja i majica.' })).toEqual({
-      name: 'Druga liga 2027',
-      slug: 'druga-2027',
-      season: 2027,
-      rules: 'Propozicije druge',
-      prizes: 'Medalja i majica.',
-    })
-  })
-
   it('carries all five off the form, with the season as a number and never as text', () => {
     /* `forms/types.ts` holds every value as a string or a flag; `LeagueWriteApi.Upsert`
        takes an `Integer`. Sent as „2027" the binder refuses the whole body, which reaches

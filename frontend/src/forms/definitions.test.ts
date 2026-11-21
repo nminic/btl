@@ -167,12 +167,14 @@ describe('every form definition in the portal', () => {
        biography in place on the verification queue and publish what they left,
        and the owner withdrew that on 06.08.2026 (PDL P22). What a member wrote
        about themselves is now approved as written or refused with a reason, so
-       there is no box to limit. */
+       there is no box to limit. And the box that rewrote the terms and the prizes of a
+       competition in place on the list of competitions went on 21.11.2026: the owner sent that
+       to the form in the administration („male veze „Izmeni” kod Propozicija i Nagrada
+       nestaju”), and the form is `FormRenderer`. */
     expect(drawn.map(({ path }) => path).sort()).toEqual([
       'forms/FormRenderer.tsx',
       'forms/LongBox.tsx',
       'pages/event/GoingToEvent.tsx',
-      'pages/league/EditableText.tsx',
     ])
     expect(loose).toEqual([])
 

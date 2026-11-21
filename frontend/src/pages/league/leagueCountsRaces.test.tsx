@@ -302,6 +302,27 @@ describe('the standing of a competition that counts some of the races of a day',
   }, SLOW)
 })
 
+/** The tiles of the box (owner, 21.11.2026), each as its name, its day and its lengths. The tiles are the
+ *  items of the list the panel draws, and not the lengths inside them, which are items of their own. */
+async function tilesIn(panel: HTMLElement): Promise<{ name: string; day: string; lengths: string[] }[]> {
+  const named = await within(panel).findAllByRole('link')
+  const list = must(must(first(named).closest('li'), 'a tile').parentElement, 'the list of the tiles')
+
+  return within(list)
+    .getAllByRole('listitem')
+    .filter((one) => one.parentElement === list)
+    .map((tile) => ({
+      name: must(within(tile).getByRole('link').textContent, 'the name'),
+      day: must(within(tile).getByText(/^\d{1,2}\. \d{1,2}\. \d{4}\.$/).textContent, 'the day'),
+      lengths:
+        within(tile).queryByRole('list') === null
+          ? []
+          : within(within(tile).getByRole('list'))
+              .getAllByRole('listitem')
+              .map((one) => must(one.textContent, 'a length')),
+    }))
+}
+
 describe('the list of competitions, for a competition that counts some of the races of a day', () => {
   it('heads the box that folds with an h3, one level under the name of its competition', async () => {
     servedCountingFour()
@@ -343,25 +364,25 @@ describe('the list of competitions, for a competition that counts some of the ra
 
     /* Open on arrival (owner, 03.11.2026), so nothing is pressed. */
     const opens = within(box).getByRole('button', { name: /Događaji i trke/ })
-    const days = await within(
+    const days = await tilesIn(
       must(
         document.getElementById(must(opens.getAttribute('aria-controls'), 'what the button opens')),
         'the panel of the box',
       ),
-    ).findAllByRole('listitem')
+    )
 
     /* Three days, in the order the season is run in, and none of the eight others the record names.
-       **And on each line exactly the races the competition counts**, one line to an event since
-       03.11.2026 (owner: „u jednom redu formata BBKT (10.1.2027.) - 12 km, 6 km, 3 km"): one race
-       of the day of three, both of the day of two, and the only one of the third. A line measuring
-       all the races of each day is the box this replaced, and a line of one race per day is its
-       opposite. The two of one day in the owner's order (PDL P6, 18.10.2026, `data/raceOrder.ts`),
-       the longer first: 1089 is the 42,2 km and 1088 the 32,4, so the server's order is the other
-       way. */
-    expect(days.map((day) => day.textContent)).toEqual([
-      `Mrazijada (5. 1. 2019.) - ${measured(THE_ONLY_ONE)}`,
-      `Šidski novogodišnji maraton (14. 1. 2019.) - ${measured(1089)}, ${measured(1088)}`,
-      `BTL trening trek (27. 1. 2019.) - ${measured(THE_MIDDLE_OF_THREE)}`,
+       **And on each tile exactly the races the competition counts**, a tile to an event since
+       21.11.2026 (owner: „u drugom [redu] naziv levo i dužine desno") and one line to an event
+       before it: one race of the day of three, both of the day of two, and the only one of the
+       third. A tile measuring all the races of each day is the box this replaced, and a tile of one
+       race per day is its opposite. The two of one day in the owner's order (PDL P6, 18.10.2026,
+       `data/raceOrder.ts`), the longer first: 1089 is the 42,2 km and 1088 the 32,4, so the server's
+       order is the other way. */
+    expect(days.map(({ name, lengths }) => ({ name, lengths }))).toEqual([
+      { name: 'Mrazijada', lengths: [measured(THE_ONLY_ONE)] },
+      { name: 'Šidski novogodišnji maraton', lengths: [measured(1089), measured(1088)] },
+      { name: 'BTL trening trek', lengths: [measured(THE_MIDDLE_OF_THREE)] },
     ])
 
     /* **The two numbers on the row, from the same races.** Three days and not the eleven the record
@@ -378,7 +399,7 @@ describe('the list of competitions, for a competition that counts some of the ra
       { timeout: SLOW / 4 },
     )
   }, SLOW)
-  it('writes in the brackets the day of the event and not the day of any race it counts', async () => {
+  it('writes on the tile the day of the event and not the day of any race it counts', async () => {
     const { events } = theArrangement()
 
     servedCountingFour(true)
@@ -409,16 +430,16 @@ describe('the list of competitions, for a competition that counts some of the ra
       'the box of the competition',
     )
     const opens = within(box).getByRole('button', { name: /Događaji i trke/ })
-    const days = await within(
+    const days = await tilesIn(
       must(
         document.getElementById(must(opens.getAttribute('aria-controls'), 'what the button opens')),
         'the panel of the box',
       ),
-    ).findAllByRole('listitem')
+    )
 
-    /* The brackets read the day each event begins on (5. 1., 14. 1., 27. 1.) and not 6. 1., 15. 1.,
+    /* The tile reads the day each event begins on (5. 1., 14. 1., 27. 1.) and not 6. 1., 15. 1.,
        16. 1. or 28. 1., which are the days the races of them were put on. */
-    expect(days.map((day) => /\(([^)]*)\)/.exec(day.textContent)?.[1])).toEqual([
+    expect(days.map(({ day }) => day)).toEqual([
       '5. 1. 2019.',
       '14. 1. 2019.',
       '27. 1. 2019.',

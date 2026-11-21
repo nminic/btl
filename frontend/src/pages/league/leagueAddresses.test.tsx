@@ -6,10 +6,9 @@ import type { League } from '../../data/types'
 import { at, must } from '../../test/at'
 import { MISLEADING } from '../../test/misleadingAddresses'
 import { renderAt } from '../../test/render'
-import { answeredWith, serverThat } from '../../test/serverAnswers'
+import { serverThat } from '../../test/serverAnswers'
 import { SLOW } from '../../test/slow'
 import { everyRule } from '../../test/stylesheet'
-import { setupUser } from '../../test/user'
 
 /**
  * An address in the terms or in the prizes of a competition, on the list of competitions.
@@ -97,9 +96,9 @@ afterEach(() => {
 
 /**
  * A server in front of the disc reader that answers `GET /api/leagues` with the competitions it is
- * given, and the write of one box with what it is told to, for the length of one case.
+ * given, for the length of one case.
  */
-function serving(leagues: League[], toTheWrite: () => Response = () => answeredWith(200)) {
+function serving(leagues: League[]) {
   const server = serverThat((path, init) => {
     const method = init?.method ?? 'GET'
 
@@ -110,7 +109,7 @@ function serving(leagues: League[], toTheWrite: () => Response = () => answeredW
       })
     }
 
-    return method === 'PUT' && path.startsWith('/api/leagues/') ? toTheWrite() : null
+    return null
   })
 
   onTestFinished(server.stop)
@@ -156,11 +155,6 @@ describe('an address in the terms or in the prizes of a competition', () => {
 
       /* The second competition, whose terms are empty and whose prizes sit in brackets and blanks:
          the list draws the sheet of the chosen one only, so it is chosen through the address. */
-      /* Read before the sheet is changed: the sheet of another competition is a sheet of its own. */
-      if (role === 'superadmin') {
-        expect(rules.getByRole('button', { name: 'Izmeni' })).toBeVisible()
-      }
-
       await router.navigate('/sr/lige?sezona=2027&liga=proba-2')
 
       const planinska = await boxOf(/Proba Planinska/)
@@ -174,15 +168,9 @@ describe('an address in the terms or in the prizes of a competition', () => {
       )
       expect(bracketed.getByRole('paragraph').textContent).toBe(PLANINSKA_PRIZES.trim())
 
-      /* Nothing written in the terms is a link in neither of the two, and to somebody who may write
-         it the box is still there, and so is the control that opens it, beside a link that was
-         drawn all the same. */
-      if (role === 'superadmin') {
-        expect(sectionOf(planinska, 'Propozicije').queryAllByRole('link')).toEqual([])
-        expect(sectionOf(planinska, 'Propozicije').getByText('Još nije napisano.')).toBeVisible()
-      } else {
-        expect(within(planinska).queryByRole('heading', { name: 'Propozicije' })).toBeNull()
-      }
+      /* Nothing written in the terms is no box at all, for the one who may change the competition as
+         much as for a visitor: nobody writes it here since 21.11.2026 (`league/LeagueText.tsx`). */
+      expect(within(planinska).queryByRole('heading', { name: 'Propozicije' })).toBeNull()
     },
     SLOW,
   )
@@ -317,66 +305,6 @@ describe('an address in the terms or in the prizes of a competition', () => {
     expect(prizes.queryAllByRole('link')).toEqual([])
     expect(prizes.getByRole('paragraph').textContent).toBe(bracketed)
     expect(prizes.getByRole('paragraph').childNodes).toHaveLength(1)
-  }, SLOW)
-
-  it('is drawn from what stands in the box and not from what was served, and the box being written holds the typed words', async () => {
-    const user = setupUser()
-    const server = serving(LEAGUES)
-
-    renderAt('/sr/lige?sezona=2027', 'superadmin')
-
-    const rules = sectionOf(await boxOf(/Proba RunTrace/), 'Propozicije')
-
-    await user.click(rules.getByRole('button', { name: 'Izmeni' }))
-
-    /* The words as they were typed and stored, `www.` and all: what the box is changed through is
-       never the drawn text. */
-    const typing = rules.getByRole('textbox', { name: 'Propozicije' })
-
-    expect(typing).toHaveTextContent(RUNTRACE_RULES)
-    expect(rules.queryAllByRole('link')).toEqual([])
-
-    await user.clear(typing)
-    await user.type(typing, 'Sad pogledajte www.nova.example.')
-    await user.tab()
-
-    /* Waited for the thing that says the write is over, and not for the link itself: a link that
-       never comes would be waited for until the case ran out of time, and a case that ends by
-       running out of time says nothing about what was wrong. With the box drawn from what was
-       served and not from what stands in it, the note arrives all the same and the link below is
-       asked for at once, and not there. */
-    await rules.findByRole('status')
-
-    /* Another address, so that "the link it was served with" and "the link it now has" are two
-       different answers, and the old one is gone. */
-    const now = rules.getByRole('link', { name: 'www.nova.example' })
-
-    expect(now).toHaveAttribute('href', 'https://www.nova.example')
-    expect(rules.queryByRole('link', { name: 'www.runtrace.net' })).toBeNull()
-    expect(rules.getByRole('paragraph').textContent).toBe('Sad pogledajte www.nova.example.')
-
-    /* And what went to the server is the typed text, not the address it was made into. */
-    const sent = must(
-      server.asked.find((one) => one.init?.method === 'PUT'),
-      'the change the screen sent',
-    )
-
-    expect(JSON.parse(String(sent.init?.body))).toMatchObject({
-      rules: 'Sad pogledajte www.nova.example.',
-      prizes: RUNTRACE_PRIZES,
-    })
-  }, SLOW)
-
-  it('draws no link in the sentence the portal says for a box with nothing written in it', async () => {
-    serving(LEAGUES)
-    renderAt('/sr/lige?sezona=2027&liga=proba-2', 'superadmin')
-
-    const empty = sectionOf(await boxOf(/Proba Planinska/), 'Propozicije')
-    const paragraph = empty.getByRole('paragraph')
-
-    expect(paragraph).toHaveTextContent('Još nije napisano.')
-    expect(paragraph.children).toHaveLength(0)
-    expect(empty.queryAllByRole('link')).toEqual([])
   }, SLOW)
 })
 

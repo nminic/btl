@@ -94,22 +94,14 @@
   outline-offset: 2px;
 }
 
-/* The chosen card: a frame in the colour of the links and the words „Otvorena ispod”, so the choice
-   is not said by colour alone (WCAG 2.2 SC 1.4.1). */
+/* The chosen card: its frame, and nothing written on it (owner, 21.11.2026, PDL „ne dobija natpis
+   „Otvorena ispod””): „Dovoljno je što je uokvireno, veoma je intuitivno i bez te labele.” The frame is
+   twice as thick as the others as well as of another colour, so the choice is not said by colour alone
+   (WCAG 2.2 SC 1.4.1); a reader by ear is told by `aria-current` on the name. */
 .leagues__tile:has(a[aria-current='true']) {
   border-color: var(--accent);
   box-shadow: inset 0 0 0 1px var(--accent);
   background: var(--surface-hover);
-}
-
-.leagues__tile-open {
-  grid-column: 1 / -1;
-  margin: 0;
-  font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--accent);
 }
 
 .leagues__tile .leagues__year {
@@ -126,8 +118,6 @@
   min-block-size: 1.5rem;
   font-weight: 600;
   font-size: 0.9rem;
-  /* A flex box drops the space at the edge of each of its items, so the arrow is set apart here. */
-  gap: var(--space-4);
 }
 
 /* The line of facts under the name on a card: the season, how many events count, how many people
@@ -163,6 +153,9 @@
   border: 1px solid color-mix(in srgb, var(--gold-300) 28%, transparent);
   border-radius: var(--radius-10);
   background: var(--surface);
+  /* Asked by the head below whether it has room for one row: a question about the sheet and not about
+     the window, so it is a container and not a place where the portal changes shape. */
+  container: league-sheet / inline-size;
 }
 
 .leagues__score {
@@ -251,6 +244,31 @@
   background: var(--gold-300);
 }
 
+/* THE PENCIL THAT LEADS TO THE FORM OF THIS COMPETITION IN THE ADMINISTRATION (owner, 21.11.2026, PDL
+   „Glava lista lige: na desktopu sve u jednom redu”), drawn only for somebody that form opens for.
+   „Na telefonu ostaje raspored kao danas, a ikonica za izmenu stoji u gornjem redu uz naziv lige”: a
+   third column of the top row, which only a head that carries the pencil has (`--changes`), so a head
+   without it keeps the very grid it had. The square and its size are the portal's own
+   (`components/ActionButton.css`); what is said here is its place and its look on the blue, the gold
+   ring of the focus included (`.leagues__score :focus-visible` above). */
+.leagues__score--changes {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
+.leagues__edit {
+  grid-column: 3;
+  grid-row: 1;
+  border: 1px solid color-mix(in srgb, var(--white) 45%, transparent);
+  border-radius: var(--radius-8);
+  background: color-mix(in srgb, var(--white) 10%, transparent);
+  color: var(--white);
+}
+
+.leagues__edit:hover {
+  border-color: var(--white);
+  background: color-mix(in srgb, var(--white) 20%, transparent);
+}
+
 @media (min-width: 51.25em) {
   .leagues__score {
     grid-template-columns: auto minmax(0, 1fr) auto;
@@ -274,6 +292,45 @@
   .leagues__cta {
     grid-column: 3;
     grid-row: 1 / span 2;
+  }
+
+  /* The pencil before „Tabela”, in the row of the name. */
+  .leagues__score--changes {
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
+  }
+
+  .leagues__score--changes .leagues__cta {
+    grid-column: 4;
+  }
+}
+
+/* ONE ROW WHERE THE SHEET HAS ROOM FOR ONE (owner, 21.11.2026): „na desktopu sve u jednom redu (znak,
+   ime, tri statistike, ikonica za izmenu, dugme)”. Asked of the sheet at 62em, which is where the
+   draft he chose measured the five to fit beside a name of two lines (`predlozi/lige-dogadjaji-nacrt.html`),
+   and in em so a reader who doubles the text gets the two rows back rather than a name squeezed to a
+   letter. Narrower than that, the head is what it was. */
+@container league-sheet (min-width: 62em) {
+  .leagues__score {
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
+  }
+
+  .leagues__score--changes {
+    grid-template-columns: auto minmax(0, 1fr) auto auto auto;
+  }
+
+  .leagues__score .leagues__pills {
+    grid-column: 3;
+    grid-row: 1;
+    flex-wrap: nowrap;
+  }
+
+  .leagues__score .leagues__edit {
+    grid-column: 4;
+  }
+
+  .leagues__score .leagues__cta {
+    grid-column: -2;
+    grid-row: 1;
   }
 }
 
@@ -404,6 +461,21 @@
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--gold-300) 25%, transparent);
 }
 
+/* A dot lit with its tile (`league/LeagueEvents.tsx`): larger, with a ring in its own colour. Drawn
+   between the two states, which the rule for reduced motion in `index.css` takes back to nothing. */
+.leagues__year:not(.leagues__year--mini) .leagues__dot::before {
+  transition: transform var(--fast), box-shadow var(--fast);
+}
+
+.leagues__dot--lit::before {
+  transform: scale(1.35);
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 38%, transparent);
+}
+
+.leagues__dot--next.leagues__dot--lit::before {
+  box-shadow: 0 0 0 6px color-mix(in srgb, var(--gold-300) 45%, transparent);
+}
+
 .leagues__months {
   position: absolute;
   inset-inline: 0;
@@ -448,7 +520,7 @@
   color: var(--text-muted);
 }
 
-/* The words an organiser wrote, which may hold an address (`pages/league/EditableText.tsx`).
+/* The words an organiser wrote, which may hold an address (`pages/league/LeagueText.tsx`).
 
    `overflow-wrap` because one unbroken word is the single input that pushes a page sideways, which
    this portal never does, and an address is exactly such a word. Measured in a browser on
@@ -480,13 +552,14 @@
    „Jedini nalaz axe-a": „naslov kutije „Trke u ligi" postaje drugog nivoa (h2), sa istom veličinom
    kao danas, pa izgled i tekst ostaju isti").
 
-   Written out because nothing else says it. The box stands in a row of a table and not in a
+   Written out because nothing else says it. The box stood in a row of a table and not in a
    `.leagues__item`, so `.leagues__item h3` above never reached it and what was drawn was the
    browser's own h3: 1.17em, with a line of distance above it and below it. Left to the browser an
    h2 would be 1.5em with .83em of distance, a bigger title and a row that grew with it. Measured in
-   Chrome on 17.10.2026 at 360 and 1280: 18,72px and 18,72px of distance before and after. The
-   public box is another component with its own h3 (`league/LeagueEvents.tsx`) and does not wear
-   this class. */
+   Chrome on 17.10.2026 at 360 and 1280: 18,72px and 18,72px of distance before and after. The box
+   moves into the form that changes a competition, under its prizes (`admin/AdminLeagues.tsx`), which
+   is not a `.leagues__item` either. The public box is another component with its own h3
+   (`league/LeagueEvents.tsx`) and does not wear this class. */
 .leagues__counting-title {
   font-size: 1.17em;
   margin-block: 1em;
@@ -562,16 +635,160 @@
   overflow-wrap: anywhere;
 }
 
-/* An event of a competition on the public list, in one line (owner, 03.11.2026): the name, and
-   after it the day and the measures, muted as the day and the races under it were. A line and not
-   a row that may not break: at 360 a name of three words and four lengths does not fit, and it
-   wraps as a sentence would. `overflow-wrap` for the same reason as the races above. */
-.leagues__event-line {
+/* THE TILES OF THE EVENTS ON THE PUBLIC LIST (`league/LeagueEvents.tsx`; owner, 21.11.2026, PDL
+   „„Događaji i trke” na listu lige: pločice u dve kolone”, variant A of
+   `predlozi/lige-dogadjaji-nacrt.html`): „pločice u dve kolone na računaru (jedna na telefonu)”, the
+   state left and the day right in the first row, the name left and the lengths right in the second,
+   „oba reda su vertikalno poravnata”.
+
+   Classes of their own and none of the administration's (`.leagues__events` and the three under it
+   are what `admin/LeagueRaceModeration.tsx` lists its races with), so neither screen reaches the
+   other.
+
+   Two columns where the box has 40em for them, asked of the box and not of the window: the tiles are
+   as wide as the sheet lets them be, and in em so a reader who doubles the text gets one column. */
+.leagues__counting-panel {
+  container: league-counting / inline-size;
+}
+
+.leagues__event-tiles {
+  list-style: none;
+  margin: var(--space-12) 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-8);
+}
+
+@container league-counting (min-width: 40em) {
+  .leagues__event-tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.leagues__event-tile {
+  padding: var(--space-8) var(--space-12);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-10);
+  background: var(--surface);
+  line-height: 1.35;
+  scroll-margin-block: var(--space-16);
+  transition: border-color var(--fast), background-color var(--fast), box-shadow var(--fast);
+}
+
+/* The state is said in words; the gold edge of the next one and the broken frame of the ones ahead
+   only repeat it (WCAG 2.2 SC 1.4.1). */
+.leagues__event-tile--next {
+  border-inline-start: 4px solid var(--gold-400);
+}
+
+.leagues__event-tile--ahead {
+  border-style: dashed;
+}
+
+/* Lit together with its dot: the frame and the ground of the hover, and a ring, so it is not only a
+   colour that changes. */
+.leagues__event-tile--lit {
+  border-style: solid;
+  border-color: var(--accent);
+  background: var(--surface-hover);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.leagues__event-tile--next.leagues__event-tile--lit {
+  border-inline-start-color: var(--gold-400);
+}
+
+/* THE FIRST ROW: the state and the day, of one size and one height of line, and centred against each
+   other, so the two stand in one line whatever the pip beside the state does („stanje i datum u istoj
+   liniji”). Measured in Chrome (`geometry/leagueSheet.geometry.ts`). */
+.leagues__event-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.leagues__event-state,
+.leagues__event-when {
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  color: var(--text-muted);
+}
+
+.leagues__event-state {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.leagues__event-when {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The small dot beside the state, the same three looks as the dots on the line. */
+.leagues__event-pip {
+  flex: none;
+  inline-size: 0.75rem;
+  block-size: 0.75rem;
+  border: 2px solid var(--accent);
+  border-radius: 50%;
+  background: var(--surface);
+}
+
+.leagues__event-tile--held .leagues__event-pip {
+  background: var(--accent);
+}
+
+.leagues__event-tile--next .leagues__event-pip {
+  border-color: var(--gold-500);
+  background: var(--gold-300);
+}
+
+/* THE SECOND ROW: the name and the lengths on one baseline, though they are of two sizes („naziv i
+   dužine u istoj liniji”). Where the two do not fit beside each other the lengths go under the name,
+   which is what a long name with four lengths does at 360. `overflow-wrap` because a name is whatever
+   an organiser typed, and one unbroken word is the single input that pushes a page sideways. */
+.leagues__event-mid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-2) var(--space-12);
+  margin-block-start: var(--space-2);
+}
+
+.leagues__event-mid > a {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+  font-weight: 600;
   overflow-wrap: anywhere;
 }
 
-.leagues__event-what {
-  color: var(--text-muted);
+.leagues__event-lengths {
+  flex: 0 1 auto;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-4) var(--space-6);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.leagues__event-lengths li {
+  padding: 0 var(--space-6);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-round);
+  background: var(--kind-race-face);
+  color: var(--text);
+  font-size: 0.75rem;
+  white-space: nowrap;
 }
 
 /* THE `+` THAT PUTS A RACE INTO A COMPETITION (`admin/LeagueRaceModeration.tsx`).
@@ -583,8 +800,10 @@
    never scrolls sideways.
 
    `flex-wrap` and not a breakpoint, so the layout answers to the width it is GIVEN rather
-   than to the width of the window. This box sits inside a cell of the table of competitions,
-   whose column is as wide as the table leaves it, and a media query does not know that. */
+   than to the width of the window. This box sits inside the form that changes a competition,
+   under its prizes (`admin/AdminLeagues.tsx`), which is as wide as the screen of administration
+   leaves it, and a media query does not know that. Until the panel moved there it sat in a cell of
+   the table of competitions, for the same reason. */
 .leagues__adding {
   display: flex;
   flex-wrap: wrap;

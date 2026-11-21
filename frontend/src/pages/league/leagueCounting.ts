@@ -81,3 +81,29 @@ export function racesByEvent(races: Race[], events: BtlEvent[]): EventRaces[] {
         left.event.name.localeCompare(right.event.name),
     )
 }
+
+/** Where an event of a competition stands against the day it is read on, and so the words of a tile
+ *  (`leagues.state.*`), walked against this list by `i18n/keys.test.ts`. */
+export const EVENT_STATES = ['held', 'next', 'ahead'] as const
+
+export type EventState = (typeof EVENT_STATES)[number]
+
+/**
+ * WHETHER EACH EVENT IS HELD, THE NEXT ONE, OR STILL AHEAD, ANSWERED ONCE FOR THE DOT AND THE TILE.
+ *
+ * Owner, 21.11.2026 (PDL, „„Događaji i trke” na listu lige: pločice u dve kolone”): „u prvom redu stanje
+ * levo („Održan / Sledeći / Predstoji”) i datum desno”, with the dot of the same event on the line
+ * through the year lit together with its tile. The dot already drew these three states, so the tile
+ * reads them from here and not from a comparison of its own: two readings of one fact are two answers
+ * the first time somebody edits one of them.
+ *
+ * **The next one is the first whose day has not passed, and the day of reading counts as not passed**:
+ * an event held today is still the one a member is going to, which is what the gold dot said before
+ * the tiles existed. Every event before it is held and every one after it is ahead. Asked by the
+ * identity of the event, so two events on one day are two answers.
+ */
+export function statesOf(counting: EventRaces[], today: string): (event: BtlEvent) => EventState {
+  const next = counting.find(({ event }) => event.date >= today)?.event
+
+  return (event) => (event.id === next?.id ? 'next' : event.date < today ? 'held' : 'ahead')
+}

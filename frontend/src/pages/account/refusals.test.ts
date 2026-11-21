@@ -335,8 +335,8 @@ describe('the reasons the server can name', () => {
 
        TWO SCREENS AND ELEVEN NAMES, WHICH IS THE SHAPE `TeamWriteApi` ALREADY HAS. Four
        routes of one class fall into two acts that no screen meets both of: making,
-       changing and deleting the record (`admin/AdminLeagues.tsx`, and the terms and
-       prizes on `pages/Leagues.tsx`), and putting races into it or taking them out
+       changing and deleting the record (`admin/AdminLeagues.tsx`; the terms and the
+       prizes were also changed on `pages/Leagues.tsx` until 21.11.2026), and putting races into it or taking them out
        (`admin/LeagueRaceModeration.tsx`). `theSeasonIsFrozen` is in both tables under two
        different dictionary keys, because what the reader has to do about it differs, and
        the union is what this gate counts. */

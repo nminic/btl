@@ -418,10 +418,11 @@ export function arrivedResource<T>(name: ResourceName, language?: string): T | u
  * Tests start from an empty cache when this is called with nothing, which is what every
  * `serving()` in the suite still does.
  *
- * **A name narrows the clearing to one resource, since 25.09.2026.** Two screens now call
- * it after their own write goes through - `AdminLeagues.tsx` and `Leagues.tsx`, both on
- * `'leagues'` - so the NEXT mount of either one asks the server again rather than reading
- * what this visit fetched before that write. Before that day nothing in the application
+ * **A name narrows the clearing to one resource, since 25.09.2026.** The screens that write
+ * call it after their own write goes through - `AdminLeagues.tsx` on `'leagues'` among them,
+ * and until 21.11.2026 `Leagues.tsx` as well, when the terms and the prizes were still changed
+ * there - so the NEXT mount of any screen that reads the resource asks the server again rather
+ * than reading what this visit fetched before that write. Before that day nothing in the application
  * called this at all; both screens held what they wrote in the session's own provider
  * instead, which is what let them survive being unmounted without asking again, and this
  * cache staying full for the whole visit was never the fault while that was true.
