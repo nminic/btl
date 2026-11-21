@@ -235,7 +235,13 @@ describe('who is offered „Pozovi u tim"', () => {
     try {
       renderAt(ASKED_AT, 'competitor', LEADS_IT, undefined, DAY_IN)
 
-      expect(await screen.findByRole('button', { name: sr.teams.invite })).toBeVisible()
+      const button = await screen.findByRole('button', { name: sr.teams.invite })
+
+      expect(button).toBeVisible()
+      /* AN ICON, since 21.11.2026 (owner, PDL „Zaglavlje profila"): it draws no word, and its name is the
+         attribute a reader hears and a pointer shows, so an icon that lost it is a button with no name. */
+      expect(button, 'the icon draws a word').toHaveTextContent('')
+      expect(button).toHaveAttribute('title', sr.teams.invite)
       /* His own team's list and no other, which is the second team on file. */
       expect(readsOfLists(server.asked)).toEqual([`/api/teams/${String(HIS.id)}/invitations`])
     } finally {

@@ -220,3 +220,25 @@ export function LinkIcon({ className }: IconProps) {
     </Stroke>
   )
 }
+
+/** A person with a plus: „Pozovi u tim" (owner, 21.11.2026, PDL „Zaglavlje profila"). It carries no name; the
+ *  button it stands in keeps the words for the reader (`pages/profile/InviteToTeam.tsx`). */
+export function InviteIcon({ className }: IconProps) {
+  return (
+    <Stroke className={className}>
+      <circle cx="9" cy="8" r="4" />
+      <path d="M1.5 20.5a7.5 7.5 0 0 1 15 0" />
+      <path d="M19 8v6M16 11h6" />
+    </Stroke>
+  )
+}
+
+/** A card with lines on it: the card „Podaci" of a member, where it has no room to be a word (owner, 21.11.2026). */
+export function DataIcon({ className }: IconProps) {
+  return (
+    <Stroke className={className}>
+      <rect x="3" y="4" width="18" height="16" rx="2.5" />
+      <path d="M7 9h10M7 13h10M7 17h6" />
+    </Stroke>
+  )
+}

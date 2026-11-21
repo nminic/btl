@@ -974,42 +974,20 @@
   font-style: italic;
 }
 
-/* The head of a profile, the parts of it, and the season, as one arrangement.
+/* THE HEAD OF A PROFILE, THE PARTS OF IT, AND THE SEASON, AS ONE ARRANGEMENT (rewritten 21.11.2026; owner, PDL
+ * „Zaglavlje profila: izbor „Godina” (podrazumevano „Sve”) stoji u redu sa karticama, desno, na svim uređajima;
+ * „Pozovi u tim” postaje ikonica na kraju reda sa imenom").
  *
- * Where the season stands depends on how much room there is: in the row with the
- * parts once the screen is narrow, level with the name when it is not (owner,
- * 23.08.2026). One home in the markup and the layout decides the row, rather than
- * two copies hidden by turns.
+ * Two rows, at every width. The first is the portrait, the name and, at the end of the row of the name, what the
+ * reader can do about this person (`.profile__acts`); under the name stands the line that says who the person is.
+ * The second is the belt: the parts on the left and the season on the right. Until 21.11.2026 the season stood
+ * beside the name from 560px up and the invitations stood in the row of the parts; the measurements that
+ * governed that arrangement (the season falling between the name and its line, the page scrolling sideways at
+ * 200% text) are held now by the belt that wraps and by `geometry/profileHead.geometry.ts`.
  *
- * Measured before the change: at 760px the name and the season shared a row and the
- * member's number stood 6px under the name; at 520 and at 360 the season fell
- * between them and pushed the number 60px down. That fall is the „ogroman prazan
- * prostor" the owner saw.
- *
- * Measured after, each size read on the screen rather than reasoned from the one
- * before it, which is a correction: the first version of this comment carried 8px
- * for all three sizes on a telephone, and every distance here is in `rem`, so one
- * number for three sizes cannot be right.
- *
- * | screen / text | page scrolls | name to number | season |
- * |---|---|---|---|
- * | 1280 / 100% | 0 | 6px | beside the name, centres level to the pixel |
- * | 360 / 100% | 0 | 8px | in the belt with the parts |
- * | 360 / 150% | 0 | 12px | under the parts |
- * | 360 / 200% | 0 | 16px | under the parts |
- *
- * Six above the breakpoint is what the portal has always had, and the telephone's
- * eight, twelve and sixteen are the same `--space-8` read at three sizes of text.
- *
- * **Two things carry it, and both are corrections a round measured.** The head and
- * the identity are `display: contents`, so the portrait, the name, the line and the
- * belt are children of one grid: the season has to be level with the **name**, and
- * centred against the whole head it sat 10,16px below it, which breaks the rule of
- * 05.08.2026 that this control stands where it stands on the teams. And the parts
- * and the season sit in a belt that **wraps**: at 200% text the two ask for 435px of
- * a box that is 328, and a row that cannot give way pushed the page sideways by
- * 107px, from 162% text upward, which is the one thing the portal never does
- * (WCAG 2.2 SC 1.4.10). */
+ * The belt WRAPS and the parts give way before the season does, down to a floor: at 200% text the parts and the
+ * season ask for more than a telephone has, and a row that cannot give way pushes the page sideways, which is
+ * the one thing the portal never does (WCAG 2.2 SC 1.4.10). */
 .profile__top {
   --profile-belt-gap: var(--space-20);
   display: grid;
@@ -1019,17 +997,13 @@
     'portrait meta'
     'belt belt';
   column-gap: var(--space-16);
-  /* No row gap. The distance between the name and the line under it is already the
-     heading's own `--head-end`, and a gap on the grid adds a second one: measured
-     14px above the breakpoint where the portal has 6, and the rule the owner set for
-     this change is that above the breakpoint nothing moves. What the belt needs
-     under the head it carries itself, below. */
+  /* No row gap: the distance between the name and the line under it is the heading's own `--head-end`. */
   row-gap: 0;
   align-items: center;
 }
 
-/* Both wrappers give up their boxes so their children land in the grid above. The
-   elements stay in the markup, so the `header` is still a `header`. */
+/* Both wrappers give up their boxes so their children land in the grid above. The elements stay in the markup,
+   so the `header` is still a `header`. */
 .profile__top > .profile__head,
 .profile__top .profile__identity {
   display: contents;
@@ -1039,84 +1013,95 @@
   grid-area: portrait;
 }
 
+/* THE ROW OF THE NAME: the name takes the room there is and what the reader can do stands at the end of the row;
+   an act that does not fit falls under the name, still at the right. */
 .profile__top .profile__title {
   grid-area: name;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: var(--space-8);
+}
+
+.profile__top .profile__title > h1 {
+  flex: 1 1 8rem;
+  min-inline-size: 0;
 }
 
 .profile__top .profile__meta {
   grid-area: meta;
 }
 
-/* The parts give way before the season does, down to a floor, and the season goes
-   under them only when even that floor will not fit.
- *
- * Three arrangements were measured on a 360px screen before this one, and each broke
- * a different way. Asked for their natural width the two wrap at once, because a flex
- * line wraps **before** it shrinks: 229 + 130 + 8 against a box of 328, so the season
- * fell under the parts even at the default size, which is not what was asked for.
- * Held on one line with no floor, the page stays put but at 200% text the parts are
- * squeezed to **44px** and their labels are unreadable. Held on one line with a floor,
- * the line overflows and the page scrolls, which is the one thing the portal never
- * does.
- *
- * `flex: 1 1 8rem` says all three at once: eight rem is what the line is planned
- * around, so at the default size the parts take the room left over (190px) and the
- * season sits beside them; at 200% the same eight rem is 256px, the two no longer
- * plan onto one line, and the belt wraps rather than crushing either. The floor is in
- * `rem` because what has to fit inside it is words. */
-.profile__belt .parts {
-  flex: 1 1 8rem;
-  min-inline-size: 0;
-}
-
-/* THE PARTS AND WHAT THE READER CAN DO ABOUT THIS PERSON, ONE ROW (owner, 06.11.2026, PDL „Profil: forma
-   „Podaci" po obliku forme za prijavu": „malo normalno dugme alignovano desno, istog formata i reda gde se
-   nalaze i Pregled, Priznanja i nagrade, i podaci").
-
-   The parts take the room the row has and the acts stand at its right end; when the two do not fit on one
-   line the acts wrap under the parts and still stand at the right, which `flex-end` says for a line that
-   holds nothing else. The nav's floor is zero, so at 200% text its own pills wrap inside it rather than
-   pushing the page sideways (WCAG 2.2 SC 1.4.10). */
-.profile__tabs {
-  /* Gives up its box below the breakpoint, so the parts and the acts are items of the belt, and the acts
-     can stand in a line of their own under the parts AND the season (owner, 06.11.2026: „Na telefonu (360
-     px) dugmad za poziv stoje zajedno u svom redu, desno, ispod kartica i izbora godine"). The elements
-     stay in the markup; the acts come before the season in the document and are drawn after it (`order`). */
+/* The box that holds the acts gives itself up, so each act is an item of the row of the name and wraps on its own.
+   Each spends the heading's own `--head-end` under it, so that centring lines the margin boxes up and an icon is
+   level with the name (the rule of 05.08.2026 for a control beside a heading). */
+.profile__acts {
   display: contents;
 }
 
-/* THE ACTS IN THE LINE OF THEIR OWN, on a telephone: the whole width of the belt, so nothing shares the
-   line with them, `order` after the season, and `flex-end` for the right edge. `:empty` because a visitor
-   is handed none, and a box that holds nothing would still cost the belt a gap. */
-.profile__acts {
-  display: flex;
-  flex: 1 0 100%;
-  order: 1;
-  flex-wrap: wrap;
-  justify-content: flex-end;
+.profile__acts > * {
+  margin-block: 0 var(--head-end);
+}
+
+/* THE ICON AT THE END OF THE ROW: the invitation into a team and, where the row has no room for three parts and
+   the season, the card „Podaci" (`THREE_PARTS_DO_NOT_FIT`, `profile/ProfileHead.tsx`). 2,25rem is the size of the
+   target, above the 24px of WCAG 2.2 SC 2.5.8 at the browser's own text and growing with it. Last in the row
+   (`order`), in the order of the document between themselves. */
+.profile__act--icon {
+  display: inline-flex;
   align-items: center;
-  gap: var(--space-6);
+  justify-content: center;
+  flex: 0 0 auto;
+  order: 2;
+  inline-size: 2.25rem;
+  block-size: 2.25rem;
+  margin-inline-start: auto;
+  padding: 0;
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius-round);
+  background: transparent;
+  color: var(--text-muted);
+  text-decoration: none;
+  cursor: pointer;
 }
 
-.profile__acts:empty {
-  display: none;
+/* Two icons in a row: only the first takes the free room to the left of it. */
+.profile__act--icon ~ .profile__act--icon {
+  margin-inline-start: 0;
 }
 
-/* „Poziv ... je poslat" stands where the button stood, on its line. */
+.profile__act--icon:hover,
+.profile__act--icon[aria-current] {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.profile__act--icon[aria-current] {
+  background: var(--surface-hover);
+}
+
+.profile__act--icon svg {
+  inline-size: 1.25rem;
+  block-size: 1.25rem;
+}
+
+/* „Poziv ... je poslat" stands where the button stood, on its line under the name. */
 .profile__acts > .profile__invited {
-  margin: 0;
+  order: 3;
+  flex: 1 0 100%;
+  text-align: end;
 }
 
-/* A refusal, a list that could not be read and the locked site fall into the line under the row: a sentence
-   of the server's is longer than a button, and squeezed beside the parts it would be a column of words. */
+/* A refusal, a list that could not be read and the locked site fall into the line under the row: a sentence of the
+   server's is longer than a button, and squeezed beside the name it would be a column of words. */
 .profile__acts > :not(.profile__act):not(.profile__invited) {
+  order: 3;
   flex-basis: 100%;
 }
 
-/* The format of the parts beside it, which is what the owner asked for in as many words („istog formata"):
-   the same letter, the same padding and the same rounding as `.parts__item` (`components/PartsNav.css`),
-   so the two are the same height. Its own class, because a button is not a link. Two classes, so this
-   wins over `.button`'s padding and rounding on weight rather than on the order of the bundle, and
+/* THE ACT THAT IS A WORD, „Pozovi u trkački par", which stays one (the owner named only the team): the format of
+   the parts beside it, the same letter, the same padding and the same rounding as `.parts__item`. Two classes, so
+   this wins over `.button`'s padding and rounding on weight rather than on the order of the bundle, and
    `font: inherit` first, because a button does not inherit the page's letter on its own. */
 .button.profile__act {
   font: inherit;
@@ -1126,12 +1111,21 @@
   border-radius: var(--radius-round);
 }
 
+.profile__acts > .button.profile__act:not(.profile__act--icon) {
+  order: 1;
+  margin-inline-start: auto;
+}
+
+/* Written once more with three classes: the icon is a `.button` too, and the padding of the word above would
+   have drawn it a pill. */
+.button.profile__act.profile__act--icon {
+  padding: 0;
+}
+
+/* THE BELT: the parts on the left, the season on the right, one row (owner, 21.11.2026). */
 .profile__belt {
   grid-area: belt;
-  /* The distance from the head, which the grid does not give and which the profile
-     used to get from its own `gap` before the head and the parts were one grid.
-     Measured: 24px above the breakpoint on `main`, and 4px here until this was put
-     back. One value, read in both arrangements. */
+  /* The distance from the head, which the grid does not give. One value, read at every width. */
   margin-block-start: var(--profile-belt-gap);
   display: flex;
   flex-wrap: wrap;
@@ -1140,71 +1134,45 @@
   gap: var(--space-8);
 }
 
-.profile__belt > .profile__season {
-  /* Nothing of its own: whatever it shares a line with centres it, and a bottom
-     margin of twelve against a heading's six drew it three pixels low. */
-  margin-block-end: 0;
+/* The parts take the room that is left and give way down to a floor, eight rem, before the season falls under
+   them: `flex: 1 1 8rem` says all three at once (a flex line wraps BEFORE it shrinks, and a floor of nothing
+   squeezed the parts to 44px at 200% text, measured 23.08.2026). The floor is in `rem` because what has to fit
+   inside it is words. */
+.profile__tabs {
+  flex: 1 1 8rem;
+  min-inline-size: 0;
 }
 
-/* The same breakpoint the shared row uses for the same question (`Rankings.css`), so
-   a profile and a ranking change shape at one width rather than at two. Above it the
-   belt gives up its box too, and its two children take their own places: the season
-   beside the name, where it has stood since 05.08.2026, and the parts across the
-   foot of the head. */
-@media (min-width: 35em) {
-  .profile__top {
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    grid-template-areas:
-      'portrait name season'
-      'portrait meta meta'
-      'parts parts parts';
-  }
+.profile__belt > .profile__season {
+  flex: 0 0 auto;
+  margin: 0 0 0 auto;
+}
 
-  .profile__belt {
-    display: contents;
+/* ON A TELEPHONE THE WORD „GODINA" IS NOT DRAWN, and stays the name of the field for a reader who hears it
+   (owner, 21.11.2026: „na telefonu se reč „Godina” sakriva i ostaje izbor „Sve ▾""). Hidden the way
+   `.visually-hidden` hides (`index.css`), not removed: `display: none` would take the name of the field away. */
+@media (max-width: 34.99em) {
+  .profile__season .rankings__field > span {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
   }
+}
 
-  /* From here the parts and the acts are ONE ROW (owner, 06.11.2026: „Od širine na kojoj staju (768 i
-     šire) stoje u istom redu sa karticama, desno"): the parts take the room the row has and the acts stand
-     at its right end; when the two do not fit on one line the acts wrap under the parts and still stand at
-     the right, which `flex-end` says for a line that holds nothing else. The nav's floor is zero, so at
-     200% text its own pills wrap inside it rather than pushing the page sideways (WCAG 2.2 SC 1.4.10). The
-     width is the one the head already changes shape at, not a new one. */
-  .profile__tabs {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: flex-end;
-    gap: var(--space-6);
-  }
-
-  .profile__tabs > .parts {
-    flex: 1 1 auto;
-    min-inline-size: 0;
-  }
-
-  /* The box that holds the acts gives itself up, so each button, and each sentence that stands where a
-     button stood, is an item of the row and wraps on its own. */
-  .profile__acts {
-    display: contents;
-  }
-
-  .profile__top .profile__tabs {
-    grid-area: parts;
-    /* Above the breakpoint the belt gives up its box, and with it its margin, so the
-       distance has to be carried by what is left. Same value, read from the same
-       place. */
-    margin-block-start: var(--profile-belt-gap);
-  }
-
-  .profile__top .profile__season {
-    grid-area: season;
-    /* Level with the name to the pixel, which is where this control has stood since
-       05.08.2026. Centring lines up margin boxes, so the season spends the same
-       `--head-end` the heading beside it does; left with its own twelve against the
-       heading's six it was drawn three pixels low, and a round measured exactly that
-       before the belt existed. */
-    margin-block-end: var(--space-6);
+/* THE FILTER OF THE RACES IS AS WIDE AS ITS BUTTONS ASK, AND LEFT, from a tablet up (owner, 21.11.2026, PDL „Na
+   desktopu filter trka na profilu nije širok kao strana nego koliko mu dugmad traže, levo"). Written on the
+   profile's own box and not on `.seg` (`components/LengthFilter.css` is shared with the tables of the league).
+   On a telephone it is the whole row, as it was, and breaks into rows at an enlarged text. */
+@media (min-width: 43.75em) {
+  .profile__results .seg {
+    inline-size: fit-content;
+    max-inline-size: 100%;
   }
 }
 

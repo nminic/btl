@@ -1,6 +1,7 @@
-import type { ReactNode } from 'react'
+import { useSyncExternalStore, type ReactNode } from 'react'
 import { profilePath } from '../profileAddress'
-import { Link } from 'react-router'
+import { Link, NavLink, useLocation } from 'react-router'
+import { DataIcon } from '../../app/icons'
 import { PartsNav } from '../../components/PartsNav'
 import { Portrait } from '../../components/Portrait'
 import { SeasonPicker } from '../../components/SeasonPicker'
@@ -36,6 +37,7 @@ export function ProfileHead({
   team,
   competitors,
   pairs,
+  acts,
 }: {
   competitor: Competitor
   team: Team | undefined
@@ -43,6 +45,8 @@ export function ProfileHead({
   competitors: Competitor[]
   /** The pairs that hold now, the file and this visit together (`data/derive.ts`, `pairsNow`). */
   pairs: RacingPair[]
+  /** What the reader can do about this person, at the end of the row of the name (`ProfileTop`). */
+  acts?: ReactNode
 }) {
   const { locale, t } = useI18n()
 
@@ -76,6 +80,11 @@ export function ProfileHead({
           <h1 className="profile__name">
             {competitor.firstName} {competitor.lastName}
           </h1>
+          {/* AT THE END OF THE ROW OF THE NAME since 21.11.2026 (owner, PDL „Zaglavlje profila: izbor
+              „Godina” stoji u redu sa karticama, desno, na svim uređajima; „Pozovi u tim” postaje ikonica
+              na kraju reda sa imenom"). The box gives up its own, so each act is an item of the row of the
+              name and wraps on its own (`Profile.css`, `.profile__acts`). */}
+          {acts !== undefined && <div className="profile__acts">{acts}</div>}
         </div>
 
         <p className="profile__meta">
@@ -225,18 +234,44 @@ function RacingPartner({
  * The query travels with the link, so choosing a season and then looking at the
  * trophies does not lose the season on the way back.
  */
-export function ProfileParts({ competitor }: { competitor: Competitor }) {
-  const { t } = useI18n()
-  /* AND THE CARD „PODACI", AFTER THE TWO, offered only to the administration (owner, 22.10.2026, PDL
-     „Profil dobija karticu „Podaci", posle „Pregled" i „Priznanja i nagrade""; the two are „Rezultati" and
-     „Priznanja" since 06.11.2026, and since 07.11.2026 the member himself reaches his data from the menu).
-     Asked of the one home the card asks too (`whoReadsTheData.ts`). */
-  const reader = useWhoReadsTheData(competitor.memberNumber)
+export function ProfileParts({
+  competitor,
+  data,
+}: {
+  competitor: Competitor
+  /** The word of the card „Podaci" where it stands as a part, or null where it does not: not the reader's, or
+   *  drawn as an icon in the row of the name (`ProfileTop`). */
+  data: string | null
+}) {
+  return <TheParts competitor={competitor} data={data} />
+}
 
-  /* NOT TO HIM ON HIS OWN (owner, 07.11.2026, PDL „Član svojim podacima pristupa iz glavnog menija”: „na
-     svom profilu član vidi samo „Rezultati” i „Priznanja”"): his data are on „Moji podaci", reached from
-     the menu behind his picture. */
-  return <TheParts competitor={competitor} data={reader === 'administration' ? t('profile.parts.data') : null} />
+/**
+ * WHERE THE ROW CANNOT HOLD THREE PARTS AND THE SEASON, in `em` so that it moves with the text (ADL A7):
+ * „Rezultati", „Priznanja", „Podaci" and „Sve ▾" ask for 324px at the browser's own text (parts 81,5 + 84,5 +
+ * 68,3, two gaps of 6, a gap of 8 and the season of 70, measured 21.11.2026 in Chrome at 360px) in a row of 328:
+ * they fit by under 4px, which another font on another telephone does not have, and at 125% text they do not
+ * fit at all. So the line is drawn at 24em (384px at 100%, a window of 192px of room at 200%) and not at the
+ * 22,3em where they stop fitting here: under it „Podaci" is an icon, over it a part, and a part never wraps
+ * under the others on a font that is a little wider. Under it „Podaci" stands as an icon at the end of the row of the name,
+ * beside the invitation (owner, PDL 21.11.2026: „ako ni tada tri kartice i izbor ne staju u red, „Podaci”
+ * prelazi u ikonicu pored „Pozovi u tim”"). In the document the card is then in the row of the name and not in
+ * the nav, so the order of the focus is the order of the eye (WCAG 2.2 SC 2.4.3).
+ */
+export const THREE_PARTS_DO_NOT_FIT = '(max-width: 23.99em)'
+
+function subscribe(changed: () => void): () => void {
+  const query = window.matchMedia(THREE_PARTS_DO_NOT_FIT)
+
+  query.addEventListener('change', changed)
+
+  return () => {
+    query.removeEventListener('change', changed)
+  }
+}
+
+function useThreePartsDoNotFit(): boolean {
+  return useSyncExternalStore(subscribe, () => window.matchMedia(THREE_PARTS_DO_NOT_FIT).matches)
 }
 
 function TheParts({ competitor, data }: { competitor: Competitor; data: string | null }) {
@@ -318,31 +353,49 @@ export function ProfileTop({
    */
   acts?: ReactNode
 }) {
-  const { t } = useI18n()
+  const { locale, t } = useI18n()
+
+  const reader = useWhoReadsTheData(competitor.memberNumber)
+  const narrow = useThreePartsDoNotFit()
+  const { search } = useLocation()
+  const base = profilePath(competitor, locale)
+  /* THE CARD „PODACI" is the administration's alone (owner, 07.11.2026, PDL „Član svojim podacima pristupa iz
+     glavnog menija": „na svom profilu član vidi samo „Rezultati” i „Priznanja”"). As a part where the row
+     holds it, as an icon in the row of the name where it does not (`THREE_PARTS_DO_NOT_FIT`). */
+  const data = reader === 'administration' ? t('profile.parts.data') : null
 
   return (
     <div className="profile__top">
-      <ProfileHead competitor={competitor} team={team} competitors={competitors} pairs={pairs} />
-      {/* Named and shaped like a field, as on the teams and the top boards (owner,
-          05.08.2026). It was a pill with its name hidden from 04.08.2026, on the
-          reasoning that beside a name a labelled field reads as a second heading;
-          the owner has since asked for the one shape everywhere, and one shape is
-          one thing to learn. */}
-      {/* The parts and the season as one belt, so that on a narrow screen they share
-          a line and **wrap** when they cannot: „Priznanja i nagrade", as the awards were called then, and the season
-          together ask for 435px at 200% text in a box of 328, and a row that cannot
-          give way pushes the page sideways instead. Measured on the first attempt at
-          this: 107px of page scroll at 200%, starting from 162%.
-
-          Above the breakpoint the belt gives up its box (`Profile.css`), so the two
-          become children of the grid and the season goes up beside the name. One
-          markup, two arrangements, and no copy of the control. */}
+      <ProfileHead
+        competitor={competitor}
+        team={team}
+        competitors={competitors}
+        pairs={pairs}
+        acts={
+          <>
+            {data !== null && narrow && (
+              <NavLink
+                to={{ pathname: `${base}${THE_DATA}`, search }}
+                className="profile__act profile__act--icon profile__act--part"
+                aria-label={data}
+                title={data}
+              >
+                <DataIcon />
+              </NavLink>
+            )}
+            {acts}
+          </>
+        }
+      />
+      {/* THE PARTS ON THE LEFT AND THE SEASON ON THE RIGHT, ONE ROW AT EVERY WIDTH (owner, 21.11.2026, PDL
+          „Zaglavlje profila: izbor „Godina” (podrazumevano „Sve”) stoji u redu sa karticama, desno, na svim
+          uređajima"). On a telephone the word „Godina" is drawn no more and stays the name of the field for a
+          reader who hears it (`Profile.css`). The belt wraps when even that does not fit, which is what
+          keeps the page from scrolling sideways at 200% text (WCAG 2.2 SC 1.4.10). Named and shaped like a
+          field, as on the teams and the top boards (owner, 05.08.2026). */}
       <div className="profile__belt">
-        {/* The parts and what the reader can do, one row that wraps (owner, 06.11.2026): the acts stand
-            to the right of the parts and fall under them, still to the right, when the two do not fit. */}
         <div className="profile__tabs">
-          <ProfileParts competitor={competitor} />
-          {acts !== undefined && <div className="profile__acts">{acts}</div>}
+          <ProfileParts competitor={competitor} data={narrow ? null : data} />
         </div>
         {season !== undefined && (
           <div className="rankings__head-tool profile__season">
