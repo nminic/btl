@@ -604,8 +604,8 @@ describe('Rankings', () => {
 
   it('marks the chosen category as chosen, and not only to a screen reader', async () => {
     /* `aria-pressed` says which chip is on, and the class is what draws it: a
-       filled background and an accent edge (`rankings__category--on` in
-       Rankings.css). A review replaced both class expressions with the plain
+       filled background and an accent edge (`seg__b--on` in
+       Segmented.css). A review replaced both class expressions with the plain
        one and watched all 1846 tests pass, because everything here asked only
        after the attribute. A reader who can see the screen would have had eight
        identical chips and no way to tell which one they had pressed.
@@ -622,14 +622,14 @@ describe('Rankings', () => {
     const all = chips.getByRole('button', { name: 'Sve' })
     const one = chips.getAllByRole('button').filter((chip) => chip !== all)
 
-    expect(all.className).toContain('rankings__category--on')
-    expect(first(one).className).not.toContain('rankings__category--on')
+    expect(all.className).toContain('seg__b--on')
+    expect(first(one).className).not.toContain('seg__b--on')
 
     await user.click(first(one))
 
-    expect(first(one).className).toContain('rankings__category--on')
+    expect(first(one).className).toContain('seg__b--on')
     expect(chips.getByRole('button', { name: 'Sve' }).className).not.toContain(
-      'rankings__category--on',
+      'seg__b--on',
     )
   })
 

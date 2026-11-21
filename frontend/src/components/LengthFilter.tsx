@@ -1,6 +1,7 @@
 import { CATEGORIES } from '../data/derive'
 import type { RaceCategory } from '../data/types'
 import { useI18n } from '../i18n/useI18n'
+import { Segmented } from './Segmented'
 import './LengthFilter.css'
 
 /**
@@ -25,42 +26,42 @@ export function LengthFilter({
   onChange: (value: RaceCategory | null) => void
 }) {
   const { t } = useI18n()
-  const options: { key: RaceCategory | null; word: string; measure: string; rest: string }[] = [
-    { key: null, word: t('profile.lengthsShort.all'), measure: '', rest: t('home.lengthsRest') },
+  const options = [
+    { key: 'all' as const, word: t('profile.lengthsShort.all'), measure: '', rest: t('home.lengthsRest') },
     ...CATEGORIES.map((one) => ({
       key: one,
       word: t(`profile.lengthsShort.${one}`),
       measure: one === 'half' || one === 'marathon' ? t(`home.lengthNumber.${one}`) : '',
       rest: t(`category.${one}`),
     })),
-  ]
+  ].map((option) => ({
+    key: option.key,
+    content: (
+      <>
+        {option.measure === '' ? (
+          option.word
+        ) : (
+          <>
+            {option.measure} <span className="seg__km">{t('home.lengthKm')}</span>
+          </>
+        )}
+        {/* The space is outside the hidden words and not the first thing in them: a name is read off
+            the text nodes one by one and a space that begins a node is not kept (measured). */}
+        {option.key === 'all' && ' '}
+        <span className="visually-hidden">
+          {option.key === 'all' ? '' : ', '}
+          {option.rest}
+        </span>
+      </>
+    ),
+  }))
 
   return (
-    <div className="seg" role="group" aria-label={t('profile.length')}>
-      {options.map((option) => (
-        <button
-          key={option.key ?? 'all'}
-          type="button"
-          className={option.key === value ? 'seg__b seg__b--on' : 'seg__b'}
-          aria-pressed={option.key === value}
-          onClick={() => onChange(option.key)}
-        >
-          {option.measure === '' ? (
-            option.word
-          ) : (
-            <>
-              {option.measure} <span className="seg__km">{t('home.lengthKm')}</span>
-            </>
-          )}
-          {/* The space is outside the hidden words and not the first thing in them: a name is read off
-              the text nodes one by one and a space that begins a node is not kept (measured). */}
-          {option.key === null && ' '}
-          <span className="visually-hidden">
-            {option.key === null ? '' : ', '}
-            {option.rest}
-          </span>
-        </button>
-      ))}
-    </div>
+    <Segmented
+      options={options}
+      value={value ?? 'all'}
+      onChange={(key) => onChange(key === 'all' ? null : key)}
+      label={t('profile.length')}
+    />
   )
 }

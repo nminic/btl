@@ -5,6 +5,7 @@ import { CompetitorName } from '../components/CompetitorName'
 import { NamePlate } from '../components/NamePlate'
 import { TablesHead } from './TableCards'
 import { Resource } from '../components/Resource'
+import { Segmented } from '../components/Segmented'
 import { SeasonPicker } from '../components/SeasonPicker'
 import {
   categoriesOf,
@@ -168,41 +169,22 @@ function Standing({
           every letter typed, and it answered a question the list of
           competitors already answers (PDL P12). */}
       <div className="rankings__filters">
-        <div
-          className="rankings__field rankings__field--categories"
-          role="group"
-          aria-labelledby="rankings-categories"
-        >
+        <div className="rankings__field rankings__field--categories">
           <span id="rankings-categories">{t('rankings.categoryFilter')}</span>
-          <div className="rankings__categories">
-            <button
-              type="button"
-              className={
-                category === undefined
-                  ? 'rankings__category rankings__category--on'
-                  : 'rankings__category'
-              }
-              aria-pressed={category === undefined}
-              onClick={() => onChange({ kategorija: '' })}
-            >
-              {t('rankings.allCategories')}
-            </button>
-            {codes.map((code) => (
-              <button
-                key={code}
-                type="button"
-                className={
-                  category === code
-                    ? 'rankings__category rankings__category--on'
-                    : 'rankings__category'
-                }
-                aria-pressed={category === code}
-                onClick={() => onChange({ kategorija: code })}
-              >
-                {categoryLabel(code, t)}
-              </button>
-            ))}
-          </div>
+          {/* The one segmented control the portal draws its filters with (`components/Segmented.tsx`; owner,
+              21.11.2026: the category filter of the BTL tables goes the way the filter of the races does).
+              „Sve" first, then the codes in the order the sample gives them; the empty key is „Sve", which is
+              what `kategorija=` empty means in the address. */}
+          <Segmented
+            fit
+            labelledBy="rankings-categories"
+            value={category ?? ''}
+            onChange={(key) => onChange({ kategorija: key })}
+            options={[
+              { key: '', content: t('rankings.allCategories') },
+              ...codes.map((code) => ({ key: code, content: categoryLabel(code, t) })),
+            ]}
+          />
         </div>
       </div>
 
