@@ -663,10 +663,13 @@ class WhatTheMessageSaysTest {
 				THE_LINK_ENDS);
 
 		assertThat(invitedHer.subject()).isEqualTo("Upisana si u Balkansku trkačku ligu");
+		/* THE MOMENT IS SAID IN HER DICTIONARY TOO: the words before the placeholder are written in both. */
 		assertThat(invitedHer.body()).contains("koju si potpisala.").contains("postavi je sama:")
+				.contains("Link važi do 17.12.2026. 13:00 i može da se upotrebi jednom.")
 				.doesNotContain("potpisao").doesNotContain("sam:");
 		assertThat(invitedHim.subject()).isEqualTo("Upisan si u Balkansku trkačku ligu");
 		assertThat(invitedHim.body()).contains("koju si potpisao.").contains("postavi je sam:")
+				.contains("Link važi do 17.12.2026. 13:00 i može da se upotrebi jednom.")
 				.doesNotContain("potpisala").doesNotContain("sama:");
 
 		assertThat(WhatTheMessageSays.about(Message.CONFIRM_THE_ADDRESS, MailLanguage.ENGLISH, PORTAL, TOKEN,
