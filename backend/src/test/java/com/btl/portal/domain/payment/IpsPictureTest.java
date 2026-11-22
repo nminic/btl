@@ -62,6 +62,26 @@ class IpsPictureTest {
 		assertThat(ink).as("nothing was written under the code").isTrue();
 	}
 
+	/**
+	 * A CODE WITH A PAYER OF ANY LENGTH THE FIELD ALLOWS CARRIES THE SAME BYTES (owner, 23.09.2026, PDL P8,
+	 * „Uplatnica dobija polje PLATIOCA"): the name moves the text across the sizes of code, so one that is
+	 * fine at one length and broken at the next is found here, one to seventy characters, with Serbian
+	 * letters in it. Read as the symbol and not searched for ({@link ReadingTheCode#pure}), because ZXing's
+	 * own search misses valid symbols of this kind: five of two hundred and ten (name, length) pairs measured
+	 * on 22.11.2026, for example the payer {@code aaaaaa}.
+	 */
+	@Test
+	void aCodeWithAPayerOfAnyLengthTheFieldAllowsCarriesTheBytesItWasWritten() throws Exception {
+		for (int length = 1; length <= 70; length++) {
+			String name = "Šćaž".repeat(length).substring(0, length);
+			String slip = IpsSlip.payload(2027, new BigDecimal("3600"), name);
+
+			assertThat(ReadingTheCode.pure(IpsPicture.png(slip, List.of())).bytes())
+					.as("a payer of %d characters", length)
+					.isEqualTo(slip.getBytes(StandardCharsets.UTF_8));
+		}
+	}
+
 	@Test
 	void aSlipNoCodeCanHoldIsRefusedAndNotDrawnShort() {
 		assertThatThrownBy(() -> IpsPicture.png("x".repeat(4000), List.of()))

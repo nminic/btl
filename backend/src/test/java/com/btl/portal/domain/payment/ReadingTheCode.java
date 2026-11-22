@@ -32,15 +32,29 @@ public final class ReadingTheCode {
 	public record Read(byte[] bytes, String level, String symbology) {
 	}
 
-	@SuppressWarnings("unchecked")
 	public static Read in(byte[] png) throws Exception {
+		return in(png, Map.of(DecodeHintType.TRY_HARDER, Boolean.TRUE));
+	}
+
+	/**
+	 * THE SYMBOL ITSELF, WITHOUT ZXING'S SEARCH FOR IT: for a picture that is nothing but a code. The search
+	 * (finder and alignment patterns) is a reader's weakness that a valid symbol can meet, and it does: a
+	 * payer named {@code aaaaaa} makes a code that {@link #in} cannot find and this reads without a mistake
+	 * (measured 22.11.2026). A case that asks whether a symbol is valid at every length asks this.
+	 */
+	public static Read pure(byte[] png) throws Exception {
+		return in(png, Map.of(DecodeHintType.PURE_BARCODE, Boolean.TRUE));
+	}
+
+	@SuppressWarnings("unchecked")
+	private static Read in(byte[] png, Map<DecodeHintType, ?> hints) throws Exception {
 		BufferedImage picture = ImageIO.read(new ByteArrayInputStream(png));
 		int[] pixels = picture.getRGB(0, 0, picture.getWidth(), picture.getHeight(), null, 0, picture.getWidth());
 
 		Result read = new QRCodeReader().decode(
 				new BinaryBitmap(new HybridBinarizer(
 						new RGBLuminanceSource(picture.getWidth(), picture.getHeight(), pixels))),
-				Map.of(DecodeHintType.TRY_HARDER, Boolean.TRUE));
+				hints);
 
 		ByteArrayOutputStream bytes = new ByteArrayOutputStream();
 
