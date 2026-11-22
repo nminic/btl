@@ -119,7 +119,7 @@ describe('the names it reads, against the record the route serves', () => {
     const read = Object.keys(owedIn(FULL) ?? {})
 
     expect(declared.length, 'the record was found and read').toBeGreaterThan(5)
-    expect(read.length).toBe(6)
+    expect(read.length).toBe(7)
     expect(read.filter((name) => !declared.includes(name))).toEqual([])
   })
 
