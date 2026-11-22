@@ -207,6 +207,24 @@ class TheMomentAConfirmationLinkEndsTest {
 	}
 
 	/**
+	 * THE FOURTEENTH DAY ITSELF IS ALREADY OVER, AND ONE SECOND BEFORE IT IS NOT. A link sent at the very
+	 * moment the fourteenth day arrives would end the moment it is sent, so it is seven days from the
+	 * sending; one sent a second earlier ends on the fourteenth day, which is one second away. Held on the
+	 * rule itself, because the moments in {@link #theCases()} are days away from the line.
+	 */
+	@Test
+	void aLinkSentOnTheVeryMomentOfTheFourteenthDayEndsSevenDaysOnAndOneASecondBeforeEndsOnTheDay() {
+		Instant sentAt = Instant.parse("2026-12-15T12:00:00Z");
+
+		assertThat(TheMomentAConfirmationLinkEnds.of(sentAt, Instant.parse("2026-12-01T12:00:00Z")))
+				.as("registered exactly fourteen days before the sending")
+				.isEqualTo(Instant.parse("2026-12-22T12:00:00Z"));
+		assertThat(TheMomentAConfirmationLinkEnds.of(sentAt, Instant.parse("2026-12-01T12:00:01Z")))
+				.as("registered a second less than fourteen days before the sending")
+				.isEqualTo(Instant.parse("2026-12-15T12:00:01Z"));
+	}
+
+	/**
 	 * NO ROUTE WRITES A LINK TO CONFIRM AN ADDRESS BY ITSELF.
 	 *
 	 * <p>The moment a link ends is worked out in {@link TheMomentAConfirmationLinkEnds} and nowhere else,
