@@ -50,6 +50,7 @@ describe('the slip the server mails', () => {
         recipient: RECIPIENT_NAME,
         amountRsd: slip.amountRsd,
         purpose: paymentPurpose(slip.season),
+        payer: slip.payer,
         reference: paymentReferenceOrNone(slip.season, null),
       }),
     ).toBe(slip.payload)

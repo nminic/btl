@@ -193,10 +193,10 @@ class MyMembershipApiTest {
 						+ " place_id, first_season, "
 						+ " referral_code, bio, profile_hidden, birthday_shown, father_name, address,"
 						+ " shirt_size, health_statement_at)"
-						+ " values (?, 'Probni', 'Clan', 'M', date '1990-01-01',"
+						+ " values (?, 'Žarko', ?, 'M', date '1990-01-01',"
 						+ " " + A_TOWN_IN_SERBIA + ", 2027, ?, '',"
 						+ " false, 'none', 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00')")
-				.params(number, String.format("%016x", ++issued))
+				.params(number, "Čačić " + number, String.format("%016x", ++issued))
 				.update();
 	}
 
@@ -1164,6 +1164,20 @@ class MyMembershipApiTest {
 	void onlyWhatHeOwesIsAnswered() throws Exception {
 		assertThat(Answers.fieldsOf(invoiceOf(BROUGHT_IN_SIX)))
 				.containsExactlyInAnyOrder("season", "alreadyAMember", "priceKey", "fee", "balance",
-						"fromTheBalance", "toTransfer", "processingFeeEur", "coveredByTheBalance");
+						"fromTheBalance", "toTransfer", "processingFeeEur", "coveredByTheBalance", "payer");
+	}
+
+	/**
+	 * THE PAYER IS THE NAME OF THE MEMBER WHOSE INVOICE IT IS (owner, 23.09.2026, PDL P8,
+	 * „Uplatnica dobija polje PLATIOCA"): the first and the last name of his competitor row, not his
+	 * account's ('Probni Probic' on every account), and not any other member's. Every member of this
+	 * file has a last name of his own, and each of the four is asked, so an answer built off the
+	 * first row of the table, off the account, or off another member names three of them wrongly.
+	 */
+	@Test
+	void eachMemberIsServedHisOwnNameAsThePayer() throws Exception {
+		for (String number : SIGNS_IN_AS.keySet()) {
+			assertThat(invoiceOf(number).path("payer").asString()).isEqualTo("Žarko Čačić " + number);
+		}
 	}
 }

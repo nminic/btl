@@ -3,6 +3,7 @@ package com.btl.portal.web;
 import com.btl.portal.domain.balance.Balance;
 import com.btl.portal.domain.member.MemberNumber;
 import com.btl.portal.domain.membership.Basis;
+import com.btl.portal.domain.payment.IpsSlip;
 import com.btl.portal.domain.pricing.Currency;
 import com.btl.portal.domain.pricing.MembershipPrice;
 import com.btl.portal.domain.season.SeasonClock;
@@ -98,6 +99,9 @@ class MembershipInvoice {
 	 *                           rather than a redundancy</b>: an exemption IS a membership, granted
 	 *                           one season at a time
 	 * @param numberHeAlreadyHas his member number, or {@code null} if he has never had one
+	 * @param payer              his name as the slip writes it ({@link IpsSlip#payerName}), read off
+	 *                           the same row as his birth date, so the name on the slip is the one
+	 *                           the portal holds for the member whose invoice this is
 	 * @param holds              the basis of that row, or {@code null} where there is none: the
 	 *                           letter after a confirmed address says HOW the season is his (owner,
 	 *                           23.10.2026 and 24.10.2026: freed, on his balance, or paid), which the
@@ -106,19 +110,21 @@ class MembershipInvoice {
 	 */
 	record Invoice(int season, String priceKey, Balance.Settlement settled,
 			BigDecimal processingFeeEurIfHeTransfers, boolean alreadyAMember, boolean exemptFromTheFee,
-			MemberNumber numberHeAlreadyHas, Basis holds) {
+			MemberNumber numberHeAlreadyHas, String payer, Basis holds) {
 	}
 
-	private record TheMember(LocalDate birthDate, String memberNumber) {
+	private record TheMember(LocalDate birthDate, String memberNumber, String payer) {
 	}
 
 	Invoice forMember(long me) {
 		LocalDate today = LocalDate.ofInstant(clock.instant(), SeasonClock.ZONE);
 		int season = SeasonClock.seasonBeingPaidFor(ZonedDateTime.now(clock));
 
-		TheMember member = db.sql("select birth_date, member_number from competitor where id = ?")
+		TheMember member = db.sql(
+						"select birth_date, member_number, first_name, last_name from competitor where id = ?")
 				.param(me)
-				.query((row, i) -> new TheMember(row.getDate(1).toLocalDate(), row.getString(2)))
+				.query((row, i) -> new TheMember(row.getDate(1).toLocalDate(), row.getString(2),
+						IpsSlip.payerName(row.getString(3), row.getString(4))))
 				.single();
 
 		/* ASKED ONCE, IN HIS MONEY, AND IT USED TO BE ASKED TWICE.
@@ -170,6 +176,7 @@ class MembershipInvoice {
 		return new Invoice(season, price.key(), settled, price.fee(), basisForTheSeason != null,
 				FEE_EXEMPT.equals(basisForTheSeason),
 				member.memberNumber() == null ? null : new MemberNumber(member.memberNumber()),
+				member.payer(),
 				basisForTheSeason == null ? null : Basis.of(basisForTheSeason));
 	}
 

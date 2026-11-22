@@ -1135,6 +1135,7 @@ describe('payment payloads', () => {
       recipient: 'Sportsko udruzenje BTL',
       amountRsd: 4800,
       purpose: 'Clanarina',
+      payer: 'Žarko Đurđević-Ćosić',
       reference: '',
     })
 
@@ -1220,11 +1221,12 @@ describe('payment payloads', () => {
         recipient: RECIPIENT_NAME,
         amountRsd: 4800,
         purpose: paymentPurpose(2027),
+        payer: 'Žarko Đurđević-Ćosić',
         reference: paymentReference(2027, '000037'),
       }),
     ).toBe(
-      'K:PR|V:01|C:1|R:105000000000328471|N:Sportsko udruženje BTL|I:RSD4800,00|SF:289' +
-        '|S:Članarina za 2027. godinu|RO:2027000037',
+      'K:PR|V:01|C:1|R:105000000000328471|N:Sportsko udruženje BTL|I:RSD4800,00' +
+        '|P:Žarko Đurđević-Ćosić|SF:289|S:Članarina za 2027. godinu|RO:2027000037',
     )
   })
 
@@ -1236,6 +1238,7 @@ describe('payment payloads', () => {
       recipient: RECIPIENT_NAME,
       amountRsd: 4800,
       purpose: paymentPurpose(2027),
+      payer: 'Žarko Đurđević-Ćosić',
       reference: paymentReference(2027, '000037'),
     })
 
@@ -1251,6 +1254,7 @@ describe('payment payloads', () => {
       recipient: 'x',
       amountRsd: 100,
       purpose: 'y',
+      payer: 'Žarko Đurđević-Ćosić',
       reference: '2027000037',
     })
 

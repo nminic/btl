@@ -144,7 +144,7 @@ class TheLetterAfterTheAddress {
 			String purpose = IpsSlip.purpose(owed.season());
 			String amount = WhatTheWelcomeSays.amount(slip.toTransfer().amount(),
 					slip.toTransfer().currency().name(), in);
-			String payload = IpsSlip.payload(owed.season(), slip.toTransfer().amount());
+			String payload = IpsSlip.payload(owed.season(), slip.toTransfer().amount(), owed.payer());
 
 			return new Written(reader.address(),
 					WhatTheWelcomeSays.withASlip(in, reader.gender(), owed.season(), IpsSlip.recipientAsWritten(),

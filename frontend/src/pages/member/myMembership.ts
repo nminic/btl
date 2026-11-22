@@ -39,6 +39,12 @@ export type MyMembership = {
    * bira", so the screen reads each fact off its own field.
    */
   coveredByTheBalance: boolean
+  /**
+   * His name as the slip's payer field writes it, served so the code on this page and the one in
+   * the letter name him the same way (owner, 23.09.2026, PDL P8, „Uplatnica dobija polje
+   * PLATIOCA"). Never blank: the schema forbids a blank name.
+   */
+  payer: string
 }
 
 /**
@@ -93,6 +99,7 @@ export function owedIn(body: unknown): MyMembership | null {
   const alreadyAMember: unknown = Reflect.get(body, 'alreadyAMember')
   const processingFeeEur: unknown = Reflect.get(body, 'processingFeeEur')
   const coveredByTheBalance: unknown = Reflect.get(body, 'coveredByTheBalance')
+  const payer: unknown = Reflect.get(body, 'payer')
   const fromTheBalance = balanceIn(Reflect.get(body, 'fromTheBalance'))
   const toTransfer = balanceIn(Reflect.get(body, 'toTransfer'))
 
@@ -112,9 +119,13 @@ export function owedIn(body: unknown): MyMembership | null {
     return null
   }
 
+  if (typeof payer !== 'string' || payer.trim() === '') {
+    return null
+  }
+
   if (fromTheBalance === null || toTransfer === null) {
     return null
   }
 
-  return { season, alreadyAMember, fromTheBalance, toTransfer, processingFeeEur, coveredByTheBalance }
+  return { season, alreadyAMember, fromTheBalance, toTransfer, processingFeeEur, coveredByTheBalance, payer }
 }

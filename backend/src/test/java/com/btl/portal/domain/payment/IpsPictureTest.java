@@ -23,7 +23,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  */
 class IpsPictureTest {
 
-	private static final String SLIP = IpsSlip.payload(2027, new BigDecimal("3600"));
+	private static final String SLIP = IpsSlip.payload(2027, new BigDecimal("3600"), "Žarko Đurđević-Ćosić");
 
 	@Test
 	void theCodeCarriesTheUtf8OfTheSlipAtLevelMWithNothingInFrontOfIt() throws Exception {

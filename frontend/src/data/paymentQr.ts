@@ -113,6 +113,13 @@ export type IpsPayment = {
   recipient: string
   amountRsd: number
   purpose: string
+  /**
+   * Who sends the money, as the SERVER wrote him (`IpsSlip.payerName`, served as `payer` by
+   * `GET /api/me/membership`): this side builds no name of its own, so the code on the page and
+   * the one in the letter name him the same way. Never empty: the field is written always, as
+   * the server's `IpsSlip.payload` writes it.
+   */
+  payer: string
   /** Model and reference number, or an empty string. */
   reference: string
 }
@@ -127,9 +134,15 @@ export function ipsAmount(amountRsd: number): string {
  * separator is a vertical bar.
  *
  * K identifies the standard, V the version, C the character set, R the account,
- * N the recipient, I the amount, SF the payment code and S the purpose. RO
- * carries the reference and is left out when there is none, rather than sent
+ * N the recipient, I the amount, P the payer, SF the payment code and S the purpose.
+ * RO carries the reference and is left out when there is none, rather than sent
  * empty, which some readers reject.
+ *
+ * P stands after the amount and before the payment code, where the IPS order puts it
+ * (K, V, C, R, N, I, FT, P, SF, S, RO; the order as I know it from the NBS
+ * specification, not measured here). It is the payer's name as the server wrote it, so
+ * the bank fills in his side of the transfer too (owner, 23.09.2026, PDL P8:
+ * „Uplatnica dobija polje PLATIOCA"). The text is UTF-8 whatever is in it, as for N.
  *
  * N takes the name and then the address, one per line, which is how the
  * standard carries a recipient with a seat.
@@ -146,6 +159,7 @@ export function ipsPayload(payment: IpsPayment): string {
     `R:${payment.account}`,
     `N:${payment.recipient}`,
     `I:${ipsAmount(payment.amountRsd)}`,
+    `P:${payment.payer}`,
     'SF:289',
     `S:${payment.purpose}`,
   ]

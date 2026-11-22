@@ -19,6 +19,7 @@ import {
   anInvoice,
   categoryAsServed,
   invoiceAsServed,
+  THE_PAYER,
   type CategoryAnswered,
   type InvoiceAnswered,
 } from '../../test/serverAnswers'
@@ -230,6 +231,7 @@ describe('„Moja članarina", to somebody who has registered and has not paid',
         /* What the server says he sends (`anInvoice`), and no row of the price list. */
         amountRsd: 3700,
         purpose: paymentPurpose(2027),
+        payer: THE_PAYER,
         reference: '',
       }),
     )

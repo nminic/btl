@@ -26,6 +26,7 @@ describe('what the server says he sends', () => {
         toTransfer: { amount: 3700, currency: 'RSD' },
         processingFeeEur: 0,
         coveredByTheBalance: false,
+        payer: 'Žarko Đurđević-Ćosić',
       })
     } finally {
       stop()
@@ -76,6 +77,9 @@ describe('the answer, narrowed by looking at it', () => {
     ['no share of the balance', { ...FULL, fromTheBalance: undefined }],
     ['no word on whether the balance covers it', { ...FULL, coveredByTheBalance: undefined }],
     ['a word on it that is not a yes or a no', { ...FULL, coveredByTheBalance: 'true' }],
+    ['no payer', { ...FULL, payer: undefined }],
+    ['a payer that is not text', { ...FULL, payer: 7 }],
+    ['a payer that is blank', { ...FULL, payer: '   ' }],
   ])('is nothing for %s', (_what, body) => {
     expect(owedIn(body)).toBeNull()
   })
