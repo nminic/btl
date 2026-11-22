@@ -158,9 +158,9 @@ describe('the screens of the portal', () => {
     /* The real routes of the portal, the screens' own group (the one with no address) given the one screen
        that fails; the front page and the answer for an address the portal does not have stay as they are. */
     const children = (theLocale?.children ?? []).map((one) =>
-      one.path === undefined && one.index !== true ? { ...one, children: [failing] } : one,
+      one.path === undefined && one.index !== true ? { ErrorBoundary: one.ErrorBoundary, children: [failing] } : one,
     )
-    const router = createMemoryRouter([{ ...theLocale, children }], { initialEntries: ['/sr'] })
+    const router = createMemoryRouter([{ path: theLocale?.path, element: theLocale?.element, HydrateFallback: theLocale?.HydrateFallback, children }], { initialEntries: ['/sr'] })
 
     render(
       <ClockProvider simulatedDay={null}>

@@ -37,6 +37,10 @@ function servedPaths(): string[] {
 
   return locale
     .flatMap((route) => route.children ?? [])
+    /* The screens that are loaded when they are opened stand in a group with no address of its own, which
+       is where the portal's message for a piece that does not arrive is drawn (`routeObjects.tsx`); its
+       children are served at the layout's own level. */
+    .flatMap((child) => (child.path === undefined && child.index !== true ? (child.children ?? []) : [child]))
     .map((child) => child.path)
     .filter((path): path is string => path !== undefined)
 }
