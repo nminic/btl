@@ -662,7 +662,9 @@
      out from the share of the column and the number of characters the page writes in `--chars`, never above
      the size of the list (`--points-size`) and never under the floor of the surname, 0,65rem, 10,4px). A digit of tabular figures is about
      0,62em wide, narrower than a letter of the name, so the figure is counted at that. The two lines of height
-     stay, so a circle is never lifted against its neighbour. */
+     stay, so the circles of the two sides keep the same height; the gap between the circle of the first place
+     and its neighbours still moves a little with the figure, by about 2,5px between a short and a long one
+     (measured on 360 and 1280, en). */
   font-size: clamp(
     0.65rem,
     calc((100cqi - 2 * var(--space-6)) / 3.15 / (var(--chars) * 0.62)),

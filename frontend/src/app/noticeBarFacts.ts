@@ -4,8 +4,9 @@ import { TABLE_ADDRESS, TEAMS_ADDRESS, TOP_BOARDS_ADDRESS } from './routes'
  * file that draws it exports a component and nothing else, and the editor can refresh it in place. */
 
 /** The one key the strip keeps in the browser's local store (owner, 21.11.2026: „Zatvaranje krstićem pregledač
- *  pamti do 1.1.2027"). The privacy policy has to name it, and `pages/writtenPages.test.tsx` holds the stores
- *  the code writes against the stores the policy names. */
+ *  pamti do 1.1.2027"). The privacy policy stays silent about it on purpose (owner, 21.11.2026), and
+ *  `pages/writtenPages.test.tsx` holds it as the one named exemption (`NOT_DISCLOSED`) from the stores the
+ *  policy has to name. */
 export const NOTICE_STORAGE_KEY = 'btl-notice-closed'
 
 /** The addresses the strip stands on, as the part of the path after the language (`canonicalPath`): the front

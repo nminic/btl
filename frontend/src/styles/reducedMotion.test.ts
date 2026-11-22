@@ -17,7 +17,8 @@ import { rulesInMedia } from '../test/stylesheet'
  *
  * jsdom draws nothing, so what a frame shows is asked of Chrome. What is asked here is the text: that
  * every duration this block writes is zero. It is derived from the block (every property that ends in
- * `-duration`), so a second one added later, or a `delay` that is not asked, lands here.
+ * `-duration`), so a second duration added later lands here. A `transition-delay` is not read here, and the
+ * rule does not write one, so a delay is held by nothing in jsdom.
  */
 
 const CSS = readFileSync(join(process.cwd(), 'src', 'index.css'), 'utf-8')
@@ -38,6 +39,10 @@ describe('the rule for reduced motion in index.css', () => {
 
     for (const property of declared.filter((name) => name.endsWith('-duration'))) {
       expect(universal[0]?.style.getPropertyValue(property), property).toBe('0s')
+      /* AND IT WINS: without `!important` the rule loses to every class that writes a `transition:` of its
+         own (measured 21.11.2026: forty elements on the member screens stayed on 0.16s, and the language
+         menu slid), and the value above is read as zero all the same. */
+      expect(universal[0]?.style.getPropertyPriority(property), `${property} is important`).toBe('important')
     }
   })
 
