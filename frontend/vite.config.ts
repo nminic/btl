@@ -1,3 +1,4 @@
+import type { Plugin, Rollup } from 'vite'
 import { configDefaults, defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import { fileURLToPath } from 'node:url'
@@ -51,9 +52,76 @@ function theStylesheetsOfThePortal(id: string, graph: TheGraph): string | null {
   return id.endsWith('.css') && reachedFromMain(graph).has(id.replaceAll('\\', '/')) ? 'styles' : null
 }
 
+/** Where `index.html` asks nginx whether the page is read in English, and the branch for every other address. */
+const ENGLISH_BRANCH = '<!--# if expr="$btl_preview_locale = en" -->'
+const SERBIAN_BRANCH = '<!--# else -->'
+
+/** The piece the book of a language was cut into, which a build has exactly one of. */
+function thePieceOf(bundle: Rollup.OutputBundle, locale: 'sr' | 'en'): string {
+  const book = `/src/i18n/${locale}.json`
+  const pieces = Object.values(bundle).flatMap((one) =>
+    one.type === 'chunk' && one.moduleIds.some((id) => id.replaceAll('\\', '/').endsWith(book)) ? [one.fileName] : [],
+  )
+  const [piece] = pieces
+
+  if (pieces.length !== 1 || piece === undefined) {
+    throw new Error(`${book} is in ${pieces.length} pieces of the build, and the page can name only one`)
+  }
+
+  return piece
+}
+
+/**
+ * THE PAGE NAMES THE BOOK OF ITS OWN LANGUAGE TO THE BROWSER, before any of the portal's code has run
+ * (inkrement „Poboljšanje performansi”, owner, 22.11.2026: „rečnik samo jezika koji se čita”). Each book is
+ * a piece of its own (`src/i18n/config.ts`), and asked for only by the portal's code it would arrive one
+ * round trip after it; named here it comes beside it.
+ *
+ * <p>Which one is decided where the language is already known before the page leaves: nginx, which turns
+ * SSI on for every address and sets `$btl_preview_locale` to `en` under `/en` and on an English profile
+ * (`nginx.conf`). So the two lines go into the two branches `index.html` already has, the English book
+ * into the English one and the Serbian book into the other, beside the blocks of the shared previews and
+ * without touching them. Where nothing reads SSI (the development server does not run this, the server of
+ * `npm run geometry` and the measurements serve the file as it is), both lines are live and both books
+ * come, as they did before.
+ *
+ * <p>A build that cannot find either branch, or finds a book in more than one piece, stops, rather than
+ * shipping a page that names nothing (`dev/productionPackage.test.ts` holds what the page names).
+ */
+function theBookOfThePageNamedInIt(): Plugin {
+  return {
+    name: 'the-book-of-the-page-named-in-it',
+    apply: 'build',
+    transformIndexHtml: {
+      order: 'post',
+      handler(html, context) {
+        const bundle = context.bundle
+
+        if (bundle === undefined) {
+          return html
+        }
+
+        for (const branch of [ENGLISH_BRANCH, SERBIAN_BRANCH]) {
+          if (html.split(branch).length !== 2) {
+            throw new Error(`index.html should carry ${branch} exactly once`)
+          }
+        }
+
+        const named = (locale: 'sr' | 'en') =>
+          `\n    <link rel="modulepreload" crossorigin href="/${thePieceOf(bundle, locale)}" />`
+
+        return html
+          .replace(ENGLISH_BRANCH, `${ENGLISH_BRANCH}${named('en')}`)
+          .replace(SERBIAN_BRANCH, `${SERBIAN_BRANCH}${named('sr')}`)
+      },
+    },
+  }
+}
+
 export default defineConfig({
   plugins: [
     react(),
+    theBookOfThePageNamedInIt(),
     /* The graph read above belongs to one build, and a process may build twice (`dev/productionPackage.test.ts`
        builds production and QA one after the other). */
     {

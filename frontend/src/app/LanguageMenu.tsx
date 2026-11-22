@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router'
+import { useLocation, useNavigate } from 'react-router'
 import { outsideOf } from '../components/outsideOf'
-import { LOCALES, type Locale } from '../i18n/config'
+import { LOCALES, loadDictionary, loadedDictionary, type Locale } from '../i18n/config'
 import { useI18n } from '../i18n/useI18n'
 
 /* Flags are drawn rather than loaded: two small shapes inherit the page's
@@ -36,11 +36,18 @@ const CODES: Record<Locale, string> = { sr: 'SR', en: 'EN' }
  * one in use. Two languages would fit in two plain links, but the shape is
  * meant to survive a third without the header changing.
  */
-export function LanguageMenu({ restOfPath }: { restOfPath: string }) {
+export function LanguageMenu({ restOfPath, onRefused }: { restOfPath: string; onRefused: () => void }) {
   const { locale, t } = useI18n()
   const navigate = useNavigate()
+  const where = useLocation()
   const [open, setOpen] = useState(false)
   const box = useRef<HTMLDivElement>(null)
+  /* Where the reader is now, for a book that arrives after he may have moved on. */
+  const still = useRef(where.key)
+
+  useEffect(() => {
+    still.current = where.key
+  }, [where.key])
 
   useEffect(() => {
     if (!open) {
@@ -68,9 +75,50 @@ export function LanguageMenu({ restOfPath }: { restOfPath: string }) {
     }
   }, [open])
 
+  /* THE BOOK OF THE OTHER LANGUAGE IS ASKED FOR WHEN THE LIST OPENS, so it is usually here by the time a
+     language is pressed (coordinator, 22.11.2026, derived from the owner's choice of that day to load only
+     the language being read). What that costs is one book, about 24 KB, for whoever opens the list and
+     keeps his language. Nothing is kept in the browser, and a failure here is only the first of two asks:
+     `choose` asks again. */
+  function toggle() {
+    if (!open) {
+      for (const other of LOCALES.filter((one) => one !== locale)) {
+        loadDictionary(other).catch(() => undefined)
+      }
+    }
+
+    setOpen((was) => !was)
+  }
+
+  /* THE SCREEN BEFORE STAYS UNTIL THE NEW LANGUAGE CAN BE DRAWN WHOLE, the way a screen that is still on its
+     way does (`app/screens.tsx`), and with nothing drawn in the meantime (owner, 22.11.2026: no band in the
+     header while a page arrives). A book already on the shelf moves at once. A press that is overtaken by
+     the reader going somewhere else moves nothing: the book arriving later must not take him back. A book
+     that does not arrive is said in the portal's own words, in the language he is still reading, in the
+     place of the screen (`onRefused`), as a piece of a screen that does not arrive is (PR 794). */
   function choose(next: Locale) {
     setOpen(false)
-    navigate(`/${next}/${restOfPath}`)
+    const to = `/${next}/${restOfPath}`
+
+    if (loadedDictionary(next) !== undefined) {
+      navigate(to)
+      return
+    }
+
+    const pressedAt = where.key
+
+    loadDictionary(next).then(
+      () => {
+        if (still.current === pressedAt) {
+          navigate(to)
+        }
+      },
+      () => {
+        if (still.current === pressedAt) {
+          onRefused()
+        }
+      },
+    )
   }
 
   return (
@@ -108,7 +156,7 @@ export function LanguageMenu({ restOfPath }: { restOfPath: string }) {
            „Jezik" alone until that day, so the „SR" the button shows on a desktop was not in its name
            either (WCAG 2.2 SC 2.5.3), and a reader on a telephone would have heard no code at all. */
         aria-label={t('language.button', { code: CODES[locale] })}
-        onClick={() => setOpen((was) => !was)}
+        onClick={toggle}
       >
         <span className="lang__btnflag">
           <Flag locale={locale} />
