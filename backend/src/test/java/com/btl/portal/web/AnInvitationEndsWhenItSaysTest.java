@@ -58,13 +58,14 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * are two different instants: an invitation whose link ends fourteen days after the SENDING, or seven
  * after the WRITING, fails every case below that is not the group entry's own.
  *
- * <p><b>Three levels, because the routes cannot reach every axis.</b> A member the administration entered
- * has no number until he pays, so he cannot be addressed by number and no route sends HIM a second
- * invitation; the members a route sends one to all have a number, which the sweep never deletes. The axis
- * „the sweep deletes him and the fourteenth day is nearer" is therefore reached at the level that mints
- * the row ({@link #theSweepDeletesOnlyWhoHasNeitherANumberNorAPayment}), and in the pure rule
- * ({@link #theMomentIsTheEarlierOfTheTwoAndOnlyWhereTheSweepDeletes}); the two routes that do send a
- * second invitation are measured through their letters.
+ * <p><b>Three levels.</b> The axis „the sweep deletes him and the fourteenth day is nearer" is reached by
+ * a route: the administration corrects the address of a member who has no number and no password through
+ * {@code PUT /api/members/unnumbered/{competitorId}/data}
+ * ({@link #aMemberWithNoNumberCorrectedNineDaysAfterHisEntryIsInvitedUntilTheFourteenthDay}). It is also
+ * measured at the level that mints the row ({@link #theSweepDeletesOnlyWhoHasNeitherANumberNorAPayment})
+ * and in the pure rule ({@link #theMomentIsTheEarlierOfTheTwoAndOnlyWhereTheSweepDeletes}); the two
+ * routes that address a member by number (a corrected address, a new invitation) reach only the kept
+ * accounts and are measured through their letters.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -262,6 +263,37 @@ class AnInvitationEndsWhenItSaysTest {
 				.isEqualTo(200);
 
 		assertTheLetterSaysTheMomentTheRowEnds(account, "rok-ispravljena@primer.rs");
+	}
+
+	/**
+	 * A MEMBER WITH NO NUMBER AND NO PAYMENT, ENTERED NINE DAYS BEFORE THE ADMINISTRATION CORRECTS HIS ADDRESS:
+	 * the sweep would delete him, so his link ends fourteen days after the entry (five from the sending), in
+	 * the row and in the letter. The account's {@code created_at} and the clock of the test are both
+	 * {@code SENT} less nine days and {@code SENT}, so the day of writing and the day of sending are two
+	 * different instants.
+	 */
+	@Test
+	void aMemberWithNoNumberCorrectedNineDaysAfterHisEntryIsInvitedUntilTheFourteenthDay() throws Exception {
+		long account = anAccountWritten(null, false, NINE_DAYS_BEFORE);
+		long member = db.sql("select competitor_id from account where id = ?").param(account)
+				.query(Long.class).single();
+
+		assertThat(http.perform(put("/api/members/unnumbered/" + member + "/data").with(csrf())
+								.contentType(MediaType.APPLICATION_JSON)
+								.content("{\"email\": \"rok-bez-broja@primer.rs\"}")
+								.cookie(new Cookie(SessionCookie.NAME, session)))
+						.andReturn().getResponse().getStatus())
+				.isEqualTo(200);
+
+		Instant theFourteenthDay = NINE_DAYS_BEFORE.plus(Duration.ofDays(14));
+		ArgumentCaptor<Said> letter = ArgumentCaptor.forClass(Said.class);
+
+		verify(postman, times(1)).send(letter.capture(), org.mockito.ArgumentMatchers.eq("rok-bez-broja@primer.rs"));
+		assertThat(theRowEnds(account)).as("fourteen days from the writing, not seven from the sending")
+				.isEqualTo(theFourteenthDay).isNotEqualTo(SENT.plus(Duration.ofDays(7)));
+		assertThat(letter.getValue().body())
+				.contains("Link važi do " + WhatANoticeSays.moment(theFourteenthDay, MailLanguage.SERBIAN)
+						+ " i može da se upotrebi jednom.");
 	}
 
 	/** THE ADMINISTRATION SENDS A NEW INVITATION from the member's row, nine days after he was written. */
