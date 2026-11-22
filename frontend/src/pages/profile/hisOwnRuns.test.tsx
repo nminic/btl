@@ -4,6 +4,10 @@ import { join } from 'node:path'
 import { expectFrontPage, renderAt } from '../../test/render'
 import { SLOW } from '../../test/slow'
 import { hisRunsFrom, serverThat } from '../../test/serverAnswers'
+import sr from '../../i18n/sr.json'
+import { RESULTS } from '../../data/useResource'
+import { UNSCORED_RESULTS } from '../../data/unscoredResults'
+import { useSession } from '../../session/useSession'
 
 /* THE PROFILE ASKS FOR HIS RUNS AND NOBODY ELSE'S (inkrement „Poboljšanje performansi”, korak 1, owner,
    21.11.2026: „Profil traži samo rezultate tog člana ... umesto rezultata cele lige”).
@@ -18,7 +22,10 @@ import { hisRunsFrom, serverThat } from '../../test/serverAnswers'
    - one member after another: a profile opened from another one, with the second's runs still on their
      way, must not draw the first's in the meantime. The races of the first that the second never ran are
      read off the file, and the case says first that there are some;
-   - an address with no number on it: answered as a profile nobody may reach, and nothing is asked. */
+   - a run taken away during the visit: scored and unscored, each by its own name, so the overlay of
+     one cannot pass for the other's;
+   - an address with no number on it: answered as a profile nobody may reach, and nothing is asked; and
+     while nobody has said who is reading it waits, as the other three unreadable addresses do. */
 
 const FIRST = '000001'
 const SECOND = '000002'
@@ -114,6 +121,8 @@ describe('the runs a profile asks for', () => {
       for (const name of onlyHis) {
         expect(screen.queryByRole('link', { name }), `${name} of the member before was drawn on the next one`).toBeNull()
       }
+      /* And not told he has none either: the runs before are not his, and neither is their absence. */
+      expect(screen.queryByText(sr.profile.noResults), 'the next member was said to have no runs at all').toBeNull()
 
       letThrough()
 
@@ -125,6 +134,78 @@ describe('the runs a profile asks for', () => {
       }
     } finally {
       letThrough()
+      server.stop()
+    }
+  }, SLOW)
+
+  it('takes a run away at once when it is taken away during the visit, scored and unscored alike', async () => {
+    const newest = (rows: unknown[]): { id: string; raceName: string } => {
+      const sorted = [...rows].sort((a, b) =>
+        String(Reflect.get(Object(b), 'date')).localeCompare(String(Reflect.get(Object(a), 'date'))),
+      )
+      const one: unknown = sorted[0]
+
+      return { id: String(Reflect.get(Object(one), 'id')), raceName: String(Reflect.get(Object(one), 'raceName')) }
+    }
+    const scored = newest(hisRunsFrom(THE_FILE, SECOND))
+    const unscored = newest(hisRunsFrom(THE_UNSCORED, SECOND))
+
+    function TakesThemAway() {
+      const { remove } = useSession()
+
+      return (
+        <>
+          <button type="button" onClick={() => remove(RESULTS, scored.id)}>
+            bodovana
+          </button>
+          <button type="button" onClick={() => remove(UNSCORED_RESULTS, unscored.id)}>
+            nebodovana
+          </button>
+        </>
+      )
+    }
+
+    renderAt(`/sr/takmicar/${SECOND}?sezona=sve`, 'visitor', null, undefined, null, <TakesThemAway />)
+    await screen.findByRole('table', { name: 'Trke' }, { timeout: SLOW / 2 })
+
+    for (const [word, run] of [['bodovana', scored], ['nebodovana', unscored]] as const) {
+      const before = drawnRaces().filter((name) => name === run.raceName).length
+
+      expect(before, `${run.raceName} is not drawn, so taking it away says nothing`).toBeGreaterThan(0)
+
+      act(() => {
+        screen.getByRole('button', { name: word }).click()
+      })
+
+      expect(drawnRaces().filter((name) => name === run.raceName), `the ${word} run stayed on the profile`).toHaveLength(
+        before - 1,
+      )
+    }
+  }, SLOW)
+
+  it('waits, while nobody has said who is reading, before it turns an address with no number away', async () => {
+    let answer: () => void = () => undefined
+    const held = new Promise<void>((resolve) => {
+      answer = resolve
+    })
+    const disc = globalThis.fetch
+    const server = serverThat((path) => (path === '/api/me' ? held.then(() => disc('/api/me')) : null))
+
+    try {
+      renderAt('/sr/takmicar/-bez-broja', 'competitor', FIRST)
+
+      await act(async () => {
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+
+      expect(screen.queryByRole('heading', { level: 1, name: 'Balkanska trkačka liga' })).toBeNull()
+      expect(screen.queryAllByRole('status').filter((one) => one.textContent === sr.data.loading)).not.toEqual([])
+
+      answer()
+      await expectFrontPage()
+    } finally {
+      answer()
       server.stop()
     }
   }, SLOW)
