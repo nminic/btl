@@ -329,9 +329,22 @@ class ApiSecurityTest {
 			   (`/api/photos/{digest}/small/{circle}`), and a folder cut off the pattern would be
 			   asked about with its braces still in it. */
 			String folder = asked.substring(0, asked.lastIndexOf('/'));
-			String respelt = folder.substring(0, folder.lastIndexOf('/') + 1)
-					+ folder.substring(folder.lastIndexOf('/') + 1).toUpperCase(java.util.Locale.ROOT)
-					+ asked.substring(folder.length());
+			/* THE LAST SEGMENT OF THE PATTERN THAT IS A WORD AND NOT A NAME is the one respelt, read
+			   off the pattern rather than off the address. Until 22.11.2026 it was the segment before
+			   the last of the address, which is that word for every entry whose name is last; the runs
+			   of one member put the word last (`/api/competitors/{memberNumber}/results`), and there
+			   the segment before the last is the sample name, which respelt in capitals is the same
+			   `1` and asked the open address itself. Same answer as before for every older entry. */
+			String[] words = open.split("/");
+			int word = words.length - 1;
+
+			while (words[word].contains("{")) {
+				word -= 1;
+			}
+
+			String[] respeltWords = asked.split("/");
+			respeltWords[word] = respeltWords[word].toUpperCase(java.util.Locale.ROOT);
+			String respelt = String.join("/", respeltWords);
 
 			for (String beside : new String[] {folder, folder + "/", asked + "/2", respelt}) {
 				assertThat(statusOf(beside))
