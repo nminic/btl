@@ -372,7 +372,7 @@ class EmailConfirmationApiTest {
 
 		MimeMessage toTheSerbian = waitForOne();
 
-		assertThat(toTheSerbian.getSubject()).isEqualTo("Potvrdite svoju adresu");
+		assertThat(toTheSerbian.getSubject()).isEqualTo("Potvrdi svoju adresu");
 		assertThat(toTheSerbian.getContent().toString())
 				.contains(portal + Message.CONFIRM_THE_ADDRESS.path() + "?token=");
 
