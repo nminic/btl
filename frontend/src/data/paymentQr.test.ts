@@ -186,6 +186,7 @@ describe('the reference is the season and the six digit member number, ten digit
       recipient: RECIPIENT_NAME,
       amountRsd: 4800,
       purpose: paymentPurpose(2027),
+      payer: 'Žarko Čačić',
     }
 
     expect(ipsPayload({ ...paying, reference: paymentReference(2027, '000027') })).toMatch(
@@ -228,17 +229,47 @@ describe('the reference of somebody who may have no number yet', () => {
       recipient: RECIPIENT_NAME,
       amountRsd: 4800,
       purpose: paymentPurpose(2027),
+      payer: 'Žarko Čačić',
     }
 
     expect(ipsPayload({ ...paying, reference: paymentReferenceOrNone(2027, null) })).toBe(
-      'K:PR|V:01|C:1|R:105000000000328471|N:Sportsko udruženje BTL|I:RSD4800,00|SF:289' +
+      'K:PR|V:01|C:1|R:105000000000328471|N:Sportsko udruženje BTL|I:RSD4800,00|P:Žarko Čačić|SF:289' +
         '|S:Članarina za 2027. godinu',
     )
     /* And the same code for somebody who has one is this one with the tag added, which is what
        makes the pair a measurement of the reference alone. */
     expect(ipsPayload({ ...paying, reference: paymentReferenceOrNone(2027, '000037') })).toBe(
-      'K:PR|V:01|C:1|R:105000000000328471|N:Sportsko udruženje BTL|I:RSD4800,00|SF:289' +
+      'K:PR|V:01|C:1|R:105000000000328471|N:Sportsko udruženje BTL|I:RSD4800,00|P:Žarko Čačić|SF:289' +
         '|S:Članarina za 2027. godinu|RO:2027000037',
     )
+  })
+
+  /* THE PAYER IS THE FIELD BETWEEN THE AMOUNT AND THE PAYMENT CODE, and it is the name handed in, not
+     the payee's (owner, 23.09.2026, PDL P8: „Uplatnica dobija polje PLATIOCA"). Read as fields, so a
+     name that moved to the end, or one swapped for the recipient's, fails here by its position. */
+  it('writes the payer between the amount and the payment code, and not the payee in its place', () => {
+    const fields = ipsPayload({
+      account: RECIPIENT_ACCOUNT,
+      recipient: RECIPIENT_NAME,
+      amountRsd: 4800,
+      purpose: paymentPurpose(2027),
+      payer: 'Đorđe Šćepanović',
+      reference: paymentReference(2027, '000037'),
+    }).split('|')
+
+    expect(fields.map((field) => field.slice(0, field.indexOf(':')))).toEqual([
+      'K',
+      'V',
+      'C',
+      'R',
+      'N',
+      'I',
+      'P',
+      'SF',
+      'S',
+      'RO',
+    ])
+    expect(fields[6]).toBe('P:Đorđe Šćepanović')
+    expect(fields[4]).toBe(`N:${RECIPIENT_NAME}`)
   })
 })

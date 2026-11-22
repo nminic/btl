@@ -7,12 +7,14 @@
     {
       "season": 2027,
       "amountRsd": 3600,
-      "payload": "K:PR|V:01|C:1|R:105000000000328471|N:Sportsko udruženje BTL|I:RSD3600,00|SF:289|S:Članarina za 2027. godinu"
+      "payer": "Žarko Čačić",
+      "payload": "K:PR|V:01|C:1|R:105000000000328471|N:Sportsko udruženje BTL|I:RSD3600,00|P:Žarko Čačić|SF:289|S:Članarina za 2027. godinu"
     },
     {
       "season": 2028,
       "amountRsd": 1234.5,
-      "payload": "K:PR|V:01|C:1|R:105000000000328471|N:Sportsko udruženje BTL|I:RSD1234,50|SF:289|S:Članarina za 2028. godinu"
+      "payer": "Đorđe Šćepanović",
+      "payload": "K:PR|V:01|C:1|R:105000000000328471|N:Sportsko udruženje BTL|I:RSD1234,50|P:Đorđe Šćepanović|SF:289|S:Članarina za 2028. godinu"
     }
   ]
 }

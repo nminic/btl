@@ -682,22 +682,29 @@ class WhatTheMessageSaysTest {
 	}
 
 	/**
-	 * AN ACCOUNT THAT NAMES NO MEMBER HAS NO SEX (V23), and what the portal says to him in „ti" is the owner's
-	 * question (asked 21.11.2026). Until it is answered he is written the words he was always written, held
-	 * whole here, and English, which has no participle, is the same as for everybody.
+	 * AN ACCOUNT THAT NAMES NO MEMBER HAS NO SEX (V23), and the confirmation of its address is the owner's
+	 * text on „ti" without a sex, approved word for word on 22.11.2026 (PDL, „Mejl za potvrdu adrese naloga
+	 * bez profila"). Held whole, sentence by sentence, with the link and the time it lasts, and English,
+	 * which has no participle, is the same as for everybody.
 	 */
 	@Test
-	void anAccountThatNamesNoMemberIsWrittenTheWordsTheOwnerApprovedAsTheyWere() {
+	void anAccountThatNamesNoMemberIsWrittenTheTextTheOwnerApprovedOnTi() {
 		Said serbian = WhatTheMessageSays.aboutToAnAccountThatNamesNoMember(Message.CONFIRM_THE_ADDRESS,
 				MailLanguage.SERBIAN, PORTAL, TOKEN, THE_LINK_ENDS);
 
-		assertThat(serbian.subject()).isEqualTo("Potvrdite svoju adresu");
-		assertThat(serbian.body()).startsWith("Dobrodošli u Balkansku trkačku ligu.")
-				.contains("Adresu potvrđujete otvaranjem ovog linka:")
-				.contains("a sa ove adrese možete da se registrujete ponovo.")
-				.contains("Ako se niste registrovali kod nas, zanemarite ovu poruku.")
-				.contains(linkOf(Message.CONFIRM_THE_ADDRESS, MailLanguage.SERBIAN))
-				.contains("do 17.12.2026. 13:00");
+		assertThat(serbian.subject()).isEqualTo("Potvrdi svoju adresu");
+		assertThat(serbian.body()).isEqualTo(String.join("\n",
+				"Hvala na registraciji u Balkanskoj trkačkoj ligi.",
+				"",
+				"Adresu potvrđuješ otvaranjem ovog linka:",
+				linkOf(Message.CONFIRM_THE_ADDRESS, MailLanguage.SERBIAN),
+				"",
+				"Link važi do 17.12.2026. 13:00. Posle toga se nepotvrđena prijava briše, a sa ove adrese možeš da"
+						+ " se registruješ ponovo.",
+				"",
+				"Ako ova registracija nije tvoja, zanemari ovu poruku.",
+				"",
+				"Balkanska trkačka liga"));
 		assertThat(WhatTheMessageSays.aboutToAnAccountThatNamesNoMember(Message.CONFIRM_THE_ADDRESS,
 				MailLanguage.ENGLISH, PORTAL, TOKEN, THE_LINK_ENDS))
 				.isEqualTo(WhatTheMessageSays.about(Message.CONFIRM_THE_ADDRESS, MailLanguage.ENGLISH, PORTAL, TOKEN,

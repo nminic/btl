@@ -10,6 +10,7 @@ import {
   answeringInvoice,
   invoiceAsServed,
   serverThat,
+  THE_PAYER,
   type InvoiceAnswered,
 } from '../../test/serverAnswers'
 import { SLOW } from '../../test/slow'
@@ -96,6 +97,7 @@ describe('the slip, in Serbia', () => {
         recipient: RECIPIENT_NAME,
         amountRsd: 4100,
         purpose: paymentPurpose(2027),
+        payer: THE_PAYER,
         reference: paymentReference(2027, IN_SERBIA),
       }),
     )
@@ -104,6 +106,21 @@ describe('the slip, in Serbia', () => {
     /* The owner's sentence, 25.10.2026, with the answer's two figures. */
     expect(screen.getByText('Balans pokriva 700 RSD, a za uplatu ostaje 4.100 RSD.')).toBeVisible()
     expect(screen.getByText(/^Podaci za uplatu su u nastavku/)).toBeVisible()
+  }, SLOW)
+
+  /* THE PAYER IN THE CODE IS THE ANSWER'S NAME (owner, 23.09.2026, PDL P8: „Uplatnica dobija polje
+     PLATIOCA"), read off the picture and as a field of the text. Neither name is the one the session
+     knows for 000032, so a code that took the payer from the session, from the list of competitors or
+     from the payee names him wrongly; and two names are served, so one that is a constant does too. */
+  it.each(['Đorđe Šćepanović', 'Žarko Čačić'])('names in the code the payer the answer names: %s', async (payer) => {
+    openHisPage(IN_SERBIA, anInvoice(2027, 'RSD', { payer }))
+
+    const drawn = must(readQr(within(await theSlip()).getByRole('img', { name: /QR/ })), 'the code says something')
+    const fields = drawn.split('|')
+
+    expect(fields.find((field) => field.startsWith('P:'))).toBe(`P:${payer}`)
+    expect(fields.map((field) => field.slice(0, field.indexOf(':'))).slice(5, 8)).toEqual(['I', 'P', 'SF'])
+    expect(fields.find((field) => field.startsWith('N:'))).toBe('N:Sportsko udruženje BTL')
   }, SLOW)
 
   it('names what the promise of the season takes off, and not what the book holds today', async () => {

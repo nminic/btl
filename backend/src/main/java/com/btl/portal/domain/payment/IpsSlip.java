@@ -45,6 +45,9 @@ public final class IpsSlip {
 	/** IPS's own code for a payment of this kind, the {@code SF} tag the page writes too. */
 	private static final String PAYMENT_CODE = "289";
 
+	/** The longest the payer field may be, in characters. */
+	private static final int PAYER_LONGEST = 70;
+
 	private IpsSlip() {
 	}
 
@@ -77,12 +80,37 @@ public final class IpsSlip {
 	 * has a number and no membership of the season on sale is sent no letter at all (owner,
 	 * 24.10.2026), so there is no slip of this server that would carry one.
 	 *
+	 * <p><b>The payer's tag {@code P} stands after the amount and before the payment code</b>, where
+	 * the IPS order puts it (K, V, C, R, N, I, FT, P, SF, S, RO), and it is written the way
+	 * {@code N} is: the name as the portal holds it, in the same UTF-8 the rest of the text is (the
+	 * owner's own scan of a printed slip, 03.10.2026, confirmed the encoding of {@code N}). The bank
+	 * fills in his side of the transfer from it (owner, 23.09.2026, PDL P8: „Uplatnica dobija polje
+	 * PLATIOCA").
+	 *
 	 * @param amountRsd what he is asked to send, in dinars, never more than two decimals
+	 * @param payer     who sends it, as {@link #payerName} wrote him
 	 */
-	public static String payload(int season, BigDecimal amountRsd) {
+	public static String payload(int season, BigDecimal amountRsd, String payer) {
 		return String.join("|", List.of("K:PR", "V:01", "C:1", "R:" + RECIPIENT_ACCOUNT,
 				"N:" + RECIPIENT_NAME,
 				"I:RSD" + amountRsd.setScale(2, RoundingMode.UNNECESSARY).toPlainString().replace('.', ','),
+				"P:" + payer,
 				"SF:" + PAYMENT_CODE, "S:" + purpose(season)));
+	}
+
+	/**
+	 * THE PAYER AS THE SLIP NAMES HIM: first name, a space, last name. The page does not build it
+	 * again: {@code GET /api/me/membership} serves this very string.
+	 *
+	 * <p><b>Two guards that are MY REASONING and not an owner's decision</b>, named as such: the bar
+	 * {@code |} and the line breaks are what the text is split on, and nothing in the schema forbids
+	 * them in a name, so each becomes a space rather than letting a name cut the field in two; and
+	 * the field holds at most seventy characters in the IPS specification (as I know it, not
+	 * measured here), so a longer name is cut there.
+	 */
+	public static String payerName(String firstName, String lastName) {
+		String name = (firstName + " " + lastName).replaceAll("[|\\r\\n]", " ").strip();
+
+		return name.length() > PAYER_LONGEST ? name.substring(0, PAYER_LONGEST).strip() : name;
 	}
 }

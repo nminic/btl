@@ -1,6 +1,7 @@
 package com.btl.portal.web;
 
 import com.btl.portal.domain.balance.Balance;
+import com.btl.portal.domain.payment.IpsSlip;
 import com.btl.portal.domain.season.SeasonClock;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -98,6 +99,11 @@ class MyMembershipApi {
 	 *                            {@code payment_only_euro_carries_a_fee}), and nothing at all when
 	 *                            there is no transfer to process - asked of {@code toTransfer} and
 	 *                            therefore of the code, not of today's balance
+	 * @param payer               his name as the slip's {@code P} field writes it
+	 *                            ({@link IpsSlip#payerName}): the page puts this very string in its
+	 *                            code and builds no second one, so the code on the page and the code
+	 *                            in the letter name him the same way (owner, 23.09.2026, PDL P8,
+	 *                            „Uplatnica dobija polje PLATIOCA")
 	 * @param coveredByTheBalance the owner's „veci ili jednak", asked of TODAY: when true
 	 *                            {@code POST /api/me/membership} is a way in, because that route
 	 *                            mints no code and so is bound by no promise. It may therefore be
@@ -107,7 +113,7 @@ class MyMembershipApi {
 	 */
 	record MyMembership(int season, boolean alreadyAMember, String priceKey, Balance.Money fee,
 			Balance.Money balance, Balance.Money fromTheBalance, Balance.Money toTransfer,
-			BigDecimal processingFeeEur, boolean coveredByTheBalance) {
+			BigDecimal processingFeeEur, boolean coveredByTheBalance, String payer) {
 	}
 
 	@GetMapping("/api/me/membership")
@@ -213,6 +219,6 @@ class MyMembershipApi {
 
 		return ResponseEntity.ok(new MyMembership(owed.season(), owed.alreadyAMember(), owed.priceKey(),
 				settled.fee(), settled.balance(), settled.fromTheBalance(), settled.toTransfer(),
-				processing, settled.coveredByTheBalance()));
+				processing, settled.coveredByTheBalance(), owed.payer()));
 	}
 }

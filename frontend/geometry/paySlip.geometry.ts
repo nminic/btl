@@ -53,6 +53,7 @@ const owed = {
   toTransfer: dinars(3600),
   processingFeeEur: 0,
   coveredByTheBalance: false,
+  payer: 'Žarko Čačić',
 }
 
 const common: Answers = {

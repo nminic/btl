@@ -327,6 +327,9 @@ export function answeringBook(book: BookAnswered | null): Response {
       })
 }
 
+/** The payer an `anInvoice` names unless a case says otherwise. */
+export const THE_PAYER = 'Žarko Đurđević-Ćosić'
+
 /** `MyMembershipApi.MyMembership` on the wire, every component of it. */
 export type InvoiceAnswered = {
   season: number
@@ -338,6 +341,7 @@ export type InvoiceAnswered = {
   toTransfer: BookAnswered
   processingFeeEur: number
   coveredByTheBalance: boolean
+  payer: string
 }
 
 /**
@@ -366,6 +370,9 @@ export function anInvoice(
      *  parts company with it for a member whose balance grew after his code was minted, and it is what
      *  `coveredByTheBalance` is asked of. */
     balance?: number
+    /** Who the slip names as the payer: a name on no member of the mock, so a screen that built it
+     *  from the session or from the list draws another. */
+    payer?: string
   } = {},
 ): InvoiceAnswered {
   const toTransfer = changes.toTransfer ?? (currency === 'RSD' ? 3700 : 33.5)
@@ -388,6 +395,7 @@ export function anInvoice(
        dugme i uplatnicu"). Written as `toTransfer === 0` until that day, which made that member a
        state no case could stand in. */
     coveredByTheBalance: (changes.balance ?? fromTheBalance) >= toTransfer + fromTheBalance,
+    payer: changes.payer ?? THE_PAYER,
   }
 }
 
