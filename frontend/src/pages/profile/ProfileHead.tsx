@@ -78,7 +78,10 @@ export function ProfileHead({
             put the control a few pixels higher than anywhere else. */}
         <div className="profile__title rankings--tooled">
           <h1 className="profile__name">
-            {competitor.firstName} {competitor.lastName}
+            {/* One run of text and not three (the first name, a space and the last name): on a telephone the name
+                wraps beside the symbols at the end of its row, and the symbols are centred on the name as a block,
+                which is how `geometry/actionTip.geometry.ts` reads words that wrap, one text at a time. */}
+            {`${competitor.firstName} ${competitor.lastName}`}
           </h1>
           {/* AT THE END OF THE ROW OF THE NAME since 21.11.2026 (owner, PDL „Zaglavlje profila: izbor
               „Godina” stoji u redu sa karticama, desno, na svim uređajima; „Pozovi u tim” postaje ikonica
@@ -374,13 +377,18 @@ export function ProfileTop({
         acts={
           <>
             {data !== null && narrow && (
+              /* THE SAME SQUARE AS THE INVITATIONS BESIDE IT (owner, 22.11.2026, PDL „OBA su zaobljeni kvadrati kao
+                 dugmad u administraciji"): the owner named the two invitations, and a circle left standing beside
+                 them in the one row would be the head coming apart again. A link of the nav and not an
+                 `ActionLink`, because it says which part is open (`aria-current`), so it wears the square by its
+                 classes: `entity-open` and `action` (`components/ActionButton.css`), the symbol in the middle. */
               <NavLink
                 to={{ pathname: `${base}${THE_DATA}`, search }}
-                className="profile__act profile__act--icon profile__act--part"
+                className="entity-open action profile__act profile__act--icon profile__act--part"
                 aria-label={data}
                 title={data}
               >
-                <DataIcon />
+                <DataIcon className="action__symbol" />
               </NavLink>
             )}
             {acts}

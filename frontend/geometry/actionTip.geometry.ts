@@ -353,6 +353,18 @@ const SCREENS: { path: string; me: unknown; least: number; extra?: Record<string
   { path: '/sr/tim/dunavski-trkaci', me: member('000001'), least: 1 },
   { path: '/sr/moji-rezultati', me: member('000021'), least: 30 },
   { path: '/sr/moja-clanarina', me: member('000021'), least: 1 },
+  /* The two invitations at the end of the row of the name on a profile (owner, 22.11.2026: „OBA su zaobljeni
+     kvadrati kao dugmad u administraciji"), read by a man who leads a team on the page of a woman with neither. */
+  {
+    path: '/sr/takmicar/000030-isidora-zivkovic',
+    me: member('000005'),
+    least: 2,
+    extra: {
+      '/api/pairs': [],
+      '/api/teams/2/invitations': [],
+      '/api/me/applications': { teamApplications: [], teamInvitations: [], teamProposals: [], pairInvites: [], alreadyInATeam: false, seasonToPayFor: null },
+    },
+  },
 ]
 
 for (const at of WIDTHS) {
@@ -398,6 +410,83 @@ for (const at of WIDTHS) {
       expect(probe.sideways).toBe(0)
     })
   }
+}
+
+/**
+ * EVERY SYMBOL AT THE END OF THE ROW OF THE NAME OPENS ITS BOX WITH ITS WORD (owner, 22.11.2026: „Pozovi u trkački
+ * par” becomes a symbol „kao „Pozovi u tim”", PDL). Until that day the invitation into a team had only the
+ * browser's own `title`, which a keyboard never opens; as `ActionButton`s both open the portal's box, on the pointer
+ * and on the keyboard, inside the window at the right edge of a telephone, and Escape puts it away.
+ */
+const THE_PROFILE = SCREENS.find((one) => one.path.startsWith('/sr/takmicar/'))
+
+for (const at of WIDTHS) {
+  test(`the invitations on a profile open their box with their word, on the pointer and on the keyboard, at ${label(at)}`, async ({
+    open,
+  }) => {
+    if (THE_PROFILE === undefined) {
+      throw new Error('the profile is not among the screens')
+    }
+
+    const { page, probe } = await open(at, THE_PROFILE.path, '.action:visible', {
+      ...SAMPLE,
+      ...THE_PROFILE.extra,
+      '/api/me': THE_PROFILE.me,
+    })
+
+    for (const word of ['Pozovi u tim', 'Pozovi u trkački par']) {
+      const button = page.getByRole('button', { name: word, exact: true })
+
+      for (const how of ['the pointer', 'the keyboard'] as const) {
+        if (how === 'the pointer') {
+          await button.hover()
+        } else {
+          await page.mouse.move(1, 1)
+          await button.focus()
+          await page.keyboard.press('Shift+Tab')
+          await page.keyboard.press('Tab')
+        }
+
+        await page.locator('.action-tip').waitFor({ state: 'visible' })
+
+        const seen = await page.evaluate(() => {
+          const tip = document.querySelector('.action-tip')
+          const words = document.querySelector('.action-tip__words')
+
+          if (tip === null || words === null) {
+            return null
+          }
+
+          const { left, top, right, bottom } = tip.getBoundingClientRect()
+
+          return {
+            left,
+            top,
+            right,
+            bottom,
+            across: document.documentElement.clientWidth,
+            word: getComputedStyle(words, '::before').content,
+          }
+        })
+
+        expect(seen, `the box of „${word}" on ${how}`).not.toBeNull()
+
+        if (seen === null) {
+          return
+        }
+
+        expect(seen.word, `the word of „${word}" on ${how}`).toBe(`"${word}"`)
+        expect(seen.left, `the box of „${word}" on ${how}, left`).toBeGreaterThanOrEqual(EDGE)
+        expect(seen.top, `the box of „${word}" on ${how}, top`).toBeGreaterThanOrEqual(EDGE)
+        expect(seen.right, `the box of „${word}" on ${how}, right`).toBeLessThanOrEqual(seen.across - EDGE)
+
+        await page.keyboard.press('Escape')
+        await expect(page.locator('.action-tip')).toHaveCount(0)
+      }
+    }
+
+    expect(probe.sideways).toBe(0)
+  })
 }
 
 /**

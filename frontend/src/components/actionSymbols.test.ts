@@ -113,6 +113,11 @@ const SYMBOL_OF = new Map<string, { symbol: ActionSymbol; word: string }>([
   ['review.statement.setAside', { symbol: SYMBOL.cross, word: 'Nije članarina' }],
   ['review.statement.showEverybody', { symbol: SYMBOL.back, word: 'Prikaži sve' }],
   ['pair.refuse', { symbol: SYMBOL.cross, word: 'Odbij' }],
+  /* The two invitations at the end of the row of the name on a profile (owner, 22.11.2026, PDL „„Pozovi u trkački
+     par” na profilu postaje dugme sa simbolom, kao „Pozovi u tim”): the person with the plus „Pozovi u tim” has
+     been drawn as since 21.11.2026, and two people side by side for the pair. */
+  ['pair.invite', { symbol: SYMBOL.twoPeople, word: 'Pozovi u trkački par' }],
+  ['teams.invite', { symbol: SYMBOL.personPlus, word: 'Pozovi u tim' }],
   ['review.amend', { symbol: SYMBOL.pencil, word: 'Ispravi' }],
   ['review.approve', { symbol: SYMBOL.check, word: 'Odobri' }],
   /* In a queue of things to check, it goes back to the member with a reason. */
@@ -190,7 +195,6 @@ const STAYS_A_WORD = new Map([
   ['pager.next', NOT_AN_ACTION],
   ['pager.previous', NOT_AN_ACTION],
   ['pair.breakUp', LISTED],
-  ['pair.invite', LISTED],
   ['picture.send', FORM],
   ['profile.clearFilters', LISTED],
   ['rankings.men', NOT_AN_ACTION],

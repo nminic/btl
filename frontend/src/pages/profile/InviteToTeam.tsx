@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useToday } from '../../clock/useClock'
-import { InviteIcon } from '../../app/icons'
+import { SYMBOL } from '../../app/actionSymbol'
+import { ActionButton } from '../../components/ActionButton'
 import { Unreadable } from '../../components/Unreadable'
 import { teamOf } from '../../data/derive'
 import { inYearlyWindow } from '../../data/season'
@@ -220,20 +221,19 @@ function AskingHimIn({ team, member, woman }: { team: Team; member: string; woma
 
   return (
     <>
-      <button
-        type="button"
-        /* The shape of the parts beside it (owner, 06.11.2026, „istog formata"), and its own class:
-           a button is not a link, so the class of the parts is not worn here. */
-        className="button button--secondary profile__act profile__act--icon"
-        aria-label={t('teams.invite')}
-        title={t('teams.invite')}
+      <ActionButton
+        symbol={SYMBOL.personPlus}
+        word={t('teams.invite')}
+        /* THE SQUARE OF THE ADMINISTRATION (owner, 22.11.2026, PDL „OBA su zaobljeni kvadrati kao dugmad u
+           administraciji (ne krugovi)"): the look the symbols of the administration wear, `entity-open`, on the
+           same `ActionButton`, so the name, the box with the word and the size are the ones every symbol of the
+           portal has. `profile__act--icon` only says where it stands in the row of the name (`Profile.css`). */
+        className="entity-open profile__act profile__act--icon"
         aria-disabled={sending ? true : undefined}
         onClick={() => {
           void send()
         }}
-      >
-        <InviteIcon />
-      </button>
+      />
       {/* Under the button and never in its place: refused, the button is still the way to ask,
           and the one refusal that means „he has been asked" is said in the words that stand in
           the button's place once the list shows it (`WHEN_INVITING_INTO_A_TEAM`). */}

@@ -28,6 +28,13 @@
  *   simbol za to umesto znaka plus da bude kao novčanice").
  * - `envelope`: Pošalji novu pozivnicu, on the member's row (owner, 25.10.2026, PDL „Nova
  *   pozivnica od administracije i rečenica o trkama: odgovori od 25.10.2026": „simbol koverte").
+ * - `personPlus`: Pozovi u tim, at the end of the row of the name on a profile (owner, 21.11.2026, PDL
+ *   „Zaglavlje profila": „Pozovi u tim” postaje ikonica na kraju reda sa imenom"), the person with the
+ *   plus it was drawn as from that day.
+ * - `twoPeople`: Pozovi u trkački par, beside it (owner, 22.11.2026, PDL „„Pozovi u trkački par” na
+ *   profilu postaje dugme sa simbolom, kao „Pozovi u tim”"): two people side by side, the same size,
+ *   since a pair is two members standing as equals. The drawing was not named by the owner; it was
+ *   chosen to be told apart from the person with the plus beside it, at a glance.
  * - The shield with a check that „Odobri oslobođenje" carried from 20.10.2026 is gone
  *   with the button: since 22.10.2026 the exemption is granted by ticking the season
  *   in the member's row (PDL, „Red na ekranu članova ima pet kolona").
@@ -44,6 +51,8 @@ export const SYMBOL = {
   up: 'up',
   again: 'again',
   envelope: 'envelope',
+  personPlus: 'personPlus',
+  twoPeople: 'twoPeople',
 } as const
 
 export type ActionSymbol = (typeof SYMBOL)[keyof typeof SYMBOL]

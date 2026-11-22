@@ -167,6 +167,20 @@ describe('the invitations in the row of the name of a profile', () => {
     expect(within(parts).getByRole('link', { name: 'Rezultati' })).toHaveAttribute('aria-current', 'page')
   }, SLOW)
 
+  /* A SYMBOL AND NOT A WORD since 22.11.2026 (owner, PDL „„Pozovi u trkački par” na profilu postaje dugme sa
+     simbolom, kao „Pozovi u tim”"): two people side by side, drawn by `ActionButton`, whose word is the name a
+     reader hears and the only text it holds (clipped to a pixel), so nothing of it is drawn beside the symbol. */
+  it('draws „Pozovi u trkački par" as the symbol of two people, named by its word', async () => {
+    aServer()
+    renderAt(HER_PAGE, 'competitor', READER, undefined, DAY)
+
+    const button = await screen.findByRole('button', { name: sr.pair.invite })
+
+    expect(button.querySelector('svg')?.getAttribute('data-symbol'), 'the symbol it is drawn as').toBe('twoPeople')
+    expect(button, 'its only text is its word').toHaveTextContent(sr.pair.invite, { normalizeWhitespace: true })
+    expect(within(button).getByText(sr.pair.invite), 'the word is drawn beside the symbol').toHaveClass('visually-hidden')
+  }, SLOW)
+
   it('stand on „Priznanja" in the same row of the name', async () => {
     aServer()
     renderAt(`${HER_PAGE}/priznanja`, 'competitor', READER, undefined, DAY)

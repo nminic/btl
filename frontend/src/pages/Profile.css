@@ -1043,46 +1043,31 @@
   margin-block: 0 var(--head-end);
 }
 
-/* THE ICON AT THE END OF THE ROW: the invitation into a team and, where the row has no room for three parts and
-   the season, the card „Podaci" (`THREE_PARTS_DO_NOT_FIT`, `profile/ProfileHead.tsx`). 2,25rem is the size of the
-   target, above the 24px of WCAG 2.2 SC 2.5.8 at the browser's own text and growing with it. Last in the row
-   (`order`), in the order of the document between themselves. */
+/* THE SYMBOLS AT THE END OF THE ROW: the invitation into a team, the invitation into a racing pair and, where the
+   row has no room for three parts and the season, the card „Podaci" (`THREE_PARTS_DO_NOT_FIT`,
+   `profile/ProfileHead.tsx`). Since 22.11.2026 they are the square of the administration and not circles (owner,
+   PDL „„Pozovi u trkački par” na profilu postaje dugme sa simbolom, kao „Pozovi u tim”, i OBA su zaobljeni kvadrati
+   kao dugmad u administraciji (ne krugovi)"): the shape is not written here at all but worn, `.entity-open` (its
+   border, its rounding, its hover) and `.action` (the two rem a side and the symbol in the middle,
+   `components/ActionButton.css`), so the three are the size and the shape of the symbols of the administration
+   and cannot drift from them. This sheet says only where they stand: last in the row (`order`), in the order of
+   the document between themselves, the first taking the free room to the left of it. */
 .profile__act--icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
   flex: 0 0 auto;
   order: 2;
-  inline-size: 2.25rem;
-  block-size: 2.25rem;
   margin-inline-start: auto;
-  padding: 0;
-  border: 1px solid var(--control-border);
-  border-radius: var(--radius-round);
-  background: transparent;
-  color: var(--text-muted);
-  text-decoration: none;
-  cursor: pointer;
 }
 
-/* Two icons in a row: only the first takes the free room to the left of it. */
+/* Two or three symbols in a row: only the first takes the free room to the left of it. */
 .profile__act--icon ~ .profile__act--icon {
   margin-inline-start: 0;
 }
 
-.profile__act--icon:hover,
+/* The card „Podaci" while it is the page shown, in the colours the hover of `.entity-open` has. */
 .profile__act--icon[aria-current] {
   border-color: var(--accent);
-  color: var(--text);
-}
-
-.profile__act--icon[aria-current] {
   background: var(--surface-hover);
-}
-
-.profile__act--icon svg {
-  inline-size: 1.25rem;
-  block-size: 1.25rem;
+  color: var(--text);
 }
 
 /* „Poziv ... je poslat" stands where the button stood, on its line under the name. */
@@ -1099,38 +1084,14 @@
   flex-basis: 100%;
 }
 
-/* THE ACT THAT IS A WORD, „Pozovi u trkački par", which stays one (the owner named only the team): the format of
-   the parts beside it, the same letter, the same padding and the same rounding as `.parts__item`. Two classes, so
-   this wins over `.button`'s padding and rounding on weight rather than on the order of the bundle, and
-   `font: inherit` first, because a button does not inherit the page's letter on its own. */
-.button.profile__act {
-  font: inherit;
-  font-size: 0.88rem;
-  font-weight: 600;
-  padding: var(--space-6) var(--space-12);
-  border-radius: var(--radius-round);
-}
-
-.profile__acts > .button.profile__act:not(.profile__act--icon) {
-  order: 3;
-  margin-inline-start: auto;
-}
-
-/* THE LINE BREAK AFTER THE ICONS: the name and the icons are one row, and everything of the acts that is a word
-   or a sentence falls under it, at the right. Measured 21.11.2026 on a telephone: with the word of the pair
-   beside the name the icon fell to a row of its own under it, which is not „na kraju reda sa imenom". A
-   pseudo-element of a box that gives up its own is an item of the row, and it is empty and has no height. */
+/* THE LINE BREAK AFTER THE SYMBOLS: the name and the symbols are one row, and everything of the acts that is a
+   sentence falls under it, at the right. A pseudo-element of a box that gives up its own is an item of the row,
+   and it is empty and has no height. */
 .profile__acts::after {
   content: '';
   order: 2;
   flex-basis: 100%;
   block-size: 0;
-}
-
-/* Written once more with three classes: the icon is a `.button` too, and the padding of the word above would
-   have drawn it a pill. */
-.button.profile__act.profile__act--icon {
-  padding: 0;
 }
 
 /* THE BELT: the parts on the left, the season on the right, one row (owner, 21.11.2026). */

@@ -90,6 +90,25 @@ const DRAWN: Record<ActionSymbol, React.ReactNode> = {
       <path d="M3 7l9 6 9-6" />
     </>
   ),
+  /* A person with a plus: „Pozovi u tim" (owner, 21.11.2026, PDL „Zaglavlje profila"), the drawing it had as
+     an icon of its own from that day, moved into the set on 22.11.2026 with the shape of the administration. */
+  personPlus: (
+    <>
+      <circle cx="9" cy="8" r="4" />
+      <path d="M1.5 20.5a7.5 7.5 0 0 1 15 0" />
+      <path d="M19 8v6M16 11h6" />
+    </>
+  ),
+  /* Two people side by side, the same size, their shoulders a pixel apart: „Pozovi u trkački par" (owner,
+     22.11.2026). Not the two people of the header (`people` in `NAV_DRAWN` below), where one stands behind the other. */
+  twoPeople: (
+    <>
+      <circle cx="6.5" cy="8.5" r="3" />
+      <circle cx="17.5" cy="8.5" r="3" />
+      <path d="M1.5 20a5 5 0 0 1 10 0" />
+      <path d="M12.5 20a5 5 0 0 1 10 0" />
+    </>
+  ),
 }
 
 /** One of the action symbols, drawn. */
@@ -217,18 +236,6 @@ export function LinkIcon({ className }: IconProps) {
     <Stroke className={className}>
       <path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7" />
       <path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7" />
-    </Stroke>
-  )
-}
-
-/** A person with a plus: „Pozovi u tim" (owner, 21.11.2026, PDL „Zaglavlje profila"). It carries no name; the
- *  button it stands in keeps the words for the reader (`pages/profile/InviteToTeam.tsx`). */
-export function InviteIcon({ className }: IconProps) {
-  return (
-    <Stroke className={className}>
-      <circle cx="9" cy="8" r="4" />
-      <path d="M1.5 20.5a7.5 7.5 0 0 1 15 0" />
-      <path d="M19 8v6M16 11h6" />
     </Stroke>
   )
 }
