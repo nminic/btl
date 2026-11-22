@@ -1,190 +1,22 @@
-import type { ReactElement } from 'react'
 import { Navigate, type RouteObject } from 'react-router'
 import { DEFAULT_LOCALE } from '../i18n/config'
-import { Calendar } from '../pages/Calendar'
-import { Competitors } from '../pages/Competitors'
-import { CompetitorAwards } from '../pages/CompetitorAwards'
-import { CompetitorData } from '../pages/CompetitorData'
-import { CompetitorProfile } from '../pages/CompetitorProfile'
-import { CalendarDay } from '../pages/CalendarDay'
-import { EventDetail } from '../pages/EventDetail'
-import { RateEvent } from '../pages/event/RateEvent'
-import { ReportResult } from '../pages/event/ReportResult'
-import { EnterForAnEvent, EnterResults } from '../pages/event/EnterResults'
-import { LeagueDetail } from '../pages/LeagueDetail'
-import { TeamDetail } from '../pages/TeamDetail'
-import { EditTeam } from '../pages/member/EditTeam'
 import { Home } from '../pages/Home'
-import { Leagues } from '../pages/Leagues'
-import { Rankings } from '../pages/Rankings'
-import { Rulebook } from '../pages/Rulebook'
-import { TopBoards } from '../pages/TopBoards'
-import { ProposeTeam } from '../pages/member/ProposeTeam'
-import { Teams } from '../pages/Teams'
 import { NotFound } from '../pages/NotFound'
-import { Placeholder } from '../pages/Placeholder'
-import { Registration } from '../pages/Registration'
-import { ConfirmAddress } from '../pages/account/ConfirmAddress'
-import { ForgottenPassword } from '../pages/account/ForgottenPassword'
-import { NewPassword } from '../pages/account/NewPassword'
-import { StaticPage } from '../pages/StaticPage'
-import { Admin } from '../pages/admin/Admin'
-import { Entities } from '../pages/admin/Entities'
-import { Guard } from '../pages/admin/Guard'
-import { needFor } from '../pages/admin/needs'
-import { AdminSections } from '../pages/admin/SectionNav'
-import { Verification } from '../pages/admin/Verification'
-import { AdminEvents } from '../pages/admin/AdminEvents'
-import { AdminMembers } from '../pages/admin/AdminMembers'
-import { AdminLeagues } from '../pages/admin/AdminLeagues'
-import { AdminModerators } from '../pages/admin/AdminModerators'
-import { AdminPages } from '../pages/admin/AdminPages'
-import { AdminPricing } from '../pages/admin/AdminPricing'
-import { AdminTeams } from '../pages/admin/AdminTeams'
-import { Payments } from '../pages/admin/Payments'
-import { UnnumberedMemberData } from '../pages/admin/UnnumberedMemberData'
-import { PendingQueue } from '../pages/admin/PendingQueue'
-import { QUEUE } from '../pages/admin/queues'
-import { ReviewQueue } from '../pages/admin/ReviewQueue'
-import { Membership } from '../pages/member/Membership'
-import { MessageDetail } from '../pages/member/MessageDetail'
-import { Messages } from '../pages/member/Messages'
-import { MyData } from '../pages/member/MyData'
-import { Settings } from '../pages/member/Settings'
-import { MyProfile } from '../pages/member/MyProfile'
-import { MyResults } from '../pages/member/MyResults'
-import { NewResult } from '../pages/member/NewResult'
-import { SignIn } from '../pages/member/SignIn'
 import { LocaleLayout } from './LocaleLayout'
-import { ROUTES, UNNUMBERED_DATA_ADDRESS, type RouteDef } from './routes'
+import { ROUTES } from './routes'
+import { DETAILS, lazyRoute, screenFor } from './screens'
 
-/* Screens that already exist, which is every address in ROUTES since the ducats
- * arrived. Anything else in ROUTES renders a placeholder, so the navigation can
- * be walked end to end from the day an address is added. */
-const SCREENS: Record<string, ReactElement> = {
-  kalendar: <Calendar />,
-  tabela: <Rankings />,
-  'top-liste': <TopBoards />,
-  takmicari: <Competitors />,
-  timovi: <Teams />,
-  'novi-tim': <ProposeTeam />,
-  lige: <Leagues />,
-  registracija: <Registration />,
-  prijava: <SignIn />,
-  'nova-lozinka': <NewPassword />,
-  'potvrda-adrese': <ConfirmAddress />,
-  'zaboravljena-lozinka': <ForgottenPassword />,
-  'moj-profil': <MyProfile />,
-  'moji-podaci': <MyData />,
-  'moji-rezultati': <MyResults />,
-  'moja-clanarina': <Membership />,
-  poruke: <Messages />,
-  podesavanja: <Settings />,
-  administracija: <Admin />,
-  'administracija/entiteti': <Entities />,
-  'administracija/verifikacija': <Verification />,
-  'administracija/clanovi': <AdminMembers />,
-  'administracija/dogadjaji': <AdminEvents />,
-  'administracija/cenovnik': <AdminPricing />,
-  'administracija/timovi': <AdminTeams />,
-  'administracija/lige': <AdminLeagues />,
-  'administracija/strane': <AdminPages />,
-  'administracija/moderatori': <AdminModerators />,
-  'administracija/unos-rezultata': <EnterForAnEvent />,
-  pravilnik: <Rulebook />,
-  'politika-privatnosti': <StaticPage slug="politika-privatnosti" />,
-  'uslovi-koriscenja': <StaticPage slug="uslovi-koriscenja" />,
+/* EVERY SCREEN BUT TWO IS LOADED THE FIRST TIME IT IS OPENED (`app/screens.tsx`, inkrement „Poboljšanje
+ * performansi”, korak 2). The two that come with the portal itself are the front page, where most visits
+ * start, and the answer to an address the portal does not have. */
+const SCREENS_OF_ROUTES: RouteObject[] = ROUTES.map((route) => lazyRoute(route.path, screenFor(route)))
+
+const DETAIL_SCREENS: RouteObject[] = DETAILS.map((one) => lazyRoute(one.path, one.load))
+
+/** The first moment of a visit, before its first screen has been loaded. */
+function NothingYet() {
+  return null
 }
-
-/**
- * The screen at an address, or a stand-in for one.
- *
- * Every address in ROUTES has a screen of its own today. The stand-in is what a
- * newly added address answers with on the day it is added and before its screen
- * exists, so the navigation can always be walked end to end.
- */
-export function screenFor(route: RouteDef): ReactElement {
-  return SCREENS[route.path] ?? <Placeholder labelKey={route.labelKey} />
-}
-
-/** The screen with the administration's navigation beside it (owner,
- *  30.07.2026, in two sectors since 06.08.2026). Everything else is handed
- *  through untouched. */
-function inSection(path: string, screen: ReactElement): ReactElement {
-  return path === 'administracija' || path.startsWith('administracija/') ? (
-    <AdminSections>{screen}</AdminSections>
-  ) : (
-    screen
-  )
-}
-
-/**
- * The screen at an address, with the door its address asks for and the section
- * it belongs to.
- *
- * Here rather than inside the screens, so that adding a fifteenth administrative
- * screen cannot mean adding a fifteenth check and forgetting what it should ask
- * for. Every address outside administration asks for nothing and is handed
- * through untouched (needs.ts).
- *
- * The door is outside the section: somebody who may not open a screen is not
- * shown the section it is in either. A refusal that came with a working
- * navigation would be an inventory of the rooms somebody is being kept out of.
- */
-function guarded(path: string, screen: ReactElement): ReactElement {
-  const need = needFor(path)
-  const inside = inSection(path, screen)
-
-  return need === undefined ? inside : <Guard need={need}>{inside}</Guard>
-}
-
-/* Detail screens. They are addresses, not navigation entries, so they are not
- * in ROUTES. */
-const DETAILS: RouteObject[] = [
-  { path: 'kalendar/dan/:date', element: <CalendarDay /> },
-  { path: 'kalendar/:slug', element: <EventDetail /> },
-  /* Reported from the event it was run at, so the form does not begin by asking
-     which event it was (owner, 03.08.2026). Under the event's own address,
-     because that is what it is about and where the way back leads. */
-  { path: 'kalendar/:slug/prijava', element: <ReportResult /> },
-  { path: 'kalendar/:slug/rezultati', element: <EnterResults /> },
-  { path: 'kalendar/:slug/ocena', element: <RateEvent /> },
-  { path: 'takmicar/:memberNumber', element: <CompetitorProfile /> },
-  { path: 'takmicar/:memberNumber/priznanja', element: <CompetitorAwards /> },
-  /* The card „Podaci", which only the administration opens (owner, 22.10.2026 and 07.11.2026); the member
-     himself is sent to „Moji podaci" (`CompetitorData.tsx`). */
-  { path: 'takmicar/:memberNumber/podaci', element: <CompetitorData /> },
-  /* The same form for somebody who registered and has no member number, from the pencil on the screen
-     Uplate (owner, 10.11.2026). Behind the door of the screen of the members (`needs.ts`). */
-  { path: UNNUMBERED_DATA_ADDRESS, element: <UnnumberedMemberData /> },
-  { path: 'tim/:slug', element: <TeamDetail /> },
-  /* Changing a team is the team's own address plus a word, the way reporting a
-     result sits under the event it was run at: it is about that team, and the way
-     back leads there (owner, 04.09.2026). */
-  { path: 'tim/:slug/izmena', element: <EditTeam /> },
-  { path: 'liga/:slug', element: <LeagueDetail /> },
-  { path: 'rezultat/novi', element: <NewResult /> },
-  { path: 'poruke/:id', element: <MessageDetail /> },
-  /* The registration page with the code of whoever brought the reader in it (owner, 22.10.2026:
-     „Link preporuke nosi samo šifru u adresi strane za registraciju"). The same screen as
-     `registracija`, which reads the segment itself (`pages/Registration.tsx`). */
-  { path: 'registracija/:code', element: <Registration /> },
-  /* The five verification queues (PDL P28a). The addresses live in QUEUES, which
-     is also what the list of queues links with, so a queue cannot end up with a
-     row that points nowhere.
-
-     Seven until 24.08.2026, when the proposed leagues left: a league is not
-     proposed by anybody, the Administrator makes it (owner, 23.08.2026), so a
-     queue for deciding on proposals had nothing that could ever reach it. Six
-     until 22.09.2026, when the schedule queue left with it (PDL P10a): nobody
-     reports a term any more, so a queue for deciding on one had nothing left
-     to decide either. */
-  { path: QUEUE.results.path, element: <ReviewQueue /> },
-  { path: QUEUE.payments.path, element: <Payments /> },
-  { path: QUEUE.teams.path, element: <PendingQueue queue={QUEUE.teams} /> },
-  { path: QUEUE.profiles.path, element: <PendingQueue queue={QUEUE.profiles} /> },
-  { path: QUEUE.comments.path, element: <PendingQueue queue={QUEUE.comments} /> },
-].map((route) => ({ ...route, element: guarded(route.path, route.element) }))
 
 /* Kept apart from App so tests can mount the same routes in a memory router. */
 export const routeObjects: RouteObject[] = [
@@ -192,13 +24,14 @@ export const routeObjects: RouteObject[] = [
   {
     path: '/:locale',
     element: <LocaleLayout />,
+    /* WHILE THE FIRST SCREEN OF A VISIT IS ON ITS WAY, NOTHING, which is what the page was before the
+       portal's code arrived at all: `index.html` draws nothing in `#root`. Named rather than left out, so
+       the router is told the empty moment is meant. */
+    HydrateFallback: NothingYet,
     children: [
       { index: true, element: <Home /> },
-      ...ROUTES.map((route) => ({
-        path: route.path,
-        element: guarded(route.path, screenFor(route)),
-      })),
-      ...DETAILS,
+      ...SCREENS_OF_ROUTES,
+      ...DETAIL_SCREENS,
       { path: '*', element: <NotFound /> },
     ],
   },

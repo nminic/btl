@@ -1,5 +1,6 @@
 import '@testing-library/jest-dom'
 import { configure } from '@testing-library/react'
+import type { ReactElement } from 'react'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { beforeEach, expect, vi } from 'vitest'
@@ -87,6 +88,38 @@ vi.mock('../components/TextEditor', async () => {
   const { default: MarkdownEditor } = await import('../components/markdownEditor/MarkdownEditor')
 
   return { TextEditor: MarkdownEditor }
+})
+
+/**
+ * EVERY SCREEN IS DRAWN AT ONCE IN A TEST, since 22.11.2026, the shape the editor above set.
+ *
+ * On the portal a screen is loaded the first time it is opened (`app/screens.tsx`, inkrement „Poboljšanje
+ * performansi”, korak 2), so the first paint of an address is a moment with no screen in it. Two hundred
+ * test files mount the routes and many read the screen at once, and a case that says something is ABSENT
+ * would then pass in that empty moment whatever the screen does. What they measure is the screen and not
+ * the loading, so here every row of the one table is loaded before the first case and handed to the router
+ * as it stood before, behind the same door (`guarded`).
+ *
+ * The table is the real one (`importOriginal`), so a screen added there is a screen here; and the loading is
+ * not left unmeasured: `app/screens.test.tsx` asks for the real `lazyRoute` and holds that the screen
+ * before stays until the next one has arrived.
+ */
+vi.mock('../app/screens', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../app/screens')>()
+  const drawn = new Map<unknown, ReactElement>()
+
+  for (const load of [...Object.values(actual.SCREENS), ...actual.DETAILS.map((one) => one.load)]) {
+    drawn.set(load, await load())
+  }
+
+  return {
+    ...actual,
+    lazyRoute: (path: string, load: Parameters<(typeof actual)['lazyRoute']>[1]) => {
+      const element = drawn.get(load)
+
+      return element === undefined ? actual.lazyRoute(path, load) : { path, element: actual.guarded(path, element) }
+    },
+  }
 })
 
 configure({ asyncUtilTimeout: SLOW })

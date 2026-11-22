@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { RESOURCE_NAMES } from '../data/client'
+import { addressOf, ONE_MEMBERS_DOORS, RESOURCE_NAMES } from '../data/client'
 import { aCompetitor, asAnswered, myOwnRow } from './theAnswer'
 
 /**
@@ -38,7 +38,17 @@ export type Asked = { path: string; init: RequestInit | undefined }
  * these on the day it is added rather than on the day somebody remembers.
  */
 export function isResource(path: string): boolean {
-  return RESOURCE_NAMES.some((name) => withoutTheQuery(path) === `/api/${name}`)
+  /* AND ONE MEMBER'S ANSWER OF A NAME (`ONE_MEMBERS_DOORS`, since 22.11.2026), which is a narrower answer
+     of that resource and not a write, for the reason a query is: the profile reads its member's runs
+     there, and a case that answered every address that is no resource with 404 left the profile with
+     nothing to draw. Built by `addressOf` itself, so the two cannot spell the address differently. */
+  const asked = withoutTheQuery(path)
+  const his = /^\/api\/competitors\/([^/]+)\//.exec(asked)
+
+  return (
+    RESOURCE_NAMES.some((name) => asked === `/api/${name}`) ||
+    (his !== null && ONE_MEMBERS_DOORS.some((door) => asked === addressOf(door, undefined, decodeURIComponent(his[1] ?? ''))))
+  )
 }
 
 /**

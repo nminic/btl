@@ -3,6 +3,19 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
+  build: {
+    /* ONE STYLESHEET FOR THE WHOLE PORTAL, while the code is loaded screen by screen (inkrement
+       „Poboljšanje performansi”, korak 2). Split along with the code, the rules of a screen would arrive in
+       a sheet of their own appended after the portal's, and at equal specificity the later sheet wins: a
+       rule that lost a tie on the day the screen was written would start winning it on the day the screen
+       is opened second (ADL A7, 13.08.2026, which foresaw exactly this: „čim se uvede deljenje po rutama
+       ... pravila odlaze i ništa to ne javi”). One sheet does NOT keep the order of the
+       rules as it was: the order follows how the code is cut, so it moved. What was measured instead is
+       what the order decides, every element's computed style, against the build before the change (the
+       description of PR „Poboljšanje performansi” has the screens, the widths and the count). What it costs is that a visitor downloads the rules of the
+       administration with the rest, 23 KB over the wire for all of them.*/
+    cssCodeSplit: false,
+  },
   server: {
     port: 5173,
     proxy: {
