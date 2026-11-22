@@ -226,7 +226,7 @@ describe('the head of the sheet', () => {
      two competitions of the season are served with identities that are neither their places nor one
      more than them. */
   it('names the identity of the competition, not the place of its card, in the address of the form', { timeout: SLOW }, async () => {
-    const served = JSON.parse(readFileSync(join(__dirname, '../../test/mock/leagues.json'), 'utf8')) as League[]
+    const served: League[] = JSON.parse(readFileSync(join(__dirname, '../../test/mock/leagues.json'), 'utf8'))
     const apart = served.map((one) => (one.slug === 'planinska-2027' ? { ...one, id: 41 } : one.slug === 'runtrace-liga-2027' ? { ...one, id: 17 } : one))
     const server = serverThat((path) =>
       path === '/api/leagues'
