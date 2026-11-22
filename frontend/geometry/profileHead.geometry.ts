@@ -18,9 +18,15 @@ import type { Answers, At } from './support/harness.ts'
  * overlaps a part vertically and stands to the right of every part it overlaps.
  * <li><b>ON A TELEPHONE THE WORD „GODINA" IS NOT DRAWN</b> (a box of a pixel) and is still the name of the field;
  * from 560px it is drawn.
- * <li><b>„POZOVI U TIM" IS AN ICON AT THE END OF THE ROW OF THE NAME</b>: no wider than a square, at least 24px
- * on each side (WCAG 2.2 SC 2.5.8), level with the name, ending where the row ends, above the belt of the parts
- * and with no word drawn in it, and named „Pozovi u tim" for a reader who hears it.
+ * <li><b>„POZOVI U TIM" AND „POZOVI U TRKAČKI PAR" ARE SYMBOLS AT THE END OF THE ROW OF THE NAME</b> (owner,
+ * 22.11.2026, PDL „„Pozovi u trkački par” na profilu postaje dugme sa simbolom, kao „Pozovi u tim”, i OBA su
+ * zaobljeni kvadrati kao dugmad u administraciji (ne krugovi)"): squares of two rem, the size of the symbols of
+ * the administration, rounded and not round, at least 24px on each side (WCAG 2.2 SC 2.5.8), level with the name,
+ * the last ending where the row ends, above the belt of the parts and with no word drawn in them, and named by
+ * their word for a reader who hears it. Every combination: neither, the team alone, the pair alone, both, and
+ * the member on her own page.
+ * <li><b>THE PORTRAIT STANDS AS IT STOOD BEFORE THE WORD OF THE PAIR CAME INTO THE ROW</b>: to the left of the
+ * name, and centred on the name and the line under it together, so that no act pushes it down.
  * <li><b>THREE PARTS AND THE SEASON ON A TELEPHONE</b>: where they do not fit in one row (360px at the browser's
  * own text, measured below), „Podaci" is an icon beside the invitation and the parts are two; from 768 it is a part.
  * <li><b>THE FILTER OF THE RACES</b> at 768 and 1280 is as wide as its buttons ask and starts where its parent
@@ -69,6 +75,9 @@ const ONE_BUTTON = '000002'
 
 /** A man who leads Nišavski maraton klub: offered both. */
 const TWO_BUTTONS = '000005'
+
+/** A woman who leads Vardarski krug: offered „Pozovi u tim" alone, since a pair is a man and a woman. */
+const TEAM_ONLY = '000003'
 
 /** What `/api/me` answers about a member whose fee stands. */
 /** What the administration's route says of her, which its form opens with (`profile/TheMembersData.tsx`). */
@@ -175,6 +184,7 @@ const THE_LISTS: Answers = {
     seasonToPayFor: null,
   },
   '/api/teams/2/invitations': [],
+  '/api/teams/3/invitations': [],
 }
 
 type Reader = { name: string; pair: boolean; team: boolean; data: boolean; answers: Answers }
@@ -194,6 +204,13 @@ const READERS: Reader[] = [
     team: false,
     data: false,
     answers: { ...THE_LISTS, '/api/me': meAs(ONE_BUTTON) },
+  },
+  {
+    name: 'a member who may ask her into her team alone',
+    pair: false,
+    team: true,
+    data: false,
+    answers: { ...THE_LISTS, '/api/me': meAs(TEAM_ONLY) },
   },
   {
     name: 'a member who may ask her into a pair and into his team',
@@ -229,10 +246,13 @@ type Measured = {
   root: number
   row: Box
   name: Box
+  /** The circle with the initials or the picture, and the line under the name. */
+  portrait: Box
+  meta: Box
   /** The links of the nav of the parts. */
   tabs: Box[]
   /** Every control of the head that is not a part and not the season: the icons and the word of the pair. */
-  acts: (Box & { name: string; text: string; icon: boolean; link: boolean })[]
+  acts: (Box & { name: string; text: string; icon: boolean; link: boolean; radius: number; drawn: string })[]
   season: Box | null
   /** The box of the word „Godina", which is a pixel on a telephone. */
   seasonWord: Box | null
@@ -251,8 +271,10 @@ const measure = (page: Page): Promise<Measured | null> =>
     const nav = document.querySelector('nav[aria-label="Delovi profila"]')
     const row = document.querySelector('.profile__top')
     const name = document.querySelector('.profile__top h1')
+    const portrait = document.querySelector('.profile__top .portrait')
+    const meta = document.querySelector('.profile__top .profile__meta')
 
-    if (nav === null || row === null || name === null) {
+    if (nav === null || row === null || name === null || portrait === null || meta === null) {
       return null
     }
 
@@ -264,6 +286,9 @@ const measure = (page: Page): Promise<Measured | null> =>
         text: (one.textContent ?? '').trim(),
         icon: one.classList.contains('profile__act--icon'),
         link: one.tagName === 'A',
+        radius: parseFloat(getComputedStyle(one).borderTopLeftRadius),
+        /* What is drawn in it, so that a symbol that lost its drawing is not counted a symbol. */
+        drawn: one.querySelector('svg')?.getAttribute('class') ?? '',
       }))
     const season = document.querySelector('.profile__top select')
     const word = document.querySelector('.profile__season .rankings__field > span')
@@ -274,6 +299,8 @@ const measure = (page: Page): Promise<Measured | null> =>
       root: parseFloat(getComputedStyle(document.documentElement).fontSize),
       row: boxOf(row),
       name: boxOf(name),
+      portrait: boxOf(portrait),
+      meta: boxOf(meta),
       tabs: [...nav.querySelectorAll('a')].map(boxOf),
       acts,
       season: season === null ? null : boxOf(season),
@@ -392,14 +419,25 @@ for (const at of WIDTHS) {
         const icons = measured.acts.filter((one) => one.icon)
         const wordsOfActs = measured.acts.filter((one) => !one.icon)
 
-        expect(icons, 'how many icons stand at the end of the row of the name').toHaveLength((reader.team ? 1 : 0) + (dataAsIcon ? 1 : 0))
-        expect(wordsOfActs, 'how many buttons with words stand in the row of the name').toHaveLength(reader.pair ? 1 : 0)
+        expect(icons.map((one) => one.name), 'the symbols at the end of the row of the name, in their order').toEqual([
+          ...(dataAsIcon ? ['Podaci'] : []),
+          ...(reader.team ? ['Pozovi u tim'] : []),
+          ...(reader.pair ? ['Pozovi u trkački par'] : []),
+        ])
+        expect(wordsOfActs, 'how many buttons with words stand in the row of the name').toHaveLength(0)
 
         for (const icon of icons) {
-          expect(icon.text, `„${icon.name}" draws a word beside its icon`).toBe('')
+          /* The word is the name and nothing of it is drawn: it is clipped to a pixel (`visually-hidden`), so the
+             box is no wider than the square, which is asked below, and it holds the symbol in its middle. */
+          expect(icon.drawn, `„${icon.name}" draws no symbol`).toBe('action__symbol')
           expect(icon.width, `„${icon.name}" is under 24px wide`).toBeGreaterThanOrEqual(24)
           expect(icon.height, `„${icon.name}" is under 24px high`).toBeGreaterThanOrEqual(24)
           expect(Math.abs(icon.width - icon.height), `„${icon.name}" is not a square`).toBeLessThanOrEqual(SLACK)
+          /* THE SQUARE OF THE ADMINISTRATION: two rem a side (`components/ActionButton.css`), with its rounded corners
+             and not a circle (`.entity-open`, `pages/admin/Entity.css`). */
+          expect(Math.abs(icon.width - 2 * measured.root), `„${icon.name}" is not the two rem of a symbol`).toBeLessThanOrEqual(SLACK)
+          expect(icon.radius, `„${icon.name}" has square corners`).toBeGreaterThan(0)
+          expect(icon.radius, `„${icon.name}" is a circle and not a rounded square`).toBeLessThanOrEqual(icon.width / 4)
           /* At 200% the name wraps and the icon may fall under it, still at the right: the row breaks, it does not
              overflow. */
           if (at.text === 100) {
@@ -425,6 +463,35 @@ for (const at of WIDTHS) {
 
         if (dataAsIcon) {
           expect(icons.some((one) => one.link && one.name === 'Podaci'), '„Podaci" is not an icon in the row of the name').toBe(true)
+        }
+
+        /* THE PORTRAIT: left of the name, and centred on the name and the line under it together, as the grid of the
+           head lays it out when nothing in the row of the name takes a line of its own (`.profile__top`). On the
+           owner's screenshot of 22.11.2026 the word of the pair fell under the name, the row of the name grew by
+           its height, and the grid centred the portrait that much lower. The line's own margin under it is part of
+           the grid's row, hence a few pixels. At 200% on a telephone the name and the line wrap into many rows and
+           the portrait is centred on all of them, as it was before any act stood in the head, so there it is asked
+           only to stand beside them. */
+        const { portrait, meta } = measured
+        const block = { ...measured.name, bottom: meta.bottom }
+
+        expect(portrait.right, 'the portrait runs into the name').toBeLessThanOrEqual(measured.name.left + SLACK)
+        expect(overlapsVertically(portrait, block), 'the portrait is not beside the name and the line under it').toBe(true)
+
+        if (at.text === 100) {
+          expect(overlapsVertically(portrait, measured.name), 'the portrait is not beside the name').toBe(true)
+          expect(overlapsVertically(portrait, meta), 'the portrait is not beside the line under the name').toBe(true)
+
+          const middle = (Math.min(measured.name.top, ...icons.map((one) => one.top)) + meta.bottom) / 2
+
+          expect(
+            Math.abs(portrait.top + portrait.height / 2 - middle),
+            'the portrait is not centred on the name and the line under it',
+          ).toBeLessThanOrEqual(4)
+        }
+
+        for (const act of measured.acts) {
+          expect(act.bottom, `„${act.name}" falls under the row of the name, into the line under it`).toBeLessThanOrEqual(meta.top + SLACK)
         }
 
         standsInsideThePage(measured, probe)

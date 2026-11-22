@@ -1,4 +1,6 @@
 import { useLayoutEffect, useRef, useState } from 'react'
+import { SYMBOL } from '../../app/actionSymbol'
+import { ActionButton } from '../../components/ActionButton'
 import { Unreadable } from '../../components/Unreadable'
 import { pairOf } from '../../data/derive'
 import { transfersTakeEffect } from '../../data/season'
@@ -259,18 +261,19 @@ function AskingIntoAPair({ mine, whom }: { mine: string; whom: string }) {
 
   return (
     <>
-      <button
-        type="button"
-        /* The shape of the parts beside it (owner, 06.11.2026, „istog formata"), and its own class:
-           a button is not a link, so the class of the parts is not worn here. */
-        className="button button--secondary profile__act"
+      <ActionButton
+        symbol={SYMBOL.twoPeople}
+        word={t('pair.invite')}
+        /* A SYMBOL AND NOT A WORD since 22.11.2026 (owner, PDL „„Pozovi u trkački par” na profilu postaje dugme
+           sa simbolom, kao „Pozovi u tim”, i OBA su zaobljeni kvadrati kao dugmad u administraciji"): the word
+           stood as a pill under the name and pushed the head apart on a telephone. The same look and the same
+           place as `profile/InviteToTeam.tsx` beside it. */
+        className="entity-open profile__act profile__act--icon"
         aria-disabled={sending ? true : undefined}
         onClick={() => {
           void send(waiting)
         }}
-      >
-        {t('pair.invite')}
-      </button>
+      />
       {/* Under the button and never in its place: what is left of a refusal once the list has been
           read again is one the list cannot answer, and the button is still the way to ask. */}
       {refused !== null && (
