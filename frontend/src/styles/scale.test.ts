@@ -81,6 +81,10 @@ const ALLOWED = new Map([
     'app/RaceInMotion.css | left | calc((100% - 1100px) / 2 - var(--lane-width))',
     'not a step: the lane of the route ends where the column of the page begins (1100px, app/Shell.css), so that no word is ever over the route or the dot, owner 20.11.2026',
   ],
+  [
+    'pages/Leagues.css | padding-inline-start | calc(var(--space-12) - 3px)',
+    'not a step: the three pixels that the gold edge of the next event\'s tile is thicker than the 1px of every other tile (4px against 1px), taken back off the padding so the text of that tile starts where the text of the others does (report of the author of PR 791); a difference of two borders, which does not move with the letters, so it is written in pixels beside the token that does',
+  ],
   ['pages/Home.css | inset-inline-start | -0.2rem', 'a mark pulled out over the corner it sits on'],
   ['pages/Home.css | inset-block-start | -0.2rem', 'a mark pulled up over the corner it sits on'],
   [

@@ -232,6 +232,63 @@ for (const { at, columns } of [
   })
 }
 
+/* THE TEXT OF THE TILE OF THE NEXT EVENT STARTS WHERE THE TEXT OF EVERY OTHER TILE STARTS, AND ITS GOLD EDGE
+ * IS STILL THERE (owner's PENDING, 22.11.2026, from the report of the author of PR 791: „zlatna leva ivica
+ * od 4px pomera tekst 3px udesno u odnosu na ostale pločice").
+ *
+ * The gold edge is a border of 4px against the 1px of every other tile, so the same padding put the text of
+ * that tile 3px further in. Measured 22.11.2026 before the change, in this file's sample: the state and the
+ * name of the next tile 3px to the right of those of the tiles above and below it, at 360, 768 and 1280.
+ *
+ * **Compared with the tiles of the same column**, tile by tile, and not with a number written here: the
+ * left edge of the state and the left edge of the name of every tile are held to the first tile's own, which
+ * is not the next one, and a tolerance of half a pixel (the subpixel position of a box in a grid). **The
+ * edge is measured too**, 4px and gold, so the text is not brought into line by taking the edge away.
+ */
+for (const at of [
+  { width: 360, text: 100 },
+  { width: 768, text: 100 },
+  { width: 1280, text: 100 },
+] satisfies At[]) {
+  test(`the text of the next event's tile starts where the other tiles' text does, and keeps its gold edge, ${label(at)}`, async ({ open }) => {
+    const { page } = await open(at, '/sr/lige?sezona=2027', '.leagues__event-tile', SERVED)
+
+    const seen = await page.evaluate(() =>
+      [...document.querySelectorAll('.leagues__event-tile')].map((tile) => {
+        const left = (element: Element | null) => element?.getBoundingClientRect().left ?? Number.NaN
+        const edge = getComputedStyle(tile)
+
+        return {
+          next: tile.classList.contains('leagues__event-tile--next'),
+          column: Math.round(tile.getBoundingClientRect().left),
+          state: left(tile.querySelector('.leagues__event-state')),
+          name: left(tile.querySelector('.leagues__event-mid > a')),
+          edge: edge.borderInlineStartWidth,
+          edgeColour: edge.borderInlineStartColor,
+        }
+      }),
+    )
+    const next = seen.filter((one) => one.next)
+
+    expect(seen.length, 'the eight events of the sample, eight tiles').toBe(8)
+    expect(next.length, 'one tile is the next event').toBe(1)
+
+    const [theNext] = next
+    const others = seen.filter((one) => !one.next && one.column === theNext?.column)
+
+    expect(others.length, 'tiles of the next one\'s column to hold it against').toBeGreaterThan(0)
+
+    for (const other of others) {
+      expect(Math.abs((theNext?.state ?? Number.NaN) - other.state), 'the state starts on one line').toBeLessThanOrEqual(0.5)
+      expect(Math.abs((theNext?.name ?? Number.NaN) - other.name), 'the name starts on one line').toBeLessThanOrEqual(0.5)
+    }
+
+    expect(theNext?.edge, 'the gold edge of the next tile is still 4px').toBe('4px')
+    expect(theNext?.edgeColour, 'and it is gold, not the colour of the others').not.toBe(others[0]?.edgeColour)
+    expect(others.every((one) => one.edge === '1px'), 'the other tiles keep their 1px edge').toBe(true)
+  })
+}
+
 test(`a dot and the tile of its event light together, in both directions, ${label({ width: 1280, text: 100 })}`, async ({ open }) => {
   const { page } = await open({ width: 1280, text: 100 }, '/sr/lige?sezona=2027', '.leagues__event-tile', SERVED)
 
