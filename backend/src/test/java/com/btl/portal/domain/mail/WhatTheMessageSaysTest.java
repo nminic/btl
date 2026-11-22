@@ -39,7 +39,9 @@ class WhatTheMessageSaysTest {
 	 */
 	private static Said said(Message message, MailLanguage in) {
 		if (message.saysWhenItEnds()) {
-			return WhatTheMessageSays.about(message, in, PORTAL, TOKEN, THE_LINK_ENDS, Gender.MAN);
+			return message.followsTheReader()
+					? WhatTheMessageSays.about(message, in, PORTAL, TOKEN, THE_LINK_ENDS, Gender.MAN)
+					: WhatTheMessageSays.about(message, PORTAL, TOKEN, Gender.MAN, THE_LINK_ENDS);
 		}
 
 		return message.followsTheReader() ? WhatTheMessageSays.about(message, in, PORTAL, TOKEN)
@@ -87,8 +89,9 @@ class WhatTheMessageSaysTest {
 	 */
 	@Test
 	void theInvitationOfAMemberSaysWhatHappensAfterAWeekInTheOwnersSentence() {
-		assertThat(WhatTheMessageSays.about(Message.INVITED_AS_A_MEMBER, PORTAL, TOKEN, Gender.MAN).body())
-				.contains("Link važi sedam dana i može da se upotrebi jednom. Ako ga za to vreme ne otvoriš,"
+		assertThat(WhatTheMessageSays.about(Message.INVITED_AS_A_MEMBER, PORTAL, TOKEN, Gender.MAN, THE_LINK_ENDS)
+				.body())
+				.contains("Link važi do 17.12.2026. 13:00 i može da se upotrebi jednom. Ako ga za to vreme ne otvoriš,"
 						+ " tvoj upis se briše, osim ako je članarina već evidentirana; u tom slučaju piši na"
 						+ " info@balkanskatrkackaliga.net i poslaćemo ti novi.")
 				.doesNotContain("Zaboravljena lozinka");
@@ -138,14 +141,15 @@ class WhatTheMessageSaysTest {
 				"",
 				tail));
 
-		assertThat(WhatTheMessageSays.about(Message.INVITED_AS_A_MEMBER, PORTAL, TOKEN, Gender.MAN).body())
+		assertThat(WhatTheMessageSays.about(Message.INVITED_AS_A_MEMBER, PORTAL, TOKEN, Gender.MAN, THE_LINK_ENDS)
+				.body())
 				.isEqualTo(String.join("\n",
 				"Upisali smo te u Balkansku trkačku ligu na osnovu saglasnosti koju si potpisao.",
 				"",
 				"Tvoj nalog postoji, ali još nema lozinku. Otvori ovaj link i postavi je sam:",
 				linkOf(Message.INVITED_AS_A_MEMBER, MailLanguage.SERBIAN),
 				"",
-				"Link važi sedam dana i može da se upotrebi jednom. Ako ga za to vreme ne otvoriš, tvoj upis"
+				"Link važi do 17.12.2026. 13:00 i može da se upotrebi jednom. Ako ga za to vreme ne otvoriš, tvoj upis"
 						+ " se briše, osim ako je članarina već evidentirana; u tom slučaju piši na"
 						+ " info@balkanskatrkackaliga.net i poslaćemo ti novi.",
 				"",
@@ -237,7 +241,7 @@ class WhatTheMessageSaysTest {
 						.hasMessageContaining("always written in Serbian");
 			}
 
-			assertThat(WhatTheMessageSays.about(invitation, PORTAL, TOKEN, Gender.MAN).body())
+			assertThat(said(invitation, MailLanguage.SERBIAN).body())
 					.as("%s did not lead to the Serbian page", invitation)
 					.contains(PORTAL.address() + invitation.path() + "?token=");
 		}
@@ -488,11 +492,12 @@ class WhatTheMessageSaysTest {
 
 	@Test
 	void aMessageThatSaysWhenItEndsIsNeverAskedForWithoutTheMomentAndTheOthersNeverWithOne() {
-		/* THE CONFIRMATION IS THE ONE THAT SAYS A MOMENT (PDL 24.10.2026, „Rok nepotvrđene prijave"): asked
-		   for with nothing, it would print a length that is true of the first letter and not of the
-		   one asked for on the tenth day. */
+		/* THE CONFIRMATION AND THE MEMBER'S INVITATION ARE THE TWO THAT SAY A MOMENT (PDL 24.10.2026,
+		   „Rok nepotvrđene prijave" and „Granica od 14 dana važi i za pozivnicu"): asked for with nothing,
+		   either would print a length that is true of the first letter and not of the one asked for on
+		   the tenth day. The moderator's invitation is an hour from the sending and says so. */
 		assertThat(Arrays.stream(Message.values()).filter(Message::saysWhenItEnds))
-				.containsExactly(Message.CONFIRM_THE_ADDRESS);
+				.containsExactlyInAnyOrder(Message.CONFIRM_THE_ADDRESS, Message.INVITED_AS_A_MEMBER);
 		assertThatThrownBy(() -> WhatTheMessageSays.about(Message.CONFIRM_THE_ADDRESS, MailLanguage.SERBIAN,
 				PORTAL, TOKEN)).isInstanceOf(IllegalArgumentException.class)
 				.hasMessageContaining("says the moment its link ends");
@@ -519,8 +524,10 @@ class WhatTheMessageSaysTest {
 		assertThatThrownBy(() -> WhatTheMessageSays.about(Message.CONFIRM_THE_ADDRESS,
 				MailLanguage.SERBIAN, PORTAL, TOKEN, null, Gender.MAN))
 				.isInstanceOf(NullPointerException.class).hasMessage("endsAt");
-		assertThatThrownBy(() -> WhatTheMessageSays.about(Message.INVITED_AS_A_MEMBER, null, TOKEN, Gender.MAN))
-				.isInstanceOf(NullPointerException.class).hasMessage("portal");
+		assertThatThrownBy(() -> WhatTheMessageSays.about(Message.INVITED_AS_A_MEMBER, null, TOKEN, Gender.MAN,
+				THE_LINK_ENDS)).isInstanceOf(NullPointerException.class).hasMessage("portal");
+		assertThatThrownBy(() -> WhatTheMessageSays.about(Message.INVITED_AS_A_MEMBER, PORTAL, TOKEN, Gender.MAN,
+				null)).isInstanceOf(NullPointerException.class).hasMessage("endsAt");
 		assertThatThrownBy(() -> WhatTheMessageSays.about(Message.CONFIRM_THE_ADDRESS,
 				MailLanguage.SERBIAN, PORTAL, null, THE_LINK_ENDS, Gender.MAN))
 				.isInstanceOf(NullPointerException.class).hasMessage("token");
@@ -650,8 +657,10 @@ class WhatTheMessageSaysTest {
 		assertThat(confirmedByHim).startsWith("Dobrodošao u Balkansku").contains("se nisi registrovao")
 				.doesNotContain("registrovala").doesNotContain("Dobrodošla");
 
-		Said invitedHer = WhatTheMessageSays.about(Message.INVITED_AS_A_MEMBER, PORTAL, TOKEN, Gender.WOMAN);
-		Said invitedHim = WhatTheMessageSays.about(Message.INVITED_AS_A_MEMBER, PORTAL, TOKEN, Gender.MAN);
+		Said invitedHer = WhatTheMessageSays.about(Message.INVITED_AS_A_MEMBER, PORTAL, TOKEN, Gender.WOMAN,
+				THE_LINK_ENDS);
+		Said invitedHim = WhatTheMessageSays.about(Message.INVITED_AS_A_MEMBER, PORTAL, TOKEN, Gender.MAN,
+				THE_LINK_ENDS);
 
 		assertThat(invitedHer.subject()).isEqualTo("Upisana si u Balkansku trkačku ligu");
 		assertThat(invitedHer.body()).contains("koju si potpisala.").contains("postavi je sama:")
@@ -672,9 +681,23 @@ class WhatTheMessageSaysTest {
 	@Test
 	void aMessageWithWordsForAWomanIsNotAskedForWithoutAReaderAndNobodyIsAReaderByDefault() {
 		assertThatThrownBy(() -> WhatTheMessageSays.about(Message.INVITED_AS_A_MEMBER, PORTAL, TOKEN))
-				.isInstanceOf(IllegalStateException.class).hasMessageContaining("invitedAsAMember");
-		assertThatThrownBy(() -> WhatTheMessageSays.about(Message.INVITED_AS_A_MEMBER, PORTAL, TOKEN, null))
-				.isInstanceOf(NullPointerException.class).hasMessage("reader");
+				.isInstanceOf(IllegalArgumentException.class).hasMessageContaining("says the moment");
+		assertThatThrownBy(() -> WhatTheMessageSays.about(Message.INVITED_AS_A_MEMBER, PORTAL, TOKEN, null,
+				THE_LINK_ENDS)).isInstanceOf(NullPointerException.class).hasMessage("reader");
+		/* AND THE INVITATION SAYS A MOMENT AND NEVER HOW LONG: asked for the old way it is refused, so no
+		   call site that forgot to carry the moment can mail „Link važi do sedam dana". */
+		assertThatThrownBy(() -> WhatTheMessageSays.about(Message.INVITED_AS_A_MEMBER, PORTAL, TOKEN, Gender.MAN))
+				.isInstanceOf(IllegalArgumentException.class).hasMessageContaining("says the moment");
+		/* THE MOMENT'S OWN DOOR IS FOR THE MESSAGES THAT SAY ONE, and for those that are always Serbian. */
+		assertThatThrownBy(() -> WhatTheMessageSays.about(Message.INVITED_AS_A_MODERATOR, PORTAL, TOKEN,
+				Gender.MAN, THE_LINK_ENDS)).isInstanceOf(IllegalArgumentException.class)
+				.hasMessageContaining("how long its link lasts");
+		assertThatThrownBy(() -> WhatTheMessageSays.about(Message.CONFIRM_THE_ADDRESS, PORTAL, TOKEN,
+				Gender.MAN, THE_LINK_ENDS)).isInstanceOf(IllegalArgumentException.class)
+				.hasMessageContaining("its reader's language");
+		assertThatThrownBy(() -> WhatTheMessageSays.about(Message.INVITED_AS_A_MEMBER, MailLanguage.ENGLISH,
+				PORTAL, TOKEN, THE_LINK_ENDS, Gender.MAN)).isInstanceOf(IllegalArgumentException.class)
+				.hasMessageContaining("always written in Serbian");
 		assertThatThrownBy(() -> WhatTheMessageSays.about(Message.CONFIRM_THE_ADDRESS, MailLanguage.SERBIAN, PORTAL,
 				TOKEN, THE_LINK_ENDS, null)).isInstanceOf(NullPointerException.class).hasMessage("sex");
 		assertThatThrownBy(() -> WhatTheMessageSays.about(Message.CONFIRM_THE_ADDRESS, PORTAL, TOKEN, Gender.MAN))

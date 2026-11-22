@@ -895,7 +895,7 @@ class MemberDataWriteApiTest {
 		verify(postman, times(1)).send(letter.capture(), to.capture());
 		assertThat(to.getValue()).isEqualTo("nova.bez.lozinke@primer.rs");
 		assertThat(letter.getValue().subject()).isEqualTo(WhatTheMessageSays.about(Message.INVITED_AS_A_MEMBER,
-				new Portal(portalAddress), "x", com.btl.portal.domain.mail.Gender.WOMAN).subject());
+				new Portal(portalAddress), "x", com.btl.portal.domain.mail.Gender.WOMAN, Instant.now()).subject());
 
 		Matcher token = Pattern.compile("nova-lozinka\\?token=([A-Za-z0-9_-]+)").matcher(letter.getValue().body());
 

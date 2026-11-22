@@ -2,6 +2,8 @@ package com.btl.portal.web;
 
 import com.btl.portal.TestcontainersConfiguration;
 import com.btl.portal.domain.account.SessionLife;
+import com.btl.portal.domain.mail.MailLanguage;
+import com.btl.portal.domain.mail.WhatANoticeSays;
 import com.btl.portal.domain.mail.WhatTheMessageSays.Message;
 import com.btl.portal.domain.mail.WhatTheMessageSays.Said;
 import com.btl.portal.domain.token.SecretToken;
@@ -9,6 +11,7 @@ import com.btl.portal.mail.Postman;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -26,7 +29,9 @@ import java.time.Instant;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.verify;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 
@@ -102,6 +107,8 @@ class AnInvitationLastsWhatItSaysTest {
 
 	@Test
 	void theInvitationSentToACorrectedAddressLastsSevenDays() throws Exception {
+		Instant before = Instant.now();
+
 		assertThat(http.perform(put("/api/members/000071/data").with(csrf())
 								.contentType(MediaType.APPLICATION_JSON)
 								.content("{\"email\": \"ispravljena-pozivnica@primer.rs\"}")
@@ -109,12 +116,25 @@ class AnInvitationLastsWhatItSaysTest {
 						.andReturn().getResponse().getStatus())
 				.isEqualTo(200);
 
-		assertThat(db.sql("select extract(epoch from (expires_at - created_at))::bigint"
-						+ " from password_reset_token where account_id ="
+		/* SEVEN DAYS FROM THE SENDING, read off the clock around the call and not off the row's own
+		   `created_at`, which is the database's time and moves with the transaction of the test. */
+		Instant theRowEnds = db.sql("select expires_at from password_reset_token where account_id ="
 						+ " (select id from account where email = 'ispravljena-pozivnica@primer.rs')")
-				.query(Long.class).single())
-				.isEqualTo(Message.INVITED_AS_A_MEMBER.lasts().toSeconds())
-				.isEqualTo(Duration.ofDays(7).toSeconds());
+				.query(Timestamp.class).single().toInstant();
+
+		assertThat(theRowEnds)
+				.isBetween(before.plus(Message.INVITED_AS_A_MEMBER.lasts()),
+						Instant.now().plus(Message.INVITED_AS_A_MEMBER.lasts()))
+				.isBetween(before.plus(Duration.ofDays(7)), Instant.now().plus(Duration.ofDays(7)));
+
+		/* AND THE LETTER SAYS THE MOMENT THE ROW ENDS (PDL 24.10.2026 and 20.11.2026), in the league's zone. */
+		ArgumentCaptor<Said> letter = ArgumentCaptor.forClass(Said.class);
+
+		verify(postman).send(letter.capture(), eq("ispravljena-pozivnica@primer.rs"));
+		assertThat(letter.getValue().body())
+				.contains("Link važi do " + WhatANoticeSays.moment(theRowEnds, MailLanguage.SERBIAN)
+						+ " i može da se upotrebi jednom.")
+				.doesNotContain("Link važi sedam dana");
 
 		assertThat(db.sql("select count(*) from email_verification_token where account_id ="
 						+ " (select id from account where email = 'ispravljena-pozivnica@primer.rs')")
