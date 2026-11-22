@@ -1547,6 +1547,235 @@ class ResultApiTest {
 				.containsExactly(NEW_YEARS_EVE);
 	}
 
+	/*
+	 * THE RUNS OF ONE MEMBER, `/api/competitors/{memberNumber}/results` and `.../unscored-results`
+	 * (inkrement „Poboljšanje performansi”, korak 1). What the profile reads instead of the whole league,
+	 * and held here, beside the route it is cut from, because the one thing it must never do is answer by a
+	 * rule of its own: every case below compares it with what `/api/results` and `/api/unscored-results`
+	 * serve, on the fixture every other case of this file stands on.
+	 */
+
+	/** Every member of the fixture, and a number nobody holds. */
+	private static final List<String> EVERY_NUMBER_ASKED = List.of("000001", A_MEMBER_WHOSE_FEE_IS_STANDING,
+			THE_LAPSED_MEMBER, "009999");
+
+	/** The two doors, by the last word of their addresses. */
+	private static final List<String> BOTH_DOORS = List.of("results", "unscored-results");
+
+	/** The answer at one address, read by a visitor, who must be answered at all. */
+	private JsonNode answerAt(String path) throws Exception {
+		var answer = http.perform(get(path)).andReturn().getResponse();
+
+		assertThat(answer.getStatus()).as("%s did not answer a visitor", path).isEqualTo(200);
+
+		return new ObjectMapper().readTree(answer.getContentAsString(StandardCharsets.UTF_8));
+	}
+
+	/** What the league's door serves with this member's number on it, in the order it serves it. */
+	private List<JsonNode> theLeaguesRowsOf(String door, String memberNumber) throws Exception {
+		return StreamSupport.stream(answerAt("/api/" + door).spliterator(), false)
+				.filter(one -> one.path("memberNumber").asString().equals(memberNumber))
+				.toList();
+	}
+
+	/** What his own door serves. */
+	private List<JsonNode> hisOwnRows(String door, String memberNumber) throws Exception {
+		return StreamSupport.stream(answerAt("/api/competitors/" + memberNumber + "/" + door).spliterator(),
+				false).toList();
+	}
+
+	/** An unscored race on its own event (kind `unscored`, V99), named by the event's address. */
+	private void anUnscoredRace(String slug, String day) {
+		db.sql("insert into btl_event (slug, name, date, place_id, city, country_id, kind, featured,"
+						+ " description, link) values (?, ?, date '" + day + "', null, 'Kraljevo',"
+						+ " (select id from country where code = 'RS'), 'unscored', false, '', '')")
+				.params(slug, "Plivanje " + slug).update();
+		db.sql("insert into race (event_id, name, renamed, date, kind, limit_seconds, distance_km, ascent_m,"
+						+ " descent_m) values ((select id from btl_event where slug = ?), ?, false,"
+						+ " date '" + day + "', 'free', 0, 0, 0, 0)")
+				.params(slug, "Plivanje " + slug).update();
+	}
+
+	private void anUnscoredRun(String member, String slug, String day) {
+		run(member, "Plivanje " + slug, day, 2.00, 0, 0, 3000, 0.00);
+	}
+
+	/**
+	 * Unscored runs beside the scored ones of the fixture: one race two members swam on the same day, so
+	 * the rows of the second are there to leak into the answer of the first, and the member whose fee has
+	 * lapsed swam on both sides of the New Year, so that his door too has a running season to withhold.
+	 */
+	private void unscoredRunsBesideTheScoredOnes() {
+		anUnscoredRace("plivanje-2027", "2027-06-01");
+		anUnscoredRace("plivanje-2028", NEW_YEARS_DAY);
+		anUnscoredRun("000001", "plivanje-2027", "2027-06-01");
+		anUnscoredRun(A_MEMBER_WHOSE_FEE_IS_STANDING, "plivanje-2027", "2027-06-01");
+		anUnscoredRun(THE_LAPSED_MEMBER, "plivanje-2027", "2027-06-01");
+		anUnscoredRun(THE_LAPSED_MEMBER, "plivanje-2028", NEW_YEARS_DAY);
+	}
+
+	/**
+	 * HIS DOOR SERVES EXACTLY THE ROWS THE LEAGUE'S DOOR SERVES WITH HIS NUMBER ON THEM, every field and in
+	 * the same order, for every member of the fixture and for a number nobody holds, on both doors, and on
+	 * two days: right after the freeze, when the running season of the member whose fee has lapsed is
+	 * withheld, and a year later, when it is history and comes back.
+	 *
+	 * <p><b>The floor comes first</b>: each door serves the runs of more than one member, so an answer
+	 * that is the whole league, or the first member's, is a different list for somebody here.
+	 */
+	@Test
+	void everyMembersOwnDoorServesTheLeaguesRowsWithHisNumberOnThem() throws Exception {
+		unscoredRunsBesideTheScoredOnes();
+
+		for (Instant moment : List.of(AFTER_THE_FREEZE, A_YEAR_LATER)) {
+			clock.moveTo(moment);
+
+			for (String door : BOTH_DOORS) {
+				assertThat(StreamSupport.stream(answerAt("/api/" + door).spliterator(), false)
+						.map(one -> one.path("memberNumber").asString()).distinct().count())
+						.as("/api/%s serves the runs of fewer than two members at %s, so an answer that"
+								+ " is everybody's could not be told from one that is his", door, moment)
+						.isGreaterThan(1);
+
+				for (String number : EVERY_NUMBER_ASKED) {
+					assertThat(hisOwnRows(door, number))
+							.as("the %s of %s at %s are not the league's rows with his number on them",
+									door, number, moment)
+							.isEqualTo(theLeaguesRowsOf(door, number));
+				}
+			}
+		}
+	}
+
+	/**
+	 * AND THE RUNNING SEASON OF A MEMBER WHOSE FEE HAS LAPSED IS WITHHELD ON HIS OWN DOOR TOO, on both of
+	 * them: PDL, 25.09.2026, „Rezultati isteklog člana: iz ranijih sezona se serviraju, iz tekuće ne, i to
+	 * ostaje kako jeste.” Written out as days and not only as an equality with the league's door, so a
+	 * change that withheld nothing from either would still fall here.
+	 */
+	@Test
+	void theRunningSeasonOfAMemberWhoseFeeHasLapsedIsWithheldOnHisOwnDoorToo() throws Exception {
+		theLapsedMemberStillRanOnBothSidesOfTheNewYear();
+		unscoredRunsBesideTheScoredOnes();
+
+		assertThat(hisOwnRows("results", THE_LAPSED_MEMBER).stream().map(one -> one.path("date").asString()))
+				.as("his own door served a scored run of the season that is running")
+				.containsExactly(NEW_YEARS_EVE);
+		assertThat(hisOwnRows("unscored-results", THE_LAPSED_MEMBER).stream()
+				.map(one -> one.path("date").asString()))
+				.as("his own door served an unscored run of the season that is running")
+				.containsExactly("2027-06-01");
+	}
+
+	/**
+	 * A MEMBER WHO HIDES HIS PROFILE IS ANSWERED ON HIS DOOR EXACTLY AS BEFORE, to the byte and to a
+	 * visitor. Hiding is the screen's to carry out (`pages/profile/visible.ts`), and the rows are the
+	 * league's record, served to anybody on `/api/results` (PDL, 27.09.2026, „Rezultati na trkama i u rang
+	 * listama ostaju vidljivi posetiocu skrivenog člana”); a door that answered him with 404, or with
+	 * nothing, would be a door that tells a visitor which members hide.
+	 */
+	@Test
+	void aMemberWhoHidesHisProfileIsAnsweredOnHisDoorExactlyAsBefore() throws Exception {
+		unscoredRunsBesideTheScoredOnes();
+
+		Map<String, String> before = new HashMap<>();
+
+		for (String door : BOTH_DOORS) {
+			before.put(door, answerAt("/api/competitors/" + A_MEMBER_WHOSE_FEE_IS_STANDING + "/" + door)
+					.toString());
+			assertThat(before.get(door))
+					.as("his %s door served nothing before he hid, so the comparison below says nothing", door)
+					.contains("Clanica");
+		}
+
+		db.sql("update competitor set profile_hidden = true where member_number = ?")
+				.param(A_MEMBER_WHOSE_FEE_IS_STANDING).update();
+
+		assertThat(db.sql("select profile_hidden from competitor where member_number = ?")
+				.param(A_MEMBER_WHOSE_FEE_IS_STANDING).query(Boolean.class).single())
+				.as("the member was not hidden, so this case measures nothing")
+				.isTrue();
+
+		for (String door : BOTH_DOORS) {
+			assertThat(answerAt("/api/competitors/" + A_MEMBER_WHOSE_FEE_IS_STANDING + "/" + door).toString())
+					.as("his %s door answered a visitor differently once he hid his profile", door)
+					.isEqualTo(before.get(door));
+		}
+	}
+
+	/**
+	 * A NUMBER NOBODY HOLDS, A MEMBER WITH NO RUN AND A MEMBER WHO WAS DELETED ARE ONE ANSWER: 200 and an
+	 * empty list, on both doors, the shape `DucatAwardApi` gives the same three. A 404 for one of them and
+	 * a list for another would let a visitor read off which numbers belong to somebody.
+	 */
+	@Test
+	void aNumberNobodyHoldsAMemberWithNoRunAndADeletedMemberAreOneAnswer() throws Exception {
+		aMember("000004", "Cetvrti", "Bez trka", "M", "1991-01-01", true);
+		aMember("000005", "Peti", "Obrisani", "M", "1992-02-02", true);
+		run("000005", "Desetka", "2027-03-01", 10.00, 0, 5, 2500, 40.00);
+
+		assertThat(hisOwnRows("results", "000005"))
+				.as("the member about to be deleted had no run on his door, so deleting him says nothing")
+				.hasSize(1);
+
+		db.sql("delete from membership where competitor_id = (select id from competitor where member_number = ?)")
+				.param("000005").update();
+		db.sql("delete from competitor where member_number = ?").param("000005").update();
+
+		for (String door : BOTH_DOORS) {
+			for (String number : List.of("009999", "000004", "000005")) {
+				var answer = http.perform(get("/api/competitors/" + number + "/" + door)).andReturn().getResponse();
+
+				assertThat(answer.getStatus()).as("%s on the %s door", number, door).isEqualTo(200);
+				assertThat(answer.getContentAsString(StandardCharsets.UTF_8))
+						.as("%s on the %s door was not the empty list the other two are", number, door)
+						.isEqualTo("[]");
+			}
+		}
+	}
+
+	/**
+	 * HIS DOOR IS THE SAME TO EVERY READER, to the byte: a visitor, a member, the member whose fee has
+	 * lapsed, an account that races for nobody and the administration. The sessions are shown to be real by
+	 * the one route that refuses a visitor, as in {@link #theAnswerIsTheSameToEveryReader}.
+	 */
+	@Test
+	void hisOwnDoorIsTheSameToEveryReader() throws Exception {
+		unscoredRunsBesideTheScoredOnes();
+		anAccount("clan@primer.rs", "competitor", "Ime", "Clana");
+		belongsTo("clan@primer.rs", "000001");
+		anAccount("istekao@primer.rs", "competitor", "Ime", "Isteklog");
+		belongsTo("istekao@primer.rs", THE_LAPSED_MEMBER);
+		anAccount("slobodan@primer.rs", "competitor", "Ime", "Slobodnog");
+		anAccount("uprava@primer.rs", "superadmin", "Ime", "Uprave");
+
+		for (String email : sessions.keySet()) {
+			assertThat(http.perform(get("/api/me")
+					.cookie(new Cookie(SessionCookie.NAME, sessions.get(email).secret())))
+					.andReturn().getResponse().getStatus())
+					.as("%s is not signed in, so the comparison below would hold for the wrong reason", email)
+					.isEqualTo(200);
+		}
+
+		for (String door : BOTH_DOORS) {
+			for (String number : List.of(A_MEMBER_WHOSE_FEE_IS_STANDING, THE_LAPSED_MEMBER)) {
+				String path = "/api/competitors/" + number + "/" + door;
+				String theVisitors = http.perform(get(path)).andReturn().getResponse()
+						.getContentAsString(StandardCharsets.UTF_8);
+
+				assertThat(theVisitors).as("%s served a visitor nothing to compare", path).contains("runner");
+
+				for (String email : sessions.keySet()) {
+					assertThat(http.perform(get(path)
+							.cookie(new Cookie(SessionCookie.NAME, sessions.get(email).secret())))
+							.andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8))
+							.as("%s answered %s something other than a visitor", path, email)
+							.isEqualTo(theVisitors);
+				}
+			}
+		}
+	}
+
 	static final class AClockTheCaseMoves extends Clock {
 
 		private Instant now;

@@ -3,6 +3,7 @@ package com.btl.portal.web;
 import com.btl.portal.domain.season.SeasonClock;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.math.BigDecimal;
@@ -280,7 +281,7 @@ class ResultApi {
 	 */
 	@GetMapping("/api/results")
 	List<Result> results() {
-		return served("scored_race", true);
+		return served("scored_race", true, null);
 	}
 
 	/**
@@ -295,15 +296,51 @@ class ResultApi {
 	 */
 	@GetMapping("/api/unscored-results")
 	List<Result> unscoredResults() {
-		return served("unscored_race", false);
+		return served("unscored_race", false, null);
 	}
 
 	/**
-	 * @param races   the view of races the runs are joined to: {@code scored_race} or
-	 *                {@code unscored_race}, written by this class and never by a caller
-	 * @param counted whether a season may count these runs at all
+	 * THE SCORED RUNS OF ONE MEMBER, AND ONLY HIS: what the profile draws, without the whole league
+	 * (inkrement „Poboljšanje performansi”, korak 1, owner, 21.11.2026: „Profil traži samo rezultate tog
+	 * člana (nova ruta, na primer `/api/competitors/{broj}/results`) umesto rezultata cele lige”). Measured
+	 * on production on 22.11.2026 for 000001: 86 KB over the wire for the league against 12.6 KB for him.
+	 *
+	 * <p><b>EXACTLY THE ROWS {@link #results} SERVES WITH HIS NUMBER ON THEM, and the same to every
+	 * reader.</b> One query with one condition more ({@link #served}), so the rule of who is served (the
+	 * running season of a member whose fee has lapsed is withheld, {@link #aRunIsServed}) has no second
+	 * copy. Who may READ them is the rule the ducats copied for the same page, {@link DucatAwardApi}:
+	 * anybody, with no caller, because {@code /api/results} already serves every one of these rows to
+	 * anybody, and whether a reader may reach the profile is decided by the screen
+	 * ({@code pages/profile/visible.ts}). So a member who hides his profile is answered here exactly as
+	 * he is on {@code /api/results}, and a number nobody holds, a deleted member and a member with no run
+	 * are one answer, an empty list, never 404: a 404 for one and a list for the other would let a visitor
+	 * read off which numbers exist, which is what that same screen is written to prevent.
+	 *
+	 * @param memberNumber the number on the profile, compared as text with the member's own
 	 */
-	private List<Result> served(String races, boolean counted) {
+	@GetMapping("/api/competitors/{memberNumber}/results")
+	List<Result> resultsOf(@PathVariable String memberNumber) {
+		return served("scored_race", true, memberNumber);
+	}
+
+	/**
+	 * THE UNSCORED RUNS OF ONE MEMBER: {@link #unscoredResults} with his number on them, for the same
+	 * page and on the same terms as {@link #resultsOf}. A route of its own and not a flag on that one, so
+	 * that an unscored run still never reaches a list the league counts from (PDL, 14.11.2026, the
+	 * technique beside the owner's answers).
+	 */
+	@GetMapping("/api/competitors/{memberNumber}/unscored-results")
+	List<Result> unscoredResultsOf(@PathVariable String memberNumber) {
+		return served("unscored_race", false, memberNumber);
+	}
+
+	/**
+	 * @param races        the view of races the runs are joined to: {@code scored_race} or
+	 *                     {@code unscored_race}, written by this class and never by a caller
+	 * @param counted      whether a season may count these runs at all
+	 * @param onlyOf       the number of the one member whose runs are asked for, or null for everybody's
+	 */
+	private List<Result> served(String races, boolean counted, String onlyOf) {
 		/* THE CLOCK, read once for the whole answer: the year withheld and whose fee stands are one
 		   moment. */
 		ZonedDateTime now = ZonedDateTime.now(clock);
@@ -321,7 +358,7 @@ class ResultApi {
 					activations.put(new Held(row.getLong(1), row.getInt(2)), row.getTimestamp(3));
 				});
 
-		return db.sql("select r.id, c.member_number, r.race_id, ra.name as race_name,"
+		JdbcClient.StatementSpec asked = db.sql("select r.id, c.member_number, r.race_id, ra.name as race_name,"
 						+ " e.name as event_name, e.slug as event_slug, r.race_date,"
 						+ " r.distance_km, r.ascent_m, r.descent_m, r.seconds, r.points, r.category,"
 						/* WHO RAN IT, off the member's own record and from nowhere else: not the
@@ -371,7 +408,13 @@ class ResultApi {
 						   only to a year of 2027 or later is the coordinator's derivation from that
 						   sentence, not the owner's words. */
 						+ " where " + aRunIsServed("c.id", "r.race_date", now)
-						+ " order by r.race_date, r.id")
+						/* ONE MEMBER, when one is asked for (`resultsOf`): a condition more on the same
+						   query and nothing else, so his answer is the league's rows with his number on
+						   them and cannot be served by a rule of its own. */
+						+ (onlyOf == null ? "" : " and c.member_number = ?")
+						+ " order by r.race_date, r.id");
+
+		return (onlyOf == null ? asked : asked.param(onlyOf))
 				.query((row, one) -> {
 					String memberNumber = row.getString(2);
 					LocalDate day = row.getDate(7).toLocalDate();

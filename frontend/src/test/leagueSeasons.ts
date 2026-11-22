@@ -81,6 +81,10 @@ function movedRecord(record: unknown): unknown {
 
 const MOVED = new Set(['/api/results', '/api/pairs'])
 
+/** One member's own door of the scored runs (`ResultApi.resultsOf`), moved as the league's door is: the same
+ *  rows, so the profile that reads it reads the same history the rest of the portal does. */
+const HIS_RUNS = /^\/api\/competitors\/[^/]+\/results$/
+
 /**
  * AND A MEMBER OF THE LIST STANDS IN THE TABLE OF EVERY SEASON THE HISTORY NOW FALLS IN, with the band of
  * his card: the runs above are read as runs of members who held their season with the right to rank, and
@@ -127,7 +131,7 @@ export function playTheHistoryAsLeagueSeasons(): void {
 
       const theList = path === '/api/competitors'
 
-      if ((init?.method ?? 'GET') !== 'GET' || (!MOVED.has(path) && !theList) || !answer.ok) {
+      if ((init?.method ?? 'GET') !== 'GET' || (!MOVED.has(path) && !HIS_RUNS.test(path) && !theList) || !answer.ok) {
         return answer
       }
 

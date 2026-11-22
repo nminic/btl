@@ -14,10 +14,12 @@ export const UNSCORED_RESULTS = 'unscored-results'
  * differs is `points`, which is 0 and is never drawn as a number (`pages/CompetitorProfile.tsx`
  * and `pages/member/MyResults.tsx` write „–").
  *
- * <p><b>Read by exactly two screens, and that is the whole of the design.</b> `/api/results`
- * serves only the scored results, so every counter, board, standing and total on the portal reads
- * a list an unscored result is not in. This list is asked for by the profile, which draws it
- * beside the scored ones, and by „Moji rezultati". A screen that merged this list into
+ * <p><b>Read only where a run is drawn and never where one is counted, and that is the whole of the
+ * design.</b> `/api/results` serves only the scored results, so every counter, board, standing and total
+ * on the portal reads a list an unscored result is not in. This list is asked for by „Moji rezultati" and
+ * by the page of an event; the profile, which draws it beside the scored ones, asks since 22.11.2026 for
+ * the member's own answer of it at `/api/competitors/{broj}/unscored-results` (`data/hisResults.ts`),
+ * which is the same rows with his number on them. A screen that merged this list into
  * `useResults` would put an unscored result into the league's arithmetic, which is the one thing
  * the owner's decision rules out.
  *

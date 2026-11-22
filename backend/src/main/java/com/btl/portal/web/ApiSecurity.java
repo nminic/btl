@@ -130,6 +130,11 @@ class ApiSecurity {
 			/* The ducats one member holds, named by his number (DucatAwardApi says why it is anybody's:
 			   the profile drew them from /api/results, which is). */
 			"/api/ducat-awards/{memberNumber}",
+			/* The runs of one member, scored and unscored, named by his number (ResultApi.resultsOf):
+			   the profile's own list, the rows /api/results and /api/unscored-results already serve to
+			   anybody with his number on them, so anybody's on the terms the ducats above are. */
+			"/api/competitors/{memberNumber}/results",
+			"/api/competitors/{memberNumber}/unscored-results",
 			/* The card a profile is shared with, named by the member number and a digest of what it
 			   shows (CompetitorCardApi). Anybody, because whoever asks is a network's crawler or the
 			   phone the link was sent to, and what it draws is what a visitor is answered. */

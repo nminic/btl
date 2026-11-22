@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { RESOURCE_NAMES } from '../data/client'
+import { addressOf, ONE_MEMBERS_DOORS, RESOURCE_NAMES } from '../data/client'
 import { aCompetitor, asAnswered, myOwnRow } from './theAnswer'
 
 /**
@@ -38,7 +38,17 @@ export type Asked = { path: string; init: RequestInit | undefined }
  * these on the day it is added rather than on the day somebody remembers.
  */
 export function isResource(path: string): boolean {
-  return RESOURCE_NAMES.some((name) => withoutTheQuery(path) === `/api/${name}`)
+  /* AND ONE MEMBER'S ANSWER OF A NAME (`ONE_MEMBERS_DOORS`, since 22.11.2026), which is a narrower answer
+     of that resource and not a write, for the reason a query is: the profile reads its member's runs
+     there, and a case that answered every address that is no resource with 404 left the profile with
+     nothing to draw. Built by `addressOf` itself, so the two cannot spell the address differently. */
+  const asked = withoutTheQuery(path)
+  const his = /^\/api\/competitors\/([^/]+)\//.exec(asked)
+
+  return (
+    RESOURCE_NAMES.some((name) => asked === `/api/${name}`) ||
+    (his !== null && ONE_MEMBERS_DOORS.some((door) => asked === addressOf(door, undefined, decodeURIComponent(his[1] ?? ''))))
+  )
 }
 
 /**
@@ -85,6 +95,39 @@ export function serverThat(
       globalThis.fetch = disc
     },
   }
+}
+
+/**
+ * WHAT ONE MEMBER'S DOOR ANSWERS, given what the league's door answers: the rows that carry his number, in
+ * the order the league's answer holds them (`ResultApi.resultsOf`, which is the league's query with one
+ * condition more). Anything that is not a list is answered as no runs at all.
+ */
+export function hisRunsFrom(league: unknown, memberNumber: string): unknown[] {
+  return Array.isArray(league)
+    ? league.filter((one: unknown) => Reflect.get(Object(one), 'memberNumber') === memberNumber)
+    : []
+}
+
+/**
+ * THE RUNS OF A CASE, ANSWERED AT BOTH DOORS THAT SERVE THEM: the league's (`/api/results`, or
+ * `/api/unscored-results`) and every member's own (`/api/competitors/{broj}/results`), out of the one list
+ * the case hands in. A case that answered only the league's door would hand the profile, which reads his
+ * own door since 22.11.2026, the history of the disc instead of its own, and a case that wrote the two out
+ * separately could hand the two doors two histories.
+ *
+ * @returns the answer, or null where the address is neither door
+ */
+export function runsAtBothDoors(
+  path: string,
+  door: 'results' | 'unscored-results',
+  runs: unknown[],
+): Response | null {
+  const his = new RegExp(`^/api/competitors/([^/]+)/${door}$`).exec(path)
+  const answer = path === `/api/${door}` ? runs : his === null ? null : hisRunsFrom(runs, decodeURIComponent(his[1] ?? ''))
+
+  return answer === null
+    ? null
+    : new Response(JSON.stringify(answer), { status: 200, headers: { 'content-type': 'application/json' } })
 }
 
 /** What both routes answer when they did the thing. */

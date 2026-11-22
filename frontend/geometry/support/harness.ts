@@ -220,6 +220,19 @@ export const test = base.extend<Geometry, Worker>({
 
       await context.route('**/api/**', (route) => {
         const asked = new URL(route.request().url()).pathname
+        /* ONE MEMBER'S RUNS (`/api/competitors/{broj}/results` and `.../unscored-results`, inkrement
+           „Poboljšanje performansi”): the profile reads them there since 22.11.2026, and the server answers
+           them as the rows of the league's door that carry his number. So a case that answers the league's
+           door answers his too, out of the one list, and no case has to write the two out. */
+        const his = /^\/api\/competitors\/([^/]+)\/(results|unscored-results)$/.exec(asked)
+        const league = his === null ? undefined : answers[`/api/${his[2] ?? ''}`]
+
+        if (his !== null && !Object.hasOwn(answers, asked) && Array.isArray(league)) {
+          return route.fulfill({
+            status: 200,
+            json: league.filter((one: unknown) => Reflect.get(Object(one), 'memberNumber') === decodeURIComponent(his[1] ?? '')),
+          })
+        }
 
         return Object.hasOwn(answers, asked)
           ? route.fulfill({ status: 200, json: answers[asked] })

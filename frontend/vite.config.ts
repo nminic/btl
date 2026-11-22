@@ -1,8 +1,95 @@
 import { configDefaults, defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
+import { fileURLToPath } from 'node:url'
+
+/** The module the portal starts from, written the way the bundler writes a module's id. */
+const MAIN = fileURLToPath(new URL('./src/main.tsx', import.meta.url)).replaceAll('\\', '/')
+
+type TheGraph = { getModuleInfo: (id: string) => { importedIds: readonly string[] } | null }
+
+let loadedWithIt: Set<string> | null = null
+
+/** Every module `main.tsx` reaches by a static import, read off the bundler's own graph once per build. */
+function reachedFromMain(graph: TheGraph): Set<string> {
+  if (loadedWithIt === null) {
+    const reached = new Set<string>()
+    const next = [MAIN]
+
+    for (let one = next.pop(); one !== undefined; one = next.pop()) {
+      if (!reached.has(one)) {
+        reached.add(one)
+        next.push(...(graph.getModuleInfo(one)?.importedIds ?? []))
+      }
+    }
+
+    loadedWithIt = reached
+  }
+
+  return loadedWithIt
+}
+
+/**
+ * EVERYTHING THE PORTAL LOADS WITH ITSELF, IN ONE PIECE, `portal` (inkrement „Poboljšanje performansi”,
+ * korak 2): every module `main.tsx` reaches by a static import, read off the bundler's own graph rather
+ * than named. Left to itself the bundler cut that part into 63 pieces, one for every set of screens that
+ * share a module, and a slow phone asked for all of them before it drew anything. Measured on 22.11.2026
+ * over HTTP/2, a phone four times slower and 1.6 Mbit/s at 150 ms, a cold profile to its first row: 3.7 s
+ * before the change, 3.1 s cut by the bundler, 2.7 s with this piece. The screens themselves are still
+ * their own pieces, cut as the bundler cuts them.
+ */
+function loadedWithThePortal(id: string, graph: TheGraph): string | null {
+  return !id.endsWith('.css') && reachedFromMain(graph).has(id.replaceAll('\\', '/')) ? 'portal' : null
+}
+
+/**
+ * AND EVERY STYLESHEET THE PORTAL LOADS WITH ITSELF IN A PIECE OF ITS OWN, `styles`, in the order
+ * `src/app/stylesheets.ts` imports them (see `build` below). Asked of the same graph, so a stylesheet only
+ * a development control imports (`dev/tools.ts`) is not pulled into a production sheet:
+ * `dev/productionPackage.test.ts` holds that, and a group that captured every `.css` failed it.
+ */
+function theStylesheetsOfThePortal(id: string, graph: TheGraph): string | null {
+  return id.endsWith('.css') && reachedFromMain(graph).has(id.replaceAll('\\', '/')) ? 'styles' : null
+}
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    /* The graph read above belongs to one build, and a process may build twice (`dev/productionPackage.test.ts`
+       builds production and QA one after the other). */
+    {
+      name: 'forget-the-graph-of-the-last-build',
+      buildStart() {
+        loadedWithIt = null
+      },
+    },
+  ],
+  build: {
+    /* ONE STYLESHEET FOR THE WHOLE PORTAL, AND ITS RULES IN THE ORDER THEY ALWAYS HAD, while the code is
+       loaded screen by screen (inkrement „Poboljšanje performansi”, korak 2).
+
+       Split along with the code, the rules of a screen would arrive in a sheet of their own appended
+       after the portal's, and at equal specificity the later sheet wins (ADL A7, 13.08.2026, which
+       foresaw exactly this: „čim se uvede deljenje po rutama ... pravila odlaze i ništa to ne javi”). So
+       `cssCodeSplit` is off. And one sheet alone was measured NOT to be enough: its order follows how the
+       code is cut, and the moved order changed what two screens of the administration draw. So every
+       stylesheet is also put into ONE piece (`styles`, below), where the order is the order the portal
+       imports them in, and that order is written down in `src/app/stylesheets.ts`, which `main.tsx` loads
+       first. Measured on the change: the built sheet is the same 1155 rules in the same order as the
+       build before it, and every element's computed style on 49 addresses at 360, 768 and 1280 is the
+       same. What it costs is that a visitor downloads the rules of the administration with the rest,
+       about 24 KB over the wire for all of them, as he did before. */
+    cssCodeSplit: false,
+    rolldownOptions: {
+      output: {
+        codeSplitting: {
+          groups: [
+            { name: theStylesheetsOfThePortal, priority: 2 },
+            { name: loadedWithThePortal, priority: 1 },
+          ],
+        },
+      },
+    },
+  },
   server: {
     port: 5173,
     proxy: {
