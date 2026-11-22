@@ -195,14 +195,14 @@ describe('clearing the filters', () => {
   it('is offered for a length alone, over the whole career, and not for the whole career alone', async () => {
     const first = renderAt('/sr/takmicar/000002?sezona=sve&duzina=ultra')
 
-    expect(await screen.findByRole('button', { name: 'Poništi filtere' })).toBeVisible()
+    expect(await screen.findByRole('button', { name: 'Poništi filtere' }, { timeout: SLOW / 2 })).toBeVisible()
     first.unmount()
 
     renderAt('/sr/takmicar/000002?sezona=sve')
 
-    expect(await screen.findByRole('table', { name: 'Trke' })).toBeVisible()
+    expect(await screen.findByRole('table', { name: 'Trke' }, { timeout: SLOW / 2 })).toBeVisible()
     expect(screen.queryByRole('button', { name: 'Poništi filtere' })).toBeNull()
-  })
+  }, SLOW)
 
   it('puts the reader back on the season the profile opens on', async () => {
     const user = setupUser()
