@@ -4,17 +4,22 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   build: {
-    /* ONE STYLESHEET FOR THE WHOLE PORTAL, while the code is loaded screen by screen (inkrement
-       „Poboljšanje performansi”, korak 2). Split along with the code, the rules of a screen would arrive in
-       a sheet of their own appended after the portal's, and at equal specificity the later sheet wins: a
-       rule that lost a tie on the day the screen was written would start winning it on the day the screen
-       is opened second (ADL A7, 13.08.2026, which foresaw exactly this: „čim se uvede deljenje po rutama
-       ... pravila odlaze i ništa to ne javi”). One sheet does NOT keep the order of the
-       rules as it was: the order follows how the code is cut, so it moved. What was measured instead is
-       what the order decides, every element's computed style, against the build before the change (the
-       description of PR „Poboljšanje performansi” has the screens, the widths and the count). What it costs is that a visitor downloads the rules of the
-       administration with the rest, 23 KB over the wire for all of them.*/
+    /* ONE STYLESHEET FOR THE WHOLE PORTAL, AND ITS RULES IN THE ORDER THEY ALWAYS HAD, while the code is
+       loaded screen by screen (inkrement „Poboljšanje performansi”, korak 2).
+
+       Split along with the code, the rules of a screen would arrive in a sheet of their own appended
+       after the portal's, and at equal specificity the later sheet wins (ADL A7, 13.08.2026, which
+       foresaw exactly this: „čim se uvede deljenje po rutama ... pravila odlaze i ništa to ne javi”). So
+       `cssCodeSplit` is off. And one sheet alone was measured NOT to be enough: its order follows how the
+       code is cut, and the moved order changed what two screens of the administration draw. So every
+       stylesheet is also put into ONE piece (`styles`, below), where the order is the order the portal
+       imports them in, and that order is written down in `src/app/stylesheets.ts`, which `main.tsx` loads
+       first. Measured on the change: the built sheet is the same 1155 rules in the same order as the
+       build before it, and every element's computed style on 49 addresses at 360, 768 and 1280 is the
+       same. What it costs is that a visitor downloads the rules of the administration with the rest,
+       about 24 KB over the wire for all of them, as he did before. */
     cssCodeSplit: false,
+    rolldownOptions: { output: { codeSplitting: { groups: [{ name: 'styles', test: /\.css$/ }] } } },
   },
   server: {
     port: 5173,

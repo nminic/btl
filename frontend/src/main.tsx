@@ -1,6 +1,8 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import './index.css'
+/* Every stylesheet, in the order the cascade has always read them, with the portal's own `index.css` among
+   them; `app/stylesheets.ts` says why the order is written down since the screens are loaded one by one. */
+import './app/stylesheets'
 import App from './app/App.tsx'
 import { reloadOnceWhenAPieceIsGone } from './app/staleChunks'
 
