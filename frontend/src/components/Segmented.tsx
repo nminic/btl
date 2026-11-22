@@ -12,7 +12,7 @@ import './Segmented.css'
  * word), and a button says whether it is pressed with `aria-pressed`, never by colour alone.
  *
  * **`fit` makes the row as wide as its buttons ask, from the left**; without it the row is as wide as its
- * parent, as the length filter has always been.
+ * parent, as the length filter of the front page is (the profile and the BTL tables ask for `fit`).
  */
 export function Segmented<K extends string>({
   options,

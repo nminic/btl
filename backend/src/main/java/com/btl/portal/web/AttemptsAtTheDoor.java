@@ -50,7 +50,9 @@ class AttemptsAtTheDoor {
 	 * the edge proxy from one of Cloudflare's own addresses, and otherwise the address the edge proxy
 	 * saw. {@code frontend/nginx-to-backend.conf} then SETS it on every request it passes on, which
 	 * replaces whatever a caller sent under the same name. Nothing else reaches this server: neither
-	 * stack publishes the backend's port except QA's, on loopback, for an SSH tunnel.
+	 * stack publishes the backend's port. QA publishes the frontend's nginx on loopback
+	 * ({@code 127.0.0.1:8081}, for an SSH tunnel), and a request through it is one that nginx has written
+	 * the header of.
 	 *
 	 * <p>Absent, which is a request that did not come through nginx (a test, the tunnel), the address
 	 * of the connection itself is counted instead.

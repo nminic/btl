@@ -44,7 +44,8 @@ import java.util.Optional;
  * taking out each whose last attempt has run out, and stops at the first that still counts. The map
  * is kept in the order keys were touched, so everything behind that first live key was touched later
  * and is left; and any key untouched for an hour has nothing left that counts, so it is taken. A key
- * stays only while something in it still counts.
+ * that has run out can still stand behind a live one for as long as that one stays first in the order
+ * (at most an hour after its own last touch), and goes with the sweep that reaches it.
  *
  * <p>Thread safe by being synchronized as a whole: every call is a few operations on small deques.
  */

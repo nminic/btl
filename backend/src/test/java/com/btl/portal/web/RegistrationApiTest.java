@@ -738,10 +738,9 @@ class RegistrationApiTest {
 	}
 
 	/**
-	 * AND ONE TYPED ON THE SERBIAN PAGE, OR SENT WITH NO LANGUAGE AT ALL, IS SERBIAN.
-	 *
-	 * <p>„Podrazumevano srpski" (owner, 03.10.2026): absent is the column's own default, and the
-	 * Serbian link stays the one every message already sent carries.
+	 * THE LETTER OF A REGISTRATION SAYS THE MOMENT ITS LINK ENDS, and that is when the row of the token ends:
+	 * seven days from the moment it was sent, never fourteen (the registration is the one place the day of
+	 * the sending is the day of the registration).
 	 */
 	@Test
 	void theLetterOfARegistrationSaysTheMomentItsLinkEndsAndThatIsWhenTheRowEnds() throws Exception {
@@ -778,6 +777,12 @@ class RegistrationApiTest {
 				.contains("se nisi registrovala").doesNotContain("Dobrodošao").doesNotContain("registrovao");
 	}
 
+	/**
+	 * AND ONE TYPED ON THE SERBIAN PAGE, OR SENT WITH NO LANGUAGE AT ALL, IS SERBIAN.
+	 *
+	 * <p>„Podrazumevano srpski" (owner, 03.10.2026): absent is the column's own default, and the
+	 * Serbian link stays the one every message already sent carries.
+	 */
 	@Test
 	void aRegistrationOnTheSerbianPageOrWithNoLanguageIsSerbian() throws Exception {
 		Map<String, Object> onTheSerbianPage = aGrownUp();

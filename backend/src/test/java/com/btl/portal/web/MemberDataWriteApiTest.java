@@ -831,7 +831,10 @@ class MemberDataWriteApiTest {
 		nothingWasWritten(before);
 	}
 
-	/** The new link is written in the language the account's mail is written in, not always Serbian. */
+	/**
+	 * THE LINK ENDS WHEN THE REGISTRATION DOES: a member registered nine days before the correction gets
+	 * the fourteenth day, not seven days from the correction, in the letter and in the row of the token.
+	 */
 	@Test
 	void theNewLinkOnTheTenthDayEndsOnTheFourteenthAndSaysSoInTheLetterAndInTheRow() throws Exception {
 		/* HE WAS REGISTERED NINE DAYS BEFORE THE CORRECTION, so seven days from the correction (27.10.2027)
@@ -853,6 +856,7 @@ class MemberDataWriteApiTest {
 				.toInstant()).isEqualTo(Instant.parse("2027-10-25T09:00:00Z"));
 	}
 
+	/** The new link is written in the language the account's mail is written in, not always Serbian. */
 	@Test
 	void theNewLinkIsInTheLanguageOfHisMail() throws Exception {
 		db.sql("update account set mail_language = 'en' where competitor_id = ?").param(corrected).update();

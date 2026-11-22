@@ -50,8 +50,9 @@ import '../Leagues.css'
  * na tačku na traci obasja i njenu pločicu, i obrnuto; dodir na tačku na telefonu ističe pločicu i
  * dovodi je u vidno polje.” Which one is lit is held here, by the identity of its event, because this is
  * the one component that draws both. A pointer that hovers lights it while it is over the tile or the
- * dot; the focus on the name of a tile lights it while the focus stays, which is how the keyboard
- * reaches it, since the dots are out of the order of the keyboard and hidden from a reader by ear
+ * dot; the focus on the name of a tile lights it when the focus arrives, which is how the keyboard
+ * reaches it (the one light is the last that was asked for, so a pointer that passes over another tile
+ * and leaves puts it out although the focus stays, and the ring of the focus stays with it), since the dots are out of the order of the keyboard and hidden from a reader by ear
  * (`YearStrip.tsx` says why). A touch on a dot lights its tile and brings it into view, smoothly unless
  * the reader asked for less motion, and the tile stays lit until a finger touches anything else. The
  * light is a picture and nothing more: what it points at is already said by the tile itself.

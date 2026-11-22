@@ -1648,6 +1648,32 @@ class ResultApiTest {
 	}
 
 	/**
+	 * A HIDDEN MEMBER'S RUNS ARE NOT SERVED ON ANOTHER MEMBER'S DOOR: the door is cut by the member's own
+	 * number, and a member who hides his profile does not turn the cut into „his number or anybody hidden”.
+	 * Every member of the fixture is compared with the league's rows, as in the case above, with one of them
+	 * hidden and having runs on both doors, so the rows of the hidden one are there to leak into the others.
+	 */
+	@Test
+	void theRunsOfAHiddenMemberAreOnHisDoorAndOnNobody() throws Exception {
+		unscoredRunsBesideTheScoredOnes();
+		db.sql("update competitor set profile_hidden = true where member_number = ?")
+				.param(A_MEMBER_WHOSE_FEE_IS_STANDING).update();
+
+		for (String door : BOTH_DOORS) {
+			assertThat(theLeaguesRowsOf(door, A_MEMBER_WHOSE_FEE_IS_STANDING))
+					.as("the hidden member has no run on %s, so the others could not be told from him", door)
+					.isNotEmpty();
+
+			for (String number : EVERY_NUMBER_ASKED) {
+				assertThat(hisOwnRows(door, number))
+						.as("the %s of %s, with %s hidden, are not the league's rows with his number on them",
+								door, number, A_MEMBER_WHOSE_FEE_IS_STANDING)
+						.isEqualTo(theLeaguesRowsOf(door, number));
+			}
+		}
+	}
+
+	/**
 	 * AND THE RUNNING SEASON OF A MEMBER WHOSE FEE HAS LAPSED IS WITHHELD ON HIS OWN DOOR TOO, on both of
 	 * them: PDL, 25.09.2026, „Rezultati isteklog člana: iz ranijih sezona se serviraju, iz tekuće ne, i to
 	 * ostaje kako jeste.” Written out as days and not only as an equality with the league's door, so a

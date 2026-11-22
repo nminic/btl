@@ -377,11 +377,10 @@ class EmailConfirmationApi {
 
 		try {
 			/* AN ACCOUNT THAT NAMES NO MEMBER (a moderator who does not race, invited and not yet through
-			   the link) HAS NO SEX, and the letter has words for a woman and for a man. WHAT IT SHOULD SAY
-			   TO HIM IS THE OWNER'S QUESTION (asked 21.11.2026), not an answer chosen here, so until it is
-			   answered he is written the words he was always written, and the route does what it did for
-			   everybody: an answer that differed would tell whoever asks that this address is such an
-			   account. */
+			   the link) HAS NO SEX, and the letter has words for a woman and for a man. He is written the
+			   words of {@code mail/sr-no-member}, in „ti" with no verb that has a sex (owner, 22.11.2026),
+			   and the route does what it did for everybody: an answer that differed would tell whoever asks
+			   that this address is such an account. */
 			postman.send(sex.isPresent()
 					? WhatTheMessageSays.about(Message.CONFIRM_THE_ADDRESS, made.language(), portal, made.link(),
 							made.endsAt(), sex.get())

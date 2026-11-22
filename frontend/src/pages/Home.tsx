@@ -34,8 +34,8 @@ import './Home.css'
  * leva kolona.").
  *
  * **Two columns that are two columns** (owner, 20.11.2026, PDL „Četiri dodatka naslovne iz tuđeg
- * nacrta": „Desna kolona je zaseban stub: statistika je visoka koliko njen sadržaj, a kalendar
- * počinje odmah ispod nje"). From 31.07.2026 to then one grid held all six boxes and the rows were
+ * nacrta", in the words of the plan and not the owner's: the right column is a column of its own, the
+ * figures as tall as their content and the calendar beginning right under them). From 31.07.2026 to then one grid held all six boxes and the rows were
  * shared, so the figures were as tall as the two boards beside them and the calendar began where
  * the boards ended. Each column is now a box of its own and the boxes in it follow one another,
  * and each column has the one box that takes what the taller column has over (`Home.css`): the

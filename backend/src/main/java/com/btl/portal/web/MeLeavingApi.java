@@ -19,8 +19,9 @@ import java.util.Optional;
  * <p><b>THE ANSWERS ARE ADL A8's.</b> Nobody signed in is answered 401 by the chain, before this runs. An
  * account that names no member, a member who does not meet the condition and an account that
  * administers the portal are all answered 404 with nothing in it, the same answer as an address that is
- * not there: a member with a number must not learn from the answer that the act exists for somebody
- * else. 204 when he is gone, with the cookie replaced by one already over, as {@link SignOutApi} replaces
+ * not there, so the answer says nothing of the account asked about. What the act is for HIM is told
+ * to the one who signs in, about his own account only: {@code mayLeave} on {@code GET /api/me} draws
+ * the button, and it says nothing about anybody else's. 204 when he is gone, with the cookie replaced by one already over, as {@link SignOutApi} replaces
  * it: his session rows went with his account, and a browser that kept the cookie would go on sending
  * something nothing answers. The route takes no body, and CSRF stays on, as on every write.
  *

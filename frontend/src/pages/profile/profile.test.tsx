@@ -190,6 +190,20 @@ describe('what a competitor has won', () => {
 })
 
 describe('clearing the filters', () => {
+  /* EACH AXIS ON ITS OWN DRAWS THE BUTTON: a length chosen over the whole career is a filter, and the
+     season being „all of them" is not one, so the button follows the length there and nothing else. */
+  it('is offered for a length alone, over the whole career, and not for the whole career alone', async () => {
+    const first = renderAt('/sr/takmicar/000002?sezona=sve&duzina=ultra')
+
+    expect(await screen.findByRole('button', { name: 'Poništi filtere' }, { timeout: SLOW / 2 })).toBeVisible()
+    first.unmount()
+
+    renderAt('/sr/takmicar/000002?sezona=sve')
+
+    expect(await screen.findByRole('table', { name: 'Trke' }, { timeout: SLOW / 2 })).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Poništi filtere' })).toBeNull()
+  }, SLOW)
+
   it('puts the reader back on the season the profile opens on', async () => {
     const user = setupUser()
     renderAt('/sr/takmicar/000007?sezona=2014&duzina=half')

@@ -1,8 +1,12 @@
-import { act, configure, getConfig, screen, waitFor } from '@testing-library/react'
+import { act, configure, getConfig, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { createMemoryRouter, RouterProvider } from 'react-router'
+import { LanguageMenu } from '../app/LanguageMenu'
+import { ClockProvider } from '../clock/ClockProvider'
 import { renderAt } from '../test/render'
 import { SLOW } from '../test/slow'
+import { I18nProvider } from './I18nProvider'
 import {
   DICTIONARY_LOADERS,
   dictionaryFor,
@@ -302,6 +306,46 @@ describe('a change of language during a visit', () => {
 
     expect(router.state.location.pathname).toBe('/sr/tabela')
     expect(screen.queryByRole('heading', { name: 'Nešto je puklo' })).toBeNull()
+  })
+
+  /* THE MENU ASKS ITS OWN QUESTION, and not only the shell around it: where the reader is now is compared with
+     where he was when he pressed, in the menu, before it says the book did not arrive. Through the whole app
+     the `onRefused` the shell hands it is already tied to the address of the press, so a menu that says it
+     anyway is silenced there and the question has no witness; here `onRefused` is a spy. */
+  it('does not even tell the shell the book failed, when the reader has gone on to another address', async () => {
+    await onlyOnTheShelf('sr')
+    const held = heldBack()
+    vi.spyOn(DICTIONARY_LOADERS, 'en').mockReturnValue(held.promise)
+    const refused = vi.fn()
+    const router = createMemoryRouter(
+      [
+        {
+          path: '/:locale/*',
+          element: (
+            <ClockProvider>
+              <I18nProvider locale="sr">
+                <LanguageMenu restOfPath="kalendar" onRefused={refused} />
+              </I18nProvider>
+            </ClockProvider>
+          ),
+        },
+      ],
+      { initialEntries: ['/sr/kalendar'] },
+    )
+    const user = userEvent.setup()
+
+    render(<RouterProvider router={router} />)
+    await user.click(await screen.findByRole('button', { name: 'Jezik, SR' }))
+    await user.click(screen.getByRole('option', { name: 'English' }))
+    await act(async () => {
+      await router.navigate('/sr/tabela')
+    })
+    await act(async () => {
+      held.fail(new Error('the connection dropped'))
+      await held.promise.catch(() => undefined)
+    })
+
+    expect(refused).not.toHaveBeenCalled()
   })
 
   it('comes back to Serbian whole after English, both books on the shelf', async () => {

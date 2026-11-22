@@ -467,10 +467,9 @@ public final class WhatTheMessageSays {
 
 	/**
 	 * THE CONFIRMATION OF AN ADDRESS FOR AN ACCOUNT THAT NAMES NO MEMBER, a moderator who does not race
-	 * (V23): he has no sex in any table of the portal, so what the portal says to him in „ti" is the
-	 * owner's question (asked 21.11.2026), and until it is answered he is written the words the owner
-	 * approved, as they were ({@code mail/sr-no-member}). English has no participle and is the same for
-	 * everybody.
+	 * (V23): he has no sex in any table of the portal, so he is written the words that carry no verb that
+	 * has one, in „ti" (owner, 22.11.2026, {@code mail/sr-no-member}). English has no participle and is the
+	 * same for everybody.
 	 */
 	public static Said aboutToAnAccountThatNamesNoMember(Message message, MailLanguage reader, Portal portal,
 			String token, Instant endsAt) {
