@@ -1,5 +1,3 @@
-import en from './en.json'
-import sr from './sr.json'
 import type { Dictionary } from './translate'
 
 export const LOCALES = ['sr', 'en'] as const
@@ -42,10 +40,25 @@ export const DEFAULT_LOCALE: Locale = 'sr'
  * that binds (PDL P18), and since 27.09.2026 it is only the English pages that say so -
  * the Serbian text itself is left untouched (owner, 27.09.2026). What is translated is
  * the four declarations a registrant affirms, and they carry a sentence saying which
- * version binds. */
-const DICTIONARIES: Record<Locale, Dictionary> = {
-  sr: sr,
-  en: en,
+ * version binds.
+ *
+ * **ONLY THE ONE BEING READ IS LOADED, since 22.11.2026** (inkrement „Poboljšanje performansi”, owner,
+ * 22.11.2026, chose among the outcomes offered: „rečnik samo jezika koji se čita ide kao ZASEBAN
+ * POSAO”). Both books used to travel in the portal's own piece, about 24 KB over the wire for the one
+ * nobody reads. Each is a piece of its own now, asked for here by its language, and the language is the
+ * one the address carries (PDL P18, 03.10.2026: „jezik nosi adresa”), so nothing about it is kept in the
+ * browser. The page itself names the right piece to the browser before any code runs (`index.html`, the
+ * SSI branch by language, written in by `vite.config.ts`), so the book arrives beside the portal and
+ * not after it.
+ *
+ * A third language is one more row here and nothing else (PDL P18, „kao unos a ne kao razvoj”).
+ *
+ * An object and not a frozen table on purpose: a case that measures the moment BEFORE a book arrives
+ * holds its row back with `vi.spyOn`, which is the only way to see that moment at all, because the
+ * suite loads both books before its first case (`test/setup.ts`). */
+export const DICTIONARY_LOADERS: Record<Locale, () => Promise<{ default: Dictionary } | undefined>> = {
+  sr: () => import('./sr.json'),
+  en: () => import('./en.json'),
 }
 
 export function isLocale(value: string | undefined): value is Locale {
@@ -66,7 +79,7 @@ export function isLocale(value: string | undefined): value is Locale {
  * in it, `lang` over its pages has to name the language the words are really in, in
  * either direction.
  *
- * This table moves together with DICTIONARIES above; a test holds the two to each
+ * This table moves together with DICTIONARY_LOADERS above; a test holds the two to each
  * other, and `bothDictionaries.test.ts` holds which way they point. The first cannot
  * tell one state from the other: it passes whichever way both of them lean, which is
  * right while either way could be true and not enough once only one is.
@@ -92,6 +105,86 @@ export function dictionaryLocale(locale: Locale): Locale {
   return TEXT_LOCALES[locale]
 }
 
+/** The books that have arrived, by language, for the rest of the visit. */
+const shelf = new Map<Locale, Dictionary>()
+
+/** The books asked for and not yet here, so a second reader waits for the same request. */
+const asked = new Map<Locale, Promise<Dictionary>>()
+
+/** The book of a language if it has arrived, and nothing if it has not. */
+export function loadedDictionary(locale: Locale): Dictionary | undefined {
+  return shelf.get(locale)
+}
+
+/**
+ * The book of a language, for a reader that is drawn only once it has arrived (`I18nProvider`, under
+ * `LocaleLayout`, which waits for it). Asked before that, it says so instead of handing out an empty book,
+ * which would put the bare keys on the screen.
+ */
 export function dictionaryFor(locale: Locale): Dictionary {
-  return DICTIONARIES[locale]
+  const found = shelf.get(locale)
+
+  if (found === undefined) {
+    throw new Error(`the dictionary for ${locale} has not arrived yet`)
+  }
+
+  return found
+}
+
+/**
+ * The book of a language, from the shelf or from the server.
+ *
+ * <p><b>A failure is not kept</b>: the next ask goes to the server again, so a weak connection that drops
+ * one request does not leave the language unreachable for the rest of the visit.
+ *
+ * <p><b>Nothing from a piece that is gone.</b> Vite's wrapper answers `undefined` when `app/staleChunks.ts`
+ * has stopped the failure in order to read the page again (the same answer `app/screens.tsx`'s `of` waits
+ * on): the page is on its way to being replaced, so this waits for it and keeps nothing.
+ */
+export function loadDictionary(locale: Locale): Promise<Dictionary> {
+  const found = shelf.get(locale)
+
+  if (found !== undefined) {
+    return Promise.resolve(found)
+  }
+
+  const waiting = asked.get(locale)
+
+  if (waiting !== undefined) {
+    return waiting
+  }
+
+  const request = DICTIONARY_LOADERS[locale]()
+    .then((loaded) => {
+      if (loaded === undefined) {
+        return new Promise<Dictionary>(() => undefined)
+      }
+
+      shelf.set(locale, loaded.default)
+
+      return loaded.default
+    })
+    .finally(() => asked.delete(locale))
+
+  asked.set(locale, request)
+
+  return request
+}
+
+/** The language a page is read in, from its address alone, the way `LocaleLayout` reads it. */
+export function localeOfTheAddress(pathname: string): Locale {
+  const first = pathname.split('/')[1]
+
+  return isLocale(first) ? first : DEFAULT_LOCALE
+}
+
+/** Asks for the book of the page being opened, before anything is drawn (`main.tsx`). */
+export function startTheFirstDictionary(page: { location: { pathname: string } }): Promise<Dictionary> {
+  return loadDictionary(localeOfTheAddress(page.location.pathname))
+}
+
+/** For the cases that measure the moment before a book arrives: the shelf as a visit begins. */
+export function forgetTheDictionaries(): void {
+  shelf.clear()
+  asked.clear()
 }

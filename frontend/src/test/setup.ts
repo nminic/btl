@@ -122,6 +122,22 @@ vi.mock('../app/screens', async (importOriginal) => {
   }
 })
 
+/**
+ * BOTH BOOKS OF WORDS ARE ON THE SHELF BEFORE THE FIRST CASE, since 22.11.2026, the shape the screens above
+ * set.
+ *
+ * On the portal only the book of the language being read is loaded, and the page waits for it
+ * (`i18n/config.ts`, `app/LocaleLayout.tsx`). Hundreds of cases draw a screen and read its words at once,
+ * and the language control moves at once when the book is already there; what they measure is the screen
+ * and not the loading. So the real loader is asked for both here, through the same table the portal asks.
+ *
+ * The moment before a book arrives is not left unmeasured: `i18n/dictionaries.test.tsx` empties the shelf
+ * (`forgetTheDictionaries`), holds a row of the table back, and puts both books back after every case.
+ */
+const { loadDictionary, LOCALES } = await import('../i18n/config')
+
+await Promise.all(LOCALES.map((one) => loadDictionary(one)))
+
 configure({ asyncUtilTimeout: SLOW })
 
 /* The editor of the texts of the administration asks for a layout jsdom does not draw. */

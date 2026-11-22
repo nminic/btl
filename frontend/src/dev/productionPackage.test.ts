@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { basename, dirname, extname, join, relative, sep } from 'node:path'
 import ts from 'typescript'
 import { build, type Rollup } from 'vite'
+import { LOCALES, type Locale } from '../i18n/config'
 import en from '../i18n/en.json'
 import sr from '../i18n/sr.json'
 import type { Dictionary } from '../i18n/translate'
@@ -104,7 +105,10 @@ function importsOf(module: string): string[] {
   })
 }
 
-type Package = { modules: Set<string>; text: string }
+/** One piece of a build: the file it is written to and the modules in it. */
+type Piece = { fileName: string; modules: string[] }
+
+type Package = { modules: Set<string>; text: string; pieces: Piece[]; page: string }
 
 /** One build of the portal, held in memory: which modules went in, and every word of it. */
 async function packageBuilt(asQa: boolean): Promise<Package> {
@@ -153,6 +157,12 @@ async function packageBuilt(asQa: boolean): Promise<Package> {
           return typeof file.source === 'string' ? file.source : ''
         })
         .join('\n'),
+      pieces: files.flatMap((file) =>
+        file.type === 'chunk' ? [{ fileName: file.fileName, modules: file.moduleIds.map(named) }] : [],
+      ),
+      page: files.flatMap((file) =>
+        file.type === 'asset' && file.fileName === 'index.html' && typeof file.source === 'string' ? [file.source] : [],
+      ).join(''),
     }
   } finally {
     process.env.NODE_ENV = before.mode
@@ -326,4 +336,69 @@ describe('the production package (ADL A15)', () => {
 
     expect(timesIn(elsewhere, 'TREBA POPUNITI')).toBe(0)
   })
+
+  /**
+   * ONE BOOK OF WORDS PER READER (inkrement „Poboljšanje performansi”, owner, 22.11.2026: „rečnik samo
+   * jezika koji se čita”), asked of the same production build as everything above.
+   *
+   * <p>The languages are the portal's own table (`LOCALES`), so a third one is in the question the day it
+   * is entered. Which branch of the page is which language is the line nginx is asked in `index.html`, and
+   * that line is held to the source page as well as to the built one, so the two cannot drift apart.
+   */
+  describe('and its books of words', () => {
+    const ENGLISH = '<!--# if expr="$btl_preview_locale = en" -->'
+    const OTHER = '<!--# else -->'
+    const END = '<!--# endif -->'
+
+    const piecesOf = (locale: Locale) =>
+      production.pieces.filter((one) => one.modules.includes(`i18n/${locale}.json`))
+
+    /** What the page names in the branch nginx keeps for a language: the English one under `/en`, the other everywhere else. */
+    const branchOf = (locale: Locale) => {
+      const [, english = '', rest = ''] = production.page.split(new RegExp(`${escape(ENGLISH)}|${escape(OTHER)}`))
+
+      return locale === 'en' ? english : (rest.split(END)[0] ?? '')
+    }
+
+    it('asks the line it splits the page at of the page the portal is written as, once each', () => {
+      const written = readFileSync(join(FRONTEND, 'index.html'), 'utf-8')
+
+      for (const line of [ENGLISH, OTHER, END]) {
+        expect(timesIn(written, line), line).toBe(1)
+        expect(timesIn(production.page, line), line).toBe(1)
+      }
+    })
+
+    it('puts neither book in the piece every visit loads', () => {
+      const portal = production.pieces.filter((one) => one.fileName.startsWith('assets/portal-'))
+
+      expect(portal).toHaveLength(1)
+      expect(portal[0]?.modules.filter((one) => one.startsWith('i18n/') && one.endsWith('.json'))).toEqual([])
+    })
+
+    it('cuts each book into a piece of its own, with nothing else in it', () => {
+      for (const locale of LOCALES) {
+        expect(piecesOf(locale).map((one) => one.modules)).toEqual([[`i18n/${locale}.json`]])
+      }
+    })
+
+    it('names each book to the browser in the branch of its own language, and the other in neither', () => {
+      for (const locale of LOCALES) {
+        const [own] = piecesOf(locale)
+
+        for (const branch of LOCALES) {
+          const preloads = timesIn(branchOf(branch), `<link rel="modulepreload" crossorigin href="/${own?.fileName}" />`)
+
+          expect(preloads, `${locale} in the branch of ${branch}`).toBe(branch === locale ? 1 : 0)
+        }
+
+        expect(timesIn(production.page, `/${own?.fileName}`), `${locale} anywhere in the page`).toBe(1)
+      }
+    })
+  })
 })
+
+/** A line of the page as a pattern of itself. */
+function escape(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}

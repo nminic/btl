@@ -1,4 +1,4 @@
-import { useRef, type ReactNode } from 'react'
+import { useRef, useState, type ReactNode } from 'react'
 import { Link, NavLink, Outlet, ScrollRestoration, useLocation } from 'react-router'
 import { dataOr, usePaymentsDue } from '../data/useResource'
 import { DEV_TOOLS_IN_THIS_BUILD, loadTheDevControls } from '../dev/tools'
@@ -227,7 +227,12 @@ export function Shell() {
   const { locale, t } = useI18n()
   const sections = useNavSections()
   const rest = useRestOfPath()
-  const openScreen = useLocation().pathname
+  const here = useLocation()
+  const openScreen = here.pathname
+  /* The address at which a change of language found no book (`LanguageMenu`). The portal's message stands
+     in the place of the screen there and nowhere else, so the next address the reader opens is drawn as it
+     always is. */
+  const [refusedAt, setRefusedAt] = useState<string | null>(null)
   const { pageTitle, declare } = useRouteChrome()
   const phone = usePhoneHeader()
 
@@ -354,7 +359,7 @@ export function Shell() {
           <Brand />
 
           <div className="shell__tools">
-            <LanguageMenu restOfPath={rest} />
+            <LanguageMenu restOfPath={rest} onRefused={() => setRefusedAt(here.key)} />
             {!phone && personal}
           </div>
         </div>
@@ -425,9 +430,13 @@ export function Shell() {
           two directions at once. */}
       <PageMetaContext.Provider value={declare}>
         <main id="content" className="shell__main" ref={main} tabIndex={-1}>
-          <ErrorBoundary fallback={<PortalError />}>
-            <Outlet />
-          </ErrorBoundary>
+          {refusedAt === here.key ? (
+            <PortalError />
+          ) : (
+            <ErrorBoundary fallback={<PortalError />}>
+              <Outlet />
+            </ErrorBoundary>
+          )}
         </main>
       </PageMetaContext.Provider>
 
