@@ -261,6 +261,7 @@ export function WhatHeSends({
                 recipient: RECIPIENT,
                 amountRsd: one.toTransfer.amount,
                 purpose,
+                payer: one.payer,
                 reference,
               })}
               label={t('membership.ipsQrLabel')}

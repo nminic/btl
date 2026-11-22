@@ -6,7 +6,7 @@ import { neverPaidAsServed } from '../../test/neverPaid'
 import { readQr } from '../../test/readQr'
 import { renderAt } from '../../test/render'
 import { seasonBeingPaidFor } from '../../data/pricing'
-import { anInvoice, invoiceAsServed, serverThat, type InvoiceAnswered } from '../../test/serverAnswers'
+import { anInvoice, invoiceAsServed, serverThat, THE_PAYER, type InvoiceAnswered } from '../../test/serverAnswers'
 import { SLOW } from '../../test/slow'
 import servedPrices from '../../test/mock/pricing.json'
 
@@ -131,6 +131,7 @@ describe('somebody who has never paid, outside the window', () => {
           recipient: RECIPIENT_NAME,
           amountRsd: 3700,
           purpose: paymentPurpose(season),
+          payer: THE_PAYER,
           reference: '',
         }),
       )
@@ -168,6 +169,7 @@ describe('a member whose fee has lapsed, outside the window', () => {
           recipient: RECIPIENT_NAME,
           amountRsd: 3700,
           purpose: paymentPurpose(season),
+          payer: THE_PAYER,
           reference: `${season}000050`,
         }),
       )

@@ -36,6 +36,7 @@ const covered = {
   toTransfer: dinars(0),
   processingFeeEur: 0,
   coveredByTheBalance: true,
+  payer: 'Žarko Čačić',
 }
 
 /** Covered today, and a slip from before still asking for 3.600. */

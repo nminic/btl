@@ -147,6 +147,16 @@ class TheLetterAfterTheAddressTest {
 				.query(Long.class).single();
 	}
 
+	/**
+	 * THE NAME THE SLIP CARRIES IS THE COMPETITOR'S, and the account of the same member is left
+	 * named otherwise ('Probni Clan', as is every other row of both tables), so a code that took the
+	 * name off the account, or off the first competitor of the table, writes a different payer.
+	 */
+	private void named(long account, String first, String last) {
+		db.sql("update competitor set first_name = ?, last_name = ? where id = ?")
+				.params(first, last, memberOf(account)).update();
+	}
+
 	private long memberOf(long account) {
 		return db.sql("select competitor_id from account where id = ?").param(account).query(Long.class).single();
 	}
@@ -286,6 +296,8 @@ class TheLetterAfterTheAddressTest {
 		long account = aMember("iz-srbije@primer.rs", A_TOWN_IN_SERBIA, "1990-01-01", true);
 		BigDecimal fee = thePeriodInDinars();
 
+		named(account, "Žarko", "Čačić");
+
 		assertThat(confirm(aConfirmationLink(account))).isEqualTo(204);
 
 		Opened letter = opened(theOnlyLetterTo("iz-srbije@primer.rs"));
@@ -299,7 +311,7 @@ class TheLetterAfterTheAddressTest {
 		assertThat(letter.text()).startsWith("Hvala što si potvrdio svoju adresu, dobrodošao u Balkansku");
 		assertThat(letter.fileName()).isEqualTo("uplatnica-2027.png");
 		assertThat(ReadingTheCode.in(letter.file()).bytes())
-				.isEqualTo(IpsSlip.payload(ON_SALE, fee).getBytes(StandardCharsets.UTF_8));
+				.isEqualTo(IpsSlip.payload(ON_SALE, fee, "Žarko Čačić").getBytes(StandardCharsets.UTF_8));
 	}
 
 	/**
@@ -315,6 +327,7 @@ class TheLetterAfterTheAddressTest {
 
 		onHisBook(account, "600");
 		assertThat(fee).isGreaterThan(new BigDecimal("600"));
+		named(account, "Đorđe", "Šćepanović");
 
 		confirm(aConfirmationLink(account));
 
@@ -323,7 +336,7 @@ class TheLetterAfterTheAddressTest {
 
 		assertThat(letter.text()).contains("Iznos: " + dinars(less));
 		assertThat(ReadingTheCode.in(letter.file()).bytes())
-				.isEqualTo(IpsSlip.payload(ON_SALE, less).getBytes(StandardCharsets.UTF_8));
+				.isEqualTo(IpsSlip.payload(ON_SALE, less, "Đorđe Šćepanović").getBytes(StandardCharsets.UTF_8));
 		assertThat(db.sql("select amount || ' ' || currency from balance_promise where competitor_id = ?"
 						+ " and season = ?").params(memberOf(account), ON_SALE).query(String.class).single())
 				.isEqualTo("600.00 RSD");

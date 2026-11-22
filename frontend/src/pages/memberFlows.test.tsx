@@ -35,6 +35,7 @@ import {
   membersAsServed,
   refused,
   serverThat,
+  THE_PAYER,
   type CategoryAnswered,
   type InvoiceAnswered,
 } from '../test/serverAnswers'
@@ -956,6 +957,7 @@ describe('membership', () => {
       /* What the server says he sends (`anInvoice`), since 25.10.2026. */
       amountRsd: 3700,
       purpose: paymentPurpose(2027),
+      payer: THE_PAYER,
       reference: paymentReference(2027, '000032'),
     })
 
