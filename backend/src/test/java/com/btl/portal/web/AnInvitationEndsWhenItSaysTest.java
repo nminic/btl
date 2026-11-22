@@ -222,6 +222,20 @@ class AnInvitationEndsWhenItSaysTest {
 		assertThat(theRowEnds(account)).as("what the row ends").isEqualTo(expected);
 	}
 
+	/**
+	 * AN ACCOUNT NOBODY RECORDED THE WRITING OF (it stood before V72) HAS NO FOURTEENTH DAY, and is read back
+	 * off the row as it is and not guessed: the sweep would delete him, and his link is seven days from the
+	 * sending all the same.
+	 */
+	@Test
+	void anAccountWithNoRecordedWritingIsSevenDaysFromTheSending() {
+		long account = anAccountWritten(null, false, null);
+
+		assertThat(AnInvitationOfAMember.mint(db, clock, account, SecretToken.fresh()))
+				.isEqualTo(SENT.plus(Duration.ofDays(7)));
+		assertThat(theRowEnds(account)).isEqualTo(SENT.plus(Duration.ofDays(7)));
+	}
+
 	static Stream<org.junit.jupiter.params.provider.Arguments> theKindsOfAccount() {
 		return Stream.of(
 				org.junit.jupiter.params.provider.Arguments.of("no number and no payment: swept", null, false, true),
