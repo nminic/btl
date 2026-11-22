@@ -1,7 +1,8 @@
-import { act, screen, waitFor } from '@testing-library/react'
+import { act, configure, getConfig, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { renderAt } from '../test/render'
+import { SLOW } from '../test/slow'
 import {
   DICTIONARY_LOADERS,
   dictionaryFor,
@@ -31,6 +32,12 @@ import type { Dictionary } from './translate'
  * case that starts on `/sr` cannot tell „the language of the address" from „Serbian".
  */
 
+/* A CASE HERE ENDS IN AN ASSERTION AND NEVER IN ITS OWN CLOCK, the shape `pages/admin/saveWhileSaving.test.tsx`
+   set (CLAUDE.md, odeljak 25). Every case is given `SLOW` and every wait half of it, so a screen that never
+   arrives is said by `findBy` and not by `Test timed out`, which a series of mutations must not count. */
+configure({ asyncUtilTimeout: SLOW / 2 })
+vi.setConfig({ testTimeout: SLOW })
+
 type Answer = { default: Dictionary } | undefined
 
 /** A book held back until the case lets it go, or lets it fail. */
@@ -55,6 +62,12 @@ afterEach(async () => {
   vi.restoreAllMocks()
   forgetTheDictionaries()
   await Promise.all(LOCALES.map((one) => loadDictionary(one)))
+})
+
+describe('what a case of this file may end in', () => {
+  it('is an assertion and never its own clock: every wait is given less time than a case has', () => {
+    expect(getConfig().asyncUtilTimeout).toBeLessThan(SLOW)
+  })
 })
 
 describe('the language a page is read in, from its address', () => {
