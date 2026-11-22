@@ -206,8 +206,9 @@ export const RESOURCE_NAMES = [
   'results/runners',
   'teams',
   /* THE RESULTS OF THE RACES THE LEAGUE DOES NOT SCORE (PDL, 14.11.2026, „Ostale discipline kao lična
-     evidencija"): the same row as `results`, with 0 points, and read by exactly two screens, the
-     profile and „Moji rezultati". A name of its own and not a flag on `results`, because
+     evidencija"): the same row as `results`, with 0 points, and read by „Moji rezultati", the page of an
+     event and, since 22.11.2026, the profile through one member's own answer of this name
+     (`ONE_MEMBERS_DOORS`). A name of its own and not a flag on `results`, because
      `/api/results` serves only the scored ones and every counter on the portal reads that list: an
      unscored result must never reach one of them (`data/unscoredResults.ts`). */
   'unscored-results',

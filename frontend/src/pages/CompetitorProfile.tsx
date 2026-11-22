@@ -27,15 +27,8 @@ import {
   pairsNow,
 } from '../data/derive'
 import type { Competitor, Gender, RaceCategory, RacingPair, Result, Team } from '../data/types'
-import {
-  combineFour,
-  combinePair,
-  useCompetitors,
-  usePairs,
-  useResults,
-  useTeams,
-} from '../data/useResource'
-import { useUnscoredResults } from '../data/unscoredResults'
+import { combineFour, combinePair, useCompetitors, usePairs, useTeams } from '../data/useResource'
+import { useHisResults, useHisUnscoredResults } from '../data/hisResults'
 import { formatDuration, formatNumber, formatPoints, formatShortDate } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 import { shortBio } from './profile/bio'
@@ -45,8 +38,8 @@ import { useFilterParams } from '../app/useFilterParams'
 import './Profile.css'
 
 /** One line of the table: a result and whether the league scored it. A pair rather than a flag on
- *  `Result`, because the type is the one `/api/results` serves and an unscored result is the very
- *  same row; what says which list it came out of is the list, and nothing the server could get
+ *  `Result`, because the type is the one `/api/results` serves (his own address serves the same rows,
+ *  `data/hisResults.ts`) and an unscored result is the very same row; what says which list it came out of is the list, and nothing the server could get
  *  wrong in a field. */
 type Line = { result: Result; unscored: boolean }
 
@@ -137,9 +130,11 @@ function ProfileBody({
 }: {
   competitor: Competitor
   competitors: Competitor[]
+  /** His scored runs, as his own address serves them (`data/hisResults.ts`): the rows of `/api/results`
+   *  that carry his number. Still read through `resultsOf` below, which is what puts the newest first. */
   results: Result[]
-  /** What `/api/unscored-results` serves: the races the league does not score. Drawn in the list and
-   *  in the ring and counted in no figure (`data/unscoredResults.ts`). */
+  /** His runs of the races the league does not score, likewise (`/api/competitors/{broj}/unscored-results`).
+   *  Drawn in the list and in the ring and counted in no figure (`data/unscoredResults.ts`). */
   unscoredResults: Result[]
   team: Team | undefined
   teams: Team[]
@@ -450,10 +445,44 @@ function emptyText(
  * row of the list: `profile/visible.ts` says when, and what it says is `his`.
  */
 export function CompetitorProfile() {
+  const params = useParams()
+  const memberNumber = memberNumberIn(params.memberNumber)
+
+  /* KEYED BY THE NUMBER, so that a profile opened from another one (a partner, a team mate) starts from
+     what the visit holds for THIS member and never draws the runs of the one before while his own are on
+     their way: the reads below are asked by the number, and a reader kept across a change of number
+     would hold the previous member's answer until the new one arrives (`data/useResource.ts`, „Read by
+     the effect below"). The same number under a longer address (the name added to it) is the same key,
+     so moving to the one address a profile lives at reads nothing again. */
+  return memberNumber === undefined || memberNumber === '' ? (
+    <NoNumberOnTheAddress />
+  ) : (
+    <TheProfileOf key={memberNumber} memberNumber={memberNumber} />
+  )
+}
+
+/**
+ * AN ADDRESS WITH NO MEMBER NUMBER ON IT (`/takmicar/-ime`), answered as a profile nobody may reach is
+ * answered, without asking the server for anybody's runs: the portal's own indicator until the server has
+ * said who is reading, then the front page (`profile/visible.ts`, `profileFor`, which is asked here with
+ * nobody to find so that the answer is its answer and not a copy of it).
+ */
+function NoNumberOnTheAddress() {
+  const { locale } = useI18n()
+  const { memberNumber: readerNumber, theServerHasAnswered } = useSession()
+
+  return profileFor([], undefined, false, theServerHasAnswered, readerNumber).kind === 'waiting' ? (
+    <Loader inline={false} />
+  ) : (
+    <Navigate to={`/${locale}`} replace />
+  )
+}
+
+/** The profile of the member whose number is on the address. */
+function TheProfileOf({ memberNumber }: { memberNumber: string }) {
   const { locale, t } = useI18n()
   const params = useParams()
   const { search } = useLocation()
-  const memberNumber = memberNumberIn(params.memberNumber)
   const {
     memberNumber: readerNumber,
     signedIn,
@@ -463,12 +492,16 @@ export function CompetitorProfile() {
   } = useSession()
   const { role } = useRole()
   const overlay = useOverlay()
-  /* The races the league does not score are a fifth read beside the four, and not folded into
-     `useResults`: `/api/results` serves the scored ones alone so that nothing which counts can ever
-     meet an unscored result (`data/unscoredResults.ts`). */
+  /* HIS RUNS AND NOBODY ELSE'S, since 22.11.2026 (inkrement „Poboljšanje performansi”, korak 1;
+     `data/hisResults.ts`): the rows of `/api/results` and `/api/unscored-results` that carry his number,
+     asked for at his own address instead of the whole league. Asked beside the list of members and not
+     after it, so the two arrive together and the page waits for no second round. The races the league does
+     not score are still a fifth read beside the four, and not folded into the first: `/api/results` serves
+     the scored ones alone so that nothing which counts can ever meet an unscored result
+     (`data/unscoredResults.ts`), and his own two addresses keep the same split. */
   const state = combinePair(
-    combineFour(useCompetitors(), useResults(), useTeams(), usePairs()),
-    useUnscoredResults(),
+    combineFour(useCompetitors(), useHisResults(memberNumber), useTeams(), usePairs()),
+    useHisUnscoredResults(memberNumber),
   )
 
   return (

@@ -2,7 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react'
 import { at, first, must } from '../../test/at'
 import { renderAt } from '../../test/render'
 import { SLOW } from '../../test/slow'
-import { serverThat } from '../../test/serverAnswers'
+import { serverThat, runsAtBothDoors } from '../../test/serverAnswers'
 import { setupUser } from '../../test/user'
 import { loadResource } from '../../data/client'
 import { resultsOf, totalsOf } from '../../data/derive'
@@ -230,9 +230,7 @@ describe('the table of results beside the races the league does not score', () =
 
   it('draws the scored table for the old address when no unscored race is served at all', async () => {
     const stop = serverThat((path) =>
-      path === '/api/unscored-results'
-        ? new Response('[]', { status: 200, headers: { 'content-type': 'application/json' } })
-        : null,
+      runsAtBothDoors(path, 'unscored-results', []),
     ).stop
 
     try {
@@ -264,12 +262,7 @@ describe('the table of results beside the races the league does not score', () =
       inItsStanding: false,
     }
     const stop = serverThat((path) =>
-      path === '/api/unscored-results'
-        ? new Response(JSON.stringify([swam]), {
-            status: 200,
-            headers: { 'content-type': 'application/json' },
-          })
-        : null,
+      runsAtBothDoors(path, 'unscored-results', [swam]),
     ).stop
 
     try {
@@ -400,9 +393,7 @@ describe('the ring beside the table', () => {
 
   it('has no such slice for a member who has none, and the profile is the one it was', async () => {
     const stop = serverThat((path) =>
-      path === '/api/unscored-results'
-        ? new Response('[]', { status: 200, headers: { 'content-type': 'application/json' } })
-        : null,
+      runsAtBothDoors(path, 'unscored-results', []),
     ).stop
 
     try {

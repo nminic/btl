@@ -87,6 +87,39 @@ export function serverThat(
   }
 }
 
+/**
+ * WHAT ONE MEMBER'S DOOR ANSWERS, given what the league's door answers: the rows that carry his number, in
+ * the order the league's answer holds them (`ResultApi.resultsOf`, which is the league's query with one
+ * condition more). Anything that is not a list is answered as no runs at all.
+ */
+export function hisRunsFrom(league: unknown, memberNumber: string): unknown[] {
+  return Array.isArray(league)
+    ? league.filter((one: unknown) => Reflect.get(Object(one), 'memberNumber') === memberNumber)
+    : []
+}
+
+/**
+ * THE RUNS OF A CASE, ANSWERED AT BOTH DOORS THAT SERVE THEM: the league's (`/api/results`, or
+ * `/api/unscored-results`) and every member's own (`/api/competitors/{broj}/results`), out of the one list
+ * the case hands in. A case that answered only the league's door would hand the profile, which reads his
+ * own door since 22.11.2026, the history of the disc instead of its own, and a case that wrote the two out
+ * separately could hand the two doors two histories.
+ *
+ * @returns the answer, or null where the address is neither door
+ */
+export function runsAtBothDoors(
+  path: string,
+  door: 'results' | 'unscored-results',
+  runs: unknown[],
+): Response | null {
+  const his = new RegExp(`^/api/competitors/([^/]+)/${door}$`).exec(path)
+  const answer = path === `/api/${door}` ? runs : his === null ? null : hisRunsFrom(runs, decodeURIComponent(his[1] ?? ''))
+
+  return answer === null
+    ? null
+    : new Response(JSON.stringify(answer), { status: 200, headers: { 'content-type': 'application/json' } })
+}
+
 /** What both routes answer when they did the thing. */
 export function did(): Response {
   return new Response(null, { status: 204 })

@@ -5,6 +5,7 @@ import { join } from 'node:path'
 import { beforeEach, expect, vi } from 'vitest'
 import { clearResourceCache } from '../data/client'
 import { asAnswered, myOwnRecordFromMe, whoIAm } from './theAnswer'
+import { hisRunsFrom } from './serverAnswers'
 import { SLOW } from './slow'
 import { measureNothing } from './proseMirrorInJsdom'
 import { eventSlug } from '../pages/admin/entityForms'
@@ -571,6 +572,22 @@ vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
         : '[]',
       { status: 200, headers: { 'content-type': 'application/json' } },
     )
+  }
+
+  /* THE RUNS OF ONE MEMBER (`ResultApi.resultsOf`, inkrement „Poboljšanje performansi”), answered as the
+     server answers them: the rows of the file of the league's own door that carry his number, in the order
+     that file holds them, and an empty list for a number nobody holds. Read off the same file and never a
+     copy of it, so a case cannot hand the profile one history and the rest of the portal another. A case
+     that answers the league's door itself answers his too (`test/serverAnswers.ts`, `hisRunsFrom`). */
+  const hisRuns = /^\/api\/competitors\/([^/]+)\/(results|unscored-results)$/.exec(asked)
+
+  if (hisRuns !== null) {
+    const league: unknown = JSON.parse(readFileSync(join(PUBLIC_DIR, `/mock/${hisRuns[2] ?? ''}.json`), 'utf-8'))
+
+    return new Response(JSON.stringify(hisRunsFrom(league, decodeURIComponent(hisRuns[1] ?? ''))), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    })
   }
 
   /* `GET /api/me/photo` (`MePhotoApi.mine`), READ ONLY: the same address takes the picture itself as a
