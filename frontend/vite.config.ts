@@ -9,17 +9,8 @@ type TheGraph = { getModuleInfo: (id: string) => { importedIds: readonly string[
 
 let loadedWithIt: Set<string> | null = null
 
-/**
- * EVERYTHING THE PORTAL LOADS WITH ITSELF, IN ONE PIECE, `portal` (inkrement „Poboljšanje performansi”,
- * korak 2): every module `main.tsx` reaches by a static import, read off the bundler's own graph rather
- * than named. Left to itself the bundler cut that part into 63 pieces, one for every set of screens that
- * share a module, and a slow phone asked for all of them before it drew anything. Measured on 22.11.2026
- * over HTTP/2, a phone four times slower and 1.6 Mbit/s at 150 ms, a cold profile to its first row: 3.7 s
- * before the change, 3.1 s cut by the bundler, 2.7 s with this piece. The screens themselves
- * are still their own pieces, cut as the bundler cuts them. Stylesheets are left to the group above this
- * one, which keeps their order.
- */
-function loadedWithThePortal(id: string, graph: TheGraph): string | null {
+/** Every module `main.tsx` reaches by a static import, read off the bundler's own graph once per build. */
+function reachedFromMain(graph: TheGraph): Set<string> {
   if (loadedWithIt === null) {
     const reached = new Set<string>()
     const next = [MAIN]
@@ -34,11 +25,44 @@ function loadedWithThePortal(id: string, graph: TheGraph): string | null {
     loadedWithIt = reached
   }
 
-  return loadedWithIt.has(id.replaceAll('\\', '/')) ? 'portal' : null
+  return loadedWithIt
+}
+
+/**
+ * EVERYTHING THE PORTAL LOADS WITH ITSELF, IN ONE PIECE, `portal` (inkrement „Poboljšanje performansi”,
+ * korak 2): every module `main.tsx` reaches by a static import, read off the bundler's own graph rather
+ * than named. Left to itself the bundler cut that part into 63 pieces, one for every set of screens that
+ * share a module, and a slow phone asked for all of them before it drew anything. Measured on 22.11.2026
+ * over HTTP/2, a phone four times slower and 1.6 Mbit/s at 150 ms, a cold profile to its first row: 3.7 s
+ * before the change, 3.1 s cut by the bundler, 2.7 s with this piece. The screens themselves are still
+ * their own pieces, cut as the bundler cuts them.
+ */
+function loadedWithThePortal(id: string, graph: TheGraph): string | null {
+  return !id.endsWith('.css') && reachedFromMain(graph).has(id.replaceAll('\\', '/')) ? 'portal' : null
+}
+
+/**
+ * AND EVERY STYLESHEET THE PORTAL LOADS WITH ITSELF IN A PIECE OF ITS OWN, `styles`, in the order
+ * `src/app/stylesheets.ts` imports them (see `build` below). Asked of the same graph, so a stylesheet only
+ * a development control imports (`dev/tools.ts`) is not pulled into a production sheet:
+ * `dev/productionPackage.test.ts` holds that, and a group that captured every `.css` failed it.
+ */
+function theStylesheetsOfThePortal(id: string, graph: TheGraph): string | null {
+  return id.endsWith('.css') && reachedFromMain(graph).has(id.replaceAll('\\', '/')) ? 'styles' : null
 }
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    /* The graph read above belongs to one build, and a process may build twice (`dev/productionPackage.test.ts`
+       builds production and QA one after the other). */
+    {
+      name: 'forget-the-graph-of-the-last-build',
+      buildStart() {
+        loadedWithIt = null
+      },
+    },
+  ],
   build: {
     /* ONE STYLESHEET FOR THE WHOLE PORTAL, AND ITS RULES IN THE ORDER THEY ALWAYS HAD, while the code is
        loaded screen by screen (inkrement „Poboljšanje performansi”, korak 2).
@@ -59,7 +83,7 @@ export default defineConfig({
       output: {
         codeSplitting: {
           groups: [
-            { name: 'styles', test: /\.css$/, priority: 2 },
+            { name: theStylesheetsOfThePortal, priority: 2 },
             { name: loadedWithThePortal, priority: 1 },
           ],
         },

@@ -1,21 +1,19 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { RELOADED_FOR, reloadOnceWhenAPieceIsGone, type APage } from './staleChunks'
+import { describe, expect, it, vi } from 'vitest'
+import { reloadOnceWhenAPieceIsGone, type APage } from './staleChunks'
 
 /* A PIECE OF THE PORTAL THAT A DEPLOY REPLACED (`app/staleChunks.ts`).
 
    THE AXES, and where the set-up keeps each pair apart:
 
-   - the same piece failing twice against two different pieces, so „once per piece" can pass neither as
-     „once ever" nor as „every time";
-   - a tab that can remember against one whose storage refuses, so the reload that cannot be remembered is
-     never made;
+   - how the browser says the page was loaded: by following a link or an address, from the history, by a
+     reload, or it does not say at all. Only the first two are read again, so „once" can pass neither as
+     „never" nor as „every time";
    - Vite's own event against any other failure on the page, so the reload is not something every error
      sets off. */
 
 const A_PIECE = new TypeError('Failed to fetch dynamically imported module: /assets/Calendar-AAAA.js')
-const ANOTHER_PIECE = new TypeError('Failed to fetch dynamically imported module: /assets/Rankings-BBBB.js')
 
-function aPage(storage: Pick<Storage, 'getItem' | 'setItem'> = window.sessionStorage): {
+function aPage(loaded: unknown[]): {
   page: APage
   fire: (type: string, payload: unknown) => Event
   reload: ReturnType<typeof vi.fn>
@@ -29,8 +27,8 @@ function aPage(storage: Pick<Storage, 'getItem' | 'setItem'> = window.sessionSto
       addEventListener: (type, listener) => {
         listeners.set(type, [...(listeners.get(type) ?? []), listener])
       },
-      sessionStorage: storage,
       location: { reload },
+      performance: { getEntriesByType: (type) => (type === 'navigation' ? loaded : []) },
     },
     fire: (type, payload) => {
       const event = new Event(type, { cancelable: true })
@@ -46,77 +44,44 @@ function aPage(storage: Pick<Storage, 'getItem' | 'setItem'> = window.sessionSto
   }
 }
 
-beforeEach(() => {
-  window.sessionStorage.clear()
-})
-
 describe('a piece that is gone after a deploy', () => {
-  it('reads the page again once, and says so to Vite, so the screen does not fail first', () => {
-    const { page, fire, reload } = aPage()
+  it.each(['navigate', 'back_forward'])(
+    'reads a page loaded by %s again once, and says so to Vite, so the screen does not fail first',
+    (how) => {
+      const { page, fire, reload } = aPage([{ type: how }])
 
-    reloadOnceWhenAPieceIsGone(page)
-    const event = fire('vite:preloadError', A_PIECE)
+      reloadOnceWhenAPieceIsGone(page)
+      const event = fire('vite:preloadError', A_PIECE)
 
-    expect(reload).toHaveBeenCalledTimes(1)
-    expect(event.defaultPrevented).toBe(true)
-    expect(window.sessionStorage.getItem(RELOADED_FOR)).toBe(String(A_PIECE))
-  })
+      expect(reload).toHaveBeenCalledTimes(1)
+      expect(event.defaultPrevented).toBe(true)
+    },
+  )
 
-  it('does not read it again for the same piece, which a fresh page did not find either', () => {
-    const { page, fire, reload } = aPage()
-
-    reloadOnceWhenAPieceIsGone(page)
-    fire('vite:preloadError', A_PIECE)
-    const again = fire('vite:preloadError', A_PIECE)
-
-    expect(reload).toHaveBeenCalledTimes(1)
-    expect(again.defaultPrevented, 'the second failure of one piece was hidden from the screen').toBe(false)
-  })
-
-  it('remembers across the reload, which is a new page reading the same tab', () => {
-    const before = aPage()
-
-    reloadOnceWhenAPieceIsGone(before.page)
-    before.fire('vite:preloadError', A_PIECE)
-
-    const after = aPage()
-
-    reloadOnceWhenAPieceIsGone(after.page)
-    after.fire('vite:preloadError', A_PIECE)
-
-    expect(after.reload).not.toHaveBeenCalled()
-  })
-
-  it('reads it again once for another piece, after a later deploy', () => {
-    const { page, fire, reload } = aPage()
-
-    reloadOnceWhenAPieceIsGone(page)
-    fire('vite:preloadError', A_PIECE)
-    fire('vite:preloadError', ANOTHER_PIECE)
-
-    expect(reload).toHaveBeenCalledTimes(2)
-  })
-
-  it('does nothing where the tab cannot remember, since a reload it cannot remember is the circle', () => {
-    const refusing = {
-      getItem: () => {
-        throw new Error('storage refused')
-      },
-      setItem: () => {
-        throw new Error('storage refused')
-      },
-    }
-    const { page, fire, reload } = aPage(refusing)
+  it('does not read again a page that a reload brought, which a fresh page did not find the piece on either', () => {
+    const { page, fire, reload } = aPage([{ type: 'reload' }])
 
     reloadOnceWhenAPieceIsGone(page)
     const event = fire('vite:preloadError', A_PIECE)
 
     expect(reload).not.toHaveBeenCalled()
-    expect(event.defaultPrevented).toBe(false)
+    expect(event.defaultPrevented, 'the failure was hidden from the screen and nothing was done').toBe(false)
+  })
+
+  it('does nothing where the browser does not say how the page was loaded, since that is the circle', () => {
+    for (const loaded of [[], [{}], [{ type: 7 }]]) {
+      const { page, fire, reload } = aPage(loaded)
+
+      reloadOnceWhenAPieceIsGone(page)
+      const event = fire('vite:preloadError', A_PIECE)
+
+      expect(reload, JSON.stringify(loaded)).not.toHaveBeenCalled()
+      expect(event.defaultPrevented).toBe(false)
+    }
   })
 
   it('answers no failure but the one Vite names', () => {
-    const { page, fire, reload } = aPage()
+    const { page, fire, reload } = aPage([{ type: 'navigate' }])
 
     reloadOnceWhenAPieceIsGone(page)
     fire('error', A_PIECE)

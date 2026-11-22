@@ -7,38 +7,38 @@
  * event `vite:preloadError` and, unless somebody answers it, the screen fails. The answer is the page read
  * again, which brings the new list (the coordinator's decision of 22.11.2026, reported to the owner).
  *
- * <p><b>Once per missing piece, and never in a circle.</b> The piece that failed is written into the
- * tab's own `sessionStorage` before the reload, and a second failure of the SAME piece is let through to
- * the screen's own failure instead of reloading again: a piece that is missing after a fresh read is not a
- * stale tab, and reloading for it for ever would be a page that never stops loading. A different piece,
- * after a later deploy, is reloaded for once in its turn. And where the tab cannot remember (storage
- * refused, a private window that throws), nothing is reloaded at all, because a reload that cannot be
- * remembered is the circle this exists to prevent.
+ * <p><b>Once, and never in a circle, and remembered by the browser rather than by a store of ours.</b> A
+ * page that the browser itself says was loaded by a reload (`PerformanceNavigationTiming.type`) is not read
+ * again: a piece that is missing right after a fresh read is not a stale tab, and reloading for it for
+ * ever would be a page that never stops loading. Where the browser does not say how the page was loaded,
+ * nothing is read again either, for the same reason.
+ *
+ * <p><b>Why not a mark in `sessionStorage`, which the coordinator offered as an example.</b> Every store the
+ * portal writes in the browser is named in the privacy policy, and `pages/writtenPages.test.tsx` holds the
+ * code to that text; a new store would need a sentence in a legal document, and those are written in the
+ * owner's words only. The browser's own answer needs neither. What it costs: a reader who has reloaded the
+ * page by hand and then meets a deploy in the same page is shown the screen's failure instead of a fresh
+ * page, and reloads once more himself.
  */
-
-/** Where the tab remembers the last piece it was reloaded for. */
-export const RELOADED_FOR = 'btl.reloadedForAMissingPiece'
 
 /** As much of the window as this needs, so a case can hand it a page of its own. */
 export type APage = {
   addEventListener: (type: string, listener: (event: Event) => void) => void
-  sessionStorage: Pick<Storage, 'getItem' | 'setItem'>
   location: { reload: () => void }
+  performance: { getEntriesByType: (type: string) => readonly unknown[] }
 }
 
-/** Reads the page again, once per missing piece, when Vite says a piece could not be loaded. */
+/** Whether the browser says this page was loaded by a reload, or cannot say how it was loaded. */
+function notToBeReadAgain(page: APage): boolean {
+  const how: unknown = Reflect.get(Object(page.performance.getEntriesByType('navigation')[0]), 'type')
+
+  return typeof how !== 'string' || how === 'reload'
+}
+
+/** Reads the page again, once, when Vite says a piece of the portal could not be loaded. */
 export function reloadOnceWhenAPieceIsGone(page: APage): void {
   page.addEventListener('vite:preloadError', (event) => {
-    /* What failed, as Vite hands it over: the error of the import, whose words carry the address. */
-    const missing = String(Reflect.get(event, 'payload'))
-
-    try {
-      if (page.sessionStorage.getItem(RELOADED_FOR) === missing) {
-        return
-      }
-
-      page.sessionStorage.setItem(RELOADED_FOR, missing)
-    } catch {
+    if (notToBeReadAgain(page)) {
       return
     }
 
