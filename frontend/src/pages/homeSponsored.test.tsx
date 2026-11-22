@@ -99,6 +99,25 @@ describe('the front page of variant A', () => {
     expect(grid).toHaveClass('home__split--sponsored')
   })
 
+  /* EXACTLY ONE SPONSOR IS A SPONSOR: the first stanza the portal will meet when the first one signs, and
+     the state in which „more than one" and „at least one" part ways. The box of the day, the strip, the
+     four races and the grid of variant A are all there. */
+  it('with exactly one sponsor: the box, the strip with the one, four races, and the grid of variant A', async () => {
+    held.sponsors = [VOLT]
+
+    const { headings, races, grid } = await drawn()
+
+    expect(headings).toContain('Sponzor dana')
+    expect(within(screen.getByRole('region', { name: 'Sponzor dana' })).getByRole('link', { name: 'VOLT (otvara se u novom prozoru)' })).toBeVisible()
+    expect(
+      within(screen.getByRole('region', { name: 'Sponzori i partneri' }))
+        .getAllByRole('img')
+        .map((one) => one.getAttribute('alt')),
+    ).toEqual(['VOLT'])
+    expect(races).toBe(4)
+    expect(grid).toHaveClass('home__split--sponsored')
+  })
+
   it('without one: neither box nor strip, the calendar to the bottom, and the grid of variant A without the box', async () => {
     const { headings, races, grid } = await drawn()
 

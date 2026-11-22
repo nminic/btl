@@ -156,6 +156,10 @@ describe('deleting', () => {
     expect(screen.queryByRole('heading', { name: 'Moja članarina' })).toBeNull()
     /* AND THE PORTAL HAS FORGOTTEN HIM: the header offers the way in again, which it draws only to nobody. */
     expect(await screen.findByRole('link', { name: 'Prijavi se' })).toBeInTheDocument()
+    /* AND NOBODY IS THE MEMBER ANY MORE: the role is a visitor's, not the competitor's until the next visit,
+       which the member's own door in the header says (it is drawn to a competitor and to nobody else). */
+    expect(screen.queryByRole('link', { name: 'Moja članarina' })).toBeNull()
+    expect(screen.queryByRole('link', { name: 'Moj profil' })).toBeNull()
   }, SLOW)
 
   it('sends one request for two presses while the first is out, and for a double press', async () => {
@@ -201,6 +205,25 @@ describe('deleting', () => {
     expect(screen.queryByRole('dialog')).toBeNull()
     expect(screen.getByRole('heading', { level: 1, name: 'Moja članarina' })).toBeInTheDocument()
     expect(deletions(asked)).toHaveLength(1)
+  }, SLOW)
+
+  /* THE WINDOW IS NOT LEFT BUSY BY A REFUSAL: opened again, its button sends again (a second request), where a
+     window that stayed busy would take the press and do nothing. */
+  it('is not left busy when the server refuses: pressed again, it asks again', async () => {
+    const user = setupUser()
+    const { asked } = hisServer(true, { status: 404 })
+
+    for (const times of [1, 2]) {
+      await user.click(await screen.findByRole('button', { name: 'Obriši nalog' }))
+      await user.click(
+        within(await screen.findByRole('dialog', { name: 'Obriši nalog?' })).getByRole('button', {
+          name: 'Obriši nalog',
+        }),
+      )
+
+      await waitFor(() => expect(deletions(asked)).toHaveLength(times))
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    }
   }, SLOW)
 })
 

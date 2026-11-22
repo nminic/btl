@@ -60,7 +60,8 @@ function forgetIt(): void {
  * day the warm-up ends it is taken out again, so the browser does not keep a note about a strip that no
  * longer exists. Every touch of the store is inside a `try`: a browser told not to keep site data throws
  * on the very first access, and a strip that cannot remember is still a strip that can be closed. The key
- * is named in the privacy policy (`writtenPages.test.tsx` holds the portal's stores against it).
+ * is not named in the privacy policy, which stays silent about the strip on purpose (owner, 21.11.2026);
+ * `writtenPages.test.tsx` holds it as the one named exemption from the stores the policy has to name.
  *
  * **Not a header, and not a landmark.** `role="note"` with a name, which is not a region: one more
  * landmark would change the count every screen reader announces, and `alert` or `status` would interrupt a

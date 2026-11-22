@@ -15,7 +15,7 @@ import './LengthFilter.css'
  * „Kratke, Kraća trka" and the word on it is inside its name (WCAG 2.5.3).
  *
  * **Only the unit goes when there is no room, and it goes by the card's width and not the window's**
- * (owner, 20.11.2026: „Gde ne staje, otpada samo km"): „21,1" and „42,2" are written apart from their
+ * (owner, 20.11.2026, in the words of the plan: only the unit goes where there is no room): „21,1" and „42,2" are written apart from their
  * „km", which a container query on the card hides (`Home.css`).
  */
 export function LengthFilter({

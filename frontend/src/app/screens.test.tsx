@@ -174,6 +174,7 @@ describe('the screens of the portal', () => {
 
     await screen.findAllByRole('navigation')
     const navigationBefore = screen.getAllByRole('navigation').length
+    const headingsBefore = screen.getAllByRole('heading', { level: 1 }).map((one) => one.textContent)
 
     /* Not awaited: a navigation that waits for a page that is being replaced does not end, which is the point. */
     await act(async () => {
@@ -181,7 +182,7 @@ describe('the screens of the portal', () => {
       await new Promise((resolve) => setTimeout(resolve, 50))
     })
 
-    return { errors, warns, navigationBefore }
+    return { errors, warns, navigationBefore, headingsBefore }
   }
 
   it('keeps the portal around a piece that does not arrive, and says so in its own words', async () => {
@@ -201,13 +202,16 @@ describe('the screens of the portal', () => {
   })
 
   it('waits, without an error and without the router’s page, when the piece was stopped for a reload', async () => {
-    const { errors, warns, navigationBefore } = await openAScreenWhoseModuleIs(() => Promise.resolve(undefined))
+    const { errors, warns, navigationBefore, headingsBefore } = await openAScreenWhoseModuleIs(() => Promise.resolve(undefined))
 
     try {
       expect(errors.mock.calls, 'something was thrown while the page waits for its reload').toEqual([])
       expect(screen.getAllByRole('navigation').length).toBe(navigationBefore)
       expect(screen.queryByRole('alert')).toBeNull()
       expect(screen.queryByRole('heading', { level: 1, name: 'Kalendar' })).toBeNull()
+      /* THE SCREEN THE READER WAS ON STAYS: waiting for the reload is not an empty page. */
+      expect(headingsBefore.length, 'the screen the reader was on has a title').toBeGreaterThan(0)
+      expect(screen.getAllByRole('heading', { level: 1 }).map((one) => one.textContent)).toEqual(headingsBefore)
       expect(document.body.textContent).not.toContain('Unexpected Application Error')
     } finally {
       errors.mockRestore()

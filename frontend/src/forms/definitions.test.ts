@@ -111,15 +111,14 @@ describe('every form definition in the portal', () => {
        nothing to count down from: the renderer draws no counter without a limit
        and refuses nothing at the door.
 
-       This reaches the definitions and nothing else. Two boxes were edited
-       outside a form: a biography rewritten by a moderator (PendingQueue, until
-       06.08.2026) and the rules of a competition rewritten in place
-       (LeagueDetail). Both took
-       whatever was pasted, so a value could come back longer than the form that
-       made it accepts and the next person to open that form was told their own
-       text was too long. Both now read their limit off the definition through
-       `limitOf`, which is what makes this rule cover them: take the limit out of
-       the JSON and those two throw. */
+       This reaches the definitions and nothing else. A box edited outside a
+       form takes whatever is pasted unless it carries a limit of its own, so a
+       value can come back longer than the form that made it accepts and the next
+       person to open that form is told their own text is too long. The boxes
+       that are written by hand and still name a field of a definition read their
+       limit off it through `limitOf` (`PendingQueue`, the name and the city of a
+       team), which is what makes this rule cover them: take the limit out of the
+       JSON and `limitOf` throws. */
     const missing = FORMS.flatMap(({ name, form }) =>
       form.fields
         .filter((field) => field.type === 'textarea' && field.maxLength === undefined)
@@ -131,17 +130,16 @@ describe('every form definition in the portal', () => {
 
   it('gives every long box written by hand a limit, from a definition', () => {
     /* The rule above reaches the definitions, and a box written by hand reaches
-       nothing. Two exist: the rules of a
-       competition rewritten in place, and the comment beside a rating. The second
-       was written in the same week as this test with no limit at all, and every
-       test on the portal passed.
+       nothing. The comment beside a rating was written in the same week as this
+       test with no limit at all, and every test on the portal passed.
 
        It draws `LongBox` now, which is the box that knows what a limit is: the
-       room counted down, what a paste lost, and a word when the box is full. The
-       other two are uncontrolled boxes that save on blur, so they carry the
-       number and not the counting; what they must not do is take whatever is
-       pasted, because the value goes back into the form that made it and the
-       next person to open that form is told their own words are too long.
+       room counted down, what a paste lost, and a word when the box is full. A
+       box that is not drawn through it (an uncontrolled one that saves on blur)
+       carries the number and not the counting; what it must not do is take
+       whatever is pasted, because the value goes back into the form that made it
+       and the next person to open that form is told their own words are too
+       long.
 
        Read off the source, because there is no other way to see a box that no
        definition knows about. The tag is bounded by its own first `>`: bounded

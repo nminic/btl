@@ -93,8 +93,8 @@
 }
 
 /* Two columns, each its own column of boxes (owner, 20.11.2026, PDL „Četiri dodatka naslovne iz
-   tuđeg nacrta": „Desna kolona je zaseban stub: statistika je visoka koliko njen sadržaj, a
-   kalendar počinje odmah ispod nje"). Until then the page was one grid whose rows both columns
+   tuđeg nacrta", in the words of the plan and not the owner's: the right column is a column of its own,
+   the figures as tall as their content and the calendar beginning right under them). Until then the page was one grid whose rows both columns
    shared, and the figures were as tall as the two boards beside them, which with eight tiles was
    taller than the figures need: the calendar began where the boards ended and not where the
    figures did.
@@ -464,8 +464,8 @@
    in one row, as one control with a rounded outline, and the one chosen is a capsule inside it.
    All of the same height and none of them breaks its text.
 
-   **Only the „km" goes when the card is narrow, and the card decides, not the window** (owner:
-   „Gde ne staje, otpada samo km"): 21,1 and 42,2 stay. The card is the container, so the rule is the
+   **Only the „km" goes when the card is narrow, and the card decides, not the window** (owner,
+   20.11.2026, in the words of the plan: only the unit goes where there is no room): 21,1 and 42,2 stay. The card is the container, so the rule is the
    same on the right column at 860px and on a phone where the card is as wide as the page. */
 .home__next > .card {
   container-type: inline-size;
@@ -662,7 +662,9 @@
      out from the share of the column and the number of characters the page writes in `--chars`, never above
      the size of the list (`--points-size`) and never under the floor of the surname, 0,65rem, 10,4px). A digit of tabular figures is about
      0,62em wide, narrower than a letter of the name, so the figure is counted at that. The two lines of height
-     stay, so a circle is never lifted against its neighbour. */
+     stay, so the circles of the two sides keep the same height; the gap between the circle of the first place
+     and its neighbours still moves a little with the figure, by about 2,5px between a short and a long one
+     (measured on 360 and 1280, en). */
   font-size: clamp(
     0.65rem,
     calc((100cqi - 2 * var(--space-6)) / 3.15 / (var(--chars) * 0.62)),

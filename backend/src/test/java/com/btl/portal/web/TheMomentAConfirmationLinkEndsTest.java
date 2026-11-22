@@ -151,12 +151,14 @@ class TheMomentAConfirmationLinkEndsTest {
 				new Case("no recorded day of being written: seven days from the sending", "en",
 						null, Instant.parse("2026-12-10T12:00:00Z"),
 						Instant.parse("2026-12-17T12:00:00Z"), "until 17 December 2026 at 13:00. After that"),
-				/* PAST ITS FOURTEENTH DAY AND STILL HERE: the sweep keeps an account with a number or a
-				   payment, and a link that ended before it was sent could never confirm it. */
-				new Case("past its fourteenth day and not swept: seven days from the sending", "sr",
+				/* PAST ITS FOURTEENTH DAY, AN ACCOUNT WITH NO NUMBER AND NO PAYMENT (the only kind this fixture
+				   writes: the sweep deletes it, the row is just still here): a link that ended before it was
+				   sent could never confirm it, so it is seven days from the sending. An account the sweep
+				   keeps is not set up here. */
+				new Case("past its fourteenth day, an account with no number and no payment: seven days from the sending", "sr",
 						Instant.parse("2026-11-20T12:00:00Z"), Instant.parse("2026-12-10T12:00:00Z"),
 						Instant.parse("2026-12-17T12:00:00Z"), "do 17.12.2026. 13:00. Posle toga"),
-				new Case("past its fourteenth day and not swept: seven days from the sending", "en",
+				new Case("past its fourteenth day, an account with no number and no payment: seven days from the sending", "en",
 						Instant.parse("2026-11-20T12:00:00Z"), Instant.parse("2026-12-10T12:00:00Z"),
 						Instant.parse("2026-12-17T12:00:00Z"), "until 17 December 2026 at 13:00. After that"));
 	}
@@ -202,6 +204,24 @@ class TheMomentAConfirmationLinkEndsTest {
 				.param(account).query(Timestamp.class).single().toInstant())
 				.as("the row ends another moment than the letter says")
 				.isEqualTo(theCase.ends());
+	}
+
+	/**
+	 * THE FOURTEENTH DAY ITSELF IS ALREADY OVER, AND ONE SECOND BEFORE IT IS NOT. A link sent at the very
+	 * moment the fourteenth day arrives would end the moment it is sent, so it is seven days from the
+	 * sending; one sent a second earlier ends on the fourteenth day, which is one second away. Held on the
+	 * rule itself, because the moments in {@link #theCases()} are days away from the line.
+	 */
+	@Test
+	void aLinkSentOnTheVeryMomentOfTheFourteenthDayEndsSevenDaysOnAndOneASecondBeforeEndsOnTheDay() {
+		Instant sentAt = Instant.parse("2026-12-15T12:00:00Z");
+
+		assertThat(TheMomentAConfirmationLinkEnds.of(sentAt, Instant.parse("2026-12-01T12:00:00Z")))
+				.as("registered exactly fourteen days before the sending")
+				.isEqualTo(Instant.parse("2026-12-22T12:00:00Z"));
+		assertThat(TheMomentAConfirmationLinkEnds.of(sentAt, Instant.parse("2026-12-01T12:00:01Z")))
+				.as("registered a second less than fourteen days before the sending")
+				.isEqualTo(Instant.parse("2026-12-15T12:00:01Z"));
 	}
 
 	/**

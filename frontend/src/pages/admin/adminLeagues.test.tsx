@@ -1029,6 +1029,10 @@ describe('a competition made, changed and taken away', () => {
 
       expect(await screen.findByRole('table', { name: 'Lige' })).toBeVisible()
       expect(router.state.location.search).toBe('')
+      /* IN PLACE OF THE ENTRY THAT OPENED THE FORM, and not on top of it: a push would leave the entry with
+         `?izmena=` one step back, and the browser's Back would open the form again (`AdminEvents.tsx` does
+         the same). */
+      expect(router.state.historyAction).toBe('REPLACE')
       expect(screen.queryByLabelText(/^Naziv lige/)).not.toBeInTheDocument()
 
       server.stop()

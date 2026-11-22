@@ -337,10 +337,12 @@ describe('space and corners are chosen from the scale, not typed', () => {
          (`app/RaceInMotion.css`, owner 21.11.2026). Each asks for 1132px and the gutter its tallest window needs, which
          follows the height of the window and so is not a place where the portal changes shape; the steps are pinned in
          `styles/raceInMotion.test.ts`, „is drawn only where the gutter holds it". They are read out of the text here
-         by their exact spelling, so any other width written in this form still fails this guard. */
+         by their exact spelling and only in the sheet that draws the lane (`LANE_SHEET`), so any other width
+         written in this form, and the same spelling in any other sheet, still fails this guard. */
       const LANE_STEP = /\(min-width: calc\(1132px \+ max\(5em, \d+px\)\)\)/g
+      const LANE_SHEET = 'app/RaceInMotion.css'
       const conditions = [...unremarked(sheet.css).matchAll(/@media([^{]*)\{/g)]
-        .map((one) => (one[1] ?? '').replaceAll(LANE_STEP, '(lane step)'))
+        .map((one) => (sheet.path === LANE_SHEET ? (one[1] ?? '').replaceAll(LANE_STEP, '(lane step)') : (one[1] ?? '')))
         .join(' ')
       const found = [...conditions.matchAll(WIDTH)]
 
