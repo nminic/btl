@@ -173,6 +173,13 @@ export type HowToRead = {
    * 28.09.2026 named as the shape that tells each half and never tells the join.
    */
   language?: string
+  /**
+   * The one member whose answer of this name is asked for, absent everywhere but the profile
+   * (`useHisResults`). Only the names of `client.ts`'s `ONE_MEMBERS_DOORS` answer one; like a
+   * language it changes the ADDRESS and nothing else, so it reaches the fetch, the cache and the
+   * effect through the one `addressOf`.
+   */
+  member?: string
 }
 
 /**
@@ -256,7 +263,7 @@ function tellEveryoneItArrived(address: string): void {
 }
 
 export function useResource<T>(name: ResourceName, how: HowToRead = {}): ResourceState<T> {
-  const { owner, revision, language } = how
+  const { owner, revision, language, member } = how
 
   /* THE ADDRESS, WHICH IS WHAT THIS HOOK IS REALLY ABOUT, and the effect's dependency
      instead of `name`. For the fourteen names that pass no language it IS the name, one for
@@ -264,7 +271,7 @@ export function useResource<T>(name: ResourceName, how: HowToRead = {}): Resourc
      who switches language ask again, because the address he is on is not the address he had.
      Read from `client.ts` rather than built here, so there is no second place that decides
      what a language does to an address. */
-  const address = addressOf(name, language)
+  const address = addressOf(name, language, member)
   /* Read once, as this mounts, and never again while it is mounted - UNLESS `owner` or
    * `revision` changes, which the effect below now also answers to.
    *
@@ -272,7 +279,7 @@ export function useResource<T>(name: ResourceName, how: HowToRead = {}): Resourc
    * decides whether the router has a page to put a scroll position back into.
    * Reading it on every render would be reading a value nothing here is
    * subscribed to. */
-  const [state, setState] = useState<ResourceState<T>>(() => atHand<T>(name, language))
+  const [state, setState] = useState<ResourceState<T>>(() => atHand<T>(name, language, member))
   /* How many times this reader has been told to read again, and nothing else: a number that
      changes is a reason for the effect below to run once more. Two tellings that arrive before a
      redraw are one run, because both land in the same render. */
@@ -296,7 +303,7 @@ export function useResource<T>(name: ResourceName, how: HowToRead = {}): Resourc
        is already holding, so what it costs is a render nobody sees. */
     let active = true
 
-    const read = loadResource<T>(name, language)
+    const read = loadResource<T>(name, language, member)
 
     read.then(
       (data) => {
@@ -314,7 +321,7 @@ export function useResource<T>(name: ResourceName, how: HowToRead = {}): Resourc
            caller who signed in as somebody else, whose own read failed, was handed the previous
            caller's inbox that way. Told to nobody when nobody failed, which is the whole of the cost
            to the names that never do. */
-        if (isTheReadHeld(read, name, language)) {
+        if (isTheReadHeld(read, name, language, member)) {
           tellEveryoneItArrived(address)
         }
       },
@@ -383,7 +390,7 @@ export function useResource<T>(name: ResourceName, how: HowToRead = {}): Resourc
          left alone, so it is not handed a second state with the same words. Reads the cache and
          asks nobody. */
       answered: () => {
-        setState((were) => (were.status === 'error' ? atHand<T>(name, language) : were))
+        setState((were) => (were.status === 'error' ? atHand<T>(name, language, member) : were))
       },
     }
     const alongside = whoShowsTheFailureOf(address)
@@ -399,7 +406,7 @@ export function useResource<T>(name: ResourceName, how: HowToRead = {}): Resourc
          the change. */
       alongside.delete(reader)
     }
-  }, [state, address, name, language, wake])
+  }, [state, address, name, language, member, wake])
 
   return state
 }
@@ -420,8 +427,8 @@ export function useHowManyTimesDropped(name: ResourceName): number {
 }
 
 /** What this visit already holds for a resource, as a state a screen can draw. */
-function atHand<T>(name: ResourceName, language?: string): ResourceState<T> {
-  const known = arrivedResource<T>(name, language)
+function atHand<T>(name: ResourceName, language?: string, member?: string): ResourceState<T> {
+  const known = arrivedResource<T>(name, language, member)
 
   return known === undefined ? { status: 'loading' } : { status: 'ready', data: known }
 }

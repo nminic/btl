@@ -259,14 +259,34 @@ const THE_LANGUAGE_ASKED_FOR = 'lang'
  * cannot change anything for `sr` or `en`, but this signature does not promise it will only
  * ever be handed one of those.
  */
-export function addressOf(name: ResourceName, language?: string): string {
+export function addressOf(name: ResourceName, language?: string, member?: string): string {
+  if (member !== undefined) {
+    return `${BASE}/competitors/${encodeURIComponent(member)}/${name}`
+  }
+
   return language === undefined
     ? `${BASE}/${name}`
     : `${BASE}/${name}?${THE_LANGUAGE_ASKED_FOR}=${encodeURIComponent(language)}`
 }
 
-async function request<T>(name: ResourceName, language?: string): Promise<T> {
-  const response = await fetch(addressOf(name, language))
+/**
+ * THE NAMES THAT ALSO ANSWER FOR ONE MEMBER, at `GET /api/competitors/{memberNumber}/<name>`
+ * (`ResultApi.resultsOf`, inkrement „Poboljšanje performansi”, korak 1, owner, 21.11.2026: „Profil traži
+ * samo rezultate tog člana ... umesto rezultata cele lige”).
+ *
+ * <p><b>A NARROWER ANSWER OF THE SAME NAME, and never a name of its own</b>, the way a language is a
+ * narrower answer of `pages`: the server serves at that address exactly the rows of `/api/<name>` with his
+ * number on them, so whatever makes the league's answer out of date makes his out of date as well. That is
+ * why {@link clearResourceCache} drops every member's answer of a name together with the name, and why
+ * nothing that writes a result has to know that the profile reads it this way.
+ */
+export const ONE_MEMBERS_DOORS = ['results', 'unscored-results'] as const
+
+/** One of {@link ONE_MEMBERS_DOORS}: the only names a member number may be handed with. */
+export type OneMembersDoor = (typeof ONE_MEMBERS_DOORS)[number]
+
+async function request<T>(name: ResourceName, language?: string, member?: string): Promise<T> {
+  const response = await fetch(addressOf(name, language, member))
 
   if (!response.ok) {
     throw new Error(`Cannot load ${name}: ${response.status}`)
@@ -308,6 +328,23 @@ const inFlight = new Map<string, Promise<unknown>>()
  * first paint. */
 const arrived = new Map<string, unknown>()
 
+/* THE ADDRESSES OF ONE MEMBER'S ANSWERS, by the name each narrows (`ONE_MEMBERS_DOORS`), so that a drop
+ * of the name can find them: they are keyed in the two maps above by an address with a number in it,
+ * which the name alone cannot build. */
+const oneMembersAnswers = new Map<ResourceName, Set<string>>()
+
+/** The addresses filed under one name, made on first use so that no caller needs a branch for none. */
+function oneMembersAnswersOf(name: ResourceName): Set<string> {
+  let addresses = oneMembersAnswers.get(name)
+
+  if (addresses === undefined) {
+    addresses = new Set()
+    oneMembersAnswers.set(name, addresses)
+  }
+
+  return addresses
+}
+
 /*
  * The two assertions below, with the one in `request` above, are three of the
  * four left under `src/` (ADL A14 bans them, and the linter refuses them
@@ -347,8 +384,8 @@ const arrived = new Map<string, unknown>()
  * then: the stored value wraps the indexed type in a promise, and TypeScript
  * refuses the correlated write.
  */
-export function loadResource<T>(name: ResourceName, language?: string): Promise<T> {
-  const at = addressOf(name, language)
+export function loadResource<T>(name: ResourceName, language?: string, member?: string): Promise<T> {
+  const at = addressOf(name, language, member)
   const cached = inFlight.get(at)
 
   if (cached !== undefined) {
@@ -356,7 +393,14 @@ export function loadResource<T>(name: ResourceName, language?: string): Promise<
     return cached as Promise<T>
   }
 
-  const promise = request<T>(name, language)
+  /* ONE MEMBER'S ANSWER IS FILED UNDER THE NAME IT NARROWS, so that dropping the name drops it too
+     (see {@link ONE_MEMBERS_DOORS}). Filed as it is asked for, before the answer is in: a drop that comes
+     while it is on its way must throw it away like any other read of the name. */
+  if (member !== undefined) {
+    oneMembersAnswersOf(name).add(at)
+  }
+
+  const promise = request<T>(name, language, member)
     .then((data) => {
       /* **KEPT ONLY WHILE THIS IS STILL THE READ THE VISIT HOLDS FOR THE ADDRESS** (review of PR 618,
          round 1). `clearResourceCache` throws a promise away when the answer it will give has stopped
@@ -397,8 +441,13 @@ export function loadResource<T>(name: ResourceName, language?: string): Promise<
  * cache itself kept is news to them. The promise is compared by identity, which is the one thing a
  * newer read of the same address cannot share with an older one.
  */
-export function isTheReadHeld(read: Promise<unknown>, name: ResourceName, language?: string): boolean {
-  return inFlight.get(addressOf(name, language)) === read
+export function isTheReadHeld(
+  read: Promise<unknown>,
+  name: ResourceName,
+  language?: string,
+  member?: string,
+): boolean {
+  return inFlight.get(addressOf(name, language, member)) === read
 }
 
 /**
@@ -407,8 +456,8 @@ export function isTheReadHeld(read: Promise<unknown>, name: ResourceName, langua
  * Read while rendering, which is the whole point of it: absence here means the
  * screen has to wait, and that is a fact about the visit rather than a failure.
  */
-export function arrivedResource<T>(name: ResourceName, language?: string): T | undefined {
-  const known = arrived.get(addressOf(name, language))
+export function arrivedResource<T>(name: ResourceName, language?: string, member?: string): T | undefined {
+  const known = arrived.get(addressOf(name, language, member))
 
   // oxlint-disable-next-line typescript/consistent-type-assertions
   return known === undefined ? undefined : (known as T)
@@ -439,6 +488,7 @@ export function clearResourceCache(name?: ResourceName, language?: string): void
   if (name === undefined) {
     inFlight.clear()
     arrived.clear()
+    oneMembersAnswers.clear()
     RESOURCE_NAMES.forEach(wasDropped)
     tellWhoWatchesTheDrops()
 
@@ -446,10 +496,13 @@ export function clearResourceCache(name?: ResourceName, language?: string): void
   }
 
   for (const one of [name, ...(GO_WITH[name] ?? [])]) {
-    const at = addressOf(one, language)
+    /* The name's own address and every member's answer of it (see {@link ONE_MEMBERS_DOORS}). */
+    for (const at of [addressOf(one, language), ...oneMembersAnswersOf(one)]) {
+      inFlight.delete(at)
+      arrived.delete(at)
+    }
 
-    inFlight.delete(at)
-    arrived.delete(at)
+    oneMembersAnswersOf(one).clear()
     wasDropped(one)
   }
 
