@@ -3,7 +3,10 @@ import { isValidElement, type ReactElement } from 'react'
 import { createMemoryRouter, Link, RouterProvider } from 'react-router'
 import { describe, expect, it, vi } from 'vitest'
 import { Guard } from '../pages/admin/Guard'
+import { ClockProvider } from '../clock/ClockProvider'
 import { Placeholder } from '../pages/Placeholder'
+import { RoleProvider } from '../roles/RoleProvider'
+import { SessionProvider } from '../session/SessionProvider'
 import { routeObjects } from './routeObjects'
 import * as handed from './screens'
 
@@ -141,6 +144,74 @@ describe('the screens of the portal', () => {
       expect(element, `${path} was handed another screen than the one the portal serves there`).toEqual(
         real.guarded(path, screen),
       )
+    }
+  })
+
+  /* A PIECE THAT DOES NOT ARRIVE: the router's error, not the tree's, so the boundary in `Shell` never sees
+     it. The portal's header and navigation stay and the portal's own message stands in the place of the
+     screen; the router's English page with a stack is what stood there before. */
+  async function openAScreenWhoseModuleIs(module: () => Promise<unknown>) {
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const warns = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const theLocale = routeObjects.find((route) => route.path === '/:locale')
+    const failing = real.lazyRoute('kalendar', real.of(async () => module(), () => <h1>Kalendar</h1>))
+    /* The real routes of the portal, the screens' own group (the one with no address) given the one screen
+       that fails; the front page and the answer for an address the portal does not have stay as they are. */
+    const children = (theLocale?.children ?? []).map((one) =>
+      one.path === undefined && one.index !== true ? { ...one, children: [failing] } : one,
+    )
+    const router = createMemoryRouter([{ ...theLocale, children }], { initialEntries: ['/sr'] })
+
+    render(
+      <ClockProvider simulatedDay={null}>
+        <RoleProvider initialRole="visitor" initialModerator={null}>
+          <SessionProvider initialMemberNumber={null}>
+            <RouterProvider router={router} />
+          </SessionProvider>
+        </RoleProvider>
+      </ClockProvider>,
+    )
+
+    await screen.findAllByRole('navigation')
+    const navigationBefore = screen.getAllByRole('navigation').length
+
+    /* Not awaited: a navigation that waits for a page that is being replaced does not end, which is the point. */
+    await act(async () => {
+      void router.navigate('/sr/kalendar')
+      await new Promise((resolve) => setTimeout(resolve, 50))
+    })
+
+    return { errors, warns, navigationBefore }
+  }
+
+  it('keeps the portal around a piece that does not arrive, and says so in its own words', async () => {
+    const { errors, warns, navigationBefore } = await openAScreenWhoseModuleIs(() =>
+      Promise.reject(new TypeError('Failed to fetch dynamically imported module')),
+    )
+
+    try {
+      expect(screen.getAllByRole('navigation').length, 'the navigation went with the screen').toBe(navigationBefore)
+      expect(screen.getByRole('alert')).toHaveTextContent('Nešto je puklo')
+      expect(screen.getByRole('heading', { level: 1, name: 'Nešto je puklo' })).toBeVisible()
+      expect(document.body.textContent).not.toContain('Unexpected Application Error')
+    } finally {
+      errors.mockRestore()
+      warns.mockRestore()
+    }
+  })
+
+  it('waits, without an error and without the router’s page, when the piece was stopped for a reload', async () => {
+    const { errors, warns, navigationBefore } = await openAScreenWhoseModuleIs(() => Promise.resolve(undefined))
+
+    try {
+      expect(errors.mock.calls, 'something was thrown while the page waits for its reload').toEqual([])
+      expect(screen.getAllByRole('navigation').length).toBe(navigationBefore)
+      expect(screen.queryByRole('alert')).toBeNull()
+      expect(screen.queryByRole('heading', { level: 1, name: 'Kalendar' })).toBeNull()
+      expect(document.body.textContent).not.toContain('Unexpected Application Error')
+    } finally {
+      errors.mockRestore()
+      warns.mockRestore()
     }
   })
 })

@@ -13,6 +13,7 @@ import { useTheServersSession } from '../session/useTheServersSession'
 import { AccountMenu } from './AccountMenu'
 import { Brand } from './Brand'
 import { ErrorBoundary } from './ErrorBoundary'
+import { PortalError } from './PortalError'
 import { LanguageMenu } from './LanguageMenu'
 import { MessagesMenu } from './MessagesMenu'
 import { PageMetaContext } from './pageMetaContext'
@@ -424,14 +425,7 @@ export function Shell() {
           two directions at once. */}
       <PageMetaContext.Provider value={declare}>
         <main id="content" className="shell__main" ref={main} tabIndex={-1}>
-          <ErrorBoundary
-            fallback={
-              <div role="alert">
-                <h1>{t('error.title')}</h1>
-                <p>{t('error.text')}</p>
-              </div>
-            }
-          >
+          <ErrorBoundary fallback={<PortalError />}>
             <Outlet />
           </ErrorBoundary>
         </main>

@@ -3,6 +3,7 @@ import { DEFAULT_LOCALE } from '../i18n/config'
 import { Home } from '../pages/Home'
 import { NotFound } from '../pages/NotFound'
 import { LocaleLayout } from './LocaleLayout'
+import { PortalError } from './PortalError'
 import { ROUTES } from './routes'
 import { DETAILS, lazyRoute, screenFor } from './screens'
 
@@ -30,8 +31,14 @@ export const routeObjects: RouteObject[] = [
     HydrateFallback: NothingYet,
     children: [
       { index: true, element: <Home /> },
-      ...SCREENS_OF_ROUTES,
-      ...DETAIL_SCREENS,
+      /* A PIECE THAT DOES NOT ARRIVE (a weak connection, a deploy under a tab that has already been read
+         again once) is an error of the router and not of the tree under it, so the boundary around the
+         outlet in `Shell` never sees it, and the router's own English page, with the stack, would replace
+         the whole portal. The boundary stands on a route of its own, with no address and with no `lazy`:
+         the router draws nothing below a route that is still waiting for its piece, so a boundary on the
+         screen's own route would be drawn as nothing. Here the portal's own message takes the place of the
+         screen, inside the outlet, and the header and the navigation stay. */
+      { ErrorBoundary: PortalError, children: [...SCREENS_OF_ROUTES, ...DETAIL_SCREENS] },
       { path: '*', element: <NotFound /> },
     ],
   },

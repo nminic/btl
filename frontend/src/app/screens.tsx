@@ -33,8 +33,16 @@ import { UNNUMBERED_DATA_ADDRESS, type RouteDef } from './routes'
 export type Load = () => Promise<ReactElement>
 
 /** A screen out of a module, written once so that every row of the tables below is one line. */
-function of<M>(module: () => Promise<M>, draw: (loaded: M) => ReactElement): Load {
-  return async () => draw(await module())
+export function of<M>(module: () => Promise<M>, draw: (loaded: M) => ReactElement): Load {
+  return async () => {
+    /* Vite's wrapper around a piece answers `undefined` when `staleChunks` has stopped the failure to read
+       the page again (`vite:preloadError`, `event.preventDefault()`). The page is on its way to being
+       replaced, so the screen waits for it: nothing is drawn from a module that does not exist and nothing
+       is thrown, and the screen before stays until the reload arrives. */
+    const loaded: M | undefined = await module()
+
+    return loaded === undefined ? new Promise<ReactElement>(() => undefined) : draw(loaded)
+  }
 }
 
 /* Screens that already exist, which is every address in ROUTES since the ducats
