@@ -241,6 +241,8 @@ class MemberInvitationApiTest {
 
 	@Test
 	void theInvitationGoesToHimWithTheOnlyLinkHeHasAndItLastsSevenDays() throws Exception {
+		Instant sentAfter = Instant.now();
+
 		for (String asking : List.of(THE_SUPERADMIN, OVER_THE_MEMBERS)) {
 			MockHttpServletResponse answer = invite("000005", asking);
 
@@ -256,9 +258,13 @@ class MemberInvitationApiTest {
 		verify(postman, times(2)).send(letter.capture(), to.capture());
 		assertThat(to.getAllValues()).containsExactly(HIS_ADDRESS, HIS_ADDRESS);
 
-		/* THE INVITATION AS IT STANDS, its words unchanged (owner, 25.10.2026). */
+		/* THE INVITATION AS IT STANDS, its words unchanged (owner, 25.10.2026) but for the moment the link
+		   ends, which is the moment the row ends (PDL 24.10.2026 and 20.11.2026): the one the row carries
+		   is what the letter is asked for, so a letter saying another one is not this letter. */
 		Said asItStands = WhatTheMessageSays.about(Message.INVITED_AS_A_MEMBER, new Portal(portalAddress), "SECRET",
-				com.btl.portal.domain.mail.Gender.MAN);
+				com.btl.portal.domain.mail.Gender.MAN,
+				db.sql("select t.expires_at from password_reset_token t join account a on a.id = t.account_id"
+						+ " where a.competitor_id = ?").param(invited).query(Timestamp.class).single().toInstant());
 		Said sent = letter.getAllValues().get(1);
 
 		assertThat(sent.subject()).isEqualTo(asItStands.subject());
@@ -276,12 +282,17 @@ class MemberInvitationApiTest {
 		assertThat(linksOf("password_reset_token", invited)).isOne();
 		assertThat(linksOf("email_verification_token", invited)).isZero();
 
-		/* SEVEN DAYS, the invitation's, and not the hour of the column's default. */
-		assertThat(db.sql("select extract(epoch from (t.expires_at - t.created_at))::bigint"
-						+ " from password_reset_token t join account a on a.id = t.account_id where a.competitor_id = ?")
-				.param(invited).query(Long.class).single())
-				.isEqualTo(Message.INVITED_AS_A_MEMBER.lasts().toSeconds())
-				.isEqualTo(Duration.ofDays(7).toSeconds());
+		/* SEVEN DAYS FROM THE SENDING, the invitation's, and not the hour of the column's default. The
+		   sending is read off the clock around the call and not off the row's own `created_at`, which is the
+		   database's time and moves with the transaction of the test. */
+		Instant theRowEnds = db.sql("select t.expires_at from password_reset_token t join account a"
+						+ " on a.id = t.account_id where a.competitor_id = ?")
+				.param(invited).query(Timestamp.class).single().toInstant();
+
+		assertThat(theRowEnds)
+				.isBetween(sentAfter.plus(Message.INVITED_AS_A_MEMBER.lasts()),
+						Instant.now().plus(Message.INVITED_AS_A_MEMBER.lasts()))
+				.isBetween(sentAfter.plus(Duration.ofDays(7)), Instant.now().plus(Duration.ofDays(7)));
 
 		/* The first member's links are his and stand. */
 		assertThat(linksOf("password_reset_token", first)).isEqualTo(2);

@@ -36,6 +36,7 @@ import java.nio.file.Path;
 import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.DateTimeException;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
@@ -939,8 +940,10 @@ class CompetitorWriteApi {
 	 *              the two differ on purpose, and a message sent to what was typed goes
 	 *              where the account does not live
 	 * @param link  the secret half, which exists here and in the letter and nowhere else
+	 * @param endsAt the moment the link stops working, the one written onto its row, which the
+	 *              letter says
 	 */
-	private record ToSend(String to, String link, long account) {
+	private record ToSend(String to, String link, long account, Instant endsAt) {
 	}
 
 	/**
@@ -987,7 +990,10 @@ class CompetitorWriteApi {
 
 		for (int row = 0; row < read.size(); row++) {
 			memberFor(read.get(row), made.get(row).id(), now, today, from);
-			invitations.add(new ToSend(made.get(row).email(), invitationFor(made.get(row).id()), made.get(row).id()));
+			SecretToken invitation = SecretToken.fresh();
+			Instant endsAt = AnInvitationOfAMember.mint(db, clock, made.get(row).id(), invitation);
+
+			invitations.add(new ToSend(made.get(row).email(), invitation.secret(), made.get(row).id(), endsAt));
 		}
 
 		return new Written(ResponseEntity.status(HttpStatus.CREATED)
@@ -1087,15 +1093,6 @@ class CompetitorWriteApi {
 		}
 	}
 
-	/** The row that lets him set a password, and the secret half it is reached by. */
-	private String invitationFor(long account) {
-		SecretToken invitation = SecretToken.fresh();
-
-		AnInvitationOfAMember.mint(db, account, invitation);
-
-		return invitation.secret();
-	}
-
 	/**
 	 * ONE INVITATION, AND A RELAY THAT WILL NOT TAKE IT STOPS NEITHER THE GROUP NOR THE
 	 * ROW.
@@ -1119,7 +1116,8 @@ class CompetitorWriteApi {
 	private void send(ToSend invitation) {
 		try {
 			postman.send(WhatTheMessageSays.about(Message.INVITED_AS_A_MEMBER, portal,
-					invitation.link(), TheSexOfAMember.ofTheAccount(db, invitation.account()).orElseThrow()), invitation.to());
+					invitation.link(), TheSexOfAMember.ofTheAccount(db, invitation.account()).orElseThrow(),
+					invitation.endsAt()), invitation.to());
 		} catch (MailException theRelayDidNotTakeIt) {
 			LOG.warn("an invitation to somebody entered in a group did not go out; a password"
 					+ " reset request at the same address is what gets him another link",

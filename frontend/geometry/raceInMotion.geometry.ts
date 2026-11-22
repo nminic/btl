@@ -757,3 +757,108 @@ for (const [width, height, drawn] of [
     expect(seen.routeOutside).toEqual([])
   })
 }
+
+/* THE PAGE DOES NOT SCROLL SIDEWAYS WITH THE LETTERS LARGE, AND THE LAYER BEHIND IT IS THE WINDOW.
+ *
+ * PENDING had it that the layer was 378px wide on a window of 360 with the text at 200%, which pulled the
+ * front page 18px sideways on one of the two days. The layer is fixed to the window and is only as wide as
+ * the window the page makes for itself; what widened it was the tile of the points (`Home.css`, the rule of the
+ * box at 12rem), whose figure „47.621 p" has 51px in a tile of 115px. Measured 22.11.2026 before that rule, on the
+ * front page: 320px at 175 and 200%, 360, 375 and 390px at 200% on the first day, and 320px at 200% on the
+ * other.
+ *
+ * **Two readings of every width, because the figure depends on the day**: the page as the sample draws it (the
+ * first day has 47.621 points, the other has none, so the tile that overflowed is short on that day), and the
+ * same page with the longest figure of the sample written into every tile, so a width the sample's day does
+ * not stress is stressed all the same.
+ *
+ * **320px at 200% is not here, and why**: the podium of the board (`.stand`) is 10px wider than its column
+ * there, on both days. It is a second thing, found by this measurement, and it is recorded in PENDING and not
+ * guarded by a case that fails.
+ */
+const THE_LONGEST_FIGURE = '47.621 p'
+
+const WITH_LARGE_LETTERS: At[] = [
+  { width: 320, text: 100 },
+  { width: 320, text: 125 },
+  { width: 320, text: 150 },
+  { width: 320, text: 175 },
+  { width: 360, text: 175 },
+  { width: 360, text: 200 },
+  { width: 375, text: 175 },
+  { width: 375, text: 200 },
+  { width: 390, text: 175 },
+  { width: 390, text: 200 },
+  { width: 428, text: 175 },
+  { width: 428, text: 200 },
+  { width: 600, text: 200 },
+  { width: 768, text: 200 },
+]
+
+for (const at of WITH_LARGE_LETTERS) {
+  test(`the front page scrolls no sideways and its layer is the window at ${label(at)}`, async ({ open }) => {
+    const { page, probe } = await open(at, '/sr', 'main .scoreboard', ANSWERS)
+
+    expect(probe.sideways, 'the page as the sample draws it scrolls sideways').toBe(0)
+    expect(probe.widened, 'the page made the window wider than it was asked').toBe(0)
+
+    const stressed = await page.evaluate((figure) => {
+      for (const pill of document.querySelectorAll('.home .score__pill')) {
+        for (const node of pill.childNodes) {
+          if (node.nodeType === Node.TEXT_NODE && (node.textContent ?? '').trim() !== '') {
+            node.textContent = figure
+          }
+        }
+
+        const short = pill.querySelector('.score__short [aria-hidden="true"]')
+
+        if (short !== null) {
+          short.textContent = figure
+        }
+      }
+
+      const root = document.documentElement
+
+      return {
+        sideways: root.scrollWidth - root.clientWidth,
+        layer: document.querySelector('.race-page')?.getBoundingClientRect().width ?? Number.NaN,
+        window: root.clientWidth,
+      }
+    }, THE_LONGEST_FIGURE)
+
+    expect(stressed.sideways, `with „${THE_LONGEST_FIGURE}" in every tile the page scrolls sideways`).toBe(0)
+    expect(stressed.layer, 'the layer behind the page is wider than the window').toBeLessThanOrEqual(stressed.window + 0.5)
+  })
+}
+
+/* THE TWO COLUMNS OF 20.11.2026 STAND WHERE THEY FITTED BEFORE, and the tiles stand one to a row only where
+ * two do not hold their figures: asked in both directions, so the width the rule is met at can be moved
+ * neither up nor down without one of these failing. */
+const TILES_PER_ROW: readonly (readonly [At, number])[] = [
+  [{ width: 320, text: 100 }, 2],
+  [{ width: 320, text: 125 }, 2],
+  [{ width: 320, text: 150 }, 1],
+  [{ width: 360, text: 100 }, 2],
+  [{ width: 360, text: 125 }, 2],
+  [{ width: 360, text: 150 }, 2],
+  [{ width: 360, text: 175 }, 1],
+  [{ width: 360, text: 200 }, 1],
+  [{ width: 375, text: 150 }, 2],
+  [{ width: 390, text: 175 }, 1],
+  [{ width: 428, text: 100 }, 2],
+  [{ width: 428, text: 175 }, 2],
+  [{ width: 428, text: 200 }, 1],
+]
+
+for (const [at, perRow] of TILES_PER_ROW) {
+  test(`the tiles of the figures stand ${perRow} to a row at ${label(at)}`, async ({ open }) => {
+    const { page } = await open(at, '/sr', 'main .scoreboard', ANSWERS)
+
+    const tops = await page.evaluate(() =>
+      [...document.querySelectorAll('.home .scoreboard .score')].map((tile) => Math.round(tile.getBoundingClientRect().top)),
+    )
+
+    expect(tops.length, 'the tiles of the figures').toBeGreaterThan(4)
+    expect(tops.filter((top) => top === tops[0]).length).toBe(perRow)
+  })
+}

@@ -351,9 +351,10 @@ class MemberDataWriteApi {
 			   Q4, `Message#followsTheReader`); the confirmation follows its reader. */
 			Gender sex = TheSexOfAMember.ofTheAccount(db, made.account()).orElseThrow();
 
-			postman.send(made.message().saysWhenItEnds()
+			postman.send(made.message().followsTheReader()
 					? WhatTheMessageSays.about(made.message(), made.language(), portal, made.link(), made.endsAt(), sex)
-					: WhatTheMessageSays.about(made.message(), portal, made.link(), sex), made.address());
+					: WhatTheMessageSays.about(made.message(), portal, made.link(), sex, made.endsAt()),
+					made.address());
 		} catch (MailException theRelayDidNotTakeIt) {
 			LOG.warn("a link for account {} after the administration corrected its address did not go out;"
 					+ " the token is written and asking again is what gets him out of it",
@@ -590,10 +591,11 @@ class MemberDataWriteApi {
 			   seven days the owner gave it on 23.10.2026 and not the hour of the column's default. */
 			long hisAccount = db.sql("select id from account where competitor_id = ?")
 					.param(member).query(Long.class).single();
-			Instant endsAt = null;
+			Instant endsAt;
 
 			if (noPassword) {
-				AnInvitationOfAMember.mint(db, hisAccount, fresh);
+				/* AND ITS LETTER SAYS THE MOMENT THE ROW ENDS, `AnInvitationOfAMember.mint` hands it back. */
+				endsAt = AnInvitationOfAMember.mint(db, clock, hisAccount, fresh);
 			} else {
 				/* THE LINK TO CONFIRM ENDS AT THE MOMENT `TheMomentAConfirmationLinkEnds` GIVES, and the
 				   letter says that same moment: a correction on the tenth day gives a link that ends on the

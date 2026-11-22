@@ -18,6 +18,8 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.Clock;
+import java.time.Instant;
 import java.util.Optional;
 
 /**
@@ -86,8 +88,11 @@ class MemberInvitationApi {
 
 	private final Portal portal;
 
-	MemberInvitationApi(JdbcClient db, TransactionTemplate inOneTransaction, Postman postman,
+	private final Clock clock;
+
+	MemberInvitationApi(JdbcClient db, TransactionTemplate inOneTransaction, Postman postman, Clock clock,
 			@Value("${btl.portal.address}") String portalAddress) {
+		this.clock = clock;
 		this.db = db;
 		this.inOneTransaction = inOneTransaction;
 		this.postman = postman;
@@ -99,7 +104,8 @@ class MemberInvitationApi {
 	}
 
 	/** What the transaction decided: a refusal, or the letter to send once it has committed. */
-	private record Decided(ResponseEntity<?> refused, String address, String link, Gender sex) {
+	private record Decided(ResponseEntity<?> refused, String address, String link, Gender sex,
+			Instant endsAt) {
 	}
 
 	@PostMapping("/api/members/{memberNumber}/invitation")
@@ -112,8 +118,8 @@ class MemberInvitationApi {
 		}
 
 		try {
-			postman.send(WhatTheMessageSays.about(Message.INVITED_AS_A_MEMBER, portal, decided.link(), decided.sex()),
-					decided.address());
+			postman.send(WhatTheMessageSays.about(Message.INVITED_AS_A_MEMBER, portal, decided.link(),
+					decided.sex(), decided.endsAt()), decided.address());
 		} catch (MailException theRelayDidNotTakeIt) {
 			/* An account and never an address in the log: an address is a personal datum (ADL A12). */
 			LOG.warn("a new invitation to member {} did not go out; pressing again writes another",
@@ -131,7 +137,7 @@ class MemberInvitationApi {
 				.param(memberNumber).query(Long.class).optional();
 
 		if (member.isEmpty()) {
-			return new Decided(ResponseEntity.notFound().build(), null, null, null);
+			return new Decided(ResponseEntity.notFound().build(), null, null, null, null);
 		}
 
 		/* THE ACCOUNT HELD FIRST, and whether it has a password asked under the hold: a password set in
@@ -147,11 +153,11 @@ class MemberInvitationApi {
 				.optional();
 
 		if (held.isEmpty()) {
-			return new Decided(conflict(THERE_IS_NO_ACCOUNT), null, null, null);
+			return new Decided(conflict(THERE_IS_NO_ACCOUNT), null, null, null, null);
 		}
 
 		if (!held.get().hasNoPassword()) {
-			return new Decided(conflict(THE_PASSWORD_IS_SET), null, null, null);
+			return new Decided(conflict(THE_PASSWORD_IS_SET), null, null, null, null);
 		}
 
 		long account = held.get().id();
@@ -161,9 +167,10 @@ class MemberInvitationApi {
 
 		SecretToken invitation = SecretToken.fresh();
 
-		AnInvitationOfAMember.mint(db, account, invitation);
+		Instant endsAt = AnInvitationOfAMember.mint(db, clock, account, invitation);
 
-		return new Decided(null, held.get().email(), invitation.secret(), TheSexOfAMember.of(db, member.get()));
+		return new Decided(null, held.get().email(), invitation.secret(), TheSexOfAMember.of(db, member.get()),
+				endsAt);
 	}
 
 	private static ResponseEntity<?> conflict(String reason) {
