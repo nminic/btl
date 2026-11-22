@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, onTestFinished } from 'vitest'
 import type { League } from '../../data/types'
@@ -216,6 +218,30 @@ describe('the head of the sheet', () => {
     expect(within(sheet()).getByRole('link', { name: 'Izmeni ligu: Planinska liga 2027' })).toHaveAttribute(
       'href',
       '/sr/administracija/lige?izmena=2',
+    )
+  })
+
+  /* THE IDENTITY IN THE ADDRESS IS THE COMPETITION'S OWN, NOT ITS PLACE ON THE LIST. In the served file
+     the second card's identity is 2, so „place plus one" and „identity" give the same address; here the
+     two competitions of the season are served with identities that are neither their places nor one
+     more than them. */
+  it('names the identity of the competition, not the place of its card, in the address of the form', { timeout: SLOW }, async () => {
+    const served = JSON.parse(readFileSync(join(__dirname, '../../test/mock/leagues.json'), 'utf8')) as League[]
+    const apart = served.map((one) => (one.slug === 'planinska-2027' ? { ...one, id: 41 } : one.slug === 'runtrace-liga-2027' ? { ...one, id: 17 } : one))
+    const server = serverThat((path) =>
+      path === '/api/leagues'
+        ? new Response(JSON.stringify(apart), { status: 200, headers: { 'content-type': 'application/json' } })
+        : null,
+    )
+
+    onTestFinished(server.stop)
+    renderAt('/sr/lige?sezona=2027&liga=planinska-2027', 'superadmin', null, undefined, IN_THE_SEASON)
+
+    await showcase()
+
+    expect(within(sheet()).getByRole('link', { name: 'Izmeni ligu: Planinska liga 2027' })).toHaveAttribute(
+      'href',
+      '/sr/administracija/lige?izmena=41',
     )
   })
 
