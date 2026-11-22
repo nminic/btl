@@ -296,12 +296,24 @@ class GroupEntryTest {
 	void theInvitationLastsTheSevenDaysItsLetterPromises() throws Exception {
 		assertThat(enter(aGroupOfThree(), EVERYTHING).getStatus()).isEqualTo(201);
 
-		assertThat(db.sql("select extract(epoch from (expires_at - created_at))::bigint"
-						+ " from password_reset_token where account_id = (select id from account where email = ?)")
-				.param(folded(SECOND_TYPED)).query(Long.class).single())
-				.isEqualTo(com.btl.portal.domain.mail.WhatTheMessageSays.Message.INVITED_AS_A_MEMBER.lasts()
-						.toSeconds())
-				.isEqualTo(Duration.ofDays(7).toSeconds());
+		/* FROM THE SENDING, which the clock of this file fixes at NOW and the row's own `created_at` does
+		   not (it is the database's), so the row is held to the clock and not to its own column. */
+		Instant theRowEnds = db.sql("select expires_at from password_reset_token where account_id ="
+						+ " (select id from account where email = ?)")
+				.param(folded(SECOND_TYPED)).query(Timestamp.class).single().toInstant();
+
+		assertThat(theRowEnds)
+				.isEqualTo(NOW.plus(com.btl.portal.domain.mail.WhatTheMessageSays.Message.INVITED_AS_A_MEMBER
+						.lasts()))
+				.isEqualTo(NOW.plus(Duration.ofDays(7)));
+
+		/* AND THE LETTER SAYS THAT MOMENT, in the league's zone (PDL 24.10.2026 and 20.11.2026). */
+		assertThat(theLetterTo(folded(SECOND_TYPED)))
+				.contains("Link važi do "
+						+ com.btl.portal.domain.mail.WhatANoticeSays.moment(theRowEnds,
+								com.btl.portal.domain.mail.MailLanguage.SERBIAN)
+						+ " i može da se upotrebi jednom.")
+				.doesNotContain("Link važi sedam dana");
 	}
 
 	@Test

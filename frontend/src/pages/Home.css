@@ -92,6 +92,32 @@
   }
 }
 
+/* WHERE THE BOX IS SO NARROW THAT TWO TILES DO NOT HOLD THEIR FIGURES, THE TILES STAND ONE UNDER THE OTHER
+   (found while measuring PENDING's „Ukrasna pozadina .race-page je široka 378 px"). The layer behind the
+   page was blamed for 18px of sideways scroll at 360px with the text at 200 per cent, and it is the one
+   thing here that is innocent: it is fixed to the window and only as wide as the window the page has made
+   for itself. What made it wider was the tile of the points, whose figure („47.621 p") is 78px wide and has
+   51px in a tile of 115px beside its mark. Measured 22.11.2026 before this rule, on the front page: 320px at
+   175 and 200 per cent, and 360, 375 and 390px at 200 per cent, on the day the suite is read as first, and
+   320px at 200 per cent on the other.
+
+   Asked of the box and not of the window, as the tile's own shape is (`styles/counter.css`) and in `rem`, so
+   a reader who doubles the letters gets the rows he needs: the box of the figures is 256px or more on every
+   window the portal draws at the browser's own text, which is 16rem and more, and the rule is met at 12rem.
+   Of the windows measured it is met at 320px from 150 per cent, at 360, 375 and 390px from 175 per cent and
+   at 428px at 200, and at none at the browser's own text or at 125 per cent, so the two columns of
+   20.11.2026 are as they were wherever the figures fitted. A container query is not a width at which the
+   portal changes shape (`styles/scale.test.ts`), which is why this one is not a window query. */
+.home__figures {
+  container: home-figures / inline-size;
+}
+
+@container home-figures (max-width: 12rem) {
+  .home .scoreboard {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 /* Two columns, each its own column of boxes (owner, 20.11.2026, PDL „Četiri dodatka naslovne iz
    tuđeg nacrta", in the words of the plan and not the owner's: the right column is a column of its own,
    the figures as tall as their content and the calendar beginning right under them). Until then the page was one grid whose rows both columns

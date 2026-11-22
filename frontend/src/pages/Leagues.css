@@ -690,9 +690,16 @@
 }
 
 /* The state is said in words; the gold edge of the next one and the broken frame of the ones ahead
-   only repeat it (WCAG 2.2 SC 1.4.1). */
+   only repeat it (WCAG 2.2 SC 1.4.1).
+
+   **The edge is 4px against the 1px of every other tile, and the padding takes the three back**, so the
+   text of this tile starts where the text of the others does (report of the author of PR 791: „zlatna leva
+   ivica od 4px pomera tekst 3px udesno u odnosu na ostale pločice"). The three pixels are the difference
+   of two borders and do not move with the letters, which is why they are written in pixels and taken off
+   a padding that does (`geometry/leagueSheet.geometry.ts`). */
 .leagues__event-tile--next {
   border-inline-start: 4px solid var(--gold-400);
+  padding-inline-start: calc(var(--space-12) - 3px);
 }
 
 .leagues__event-tile--ahead {

@@ -254,7 +254,7 @@ public final class WhatTheMessageSays {
 		 * confirmation is the measure the decision gives it, and {@code AnInvitationLastsWhatItSaysTest} measures
 		 * that the row both routes mint really lasts it.
 		 */
-		INVITED_AS_A_MEMBER("invitedAsAMember", "/nova-lozinka", Duration.ofDays(7), false);
+		INVITED_AS_A_MEMBER("invitedAsAMember", "/nova-lozinka", Duration.ofDays(7), false, true);
 
 		private final String key;
 
@@ -283,12 +283,15 @@ public final class WhatTheMessageSays {
 		 * Whether the message says the MOMENT its link ends, „do 27.11.2026. 14:35", and not how long
 		 * it lasts, „sedam dana".
 		 *
-		 * <p>True for the confirmation of an address and for nothing else. Its link lasts seven days
-		 * from the sending but no longer than fourteen from the registration (PDL 24.10.2026, „Rok
-		 * nepotvrđene prijave"), so „sedam dana" is true of the first letter and untrue of the one asked
-		 * for on the tenth day; only the moment is true of both, and it is worked out by
-		 * {@code web.TheMomentAConfirmationLinkEnds} and handed here, never worked out from
-		 * {@link #lasts}. The others end a fixed time after they are written, and say how long.
+		 * <p>True for the confirmation of an address and for the invitation of a member, and for nothing
+		 * else. The confirmation's link lasts seven days from the sending but no longer than fourteen
+		 * from the registration (PDL 24.10.2026, „Rok nepotvrđene prijave"), so „sedam dana" is true of
+		 * the first letter and untrue of the one asked for on the tenth day; only the moment is true of
+		 * both, and it is worked out by {@code web.TheMomentAConfirmationLinkEnds} and handed here, never
+		 * worked out from {@link #lasts}. The member's invitation is the same road with the same
+		 * deleting behind it (PDL 24.10.2026, „Granica od 14 dana važi i za pozivnicu"), and its moment
+		 * is worked out by {@code web.AnInvitationOfAMember}. The others end a fixed time after they
+		 * are written, and say how long.
 		 */
 		public boolean saysWhenItEnds() {
 			return saysWhenItEnds;
@@ -338,6 +341,11 @@ public final class WhatTheMessageSays {
 					+ " so it is asked for with one");
 		}
 
+		if (message.saysWhenItEnds()) {
+			throw new IllegalArgumentException(message + " says the moment its link ends, so it is asked"
+					+ " for with one");
+		}
+
 		return written(message, MailLanguage.SERBIAN, null, portal, token,
 				howLong(message.lasts(), MailLanguage.SERBIAN));
 	}
@@ -355,8 +363,48 @@ public final class WhatTheMessageSays {
 					+ " so it is asked for with one");
 		}
 
+		if (message.saysWhenItEnds()) {
+			throw new IllegalArgumentException(message + " says the moment its link ends, so it is asked"
+					+ " for with one");
+		}
+
 		return written(message, MailLanguage.SERBIAN, reader, portal, token,
 				howLong(message.lasts(), MailLanguage.SERBIAN));
+	}
+
+	/**
+	 * THE INVITATION OF A MEMBER: ALWAYS SERBIAN, CARRYING A PARTICIPLE, AND SAYING THE MOMENT ITS LINK
+	 * ENDS ({@link WhatANoticeSays#moment}, the one way a moment is written to a member).
+	 *
+	 * <p>The same shape as the confirmation of an address and for the same reason (PDL 24.10.2026,
+	 * „Rok nepotvrđene prijave", and the owner's „Ispravi tekst da kaže tačan rok", 20.11.2026): the
+	 * invitation said „Link važi sedam dana" on every day, and the entry it belongs to is deleted
+	 * fourteen days after it was written at the latest. Only the words before the placeholder change,
+	 * „Link važi do ..."; the rest of the sentence the owner approved on 24.10.2026 is as it was. The
+	 * moment is the one written onto the link's row ({@code web.AnInvitationOfAMember}), so the letter
+	 * and the table cannot disagree.
+	 *
+	 * @param endsAt the instant the link stops working, the same one the row carries
+	 * @throws IllegalArgumentException for a message that follows its reader, or one that says how long
+	 *                                  it lasts
+	 */
+	public static Said about(Message message, Portal portal, String token, Gender reader, Instant endsAt) {
+		Objects.requireNonNull(message, "message");
+		Objects.requireNonNull(reader, "reader");
+		Objects.requireNonNull(endsAt, "endsAt");
+
+		if (message.followsTheReader()) {
+			throw new IllegalArgumentException(message + " is written in its reader's language,"
+					+ " so it is asked for with one");
+		}
+
+		if (!message.saysWhenItEnds()) {
+			throw new IllegalArgumentException(message + " says how long its link lasts, not the moment"
+					+ " it ends, so it is not asked for with one");
+		}
+
+		return written(message, MailLanguage.SERBIAN, reader, portal, token,
+				WhatANoticeSays.moment(endsAt, MailLanguage.SERBIAN));
 	}
 
 	/**
@@ -403,6 +451,11 @@ public final class WhatTheMessageSays {
 		Objects.requireNonNull(reader, "reader");
 		Objects.requireNonNull(endsAt, "endsAt");
 		Objects.requireNonNull(sex, "sex");
+
+		if (!message.followsTheReader()) {
+			throw new IllegalArgumentException(message + " is always written in Serbian (owner,"
+					+ " 10.10.2026), so it is not asked for in a language");
+		}
 
 		if (!message.saysWhenItEnds()) {
 			throw new IllegalArgumentException(message + " says how long its link lasts, not the moment"
