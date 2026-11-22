@@ -241,6 +241,25 @@ class PasswordResetApiTest {
 		assertThat(opens).isEqualTo(account);
 	}
 
+	/**
+	 * AN ADDRESS TYPED WITH SPACES AND CAPITALS IS THE ADDRESS THE ACCOUNT HOLDS: the door in front of the
+	 * route asks about the address as it is stored (`WhatAnAddressLooksLike.asItIsStored`), and one that asked
+	 * about it as typed would answer 204 at once to somebody who pasted the address with a space, with no
+	 * letter, and say nothing.
+	 */
+	@Test
+	void anAddressTypedWithSpacesAndCapitalsStillGetsTheLetter() throws Exception {
+		String email = aFreshAddress();
+		long account = anAccount(email);
+
+		assertThat(request("  " + email.toUpperCase(java.util.Locale.ROOT) + " ").getStatus()).isEqualTo(204);
+
+		String secret = theTokenInside(waitForOne().getContent().toString());
+
+		assertThat(db.sql("select account_id from password_reset_token where token_hash = ?")
+				.param(SecretToken.hashOf(secret)).query(Long.class).single()).isEqualTo(account);
+	}
+
 	@Test
 	void requestGivesTheSameAnswerWhetherOrNotTheAddressExists() throws Exception {
 		String realAddress = aFreshAddress();
