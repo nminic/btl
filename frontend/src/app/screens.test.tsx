@@ -4,6 +4,7 @@ import { createMemoryRouter, Link, RouterProvider } from 'react-router'
 import { describe, expect, it, vi } from 'vitest'
 import { Guard } from '../pages/admin/Guard'
 import { Placeholder } from '../pages/Placeholder'
+import { routeObjects } from './routeObjects'
 import * as handed from './screens'
 
 /* THE SCREENS, LOADED THE FIRST TIME THEY ARE OPENED (`app/screens.tsx`), measured through the REAL
@@ -91,6 +92,36 @@ describe('the screens of the portal', () => {
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Druga strana' })).toBeVisible()
     expect(screen.queryByRole('heading', { level: 1, name: 'Prva strana' })).toBeNull()
+  })
+
+  it('draws nothing while the first screen of a visit is on its way, and says that is meant', async () => {
+    const warned = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const theLocale = routeObjects.find((route) => route.path === '/:locale')
+    let arrive: (screen: ReactElement) => void = () => undefined
+    const first = new Promise<ReactElement>((resolve) => {
+      arrive = resolve
+    })
+    const router = createMemoryRouter(
+      [{ path: '/', HydrateFallback: theLocale?.HydrateFallback, children: [real.lazyRoute('prva', () => first)] }],
+      { initialEntries: ['/prva'] },
+    )
+
+    try {
+      const { container } = render(<RouterProvider router={router} />)
+
+      expect(theLocale?.HydrateFallback, 'the portal names no first moment').toBeDefined()
+      expect(container).toBeEmptyDOMElement()
+
+      await act(async () => {
+        arrive(<h1>Prva strana</h1>)
+        await first
+      })
+
+      expect(await screen.findByRole('heading', { level: 1, name: 'Prva strana' })).toBeVisible()
+      expect(warned.mock.calls.flat().filter((one) => String(one).includes('HydrateFallback'))).toEqual([])
+    } finally {
+      warned.mockRestore()
+    }
   })
 
   it('hands the other tests the real table, with every screen it serves', async () => {

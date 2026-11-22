@@ -1,5 +1,41 @@
 import { configDefaults, defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
+import { fileURLToPath } from 'node:url'
+
+/** The module the portal starts from, written the way the bundler writes a module's id. */
+const MAIN = fileURLToPath(new URL('./src/main.tsx', import.meta.url)).replaceAll('\\', '/')
+
+type TheGraph = { getModuleInfo: (id: string) => { importedIds: readonly string[] } | null }
+
+let loadedWithIt: Set<string> | null = null
+
+/**
+ * EVERYTHING THE PORTAL LOADS WITH ITSELF, IN ONE PIECE, `portal` (inkrement „Poboljšanje performansi”,
+ * korak 2): every module `main.tsx` reaches by a static import, read off the bundler's own graph rather
+ * than named. Left to itself the bundler cut that part into 63 pieces, one for every set of screens that
+ * share a module, and a slow phone asked for all of them before it drew anything. Measured on 22.11.2026
+ * over HTTP/2, a phone four times slower and 1.6 Mbit/s at 150 ms, a cold profile to its first row: 3.7 s
+ * before the change, 3.1 s cut by the bundler, 2.7 s with this piece. The screens themselves
+ * are still their own pieces, cut as the bundler cuts them. Stylesheets are left to the group above this
+ * one, which keeps their order.
+ */
+function loadedWithThePortal(id: string, graph: TheGraph): string | null {
+  if (loadedWithIt === null) {
+    const reached = new Set<string>()
+    const next = [MAIN]
+
+    for (let one = next.pop(); one !== undefined; one = next.pop()) {
+      if (!reached.has(one)) {
+        reached.add(one)
+        next.push(...(graph.getModuleInfo(one)?.importedIds ?? []))
+      }
+    }
+
+    loadedWithIt = reached
+  }
+
+  return loadedWithIt.has(id.replaceAll('\\', '/')) ? 'portal' : null
+}
 
 export default defineConfig({
   plugins: [react()],
@@ -19,7 +55,16 @@ export default defineConfig({
        same. What it costs is that a visitor downloads the rules of the administration with the rest,
        about 24 KB over the wire for all of them, as he did before. */
     cssCodeSplit: false,
-    rolldownOptions: { output: { codeSplitting: { groups: [{ name: 'styles', test: /\.css$/ }] } } },
+    rolldownOptions: {
+      output: {
+        codeSplitting: {
+          groups: [
+            { name: 'styles', test: /\.css$/, priority: 2 },
+            { name: loadedWithThePortal, priority: 1 },
+          ],
+        },
+      },
+    },
   },
   server: {
     port: 5173,
