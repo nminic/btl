@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { screen, waitFor, within } from '@testing-library/react'
+import { configure, screen, waitFor, within } from '@testing-library/react'
 import { must } from '../../test/at'
 import { sayYes } from '../../test/deleteSheet'
 import { fakeQueue } from '../../test/fakeQueue'
@@ -9,6 +9,12 @@ import { serverThat, type Asked } from '../../test/serverAnswers'
 import { SLOW } from '../../test/slow'
 import { typeATownTheCodebookKnows } from '../../test/town'
 import { setupUser } from '../../test/user'
+
+/* Every wait is given half of what a case is given, for the reason `admin/deleting.test.tsx` gives and
+   `admin/saveWhileSaving.test.tsx` is the precedent of: a wait that is stuck then fails on its own
+   assertion with its own sentence, and not on the clock of the case, which says nothing about what was
+   wrong (a mutation that removes the effect measured here was only ever „not measured" before). */
+configure({ asyncUtilTimeout: SLOW / 2 })
 
 const MOCK_TEAMS: { slug: string; bio: string; link: string }[] = JSON.parse(
   readFileSync(join(process.cwd(), 'src', 'test', 'mock', 'teams.json'), 'utf-8'),

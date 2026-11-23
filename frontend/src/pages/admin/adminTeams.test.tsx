@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { configure, screen, waitFor, within } from '@testing-library/react'
 import { clearResourceCache } from '../../data/client'
 import { moderatorWith, renderAt } from '../../test/render'
 import { answeredWith, did, refused, serverThat, type Asked } from '../../test/serverAnswers'
@@ -6,6 +6,12 @@ import { setupUser } from '../../test/user'
 import { must } from '../../test/at'
 import { sayYes } from '../../test/deleteSheet'
 import { SLOW } from '../../test/slow'
+
+/* Every wait is given half of what a case is given, for the reason `admin/deleting.test.tsx` gives and
+   `admin/saveWhileSaving.test.tsx` is the precedent of: a wait that is stuck then fails on its own
+   assertion with its own sentence, and not on the clock of the case, which says nothing about what was
+   wrong (a mutation that removes the effect measured here was only ever „not measured" before). */
+configure({ asyncUtilTimeout: SLOW / 2 })
 
 /**
  * THE SCREEN OF TEAMS DELETES THROUGH THE SERVER (PDL P28c point 2, owner 24.09.2026: „Svi

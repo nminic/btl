@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { screen, waitFor, within } from '@testing-library/react'
+import { configure, screen, waitFor, within } from '@testing-library/react'
 import sr from '../../i18n/sr.json'
 import { must } from '../../test/at'
 import { arrivedResource } from '../../data/client'
@@ -13,6 +13,12 @@ import { typeATownTheCodebookKnows } from '../../test/town'
 import { everyRule } from '../../test/stylesheet'
 import { setupUser } from '../../test/user'
 import type { Asked } from '../../test/serverAnswers'
+
+/* Every wait is given half of what a case is given, for the reason `admin/deleting.test.tsx` gives and
+   `admin/saveWhileSaving.test.tsx` is the precedent of: a wait that is stuck then fails on its own
+   assertion with its own sentence, and not on the clock of the case, which says nothing about what was
+   wrong (a mutation that removes the effect measured here was only ever „not measured" before). */
+configure({ asyncUtilTimeout: SLOW / 2 })
 
 /**
  * THE QUEUE IS READ AS THE SESSION LEAVES IT, NEVER AFTER A FRESH PAGE.
