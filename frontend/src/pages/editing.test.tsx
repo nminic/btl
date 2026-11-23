@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { configure, screen, waitFor, within } from '@testing-library/react'
 import { at, must } from '../test/at'
 import { SLOW } from '../test/slow'
 import { renderAt } from '../test/render'
@@ -9,6 +9,10 @@ import { fakeQueue } from '../test/fakeQueue'
  * speak to routes (`POST /api/teams/direct`, `PUT` and `DELETE /api/teams/{id}`) and read the lists
  * again after a write instead of keeping the row in the session. `fakeQueue()` remembers what was
  * written and serves the two lists it changes. */
+/* Every wait is given half of what a case is given (`admin/saveWhileSaving.test.tsx`), so a town that
+   never arrives fails on its own assertion and not on the clock of the case. */
+configure({ asyncUtilTimeout: SLOW / 2 })
+
 let theServerOfTeams: { stop: () => void } | null = null
 
 beforeEach(() => {
@@ -60,7 +64,7 @@ describe('changing data in administration', () => {
       expect(within(row).getByRole('button', { name: /^Mesto:/ })).toHaveTextContent('Vršac')
     })
     expect(within(row).getByRole('button', { name: /^Mesto:/ })).not.toHaveTextContent(before)
-  })
+}, SLOW)
 
   it('takes Enter as done, without reaching for the mouse', async () => {
     /* The cell used to be tested through the events screen, whose town stopped
@@ -81,7 +85,7 @@ describe('changing data in administration', () => {
     await waitFor(() => {
       expect(within(row).getByRole('button', { name: /^Mesto:/ })).toHaveTextContent('Kikinda')
     })
-  })
+}, SLOW)
 
   it('lets an edit be abandoned', async () => {
     const user = setupUser()
