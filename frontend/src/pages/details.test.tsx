@@ -492,7 +492,19 @@ describe('LeagueDetail', () => {
       'the box of Planinska',
     )
 
-    expect(await within(mine).findByText('Ovoj ligi još nije dodeljena nijedna trka.')).toBeVisible()
+    /* **Waited for what either competition's box ends in, and then asked at once**, so a box that draws
+       the wrong competition fails on the sentence below and not on the clock of the case (an expiry is
+       not a catch: `CLAUDE.md`, „Istek slučaja u vitest-u se čita kao pad na tvrdnji"). The box is done
+       loading when it holds a link to an event or the sentence of a competition with none. */
+    await waitFor(
+      () => {
+        expect(
+          within(mine).queryAllByRole('link').length + within(mine).queryAllByText(/nijedna trka/).length,
+        ).toBeGreaterThan(0)
+      },
+      { timeout: 4000 },
+    )
+    expect(within(mine).getByText('Ovoj ligi još nije dodeljena nijedna trka.')).toBeVisible()
     expect(within(mine).queryByRole('link', { name: 'Podgorička desetka' })).toBeNull()
 
     /* **Since 21.11.2026 only the chosen sheet draws a box**, so the other competition is chosen on its
