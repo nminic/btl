@@ -792,6 +792,34 @@ describe('a change waiting on the queue of teams', () => {
     expect(await theTeamIsCalled()).toBe('Dunavski klub')
   }, SLOW)
 
+  it('sends every correction of the moderator as the team when no 409 comes, beside the words he saw', async () => {
+    const user = setupUser()
+    const { router } = renderAt('/sr/tim/dunavski-trkaci/izmena', 'superadmin', '000001')
+
+    await sendAChange(user, router, 'Dunavska družina')
+    await router.navigate('/sr/administracija/verifikacija/timovi')
+
+    const first = await screen.findByRole('heading', { name: 'Dunavska družina' })
+    const card = within(must(first.closest('li'), 'the card of the change'))
+
+    await user.clear(card.getByLabelText('Mesto'))
+    await user.type(card.getByLabelText('Mesto'), 'Zemun')
+    await user.clear(card.getByLabelText('Opis tima'))
+    await user.type(card.getByLabelText('Opis tima'), 'Moj opis.')
+    await user.clear(card.getByLabelText('Link'))
+    await user.type(card.getByLabelText('Link'), 'https://moj.example')
+    await user.click(card.getByRole('button', { name: 'Odobri' }))
+
+    await waitFor(() => {
+      expect(decisionsSent()).toHaveLength(1)
+    })
+
+    const sent = JSON.parse(String(must(decisionsSent()[0], 'the decision').init?.body))
+
+    expect(sent.team).toEqual({ name: 'Dunavska družina', city: 'Zemun', country: 'RS', bio: 'Moj opis.', link: 'https://moj.example' })
+    expect(sent.seenTeam).toEqual({ name: 'Dunavska družina', city: 'Novi Sad', country: 'RS', bio: DUNAV.bio, link: DUNAV.link })
+  }, SLOW)
+
   it('leaves the correction of another card of the same queue where it was when the 409 reads it again', async () => {
     const user = setupUser()
     const { router } = renderAt('/sr/tim/dunavski-trkaci/izmena', 'superadmin', '000001')
