@@ -220,6 +220,16 @@ const READERS: Reader[] = [
     data: false,
     answers: { ...THE_LISTS, '/api/me': meAs(TWO_BUTTONS) },
   },
+  /* THE ADMINISTRATION THAT IS ALSO A MEMBER, leading a team and looking at a woman: all three symbols stand in the
+     head („Podaci“ and both invitations), the most the row of the name ever carries. At 360px and 200% text the
+     third falls to a line of its own, and it is asked to stand at the end of that line as well. */
+  {
+    name: 'the administration who is also a member, with all three symbols',
+    pair: true,
+    team: true,
+    data: true,
+    answers: { ...THE_LISTS, '/api/me': { ...(meAs(TWO_BUTTONS) as object), role: 'superadmin' } },
+  },
 ]
 
 const PARTS = [
@@ -247,6 +257,8 @@ type Measured = {
   root: number
   row: Box
   name: Box
+  /** How many lines the name is written in: the rows of boxes its text takes, counted by their tops. */
+  nameLines: number
   /** The circle with the initials or the picture, and the line under the name. */
   portrait: Box
   meta: Box
@@ -273,12 +285,16 @@ const measure = (page: Page): Promise<Measured | null> =>
     const row = document.querySelector('.profile__top')
     const name = document.querySelector('.profile__top h1')
     const portrait = document.querySelector('.profile__top .portrait')
+    const written = document.createRange()
     const meta = document.querySelector('.profile__top .profile__meta')
 
     if (nav === null || row === null || name === null || portrait === null || meta === null) {
       return null
     }
 
+    written.selectNodeContents(name)
+
+    const nameLines = new Set([...written.getClientRects()].map((one) => Math.round(one.top))).size
     const acts = [...row.querySelectorAll('.profile__acts > *')]
       .filter((one) => one.matches('button, a'))
       .map((one) => ({
@@ -300,6 +316,7 @@ const measure = (page: Page): Promise<Measured | null> =>
       root: parseFloat(getComputedStyle(document.documentElement).fontSize),
       row: boxOf(row),
       name: boxOf(name),
+      nameLines,
       portrait: boxOf(portrait),
       meta: boxOf(meta),
       tabs: [...nav.querySelectorAll('a')].map(boxOf),
@@ -481,7 +498,12 @@ for (const at of WIDTHS) {
 
         if (at.text === 100) {
           expect(overlapsVertically(portrait, measured.name), 'the portrait is not beside the name').toBe(true)
-          expect(overlapsVertically(portrait, meta), 'the portrait is not beside the line under the name').toBe(true)
+          /* ONLY FOR A NAME IN ONE LINE: the portrait is centred on the name and the line together, and a name in
+             several lines makes that block taller than the portrait, which then stands beside the name and need not
+             reach the line under it. The centring below is asked of every name. */
+          if (measured.nameLines === 1) {
+            expect(overlapsVertically(portrait, meta), 'the portrait is not beside the line under the name').toBe(true)
+          }
 
           const middle = (Math.min(measured.name.top, ...icons.map((one) => one.top)) + meta.bottom) / 2
 
