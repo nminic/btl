@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+
 import { Link } from 'react-router'
 import { Resource } from '../../components/Resource'
 import { raceMeasure } from '../../data/raceLabel'
@@ -57,18 +58,19 @@ import '../Leagues.css'
  * the reader asked for less motion, and the tile stays lit until a finger touches anything else. The
  * light is a picture and nothing more: what it points at is already said by the tile itself.
  *
- * **Open on arrival, and folded on a press** (owner, 03.11.2026: „kutija treba da bude default
- * otvorena (expanded), ne collapsed"). What is open is said by `aria-expanded` rather than by the words
- * on the button, which is what a disclosure is; the shape is the portal's own (`app/Dropdown.tsx`,
- * `admin/PendingQueue.tsx`): a button, `aria-controls` naming the panel, and the panel carrying
- * `hidden` rather than being taken out of the document, so what the button points at is there to be
- * pointed at.
+ * **Always open, with nothing to press** (owner, 23.11.2026: „ne treba uopšte da postoji dugme za
+ * collapsing / expanding trka. Neka se uvek prikazuju za odabranu ligu”). It was a box that folded, open
+ * on arrival (owner, 03.11.2026), until that day; the heading is a heading now and not a control, and
+ * nothing in this file keeps whether the box is open.
  *
- * **Named after its own competition**, so its control can be told apart from any other of its kind
- * (WCAG 2.2 SC 2.4.4). The words on the button stay the short ones and the name adds the competition,
- * which is how this portal already names a control that repeats (`components/GenderTabs.tsx`,
- * `admin/PendingQueue.tsx`), and the visible words are the first half of the name, which is what SC
- * 2.5.3 asks.
+ * **Which column a tile stands in** (owner, 23.11.2026, PDL „Pločice se u dve kolone slažu po kolonama”):
+ * the first half of the events, rounded up, down the left column and the rest down the right. The order of
+ * the list in the document stays the order of the season, which is what a reader by ear and the keyboard
+ * walk and what the one column of a telephone shows; only the sheet sets the columns, from the number of
+ * rows this list hands it (`--league-tile-rows`, `Leagues.css`).
+ *
+ * **Named after its own competition** where it waits for its data (`leagues.countingOf`), so a wait or an
+ * error can be told apart from any other of its kind (WCAG 2.2 SC 2.4.4).
  *
  * **The standing's own heading is untouched by this.** There a column is one event and its head
  * is the day alone, with the names of the events read out over it (owner, 07.09.2026, and again
@@ -85,11 +87,9 @@ const LENGTH_AS_STORED = 4
    once, so the gold dot and the screen agree on what day it is. */
 export function LeagueEvents({ league, today }: { league: League; today: string }) {
   const { locale, t } = useI18n()
-  const [open, setOpen] = useState(true)
   /* The event whose dot and tile are lit, and whether a finger lit it: a finger has no leaving, so
      what it lit stays lit until it touches something else. */
   const [lit, setLit] = useState<{ event: number; byTouch: boolean } | null>(null)
-  const panelId = `league-counting-${league.id}`
   /* Said once and read twice: on the button and on the wait, so a reader working by ear hears the
      same competition named either way. */
   const named = t('leagues.countingOf', { name: league.name })
@@ -126,23 +126,9 @@ export function LeagueEvents({ league, today }: { league: League; today: string 
 
   return (
     <section className="leagues__counting">
-      {/* The button inside the heading, which is what parts a box that folds from a button that
-          happens to sit above one: a screen reader's list of headings still holds this box, and
-          the control the reader lands on from it is the one that opens it. */}
-      <h3>
-        <button
-          type="button"
-          className="leagues__toggle"
-          aria-expanded={open}
-          aria-controls={panelId}
-          aria-label={named}
-          onClick={() => setOpen((was) => !was)}
-        >
-          {t('leagues.counting')}
-        </button>
-      </h3>
+      <h3>{t('leagues.counting')}</h3>
 
-      <div id={panelId} className="leagues__counting-panel" hidden={!open}>
+      <div className="leagues__counting-panel">
         <Resource state={combinePair(useEvents(), useRaces())} inline label={named}>
           {([events, races]) => {
             const counting = racesByEvent(leagueRaces(league, races), events)
@@ -166,7 +152,10 @@ export function LeagueEvents({ league, today }: { league: League; today: string 
                   onLight={light}
                   touched={touched}
                 />
-                <ul className="leagues__event-tiles">
+                <ul
+                  className="leagues__event-tiles"
+                  style={{ '--league-tile-rows': Math.ceil(counting.length / 2) }}
+                >
                   {counting.map(({ event, races: mine }) => {
                     const state = stateOf(event)
                     const measures = mine

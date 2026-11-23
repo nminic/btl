@@ -302,6 +302,15 @@ describe('the standing of a competition that counts some of the races of a day',
   }, SLOW)
 })
 
+/** The box of events inside the box of a competition, found by its own heading and not by a button, which it
+ *  no longer has. */
+function boxOfEvents(box: HTMLElement): HTMLElement {
+  return must(
+    within(box).getByRole('heading', { level: 3, name: 'Događaji i trke' }).closest('section'),
+    'the box of events',
+  )
+}
+
 /** The tiles of the box (owner, 21.11.2026), each as its name, its day and its lengths. The tiles are the
  *  items of the list the panel draws, and not the lengths inside them, which are items of their own. */
 async function tilesIn(panel: HTMLElement): Promise<{ name: string; day: string; lengths: string[] }[]> {
@@ -324,7 +333,7 @@ async function tilesIn(panel: HTMLElement): Promise<{ name: string; day: string;
 }
 
 describe('the list of competitions, for a competition that counts some of the races of a day', () => {
-  it('heads the box that folds with an h3, one level under the name of its competition', async () => {
+  it('heads the box with an h3 and no button, one level under the name of its competition', async () => {
     servedCountingFour()
 
     renderAt(LIST)
@@ -338,12 +347,11 @@ describe('the list of competitions, for a competition that counts some of the ra
        competition's own `h2`, so it is the box in administration that was a level short and not this
        one. They are two components (`league/LeagueEvents.tsx`, `admin/LeagueRaceModeration.tsx`); an
        `h2` here would put the box level with the name of the competition it belongs to. */
-    expect(
-      must(
-        within(box).getByRole('button', { name: /Događaji i trke/ }).parentElement,
-        'what the button sits in',
-      ).tagName,
-    ).toBe('H3')
+    expect(within(box).getByRole('heading', { level: 3, name: 'Događaji i trke' })).toBeInTheDocument()
+    /* **Nothing to press** (owner, 23.11.2026: „ne treba uopšte da postoji dugme za collapsing /
+       expanding trka"): the heading is not a control, and the box carries no state of being open. */
+    expect(within(box).queryByRole('button', { name: /Događaji i trke/ })).toBeNull()
+    expect(box.querySelector('[aria-expanded]')).toBeNull()
   }, SLOW)
 
   it('lists under a day only the races it counts, and counts days and people by them', async () => {
@@ -362,14 +370,19 @@ describe('the list of competitions, for a competition that counts some of the ra
       'the box of the competition',
     )
 
-    /* Open on arrival (owner, 03.11.2026), so nothing is pressed. */
-    const opens = within(box).getByRole('button', { name: /Događaji i trke/ })
-    const days = await tilesIn(
+    /* Always shown, so nothing is pressed (owner, 23.11.2026). */
+    const days = await tilesIn(boxOfEvents(box))
+
+    /* **How many rows the two columns have** (owner, 23.11.2026: the first half, rounded up, down the left
+       column): three tiles are two rows, the left column holding two and the right one. Where the tiles
+       really stand is asked of Chrome (`geometry/leagueSheet.geometry.ts`); what the sheet is handed is
+       asked here. */
+    expect(
       must(
-        document.getElementById(must(opens.getAttribute('aria-controls'), 'what the button opens')),
-        'the panel of the box',
-      ),
-    )
+        within(boxOfEvents(box)).getByRole('link', { name: 'Mrazijada' }).closest('ul'),
+        'the list of the tiles',
+      ).style.getPropertyValue('--league-tile-rows'),
+    ).toBe('2')
 
     /* Three days, in the order the season is run in, and none of the eight others the record names.
        **And on each tile exactly the races the competition counts**, a tile to an event since
@@ -429,13 +442,7 @@ describe('the list of competitions, for a competition that counts some of the ra
       (await screen.findByRole('heading', { level: 2, name: /Brdska liga 2019/ })).closest('article'),
       'the box of the competition',
     )
-    const opens = within(box).getByRole('button', { name: /Događaji i trke/ })
-    const days = await tilesIn(
-      must(
-        document.getElementById(must(opens.getAttribute('aria-controls'), 'what the button opens')),
-        'the panel of the box',
-      ),
-    )
+    const days = await tilesIn(boxOfEvents(box))
 
     /* The tile reads the day each event begins on (5. 1., 14. 1., 27. 1.) and not 6. 1., 15. 1.,
        16. 1. or 28. 1., which are the days the races of them were put on. */
