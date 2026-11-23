@@ -86,6 +86,15 @@ describe('members of a team moved by the administration', () => {
 
   const IN_WINDOW = '2026-11-25'
 
+  /** The question „Izbaci” asks (PDL P13, [ODLUKE 23.11.2026], (3)), answered by its own words. */
+  async function answer(user: ReturnType<typeof setupUser>, word: 'Da' | 'Ne') {
+    const sheet = await screen.findByRole('dialog', { name: 'Izbaci člana iz tima?' })
+
+    await user.click(within(sheet).getByRole('button', { name: word }))
+
+    return sheet
+  }
+
   it('draws the team\'s own members under its row, each with Izbaci, and offers only members in no team',
     async () => {
       const server = serving()
@@ -189,6 +198,7 @@ describe('members of a team moved by the administration', () => {
     const panel = await openTheTeam(user)
 
     await user.click(within(panel).getByRole('button', { name: 'Izbaci iz tima: Strahinja Vukićević (000007)' }))
+    await answer(user, 'Da')
 
     await waitFor(() => {
       expect(writes(server.asked)).toEqual([
@@ -231,10 +241,91 @@ describe('members of a team moved by the administration', () => {
     const panel = await openTheTeam(user)
 
     await user.click(within(panel).getByRole('button', { name: 'Izbaci iz tima: Relja Momčilović (000002)' }))
+    await answer(user, 'Da')
 
     expect(await within(panel).findByRole('alert')).toHaveTextContent('Taj član više nije u ovom timu.')
     must(writes(server.asked)[0], 'the write')
 
     server.stop()
+  }, SLOW)
+
+  it('asks before taking a member out, names him under the question, and sends nothing until Da', async () => {
+    const server = serving()
+    const user = setupUser()
+    renderAt('/sr/administracija/timovi', 'superadmin', null, undefined, IN_WINDOW)
+
+    const panel = await openTheTeam(user)
+
+    await user.click(within(panel).getByRole('button', { name: 'Izbaci iz tima: Strahinja Vukićević (000007)' }))
+
+    const sheet = await screen.findByRole('dialog', { name: 'Izbaci člana iz tima?' })
+
+    expect(sheet).toHaveTextContent('Strahinja Vukićević (000007) izlazi iz tima Savski tim.')
+    expect(writes(server.asked)).toEqual([])
+
+    server.stop()
+  }, SLOW)
+
+  it('puts the question away on Ne, sends nothing, and the row is as it was', async () => {
+    const server = serving()
+    const user = setupUser()
+    renderAt('/sr/administracija/timovi', 'superadmin', null, undefined, IN_WINDOW)
+
+    const panel = await openTheTeam(user)
+    const out = within(panel).getByRole('button', { name: 'Izbaci iz tima: Strahinja Vukićević (000007)' })
+
+    await user.click(out)
+    await answer(user, 'Ne')
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: 'Izbaci člana iz tima?' })).toBeNull()
+    })
+    expect(writes(server.asked)).toEqual([])
+    expect(out).toBeVisible()
+    expect(screen.queryByText('Član je izveden iz tima.')).toBeNull()
+
+    server.stop()
+  }, SLOW)
+
+  it('sends one deletion for Da pressed twice while the first is out', async () => {
+    let release: () => void = () => undefined
+    const held = new Promise<void>((done) => {
+      release = done
+    })
+    clearResourceCache()
+
+    /* The write is held until the second press has been made, so the second press meets a request that is
+       still out. */
+    const holding = serverThat((path, init) => {
+      const how = init?.method ?? 'GET'
+
+      if (how === 'GET' && path === '/api/teams') {
+        return listOf(TEAMS)
+      }
+
+      if (how === 'GET' && path === '/api/competitors') {
+        return listOf(MEMBERS)
+      }
+
+      return how === 'GET' ? null : held.then(() => did())
+    })
+    const user = setupUser()
+    renderAt('/sr/administracija/timovi', 'superadmin', null, undefined, IN_WINDOW)
+
+    const panel = await openTheTeam(user)
+
+    await user.click(within(panel).getByRole('button', { name: 'Izbaci iz tima: Strahinja Vukićević (000007)' }))
+
+    const sheet = await answer(user, 'Da')
+
+    await user.click(within(sheet).getByRole('button', { name: 'Da' }))
+    release()
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: 'Izbaci člana iz tima?' })).toBeNull()
+    })
+    expect(writes(holding.asked).filter((one) => one.how === 'DELETE')).toHaveLength(1)
+
+    holding.stop()
   }, SLOW)
 })

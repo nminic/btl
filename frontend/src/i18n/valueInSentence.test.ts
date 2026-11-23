@@ -365,6 +365,10 @@ describe('a sentence with a value put into it', () => {
          team. The member stands after a colon as the thing named, as on „Izmeni podatke: {name}"; the team's
          name follows „tima" as its name, in the nominative (MY REASONING for the wording). */
       'admin.teamMemberOutNamed',
+      /* „{member} izlazi iz tima {team}.", under the question „Izbaci člana iz tima?" (the same decision, (3)):
+         the member is the subject, in the nominative, and the team's name follows „tima" as its name (MY
+         REASONING for the wording). */
+      'admin.teamMemberOutWhom',
       'admin.teamMembersOf',
       'awards.category',
       'awards.position <- formatNumber',

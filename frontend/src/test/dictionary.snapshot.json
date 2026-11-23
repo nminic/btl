@@ -1648,6 +1648,8 @@
     "teamMemberNotChosen": "Izaberi člana sa spiska.",
     "teamMemberOut": "Izbaci",
     "teamMemberOutNamed": "Izbaci iz tima: {member}",
+    "teamMemberOutAsk": "Izbaci člana iz tima?",
+    "teamMemberOutWhom": "{member} izlazi iz tima {team}.",
     "teamMemberAdded": "Član je dodat u tim.",
     "teamMemberTakenOut": "Član je izveden iz tima.",
     "teamMemberRefused": {

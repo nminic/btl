@@ -116,6 +116,9 @@ class TeamMembersByTheAdministrationTest {
 	/** In no team, holds the next season, and {@link #ANOTHER_TEAM} has invited him. */
 	private static final String FREE = "000250";
 
+	/** In no team, holds the next season, and is a woman, so the word that welcomes her is her own. */
+	private static final String FREE_AND_SHE = "000255";
+
 	/** In no team, and does not hold the next season. */
 	private static final String FREE_BUT_UNPAID = "000260";
 
@@ -212,13 +215,14 @@ class TeamMembersByTheAdministrationTest {
 		competitor(LAPSED, "Luka", "Istekli", "M");
 		competitor(ELSEWHERE, "Sava", "Savić", "M");
 		competitor(FREE, "Filip", "Slobodni", "M");
+		competitor(FREE_AND_SHE, "Jelena", "Slobodna", "F");
 		competitor(FREE_BUT_UNPAID, "Nina", "Neplatila", "F");
 		competitor(ALONE, "Sam", "Samić", "M");
 		competitor(THE_RACING_MODERATORS_NUMBER, "Mira", "Moderatorka", "F");
 
 		db.sql("delete from membership where competitor_id = ?").param(competitorId(LAPSED)).update();
 
-		for (String number : List.of(THE_LEADER, ELSEWHERE, FREE)) {
+		for (String number : List.of(THE_LEADER, ELSEWHERE, FREE, FREE_AND_SHE)) {
 			HeldOn.season(db, competitorId(number), THE_NEXT_SEASON, "payment");
 		}
 
@@ -290,22 +294,26 @@ class TeamMembersByTheAdministrationTest {
 						+ " else - the caller, the whole league, a third member - is")
 				.containsExactlyInAnyOrder(
 						FREE + "|Administracija|Administracija te je dodala u tim \"Dunavski trkači\"|"
-								+ "Administracija BTL-a te je dodala u tim \"Dunavski trkači\". Za ovaj tim"
-								+ " trčiš od sezone 2028. Tim vodi Vesna Vodić.",
+								+ "Dobrodošao u tim \"Dunavski trkači\"! Administracija BTL-a te je upisala u tim,"
+								+ " i za njega trčiš od sezone 2028. Tim vodi Vesna Vodić.",
 						ELSEWHERE + "|" + PairWriteApi.THE_LEAGUE + "|"
 								+ TeamJoiningWriteApi.THE_INVITATION_WAS_MISSED + "|"
 								+ "Filip Slobodni je u međuvremenu ušao u tim \"Dunavski trkači\".");
 	}
 
-	/** A team with nobody else in it is led by him, so the sentence about who leads it is not written. */
+	/**
+	 * A team with nobody else in it is led by her, so the sentence about who leads it is not written; and the
+	 * word that welcomes her is her own (PDL P13, [ODLUKE 23.11.2026], (1), „rod po presedanu ostalih poruka
+	 * timova”), while the one who leads the team in the case above is a woman welcoming a man.
+	 */
 	@Test
-	void aMemberAddedToATeamNobodyElseLeadsIsNotToldHeLeadsIt() throws Exception {
-		assertThat(add(MODERATOR_OVER_TEAMS, teamKey(AN_EMPTY_TEAM), FREE).getStatus()).isEqualTo(204);
+	void aMemberAddedToATeamNobodyElseLeadsIsNotToldSheLeadsItAndIsWelcomedInHerOwnWord() throws Exception {
+		assertThat(add(MODERATOR_OVER_TEAMS, teamKey(AN_EMPTY_TEAM), FREE_AND_SHE).getStatus()).isEqualTo(204);
 
-		assertThat(theMessages()).filteredOn(one -> one.startsWith(FREE + "|"))
-				.containsExactly(FREE + "|Administracija|Administracija te je dodala u tim \"Prazan tim\"|"
-						+ "Administracija BTL-a te je dodala u tim \"Prazan tim\". Za ovaj tim trčiš od sezone"
-						+ " 2028.");
+		assertThat(theMessages())
+				.containsExactly(FREE_AND_SHE + "|Administracija|Administracija te je dodala u tim \"Prazan tim\"|"
+						+ "Dobrodošla u tim \"Prazan tim\"! Administracija BTL-a te je upisala u tim, i za njega"
+						+ " trčiš od sezone 2028.");
 	}
 
 	@ParameterizedTest

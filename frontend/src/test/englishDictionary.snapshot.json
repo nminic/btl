@@ -1614,6 +1614,8 @@
     "teamMemberNotChosen": "Choose a member from the list.",
     "teamMemberOut": "Remove",
     "teamMemberOutNamed": "Remove from the team: {member}",
+    "teamMemberOutAsk": "Remove the member from the team?",
+    "teamMemberOutWhom": "{member} leaves the team {team}.",
     "teamMemberAdded": "The member has been added to the team.",
     "teamMemberTakenOut": "The member has been taken out of the team.",
     "teamMemberRefused": {

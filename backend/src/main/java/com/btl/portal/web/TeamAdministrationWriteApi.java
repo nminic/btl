@@ -543,7 +543,8 @@ class TeamAdministrationWriteApi {
 		String team = nameOf(id);
 
 		tellHim(member, theAddingReads(team),
-				theAddingBodyReads(team, SeasonClock.transfersTakeEffect(now), whoLeadsItBut(id, member, now)));
+				theAddingBodyReads(team, SeasonClock.transfersTakeEffect(now), whoLeadsItBut(id, member, now),
+						him.get().gender()));
 
 		TeamJoiningWriteApi.theOtherTeamsThatAskedHim(db, member, id, him.get().name(), him.get().gender(),
 				team, now);
@@ -605,23 +606,38 @@ class TeamAdministrationWriteApi {
 		return ResponseEntity.noContent().build();
 	}
 
-	/** The subject a member added by the administration reads. Working words, shown to the owner. */
+	/** The subject a member added by the administration reads. Working words still: the decision of 23.11.2026 is about the body. */
 	static String theAddingReads(String team) {
 		return "Administracija te je dodala u tim \"" + team + "\"";
 	}
 
 	/**
-	 * What he reads under it: the season he runs for it from, and who runs the team when that is somebody
-	 * else. Working words, shown to the owner.
+	 * WHAT HE READS UNDER IT, IN THE OWNER'S WORDS. PDL P13, „[ODLUKE 23.11.2026 ...] (1) Poruka pri
+	 * dodavanju: „Dobrodošao/la u tim „{tim}”! Administracija BTL-a te je upisala u tim, i za njega trčiš od
+	 * sezone {sezona}. Tim vodi {ime i prezime}.” (rod po presedanu ostalih poruka timova)”.
 	 *
+	 * <p><b>„Dobrodošao/la” is the journal's way of writing both words, not a slash in the message</b>: the
+	 * word is chosen by HIS gender, the precedent {@link TeamJoiningWriteApi#theMissedInvitationReads} holds
+	 * for „ušao” and „ušla”, and for its reason the man's letter is spelt here and not in a constant
+	 * ({@code refusals.test.ts} reads every constant of this class as a refusal). {@code competitor.gender}
+	 * is {@code M} or {@code F} and never empty, so there is no third word to choose.
+	 *
+	 * <p><b>The marks around the team are the English ones</b>, by PDL P18 (18.10.2026, „Navodnici”): the
+	 * journal writes the Serbian ones because it is the journal, and every message a member reads carries
+	 * the English ones ({@code TheQuotesAMemberReadsAreEnglishTest}).
+	 *
+	 * <p>„Tim vodi …” is left out when nobody else leads the team, as it was in the working words.
+	 *
+	 * @param gender the letter {@code competitor.gender} holds for HIM, never the caller's or the leader's
 	 * @param leader the name of whoever leads the team, or null when nobody else does
 	 */
-	static String theAddingBodyReads(String team, int season, String leader) {
-		return "Administracija BTL-a te je dodala u tim \"" + team + "\". Za ovaj tim trčiš od sezone "
-				+ season + "." + (leader == null ? "" : " Tim vodi " + leader + ".");
+	static String theAddingBodyReads(String team, int season, String leader, String gender) {
+		return ("M".equals(gender) ? "Dobrodošao" : "Dobrodošla") + " u tim \"" + team + "\"! Administracija"
+				+ " BTL-a te je upisala u tim, i za njega trčiš od sezone " + season + "."
+				+ (leader == null ? "" : " Tim vodi " + leader + ".");
 	}
 
-	/** The subject a member taken out by the administration reads. Working words, shown to the owner. */
+	/** The subject a member taken out by the administration reads, as the owner kept it (PDL P13, [ODLUKE 23.11.2026], (2)). */
 	static String theTakingOutReads(String team) {
 		return "Izlazak iz tima \"" + team + "\"";
 	}

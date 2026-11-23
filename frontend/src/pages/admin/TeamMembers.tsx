@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { SYMBOL } from '../../app/actionSymbol'
 import { ActionButton } from '../../components/ActionButton'
+import { Prompt } from '../../components/Prompt'
 import type { Competitor, Team } from '../../data/types'
 import type { Suggestion } from '../../forms/types'
 import { useI18n } from '../../i18n/useI18n'
@@ -30,6 +31,13 @@ function labelOf(one: Competitor): string {
  * league and takes them out, with its classes. What the box offers is every member in no team, because a
  * member in one is refused anyway; the route stays the one that decides.
  *
+ * <p><b>„Izbaci” asks „Da” or „Ne” first</b> (PDL P13, „[ODLUKE 23.11.2026 ...] (3) „Izbaci” pita „Da”/„Ne”
+ * u istom redu, isto kao brisanje i storno”), and the question is the storno's own, copied with its guards:
+ * `MemberRow.tsx`'s `yesOrNo` (`components/Prompt.tsx`, one way of saying yes, „Da”, and „Ne”), the request
+ * held to one at a time by a ref, and the sheet telling off every press while the request is out
+ * (`working`). „Ne” puts the question away and nothing is sent; the answer closes it, and a refusal is said
+ * beside the panel as for „Dodaj člana”.
+ *
  * <p><b>After every write the list is read again</b> (`onWritten`), as after the making of a team: who is in
  * which team reaches this screen as `Competitor.teamId`, so the row moves only when the server says it did.
  */
@@ -55,6 +63,11 @@ export function TeamMembers({
   const [notChosen, setNotChosen] = useState(false)
   const [refused, setRefused] = useState<Exclude<Answer, { got: 'done' }> | null>(null)
   const [said, setSaid] = useState('')
+  /** The member whose „Izbaci” was pressed and who waits for „Da” or „Ne”, or nobody. */
+  const [asking, setAsking] = useState<Competitor | null>(null)
+  /** One request at a time (`MemberRow.tsx`), and the sheet says it is sending while it is out. */
+  const outstanding = useRef(false)
+  const [working, setWorking] = useState(false)
   const boxId = `team-${String(team.id)}-member`
   const notChosenId = `${boxId}-not-chosen`
   const offered: Suggestion[] = free.map((one) => ({
@@ -80,6 +93,27 @@ export function TeamMembers({
     onWritten()
 
     return true
+  }
+
+  /** „Da”: the member goes, once, and the question closes with the answer. */
+  async function takeOut(one: Competitor): Promise<void> {
+    if (outstanding.current) {
+      return
+    }
+
+    outstanding.current = true
+    setWorking(true)
+
+    try {
+      await answered(
+        askTheServer(memberOfTheTeam(team.id, one.memberNumber), {}, 'DELETE'),
+        t('admin.teamMemberTakenOut'),
+      )
+    } finally {
+      setAsking(null)
+      outstanding.current = false
+      setWorking(false)
+    }
   }
 
   async function add(): Promise<void> {
@@ -116,16 +150,23 @@ export function TeamMembers({
                 word={t('admin.teamMemberOut')}
                 className="button button--secondary"
                 name={t('admin.teamMemberOutNamed', { member: labelOf(one) })}
-                onClick={() =>
-                  void answered(
-                    askTheServer(memberOfTheTeam(team.id, one.memberNumber), {}, 'DELETE'),
-                    t('admin.teamMemberTakenOut'),
-                  )
-                }
+                onClick={() => setAsking(one)}
               />
             </li>
           ))}
         </ul>
+      )}
+
+      {asking !== null && (
+        <Prompt
+          title={t('admin.teamMemberOutAsk')}
+          choices={[{ label: t('admin.yes'), onChoose: () => void takeOut(asking) }]}
+          decline={t('admin.no')}
+          onDecline={() => setAsking(null)}
+          working={working ? t('results.sending') : undefined}
+        >
+          <p>{t('admin.teamMemberOutWhom', { member: labelOf(asking), team: team.name })}</p>
+        </Prompt>
       )}
 
       <div className="leagues__adding">
