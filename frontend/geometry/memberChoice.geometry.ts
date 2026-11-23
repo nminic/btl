@@ -166,8 +166,8 @@ for (const at of WIDTHS) {
       }, BOX)
     const shut = await nextTop()
 
-    /* Where the arrow is painted: 12px in from the right edge, 20px wide, so its middle is 22px in. */
-    await box.click({ position: { x: size.width - 22, y: size.height / 2 } })
+    /* Where the arrow is painted: 8px in from the right edge, in a box 18px wide, so its middle is 17px in. */
+    await box.click({ position: { x: size.width - 17, y: size.height / 2 } })
     /* A short wait of its own, so a press that opens nothing fails here, by this sentence, and not by the clock of
        the case (`CLAUDE.md`, 25). */
     await expect(page.locator(LIST), 'a press on the arrow opened no list').toBeVisible({ timeout: 3_000 })

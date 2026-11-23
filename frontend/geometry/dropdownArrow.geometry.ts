@@ -15,8 +15,8 @@ import type { Answers, At } from './support/harness.ts'
  * dropdowns the owner named (the season of a competition on the form of the administration, the SEZONA filter
  * of the tables and of the teams, and the box of a member on a row of results), <b>every</b> `select` and
  * `.dropdown` the page draws, read off the DOM and not listed here, has the browser's own arrow taken away, the
- * portal's arrow painted in the colour of its own text, 20px of it (the browser's was about 9) standing 12px in
- * from the right edge and not in the corner, the text kept clear of it, and a height that is the height of the
+ * portal's arrow painted in the colour of its own text, a chevron 12px wide (the browser's was about 9) standing
+ * 8px in from the right edge and not in the corner, the text kept clear of it, and a height that is the height of the
  * boxes beside it. Both themes, a telephone and a desktop.
  *
  * <p><b>The mutation that fells it</b> is the browser's arrow given back to one of them (`appearance: auto
@@ -132,11 +132,11 @@ for (const screen of SCREENS) {
         expect(one.image, `${one.what} wears no arrow of the portal`).toContain('data:image/svg+xml')
         expect(one.image, `${one.what}: the arrow is not in the colour of its text`).toContain(`%23${one.textHex}`)
         expect(one.repeat, one.what).toBe('no-repeat')
-        expect(one.size, `${one.what}: the arrow is not the size the portal gives it`).toBe('20px 20px')
-        /* `right 12px center`, as Chrome gives it back. */
-        expect(one.position, `${one.what}: the arrow stands in the corner`).toBe('calc(100% - 12px) 50%')
-        expect(one.paddingRight, `${one.what}: the text can run under the arrow`).toBeGreaterThanOrEqual(12 + 20 + 8)
-        expect(one.width, `${one.what} is too narrow to hold its arrow`).toBeGreaterThan(12 + 20 + 8)
+        expect(one.size, `${one.what}: the arrow is not the size the portal gives it`).toBe('18px 18px')
+        /* `right 8px center`, as Chrome gives it back. */
+        expect(one.position, `${one.what}: the arrow stands in the corner`).toBe('calc(100% - 8px) 50%')
+        expect(one.paddingRight, `${one.what}: the text can run under the arrow`).toBeGreaterThanOrEqual(8 + 18 + 6)
+        expect(one.width, `${one.what} is too narrow to hold its arrow`).toBeGreaterThan(8 + 18 + 6)
 
         if (one.besideHeight !== null) {
           expect(one.height, `${one.what} is not as tall as the box beside it`).toBeCloseTo(one.besideHeight, 0)

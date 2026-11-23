@@ -95,12 +95,12 @@ describe('the rule that draws the arrow', () => {
       'appearance: none',
       expect.stringMatching(/^background-image: url\("data:image\/svg\+xml,[^"]+"\)$/),
       'background-repeat: no-repeat',
-      /* 0,75rem in from the edge, not in the corner. */
-      'background-position: right 0.75rem center',
-      /* 1,25rem of arrow, where the browser's own was about 9px. */
-      'background-size: 1.25rem 1.25rem',
-      /* The room is the arrow, the space it stands in from the edge, and a gap before the text: 20 + 12 + 8. */
-      'padding-inline-end: var(--space-40)',
+      /* 0,5rem in from the edge, not in the corner. */
+      'background-position: right 0.5rem center',
+      /* A box of 1,125rem, in which the chevron spans 16 of 24: 12px of it, where the browser's own was about 9. */
+      'background-size: 1.125rem 1.125rem',
+      /* The room is the arrow, the space it stands in from the edge, and a gap before the text: 18 + 8 + 6. */
+      'padding-inline-end: var(--space-32)',
     ])
   })
 
