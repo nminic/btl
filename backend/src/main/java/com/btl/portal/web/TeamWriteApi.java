@@ -612,8 +612,14 @@ class TeamWriteApi {
 		ZonedDateTime now = ZonedDateTime.now(clock);
 		Long me = readers.activeMember(asking, now).orElse(null);
 
-		if (!heAdministersIt(me, id.value(), now)) {
-			return awayAtAnOpenAddress();
+		/* AN ACCOUNT THAT NAMES NO MEMBER IS TOLD NOTHING IS HERE BEFORE ANY BYTE OF THE BODY IS READ, and
+		   by the answer of a key that maps nothing (`nothingIsHere`, not `awayAtAnOpenAddress`: this address
+		   carries a key and no list opens it). A MEMBER'S body is read next, so a body that cannot be read
+		   is his 400 and one over the line is his 413 whether or not he administers this team, the order
+		   `TeamJoiningWriteApi.invite` keeps and the floors over real HTTP hold; whether he administers it
+		   is asked in the write, with the rows, and is the same 404. */
+		if (me == null) {
+			throw nothingIsHere();
 		}
 
 		Proposed typed = sent.read();
@@ -623,21 +629,32 @@ class TeamWriteApi {
 			return no(HttpStatus.BAD_REQUEST, THE_FORM_IS_NOT_COMPLETE);
 		}
 
-		String address = EventAddress.written(typed.name());
+		/* WHETHER HE ADMINISTERS THE TEAM IS ASKED BEFORE WHAT HE WROTE IS JUDGED, so a team that is not
+		   there, or is not his, is the same 404 whatever the words are: a form that is judged first would
+		   tell a member who may not touch the team what is wrong with a thing he cannot send
+		   (`AWordInAKeyOverRealHttpTest`). That the form is filled in at all was asked above, with the
+		   body that can be read; what is said in it (an address, a link, a length) is asked here. */
+		return inOneTransaction.execute(committing -> {
+			if (!heAdministersIt(me, id.value(), now)) {
+				throw nothingIsHere();
+			}
 
-		if (address.isEmpty()) {
-			return no(HttpStatus.BAD_REQUEST, THE_NAME_MAKES_NO_ADDRESS);
-		}
+			String address = EventAddress.written(typed.name());
 
-		if (!WhatAnEventCarries.linkIsShaped(orEmpty(typed.link()))) {
-			return no(HttpStatus.BAD_REQUEST, THE_LINK_IS_NOT_SHAPED);
-		}
+			if (address.isEmpty()) {
+				return no(HttpStatus.BAD_REQUEST, THE_NAME_MAKES_NO_ADDRESS);
+			}
 
-		if (orEmpty(typed.bio()).length() > THE_LONGEST_DESCRIPTION) {
-			return no(HttpStatus.BAD_REQUEST, THE_TEXT_IS_TOO_LONG);
-		}
+			if (!WhatAnEventCarries.linkIsShaped(orEmpty(typed.link()))) {
+				return no(HttpStatus.BAD_REQUEST, THE_LINK_IS_NOT_SHAPED);
+			}
 
-		return inOneTransaction.execute(committing -> write(me, id.value(), typed, address));
+			if (orEmpty(typed.bio()).length() > THE_LONGEST_DESCRIPTION) {
+				return no(HttpStatus.BAD_REQUEST, THE_TEXT_IS_TOO_LONG);
+			}
+
+			return write(me, id.value(), typed, address);
+		});
 	}
 
 	/**

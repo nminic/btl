@@ -508,7 +508,7 @@ class ATextWithAZeroIsRefusedOnEveryKindOfRouteTest {
 	   ------------------------------------------------------------------------------------------ */
 
 	/**
-	 * A PROPOSAL FOR A TEAM WITH A ZERO IN ANY OF ITS SIX TEXTS IS THE ROUTE'S OWN
+	 * A PROPOSAL FOR A TEAM WITH A ZERO IN ANY OF ITS FIVE TEXTS IS THE ROUTE'S OWN
 	 * {@code theFormIsNotComplete}, AND NOTHING IS PROPOSED.
 	 *
 	 * <p>{@link WhatWasSent} is handed the application's mapper by {@code WhatWasSent.Reading} and
@@ -518,11 +518,12 @@ class ATextWithAZeroIsRefusedOnEveryKindOfRouteTest {
 	 */
 	@Test
 	void aProposalWithAZeroInAnyOfItsTextsIsTheRoutesOwnRefusalAndNothingIsProposed() throws Exception {
-		for (String field : List.of("name", "note", "bio", "link", "city", "country")) {
+		/* FIVE, since 23.11.2026: the note „Zašto ovaj tim" is gone from the proposal (PDL P13) and the
+		   description is the team's own `bio`, which stays on this list. */
+		for (String field : List.of("name", "bio", "link", "city", "country")) {
 			Map<String, Object> form = new LinkedHashMap<>();
 
 			form.put("name", "Nulti tim");
-			form.put("note", "Zasto ovaj tim.");
 			form.put("bio", "Opis tima.");
 			form.put("link", "https://primer.rs/tim");
 			form.put("city", "Novi Sad");
@@ -543,9 +544,8 @@ class ATextWithAZeroIsRefusedOnEveryKindOfRouteTest {
 				.as("a proposal was written out of a body the route could not read")
 				.isZero();
 
-		MockHttpServletResponse made = send(post("/api/teams"), MEMBER, body("name", "Nulti tim", "note",
-				"Zasto ovaj tim.", "bio", "Opis tima.", "link", "https://primer.rs/tim", "city", "Novi Sad",
-				"country", "RS"));
+		MockHttpServletResponse made = send(post("/api/teams"), MEMBER, body("name", "Nulti tim", "bio",
+				"Opis tima.", "link", "https://primer.rs/tim", "city", "Novi Sad", "country", "RS"));
 
 		assertThat(made.getStatus())
 				.as("the same proposal without a zero was not accepted, so the cases above refused a body for"
@@ -818,7 +818,7 @@ class ATextWithAZeroIsRefusedOnEveryKindOfRouteTest {
 								"body", "Telo.")),
 						NAMING_NO_MEMBER, 404),
 				new AtTheDoor("an account naming no member, a proposal",
-						text -> json(post("/api/teams"), body("name", text, "note", "Zasto.",
+						text -> json(post("/api/teams"), body("name", text, "bio", "Opis.",
 								"city", "Novi Sad", "country", "RS")),
 						NAMING_NO_MEMBER, 404),
 				new AtTheDoor("a moderator with no right to the queue, the decision",
