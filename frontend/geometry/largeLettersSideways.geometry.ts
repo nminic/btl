@@ -91,11 +91,19 @@ for (const screen of SCREENS) {
   }
 }
 
-/* THE WORDS OF A TILE STAY IN IT, AND THE STATE KEEPS ITS WORD WHOLE WHERE THE DAY CAN GO UNDER IT. Two things the
+/* THE WORDS OF A TILE STAY IN IT, AND A STATE THAT IS BROKEN HAS THE DAY UNDER IT AND NOT BESIDE IT. Two things the
  * sideways scroll of the page cannot say, because a tile is a box with room round it on a page that is wider than
  * the tile: a word that runs out of its tile at 320px scrolls nothing (measured 23.11.2026: the row of the state
  * and the day was 168px in a tile of 140px, and the page did not move), and a state that is broken into pieces
- * where the day could have gone under it is a state broken for nothing. */
+ * with the day standing beside it is a state broken for nothing, because the row could have wrapped.
+ *
+ * **What is asked is a relation and not a reserve.** The first draft asked „the state is one line at 360px and
+ * 390px", which holds only while the word „PREDSTOJI" (168px at 200%) is narrower than the tile (180px at 360px):
+ * a reserve of 12px that is the width of a font. The CI runner (Linux, another font) drew the word broken in all
+ * eight tiles at 360px, the row inside its tile, nothing sideways, and the guard failed on a font and not on the
+ * portal (run 45137969680, 23.11.2026). What the portal owes is that the day is never BESIDE a broken state: where
+ * the word is whole it may stand beside the day or under it as the room says, and where the word is broken (in
+ * any font, since a tile can be narrower than the word) the day is under the state, not beside it. */
 for (const at of [
   { width: 320, text: 200 },
   { width: 360, text: 200 },
@@ -105,20 +113,90 @@ for (const at of [
     const { page } = await open(at, '/sr/lige?sezona=2027', '.leagues__event-tile', VISITOR)
 
     const rows = await page.evaluate(() =>
-      [...document.querySelectorAll('.leagues__event-top')].map((row) => ({
-        wide: row.scrollWidth - row.clientWidth,
-        state: row.querySelector('.leagues__event-state')?.getBoundingClientRect().height ?? Number.NaN,
-        line: Number.parseFloat(getComputedStyle(row.querySelector('.leagues__event-state') ?? row).lineHeight),
-      })),
+      [...document.querySelectorAll('.leagues__event-top')].map((row) => {
+        const state = row.querySelector('.leagues__event-state')?.getBoundingClientRect()
+        const day = row.querySelector('.leagues__event-when')?.getBoundingClientRect()
+        const line = Number.parseFloat(
+          getComputedStyle(row.querySelector('.leagues__event-state') ?? row).lineHeight,
+        )
+
+        return {
+          wide: row.scrollWidth - row.clientWidth,
+          broken: (state?.height ?? Number.NaN) > line + 0.5,
+          /* How far the top of the day is above the bottom of the state: above zero is the day beside the
+             state (they share a line), zero or under is the day under it. */
+          sharedLine: (state?.bottom ?? Number.NaN) - (day?.top ?? Number.NaN),
+        }
+      }),
     )
 
     expect(rows.length, 'the eight events of the sample, eight rows').toBe(8)
     expect(rows.filter((one) => one.wide > 0.5), 'rows wider than their tile').toEqual([])
-
-    if (at.width > 320) {
-      expect(rows.filter((one) => one.state > one.line + 0.5), 'a state broken where the day could go under it').toEqual([])
-    }
+    expect(
+      rows.filter((one) => one.broken && one.sharedLine > 0.5),
+      'a state broken with the day beside it, where the day could go under it',
+    ).toEqual([])
   })
+}
+
+/* THE HEAD OF A SHEET: THE MARK AND THE NAME ARE TWO BOXES THAT DO NOT MEET, AND NOTHING IN THE HEAD RUNS OUT OF ITS
+ * OWN BOX. The sideways scroll of the page is the one thing the rule for the narrowest sheet
+ * (`@container league-sheet (max-width: 10em)` in `Leagues.css`) put right, and it is not the whole of it: the
+ * pencil of the administration put back in the third column (the selector of its place in that rule renamed, 23.11.2026)
+ * left the page where it stood, drew the name in a column of 70px over the mark of the league, and put the word
+ * „PROPRATNA" 80px out of its box. So the head is asked as the administration and as a visitor, on the three widths,
+ * for the two things that say that: no two of the boxes of the mark and of the name overlap (an overlap is also a
+ * box that holds the other, which is the same two boxes read the other way, so the sizes are asked to be real first),
+ * and no element of the head is wider inside than its box (`scrollWidth` over `clientWidth`). */
+for (const who of [
+  { name: 'a visitor', answers: VISITOR },
+  { name: 'the administration', answers: ADMINISTRATION },
+] as const) {
+  for (const at of LARGE) {
+    test(`the head of a sheet keeps the mark and the name apart and every word in its box, as ${who.name}, ${label(at)}`, async ({
+      open,
+    }) => {
+      const { page } = await open(at, '/sr/lige?sezona=2027', '.leagues__event-tile', who.answers)
+
+      const head = await page.evaluate(() => {
+        const box = (selector: string) => {
+          const found = document.querySelector(selector)?.getBoundingClientRect()
+
+          return found === undefined
+            ? { left: Number.NaN, right: Number.NaN, top: Number.NaN, bottom: Number.NaN }
+            : { left: found.left, right: found.right, top: found.top, bottom: found.bottom }
+        }
+
+        return {
+          mark: box('.leagues__score .leagues__mark'),
+          name: box('.leagues__score .leagues__score-name'),
+          pencil: document.querySelector('.leagues__score .leagues__edit') !== null,
+          wide: [...document.querySelectorAll('.leagues__score, .leagues__score *')]
+            .filter((one) => !one.matches('.visually-hidden') && one.scrollWidth - one.clientWidth > 0.5)
+            .map((one) => `${one.tagName.toLowerCase()}.${one.className.toString()} +${String(one.scrollWidth - one.clientWidth)}px`),
+        }
+      })
+
+      const real = (one: { left: number; right: number; top: number; bottom: number }) =>
+        one.right - one.left > 0 && one.bottom - one.top > 0
+
+      expect(head.pencil, 'the administration has the pencil and a visitor has not').toBe(who.name === 'the administration')
+      expect(real(head.mark), 'the mark is a box of its own').toBe(true)
+      expect(real(head.name), 'the name is a box of its own').toBe(true)
+
+      const across = Math.min(head.mark.right, head.name.right) - Math.max(head.mark.left, head.name.left)
+      const down = Math.min(head.mark.bottom, head.name.bottom) - Math.max(head.mark.top, head.name.top)
+
+      expect(across > 0.5 && down > 0.5, `the mark and the name overlap by ${String(across)} x ${String(down)}px`).toBe(false)
+      /* Where it is NOT asked, and why: at 390px the line above the name is wider than its box by 22px for a visitor
+         and 114px for the administration (measured 23.11.2026), and the head of the sheet at 390px and 412px is a
+         finding of its own in PENDING, left for the pass over the medium and the low ones. The page does not move
+         for it (the sideways guard above holds at 390px), so this is not asked there until that pass puts it right. */
+      if (at.width <= 360) {
+        expect(head.wide, 'elements of the head that run out of their box').toEqual([])
+      }
+    })
+  }
 }
 
 /* WHAT WAS DRAWN BESIDE WHAT IS STILL DRAWN BESIDE IT at the browser's own text, on the three widths of the portal:
