@@ -933,11 +933,13 @@ class SeasonClockTest {
 	 * {@link SeasonClock#seasonBeingPaidFor} carries and for the owner's same sentence of
 	 * 31.07.2026, „Nigde na portalu nema sezone pre 2027".
 	 *
-	 * <p><b>The clamp is on the RUNNING year and the next is counted off the result</b>, so
-	 * in 2026 the pair is 2027 and 2028 rather than 2027 twice. That is read off the cost the
-	 * owner accepted - the league he named as the one that cannot be prepared yet is 2029 -
-	 * and both halves are asserted, because a clamp applied to each answer separately passes
-	 * the first and fails the second.
+	 * <p><b>The floor is on EACH of the two answers, so through 2026 the pair is 2027 alone</b>
+	 * (owner, 23.11.2026, PDL „Tri brze izmene administracije": „Zato 23.11.2026 izbor nudi samo
+	 * 2027, a od 1.1.2027. nudi 2027 i 2028"). ~~The clamp is on the RUNNING year and the next is
+	 * counted off the result, so in 2026 the pair is 2027 and 2028.~~ Both halves are asserted, on
+	 * both sides of the first New Year of the league: a clamp on the running year alone lets 2028 in
+	 * on the evening of 31 December 2026, and a floor that never lets the pair widen keeps 2028 out
+	 * on the morning of 1 January 2027.
 	 */
 	@Test
 	void theSeasonsALeagueMayBeMadeForAreNeverBeforeTheFirstThereIs() {
@@ -949,10 +951,21 @@ class SeasonClockTest {
 		assertThat(SeasonClock.aLeagueMayBeMadeFor(SeasonClock.FIRST_SEASON, beforeTheLeague))
 				.isTrue();
 		assertThat(SeasonClock.aLeagueMayBeMadeFor(2028, beforeTheLeague))
-				.as("the clamp was applied to each answer on its own, so the pair collapsed to one"
-						+ " year and the season after the first could not be prepared")
-				.isTrue();
+				.as("the floor was put on the running year alone, so 2028 was offered in 2026, which the"
+						+ " owner's choice of 23.11.2026 refuses")
+				.isFalse();
 		assertThat(SeasonClock.aLeagueMayBeMadeFor(2029, beforeTheLeague)).isFalse();
+
+		ZonedDateTime theLastEveningOf2026 = ZonedDateTime.of(2026, 12, 31, 23, 30, 0, 0, SeasonClock.ZONE);
+		ZonedDateTime theFirstMorningOf2027 = ZonedDateTime.of(2027, 1, 1, 0, 30, 0, 0, SeasonClock.ZONE);
+
+		assertThat(SeasonClock.aLeagueMayBeMadeFor(2027, theLastEveningOf2026)).isTrue();
+		assertThat(SeasonClock.aLeagueMayBeMadeFor(2028, theLastEveningOf2026))
+				.as("2028 was offered before 1 January 2027").isFalse();
+		assertThat(SeasonClock.aLeagueMayBeMadeFor(2027, theFirstMorningOf2027)).isTrue();
+		assertThat(SeasonClock.aLeagueMayBeMadeFor(2028, theFirstMorningOf2027))
+				.as("from 1 January 2027 the pair is 2027 and 2028, and 2028 was still refused").isTrue();
+		assertThat(SeasonClock.aLeagueMayBeMadeFor(2029, theFirstMorningOf2027)).isFalse();
 	}
 
 	/**

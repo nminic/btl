@@ -254,7 +254,7 @@ export function validateForm(
     const because = written.requiredWhenFilled?.errorKey
 
     if (error?.key === REQUIRED_KEY && written.required !== true && because !== undefined) {
-      error = { key: because }
+      error = written.requiredWhenFilled?.leftToTheServer === true ? null : { key: because }
     }
 
     if (error === null && field.matches !== undefined && value !== values[field.matches]) {

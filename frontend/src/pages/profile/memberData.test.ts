@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest'
 import { registracija } from '../../forms/definitions'
 import { choicesOf } from '../../forms/records'
 import {
+  THE_BOX_FOR_VIBER,
   WHAT_THE_ADMINISTRATION_CORRECTS,
   membersDataIn,
   whatStandsIn,
@@ -25,6 +26,7 @@ const AS_SERVED = {
   idNumber: 'AB12345',
   email: 'vladan@primer.rs',
   emailConfirmed: false,
+  viberCommunity: false,
   address: 'Bulevar 1',
   phone: '060111222',
   placeId: 792680,
@@ -43,6 +45,7 @@ const STANDING: MembersData = {
   idNumber: 'AB12345',
   email: 'vladan@primer.rs',
   emailConfirmed: false,
+  viberCommunity: false,
   address: 'Bulevar 1',
   phone: '060111222',
   city: 'Beograd',
@@ -59,12 +62,21 @@ describe('what the form of the administration draws', () => {
     const declared = /WHAT_THIS_ROUTE_TAKES\s*=\s*List\.of\(([^)]*)\)/.exec(java)?.[1] ?? ''
     const taken = [...declared.matchAll(/"([^"]+)"/g)].map((one) => one[1])
 
-    expect([...WHAT_THE_ADMINISTRATION_CORRECTS, 'country', 'placeId'].toSorted()).toEqual(taken.toSorted())
+    expect([...WHAT_THE_ADMINISTRATION_CORRECTS, THE_BOX_FOR_VIBER, 'country', 'placeId'].toSorted()).toEqual(
+      taken.toSorted(),
+    )
   })
 
   it('is the registration’s own fields, in its order, with the box of the address only where there is an account', () => {
     expect(theMembersForm(true).fields.map((one) => one.name)).toEqual(
-      registracija.fields.map((one) => one.name).filter((name) => WHAT_THE_ADMINISTRATION_CORRECTS.some((one) => one === name)),
+      registracija.fields
+        .map((one) => one.name)
+        .filter((name) => name === THE_BOX_FOR_VIBER || WHAT_THE_ADMINISTRATION_CORRECTS.some((one) => one === name)),
+    )
+    /* The box for Viber is the registration's own, beside the telephone, which asks for a number when it is
+       ticked (owner, 23.11.2026, the rule derived from P36). */
+    expect(theMembersForm(true).fields.find((one) => one.name === THE_BOX_FOR_VIBER)).toBe(
+      registracija.fields.find((one) => one.name === THE_BOX_FOR_VIBER),
     )
     expect(theMembersForm(false).fields.map((one) => one.name)).not.toContain('email')
     expect(theMembersForm(true).submitKey, 'the button saves, it does not send a registration').toBe('account.save')
@@ -93,6 +105,8 @@ describe('what the server says of a member', () => {
     ['a name of the wrong kind', { ...AS_SERVED, firstName: 7 }],
     ['a name left out', (({ fatherName: _gone, ...rest }) => rest)(AS_SERVED)],
     ['a confirmation that is a word', { ...AS_SERVED, emailConfirmed: 'yes' }],
+    ['a box for Viber that is a word', { ...AS_SERVED, viberCommunity: 'yes' }],
+    ['a box for Viber left out', (({ viberCommunity: _gone, ...rest }) => rest)(AS_SERVED)],
   ])('is nothing for %s', (_what, body) => {
     expect(membersDataIn(body)).toBeNull()
   })
@@ -128,6 +142,24 @@ describe('what of the form travels', () => {
       city: 'Beograd',
       country: 'HR',
     })
+  })
+
+  it('carries the box for Viber as a tick when it moved, both ways, and nothing when it did not', () => {
+    expect(whatTheAdministrationChanged(STANDING, { ...asOpened, viberCommunity: true })).toEqual({
+      viberCommunity: true,
+    })
+    expect(
+      whatTheAdministrationChanged({ ...STANDING, viberCommunity: true }, { ...asOpened, viberCommunity: false }),
+    ).toEqual({ viberCommunity: false })
+    expect(
+      whatTheAdministrationChanged({ ...STANDING, viberCommunity: true }, { ...asOpened, viberCommunity: true }),
+    ).toEqual({})
+  })
+
+  it('says nothing about the box for Viber where the form holds no tick for it', () => {
+    const { viberCommunity: _none, ...withoutTheBox } = asOpened
+
+    expect(whatTheAdministrationChanged({ ...STANDING, viberCommunity: true }, withoutTheBox)).toEqual({})
   })
 
   it('says nothing about a field the form does not draw', () => {

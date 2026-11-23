@@ -112,7 +112,8 @@ import java.util.function.Function;
  * parent's consent, the beginners' category, the biography and anything else.
  *
  * <p><b>THE WORDS THIS ROUTE SHARES WITH THE MEMBER'S OWN ARE HIS</b>: a box too long, a box emptied,
- * a form not complete, a town not said once or not known are {@link MeWriteApi}'s constants, the
+ * a form not complete, a town not said once or not known, and since 23.11.2026 the box for Viber ticked
+ * with no telephone, are {@link MeWriteApi}'s constants, the
  * same sentences about the same boxes, so a screen reads them once. Only what is new is declared here.
  */
 @RestController
@@ -144,9 +145,14 @@ class MemberDataWriteApi {
 	 * <p>Owner, 20.11.2026, chosen between the options offered with the recommendation (PDL P36, „Ko je
 	 * štiklirao, vidi se na ekranu Moderacija članova"): when the administration tries to empty the telephone
 	 * of a member who ticked the box, the server refuses it, „Član je prijavljen za Viber zajednicu, pa broj ne
-	 * može da se obriše dok se ne odjavi." The wish stays his: he takes it back himself on „Moji podaci", and
-	 * this route does not take the box at all ({@link #NOT_TAKEN_HERE}). A number corrected to another number is
-	 * not refused. V106's {@code competitor_viber_community_needs_a_phone} would refuse the row anyway, as a 500.
+	 * može da se obriše dok se ne odjavi." ~~The wish stays his: he takes it back himself on „Moji podaci", and
+	 * this route does not take the box at all.~~ Since 23.11.2026 the route takes the box (owner, PDL „Tri brze
+	 * izmene administracije", „I da menja"; see {@link #WHAT_THIS_ROUTE_TAKES}), and this refusal still stands
+	 * for a member who IS in the community and stays in it: one whose box the same request takes back is no
+	 * longer in it once the request is written, and his telephone may go with it, the way the member's own
+	 * route reads the row as it would stand ({@link MeWriteApi#THE_VIBER_COMMUNITY_NEEDS_A_TELEPHONE}; the
+	 * assistant's reasoning, 23.11.2026, and not the owner's word). A number corrected to another number is not
+	 * refused. V106's {@code competitor_viber_community_needs_a_phone} would refuse the row anyway, as a 500.
 	 */
 	static final String THE_VIBER_COMMUNITY_HOLDS_THE_PHONE = "theViberCommunityHoldsThePhone";
 
@@ -158,10 +164,17 @@ class MemberDataWriteApi {
 	 */
 	static final String THE_ADDRESS_IS_THE_SUPERADMINS = "theAddressIsTheSuperadmins";
 
-	/** Every name the body may carry, spelt as the registration's form spells them. */
+	/**
+	 * Every name the body may carry, spelt as the registration's form spells them.
+	 *
+	 * <p><b>{@code viberCommunity} since 23.11.2026</b>, the box „Želim u BTL zajednicu na Viberu" (owner, PDL
+	 * „Tri brze izmene administracije": the box on the card „Podaci", „ne samo za čitanje, ako hoću želim da je
+	 * kao admin i promenim", and „I da menja"). Ticked, it asks for a telephone exactly as it does of the member
+	 * ({@link MeWriteApi#THE_VIBER_COMMUNITY_NEEDS_A_TELEPHONE}, the same sentence on the screen).
+	 */
 	static final List<String> WHAT_THIS_ROUTE_TAKES = List.of("firstName", "lastName", "fatherName",
-			"gender", "birthDate", "idNumber", "email", "address", "phone", "placeId", "city", "country",
-			"shirtSize");
+			"gender", "birthDate", "idNumber", "email", "address", "phone", "viberCommunity", "placeId", "city",
+			"country", "shirtSize");
 
 	/**
 	 * The boxes that are typed, with the most each may hold, which is the number on
@@ -188,7 +201,7 @@ class MemberDataWriteApi {
 	 */
 	record Correction(String firstName, String lastName, String fatherName, String gender,
 			String birthDate, String idNumber, String email, String address, String phone, Long placeId,
-			String city, String country, String shirtSize) {
+			String city, String country, String shirtSize, Boolean viberCommunity) {
 	}
 
 	private final JdbcClient db;
@@ -524,13 +537,28 @@ class MemberDataWriteApi {
 					.body(new MeWriteApi.NotAllowed(MeWriteApi.A_FIELD_IS_BLANK, List.of("idNumber"))));
 		}
 
-		/* HIS TELEPHONE, WHILE HE IS IN THE COMMUNITY ON VIBER, IS NOT EMPTIED FOR HIM (owner, 20.11.2026).
-		   Read under the hold taken above, so a wish given in the same instant is one before or after this. */
-		if (typed.phone() != null && typed.phone().isBlank()
-				&& db.sql("select viber_community_at is not null from competitor where id = ?")
-				.param(member).query(Boolean.class).single()) {
+		/* THE COMMUNITY ON VIBER AND HIS TELEPHONE, asked of the row as it WOULD stand, which is two sources and
+		   not one: what the request sends and, for whatever it leaves out, what the row holds under the hold taken
+		   above (the shape `MeWriteApi.aWishIsLeftWithNoTelephone` keeps for the member's own route).
 
-			return Corrected.refused(conflict(THE_VIBER_COMMUNITY_HOLDS_THE_PHONE));
+		   A wish that would be left with no telephone is refused in one of two sentences, and which one is asked
+		   of where the wish came from. He was IN the community and stays in it while this request empties his
+		   telephone: that is the owner's refusal of 20.11.2026, „Član je prijavljen za Viber zajednicu, pa broj ne
+		   može da se obriše dok se ne odjavi." Otherwise the administration is ticking the box now, and it is
+		   told what the member is told when he ticks it with no number (owner, 23.11.2026, the rule derived from
+		   P36: „telefon je obavezan, uz istu rečenicu „Za Viber zajednicu upišite broj telefona.”").
+
+		   „HE WAS IN IT" IS ENOUGH TO KNOW THAT THIS REQUEST EMPTIED HIS TELEPHONE: a wish never stands on a row
+		   with no telephone (V106, `competitor_viber_community_needs_a_phone`), so a wish that stood and is left
+		   with none is a telephone this request took away. */
+		boolean wishAfter = typed.viberCommunity() == null ? before.viberCommunity() : typed.viberCommunity();
+		boolean noPhoneAfter = typed.phone() == null ? before.phone() == null : typed.phone().isBlank();
+
+		if (wishAfter && noPhoneAfter) {
+			return Corrected.refused(before.viberCommunity()
+					? conflict(THE_VIBER_COMMUNITY_HOLDS_THE_PHONE)
+					: ResponseEntity.badRequest().body(new MeWriteApi.NotAllowed(
+							MeWriteApi.THE_VIBER_COMMUNITY_NEEDS_A_TELEPHONE, List.of("phone"))));
 		}
 
 		/* EVERY REFUSAL IS BEHIND US BUT ONE, and nothing has been written yet.
@@ -626,7 +654,12 @@ class MemberDataWriteApi {
 						+ " phone = case when cast(? as boolean) then cast(? as text) else phone end,"
 						+ " place_id = case when cast(? as boolean) then cast(? as bigint) else place_id end,"
 						+ " city = case when cast(? as boolean) then cast(? as text) else city end,"
-						+ " country_id = case when cast(? as boolean) then cast(? as bigint) else country_id end"
+						+ " country_id = case when cast(? as boolean) then cast(? as bigint) else country_id end,"
+						/* THE WISH, WITH THE MOMENT IT WAS FIRST GIVEN KEPT while it is kept, the statement
+						   `MeWriteApi` writes it with: a box ticked again is not a new wish. Taken back, NULL (V106). */
+						+ " viber_community_at = case when cast(? as boolean) is null then viber_community_at"
+						+ "   when cast(? as boolean) then coalesce(viber_community_at, now())"
+						+ "   else null end"
 						+ " where id = ?")
 				.params(strippedOrNull(typed.firstName()), strippedOrNull(typed.lastName()),
 						strippedOrNull(typed.fatherName()), typed.gender(), born.toString(),
@@ -635,6 +668,7 @@ class MemberDataWriteApi {
 						town != null, town == null ? null : town.placeKey(),
 						town != null, town == null ? null : town.city(),
 						town != null, town == null ? null : town.countryId(),
+						typed.viberCommunity(), typed.viberCommunity(),
 						member)
 				.update();
 
@@ -693,6 +727,7 @@ class MemberDataWriteApi {
 		movedIf(moved, Field.EMAIL, before.email(), after.email());
 		movedIf(moved, Field.ADDRESS, before.address(), after.address());
 		movedIf(moved, Field.PHONE, before.phone(), after.phone());
+		movedIf(moved, Field.VIBER_COMMUNITY, before.viberCommunity(), after.viberCommunity());
 		movedIf(moved, Field.TOWN, List.of(Objects.toString(before.placeId()), Objects.toString(before.city()),
 				Objects.toString(before.country())), List.of(Objects.toString(after.placeId()),
 				Objects.toString(after.city()), Objects.toString(after.country())));
@@ -738,7 +773,7 @@ class MemberDataWriteApi {
 				&& typed.gender() == null && typed.birthDate() == null && typed.idNumber() == null
 				&& typed.email() == null && typed.address() == null && typed.phone() == null
 				&& typed.placeId() == null && typed.city() == null && typed.country() == null
-				&& typed.shirtSize() == null;
+				&& typed.shirtSize() == null && typed.viberCommunity() == null;
 	}
 
 	private static String strippedOrNull(String value) {

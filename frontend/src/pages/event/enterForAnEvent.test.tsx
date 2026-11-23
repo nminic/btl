@@ -159,7 +159,7 @@ async function aRowFor(user: ReturnType<typeof setupUser>, seconds: string[] = [
   const member = must(screen.getAllByLabelText(/^Član/)[0], 'the first row')
 
   await user.type(member, '000002')
-  await user.click(await screen.findByRole('button', { name: /Relja/ }))
+  await user.click(await screen.findByRole('option', { name: /Relja/ }))
 
   for (const [label, value] of [
     ['Sati', seconds[0]],
@@ -413,7 +413,7 @@ describe('the event and the race the screen names first', () => {
       const member = must(screen.getAllByLabelText(/^Član/)[0], 'the first row')
 
       await user.type(member, '000002')
-      await user.click(await screen.findByRole('button', { name: /Relja/ }))
+      await user.click(await screen.findByRole('option', { name: /Relja/ }))
       await user.type(must(screen.getAllByLabelText(/^Dužina/).at(-1), 'the length of the row'), '3')
 
       expect(must(screen.getAllByLabelText(/^Uspon/).at(-1), 'the climb of the row')).not.toHaveAttribute(
@@ -450,7 +450,7 @@ describe('the event and the race the screen names first', () => {
       const member = must(screen.getAllByLabelText(/^Član/)[0], 'the first row')
 
       await user.type(member, '000002')
-      await user.click(await screen.findByRole('button', { name: /Relja/ }))
+      await user.click(await screen.findByRole('option', { name: /Relja/ }))
       await user.type(must(screen.getAllByLabelText(/^Dužina/).at(-1), 'the length of the row'), '3')
       await user.type(must(screen.getAllByLabelText('Sati').at(-1), 'the hours'), '1')
       await save(user)
@@ -485,7 +485,7 @@ describe('the event and the race the screen names first', () => {
       const member = must(screen.getAllByLabelText(/^Član/)[0], 'the first row')
 
       await user.type(member, '000002')
-      await user.click(await screen.findByRole('button', { name: /Relja/ }))
+      await user.click(await screen.findByRole('option', { name: /Relja/ }))
       await user.type(screen.getByLabelText(/^Dužina/), '15')
       await user.type(screen.getByLabelText(/^Uspon/), '0')
       await user.type(screen.getByLabelText(/^Spust/), '0')
@@ -532,7 +532,7 @@ describe('the event and the race the screen names first', () => {
       const member = must(screen.getAllByLabelText(/^Član/)[0], 'the first row')
 
       await user.type(member, '000002')
-      await user.click(await screen.findByRole('button', { name: /Relja/ }))
+      await user.click(await screen.findByRole('option', { name: /Relja/ }))
       await user.type(screen.getByLabelText(/^Dužina/), '12,5')
       await user.type(screen.getByLabelText(/^Uspon/), '10')
       await user.type(screen.getByLabelText(/^Spust/), '5')

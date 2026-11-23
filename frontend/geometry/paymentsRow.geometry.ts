@@ -31,7 +31,7 @@ const ANSWERS: Answers = {
     memberNumber: null, firstName: 'Petar', lastName: 'Marko', fatherName: 'Jovan', gender: 'M',
     birthDate: '1990-05-15', idNumber: 'AB123', email: 'petar@primer.rs', emailConfirmed: false,
     address: 'Ulica 1', phone: '060111222', placeId: null, city: 'Ljubljana', country: 'SI',
-    shirtSize: 'M', bio: null, photo: null, crop: null,
+    shirtSize: 'M', bio: null, photo: null, crop: null, viberCommunity: false,
   },
 }
 

@@ -1,0 +1,51 @@
+/* The box of a member on a row of results and the list it opens (`MemberChoice.tsx`).
+
+   The box takes the whole width of its field, which has to be said: every other control of a field is a
+   direct child of `.field`, a flex column that stretches them, and this one is a child of the box around it
+   (the measurement `forms/Suggesting.css` keeps for the same shape). */
+.member-choice {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.member-choice > .field__control {
+  inline-size: 100%;
+  min-inline-size: 0;
+}
+
+/* OVER THE BOXES BELOW AND NOT IN THE FLOW, AT EVERY WIDTH (owner, 23.11.2026, PDL „Tri brze izmene
+   administracije": „Spisak predloga se otvara preko sadržaja ispod, ne gura ga nadole."). The dress and the
+   lift are the town's list (`forms/PlaceField.css`, `.place__list`), so a reader sees the two as one kind of
+   thing; unlike that one it does not go into the flow on a telephone, because the owner's sentence names no
+   width. `geometry/memberChoice.geometry.ts` holds that nothing under it moves while it is open. */
+.member-choice__list {
+  position: absolute;
+  z-index: 6;
+  top: calc(100% + var(--space-6));
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: var(--space-6);
+  list-style: none;
+  border-radius: var(--radius-10);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: 0 24px 50px -20px rgba(0, 0, 0, 0.45);
+}
+
+.member-choice__one {
+  padding: var(--space-6) var(--space-8);
+  border-radius: var(--radius-8);
+  cursor: pointer;
+  /* One row, one member: a long name is cut rather than wrapped, so the row under the pointer does not move
+     while it is being reached for (`.place__one`). */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.member-choice__one:hover,
+.member-choice__one--at {
+  background: var(--surface-hover);
+}

@@ -806,11 +806,22 @@ public final class SeasonClock {
 	 * answer would offer a season the database will not take. {@link #seasonBeingPaidFor}
 	 * clamps the same way and for the same sentence.
 	 *
-	 * <p><b>The clamp is applied to the RUNNING year and the next one is counted off the
-	 * result</b>, so today, in 2026, the pair is 2027 and 2028 rather than 2027 twice.
-	 * That is read off the cost the owner accepted rather than guessed at: the league he
-	 * named as the one that cannot be prepared yet is <b>2029</b>, which is true of this
-	 * shape and not of the other.
+	 * <p><b>THE FLOOR IS ON EACH OF THE TWO ANSWERS, AND SINCE 23.11.2026 THAT IS THE OWNER'S
+	 * CHOICE AND NOT A READING.</b> Owner, 23.11.2026 (PDL, „Tri brze izmene administracije"),
+	 * asked about the clash with „Nigde na portalu nema sezone pre 2027.", chose „Tekuća i
+	 * naredna, ne ispod 2027", and the record of it says: „Zato 23.11.2026 izbor nudi samo 2027, a
+	 * od 1.1.2027. nudi 2027 i 2028, i dalje se pomera sam svake godine." So through 2026 the
+	 * pair is 2027 alone, and from 2027 on it is the year and the one after it.
+	 * ~~The clamp is applied to the RUNNING year and the next one is counted off the result, so
+	 * today, in 2026, the pair is 2027 and 2028 rather than 2027 twice.~~ That was read off the
+	 * cost the owner had accepted on 22.09.2026 (that 2029 cannot be prepared), and his choice of
+	 * 23.11.2026 struck it. The form offers the very same pair (`pages/admin/leagueSeasons.ts`),
+	 * because the route and the form say one thing (PDL P15a, 22.09.2026: „ruta sprovodi isto
+	 * što i forma").
+	 *
+	 * <p><b>Written as the band's year of NOW and the band's year of A YEAR FROM NOW</b>, so the
+	 * floor and the zone keep their one home below: both answers are
+	 * {@link #seasonTheBandIsWorkedOutFor}, and through 2026 both are 2027.
 	 *
 	 * <p><b>THE RUNNING YEAR IS ASKED OF {@link #seasonTheBandIsWorkedOutFor} AND NOT WORKED OUT
 	 * AGAIN HERE (PENDING, review of PR 509, finding 1).</b> „The year that is running, never earlier
@@ -839,8 +850,6 @@ public final class SeasonClock {
 	 *           which is ADL A36 O2
 	 */
 	public static boolean aLeagueMayBeMadeFor(int season, ZonedDateTime at) {
-		int running = seasonTheBandIsWorkedOutFor(at);
-
-		return season == running || season == running + 1;
+		return season == seasonTheBandIsWorkedOutFor(at) || season == seasonTheBandIsWorkedOutFor(at.plusYears(1));
 	}
 }

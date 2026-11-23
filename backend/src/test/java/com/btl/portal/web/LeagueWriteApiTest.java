@@ -342,6 +342,28 @@ class LeagueWriteApiTest {
 		assertThat(howManyLeagues()).isEqualTo(4);
 	}
 
+	/**
+	 * AND THROUGH 2026 THE PAIR IS 2027 ALONE, ON THE ROUTE AS ON THE FORM (owner, 23.11.2026, PDL „Tri
+	 * brze izmene administracije": „Zato 23.11.2026 izbor nudi samo 2027, a od 1.1.2027. nudi 2027 i
+	 * 2028"; PDL P15a, 22.09.2026: „ruta sprovodi isto što i forma"). Asked on the day the owner chose it,
+	 * so the route that took 2028 in 2026 until that day is refused here and not only in
+	 * {@code SeasonClockTest}.
+	 */
+	@Test
+	void throughTwentyTwentySixALeagueIsMadeForTwentyTwentySevenAlone() throws Exception {
+		clock.moveTo(Instant.parse("2026-11-23T10:00:00Z"));
+
+		MockHttpServletResponse tooEarly = add(new LeagueWriteApi.Upsert("Liga 2028", "liga-2028", 2028, "", ""));
+
+		assertThat(tooEarly.getStatus()).isEqualTo(400);
+		assertThat(tooEarly.getContentAsString()).contains(LeagueWriteApi.THE_SEASON_IS_NOT_THIS_ONE_OR_THE_NEXT);
+		assertThat(howManyLeagues()).isEqualTo(4);
+
+		assertThat(add(new LeagueWriteApi.Upsert("Liga 2027", "liga-prva-2027", 2027, "", "")).getStatus())
+				.isEqualTo(201);
+		assertThat(howManyLeagues()).isEqualTo(5);
+	}
+
 	@Test
 	void anAddressSomebodyAlreadyAnswersAtIsRefusedAndTheirLeagueIsLeftAlone() throws Exception {
 		MockHttpServletResponse answer = add(new LeagueWriteApi.Upsert("Nova liga", "druga-2028",

@@ -699,7 +699,7 @@ describe('what is not held', () => {
         await user.click(await screen.findByRole('button', { name: 'Nova liga' }))
         await user.type(screen.getByLabelText(/^Naziv lige/), 'Vojvođanska liga 2027')
         await user.type(screen.getByLabelText(/^Adresa/), 'vojvodjanska-2027')
-        await user.type(screen.getByLabelText(/^Sezona/), '2027')
+        await user.selectOptions(screen.getByLabelText(/^Sezona/), '2027')
       },
     },
     {

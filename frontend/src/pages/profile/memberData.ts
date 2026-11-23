@@ -39,25 +39,52 @@ export const WHAT_THE_ADMINISTRATION_CORRECTS = [
 export type Corrected = (typeof WHAT_THE_ADMINISTRATION_CORRECTS)[number]
 
 /**
+ * AND THE BOX FOR THE COMMUNITY ON VIBER, which is a tick and not a text, so it is not among the words above.
+ *
+ * <p>Owner, 23.11.2026 (PDL, „Tri brze izmene administracije"): „Hoću da u podacima članova vidim status
+ * štikliranosti Viber community", on the card „Podaci", „ne samo za čitanje, ako hoću želim da je kao admin i
+ * promenim", and „I da menja". The box is the registration's own, beside the telephone, so the telephone asks
+ * for a number when it is ticked exactly as it does of the member (`requiredWhenFilled` on the registration's
+ * field, and `MemberDataWriteApi` refuses the same with the same sentence).
+ */
+export const THE_BOX_FOR_VIBER = 'viberCommunity'
+
+/**
  * The registration's own fields, those of them this form draws, in the registration's order.
  *
  * @param withAnAddress whether the member has an account and so an address of post. One with none (a
  *                      member older than the portal, or entered by the league before he took an
  *                      account over) has no box for it: the route refuses an address for him
  *                      (`thereIsNoAccount`), and the registration's box is one that must be filled
+ * @param onViber       whether the server holds the member as joined to the community on Viber. Then the
+ *                      telephone is still marked as asked, but does NOT stop the press on its own
+ *                      (`leftToTheServer` on the card's copy of `requiredWhenFilled`): owner, 23.11.2026 (PDL, „Tri brze izmene administracije"),
+ *                      „ekran kaže rečenicu od 20.11.2026", so the press goes to the server, which answers
+ *                      an emptied telephone with the 409 of that sentence. The registration and „Moji
+ *                      podaci" use the field as written and keep the rule
  */
-export function theMembersForm(withAnAddress: boolean): FormDef {
+export function theMembersForm(withAnAddress: boolean, onViber = false): FormDef {
   return {
     ...registracija,
     id: 'podaci-clana',
     /* The button saves a correction, and its word is the one the member's own panel saves with
        („Sačuvaj"), not the registration's „Pošalji prijavu". */
     submitKey: 'account.save',
-    fields: registracija.fields.filter(
-      (one) =>
-        WHAT_THE_ADMINISTRATION_CORRECTS.some((name) => name === one.name) &&
-        (withAnAddress || one.name !== 'email'),
-    ),
+    fields: registracija.fields
+      .filter(
+        (one) =>
+          (one.name === THE_BOX_FOR_VIBER || WHAT_THE_ADMINISTRATION_CORRECTS.some((name) => name === one.name)) &&
+          (withAnAddress || one.name !== 'email'),
+      )
+      .map((one) => {
+        if (one.name !== 'phone' || !onViber || one.requiredWhenFilled === undefined) {
+          return one
+        }
+
+        /* The star and `aria-required` stay (P36, 20.11.2026: „natpis telefona postaje „Telefon” sa zvezdicom"),
+           and the press goes on to the server (`leftToTheServer`). */
+        return { ...one, requiredWhenFilled: { ...one.requiredWhenFilled, leftToTheServer: true } }
+      }),
   }
 }
 
@@ -85,8 +112,8 @@ export const WHAT_HE_SEES = [
   'phone',
   /* The box for the community on Viber, beside the telephone as on the registration (owner, PDL P36,
      20.11.2026: „Isti kvadratić stoji i na strani „Moji podaci”, pa se postojeći članovi sami prijavljuju i
-     odjavljuju"). Not on the administration's form above: the wish is his, and its route refuses the name
-     (`MemberDataWriteApi`, `notTakenHere`). */
+     odjavljuju"). ~~Not on the administration's form above: the wish is his, and its route refuses the name.~~
+     On the administration's form too since 23.11.2026 (`THE_BOX_FOR_VIBER`). */
   'viberCommunity',
   'city',
   'shirtSize',
@@ -124,6 +151,8 @@ export type MembersData = Record<Corrected | 'country', string> & {
   memberNumber: string
   /** Null where he has no account, false while it is not confirmed. */
   emailConfirmed: boolean | null
+  /** Whether he asked to join the league's community on Viber (`THE_BOX_FOR_VIBER`). */
+  viberCommunity: boolean
 }
 
 /**
@@ -146,8 +175,9 @@ export function membersDataIn(body: unknown): MembersData | null {
     return typeof said === 'string' ? said : null
   }
   const confirmed: unknown = Reflect.get(body, 'emailConfirmed')
+  const viber: unknown = Reflect.get(body, THE_BOX_FOR_VIBER)
 
-  if (confirmed !== null && typeof confirmed !== 'boolean') {
+  if ((confirmed !== null && typeof confirmed !== 'boolean') || typeof viber !== 'boolean') {
     return null
   }
 
@@ -177,7 +207,7 @@ export function membersDataIn(body: unknown): MembersData | null {
     read[name] = value
   }
 
-  return { ...read, emailConfirmed: confirmed }
+  return { ...read, emailConfirmed: confirmed, viberCommunity: viber }
 }
 
 /**
@@ -194,8 +224,8 @@ export function membersDataIn(body: unknown): MembersData | null {
 export function whatTheAdministrationChanged(
   standing: MembersData,
   values: FormValues,
-): Record<string, string> {
-  const changed: Record<string, string> = {}
+): Record<string, string | boolean> {
+  const changed: Record<string, string | boolean> = {}
 
   for (const name of [...WHAT_THE_ADMINISTRATION_CORRECTS, 'country'] as const) {
     const value = values[name]
@@ -210,6 +240,15 @@ export function whatTheAdministrationChanged(
   if (Object.hasOwn(changed, 'city') || Object.hasOwn(changed, 'country')) {
     changed.city = String(values.city).trim()
     changed.country = String(values.country).trim()
+  }
+
+  /* THE BOX FOR VIBER travels when it moved, as a tick (`MemberDataWriteApi.Correction.viberCommunity`), the
+     rule the member's own form keeps for the same box (`member/myAccount.ts`). Only a tick the form holds: a
+     form that does not draw it says nothing about it. */
+  const ticked = values[THE_BOX_FOR_VIBER]
+
+  if (typeof ticked === 'boolean' && ticked !== standing.viberCommunity) {
+    changed[THE_BOX_FOR_VIBER] = ticked
   }
 
   return changed
@@ -247,6 +286,11 @@ export const SHARED_WITH_THE_MEMBERS_OWN: Record<string, string> = {
   aFieldIsTooLong: 'account.fieldIsTooLong',
   theTownIsNotSaidOnce: 'account.townNotSaidOnce',
   theTownIsNotKnown: 'account.townNotKnown',
+  /* The box for Viber ticked with no telephone (owner, 23.11.2026, the rule derived from PDL P36: „uz istu
+     rečenicu „Za Viber zajednicu upišite broj telefona.”"), the words the member's own form says
+     (`member/myAccount.ts`). The form says them beside the telephone before anything is sent, so this is met
+     only by a request that lost a race against what the screen last read. */
+  theViberCommunityNeedsATelephone: 'registration.phoneForViber',
 }
 
 /**

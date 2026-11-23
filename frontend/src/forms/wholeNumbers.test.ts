@@ -96,7 +96,6 @@ const LANDS_IN: Record<string, Landing[]> = {
       column: 'first_season',
     },
   ],
-  'admin-liga.season': [{ file: join(WEB, 'LeagueWriteApi.java'), record: 'Upsert', component: 'season' }],
   'admin-trka.distanceKm': [{ file: RACES, record: 'Upsert', component: 'distanceKm' }],
   'admin-trka.ascentM': [{ file: RACES, record: 'Upsert', component: 'ascentM' }],
   'admin-trka.descentM': [{ file: RACES, record: 'Upsert', component: 'descentM' }],

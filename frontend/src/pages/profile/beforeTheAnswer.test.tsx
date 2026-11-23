@@ -596,6 +596,7 @@ describe('the card Podaci, before the server has said who is reading', () => {
             idNumber: 'AB12345',
             email: 'vladan@primer.rs',
             emailConfirmed: false,
+            viberCommunity: false,
             address: 'Bulevar 1',
             phone: '060111222',
             placeId: null,

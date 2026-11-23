@@ -115,6 +115,7 @@
   ],
   "src/pages/admin/AdminLeagues.tsx": [
     "../../app/useFilterParams",
+    "../../clock/useClock",
     "../../components/Resource",
     "../../data/client",
     "../../data/types",
@@ -131,6 +132,7 @@
     "./LeagueRaceModeration",
     "./entityForms",
     "./leagueCounted",
+    "./leagueSeasons",
     "./leagueWrites",
     "/",
     "/api/leagues",
