@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { CropChooser, type Chosen } from '../../components/CropChooser'
 import { clearResourceCache } from '../../data/client'
-import { cropIn, fittedTo } from '../../components/crop'
+import { CutPicture } from '../../components/CutPicture'
 import { AskedLabel } from '../../forms/AskedLabel'
 import { LongBox } from '../../forms/LongBox'
 import { profil } from '../../forms/definitions'
@@ -148,9 +148,14 @@ function HisPicture({ competitor }: { competitor: WhatStands }) {
 
       <p className="member__note">{t(shown === null ? 'theirBoxes.pictureNone' : 'theirBoxes.pictureStanding')}</p>
       {shown !== null && (
-        <span className="face-circle portrait crop-fitted">
-          <img src={shown.photo} alt={t('theirBoxes.currentAlt')} width={64} height={64} style={fittedTo(cropIn(shown.crop))} />
-        </span>
+        <CutPicture
+          className="face-circle portrait"
+          original={shown.photo}
+          crop={shown.crop}
+          small={null}
+          alt={t('theirBoxes.currentAlt')}
+          lazy={false}
+        />
       )}
       <p className="member__note">{t('theirBoxes.atOnce')}</p>
 

@@ -164,4 +164,18 @@ describe('the circle a member is drawn in', () => {
       'app/AccountMenu.tsx',
     )
   })
+  it('is cut by one component, so no circle can cut the picture another way', () => {
+    /* Owner, 23.11.2026: „Zašto se drugačije seče i prikazuje u malom i velikom krugu?????" and
+       „Veliki krug je rezprezentativan, tako treba da bude svuda." The profile drew the original
+       and cut it in a box of its own, which was not square, and so cut a different part of the
+       picture from the card beside it. The cut now has one home (`components/CutPicture.tsx`),
+       and this asks the question that keeps it one: which modules REACH the arithmetic of the
+       cut. A screen that imports `fittedTo` again, under any name and in any form of import,
+       is drawing a picture of its own around it, and is caught here rather than on the screen
+       nobody looks at. What the pixels show is measured in Chrome, on both kinds of circle
+       (`geometry/memberPicture.geometry.ts`). */
+    const { walked, reaching } = modulesReaching('components/fitted.ts')
+    expect(walked).toBeGreaterThan(WHOLE_PORTAL)
+    expect(reaching, 'a module cuts a picture without CutPicture').toEqual(['components/CutPicture.tsx'])
+  })
 })
