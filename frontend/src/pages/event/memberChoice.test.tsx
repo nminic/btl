@@ -394,6 +394,22 @@ describe('where the list of members stands', () => {
     expect(list.style.getPropertyValue('--member-choice-width')).toBe('300px')
   })
 
+  it('stands at the place of the box in the DOCUMENT, so a page scrolled down and to the side has the list under the box', async () => {
+    const user = setupUser()
+    const { box } = drawn()
+
+    vi.spyOn(window, 'scrollY', 'get').mockReturnValue(300)
+    vi.spyOn(window, 'scrollX', 'get').mockReturnValue(20)
+    box.getBoundingClientRect = () => DOMRect.fromRect({ x: 40, y: 100, width: 300, height: 48 })
+    await user.click(box)
+
+    const list = screen.getByRole('listbox')
+
+    expect(list.style.getPropertyValue('--member-choice-bottom')).toBe('448px')
+    expect(list.style.getPropertyValue('--member-choice-left')).toBe('60px')
+    vi.restoreAllMocks()
+  })
+
   it('goes with the box when the page or a table scrolls, or the window changes size, while it is open', async () => {
     const user = setupUser()
     const { box } = drawn()

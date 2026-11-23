@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { SYMBOL } from '../../app/actionSymbol'
 import { ActionButton } from '../../components/ActionButton'
 import { Prompt } from '../../components/Prompt'
@@ -42,6 +42,13 @@ function labelOf(one: Competitor): string {
  * meets a sheet that answers nothing; the ref's `return` was never reached (coverage of PR 810), and the case
  * of „Da” pressed twice is held by `working` alone.
  *
+ * <p><b>„Dodaj člana” has the guard „Izbaci” does not need</b> (review of PR 810, medium 1): its press is not behind a
+ * sheet that answers nothing while the request is out, so a second press met the box again and sent a second
+ * POST, and the second answer (`heIsAlreadyInATeam`, or a 500) overwrote the sentence of the first, „Član je dodat u
+ * tim.”. The ref that holds a request to one at a time and the state beside it are `MemberRow.tsx`'s and
+ * `DeleteSheet.tsx`'s (`outstanding`, `working`): the ref because two presses of one event see the same render, the
+ * state because the reader is told the request is out.
+ *
  * <p><b>After every write the list is read again</b> (`onWritten`), as after the making of a team: who is in
  * which team reaches this screen as `Competitor.teamId`, so the row moves only when the server says it did.
  */
@@ -71,6 +78,9 @@ export function TeamMembers({
   const [asking, setAsking] = useState<Competitor | null>(null)
   /** Whether „Da” has been answered and the request is out, which tells off every press on the sheet. */
   const [working, setWorking] = useState(false)
+  /** Whether a „Dodaj člana” is out: one at a time, held by a ref because two presses of one event see one render. */
+  const adding = useRef(false)
+  const [addingNow, setAddingNow] = useState(false)
   const boxId = `team-${String(team.id)}-member`
   const notChosenId = `${boxId}-not-chosen`
   const offered: Suggestion[] = free.map((one) => ({
@@ -120,16 +130,27 @@ export function TeamMembers({
       return
     }
 
+    if (adding.current) {
+      return
+    }
+
+    adding.current = true
+    setAddingNow(true)
     setNotChosen(false)
 
-    if (
-      await answered(
-        askTheServer(membersOfTheTeam(team.id), { memberNumber: chosen }, 'POST'),
-        t('admin.teamMemberAdded'),
-      )
-    ) {
-      setTyped('')
-      setChosen('')
+    try {
+      if (
+        await answered(
+          askTheServer(membersOfTheTeam(team.id), { memberNumber: chosen }, 'POST'),
+          t('admin.teamMemberAdded'),
+        )
+      ) {
+        setTyped('')
+        setChosen('')
+      }
+    } finally {
+      adding.current = false
+      setAddingNow(false)
     }
   }
 
@@ -207,7 +228,7 @@ export function TeamMembers({
 
       {/* Said once and politely: the list above has already changed. */}
       <p aria-live="polite" className="visually-hidden">
-        {said}
+        {addingNow ? t('results.sending') : said}
       </p>
     </section>
   )

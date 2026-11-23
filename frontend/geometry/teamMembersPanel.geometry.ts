@@ -106,11 +106,19 @@ for (const [which, answers, pick, phoneOnly] of [
       const box = page.locator(`#team-${team}-member`)
       /* What the table scrolls sideways by itself, with the panel open and the list shut: a wide table scrolls inside
          its own frame on a telephone, by design (`styles/table.css`), and what is asked is what the LIST adds. */
-      const frameWideBefore = await box.evaluate((one) => {
+      const before = await box.evaluate((one) => {
         const frame = one.closest('.table-scroll')
 
-        return frame === null ? Number.NaN : frame.scrollWidth - frame.clientWidth
+        return {
+          frame: frame === null ? Number.NaN : frame.scrollWidth - frame.clientWidth,
+          page: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        }
       })
+      const frameWideBefore = before.frame
+
+      /* The panel itself, with the list shut, does not make the page scroll sideways (PR 810, „bočno klizanje sa
+         otvorenim panelom članova na 768 px nije mereno"). */
+      expect(before.page, 'the open panel makes the page scroll sideways').toBeLessThanOrEqual(0)
 
       /* From the first character the box offers every member whose label holds it, and every label holds a nought. */
       await box.fill('0')
