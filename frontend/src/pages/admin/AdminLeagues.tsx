@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import { Link } from 'react-router'
 import { useFilterParams } from '../../app/useFilterParams'
 import { useToday } from '../../clock/useClock'
@@ -14,6 +14,7 @@ import type { FormValues } from '../../forms/types'
 import { recordKey } from '../../session/context'
 import { DeletionSaid } from './DeletionSaid'
 import { EntityBar, EntityEditor, RowActions, type Saving } from './EntityEditor'
+import { LeagueMarkModeration } from './LeagueMarkModeration'
 import { LeagueRaceModeration } from './LeagueRaceModeration'
 import { countedDaysOf, countedRacesOf } from './leagueCounted'
 import { LEAGUES, recordsOf, type Editing, type Overlay } from './entityForms'
@@ -402,12 +403,18 @@ export function AdminLeagues() {
                         rows
                           .filter((one) => one.id === Number(editing.record[LEAGUES.idField]))
                           .map((league) => (
-                            <LeagueRaceModeration
-                              key={league.id}
-                              league={league}
-                              counted={counted(league.id)}
-                              onCounted={(change) => nowCounting(league.id, change)}
-                            />
+                            <Fragment key={league.id}>
+                              {/* THE MARK OF THE COMPETITION, in its moderation (owner, 23.11.2026, PDL
+                                  „Pravi logo lige”: „administracija ... u moderaciji lige, bez
+                                  odobravanja, i odmah važi”). It writes at once, as the box of races
+                                  under it does, and holds nothing the form holds. */}
+                              <LeagueMarkModeration league={league} />
+                              <LeagueRaceModeration
+                                league={league}
+                                counted={counted(league.id)}
+                                onCounted={(change) => nowCounting(league.id, change)}
+                              />
+                            </Fragment>
                           ))
                     : undefined
                 }

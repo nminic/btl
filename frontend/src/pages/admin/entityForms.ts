@@ -451,8 +451,12 @@ export const LEAGUES: EntityDef = {
      **Both lists, because a record made during a visit has to be a `League` and the type says it
      carries both** (`data/types.ts`, since 01.10.2026): a competition that has just been made
      counts no race, and so names no day. The races are what is counted; the days are the empty list
-     the server would derive from them. */
-  blank: { raceIds: [], eventIds: [] },
+     the server would derive from them.
+
+     **And no mark** (V108, owner 23.11.2026, PDL „Pravi logo lige”): a competition is made with none and
+     drawn with its initials, the three halves null together as the server answers them, so the box of the
+     mark in its form starts from what a new one really is. */
+  blank: { raceIds: [], eventIds: [], logo: null, crop: null, smallLogo: null },
 }
 
 /* The one entity whose rows are the year itself: four windows that tile it and

@@ -55,6 +55,9 @@ const league: League = {
   eventIds: [5, 4],
   rules: '',
   prizes: '',
+  logo: null,
+  crop: null,
+  smallLogo: null,
 }
 
 const events = [
