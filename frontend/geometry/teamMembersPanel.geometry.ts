@@ -62,6 +62,17 @@ if (!Array.isArray(teams) || teams.length < 2) {
 /** A table with one team only: the row the panel opens in is the whole table. */
 const ONE_TEAM: Answers = { ...ADMINISTRATION, '/api/teams': [teams[0]] }
 
+/** Names so short that the box and the button would stand side by side in the row of a telephone if nothing said they
+ *  must not (the longest name of the sample is long enough to fill the row by itself, so it cannot tell). */
+const SHORT_NAMES: Answers = {
+  ...ADMINISTRATION,
+  '/api/competitors': Array.isArray(SAMPLE['/api/competitors'])
+    ? SAMPLE['/api/competitors'].map((one: unknown) =>
+        Reflect.get(Object(one), 'teamId') === null ? { ...Object(one), firstName: 'Ana', lastName: 'Li' } : one,
+      )
+    : [],
+}
+
 const SIZES: At[] = [
   { width: 360, text: 100 },
   { width: 768, text: 100 },
@@ -70,11 +81,12 @@ const SIZES: At[] = [
 
 const AT: At[] = SIZES.flatMap((one) => (['light', 'dark'] as const).map((theme): At => ({ ...one, theme })))
 
-for (const [which, answers, pick] of [
-  ['the table of one team', ONE_TEAM, 'first'],
-  ['the last row of a table', ADMINISTRATION, 'last'],
+for (const [which, answers, pick, phoneOnly] of [
+  ['the table of one team', ONE_TEAM, 'first', false],
+  ['the last row of a table', ADMINISTRATION, 'last', false],
+  ['short names', SHORT_NAMES, 'first', true],
 ] as const) {
-  for (const at of AT) {
+  for (const at of phoneOnly ? AT.filter((one) => one.width < 768) : AT) {
     test(`the list of members of a team opens whole and no scroll bar comes of it, ${which}, ${label(at)}`, async ({
       open,
     }) => {
