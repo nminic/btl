@@ -57,8 +57,8 @@ export const THE_BOX_FOR_VIBER = 'viberCommunity'
  *                      account over) has no box for it: the route refuses an address for him
  *                      (`thereIsNoAccount`), and the registration's box is one that must be filled
  * @param onViber       whether the server holds the member as joined to the community on Viber. Then the
- *                      telephone does NOT ask for a number on its own (`requiredWhenFilled` is left off
- *                      the card's copy of it): owner, 23.11.2026 (PDL, „Tri brze izmene administracije"),
+ *                      telephone is still marked as asked, but does NOT stop the press on its own
+ *                      (`leftToTheServer` on the card's copy of `requiredWhenFilled`): owner, 23.11.2026 (PDL, „Tri brze izmene administracije"),
  *                      „ekran kaže rečenicu od 20.11.2026", so the press goes to the server, which answers
  *                      an emptied telephone with the 409 of that sentence. The registration and „Moji
  *                      podaci" use the field as written and keep the rule
@@ -81,9 +81,11 @@ export function theMembersForm(withAnAddress: boolean, onViber = false): FormDef
           return one
         }
 
-        const { requiredWhenFilled: _unasked, ...kept } = one
-
-        return kept
+        /* The star and `aria-required` stay (P36, 20.11.2026: „natpis telefona postaje „Telefon” sa zvezdicom"),
+           and the press goes on to the server (`leftToTheServer`). */
+        return one.requiredWhenFilled === undefined
+          ? one
+          : { ...one, requiredWhenFilled: { ...one.requiredWhenFilled, leftToTheServer: true } }
       }),
   }
 }

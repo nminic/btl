@@ -454,12 +454,35 @@ describe('the box for Viber on the card', () => {
     await user.clear(await theTelephone())
     await user.click(screen.getByRole('button', { name: sr.account.save }))
 
+    expect(screen.queryByText(sr.registration.phoneForViber), 'the form stopped the press with its own sentence').toBeNull()
     expect(
       await screen.findByText('Član je prijavljen za Viber zajednicu, pa broj ne može da se obriše dok se ne odjavi.'),
     ).toBeVisible()
     expect(screen.queryByText(sr.registration.phoneForViber)).toBeNull()
     /* The press WENT to the server, which is what says the sentence. */
     expect(corrections(asked)).toEqual([{ phone: '' }])
+  }, SLOW)
+
+  it('marks the telephone as asked while the member is held on Viber, and as optional while he is not', async () => {
+    theRouteThatHoldsThePhone(true)
+    asTheAdministration()
+
+    const asked = await screen.findByRole('textbox', { name: /^Telefon/ })
+
+    /* The star is drawn and hidden from the name, so the name is the bare word and the star is read off the label. */
+    expect(asked).toHaveAccessibleName('Telefon')
+    expect(asked.labels?.[0]?.parentElement?.querySelector('.field__required')?.textContent).toBe('*')
+    expect(asked).toHaveAttribute('aria-required', 'true')
+  }, SLOW)
+
+  it('marks the telephone as optional for a member not held on Viber', async () => {
+    theRouteThatHoldsThePhone(false)
+    asTheAdministration()
+
+    const optional = await screen.findByRole('textbox', { name: /^Telefon/ })
+
+    expect(optional.labels?.[0]?.textContent).toBe('Telefon (neobavezno)')
+    expect(optional).not.toHaveAttribute('aria-required')
   }, SLOW)
 
   it('says „upišite broj" for a box ticked now over a member served not ticked, with the telephone emptied', async () => {
@@ -492,6 +515,7 @@ describe('the box for Viber on the card', () => {
     await user.clear(await theTelephone())
     await user.click(screen.getByRole('button', { name: sr.account.save }))
 
+    expect(screen.queryByText(sr.registration.phoneForViber), 'the form stopped the press with its own sentence').toBeNull()
     expect(
       await screen.findByText('Član je prijavljen za Viber zajednicu, pa broj ne može da se obriše dok se ne odjavi.'),
     ).toBeVisible()
