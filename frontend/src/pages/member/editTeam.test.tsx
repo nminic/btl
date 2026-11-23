@@ -10,14 +10,12 @@ import { SLOW } from '../../test/slow'
 import { typeATownTheCodebookKnows } from '../../test/town'
 import { setupUser } from '../../test/user'
 
-const DUNAV: { slug: string; bio: string; link: string } = must(
-  (
-    JSON.parse(readFileSync(join(process.cwd(), 'src', 'test', 'mock', 'teams.json'), 'utf-8')) as {
-      slug: string
-      bio: string
-      link: string
-    }[]
-  ).find((one) => one.slug === 'dunavski-trkaci'),
+const MOCK_TEAMS: { slug: string; bio: string; link: string }[] = JSON.parse(
+  readFileSync(join(process.cwd(), 'src', 'test', 'mock', 'teams.json'), 'utf-8'),
+)
+
+const DUNAV = must(
+  MOCK_TEAMS.find((one) => one.slug === 'dunavski-trkaci'),
   'the team every case here acts on',
 )
 
