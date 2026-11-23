@@ -176,6 +176,16 @@
   margin-block: var(--space-16) 0;
 }
 
+/* THE SENTENCE OF A SHUT WINDOW IS THE BUTTON'S BOX, so it carries the button's gap above it and nothing of
+   its own. It was `rankings__propose rankings__empty`, and `.rankings__empty` (the sentence of an empty list,
+   `margin: 0 0 var(--space-8)`) is written further down at the same weight, so it won and the sentence stood
+   against the table with no gap. The words are the muted ones of the empty lists; the margin is not. A second
+   rule that sets a margin on this class is what `pages/member/proposeTeam.test.tsx` fails on. */
+.rankings__propose--sentence {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
 /* THE SHAPE OF A TELEPHONE, asked by the class `TablesHead` writes on the row of the cards where the
    header has that shape (`app/phoneHeader.ts`), never by a width of its own, so the two cannot disagree
    about where the telephone ends (owner, 17.11.2026: „u gornjem redu naslov BTL tabele levo i dropdown
