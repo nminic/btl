@@ -158,3 +158,32 @@ export const WHEN_DELETING_A_TEAM: Record<string, string> = {
 export function standsOnTheServer(id: unknown): boolean {
   return typeof id === 'number' && Number.isInteger(id) && id > 0
 }
+
+/**
+ * WHERE „DODAJ ČLANA” AND „IZBACI” GO (PDL P13, „[ODLUKA 23.11.2026 ...] Administracija dodaje i izbacuje
+ * članove tima direktno”): the team's own address and the member's number on it, which is how
+ * `TeamAdministrationWriteApi` names both. The number is put into the path as it is, since a member number
+ * is digits and nothing else.
+ */
+export function membersOfTheTeam(team: number): string {
+  return `/api/teams/${String(team)}/members`
+}
+
+export function memberOfTheTeam(team: number, memberNumber: string): string {
+  return `${membersOfTheTeam(team)}/${memberNumber}`
+}
+
+/**
+ * THE REASONS THOSE TWO ROUTES NAME, each to a sentence of this panel's own (worded by me, shown to the owner
+ * with the screen). `theWindowIsShut` has a key of its own here and not the deletion's, for the reason
+ * `WHEN_DELETING_A_TEAM` gives: what the reader has to know is about what he pressed. `theSeasonIsNotPaid`
+ * carries `{season}`, the season a change of team takes effect in.
+ */
+export const WHEN_THE_ADMINISTRATION_MOVES_A_MEMBER: Record<string, string> = {
+  theWindowIsShut: 'admin.teamMemberRefused.theWindowIsShut',
+  theFormIsNotComplete: 'admin.teamMemberRefused.theFormIsNotComplete',
+  theMemberIsNotKnown: 'admin.teamMemberRefused.theMemberIsNotKnown',
+  heIsAlreadyInATeam: 'admin.teamMemberRefused.heIsAlreadyInATeam',
+  theSeasonIsNotPaid: 'admin.teamMemberRefused.theSeasonIsNotPaid',
+  heIsNotInTheTeam: 'admin.teamMemberRefused.heIsNotInTheTeam',
+}

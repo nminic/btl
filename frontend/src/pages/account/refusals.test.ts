@@ -30,7 +30,11 @@ import {
   WHEN_GRANTING_AN_EXEMPTION,
   WHEN_PAYING_OVER_THE_EXEMPTION,
 } from '../admin/memberMembership'
-import { WHEN_DELETING_A_TEAM, WHEN_THE_ADMINISTRATION_WRITES_A_TEAM } from '../admin/teamWrites'
+import {
+  WHEN_DELETING_A_TEAM,
+  WHEN_THE_ADMINISTRATION_MOVES_A_MEMBER,
+  WHEN_THE_ADMINISTRATION_WRITES_A_TEAM,
+} from '../admin/teamWrites'
 import { WHEN_SENDING_A_PICTURE } from '../member/photoWrites'
 import { WHEN_LETTING_MYSELF_IN } from '../member/fromTheBalance'
 import { WHEN_CHOOSING_THE_LANGUAGE_OF_MAIL } from '../member/mailLanguage'
@@ -331,7 +335,11 @@ describe('the reasons the server can name', () => {
     /* ADDED 23.11.2026 WITH THE SCREEN THAT FINALLY SENDS IT (`admin/AdminTeams.tsx`): the
        administration's making of a team and its change, eleven reasons between them, all answered
        by one dictionary because one form meets both. */
-    ['TeamAdministrationWriteApi.java', [WHEN_THE_ADMINISTRATION_WRITES_A_TEAM], 11],
+    /* TWELVE SINCE 23.11.2026, AND A SECOND DICTIONARY: „Dodaj člana” and „Izbaci” under a team of the same
+       screen (PDL P13, „Administracija dodaje i izbacuje članove tima direktno”), whose one new reason is
+       `theMemberIsNotKnown`. */
+    ['TeamAdministrationWriteApi.java',
+      [WHEN_THE_ADMINISTRATION_WRITES_A_TEAM, WHEN_THE_ADMINISTRATION_MOVES_A_MEMBER], 12],
     ['CommentWriteApi.java', [WHEN_RATING_AN_EVENT], 3],
     /* THE SIXTH, ADDED 25.09.2026, AND IT IS THE FIRST THAT WAS OWED RATHER THAN NEW.
        `LeagueWriteApi` has named eleven reasons since B40 and six of them have been drawn

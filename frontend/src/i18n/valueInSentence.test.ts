@@ -360,6 +360,12 @@ describe('a sentence with a value put into it', () => {
       'admin.seasonsOf',
       'admin.sectionNav',
       'admin.showing',
+      /* „Izbaci iz tima: {member}" and „Članovi tima {team}" (PDL P13, 23.11.2026, „Administracija dodaje i
+         izbacuje članove tima direktno"), the name of the button on a member's row and of the panel under a
+         team. The member stands after a colon as the thing named, as on „Izmeni podatke: {name}"; the team's
+         name follows „tima" as its name, in the nominative (MY REASONING for the wording). */
+      'admin.teamMemberOutNamed',
+      'admin.teamMembersOf',
       'awards.category',
       'awards.position <- formatNumber',
       /* „Timski plasman, {team}", the trophy of a frozen season's winning team on a member's page (PDL,

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import { Resource } from '../../components/Resource'
 import { clearResourceCache } from '../../data/client'
 import type { Competitor, Team } from '../../data/types'
@@ -13,6 +13,7 @@ import { ServerSaid } from '../account/ServerSaid'
 import { addressesIn, nameError } from './teamProposal'
 import { EditableCell } from './EditableCell'
 import { DeletionSaid } from './DeletionSaid'
+import { TeamMembers } from './TeamMembers'
 import { EntityBar, EntityEditor, RowActions, type Saving } from './EntityEditor'
 import { MEMBERS, recordsOf, TEAMS, type Editing, type Overlay } from './entityForms'
 import { useOverlay } from './overlay'
@@ -90,6 +91,9 @@ export function AdminTeams() {
     useTeams(useHowManyTimesDropped('teams')),
     useCompetitors(useHowManyTimesDropped('competitors')),
   )
+
+  /** The team whose members are drawn under its row („Dodaj člana”, „Izbaci”), or none. */
+  const [openTeam, setOpenTeam] = useState<number | null>(null)
 
   /** What just happened, for whoever is not watching the list. */
   const [said, setSaid] = useState('')
@@ -257,7 +261,8 @@ export function AdminTeams() {
                       )
 
                       return (
-                        <tr key={team.id}>
+                        <Fragment key={team.id}>
+                        <tr>
                           {/* Read here and changed on the form, unlike the town beside it (ADL,
                               03.08.2026): a cell writes one field and cannot put the address
                               right afterwards. */}
@@ -269,7 +274,22 @@ export function AdminTeams() {
                               commit={(city) => void townOf(team, city)}
                             />
                           </td>
-                          <td>{formatNumber(members.length, locale)}</td>
+                          <td>
+                            {/* THE HEAD COUNT IS THE BUTTON THAT OPENS THE MEMBERS UNDER THE ROW (PDL P13,
+                                [ODLUKA 23.11.2026], „uz svaki tim: Dodaj člana ... i Izbaci uz svakog
+                                člana”). The number it shows is the first part of its name, as SC 2.5.3
+                                asks, and the cell still reads as the head count it was. */}
+                            <button
+                              type="button"
+                              className="entity-open"
+                              aria-label={`${formatNumber(members.length, locale)} ${t('admin.teamMembersOf', { team: team.name })}`}
+                              aria-expanded={openTeam === team.id}
+                              aria-controls={`team-${String(team.id)}-members`}
+                              onClick={() => setOpenTeam((was) => (was === team.id ? null : team.id))}
+                            >
+                              {formatNumber(members.length, locale)}
+                            </button>
+                          </td>
                           <td>
                             {organizer === undefined
                               ? t('admin.noOrganizer')
@@ -294,6 +314,20 @@ export function AdminTeams() {
                             )}
                           </td>
                         </tr>
+                        {openTeam === team.id && (
+                          <tr id={`team-${String(team.id)}-members`}>
+                            <td colSpan={5}>
+                              <TeamMembers
+                                team={team}
+                                members={members}
+                                free={listed.filter((one) => one.teamId === null)}
+                                season={params.season}
+                                onWritten={readAgain}
+                              />
+                            </td>
+                          </tr>
+                        )}
+                        </Fragment>
                       )
                     })}
                   </tbody>
