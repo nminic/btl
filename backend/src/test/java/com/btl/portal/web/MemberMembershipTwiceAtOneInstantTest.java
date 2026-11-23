@@ -230,7 +230,7 @@ class MemberMembershipTwiceAtOneInstantTest {
 		return http.perform(post("/api/members/" + THE_NUMBER + "/membership").with(csrf())
 						.cookie(new Cookie(SessionCookie.NAME, cookie))
 						.contentType(MediaType.APPLICATION_JSON)
-						.content("{\"basis\": \"feeExempt\"}"))
+						.content("{\"basis\": \"feeExempt\", \"season\": 2028}"))
 				.andReturn().getResponse();
 	}
 
@@ -238,7 +238,7 @@ class MemberMembershipTwiceAtOneInstantTest {
 		return http.perform(delete("/api/members/" + THE_NUMBER + "/membership").with(csrf())
 						.cookie(new Cookie(SessionCookie.NAME, cookie))
 						.contentType(MediaType.APPLICATION_JSON)
-						.content("{\"basis\": \"balance\"}"))
+						.content("{\"basis\": \"balance\", \"season\": 2028}"))
 				.andReturn().getResponse();
 	}
 }

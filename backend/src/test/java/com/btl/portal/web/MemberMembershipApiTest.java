@@ -2,6 +2,7 @@ package com.btl.portal.web;
 
 import com.btl.portal.TestcontainersConfiguration;
 import com.btl.portal.domain.account.SessionLife;
+import com.btl.portal.domain.season.SeasonClock;
 import com.btl.portal.domain.token.SecretToken;
 import com.btl.portal.mail.Postman;
 import jakarta.servlet.http.Cookie;
@@ -235,16 +236,39 @@ class MemberMembershipApiTest {
 				.andReturn().getResponse();
 	}
 
+	/**
+	 * THE BOX OF THE SEASON ON SALE, as the screen sends it: the season it names is the one
+	 * {@code MembersApi} serves as {@code seasonOnSale} at this case's clock. Every case about another
+	 * season names it itself ({@link #cancelledFor}), and those are the cases that tell the season of the
+	 * request from the season of the clock, since in these two the two are one.
+	 */
 	private MockHttpServletResponse cancelled(String number, String basis, String email) throws Exception {
-		return sent(delete("/api/members/" + number + "/membership"), "{\"basis\": \"" + basis + "\"}", email);
+		return cancelledFor(number, onSale(), basis, email);
+	}
+
+	private MockHttpServletResponse cancelledFor(String number, int season, String basis, String email)
+			throws Exception {
+		return sent(delete("/api/members/" + number + "/membership"),
+				"{\"basis\": \"" + basis + "\", \"season\": " + season + "}", email);
+	}
+
+	private int onSale() {
+		return SeasonClock.seasonBeingPaidFor(clock.instant().atZone(SeasonClock.ZONE));
 	}
 
 	private MockHttpServletResponse changed(String number, String json, String email) throws Exception {
 		return sent(put("/api/members/" + number + "/membership"), json, email);
 	}
 
+	/** The box of the season on sale, ticked (see {@link #cancelled}). */
 	private MockHttpServletResponse granted(String number, String basis, String email) throws Exception {
-		return sent(post("/api/members/" + number + "/membership"), "{\"basis\": \"" + basis + "\"}", email);
+		return grantedFor(number, onSale(), basis, email);
+	}
+
+	private MockHttpServletResponse grantedFor(String number, int season, String basis, String email)
+			throws Exception {
+		return sent(post("/api/members/" + number + "/membership"),
+				"{\"basis\": \"" + basis + "\", \"season\": " + season + "}", email);
 	}
 
 	private JsonNode body(MockHttpServletResponse answer) throws Exception {
@@ -321,9 +345,11 @@ class MemberMembershipApiTest {
 
 	@ParameterizedTest
 	@CsvSource(delimiter = '|', value = {
-			"{}                                          | theFormIsNotComplete",
-			"{\"basis\": \"\"}                          | theFormIsNotComplete",
-			"{\"basis\": \"honorary\"}                  | theBasisIsNotKnown"})
+			"{}                                                      | theFormIsNotComplete",
+			"{\"season\": 2028}                                     | theFormIsNotComplete",
+			"{\"basis\": \"\", \"season\": 2028}                    | theFormIsNotComplete",
+			"{\"basis\": \"payment\"}                               | theFormIsNotComplete",
+			"{\"basis\": \"honorary\", \"season\": 2028}            | theBasisIsNotKnown"})
 	void aCancellationThatSaysNoBasisOrAnUnknownOneIsRefused(String json, String reason) throws Exception {
 		HeldOn.season(db, member, 2028, "payment");
 
@@ -563,6 +589,178 @@ class MemberMembershipApiTest {
 
 		assertThat(cancelled("000005", "payment", OVER_THE_MEMBERS).getStatus()).isEqualTo(200);
 
+		assertNobodyMoved();
+	}
+
+	/* ------------------------------------------------------------------------------------
+	   THE SEASON OF THE BOX (the column „Sezone", owner 22.10.2026: „da dodam ili oduzmem neku
+	   štikliranu unazad")
+
+	   THE SETUP SEPARATES THREE SEASONS THAT ARE ONE IN EVERY CASE ABOVE: in November 2028 the season
+	   on sale is 2029, the season being run is 2028, and the frozen one is 2027, and the member holds
+	   all three. A route that read the season off the clock, off the season being run, or off any
+	   season but the one the box names acts on another row than the one asserted.
+	   ------------------------------------------------------------------------------------ */
+
+	/** 26.11.2028: 2029 on sale, 2028 run, 2027 frozen once its row is there. */
+	private static final Instant IN_THE_WINDOW_OF_2029 = Instant.parse("2028-11-26T09:00:00Z");
+
+	@Test
+	void theBoxOfAFrozenSeasonCancelsThatSeasonAndNoOther() throws Exception {
+		clock.moveTo(IN_THE_WINDOW_OF_2029);
+		theJobFroze(2027);
+		HeldOn.season(db, member, 2028, "payment");
+		HeldOn.season(db, member, 2029, "payment");
+
+		MockHttpServletResponse answer = cancelledFor("000005", 2027, "payment", OVER_THE_MEMBERS);
+
+		assertThat(answer.getStatus()).isEqualTo(200);
+		assertThat(body(answer).path("season").asInt()).isEqualTo(2027);
+		assertThat(seasonsOf(member)).containsExactly("2028 payment 2028", "2029 payment 2029");
+		assertThat(trail()).containsExactly(member + " 2027 cancelled payment - " + accountOf(OVER_THE_MEMBERS)
+				+ " Mira Clanovic");
+		assertThat(messages()).containsExactly(member + " " + CANCELLED);
+		assertThat(db.sql("select body from message where to_id = ?").param(member).query(String.class).single())
+				.contains("2027").doesNotContain("2028").doesNotContain("2029");
+	}
+
+	@Test
+	void theBoxOfAFrozenSeasonGrantsThatSeasonAndNoOther() throws Exception {
+		clock.moveTo(IN_THE_WINDOW_OF_2029);
+		theJobFroze(2027);
+		HeldOn.season(db, somebodyElse, 2028, "payment");
+		HeldOn.season(db, somebodyElse, 2029, "payment");
+
+		MockHttpServletResponse answer = grantedFor("000001", 2027, "feeExempt", OVER_THE_MEMBERS);
+
+		assertThat(answer.getStatus()).isEqualTo(201);
+		assertThat(body(answer).path("season").asInt()).isEqualTo(2027);
+		assertThat(seasonsOf(somebodyElse))
+				.containsExactly("2027 feeExempt -", "2028 payment 2028", "2029 payment 2029");
+		assertThat(db.sql("select decided_by || ' ' || decided_by_name from membership"
+						+ " where competitor_id = ? and season = 2027")
+				.param(somebodyElse).query(String.class).single())
+				.isEqualTo(accountOf(OVER_THE_MEMBERS) + " Mira Clanovic");
+		assertThat(messages()).containsExactly(somebodyElse + " " + GRANTED);
+		assertThat(db.sql("select body from message where to_id = ?").param(somebodyElse).query(String.class)
+				.single()).contains("2027").doesNotContain("2028").doesNotContain("2029");
+	}
+
+	/**
+	 * THE ZAMRZNUTE TABLES, RANKINGS AND POINTS OF THE SEASON STAY BYTE FOR BYTE (owner, 03.10.2026, „Tabele i
+	 * rang liste kao gomila konstanti umesto varijabli"). The floor is every table of the catalog whose name
+	 * begins with {@code season_} and that has a {@code season} column, read whole for 2027 before the box is
+	 * cleared and ticked again and after, so a table of the freeze added tomorrow is read without a line
+	 * here. The snapshot names the member, so a cascade or a statement that reached it would show.
+	 */
+	@Test
+	void theFrozenTablesOfTheSeasonAreTheSameAfterItsBoxIsClearedAndTickedAgain() throws Exception {
+		clock.moveTo(IN_THE_WINDOW_OF_2029);
+		theJobFroze(2027);
+		db.sql("insert into season_points_at_freeze (season, competitor_id, points) values (2027, ?, 123.45)")
+				.param(member).update();
+		db.sql("insert into season_competitor (season, position, competitor_id, who, gender, category, points,"
+						+ " races) values (2027, 1, ?, 'Probni Clan', 'M', 'M35', 123.45, 3)")
+				.param(member).update();
+
+		List<String> tables = db.sql("select t.table_name from information_schema.tables t"
+						+ " where t.table_schema = current_schema() and t.table_name like 'season\\_%'"
+						+ " and exists (select 1 from information_schema.columns c where c.table_schema = t.table_schema"
+						+ " and c.table_name = t.table_name and c.column_name = 'season') order by 1")
+				.query(String.class).list();
+		String before = frozen(tables);
+
+		assertThat(tables).contains("season_competitor", "season_points_at_freeze", "season_frozen");
+		assertThat(before).contains("123.45");
+
+		assertThat(cancelledFor("000005", 2027, "payment", OVER_THE_MEMBERS).getStatus()).isEqualTo(200);
+		assertThat(grantedFor("000005", 2027, "feeExempt", OVER_THE_MEMBERS).getStatus()).isEqualTo(201);
+
+		assertThat(seasonsOf(member)).containsExactly("2027 feeExempt -");
+		assertThat(frozen(tables)).isEqualTo(before);
+	}
+
+	/** Every row of 2027 of every table named, as text, in an order that does not depend on the plan. */
+	private String frozen(List<String> tables) {
+		StringBuilder all = new StringBuilder();
+
+		for (String table : tables) {
+			all.append(table).append(": ").append(db.sql("select coalesce(string_agg(r::text, ' | ' order by r::text),"
+							+ " '') from " + table + " r where r.season = 2027")
+					.query(String.class).single()).append('\n');
+		}
+
+		return all.toString();
+	}
+
+	/**
+	 * THE SEASON BEING RUN AFTER 15 OCTOBER IS NOT A BOX THAT ACTS, UNTIL ITS ROW OF THE FREEZE IS THERE.
+	 * Kept from before the route took a season, and not decided here: PDL P8, 18.10.2026, „Tekuća sezona se
+	 * posle 14.10. na redu člana ne dira (ni upis uplate, ni promena osnova, ni storno)". After 16:00 of 1
+	 * January the clock says 2027 has frozen, and the route still refuses until the job has written the row
+	 * (ADL 08.11.2026, the row and never the clock); with the row it acts.
+	 */
+	@ParameterizedTest
+	@CsvSource({"2027-11-26T09:00:00Z", "2028-01-02T10:00:00Z"})
+	void theRunningSeasonIsRefusedUntilItsRowOfTheFreezeIsThere(Instant when) throws Exception {
+		clock.moveTo(when);
+		HeldOn.season(db, member, 2028, "payment");
+
+		MockHttpServletResponse cancelling = cancelledFor("000005", 2027, "payment", OVER_THE_MEMBERS);
+		MockHttpServletResponse granting = grantedFor("000001", 2027, "feeExempt", OVER_THE_MEMBERS);
+
+		assertThat(cancelling.getStatus()).isEqualTo(409);
+		assertThat(body(cancelling).path("reason").asString()).isEqualTo("theSeasonIsNotOffered");
+		assertThat(granting.getStatus()).isEqualTo(409);
+		assertThat(body(granting).path("reason").asString()).isEqualTo("theSeasonIsNotOffered");
+		assertThat(seasonsOf(member)).containsExactly("2027 payment 2027", "2028 payment 2028");
+		assertThat(seasonsOf(somebodyElse)).isEmpty();
+		assertThat(trail()).isEmpty();
+		assertThat(messages()).isEmpty();
+
+		if (when.isAfter(Instant.parse("2028-01-01T00:00:00Z"))) {
+			theJobFroze(2027);
+
+			assertThat(cancelledFor("000005", 2027, "payment", OVER_THE_MEMBERS).getStatus()).isEqualTo(200);
+			assertThat(seasonsOf(member)).containsExactly("2028 payment 2028");
+		}
+	}
+
+	/** Before the league, and after the season on sale: no season the column lists, for either box. */
+	@ParameterizedTest
+	@CsvSource({"DELETE, 2026", "DELETE, 2030", "POST, 2026", "POST, 2030"})
+	void aSeasonTheColumnDoesNotListIsRefused(String verb, int season) throws Exception {
+		clock.moveTo(IN_THE_WINDOW_OF_2029);
+		theJobFroze(2027);
+		HeldOn.season(db, member, 2029, "payment");
+
+		MockHttpServletResponse answer = "DELETE".equals(verb)
+				? cancelledFor("000005", season, "payment", OVER_THE_MEMBERS)
+				: grantedFor("000001", season, "feeExempt", OVER_THE_MEMBERS);
+
+		assertThat(answer.getStatus()).isEqualTo(400);
+		assertThat(body(answer).path("reason").asString()).isEqualTo("theSeasonIsNotOffered");
+		assertThat(seasonsOf(member)).containsExactly("2027 payment 2027", "2029 payment 2029");
+		assertThat(seasonsOf(somebodyElse)).isEmpty();
+		assertThat(messages()).isEmpty();
+	}
+
+	/**
+	 * A FROZEN SEASON CANCELLED LEAVES HIS TEAM AND HIS PAIR OF THE SEASON BEING RUN ALONE. In February 2029
+	 * 2028 has frozen, and so has 2027, which is what makes a cancellation of 2028 look, to the job's rule,
+	 * like a season that began; his team is of 2029, and „bez članarine za sezonu nema tima ni para te
+	 * sezone" (PDL 05.11.2026) is about the season he no longer holds, not this one.
+	 */
+	@Test
+	void aFrozenSeasonCancelledLeavesHisTeamAndPairOfTheRunningSeasonAlone() throws Exception {
+		clock.moveTo(Instant.parse("2029-02-10T09:00:00Z"));
+		theJobFroze(2027);
+		theJobFroze(2028);
+		aTeamAndAPair(2029, 2028, 2029);
+
+		assertThat(cancelledFor("000005", 2028, "payment", OVER_THE_MEMBERS).getStatus()).isEqualTo(200);
+
+		assertThat(seasonsOf(member)).containsExactly("2027 payment 2027", "2029 payment 2029");
 		assertNobodyMoved();
 	}
 
@@ -1003,11 +1201,13 @@ class MemberMembershipApiTest {
 
 	@ParameterizedTest
 	@CsvSource(delimiter = '|', value = {
-			"{}                              | theFormIsNotComplete",
-			"{\"basis\": \"\"}              | theFormIsNotComplete",
-			"{\"basis\": \"honorary\"}      | theBasisIsNotKnown",
-			"{\"basis\": \"payment\"}       | thisChangeIsNotOffered",
-			"{\"basis\": \"balance\"}       | thisChangeIsNotOffered"})
+			"{}                                                  | theFormIsNotComplete",
+			"{\"season\": 2028}                                 | theFormIsNotComplete",
+			"{\"basis\": \"\", \"season\": 2028}                | theFormIsNotComplete",
+			"{\"basis\": \"feeExempt\"}                         | theFormIsNotComplete",
+			"{\"basis\": \"honorary\", \"season\": 2028}        | theBasisIsNotKnown",
+			"{\"basis\": \"payment\", \"season\": 2028}         | thisChangeIsNotOffered",
+			"{\"basis\": \"balance\", \"season\": 2028}         | thisChangeIsNotOffered"})
 	void aGrantOfAnythingButTheExemptionIsRefused(String json, String reason) throws Exception {
 		MockHttpServletResponse answer = sent(post("/api/members/000005/membership"), json.strip(), OVER_THE_MEMBERS);
 
