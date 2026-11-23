@@ -42,10 +42,12 @@ function Harness({
   onChoose,
   onSubmit,
   members = MEMBERS,
+  fitted = false,
 }: {
   onChoose: (one: Suggestion) => void
   onSubmit: () => void
   members?: Suggestion[]
+  fitted?: boolean
 }) {
   const [value, setValue] = useState('')
 
@@ -70,6 +72,7 @@ function Harness({
           suggestions={members}
           invalid={false}
           describedBy={undefined}
+          fitted={fitted}
           onType={setValue}
           onChoose={(one) => {
             setValue(one.value)
@@ -325,6 +328,30 @@ describe('the box of a member', () => {
   })
 })
 
+describe('the width of the box', () => {
+  it('is the whole width it is given, unless the box is fitted to the longest name it offers', () => {
+    render(<Harness onChoose={vi.fn()} onSubmit={vi.fn()} />)
+
+    expect(screen.getByRole('combobox').closest('.member-choice')).not.toHaveClass('member-choice--fitted')
+    expect(screen.getByRole('combobox').closest('.member-choice')).not.toHaveAttribute('style')
+  })
+
+  it('counts the longest label it offers, in characters, when it is fitted', () => {
+    render(<Harness onChoose={vi.fn()} onSubmit={vi.fn()} fitted />)
+
+    const wrapper = screen.getByRole('combobox').closest('.member-choice')
+
+    expect(wrapper).toHaveClass('member-choice--fitted')
+    expect(wrapper).toHaveStyle({ '--member-choice-widest': String('Anđelija Vukotić (000003)'.length) })
+  })
+
+  it('counts nothing for a list that offers nobody', () => {
+    render(<Harness onChoose={vi.fn()} onSubmit={vi.fn()} members={[]} fitted />)
+
+    expect(screen.getByRole('combobox').closest('.member-choice')).toHaveStyle({ '--member-choice-widest': '0' })
+  })
+})
+
 describe('where the list of members stands', () => {
   it('opens under the box, no taller than the room under it, while there is room for a few rows there', async () => {
     const user = setupUser()
@@ -432,6 +459,31 @@ describe('where the list of members stands', () => {
     await user.keyboard('{ArrowDown}'.repeat(9))
     expect(box).toHaveAttribute('aria-activedescendant', screen.getAllByRole('option')[8]?.id)
     expect(list.scrollTop, 'the ninth row was left under the edge').toBe(30)
+  })
+
+  it('is not drawn again, and so not put back on the row walked to, by a scroll of its own that moved nothing', async () => {
+    const user = setupUser()
+    const { box } = drawn(MANY)
+
+    await user.click(box)
+
+    const list = screen.getByRole('listbox')
+
+    screen.getAllByRole('option').forEach((row, index) => {
+      Object.defineProperty(row, 'offsetTop', { configurable: true, value: index * 30 })
+      Object.defineProperty(row, 'offsetHeight', { configurable: true, value: 30 })
+    })
+    Object.defineProperty(list, 'clientHeight', { configurable: true, value: 240 })
+    await user.keyboard('{ArrowDown}'.repeat(9))
+
+    /* The reader turns the wheel over the list and takes it to the top, away from the row walked to. A list that
+       was drawn again by that scroll would put itself back on the ninth row under his hand. */
+    list.scrollTop = 0
+    act(() => {
+      list.dispatchEvent(new Event('scroll'))
+    })
+
+    expect(list.scrollTop).toBe(0)
   })
 })
 

@@ -118,7 +118,7 @@ describe('members of a team moved by the administration', () => {
 
       await user.click(within(panel).getByRole('combobox', { name: 'Član koga dodaješ' }))
 
-      expect(within(panel).getAllByRole('option').map((one) => one.textContent)).toEqual([
+      expect(within(screen.getByRole('listbox', { name: 'Ponuđeni članovi' })).getAllByRole('option').map((one) => one.textContent)).toEqual([
         'Časlav Radenković (000005)',
         'Milica Ranković (000008)',
       ])
@@ -158,7 +158,7 @@ describe('members of a team moved by the administration', () => {
     const before = reads(server.asked, '/api/competitors')
 
     await user.type(within(panel).getByRole('combobox', { name: 'Član koga dodaješ' }), 'Milica')
-    await user.click(within(panel).getByRole('option', { name: 'Milica Ranković (000008)' }))
+    await user.click(screen.getByRole('option', { name: 'Milica Ranković (000008)' }))
     await user.click(within(panel).getByRole('button', { name: 'Dodaj člana' }))
 
     await waitFor(() => {
@@ -224,7 +224,7 @@ describe('members of a team moved by the administration', () => {
     const box = within(panel).getByRole('combobox', { name: 'Član koga dodaješ' })
 
     await user.type(box, 'Časlav')
-    await user.click(within(panel).getByRole('option', { name: 'Časlav Radenković (000005)' }))
+    await user.click(screen.getByRole('option', { name: 'Časlav Radenković (000005)' }))
     await user.click(within(panel).getByRole('button', { name: 'Dodaj člana' }))
 
     expect(await within(panel).findByRole('alert')).toHaveTextContent(sentence)
