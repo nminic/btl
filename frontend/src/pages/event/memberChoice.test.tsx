@@ -5,15 +5,23 @@ import type { Suggestion } from '../../forms/types'
 import { I18nProvider } from '../../i18n/I18nProvider'
 import { setupUser } from '../../test/user'
 import { MemberChoice } from './MemberChoice'
+import { keptInView, roomFor } from './memberList'
 
 /**
  * THE BOX OF A MEMBER ON A ROW OF RESULTS IS A COMBOBOX (owner, 23.11.2026, PDL „Tri brze izmene administracije":
  * „polje za člana postaje padajući izbor u koji se kuca"), held to the pattern the portal already keeps for the
  * town (`forms/PlaceField.tsx`, WAI-ARIA 1.2), by role and by key.
  *
- * <p><b>The axes:</b> the list shut and open; nothing highlighted, the first, the last, and walking past either
- * end; chosen by Enter, by the pointer, and not chosen; closed by Escape, by leaving, by choosing; and Enter with
- * nothing highlighted, which is the form's and not the list's.
+ * <p><b>A dropdown and not a box that waits for two letters</b> (owner, 23.11.2026, after PR 800: „Ovde nema
+ * dropdown-a, gde si ti zapravo uradio izmenu????”; recorded under the decision: „klik ili strelica dole otvaraju
+ * spisak SVIH članova koji se mogu izabrati, spisak se skroluje unutar sebe, a kucanje slova sužava spisak.”).
+ *
+ * <p><b>The axes:</b> the list shut and open; opened by a press and by Down, shut by a second press; the box empty,
+ * holding letters, holding letters nobody's name holds, and holding a member chosen; one letter and two; a list
+ * longer than eight; nothing highlighted, the first, the last, and walking past either end; chosen by Enter, by
+ * the pointer (a row that is not the first), and not chosen; closed by Escape, by leaving, by choosing; Enter with
+ * nothing highlighted, which is the form's and not the list's; and the list opened under the box, in the room the
+ * window has there, with the row walked to kept in sight.
  */
 
 const MEMBERS: Suggestion[] = [
@@ -22,7 +30,23 @@ const MEMBERS: Suggestion[] = [
   { id: '000004', value: 'Relja Petrović (000004)', said: 'Relja Petrović (000004)', fills: {} },
 ]
 
-function Harness({ onChoose, onSubmit }: { onChoose: (one: Suggestion) => void; onSubmit: () => void }) {
+/** Twelve members, more than the eight the box once stopped at, each holding the letter „a” and only the
+ *  last holding „zz”: a box that still stopped at eight, or still waited for a second letter, offers otherwise. */
+const MANY: Suggestion[] = Array.from({ length: 12 }, (_, index) => {
+  const label = `Član broj ${String(index + 1)}${index === 11 ? ' Zzzić' : ''} (0001${String(index + 10)})`
+
+  return { id: `0001${String(index + 10)}`, value: label, said: label, fills: {} }
+})
+
+function Harness({
+  onChoose,
+  onSubmit,
+  members = MEMBERS,
+}: {
+  onChoose: (one: Suggestion) => void
+  onSubmit: () => void
+  members?: Suggestion[]
+}) {
   const [value, setValue] = useState('')
 
   return (
@@ -43,7 +67,7 @@ function Harness({ onChoose, onSubmit }: { onChoose: (one: Suggestion) => void; 
           id="member"
           name="member"
           value={value}
-          suggestions={MEMBERS}
+          suggestions={members}
           invalid={false}
           describedBy={undefined}
           onType={setValue}
@@ -60,34 +84,107 @@ function Harness({ onChoose, onSubmit }: { onChoose: (one: Suggestion) => void; 
   )
 }
 
-function drawn() {
+function drawn(members = MEMBERS) {
   const onChoose = vi.fn<(one: Suggestion) => void>()
   const onSubmit = vi.fn<() => void>()
 
-  render(<Harness onChoose={onChoose} onSubmit={onSubmit} />)
+  render(<Harness onChoose={onChoose} onSubmit={onSubmit} members={members} />)
 
   return { box: screen.getByRole('combobox', { name: 'Član' }), onChoose, onSubmit }
 }
 
+const names = () => screen.getAllByRole('option').map((one) => one.textContent)
+
 describe('the box of a member', () => {
-  it('is shut until something is typed, and opens a listbox of the members it names from the second letter', async () => {
+  it('is shut at first, and a press on it opens a listbox of every member, which a second press shuts', async () => {
     const user = setupUser()
     const { box } = drawn()
 
     expect(box).toHaveAttribute('aria-expanded', 'false')
     expect(screen.queryByRole('listbox')).toBeNull()
 
-    await user.type(box, 'R')
-    expect(screen.queryByRole('listbox')).toBeNull()
-
-    await user.type(box, 'e')
+    await user.click(box)
     expect(box).toHaveAttribute('aria-expanded', 'true')
     expect(screen.getByRole('listbox', { name: 'Ponuđeni članovi' })).toHaveAttribute('id', box.getAttribute('aria-controls'))
-    expect(screen.getAllByRole('option').map((one) => one.textContent)).toEqual([
-      'Relja Momčilović (000002)',
-      'Relja Petrović (000004)',
-    ])
+    expect(names()).toEqual(['Relja Momčilović (000002)', 'Anđelija Vukotić (000003)', 'Relja Petrović (000004)'])
     expect(box).not.toHaveAttribute('aria-activedescendant')
+    expect(box, 'the press took the cursor somewhere else').toHaveFocus()
+
+    await user.click(box)
+    expect(screen.queryByRole('listbox')).toBeNull()
+    expect(box).toHaveAttribute('aria-expanded', 'false')
+  })
+
+  it('opens every member on Down in an empty box, with nothing highlighted', async () => {
+    const user = setupUser()
+    const { box } = drawn()
+
+    await user.tab()
+    expect(box).toHaveFocus()
+    await user.keyboard('{ArrowDown}')
+
+    expect(names()).toHaveLength(3)
+    expect(box).toHaveAttribute('aria-expanded', 'true')
+    expect(box).not.toHaveAttribute('aria-activedescendant')
+  })
+
+  it('narrows the list from the first letter typed, to every member whose name holds it', async () => {
+    const user = setupUser()
+    const { box } = drawn()
+
+    await user.type(box, 'p')
+
+    expect(box).toHaveAttribute('aria-expanded', 'true')
+    expect(names()).toEqual(['Relja Petrović (000004)'])
+
+    await user.clear(box)
+    expect(names(), 'an emptied box offers every member again').toHaveLength(3)
+  })
+
+  it('offers every one of more than eight members, and narrows them with no upper bound', async () => {
+    const user = setupUser()
+    const { box } = drawn(MANY)
+
+    await user.click(box)
+    expect(names()).toEqual(MANY.map((one) => one.said))
+
+    await user.type(box, 'a')
+    expect(names(), 'one letter held by all twelve').toEqual(MANY.map((one) => one.said))
+
+    await user.clear(box)
+    await user.type(box, 'broj 1')
+    expect(names()).toEqual([MANY[0], MANY[9], MANY[10], MANY[11]].map((one) => one?.said))
+  })
+
+  it('says it is shut while letters nobody holds draw no list, and open again once letters somebody holds do', async () => {
+    const user = setupUser()
+    const { box } = drawn()
+
+    await user.type(box, 'Rx')
+
+    expect(screen.queryByRole('listbox')).toBeNull()
+    expect(box, 'a box that draws no list said it was expanded').toHaveAttribute('aria-expanded', 'false')
+    expect(box).not.toHaveAttribute('aria-activedescendant')
+
+    await user.keyboard('{Backspace}')
+    expect(box).toHaveAttribute('aria-expanded', 'true')
+    expect(names()).toHaveLength(2)
+  })
+
+  it('offers every member again when a box holding a chosen member is opened, for another one to be chosen', async () => {
+    const user = setupUser()
+    const { box, onChoose } = drawn()
+
+    await user.click(box)
+    await user.click(screen.getByRole('option', { name: 'Anđelija Vukotić (000003)' }))
+    expect(box).toHaveValue('Anđelija Vukotić (000003)')
+
+    await user.click(box)
+    expect(names()).toHaveLength(3)
+
+    await user.click(screen.getByRole('option', { name: 'Relja Petrović (000004)' }))
+    expect(onChoose).toHaveBeenLastCalledWith(MEMBERS[2])
+    expect(box).toHaveValue('Relja Petrović (000004)')
   })
 
   it('walks the list with Down and Up, both wrapping, naming the row it stands on', async () => {
@@ -183,14 +280,15 @@ describe('the box of a member', () => {
     expect(box, 'Down opened the list with a row already highlighted').not.toHaveAttribute('aria-activedescendant')
   })
 
-  it('opens nothing on Down while nothing it names is typed, and a key that is no arrow does nothing to the list', async () => {
+  it('opens nothing on Down while letters nobody holds are typed, and a key that is no arrow does nothing to the list', async () => {
     const user = setupUser()
     const { box } = drawn()
 
-    await user.click(box)
+    await user.type(box, 'Rx')
     await user.keyboard('{ArrowDown}')
     expect(screen.queryByRole('listbox')).toBeNull()
 
+    await user.clear(box)
     await user.type(box, 'Relja')
     await user.keyboard('{ArrowDown}{Home}')
     expect(box).toHaveAttribute('aria-activedescendant', screen.getAllByRole('option')[0]?.id)
@@ -207,8 +305,9 @@ describe('the box of a member', () => {
     expect(screen.getByRole('textbox', { name: 'Sati' })).toHaveFocus()
     expect(screen.queryByRole('listbox')).toBeNull()
 
+    /* The press opens the list again, and on no row. */
     await user.click(box)
-    await user.keyboard('{ArrowDown}')
+    expect(screen.getAllByRole('option')).toHaveLength(2)
     expect(box, 'the row highlighted before the cursor left was still highlighted').not.toHaveAttribute(
       'aria-activedescendant',
     )
@@ -223,5 +322,81 @@ describe('the box of a member', () => {
     await user.type(box, ' ')
 
     expect(box).not.toHaveAttribute('aria-activedescendant')
+  })
+})
+
+describe('where the list of members stands', () => {
+  it('opens under the box, no taller than the room under it, while there is room for a few rows there', async () => {
+    const user = setupUser()
+    const { box } = drawn()
+
+    box.getBoundingClientRect = () => DOMRect.fromRect({ x: 0, y: 100, width: 300, height: 48 })
+    await user.click(box)
+
+    const list = screen.getByRole('listbox')
+
+    expect(list.style.getPropertyValue('--member-choice-room')).toBe(`${String(window.innerHeight - 148 - 12)}px`)
+  })
+
+  it('is worked out again where the box stands when it opens the next time', async () => {
+    const user = setupUser()
+    const { box } = drawn()
+
+    box.getBoundingClientRect = () => DOMRect.fromRect({ x: 0, y: 100, width: 300, height: 48 })
+    await user.click(box)
+    await user.click(box)
+    box.getBoundingClientRect = () => DOMRect.fromRect({ x: 0, y: 300, width: 300, height: 48 })
+    await user.keyboard('{ArrowDown}')
+
+    expect(screen.getByRole('listbox').style.getPropertyValue('--member-choice-room')).toBe(
+      `${String(window.innerHeight - 348 - 12)}px`,
+    )
+  })
+
+  it('scrolls itself to keep the row walked to with the keys in sight', async () => {
+    const user = setupUser()
+    const { box } = drawn(MANY)
+
+    await user.click(box)
+
+    const list = screen.getByRole('listbox')
+
+    /* Each row 30 high, eight of them in sight: the ninth is under the edge. jsdom lays nothing out, so the
+       numbers a browser would give are given here. */
+    screen.getAllByRole('option').forEach((row, index) => {
+      Object.defineProperty(row, 'offsetTop', { configurable: true, value: index * 30 })
+      Object.defineProperty(row, 'offsetHeight', { configurable: true, value: 30 })
+    })
+    Object.defineProperty(list, 'clientHeight', { configurable: true, value: 240 })
+
+    await user.keyboard('{ArrowDown}'.repeat(9))
+    expect(box).toHaveAttribute('aria-activedescendant', screen.getAllByRole('option')[8]?.id)
+    expect(list.scrollTop, 'the ninth row was left under the edge').toBe(30)
+  })
+})
+
+describe('roomFor', () => {
+  it('gives the list the room under the box, less the gap kept from the edge of the window', () => {
+    expect(roomFor(748, 1000)).toBe(240)
+  })
+
+  it('gives it no less than about three rows where the box stands near the bottom of the window', () => {
+    expect(roomFor(900, 1000)).toBe(144)
+    expect(roomFor(844, 1000)).toBe(144)
+    expect(roomFor(843, 1000)).toBe(145)
+  })
+})
+
+describe('keptInView', () => {
+  it('scrolls back to a row above what is seen', () => {
+    expect(keptInView(30, 30, 90, 240)).toBe(30)
+  })
+
+  it('scrolls on just far enough for a row under what is seen to stand whole at the bottom', () => {
+    expect(keptInView(240, 30, 0, 240)).toBe(30)
+  })
+
+  it('leaves the list where it is for a row already seen whole', () => {
+    expect(keptInView(210, 30, 0, 240)).toBe(0)
   })
 })

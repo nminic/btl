@@ -212,10 +212,14 @@
   letter-spacing: 0.5px;
 }
 
+/* The same arrow as every dropdown of the portal (`index.css`, `select, .dropdown`): the same chevron on the grid of 24,
+   the same stroke of 2, a box of 1,125rem, and the full colour of the text, not a faded one (owner, 23.11.2026, PDL
+   „Sve padajuće strelice [...] odmiču se od desne ivice koliko i strelica izbora jezika”). Its distance from the edge of
+   the button is the padding of the button and is left as it was: that is the measure the others are given
+   (`geometry/dropdownArrow.geometry.ts`). */
 .lang__caret {
-  width: 13px;
-  height: 13px;
-  opacity: 0.6;
+  width: 1.125rem;
+  height: 1.125rem;
   transition: transform var(--fast);
 }
 
@@ -816,9 +820,14 @@
 }
 
 /* The language as its flag and its caret (owner, answer 2: „dugme jezika se svodi na zastavicu, a
-   oznaka jezika ostaje u imenu dugmeta za čitač ekrana”), on a narrower button. */
+   oznaka jezika ostaje u imenu dugmeta za čitač ekrana”), on a narrower button. The caret is the arrow of every dropdown,
+   a box of 1,125rem, five pixels wider than the one it had, and those are taken back from the gap beside the flag (the
+   chevron stands in from its box, and the round end of its line passes the point where the drawing begins, so the flag and
+   the drawn chevron are 2px apart, 4px at 200% text, measured; the boxes themselves never overlap, which
+   `geometry/phoneHeader.geometry.ts` holds): without them the
+   name of the league breaks onto two lines at 360px (`geometry/phoneHeader.geometry.ts`, measured 23.11.2026). */
 .shell__header--phone .lang__btn {
-  gap: var(--space-4);
+  gap: 0;
   padding: 0 var(--space-6);
 }
 

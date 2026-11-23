@@ -32,6 +32,14 @@
   background: var(--surface);
   border: 1px solid var(--border);
   box-shadow: 0 24px 50px -20px rgba(0, 0, 0, 0.45);
+  /* EVERY MEMBER, AND SO A LIST THAT SCROLLS INSIDE ITSELF (owner, 23.11.2026, recorded under the decision: „klik
+     ili strelica dole otvaraju spisak SVIH članova koji se mogu izabrati, spisak se skroluje unutar sebe”). No
+     taller than twenty rem, about eight members, and no taller than the room the window has under the box
+     (`--member-choice-room`, worked out by `memberList.ts` `roomFor` when it opens), so it does not run out of
+     the window. A wheel turned over it scrolls the list and stops there rather than carrying on into the page. */
+  max-block-size: min(20rem, var(--member-choice-room, 20rem));
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .member-choice__one {
