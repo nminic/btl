@@ -97,7 +97,8 @@ describe('the way to propose a team', () => {
   /* THE SENTENCE STANDS AT THE SAME DISTANCE FROM THE TABLE AS THE BUTTON DOES. It was drawn with the class of
      the empty lists beside the class of the button, both of the same weight, and the later rule won: the button
      had 16px above it and the sentence none. jsdom computes no cascade (ADL A33), so what is asked is the
-     sheet: of every rule written for exactly one class of the sentence, one - the button's - sets a margin. */
+     sheet: of every rule that names one class of the sentence, alone or in a list, one - the button's - sets a
+     margin. */
   it('has the gap of the button above it, from one rule and not from two that argue', async () => {
     renderAt('/sr/timovi', 'competitor', '000002', undefined, '2027-06-01')
 
@@ -107,7 +108,9 @@ describe('the way to propose a team', () => {
     const sheet = readFileSync(join(process.cwd(), 'src', 'pages', 'Rankings.css'), 'utf-8')
     const margins = everyRule(sheet, 'Rankings.css').filter(
       (rule) =>
-        [...sentence.classList].some((one) => rule.selectorText === `.${one}`) &&
+        [...sentence.classList].some((one) =>
+          rule.selectorText.split(',').some((selector) => selector.trim() === `.${one}`),
+        ) &&
         ['margin', 'margin-block', 'margin-block-start', 'margin-top'].some(
           (property) => rule.style.getPropertyValue(property) !== '',
         ),
