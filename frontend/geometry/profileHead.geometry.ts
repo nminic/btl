@@ -100,11 +100,11 @@ const HER_DATA = {
   shirtSize: 'M',
 }
 
-const meAs = (memberNumber: string): unknown => {
+const meAs = (memberNumber: string, role = 'competitor'): unknown => {
   const row = rowOf(memberNumber)
 
   return {
-    role: 'competitor',
+    role,
     account: 1,
     mailLanguage: 'sr',
     seasonsOpenForAReport: [2027],
@@ -228,7 +228,7 @@ const READERS: Reader[] = [
     pair: true,
     team: true,
     data: true,
-    answers: { ...THE_LISTS, '/api/me': { ...(meAs(TWO_BUTTONS) as object), role: 'superadmin' } },
+    answers: { ...THE_LISTS, '/api/me': meAs(TWO_BUTTONS, 'superadmin') },
   },
 ]
 
