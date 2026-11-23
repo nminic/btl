@@ -398,9 +398,12 @@ class TeamAdministrationWriteApi {
 	 * founder's three questions. Who may is the right over the teams, the door the change has, so
 	 * somebody without it is told 404 and somebody signed out 401 (ADL A8).
 	 *
-	 * <p><b>The organizer is told nothing</b>: the message an approval sends him says his proposal
-	 * was accepted, which is not what happened here, and no decision gives this door a sentence of
-	 * its own.
+	 * <p><b>The organizer is told, in a sentence of this door's own, and nobody else is</b> (PDL P13,
+	 * [ODLUKA 23.11.2026], the sentence the owner chose among those he was offered): the message an approval
+	 * sends him says his proposal was accepted, which is not what happened here, so this one says the
+	 * administration made the team and put him in charge of it from the season it takes effect. It is
+	 * written in {@link #making} and held by {@code theOrganizerIsToldInTheOwnersSentenceAndNobodyElseIs};
+	 * a request that is refused tells nobody.
 	 */
 	@PostMapping("/api/teams/direct")
 	@RightIsNeeded(TeamApi.OVER_THE_TEAMS)
