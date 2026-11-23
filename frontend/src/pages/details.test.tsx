@@ -384,19 +384,13 @@ describe('LeagueDetail', () => {
        the events of its races. So the row follows the box. Written as a comparison of the two
        rather than as a number, because a number written here would let them drift apart again and
        the day it happened nobody would be told which one to believe. */
-    /* The box is open on arrival (owner, 03.11.2026), which is the state the member compares the
-       two numbers in. Its panel carries `hidden` only while somebody has folded it, which is what
-       keeps `aria-controls` pointing at something that exists, and a folded panel is not part of
-       the accessibility tree. */
-    const opens = within(box).getByRole('button', { name: /Događaji i trke/ })
-
-    /* Open on arrival since 03.11.2026, so nothing is pressed. A tile to an event since 21.11.2026,
-       so the events are the tiles of the panel this button opens, read off its own `aria-controls`
-       rather than off anything else in the box. */
-    expect(opens).toHaveAttribute('aria-expanded', 'true')
+    /* The box is always shown (owner, 23.11.2026: „ne treba uopšte da postoji dugme za collapsing /
+       expanding trka"), which is the state the member compares the two numbers in. A tile to an event
+       since 21.11.2026, so the events are the tiles of the box, found by the heading of the box and
+       by nothing that is pressed. */
     const panel = must(
-      document.getElementById(must(opens.getAttribute('aria-controls'), 'what the button opens')),
-      'the panel of the box',
+      within(box).getByRole('heading', { level: 3, name: 'Događaji i trke' }).closest('section'),
+      'the box of events',
     )
     const days = tilesOf(
       must(first(await within(panel).findAllByRole('link')).closest('ul'), 'the list of the tiles'),
@@ -452,66 +446,23 @@ describe('LeagueDetail', () => {
     expect(screen.queryAllByRole('heading', { name: 'Propozicije' })).toHaveLength(1)
   })
 
-  it('names the box it opens, from a heading, and names it apart from every other', async () => {
-    /* Three things the box's own documentation gives as the reason it is correct, and a review
-       on 13.09.2026 measured that none of them had a case: the whole suite stayed green with
-       `aria-controls` deleted, with the `h3` turned into a `div`, and with the panel id reduced
-       to a constant so that three buttons pointed at one panel.
-
-       They are measured together because they are one claim: a reader working by heading finds
-       this box, the control they land on is the one that opens it, and what it points at is this
-       box and not the one belonging to another competition.
-
-       2027 and not 2019, because 2019 holds one competition and a claim about telling two
-       apart needs two. The two held in 2027 are RunTrace and Planinska; nothing is filtered
-       off this screen since 24.09.2026, when the decision the filter rested on was settled
-       the other way (PDL P15a). */
-    /* **One sheet at a time since 21.11.2026** (owner: „Propozicije, nagrade i događaji se ispisuju
-       samo za izabranu ligu"), so the two competitions are chosen one after the other, and what is
-       held against each other is what they point at: the ids of their panels. */
-    const ids: string[] = []
-
+  it('heads the box with an h3 of its own, in each competition, and gives it nothing to press', async () => {
+    /* A reader working by heading finds this box in the list of them, and since 23.11.2026 there is no
+       control in it: „ne treba uopšte da postoji dugme za collapsing / expanding trka". 2027 and not
+       2019, because 2019 holds one competition and a claim about each sheet needs two. One sheet at a
+       time since 21.11.2026, so the two competitions are chosen one after the other. */
     for (const slug of ['runtrace-2027', 'planinska-2027']) {
       renderAt(`/sr/lige?sezona=2027&liga=${slug}`)
 
       const heading = await screen.findByRole('heading', { level: 2, name: /liga/i })
       const card = must(heading.closest('article'), 'the sheet of a competition')
-      const toggle = within(card).getByRole('button', { name: /Događaji i trke/ })
 
-      /* From a heading, so the box is in a screen reader's list of them. */
-      expect(must(toggle.parentElement, 'what the button sits in').tagName).toBe('H3')
-
-      /* Pointing at something, and at something that is really there whether the box is open or
-         folded, which is the reason the panel carries `hidden` rather than being taken out. */
-      const id = toggle.getAttribute('aria-controls')
-      expect(id).toBeTruthy()
-      expect(toggle).toHaveAttribute('aria-expanded', 'true')
-      const panel = must(document.getElementById(String(id)), `the panel ${id} points at`)
-
-      ids.push(String(id))
-
-      /* **And the thing it points at is the thing that folds.** Without this the case is happy
-         with the button's own ancestor: move the id onto the section that wraps the button and
-         `aria-controls` becomes a circle, sending a reader to where they already are, while the
-         panel that actually folds carries no id at all. Measured by a review on 13.09.2026, which
-         made exactly that move and watched all 2766 cases stay green. */
-      /* Open on arrival (owner, 03.11.2026), so it folds on a press, and it is the one that does. */
-      expect(panel).not.toHaveAttribute('hidden')
-      await setupUser().click(toggle)
-      expect(panel, 'the element aria-controls names is not the one that folds').toHaveAttribute(
-        'hidden',
-      )
-      expect(panel.contains(toggle), 'aria-controls points at an ancestor of the button').toBe(
-        false,
-      )
-      expect(card.contains(panel)).toBe(true)
+      expect(within(card).getByRole('heading', { level: 3, name: 'Događaji i trke' })).toBeVisible()
+      expect(within(card).queryByRole('button', { name: /Događaji i trke/ })).toBeNull()
+      expect(card.querySelector('[aria-expanded]')).toBeNull()
 
       cleanup()
     }
-
-    /* And at its own, not at a neighbour's. Two competitions pointing at one panel is the shape a
-       constant id produces, and a reader following either lands on the other's box. */
-    expect(new Set(ids).size).toBe(ids.length)
   })
 
   it('holds up for a league with no events yet', async () => {
@@ -523,75 +474,45 @@ describe('LeagueDetail', () => {
     ).toBeVisible()
   })
 
-  it('shows the events of a competition on arrival, and folds and opens them on a press', async () => {
-    /* Owner, 03.11.2026: „kutija treba da bude default otvorena (expanded), ne collapsed". Until
-       that day it was folded to begin with (owner, 13.09.2026: „sekcijica DOGAĐAJI / TRKE koja se
-       može ekspandovati").
-
-       **What is open is read off the control and off the document, not off one of them.**
-       `aria-expanded` alone would pass on a box whose content is drawn all the same, and a
-       missing name alone would pass on a box with no control at all. */
-    const user = setupUser()
-
-    renderAt('/sr/lige?sezona=2027')
-
-    const opens = await screen.findByRole('button', { name: 'Događaji i trke, RunTrace liga 2027' })
-
-    expect(opens).toHaveAttribute('aria-expanded', 'true')
-    expect(await screen.findByRole('link', { name: 'Podgorička desetka' })).toBeVisible()
-
-    await user.click(opens)
-
-    expect(opens).toHaveAttribute('aria-expanded', 'false')
-    expect(screen.queryByRole('link', { name: 'Podgorička desetka' })).toBeNull()
-
-    /* And it opens again on a second press, which is the half of a disclosure that a case
-       written only one way never meets. */
-    await user.click(opens)
-
-    expect(opens).toHaveAttribute('aria-expanded', 'true')
-    expect(await screen.findByRole('link', { name: 'Podgorička desetka' })).toBeVisible()
-  }, SLOW)
-
-  it('draws each box out of its own competition, and folds it alone', async () => {
+  it('draws each box out of its own competition, and shows it on arrival', async () => {
     /* **Two competitions in the season and the one asked for is the second**, which is the whole
        of this case: a box reading `leagues[0]` instead of its own competition draws RunTrace's
        eight events under Planinska's name, and every question about „is something listed" stays
        green while the screen tells a lie. Planinska has no event at all, so what its box says is
        a sentence the other box can never produce.
 
-       And the box that was not pressed stays open: one piece of state for the whole screen would
-       fold all of them together. */
+       Nothing is pressed to see either box (owner, 23.11.2026: „Neka se uvek prikazuju za odabranu
+       ligu"), and the box of the competition chosen after it holds its own events. */
     const user = setupUser()
 
     renderAt('/sr/lige?sezona=2027&liga=planinska-2027')
 
-    const mine = await screen.findByRole('button', {
-      name: 'Događaji i trke, Planinska liga 2027',
-    })
-
-    const panel = must(
-      document.getElementById(must(mine.getAttribute('aria-controls'), 'what the button opens')),
-      'the panel of Planinska',
+    const mine = must(
+      (await screen.findByRole('heading', { level: 3, name: 'Događaji i trke' })).closest('section'),
+      'the box of Planinska',
     )
 
-    expect(await within(panel).findByText('Ovoj ligi još nije dodeljena nijedna trka.')).toBeVisible()
-    expect(within(panel).queryByRole('link', { name: 'Podgorička desetka' })).toBeNull()
+    /* **Waited for what either competition's box ends in, and then asked at once**, so a box that draws
+       the wrong competition fails on the sentence below and not on the clock of the case (an expiry is
+       not a catch: `CLAUDE.md`, „Istek slučaja u vitest-u se čita kao pad na tvrdnji"). The box is done
+       loading when it holds a link to an event or the sentence of a competition with none. */
+    await waitFor(
+      () => {
+        expect(
+          within(mine).queryAllByRole('link').length + within(mine).queryAllByText(/nijedna trka/).length,
+        ).toBeGreaterThan(0)
+      },
+      { timeout: 4000 },
+    )
+    expect(within(mine).getByText('Ovoj ligi još nije dodeljena nijedna trka.')).toBeVisible()
+    expect(within(mine).queryByRole('link', { name: 'Podgorička desetka' })).toBeNull()
 
-    await user.click(mine)
-
-    expect(mine).toHaveAttribute('aria-expanded', 'false')
-    expect(panel).not.toBeVisible()
-
-    /* **Since 21.11.2026 only the chosen sheet draws a box**, so „the other box stays open" is
-       measured by choosing the other competition on its card: its box is open on arrival and holds
-       its own events, and the fold of Planinska is not carried over to it. */
+    /* **Since 21.11.2026 only the chosen sheet draws a box**, so the other competition is chosen on its
+       card, and its box holds its own events with nothing pressed. */
     await user.click(screen.getByRole('link', { name: 'RunTrace liga 2027' }))
 
-    const other = await screen.findByRole('button', { name: 'Događaji i trke, RunTrace liga 2027' })
-
-    expect(other).toHaveAttribute('aria-expanded', 'true')
     expect(await screen.findByRole('link', { name: 'Podgorička desetka' })).toBeVisible()
+    expect(screen.queryByText('Ovoj ligi još nije dodeljena nijedna trka.')).toBeNull()
   }, SLOW)
 
   it('gives each event that counts a tile: its day, and the measures of its races that count', async () => {

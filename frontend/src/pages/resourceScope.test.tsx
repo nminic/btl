@@ -221,7 +221,7 @@ describe('a part of a screen waits without covering the page', () => {
    *  that never arrives is said inside every box, and only there: the screen around it is not
    *  replaced by an error. Waited for, since the box says so when the request gives up. */
   async function theFailureStaysInTheBoxes(): Promise<void> {
-    const boxes = await screen.findAllByRole('button', { name: /^Događaji i trke, / })
+    const boxes = await screen.findAllByRole('heading', { level: 3, name: 'Događaji i trke' })
     const said = await screen.findAllByRole('alert')
 
     expect(said).toHaveLength(boxes.length)
@@ -348,9 +348,7 @@ describe('a part of a screen waits without covering the page', () => {
 
     expect(await screen.findByRole('heading', { level: 2, name: /RunTrace liga/ })).toBeVisible()
     expect(screen.getByRole('heading', { name: 'Propozicije' })).toBeVisible()
-    expect(
-      screen.getByRole('button', { name: 'Događaji i trke, RunTrace liga 2027' }),
-    ).toBeVisible()
+    expect(screen.getByRole('heading', { level: 3, name: 'Događaji i trke' })).toBeVisible()
     expect(document.querySelector('.loader:not(.loader--inline)')).toBeNull()
     await theFailureStaysInTheBoxes()
 

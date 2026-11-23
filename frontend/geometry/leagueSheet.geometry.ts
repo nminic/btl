@@ -232,6 +232,106 @@ for (const { at, columns } of [
   })
 }
 
+/* THE TILES STAND DOWN THE LEFT COLUMN AND THEN DOWN THE RIGHT, NOT ACROSS IN ROWS (owner, 23.11.2026, PDL
+ * „Pločice se u dve kolone slažu po kolonama, ne po redovima”): „ako ima 8 trka, prve 4 idu levo, druge 4 desno.
+ * Ako se doda nova trka koja se održava poslednja, 5. prelazi kao poslednja u prvom stupcu, a drugi stubac
+ * ostaje sa 4”. On a telephone, one under another, „uvek da bude hronološko sortiranje”.
+ *
+ * **Asked of the position of each tile, not of a class**: the order of the tiles in the document is the order
+ * of the season (it is what a reader by ear and the keyboard walk), so what is read here is where each of them
+ * stands, in the order of the document. Eight events of the sample, and nine with one entered after them.
+ */
+const A_NINTH_EVENT = 2001
+
+/** A file of the sample as the list of records it is, or a stop where it is not one. */
+function records(name: string): Record<string, unknown>[] {
+  const found = sample(name)
+
+  if (!Array.isArray(found)) {
+    throw notMeasured(`the sample ${name} is not a list`)
+  }
+
+  return found
+}
+
+function withNineEvents(): Answers {
+  const leagues = records('leagues')
+  const events = records('events')
+  const races = records('races')
+  const [league] = leagues
+  const [someEvent] = events
+  const [someRace] = races
+  const counted: unknown = league?.raceIds
+
+  if (league === undefined || someEvent === undefined || someRace === undefined) {
+    throw notMeasured('the sample has no competition, event or race to copy a ninth from')
+  }
+
+  return {
+    ...SERVED,
+    '/api/leagues': [{ ...league, raceIds: [...(Array.isArray(counted) ? counted : []), A_NINTH_EVENT] }, ...leagues.slice(1)],
+    '/api/events': [
+      ...events,
+      { ...someEvent, id: A_NINTH_EVENT, slug: 'the-ninth', name: 'Zadnji trk', date: '2027-12-04' },
+    ],
+    '/api/races': [
+      ...races,
+      { ...someRace, id: A_NINTH_EVENT, eventId: A_NINTH_EVENT, name: 'Zadnji trk', date: '2027-12-04' },
+    ],
+  }
+}
+
+for (const { count, served } of [
+  { count: 8, served: SERVED },
+  { count: 9, served: withNineEvents() },
+] satisfies { count: number; served: Answers }[]) {
+  for (const { at, columns } of [
+    { at: { width: 360, text: 100 }, columns: 1 },
+    { at: { width: 768, text: 100 }, columns: 2 },
+    { at: { width: 1280, text: 100 }, columns: 2 },
+    { at: { width: 1280, text: 200 }, columns: 1 },
+  ] satisfies { at: At; columns: number }[]) {
+    test(`${count} tiles stand ${columns === 1 ? 'one under another in the order of the season' : 'down the left column, then down the right'}, ${label(at)}`, async ({ open }) => {
+      const { page } = await open(at, '/sr/lige?sezona=2027', '.leagues__event-tile', served)
+      const seen = await page.evaluate(() =>
+        [...document.querySelectorAll('.leagues__event-tile')].map((tile) => {
+          const found = tile.getBoundingClientRect()
+
+          return { left: found.left, top: found.top, bottom: found.bottom }
+        }),
+      )
+
+      expect(seen.length, `the ${count} events, ${count} tiles`).toBe(count)
+
+      const left = seen.slice(0, columns === 1 ? count : Math.ceil(count / 2))
+      const right = seen.slice(left.length)
+
+      /* A column is one left edge and tops that go down, in the order of the document. */
+      for (const column of [left, right]) {
+        for (const [index, one] of column.entries()) {
+          expect(Math.abs(one.left - (column[0]?.left ?? Number.NaN)), 'a column has one left edge').toBeLessThanOrEqual(SLACK)
+
+          const before = column[index - 1]
+
+          if (before !== undefined) {
+            expect(one.top, 'down a column in the order of the document').toBeGreaterThanOrEqual(before.bottom - SLACK)
+          }
+        }
+      }
+
+      if (columns === 2) {
+        const [first] = left
+        const [top] = right
+
+        expect(left.length, 'the left column holds half, rounded up').toBe(Math.ceil(count / 2))
+        expect(right.length, 'the right column holds the rest').toBe(Math.floor(count / 2))
+        expect(top?.left, 'the right column is to the right').toBeGreaterThan((first?.left ?? Number.NaN) + SLACK)
+        expect(Math.abs((top?.top ?? Number.NaN) - (first?.top ?? Number.NaN)), 'the first of the right column stands at the head of it').toBeLessThanOrEqual(SLACK)
+      }
+    })
+  }
+}
+
 /* THE TEXT OF THE TILE OF THE NEXT EVENT STARTS WHERE THE TEXT OF EVERY OTHER TILE STARTS, AND ITS GOLD EDGE
  * IS STILL THERE (owner's PENDING, 22.11.2026, from the report of the author of PR 791: „zlatna leva ivica
  * od 4px pomera tekst 3px udesno u odnosu na ostale pločice").
