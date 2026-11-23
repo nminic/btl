@@ -363,6 +363,7 @@
     "crop.x",
     "crop.y",
     "id",
+    "link",
     "logo",
     "name",
     "organizerMemberNumber",

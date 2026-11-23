@@ -8,6 +8,22 @@ import { sources } from '../test/sources'
 import { SLOW } from '../test/slow'
 import { typeATownTheCodebookKnows } from '../test/town'
 import { setupUser } from '../test/user'
+import { fakeQueue } from '../test/fakeQueue'
+
+/* THE SERVER'S TEAMS ARE IN FRONT OF EVERY CASE HERE since 23.11.2026, because the screens of teams
+ * speak to routes (`POST /api/teams/direct`, `PUT` and `DELETE /api/teams/{id}`) and read the lists
+ * again after a write instead of keeping the row in the session. `fakeQueue()` remembers what was
+ * written and serves the two lists it changes. */
+let theServerOfTeams: { stop: () => void } | null = null
+
+beforeEach(() => {
+  theServerOfTeams = fakeQueue()
+})
+
+afterEach(() => {
+  theServerOfTeams?.stop()
+  theServerOfTeams = null
+})
 
 /* Where the browser's own way back leads from a screen that says something was sent.
  *

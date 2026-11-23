@@ -135,7 +135,7 @@ describe('a team taken away from the administration', () => {
        nobody has. */
     const held = [...TEAMS]
 
-    return serverThat(async (path, init) => {
+    return serverThat((path, init) => {
       const how = init?.method ?? 'GET'
 
       if (how === 'GET' && path === '/api/teams') {
@@ -150,17 +150,17 @@ describe('a team taken away from the administration', () => {
         return null
       }
 
-      const answer = await toAWrite(path, init)
+      return Promise.resolve(toAWrite(path, init)).then((answer) => {
+        if (how === 'DELETE' && answer.ok) {
+          const gone = held.findIndex((one) => path === `/api/teams/${String(one.id)}`)
 
-      if (how === 'DELETE' && answer.ok) {
-        const gone = held.findIndex((one) => path === `/api/teams/${String(one.id)}`)
-
-        if (gone >= 0) {
-          held.splice(gone, 1)
+          if (gone >= 0) {
+            held.splice(gone, 1)
+          }
         }
-      }
 
-      return answer
+        return answer
+      })
     })
   }
 
@@ -674,6 +674,10 @@ describe('a team taken away from the administration', () => {
           '/sr/administracija/timovi', 'superadmin', null, undefined, IN_WINDOW,
         )
 
+        await screen.findByRole('table', { name: 'Timovi' })
+
+        const before = reads(server.asked, '/api/competitors')
+
         /* THE FIRST SERVED TEAM THIS TIME, so that a team with members remains after it and
            the count being checked is somebody else's rather than the deleted team's own. */
         await deleteNamed(user, FIRST_SERVED_NAME)
@@ -682,12 +686,15 @@ describe('a team taken away from the administration', () => {
             .queryByText(FIRST_SERVED_NAME)).toBeNull()
         })
 
-        const before = reads(server.asked, '/api/competitors')
+        /* READ AGAIN BY THE DELETION ITSELF, while the screen stays: since 23.11.2026 the list
+           asks for the teams and the members the moment the server has taken the team away, so
+           the count beside every remaining row is the fresh one before the screen is ever left. */
+        await waitFor(() => {
+          expect(reads(server.asked, '/api/competitors')).toBeGreaterThan(before)
+        })
 
         await awayAndBack(router)
         await screen.findByRole('table', { name: 'Timovi' })
-
-        expect(reads(server.asked, '/api/competitors')).toBeGreaterThan(before)
 
         /* AND 000003, WHO WAS IN THE DELETED TEAM, IS COUNTED INTO NOTHING NOW. The acted team
            still has its two, which is what says the fresh answer was read rather than an empty

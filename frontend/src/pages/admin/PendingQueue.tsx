@@ -713,13 +713,19 @@ export function PendingQueue({ queue }: { queue: Queue }) {
   /* The teams as well, for one rule: a name already in the league cannot be
      taken by a proposal (PDL P13). Read through what this visit has entered, so
      two proposals of the same name in one sitting cannot both go through. */
-  const state = combinePair(usePending(revision), useTeams())
+  /* HOW MANY TIMES A TEAM THE SERVER MADE OR CHANGED HAS BEEN LEARNT OF, since 23.11.2026: what bumps
+     the two readers below so that the card of the next proposal asks again who is in a team and
+     which names are taken, while this screen stays mounted. Dropping the cached answer alone would
+     leave a mounted reader drawing the one it holds (`data/useResource.ts`, `revision`), and a
+     moderator would be offered „Odobri" on a founder who is in a team now. */
+  const [teamsWritten, setTeamsWritten] = useState(0)
+  const state = combinePair(usePending(revision), useTeams(teamsWritten))
   /* The members, for the one rule a team proposal cannot be decided without:
      a member is in one team at a time (PDL P13), so a proposal from somebody who
      already has one cannot be approved. Read through the overlay like everything
      else, because the team a member got a minute ago in this same visit is in
      there and nowhere else. */
-  const membersState = useCompetitors()
+  const membersState = useCompetitors(teamsWritten)
   const allMembers = recordsOf(MEMBERS, dataOr(membersState, []), overlay)
 
   /**
@@ -1014,6 +1020,7 @@ export function PendingQueue({ queue }: { queue: Queue }) {
 
           clearResourceCache('teams')
           clearResourceCache('competitors')
+          setTeamsWritten((was) => was + 1)
 
           continue
         }

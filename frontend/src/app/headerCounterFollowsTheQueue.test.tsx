@@ -84,7 +84,7 @@ describe('the counter in the header', () => {
     await router.navigate('/sr/novi-tim')
     await user.type(await screen.findByLabelText(/Naziv tima/), 'Trkači Morave')
     await typeATownTheCodebookKnows(user, 'Čačak', 'RS')
-    await user.type(screen.getByLabelText(/Zašto ovaj tim/), 'Trčimo zajedno već tri godine.')
+    await user.type(screen.getByLabelText(/^Opis tima/), 'Trčimo zajedno već tri godine.')
     await user.click(screen.getByRole('button', { name: 'Pošalji predlog' }))
     await screen.findByRole('heading', { name: 'Predlog je poslat' })
 

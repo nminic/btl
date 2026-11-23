@@ -11,12 +11,28 @@ import { first, must } from '../../test/at'
 import { Decided } from '../../test/decided'
 import { sayYes, theSheet } from '../../test/deleteSheet'
 import { moderatorWith, expectFrontPage, renderAt } from '../../test/render'
-import { did, serverThat } from '../../test/serverAnswers'
+import { serverThat } from '../../test/serverAnswers'
 import { setupUser } from '../../test/user'
 import { Entities } from './Entities'
 import { TEAMS } from './entityForms'
 import { RowActions } from './EntityEditor'
 import { Verification } from './Verification'
+import { fakeQueue } from '../../test/fakeQueue'
+
+/* THE SERVER'S TEAMS ARE IN FRONT OF EVERY CASE HERE since 23.11.2026, because the screens of teams
+ * speak to routes (`POST /api/teams/direct`, `PUT` and `DELETE /api/teams/{id}`) and read the lists
+ * again after a write instead of keeping the row in the session. `fakeQueue()` remembers what was
+ * written and serves the two lists it changes. */
+let theServerOfTeams: { stop: () => void } | null = null
+
+beforeEach(() => {
+  theServerOfTeams = fakeQueue()
+})
+
+afterEach(() => {
+  theServerOfTeams?.stop()
+  theServerOfTeams = null
+})
 
 /* Every wait is given half of what a case is given, for the reason `rowMembership.test.tsx` gives: a
    mutation then fails on its assertion and not on the clock of the case. */
@@ -58,7 +74,8 @@ describe('a record entered during this visit and then deleted', () => {
     await user.type(screen.getByLabelText(/^Naziv tima/), 'Probni tim')
     await user.type(screen.getByLabelText(/^Mesto/), 'Čačak')
     await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
-    await user.selectOptions(screen.getByLabelText(/^Organizator tima/), '000001')
+    /* Free, because the server refuses a team to somebody who is in one (000001 is in Dunavski trkači). */
+    await user.selectOptions(screen.getByLabelText(/^Organizator tima/), '000002')
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
     await screen.findByRole('status', { name: 'Sačuvano' })
     await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
@@ -78,9 +95,11 @@ describe('a record entered during this visit and then deleted', () => {
 
     await sayYes(user, 'Obriši tim?')
 
-    expect(table().queryByText('Probni tim')).not.toBeInTheDocument()
+    await waitFor(() => {
+      expect(table().queryByText('Probni tim')).not.toBeInTheDocument()
+    })
     expect(table().getAllByRole('row')).toHaveLength(before)
-  })
+  }, SLOW)
 })
 
 describe('the focus after a row is deleted', () => {
@@ -105,7 +124,7 @@ describe('the focus after a row is deleted', () => {
      * is read by every case in the suite, and three other branches are writing to it this
      * week. What this case needs is one answer, so it holds one answer.
      */
-    const server = serverThat((_, init) => ((init?.method ?? 'GET') === 'GET' ? null : did()))
+    const server = serverThat(() => null)
     const user = setupUser()
     renderAt('/sr/administracija/timovi', 'superadmin')
 

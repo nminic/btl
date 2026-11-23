@@ -3,11 +3,23 @@ import { join } from 'node:path'
 import { screen, waitFor, within } from '@testing-library/react'
 import { must } from '../../test/at'
 import { sayYes } from '../../test/deleteSheet'
+import { fakeQueue } from '../../test/fakeQueue'
 import { renderAt } from '../../test/render'
-import { did, serverThat } from '../../test/serverAnswers'
+import { serverThat, type Asked } from '../../test/serverAnswers'
 import { SLOW } from '../../test/slow'
 import { typeATownTheCodebookKnows } from '../../test/town'
 import { setupUser } from '../../test/user'
+
+const DUNAV: { slug: string; bio: string; link: string } = must(
+  (
+    JSON.parse(readFileSync(join(process.cwd(), 'src', 'test', 'mock', 'teams.json'), 'utf-8')) as {
+      slug: string
+      bio: string
+      link: string
+    }[]
+  ).find((one) => one.slug === 'dunavski-trkaci'),
+  'the team every case here acts on',
+)
 
 /* A team changed by the member who administers it, and decided on like a new one.
  *
@@ -18,6 +30,27 @@ import { setupUser } from '../../test/user'
  * Dunavski trkači is the team all of this is asked of: 000001 founded it and is
  * still in it, so they administer it; 000007 is in it and does not.
  */
+
+/* EVERY CASE HERE HAS THE SERVER'S TEAMS IN FRONT OF IT, because since 23.11.2026 this form, the
+ * queue it files into and the administration's own screen all speak to routes
+ * (`POST /api/teams/{id}/changes`, `POST /api/verification/{id}/decision`, `PUT` and `DELETE
+ * /api/teams/{id}`) and none of them writes a team into the session. `fakeQueue()` remembers
+ * what was posted and serves the two resources a screen reads again after it. */
+let queue: { asked: Asked[]; stop: () => void } | null = null
+
+beforeEach(() => {
+  queue = fakeQueue()
+})
+
+afterEach(() => {
+  queue?.stop()
+  queue = null
+})
+
+/** The decisions the screen sent, in the order it sent them. */
+function decisionsSent(): Asked[] {
+  return (queue?.asked ?? []).filter((one) => one.init?.method === 'POST' && one.path.endsWith('/decision'))
+}
 
 describe('the way to change a team', () => {
   it('is offered on the team page to the member who administers it', async () => {
@@ -140,16 +173,17 @@ describe('the way to change a team', () => {
 })
 
 describe('the form a team is changed on', () => {
-  it('opens on what the team says today, and asks for the reason afresh', async () => {
+  it('opens on what the team says today, the description and the link included', async () => {
     /* Seeded, because a member changing a town should not have to type the name
-       again; the reason is why this change should be allowed and last time's is
-       not this time's. */
+       again, nor the description the team already has. The note „Zašto ovaj tim" is gone
+       since 23.11.2026 and the description stands in its place (PDL P13). */
     renderAt('/sr/tim/dunavski-trkaci/izmena', 'competitor', '000001')
 
     expect(await screen.findByLabelText(/Naziv tima/)).toHaveValue('Dunavski trkači')
     expect(screen.getByLabelText(/^Mesto/)).toHaveValue('Novi Sad')
     expect(screen.getByLabelText(/^Država/)).toHaveValue('RS')
-    expect(screen.getByLabelText(/^Opis tima/)).toHaveValue('')
+    expect(screen.getByLabelText(/^Opis tima/)).toHaveValue(DUNAV.bio)
+    expect(screen.getByLabelText(/^Link/)).toHaveValue(DUNAV.link)
   })
 
   /**
@@ -327,7 +361,7 @@ describe('a change waiting on the queue of teams', () => {
     expect(card.getByText('Izmena tima "Dunavski trkači"')).toBeVisible()
     /* And the reason a moderator reads carries the new town, which is the thing
        being decided about. */
-    expect(card.getByText(/Sremski Karlovci/)).toBeVisible()
+    expect(card.getByLabelText('Mesto')).toHaveValue('Sremski Karlovci')
   })
 
   it('is not held against the name of the team it is about', async () => {
@@ -356,11 +390,13 @@ describe('a change waiting on the queue of teams', () => {
     )
   })
 
-  it('reaches the member as a change turned down, not as a proposal turned down', async () => {
-    /* Refused under the queue's one heading, the administrator of a team whose change
-       was turned down read „Predlog tima je vraćen" about a team they never proposed.
-       The same fault `queues.ts` was written to stop, one queue further along
-       (review, 05.09.2026). */
+  /* THE NOTICE OF A DECISION IS THE ROUTE'S, NOT THE SCREEN'S, since 23.11.2026
+     (`VerificationWriteApi`, and `TeamDecisionsCarryWhatTheCardShowsTest` for the sentence it
+     writes to the administrator: a change turned down or taken, and never „predlog tima"). What
+     this screen owes is the request, to the number the card carries and with the answer the
+     moderator gave; and that it writes no notice of its own beside the server's, which is the
+     second sentence the member used to read. */
+  it('is turned down at the route, and reaches the member as a change turned down, not as a proposal', async () => {
     const user = setupUser()
     const { router } = renderAt('/sr/tim/dunavski-trkaci/izmena', 'superadmin', '000001')
 
@@ -378,17 +414,28 @@ describe('a change waiting on the queue of teams', () => {
     await user.type(screen.getByLabelText('Razlog odbijanja'), 'Mesto se ne poklapa sa prijavom.')
     await user.click(screen.getByRole('button', { name: 'Odbij uz ovaj razlog' }))
 
+    await waitFor(() => {
+      expect(decisionsSent()).toHaveLength(1)
+    })
+
+    const sent = must(decisionsSent()[0], 'the decision')
+
+    expect(sent.path).toMatch(/^\/api\/verification\/\d+\/decision$/)
+    expect(JSON.parse(String(sent.init?.body))).toMatchObject({
+      approved: false,
+      reason: 'Mesto se ne poklapa sa prijavom.',
+    })
+
+    /* The refusal is the one notice the screen still writes (the moderator's own words, under the
+       heading of a change and never of a proposal, `queues.ts`): the route writes the notice of an
+       approval and says nothing of a refusal. */
     await user.click(screen.getByRole('button', { name: /Otvori poruke/ }))
 
     expect(await screen.findByRole('link', { name: /Izmena tima je vraćena/ })).toBeVisible()
     expect(screen.queryByRole('link', { name: /Predlog tima je vraćen/ })).toBeNull()
   }, SLOW)
 
-  it('reaches the member as a change accepted, not as a proposal accepted', async () => {
-    /* The fourth of the four outcomes this queue can send, and the only one nothing
-       held: approved under the proposal's words, the administrator of a team whose
-       change was taken read „Tvoj predlog tima je prihvaćen. Ti si njegov
-       organizator." about a team they had run for years (review, 05.09.2026). */
+  it('is approved at the route with the team as the card shows it, and the screen writes no notice of its own', async () => {
     const user = setupUser()
     const { router } = renderAt('/sr/tim/dunavski-trkaci/izmena', 'superadmin', '000001')
 
@@ -403,131 +450,92 @@ describe('a change waiting on the queue of teams', () => {
     const card = within(must(heading.closest('li'), 'the card the heading stands in'))
 
     await user.click(card.getByRole('button', { name: 'Odobri' }))
+
+    await waitFor(() => {
+      expect(decisionsSent()).toHaveLength(1)
+    })
+
+    const body = JSON.parse(String(must(decisionsSent()[0], 'the decision').init?.body))
+
+    expect(body).toMatchObject({
+      approved: true,
+      team: { name: 'Dunavski trkači', city: 'Sremski Karlovci', country: 'RS', bio: DUNAV.bio, link: DUNAV.link },
+    })
+
     await user.click(screen.getByRole('button', { name: /Otvori poruke/ }))
 
-    expect(
-      screen.getByRole('link', { name: /Izmena tima "Dunavski trkači" je prihvaćena/ }),
-    ).toBeVisible()
-    expect(screen.queryByRole('link', { name: /predlog tima/i })).toBeNull()
+    expect(screen.queryByRole('link', { name: /Izmena tima|predlog tima/i })).toBeNull()
   }, SLOW)
 
-  it('is decided locally and never asks the route, unlike a served proposal waiting beside it', async () => {
-    /* VISOK 2, review of PR 380. This card exists because `EditTeam.tsx` calls
-       `propose` (`session/SessionProvider.tsx`), which mints `prop-1` for a row
-       nothing has served - there is no route yet to carry a changed town to the
-       server. Approved through the same door as everything else on this queue,
-       the id went to `POST /api/verification/prop-1/decision`, whose
-       `@PathVariable long id` (`VerificationWriteApi.decide`) cannot even carry
-       that shape: not refused, never delivered.
-     *
-       THE SOURCE SWAP THE REVIEW ASKED FOR: `ver-tim-1`, served off
-       `public/mock/verification.json`, waits on the SAME queue as `prop-1` in this
-       same render. A case holding only the second could not tell "the code reads
-       which row this is" from "the code never asks the route at all" - both would
-       show nothing sent. Held together, one is asked and the other is not. */
+  it('goes to the route like a served proposal waiting beside it, each to the address of its own card', async () => {
+    /* VISOK 2, review of PR 380, which was about a card made up in the browser that the route could
+       not carry (`prop-1`). There is no such card any more: a change is a card of the server's like
+       every other one, with a number of its own, and the case now holds the opposite - that both
+       are asked, and that the address of each is its own and not the other's. */
     const user = setupUser()
-    const server = serverThat((path, init) =>
-      init?.method === 'POST' && path.includes('/decision')
-        ? new Response(JSON.stringify({ id: 1, state: 'approved' }), {
-            status: 200,
-            headers: { 'content-type': 'application/json' },
-          })
-        : null,
-    )
+    const { router } = renderAt('/sr/tim/dunavski-trkaci/izmena', 'superadmin', '000001')
 
-    try {
-      const { router } = renderAt('/sr/tim/dunavski-trkaci/izmena', 'superadmin', '000001')
+    await user.clear(await screen.findByLabelText(/^Mesto/))
+    await user.type(screen.getByLabelText(/^Mesto/), 'Sremski Karlovci')
+    await user.click(screen.getByRole('button', { name: 'Pošalji izmenu' }))
+    await screen.findByRole('heading', { name: 'Izmena je poslata' })
 
-      await user.clear(await screen.findByLabelText(/^Mesto/))
-      await user.type(screen.getByLabelText(/^Mesto/), 'Sremski Karlovci')
-      await user.click(screen.getByRole('button', { name: 'Pošalji izmenu' }))
-      await screen.findByRole('heading', { name: 'Izmena je poslata' })
+    await router.navigate('/sr/administracija/verifikacija/timovi')
 
-      await router.navigate('/sr/administracija/verifikacija/timovi')
+    const oursHeading = await screen.findByRole('heading', { name: 'Dunavski trkači' })
+    const ours = within(must(oursHeading.closest('li'), 'the card of the change this visit just made'))
 
-      const oursHeading = await screen.findByRole('heading', { name: 'Dunavski trkači' })
-      const ours = within(
-        must(oursHeading.closest('li'), 'the card of the change this visit just made'),
-      )
+    await user.click(ours.getByRole('button', { name: 'Odobri' }))
 
-      await user.click(ours.getByRole('button', { name: 'Odobri' }))
+    const servedHeading = await screen.findByRole('heading', { name: 'Timočka trkačka družina' })
+    const served = within(must(servedHeading.closest('li'), 'a card served off the file, waiting beside it'))
 
-      /* Queried only now, after the card above is gone: a reference taken before
-         that press is still a live DOM node either way (React removes only the
-         `<li>` that left), but this is how every other case in this file reaches
-         for a card, and there is no reason for this one to read differently. */
-      const servedHeading = screen.getByRole('heading', { name: 'Timočka trkačka družina' })
-      const served = within(
-        must(servedHeading.closest('li'), 'a card served off the file, waiting beside it'),
-      )
+    await user.click(served.getByRole('button', { name: 'Odobri' }))
 
-      await user.click(served.getByRole('button', { name: 'Odobri' }))
+    await waitFor(() => {
+      expect(decisionsSent()).toHaveLength(2)
+    })
 
-      const sent = server.asked.filter((one) => one.path.includes('/decision'))
-
-      expect(sent).toHaveLength(1)
-      /* The served row's own address, and not `prop-1`'s: one request, and this is
-         the one it has to be. */
-      expect(sent[0]?.path).toBe('/api/verification/ver-tim-1/decision')
-    } finally {
-      server.stop()
-    }
+    expect(decisionsSent().map((one) => one.path)).toEqual([
+      expect.stringMatching(/^\/api\/verification\/\d+\/decision$/),
+      '/api/verification/ver-tim-1/decision',
+    ])
   }, SLOW)
 
-  it('is handed back locally too, unlike a served proposal beside it', async () => {
-    /* The other door onto the same VISOK 2 boundary: `handBack` reads
-       `isProposal` separately from `approveAll`, because the two functions do
-       not share a call - measured directly, a mutation that put `prop-1` back
-       on the route inside `approveAll` alone left this door's own case green.
-       So this is not the case above with „Odbij" in place of „Odobri", it is
-       the only case that would have caught that mutation at all. */
+  it('is handed back at the route too, beside a served proposal that is handed back', async () => {
+    /* The other door onto the same boundary: `handBack` is a call of its own and not `approveAll`'s. */
     const user = setupUser()
-    const server = serverThat((path, init) =>
-      init?.method === 'POST' && path.includes('/decision')
-        ? new Response(JSON.stringify({ id: 1, state: 'rejected' }), {
-            status: 200,
-            headers: { 'content-type': 'application/json' },
-          })
-        : null,
-    )
+    const { router } = renderAt('/sr/tim/dunavski-trkaci/izmena', 'superadmin', '000001')
 
-    try {
-      const { router } = renderAt('/sr/tim/dunavski-trkaci/izmena', 'superadmin', '000001')
+    await user.clear(await screen.findByLabelText(/^Mesto/))
+    await user.type(screen.getByLabelText(/^Mesto/), 'Sremski Karlovci')
+    await user.click(screen.getByRole('button', { name: 'Pošalji izmenu' }))
+    await screen.findByRole('heading', { name: 'Izmena je poslata' })
 
-      await user.clear(await screen.findByLabelText(/^Mesto/))
-      await user.type(screen.getByLabelText(/^Mesto/), 'Sremski Karlovci')
-      await user.click(screen.getByRole('button', { name: 'Pošalji izmenu' }))
-      await screen.findByRole('heading', { name: 'Izmena je poslata' })
+    await router.navigate('/sr/administracija/verifikacija/timovi')
 
-      await router.navigate('/sr/administracija/verifikacija/timovi')
+    const oursHeading = await screen.findByRole('heading', { name: 'Dunavski trkači' })
+    const ours = within(must(oursHeading.closest('li'), 'the card of the change this visit just made'))
 
-      const oursHeading = await screen.findByRole('heading', { name: 'Dunavski trkači' })
-      const ours = within(
-        must(oursHeading.closest('li'), 'the card of the change this visit just made'),
-      )
+    await user.click(ours.getByRole('button', { name: 'Odbij' }))
+    await user.type(screen.getByLabelText('Razlog odbijanja'), 'Mesto se ne poklapa sa prijavom.')
+    await user.click(screen.getByRole('button', { name: 'Odbij uz ovaj razlog' }))
 
-      await user.click(ours.getByRole('button', { name: 'Odbij' }))
-      await user.type(screen.getByLabelText('Razlog odbijanja'), 'Mesto se ne poklapa sa prijavom.')
-      await user.click(screen.getByRole('button', { name: 'Odbij uz ovaj razlog' }))
+    const servedHeading = await screen.findByRole('heading', { name: 'Timočka trkačka družina' })
+    const served = within(must(servedHeading.closest('li'), 'a card served off the file, waiting beside it'))
 
-      /* Queried only now, after the card above is gone, the same way the
-         approval case beside this one reaches for it. */
-      const servedHeading = screen.getByRole('heading', { name: 'Timočka trkačka družina' })
-      const served = within(
-        must(servedHeading.closest('li'), 'a card served off the file, waiting beside it'),
-      )
+    await user.click(served.getByRole('button', { name: 'Odbij' }))
+    await user.type(screen.getByLabelText('Razlog odbijanja'), 'Nepotpun opis tima.')
+    await user.click(screen.getByRole('button', { name: 'Odbij uz ovaj razlog' }))
 
-      await user.click(served.getByRole('button', { name: 'Odbij' }))
-      await user.type(screen.getByLabelText('Razlog odbijanja'), 'Nepotpun opis tima.')
-      await user.click(screen.getByRole('button', { name: 'Odbij uz ovaj razlog' }))
+    await waitFor(() => {
+      expect(decisionsSent()).toHaveLength(2)
+    })
 
-      const sent = server.asked.filter((one) => one.path.includes('/decision'))
-
-      expect(sent).toHaveLength(1)
-      expect(sent[0]?.path).toBe('/api/verification/ver-tim-1/decision')
-    } finally {
-      server.stop()
-    }
+    expect(decisionsSent().map((one) => one.path)).toEqual([
+      expect.stringMatching(/^\/api\/verification\/\d+\/decision$/),
+      '/api/verification/ver-tim-1/decision',
+    ])
   }, SLOW)
 
   it('cannot be approved once the team it names has been deleted', async () => {
@@ -540,7 +548,6 @@ describe('a change waiting on the queue of teams', () => {
        `DELETE /api/teams/{id}` for one of those. Without an answer the request came back 404
        off the disc reader (whose pattern does not match an address with an id) and the team
        was never deleted at all, so the card had nothing to report. */
-    const server = serverThat((_, init) => ((init?.method ?? 'GET') === 'GET' ? null : did()))
     const user = setupUser()
     const { router } = renderAt('/sr/tim/dunavski-trkaci/izmena', 'superadmin', '000001')
 
@@ -576,8 +583,6 @@ describe('a change waiting on the queue of teams', () => {
 
     expect(card.getByText(/je u međuvremenu obrisan/)).toBeVisible()
     expect(card.getByRole('button', { name: 'Odobri' })).toHaveAttribute('aria-disabled', 'true')
-
-    server.stop()
   }, SLOW)
 
   it('writes into the team it is about when it is approved, rather than making a second one', async () => {

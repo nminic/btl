@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import sr from '../../i18n/sr.json'
 import { translate } from '../../i18n/translate'
 import type { FieldDef } from '../../forms/types'
@@ -31,6 +31,22 @@ import {
   takenAddress,
   type EntityDef,
 } from './entityForms'
+import { fakeQueue } from '../../test/fakeQueue'
+
+/* THE SERVER'S TEAMS ARE IN FRONT OF EVERY CASE HERE since 23.11.2026, because the screens of teams
+ * speak to routes (`POST /api/teams/direct`, `PUT` and `DELETE /api/teams/{id}`) and read the lists
+ * again after a write instead of keeping the row in the session. `fakeQueue()` remembers what was
+ * written and serves the two lists it changes. */
+let theServerOfTeams: { stop: () => void } | null = null
+
+beforeEach(() => {
+  theServerOfTeams = fakeQueue()
+})
+
+afterEach(() => {
+  theServerOfTeams?.stop()
+  theServerOfTeams = null
+})
 
 /* The five entities entered whole, each opened whole.
  *
@@ -274,8 +290,14 @@ describe('the confirmation that a record was saved', () => {
     /* The whole form goes away and the confirmation takes its place, so the button
        that was pressed is no longer on the page. Without this the focus is on
        nothing and the next Tab starts the page from the top; with it a screen
-       reader also reads the confirmation from its heading down. */
-    expect(screen.getByRole('status', { name: t('admin.form.saved') })).toHaveFocus()
+       reader also reads the confirmation from its heading down. Awaited, because the
+       confirmation is the server's answer and not the press since 23.11.2026 (`PUT
+       /api/teams/{id}`). */
+    const saved = await screen.findByRole('status', { name: t('admin.form.saved') })
+
+    await waitFor(() => {
+      expect(saved).toHaveFocus()
+    })
   })
 })
 
@@ -552,7 +574,13 @@ describe('the identity of a record', () => {
     const before = within(await screen.findByRole('table', { name: 'Timovi' }))
     const rows = before.getAllByRole('row').length
 
-    for (const name of ['Prvi novi tim', 'Drugi novi tim']) {
+    /* TWO ORGANIZERS, because the server refuses a team to somebody who is in one already
+       (`TeamAdministrationWriteApi`: 000001 is in Dunavski trkači), and one who has just been made the
+       organizer of the first is in a team for the second. */
+    for (const [name, organizer] of [
+      ['Prvi novi tim', '000002'],
+      ['Drugi novi tim', '000004'],
+    ] as const) {
       await user.click(screen.getByRole('button', { name: title }))
 
       const form = open(title)
@@ -560,8 +588,9 @@ describe('the identity of a record', () => {
       await user.type(form.getByLabelText(labelled(t('admin.field.teamName'))), name)
       await user.type(form.getByLabelText(labelled(t('admin.field.city'))), 'Čačak')
       await user.selectOptions(form.getByLabelText(labelled(t('admin.field.country'))), 'RS')
-      await user.selectOptions(form.getByLabelText(labelled(t('admin.field.teamOrganizer'))), '000001')
+      await user.selectOptions(form.getByLabelText(labelled(t('admin.field.teamOrganizer'))), organizer)
       await user.click(form.getByRole('button', { name: t('form.submit') }))
+      await screen.findByRole('status', { name: t('admin.form.saved') })
       await user.click(screen.getByRole('button', { name: t('admin.form.back') }))
     }
 
@@ -580,6 +609,7 @@ describe('the identity of a record', () => {
     await user.clear(editForm.getByLabelText(labelled(t('admin.field.city'))))
     await user.type(editForm.getByLabelText(labelled(t('admin.field.city'))), 'Vranje')
     await user.click(editForm.getByRole('button', { name: t('form.submit') }))
+    await screen.findByRole('status', { name: t('admin.form.saved') })
     await user.click(screen.getByRole('button', { name: t('admin.form.back') }))
 
     const after = within(await screen.findByRole('table', { name: 'Timovi' }))
