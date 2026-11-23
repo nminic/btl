@@ -409,6 +409,11 @@
   flex-direction: column;
   gap: var(--space-10);
   min-width: 0;
+  /* The words are the president's own and a long one of them („poluprofesionalnih") is 235px at the letters at
+     200%, in a column of 190px at 320px: a word that does not fit is broken and does not push the page sideways
+     (WCAG 2.2 SC 1.4.10, `geometry/largeLettersSideways.geometry.ts`). Only where it does not fit, so a window
+     that holds its words draws them as it did. */
+  overflow-wrap: anywhere;
 }
 
 /* Calendar extract */

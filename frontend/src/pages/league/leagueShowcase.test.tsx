@@ -227,7 +227,7 @@ describe('the head of the sheet', () => {
      more than them. */
   it('names the identity of the competition, not the place of its card, in the address of the form', { timeout: SLOW }, async () => {
     const served: League[] = JSON.parse(readFileSync(join(__dirname, '../../test/mock/leagues.json'), 'utf8'))
-    const apart = served.map((one) => (one.slug === 'planinska-2027' ? { ...one, id: 41 } : one.slug === 'runtrace-liga-2027' ? { ...one, id: 17 } : one))
+    const apart = served.map((one) => (one.slug === 'planinska-2027' ? { ...one, id: 41 } : one.slug === 'runtrace-2027' ? { ...one, id: 17 } : one))
     const server = serverThat((path) =>
       path === '/api/leagues'
         ? new Response(JSON.stringify(apart), { status: 200, headers: { 'content-type': 'application/json' } })

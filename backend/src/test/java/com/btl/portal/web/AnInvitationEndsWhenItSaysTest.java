@@ -133,6 +133,9 @@ class AnInvitationEndsWhenItSaysTest {
 	@Autowired
 	private Clock clock;
 
+	@Autowired
+	private UnconfirmedAccountsAreSwept theSweep;
+
 	@MockitoSpyBean
 	private Postman postman;
 
@@ -221,6 +224,33 @@ class AnInvitationEndsWhenItSaysTest {
 
 		assertThat(returned).as("what the letter is handed").isEqualTo(expected);
 		assertThat(theRowEnds(account)).as("what the row ends").isEqualTo(expected);
+	}
+
+	/**
+	 * THE INVITATION'S BELIEF ABOUT THE SWEEP IS ASKED OF THE SWEEP. The three kinds above carry what the
+	 * sweep does as a word written by hand ({@code sweeps}), and the invitation worked it out for itself in a
+	 * second place ({@link AnInvitationOfAMember#mint}'s question against {@code UnconfirmedAccountsAreSwept.MAY_GO}),
+	 * so a sweep that stopped asking about a payment, or about a number, left both green. Here the sweep itself is
+	 * asked, a second past the fourteenth day of the account, on the account the invitation was minted for, and
+	 * what it answers is what the invitation said it would.
+	 */
+	@ParameterizedTest(name = "{0}")
+	@MethodSource("theKindsOfAccount")
+	void theSweepItselfDeletesExactlyWhomTheInvitationTookItWould(String kind, String number, boolean payment,
+			boolean sweeps) {
+		long account = anAccountWritten(number, payment, NINE_DAYS_BEFORE);
+
+		AnInvitationOfAMember.mint(db, clock, account, SecretToken.fresh());
+
+		long member = db.sql("select competitor_id from account where id = ?").param(account)
+				.query(Long.class).single();
+		Instant aSecondPastTheFourteenthDay = NINE_DAYS_BEFORE.plus(UnconfirmedAccountsAreSwept.AT_THE_LATEST)
+				.plusSeconds(1);
+
+		assertThat(theSweep.goes(member, java.time.OffsetDateTime.ofInstant(aSecondPastTheFourteenthDay,
+				ZoneOffset.UTC)))
+				.as("whether the sweep deletes him, which the invitation took to be " + sweeps)
+				.isEqualTo(sweeps);
 	}
 
 	/**

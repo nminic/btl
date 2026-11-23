@@ -347,6 +347,27 @@
   }
 }
 
+/* WHERE THE SHEET IS SO NARROW THAT THE MARK AND THE NAME DO NOT STAND BESIDE EACH OTHER, THEY STAND ONE UNDER THE
+   OTHER (the letters at 200%, 320px and under: the mark is 3,25rem, 104px there, and the column left for the name
+   was 58px, in which „PROPRATNA” of the line above the name is 150px, so the head was wider than its sheet and
+   the page scrolled sideways, measured 23.11.2026 in `geometry/largeLettersSideways.geometry.ts`). Asked of the
+   sheet and in em, as the rule above is, so it is a container and not a width at which the portal changes
+   shape (`styles/scale.test.ts`); 10em is 160px at the browser's own text and 320px at 200%, so no window the
+   portal draws at the browser's own text meets it (the narrowest sheet is 288px, 18em). */
+@container league-sheet (max-width: 10em) {
+  .leagues__score,
+  .leagues__score--changes {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .leagues__score .leagues__edit {
+    grid-column: 1;
+    grid-row: auto;
+    justify-self: start;
+    margin-block-start: 0;
+  }
+}
+
 /* Under the head, what the sheet always carried: the terms and the prizes side by side where there is
    room for both, and the events and races under them. The body keeps the name it had when it was the
    whole box, so what dresses the words of an organiser inside it stayed where it was. */
@@ -731,6 +752,7 @@
    liniji”). Measured in Chrome (`geometry/leagueSheet.geometry.ts`). */
 .leagues__event-top {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
   gap: var(--space-8);
@@ -746,6 +768,9 @@
 
 .leagues__event-state {
   display: flex;
+  /* A word that does not fit its tile is broken and does not push the page sideways (the letters at 200%,
+     320px: „PREDSTOJI” is wider than the tile, `geometry/largeLettersSideways.geometry.ts`). */
+  overflow-wrap: anywhere;
   align-items: center;
   gap: var(--space-6);
   font-weight: 700;
@@ -756,6 +781,10 @@
 .leagues__event-when {
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
+  /* Where the day does not fit beside the state (the letters at 200%, 360px and under), it goes under it, and
+     it stays at the far end of its own line, as it is at the far end of the first. The day is never broken:
+     a date is read whole, so the row wraps and the date does not (`geometry/largeLettersSideways.geometry.ts`). */
+  margin-inline-start: auto;
 }
 
 /* The small dot beside the state, the same three looks as the dots on the line. */

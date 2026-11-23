@@ -289,6 +289,9 @@ export type FieldDef = {
    * `leftToTheServer` keeps the star and `aria-required` while the rule holds but does not stop the press
    * on an empty answer: the server is the one that answers it, with a sentence of its own (the card „Podaci"
    * of a member held on Viber, owner 23.11.2026, who is told the sentence of 20.11.2026 and not the form's).
+   * **It does nothing without `errorKey`:** `validate.ts` looks for the flag only where the rule names its own
+   * sentence, so a rule that carries the flag alone is read as one that does not carry it, and the field is told
+   * the usual „Obavezno polje“ as before (`validate.test.ts`, "left to the server").
    */
   requiredWhenFilled?: { field: string; errorKey?: string; leftToTheServer?: boolean }
   /**
