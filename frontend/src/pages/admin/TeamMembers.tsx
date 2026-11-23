@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { SYMBOL } from '../../app/actionSymbol'
 import { ActionButton } from '../../components/ActionButton'
 import { Prompt } from '../../components/Prompt'
@@ -33,10 +33,14 @@ function labelOf(one: Competitor): string {
  *
  * <p><b>„Izbaci” asks „Da” or „Ne” first</b> (PDL P13, „[ODLUKE 23.11.2026 ...] (3) „Izbaci” pita „Da”/„Ne”
  * u istom redu, isto kao brisanje i storno”), and the question is the storno's own, copied with its guards:
- * `MemberRow.tsx`'s `yesOrNo` (`components/Prompt.tsx`, one way of saying yes, „Da”, and „Ne”), the request
- * held to one at a time by a ref, and the sheet telling off every press while the request is out
- * (`working`). „Ne” puts the question away and nothing is sent; the answer closes it, and a refusal is said
- * beside the panel as for „Dodaj člana”.
+ * `MemberRow.tsx`'s `yesOrNo` (`components/Prompt.tsx`, one way of saying yes, „Da”, and „Ne”), and the sheet
+ * telling off every press while the request is out (`working`). „Ne” puts the question away and nothing is
+ * sent; the answer closes it, and a refusal is said beside the panel as for „Dodaj člana”.
+ *
+ * <p><b>Without `MemberRow`'s second guard, the ref that holds a request to one at a time, and that is
+ * measured.</b> Here „Da” is the one way to send, and `working` is set in the same press, so the next press
+ * meets a sheet that answers nothing; the ref's `return` was never reached (coverage of PR 810), and the case
+ * of „Da” pressed twice is held by `working` alone.
  *
  * <p><b>After every write the list is read again</b> (`onWritten`), as after the making of a team: who is in
  * which team reaches this screen as `Competitor.teamId`, so the row moves only when the server says it did.
@@ -65,8 +69,7 @@ export function TeamMembers({
   const [said, setSaid] = useState('')
   /** The member whose „Izbaci” was pressed and who waits for „Da” or „Ne”, or nobody. */
   const [asking, setAsking] = useState<Competitor | null>(null)
-  /** One request at a time (`MemberRow.tsx`), and the sheet says it is sending while it is out. */
-  const outstanding = useRef(false)
+  /** Whether „Da” has been answered and the request is out, which tells off every press on the sheet. */
   const [working, setWorking] = useState(false)
   const boxId = `team-${String(team.id)}-member`
   const notChosenId = `${boxId}-not-chosen`
@@ -97,11 +100,6 @@ export function TeamMembers({
 
   /** „Da”: the member goes, once, and the question closes with the answer. */
   async function takeOut(one: Competitor): Promise<void> {
-    if (outstanding.current) {
-      return
-    }
-
-    outstanding.current = true
     setWorking(true)
 
     try {
@@ -111,7 +109,6 @@ export function TeamMembers({
       )
     } finally {
       setAsking(null)
-      outstanding.current = false
       setWorking(false)
     }
   }
