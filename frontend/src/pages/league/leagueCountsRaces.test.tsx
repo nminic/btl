@@ -167,7 +167,7 @@ function racesServed(onOtherDays: boolean): Race[] {
   })
 }
 
-function servedCountingFour(onOtherDays = false): void {
+function servedCountingFour(onOtherDays = false, counted: number[] = COUNTED): void {
   const leagues: League[] = JSON.parse(
     readFileSync(join(process.cwd(), 'src/test/mock/leagues.json'), 'utf-8'),
   )
@@ -182,7 +182,7 @@ function servedCountingFour(onOtherDays = false): void {
          them disagree and every reading by days gives a different answer from the right one. */
       return new Response(
         JSON.stringify(
-          leagues.map((one) => (one.slug === 'brdska-2019' ? { ...one, raceIds: COUNTED } : one)),
+          leagues.map((one) => (one.slug === 'brdska-2019' ? { ...one, raceIds: counted } : one)),
         ),
         { status: 200, headers: JSON_HEADERS },
       )
@@ -353,6 +353,33 @@ describe('the list of competitions, for a competition that counts some of the ra
     expect(within(box).queryByRole('button', { name: /Događaji i trke/ })).toBeNull()
     expect(box.querySelector('[aria-expanded]')).toBeNull()
   }, SLOW)
+
+  /* **THE ROWS ARE HALF THE TILES, NOT HALF THE RACES.** The case above serves three days and four races, and
+     half of either rounds up to two, so a sheet handed the number of races would pass it. Here the competition
+     counts every race of its three days: six races, so half the races is three rows and half the days is two.
+     The tiles are asked as well, so that the arrangement cannot go on being three days and six races without the
+     case saying so. */
+  it('hands the sheet half the tiles rounded up, and not half the races', { timeout: SLOW }, async () => {
+    theArrangement()
+    servedCountingFour(false, [THE_ONLY_ONE, ...BOTH_OF_TWO, 244, THE_MIDDLE_OF_THREE, 246])
+
+    renderAt(LIST)
+
+    const box = must(
+      (await screen.findByRole('heading', { level: 2, name: /Brdska liga 2019/ })).closest('article'),
+      'the box of the competition',
+    )
+    const days = await tilesIn(boxOfEvents(box))
+
+    expect(days).toHaveLength(3)
+    expect(days.flatMap(({ lengths }) => lengths)).toHaveLength(6)
+    expect(
+      must(
+        within(boxOfEvents(box)).getByRole('link', { name: 'Mrazijada' }).closest('ul'),
+        'the list of the tiles',
+      ).style.getPropertyValue('--league-tile-rows'),
+    ).toBe('2')
+  })
 
   it('lists under a day only the races it counts, and counts days and people by them', async () => {
     const { races } = theArrangement()

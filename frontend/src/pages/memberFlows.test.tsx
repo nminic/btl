@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { SLOW } from '../test/slow'
 import type { ReactNode } from 'react'
 import type { SentRun } from '../data/types'
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { MEMBERS } from './admin/entityForms'
 import { ClockProvider } from '../clock/ClockProvider'
@@ -389,9 +389,15 @@ describe('my profile', () => {
        out with it would pass a check that only asked whether the messages are
        gone. */
     const user = setupUser()
-    renderAt('/sr/moj-profil', 'competitor', '000007')
+    const { router } = renderAt('/sr/moj-profil', 'competitor', '000007')
 
     await screen.findByRole('table', { name: 'Trke' })
+    /* THE SCREEN HAS TO HAVE STOPPED MOVING BEFORE THE MENU IS OPENED. `/moj-profil` leads to his number and that to its
+       one canonical spelling, and every new address hands the focus to the page (`app/useNewScreen.ts`): a menu opened
+       just before that loses the focus to the page, and a press on the picture is a menu that shuts itself
+       (`app/Dropdown.tsx`, `onBlur`). Under load the table is drawn a turn before the last move, which is how this case
+       found its panel still `hidden` (CI of `main`, 23.11.2026). */
+    await waitFor(() => expect(router.state.location.pathname).toBe('/sr/takmicar/000007-strahinja-vukicevic'))
 
     const menu = within(await openAccount(user))
     /* By where each leads, because the name of „Moji podaci" (second, owner 07.11.2026) is his profile's to
