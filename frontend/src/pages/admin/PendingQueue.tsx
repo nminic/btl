@@ -775,12 +775,15 @@ export function PendingQueue({ queue }: { queue: Queue }) {
    * cards (PENDING, „Odbijanje koje dokazuje da je ekran zastareo ostavlja zastareo crtež"), and
    * `ReviewQueue.tsx` makes it for the queue of results.
    *
-   * <p>Asked only of a decision about a CARD THAT DREW A PICTURE OR THE WORDS OF A BIOGRAPHY
+   * <p>Asked only of a decision about a CARD THAT DREW A PICTURE, THE WORDS OF A BIOGRAPHY OR A TEAM
    * (`drewWhatItNames`; the biography since 18.10.2026, when a new text began to overwrite the one that
-   * waits and a decision began to name the words it read: „Tekst je promenjen, pogledaj ga ponovo."),
-   * and that is the extent of what was asked and not a finding that no other refusal here proves a
-   * list stale. A refusal about a team is left to say what it says over a card that stays where it
-   * was.
+   * waits and a decision began to name the words it read: „Tekst je promenjen, pogledaj ga ponovo."; the
+   * team since 23.11.2026, when a second change began to be written over the one that waits and a
+   * decision began to name the words it saw: „Izmena tima je promenjena, pogledaj je ponovo."), and that
+   * is the extent of what was asked and not a finding that no other refusal here proves a list stale. A
+   * refusal about a team that is NOT that one (a name taken, a founder in a team) is left to say what it
+   * says over a card that stays where it was; it is read again all the same, which costs one request
+   * and cannot draw anything but what the route holds.
    */
   const readTheQueueAgain = (): void => {
     clearResourceCache('verification')

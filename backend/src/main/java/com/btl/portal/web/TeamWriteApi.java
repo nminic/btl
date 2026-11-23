@@ -1143,6 +1143,14 @@ class TeamWriteApi {
 	 * proposal has none, so there is no unique index to write). <b>That is a guard the picture has and this
 	 * has not</b>: the lock holds it, and a database that refused it would need a column on the proposal.
 	 *
+	 * <p><b>The card is also taken for the writing</b> ({@code for update of v}, asked of {@code state =
+	 * 'waiting'}): a decision about it takes the same row first
+	 * ({@code VerificationWriteApi.whyTheChangeIsNotTheOneHeSaw}), so one of the two waits for the other. A
+	 * decision that gets there first leaves a card that is no longer among those that wait, and the new
+	 * words open a card beside it; a replacement that gets there first is what the decision then compares
+	 * with, and it is refused with the sentence. Measured at one instant, in both orders, by
+	 * {@code ATeamChangeAndItsDecisionAtOneInstantTest}.
+	 *
 	 * <p>Any further card of the same team that waits (there is none on production, measured 23.11.2026,
 	 * and none can be made any more) is taken away with its proposal rather than left beside the one kept.
 	 * Only {@code state = 'waiting'} rows of THIS team are looked at, which is what keeps a decided card,
