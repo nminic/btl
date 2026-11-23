@@ -95,12 +95,12 @@ describe('the rule that draws the arrow', () => {
       'appearance: none',
       expect.stringMatching(/^background-image: url\("data:image\/svg\+xml,[^"]+"\)$/),
       'background-repeat: no-repeat',
-      /* 0,5rem in from the edge, not in the corner. */
-      'background-position: right 0.5rem center',
+      /* 0,625rem in from the edge, as far as the caret of the language box stands from its button's edge. */
+      'background-position: right 0.625rem center',
       /* A box of 1,125rem, in which the chevron spans 16 of 24: 12px of it, where the browser's own was about 9. */
       'background-size: 1.125rem 1.125rem',
-      /* The room is the arrow, the space it stands in from the edge, and a gap before the text: 18 + 8 + 6. */
-      'padding-inline-end: var(--space-32)',
+      /* The room is the arrow, the space it stands in from the edge, and a gap before the text: 18 + 10 + 6. */
+      'padding-inline-end: calc(var(--space-32) + var(--space-2))',
     ])
   })
 
@@ -214,5 +214,29 @@ describe('the arrow of each theme', () => {
 
     expect(shapes.every((one) => one !== undefined)).toBe(true)
     expect(new Set(shapes).size).toBe(1)
+  })
+})
+
+describe('the arrow of the language box of the header is the same arrow', () => {
+  const menu = read('app/LanguageMenu.tsx')
+  const caret = must(/<svg\s+className="lang__caret"[\s\S]*?<\/svg>/.exec(menu)?.[0], 'the caret of the language box')
+  const dropdown = must(ruleOf(LIGHT).find((one) => one.property === 'background-image'), 'the arrow of the dropdowns').value
+
+  it('draws the chevron of the dropdowns, in the stroke they have, in the colour of its text', () => {
+    expect(caret).toContain('viewBox="0 0 24 24"')
+    expect(caret).toContain('stroke="currentColor"')
+    expect(caret).toContain('strokeWidth="2"')
+    expect(caret).toContain('strokeLinecap="round"')
+    expect(caret).toContain('strokeLinejoin="round"')
+    expect(caret).toContain(`<path d="${must(/%3Cpath d='([^']+)'/.exec(dropdown)?.[1], 'the chevron of the dropdowns')}" />`)
+  })
+
+  it('is the size of the arrow of the dropdowns and not faded', () => {
+    const css = unremarked(read('app/Shell.css'))
+    const rule = must(/\.lang__caret\s*\{([^}]*)\}/.exec(css)?.[1], 'the rule of the caret')
+
+    expect(rule).toContain('width: 1.125rem;')
+    expect(rule).toContain('height: 1.125rem;')
+    expect(rule).not.toContain('opacity')
   })
 })

@@ -212,10 +212,14 @@
   letter-spacing: 0.5px;
 }
 
+/* The same arrow as every dropdown of the portal (`index.css`, `select, .dropdown`): the same chevron on the grid of 24,
+   the same stroke of 2, a box of 1,125rem, and the full colour of the text, not a faded one (owner, 23.11.2026, PDL
+   „Sve padajuće strelice [...] odmiču se od desne ivice koliko i strelica izbora jezika”). Its distance from the edge of
+   the button is the padding of the button and is left as it was: that is the measure the others are given
+   (`geometry/dropdownArrow.geometry.ts`). */
 .lang__caret {
-  width: 13px;
-  height: 13px;
-  opacity: 0.6;
+  width: 1.125rem;
+  height: 1.125rem;
   transition: transform var(--fast);
 }
 

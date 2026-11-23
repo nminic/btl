@@ -16,8 +16,17 @@ import type { Answers, At } from './support/harness.ts'
  * of the tables and of the teams, and the box of a member on a row of results), <b>every</b> `select` and
  * `.dropdown` the page draws, read off the DOM and not listed here, has the browser's own arrow taken away, the
  * portal's arrow painted in the colour of its own text, a chevron 12px wide (the browser's was about 9) standing
- * 8px in from the right edge and not in the corner, the text kept clear of it, and a height that is the height of the
+ * in from the right edge and not in the corner, the text kept clear of it, and a height that is the height of the
  * boxes beside it. Both themes, a telephone and a desktop.
+ *
+ * <p><b>THE ROOM AT THE EDGE IS THE ROOM THE LANGUAGE BOX HAS</b> (owner, 23.11.2026, PDL „Sve padajuće strelice
+ * [...] odmiču se od desne ivice koliko i strelica izbora jezika”: „Ali na jezicima je strelica divno odmaknuta od
+ * desne ivice, ne prilepljena kao na ostalim mestima!”). The language box of the header is measured here as one more
+ * element with the same arrow (the same size, the same stroke, the colour of its text and not a faded one), and its
+ * own distance from the edge of its button is the measure: measured in Chrome 23.11.2026, 10px at 1280 and 6px on
+ * the telephone header (`.shell__header--phone .lang__btn`, a narrower button). Every dropdown stands that far in
+ * from its edge within a pixel on a desktop, and on a telephone it is never nearer to its edge than the language
+ * box is, which is why the room is the desktop's 10px on every width and not the telephone header's 6px.
  *
  * <p><b>The mutation that fells it</b> is the browser's arrow given back to one of them (`appearance: auto
  * !important` on `.rankings__field select`), which `dropdownArrow.test.ts` fells as well.
@@ -123,8 +132,32 @@ for (const screen of SCREENS) {
         screen.ready,
       )
 
-      if (seen.length === 0) {
-        throw notMeasured(`${screen.path} drew no dropdown`)
+      /* The language box of the header, asked the same way: where the box of its arrow ends against the inside of
+         its button, how big the arrow is, how thick its line, and whether it is faded. */
+      const lang = await page.evaluate(() => {
+        const button = document.querySelector<HTMLElement>('.lang__btn')
+        const caret = document.querySelector<SVGElement>('.lang__caret')
+
+        if (button === null || caret === null) {
+          return null
+        }
+
+        const box = button.getBoundingClientRect()
+        const arrow = caret.getBoundingClientRect()
+        const style = getComputedStyle(caret)
+
+        return {
+          gap: box.right - parseFloat(getComputedStyle(button).borderRightWidth) - arrow.right,
+          width: arrow.width,
+          height: arrow.height,
+          stroke: parseFloat(style.strokeWidth),
+          opacity: parseFloat(style.opacity),
+          sameAsText: style.stroke === getComputedStyle(button).color,
+        }
+      })
+
+      if (seen.length === 0 || lang === null) {
+        throw notMeasured(`${screen.path} drew no dropdown, or no language box`)
       }
 
       for (const one of seen) {
@@ -133,15 +166,32 @@ for (const screen of SCREENS) {
         expect(one.image, `${one.what}: the arrow is not in the colour of its text`).toContain(`%23${one.textHex}`)
         expect(one.repeat, one.what).toBe('no-repeat')
         expect(one.size, `${one.what}: the arrow is not the size the portal gives it`).toBe('18px 18px')
-        /* `right 8px center`, as Chrome gives it back. */
-        expect(one.position, `${one.what}: the arrow stands in the corner`).toBe('calc(100% - 8px) 50%')
-        expect(one.paddingRight, `${one.what}: the text can run under the arrow`).toBeGreaterThanOrEqual(8 + 18 + 6)
-        expect(one.width, `${one.what} is too narrow to hold its arrow`).toBeGreaterThan(8 + 18 + 6)
+        /* `right 10px center`, as Chrome gives it back: the room of the language box at the edge. */
+        const standsIn = Number(/^calc\(100% - ([\d.]+)px\) 50%$/.exec(one.position)?.[1])
+
+        expect(Number.isFinite(standsIn), `${one.what}: the arrow stands at ${one.position}`).toBe(true)
+        expect(standsIn, `${one.what}: the arrow stands nearer its edge than the language box's does`).toBeGreaterThanOrEqual(
+          lang.gap - 1,
+        )
+
+        if (at.width >= 1000) {
+          expect(standsIn, `${one.what}: the arrow is not as far from the edge as the language box's`).toBeCloseTo(lang.gap, 0)
+        }
+
+        expect(one.paddingRight, `${one.what}: the text can run under the arrow`).toBeGreaterThanOrEqual(standsIn + 18 + 6)
+        expect(one.width, `${one.what} is too narrow to hold its arrow`).toBeGreaterThan(standsIn + 18 + 6)
 
         if (one.besideHeight !== null) {
           expect(one.height, `${one.what} is not as tall as the box beside it`).toBeCloseTo(one.besideHeight, 0)
         }
       }
+
+      /* The language box wears the same arrow: the same box, the same line, the colour of its text, not faded. */
+      expect(lang.width, 'the language arrow is not the size of the dropdowns').toBeCloseTo(18, 0)
+      expect(lang.height, 'the language arrow is not the size of the dropdowns').toBeCloseTo(18, 0)
+      expect(lang.stroke, 'the line of the language arrow is not the line of the dropdowns').toBeCloseTo(2, 1)
+      expect(lang.opacity, 'the language arrow is faded').toBe(1)
+      expect(lang.sameAsText, 'the language arrow is not in the colour of its text').toBe(true)
 
       /* One arrow on the screen, the same picture on every dropdown of it. */
       expect(new Set(seen.map((one) => one.image)).size, seen.map((one) => one.what).join(', ')).toBe(1)

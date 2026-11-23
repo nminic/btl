@@ -78,8 +78,10 @@ a {
 
    THE ARROW ITSELF is a chevron on the grid of 24, in the stroke of the portal's own symbols (`app/icons.tsx`:
    `strokeWidth 2`, round caps and joins), a chevron 12px wide in a box of 1,125rem where the browser's was about
-   9px, standing 0,5rem in from the right edge rather than in the corner, and 2rem of room (`--space-32`) for it,
-   that space and the gap
+   9px, standing 0,625rem in from the right edge rather than in the corner, as far in as the caret of the
+   language box of the header stands from the edge of its button (owner, 23.11.2026: „Ali na jezicima je strelica
+   divno odmaknuta od desne ivice, ne prilepljena kao na ostalim mestima!”; measured in Chrome at 1280: 10px, the
+   padding of `.lang__btn`), and 2,125rem of room for it (`--space-32` and `--space-2`), that space and the gap
    before the text. A picture cannot take `currentColor`, so its colour is written into it, once per theme, and
    it is the colour of the control's text: `--text` of that theme (`styles/tokens.css`), which keeps the 3:1 WCAG
    2.2 SC 1.4.11 asks of a graphic on every surface a control stands on. The three themes are the three blocks
@@ -93,9 +95,9 @@ select,
   appearance: none !important;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2314181f' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 8.5l8 8 8-8'/%3E%3C/svg%3E") !important;
   background-repeat: no-repeat !important;
-  background-position: right 0.5rem center !important;
+  background-position: right 0.625rem center !important;
   background-size: 1.125rem 1.125rem !important;
-  padding-inline-end: var(--space-32) !important;
+  padding-inline-end: calc(var(--space-32) + var(--space-2)) !important;
 }
 
 /* The same arrow in the dark palette's `--text`, by the two selectors the dark palette is applied by. */
