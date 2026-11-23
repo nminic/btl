@@ -371,7 +371,9 @@ describe('where the list of members stands', () => {
     const { box } = drawn()
 
     box.getBoundingClientRect = () => DOMRect.fromRect({ x: 40, y: 100, width: 300, height: 48 })
-    await user.type(box, 'Rel')
+    /* Focused and typed into without a press, which would have opened it by the other road. */
+    act(() => box.focus())
+    await user.keyboard('Rel')
 
     const list = screen.getByRole('listbox')
 
