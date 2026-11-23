@@ -311,7 +311,6 @@ describe('what a screen says in its own voice', () => {
          `pages/league/linkDirection.test.tsx` holds that every such link carries it). Same kind
          of name as `aria-modal` above and `role` below. */
       'dir',
-      'field',
       'fill',
       /* THE ID OF THE SENTENCE OVER THE HELD BOXES, 06.11.2026, and it is machinery rather than speech.
          It carries „account-held-note", which a reader never meets: what he meets is the sentence it
