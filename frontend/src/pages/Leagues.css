@@ -137,7 +137,7 @@
   place-items: center;
   inline-size: 2.5rem;
   block-size: 2.5rem;
-  border: 2px solid var(--gold-400);
+  border: 2px solid var(--white);
   border-radius: 50%;
   background: radial-gradient(circle at 35% 30%, var(--blue-600), var(--blue-900));
   color: var(--white);
