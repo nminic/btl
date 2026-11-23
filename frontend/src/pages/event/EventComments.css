@@ -44,6 +44,9 @@
 .comments__overall {
   margin: 0 0 0 auto;
   display: flex;
+  /* Wrapping, so the figure goes under the stars where the two do not fit across the card (the letters at 200%,
+     360px and under) and the card is never pushed wider than its column (`geometry/largeLettersSideways.geometry.ts`). */
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--space-8);
 }
@@ -91,6 +94,10 @@
    are not the same claim. */
 .comments__mark {
   display: flex;
+  /* Wrapping, so the count of the marks goes under the stars where the line does not hold the three (the letters
+     at 200%, 360px and under), and the head of the page is never wider than the window
+     (`geometry/largeLettersSideways.geometry.ts`). */
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--space-8);
   margin: 0 0 var(--space-12);
