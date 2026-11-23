@@ -97,9 +97,9 @@ describe('the rule that draws the arrow', () => {
       'background-repeat: no-repeat',
       /* 0,625rem in from the edge, as far as the caret of the language box stands from its button's edge. */
       'background-position: right 0.625rem center',
-      /* A box of 1,125rem, in which the chevron spans 16 of 24: 12px of it, where the browser's own was about 9. */
-      'background-size: 1.125rem 1.125rem',
-      /* The room is the arrow, the space it stands in from the edge, and a gap before the text: 18 + 10 + 4, which is the 2rem the portal's cards have room for. */
+      /* A box of 0,75rem (12px; owner, 23.11.2026, PDL „Strelica padajućeg izbora je manja i suptilnija”), in which the chevron spans 16 of 24: 8px of it. */
+      'background-size: 0.75rem 0.75rem',
+      /* The room is the arrow, the space it stands in from the edge, and a gap before the text: 12 + 10 + 4, inside the 2rem the portal's cards have room for; the room at the edge is the owner's „dobar” and stays. */
       'padding-inline-end: var(--space-32)',
     ])
   })
@@ -154,6 +154,8 @@ describe('nothing else in the portal can take the arrow away', () => {
 })
 
 describe('the arrow of each theme', () => {
+  /* The arrow is the MUTED tone of the text (owner, 23.11.2026, PDL „Strelica padajućeg izbora je manja i
+     suptilnija”), `--text-muted` of its palette, and not the full `--text` it wore before. */
   const tokens = unremarked(read('styles/tokens.css'))
   /* Every block of `tokens.css` that gives `--text` a value is a palette: the light one, the dark one the system
      asks for, and the dark one a member chose, in that order. */
@@ -186,13 +188,17 @@ describe('the arrow of each theme', () => {
     return `#${must(/stroke='%23([0-9a-f]{6})'/.exec(image.value)?.[1], 'the arrow has no stroke colour')}`
   }
 
-  it('reads three palettes, one for each rule that draws the arrow', () => {
+  it('reads three palettes, one for each rule that draws the arrow, each with a muted tone of its own that is not the full one', () => {
+    for (const palette of palettes) {
+      expect(hex(palette, '--text-muted')).not.toBe(hex(palette, '--text'))
+    }
+
     expect(palettes).toHaveLength(DRAWING.length)
   })
 
-  it('is drawn in the stroke of the portal symbols, in the colour of the text of its palette', () => {
+  it('is drawn in the stroke of the portal symbols, in the muted colour of the text of its palette', () => {
     DRAWING.forEach((rule, index) => {
-      expect(strokeOf(rule), rule.selector).toBe(hex(must(palettes[index], 'a palette'), '--text'))
+      expect(strokeOf(rule), rule.selector).toBe(hex(must(palettes[index], 'a palette'), '--text-muted'))
     })
   })
 
@@ -222,7 +228,7 @@ describe('the arrow of the language box of the header is the same arrow', () => 
   const caret = must(/<svg\s+className="lang__caret"[\s\S]*?<\/svg>/.exec(menu)?.[0], 'the caret of the language box')
   const dropdown = must(ruleOf(LIGHT).find((one) => one.property === 'background-image'), 'the arrow of the dropdowns').value
 
-  it('draws the chevron of the dropdowns, in the stroke they have, in the colour of its text', () => {
+  it('draws the chevron of the dropdowns, in the stroke they have, in the muted tone of its text', () => {
     expect(caret).toContain('viewBox="0 0 24 24"')
     expect(caret).toContain('stroke="currentColor"')
     expect(caret).toContain('strokeWidth="2"')
@@ -231,12 +237,13 @@ describe('the arrow of the language box of the header is the same arrow', () => 
     expect(caret).toContain(`<path d="${must(/%3Cpath d='([^']+)'/.exec(dropdown)?.[1], 'the chevron of the dropdowns')}" />`)
   })
 
-  it('is the size of the arrow of the dropdowns and not faded', () => {
+  it('is the size of the arrow of the dropdowns, in their muted tone, and not faded', () => {
     const css = unremarked(read('app/Shell.css'))
     const rule = must(/\.lang__caret\s*\{([^}]*)\}/.exec(css)?.[1], 'the rule of the caret')
 
-    expect(rule).toContain('width: 1.125rem;')
-    expect(rule).toContain('height: 1.125rem;')
+    expect(rule).toContain('width: 0.75rem;')
+    expect(rule).toContain('height: 0.75rem;')
+    expect(rule).toContain('color: var(--text-muted);')
     expect(rule).not.toContain('opacity')
   })
 })
