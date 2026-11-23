@@ -8,13 +8,11 @@ import { Prompt } from '../../components/Prompt'
 import { useI18n } from '../../i18n/useI18n'
 import { plainWords } from '../../forms/worded'
 import { useSession } from '../../session/useSession'
-import { recordKey } from '../../session/context'
 import { BlocksLeaving } from './BlocksLeaving'
 import { DeleteSheet } from './DeleteSheet'
 import {
   addressField,
   fieldValues,
-  idFor,
   takenAddress,
   type EntityDef,
   type Editing,
@@ -92,7 +90,7 @@ export function EntityEditor({
    *
    * @returns the identity written, or the words to say instead of a confirmation
    */
-  save?: (values: FormValues, text: Record<string, string>) => Promise<Saving>
+  save: (values: FormValues, text: Record<string, string>) => Promise<Saving>
   /**
    * What the press changes about the values themselves, before anything is read
    * off them.
@@ -264,7 +262,6 @@ export function EntityEditor({
   }
 }) {
   const { t } = useI18n()
-  const { creations, create, editRecord } = useSession()
   const [saved, setSaved] = useState<FormValues | null>(null)
   /** What the screen's own save said instead of a confirmation, or nothing. */
   const [said, setSaid] = useState<ReactNode>(null)
@@ -362,55 +359,41 @@ export function EntityEditor({
       ),
     }
 
-    /* THE SCREEN'S OWN SAVE FIRST, WHERE THERE IS ONE, and nothing of the session
-       happens in that branch - not the counting out of an identity, not the write.
-       Both are what a portal without a database did; a route hands back the identity
-       the database chose, and a second one counted out here would be a number nothing
-       answers to (`admin/raceIds.ts` counts DOWN from nought, so it was `-1`). */
-    if (save !== undefined) {
-      if (asking.current) {
-        return
-      }
+    /* THE SCREEN'S OWN SAVE, ALWAYS, since 23.11.2026: every screen that draws this editor sends its own
+       request and writes only what the server took (the teams were the last that wrote into the session).
+       Nothing of the session happens here - not the counting out of an identity, not the write: a route
+       hands back the identity the database chose, and a second one counted out here would be a number
+       nothing answers to (`admin/raceIds.ts` counts DOWN from nought, so it was `-1`). */
+    if (asking.current) {
+      return
+    }
 
-      asking.current = true
-      setWorking(true)
-      setSaid(null)
+    asking.current = true
+    setWorking(true)
+    setSaid(null)
 
-      let outcome: Saving
+    let outcome: Saving
 
-      /* LET GO IN A `finally`, WHATEVER THE SAVE ENDS IN. A press that held the reader and was never
-         let go would hold him until he refreshed the page (`holdsWhileSaving`), and an answer is not
-         the only way a press can end: one that throws ends too. */
-      try {
-        outcome = await save(values, text)
-      } finally {
-        asking.current = false
-        setWorking(false)
-      }
+    /* LET GO IN A `finally`, WHATEVER THE SAVE ENDS IN. A press that held the reader and was never
+       let go would hold him until he refreshed the page (`holdsWhileSaving`), and an answer is not
+       the only way a press can end: one that throws ends too. */
+    try {
+      outcome = await save(values, text)
+    } finally {
+      asking.current = false
+      setWorking(false)
+    }
 
-      /* Nothing is confirmed and the form stays as it was, so whoever pressed still
-         has everything he typed and can press again after reading why. */
-      if ('said' in outcome) {
-        setSaid(outcome.said)
+    /* Nothing is confirmed and the form stays as it was, so whoever pressed still
+       has everything he typed and can press again after reading why. */
+    if ('said' in outcome) {
+      setSaid(outcome.said)
 
-        return
-      }
+      return
+    }
 
-      if (editing.mode === 'new') {
-        onCreated?.(outcome.written)
-      }
-    } else if (editing.mode === 'new') {
-      const made = idFor(
-        entity,
-        values,
-        (creations[entity.id] ?? []).map((one) => one.id),
-        taken,
-      )
-
-      create(entity.id, made, text)
-      onCreated?.(made)
-    } else {
-      editRecord(recordKey(entity.id, String(editing.record[entity.idField])), text)
+    if (editing.mode === 'new') {
+      onCreated?.(outcome.written)
     }
 
     setSaved(values)

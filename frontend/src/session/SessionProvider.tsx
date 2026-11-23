@@ -1,7 +1,6 @@
 import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react'
 import type {
   MembershipBasis,
-  PendingItem,
   RacingPair,
 } from '../data/types'
 import { nextIdentity, nextNumber } from '../pages/admin/raceIds'
@@ -114,20 +113,12 @@ export function SessionProvider({
   const [rights, setRights] = useState<Rights>({})
   const [decisions, setDecisions] = useState<Decisions>({})
   const [deletions, setDeletions] = useState<Deletions>({})
-  const [proposals, setProposals] = useState<PendingItem[]>([])
-  /* Beside `proposals` and deliberately not in it: the server files the queue row for a
-     picture itself, so putting one here as well drew the member twice on one queue
-     (`context.ts#pictureSent`). */
+  /* The server files the queue row for a picture itself, so putting one here as well drew the member
+     twice on one queue (`context.ts#pictureSent`). Nothing of a proposal is kept in the session: the
+     last card that was (the change of a team) is a card of the server's since 23.11.2026. */
   const [pictureSent, setPictureSent] = useState<PictureSent | null>(null)
 
-  /* An id of its own shape, so nothing can collide with the ids in the file the
-     rest of the queue is read from, and so a decision written against it is
-     plainly a decision about something this visit put there. */
-  const propose = useCallback((item: Omit<PendingItem, 'id'>) => {
-    setProposals((current) => [{ ...item, id: `prop-${current.length + 1}` }, ...current])
-  }, [])
-
-  /* No id is minted here, unlike `propose` above, and that is the difference between the
+  /* No id is minted here, and that is the difference between the
      two: the row this names was made by the server and is the one the moderator decides
      (`context.ts#pictureSent`). */
   const sendPicture = useCallback((one: PictureSent | null) => {
@@ -438,8 +429,6 @@ export function SessionProvider({
       settle,
       deletions,
       remove,
-      proposals,
-      propose,
       pictureSent,
       sendPicture,
     }),
@@ -500,8 +489,6 @@ export function SessionProvider({
       settle,
       deletions,
       remove,
-      proposals,
-      propose,
       pictureSent,
       sendPicture,
     ],

@@ -3133,6 +3133,56 @@ class TeamWriteApiTest {
 		assertThat(theCard(older)).contains("|Poslednji|");
 	}
 
+	/** The three things a change cannot be asked for without, absent, empty and blank, for the team's own administrator. */
+	@ParameterizedTest
+	@CsvSource(nullValues = "NIC", value = {
+			"NIC, Zemun, RS", "'   ', Zemun, RS", "Tim sa dva člana, NIC, RS", "Tim sa dva člana, '', RS",
+			"Tim sa dva člana, Zemun, NIC", "Tim sa dva člana, Zemun, '   '"})
+	void aChangeWithSomethingMissingIsAFormNotFilledIn(String name, String city, String country)
+			throws Exception {
+		aTeamWithTwoMembersAndEverythingHangingOffIt();
+		long proposals = howManyProposals();
+		Map<String, String> fields = new java.util.LinkedHashMap<>();
+		fields.put("name", name);
+		fields.put("city", city);
+		fields.put("country", country);
+
+		MockHttpServletResponse answer = askForAChangeAs("sedi-u-sedistu@primer.rs",
+				teamId(A_TEAM_WITH_TWO), mapper.writeValueAsString(fields));
+
+		assertThat(answer.getStatus()).isEqualTo(400);
+		assertThat(reasonIn(answer)).isEqualTo(TeamWriteApi.THE_FORM_IS_NOT_COMPLETE);
+		assertThat(howManyProposals()).isEqualTo(proposals);
+	}
+
+	@Test
+	void aChangeUnderANameNoPageCouldBeOpenedAtOrWithALinkThatIsNotOneWaitsNowhere() throws Exception {
+		aTeamWithTwoMembersAndEverythingHangingOffIt();
+		long proposals = howManyProposals();
+
+		MockHttpServletResponse noAddress = askForAChangeAs("sedi-u-sedistu@primer.rs",
+				teamId(A_TEAM_WITH_TWO), form("  !!! ---  ", "", "", "Zemun", "RS"));
+		MockHttpServletResponse noLink = askForAChangeAs("sedi-u-sedistu@primer.rs",
+				teamId(A_TEAM_WITH_TWO), form("Tim sa dva člana", "", "nije link", "Zemun", "RS"));
+
+		assertThat(noAddress.getStatus()).isEqualTo(400);
+		assertThat(reasonIn(noAddress)).isEqualTo(TeamWriteApi.THE_NAME_MAKES_NO_ADDRESS);
+		assertThat(noLink.getStatus()).isEqualTo(400);
+		assertThat(reasonIn(noLink)).isEqualTo(TeamWriteApi.THE_LINK_IS_NOT_SHAPED);
+		assertThat(howManyProposals()).isEqualTo(proposals);
+	}
+
+	/** A body that is read and says nothing: for a member who is not the administrator it is the same 404. */
+	@Test
+	void aMemberWhoDoesNotAdministerTheTeamIsToldNothingIsThereWhateverTheWordsAre() throws Exception {
+		aTeamWithTwoMembersAndEverythingHangingOffIt();
+
+		assertThat(askForAChangeAs("najduze-u-timu@primer.rs", teamId(A_TEAM_WITH_TWO),
+				form("  !!! ---  ", "", "nije link", "Zemun", "RS")).getStatus())
+				.as("somebody who may not touch the team was told what is wrong with a thing he cannot send")
+				.isEqualTo(404);
+	}
+
 	@ParameterizedTest
 	@ValueSource(strings = {"najduze-u-timu@primer.rs", "ja@primer.rs", MODERATOR_OVER_TEAMS,
 			THE_SUPERADMIN})

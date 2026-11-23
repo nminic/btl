@@ -1019,6 +1019,54 @@ class TeamAdministrationWriteApiTest {
 	 * third member who holds a season and is in no team, and the whole league, which is what an empty
 	 * {@code to_id} means (V13). Exactly one new line exists, and it is his.
 	 */
+	/** The same three fields the change asks for, and the same answer, on the road that makes a team. */
+	@ParameterizedTest
+	@CsvSource(nullValues = "NIC", value = {
+			"NIC, Zemun, RS", "'   ', Zemun, RS", "Dobar tim, NIC, RS", "Dobar tim, '', RS",
+			"Dobar tim, Zemun, NIC", "Dobar tim, Zemun, '   '"})
+	void aTeamMadeWithSomethingMissingIsAFormNotFilledIn(String name, String city, String country)
+			throws Exception {
+		freeMembersInsideTheWindow();
+		Map<String, String> fields = new LinkedHashMap<>();
+		fields.put("name", name);
+		fields.put("city", city);
+		fields.put("country", country);
+		fields.put("organizerMemberNumber", FREE);
+
+		MockHttpServletResponse answer = makeAs(MODERATOR_OVER_TEAMS, mapper.writeValueAsString(fields));
+
+		assertThat(answer.getStatus()).isEqualTo(400);
+		assertThat(reasonIn(answer)).isEqualTo(TeamAdministrationWriteApi.THE_FORM_IS_NOT_COMPLETE);
+		assertThat(theNewTeam()).isEmpty();
+	}
+
+	@ParameterizedTest
+	@ValueSource(strings = {"  !!! ---  ", "  ...  "})
+	void aTeamMadeUnderANameNoPageCouldBeOpenedAtIsRefused(String name) throws Exception {
+		freeMembersInsideTheWindow();
+
+		MockHttpServletResponse answer = makeAs(MODERATOR_OVER_TEAMS, whole(name, FREE, "", ""));
+
+		assertThat(answer.getStatus()).isEqualTo(400);
+		assertThat(reasonIn(answer)).isEqualTo(TeamAdministrationWriteApi.THE_NAME_MAKES_NO_ADDRESS);
+	}
+
+	@Test
+	void aTeamMadeInACountryNobodyServesIsRefused() throws Exception {
+		freeMembersInsideTheWindow();
+		Map<String, String> fields = new LinkedHashMap<>();
+		fields.put("name", THE_NEW_TEAMS_NAME);
+		fields.put("city", "Zemun");
+		fields.put("country", A_COUNTRY_NOBODY_SERVES);
+		fields.put("organizerMemberNumber", FREE);
+
+		MockHttpServletResponse answer = makeAs(MODERATOR_OVER_TEAMS, mapper.writeValueAsString(fields));
+
+		assertThat(answer.getStatus()).isEqualTo(400);
+		assertThat(reasonIn(answer)).isEqualTo(TeamAdministrationWriteApi.THE_COUNTRY_IS_NOT_KNOWN);
+		assertThat(theNewTeam()).isEmpty();
+	}
+
 	@Test
 	void theOrganizerIsToldInTheOwnersSentenceAndNobodyElseIs() throws Exception {
 		freeMembersInsideTheWindow();

@@ -8,6 +8,7 @@ import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -391,6 +392,17 @@ class TeamDecisionsCarryWhatTheCardShowsTest {
 				.as("a town left out of the words was taken for the words").isEqualTo(400);
 	}
 
+	@ParameterizedTest
+	@CsvSource({"'', Zemun, RS", "Dunavski trkači Zemun, Zemun, ''"})
+	void wordsThatLeaveOutTheNameOrTheCountryAreAFormNotFilledInToo(String name, String city, String country)
+			throws Exception {
+		long item = aChangeWaiting("Dunavski trkači Zemun", "Prvi opis", "https://prvi.example");
+
+		assertThat(decideAsSent(item, "{\"approved\":true,\"seenTeam\":" + words(name, city, country, "", "")
+				+ "}").getStatus()).isEqualTo(400);
+		assertThat(stateOf(item)).isEqualTo("waiting");
+	}
+
 	@Test
 	void wordsOfATeamBesideACardThatIsNotATeamAreAFormFault() throws Exception {
 		db.sql("insert into account_admin_right (account_id, right_code)"
@@ -405,6 +417,35 @@ class TeamDecisionsCarryWhatTheCardShowsTest {
 
 		assertThat(answer.getStatus()).isEqualTo(400);
 		assertThat(stateOf(text)).isEqualTo("waiting");
+	}
+
+	@ParameterizedTest
+	@CsvSource({"'', Zemun, RS, Prvi opis, ''", "Nov naziv, '', RS, Prvi opis, ''",
+			"Nov naziv, Zemun, '', Prvi opis, ''", "!!! ---, Zemun, RS, Prvi opis, ''",
+			"Nov naziv, Zemun, RS, Prvi opis, nije link"})
+	void aCorrectionThatIsNotATeamTheRouteCouldCarryIsAFormNotFilledInAndNothingIsDecided(String name,
+			String city, String country, String bio, String link) throws Exception {
+		long item = aChangeWaiting("Dunavski trkači Zemun", "Prvi opis", "https://prvi.example");
+		List<String> before = theTeam();
+
+		MockHttpServletResponse answer = decideAsSent(item, "{\"approved\":true,\"seenTeam\":"
+				+ words("Dunavski trkači Zemun", "Zemun", "RS", "Prvi opis", "https://prvi.example")
+				+ ",\"team\":" + words(name, city, country, bio, link) + "}");
+
+		assertThat(answer.getStatus()).isEqualTo(400);
+		assertThat(stateOf(item)).as("a card was decided over a correction that is no team").isEqualTo("waiting");
+		assertThat(theTeam()).isEqualTo(before);
+	}
+
+	@Test
+	void aCorrectionWithADescriptionOverTheLineIsNotATeamEither() throws Exception {
+		long item = aChangeWaiting("Dunavski trkači Zemun", "Prvi opis", "https://prvi.example");
+
+		assertThat(decideAsSent(item, "{\"approved\":true,\"seenTeam\":"
+				+ words("Dunavski trkači Zemun", "Zemun", "RS", "Prvi opis", "https://prvi.example")
+				+ ",\"team\":" + words("Nov naziv", "Zemun", "RS", "x".repeat(361), "")
+				+ "}").getStatus()).isEqualTo(400);
+		assertThat(stateOf(item)).isEqualTo("waiting");
 	}
 
 	private long aChangeFor(String slug, String name, String bio, String link) {

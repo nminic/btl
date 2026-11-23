@@ -1667,7 +1667,9 @@ class VerificationWriteApi {
 	 * A CARD OF A TEAM, WHICH IS ONE THAT HAS A PROPOSAL BEHIND IT (a new team or the change of one).
 	 */
 	private static boolean isATeam(Item item) {
-		return TEAMS.equals(item.queue()) && item.teamProposalId() != null;
+		/* A proposal is on the teams tab and nowhere else (`verification_only_the_teams_queue_carries_a_proposal`),
+		   so the proposal is the whole question. */
+		return item.teamProposalId() != null;
 	}
 
 	/**
@@ -1717,7 +1719,9 @@ class VerificationWriteApi {
 	 * changed.
 	 */
 	private Optional<ResponseEntity<?>> whyTheChangeIsNotTheOneHeSaw(Item item, Answered typed) {
-		if (typed.seenTeam() == null || !isATeam(item)) {
+		/* Words beside a card that is not a team were refused above ({@link #whyTheTeamIsNotNamedRight}), so a
+		   request that names them and gets here is about a team. */
+		if (typed.seenTeam() == null) {
 			return Optional.empty();
 		}
 

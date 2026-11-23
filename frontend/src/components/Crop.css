@@ -179,10 +179,27 @@
    there. What `fittedTo` in components/crop.ts computes, and the reason that
    function needs no width or height at all. */
 .crop-fitted {
+  /* The box the picture is laid out against, whatever lays the circle out. */
+  position: relative;
   overflow: hidden;
 }
 
+/* THE PICTURE IS EXACTLY THE CIRCLE, AND THAT IS WHAT `fittedTo` STANDS ON. Its arithmetic is
+   exact only for a square box (components/fitted.ts), and until 23.11.2026 the box was only
+   asked for: `inline-size` and `block-size` of 100% inside a circle that is a grid
+   (`.face-circle`, `.leagues__mark`). A grid sizes its row from the content first, and a
+   percentage height counts as `auto` while it does, so a picture taller than it is wide set the
+   row to its own shape and then filled it. Measured in Chrome on the profile of member 000039,
+   23.11.2026: a photograph of 1440 by 1920 laid out 80 by 106.7 inside a circle of 80, so
+   `cover` did nothing and the circle showed a wider frame, lower down, than the card and every
+   other circle, which draw the square the server cut (owner: „Zašto se drugačije seče i
+   prikazuje u malom i velikom krugu?????").
+   Taken out of the flow and pinned to the four sides, the picture is the circle's own box and
+   no layout of the circle can give it another shape. `geometry/memberPicture.geometry.ts`
+   measures the pixels on both kinds of circle. */
 .crop-fitted img {
+  position: absolute;
+  inset: 0;
   inline-size: 100%;
   block-size: 100%;
   object-fit: cover;

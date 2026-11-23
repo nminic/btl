@@ -625,8 +625,6 @@ function renderInbox(
     settle: vi.fn(),
     deletions: {},
     remove: vi.fn(),
-    proposals: [],
-    propose: vi.fn(),
     pictureSent: null,
     sendPicture: vi.fn(),
   }

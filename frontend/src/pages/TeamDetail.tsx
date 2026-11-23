@@ -29,7 +29,7 @@ import { outsideLink } from '../data/outsideLink'
 import type { Competitor, RaceCategory, Team } from '../data/types'
 import { askTheServer, type Answer } from './account/askTheServer'
 import { ServerSaid } from './account/ServerSaid'
-import { standsOnTheServer, WHEN_DELETING_A_TEAM } from './admin/teamWrites'
+import { WHEN_DELETING_A_TEAM } from './admin/teamWrites'
 import { formatNumber, formatPoints } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 import { podiumClass } from '../components/podium'
@@ -40,7 +40,6 @@ import { useSession } from '../session/useSession'
 import { DeleteSheet } from './admin/DeleteSheet'
 import { TEAM_DELETED } from './teamDeleted'
 import { MEMBERS, recordsOf, TEAMS } from './admin/entityForms'
-import { recordKey } from '../session/context'
 import { useOverlay } from './admin/overlay'
 import './Profile.css'
 import { CompetitorName } from '../components/CompetitorName'
@@ -92,7 +91,7 @@ export function TeamDetail() {
      `TeamQueue`. Until that day the two buttons wrote into the browser, so one screen held two
      mechanisms for one kind of row: a member who applied saw his own „Povuci prijavu" and the
      team did not see him waiting. */
-  const { memberNumber, remove, editRecord } = useSession()
+  const { memberNumber } = useSession()
   const navigate = useNavigate()
   const overlay = useOverlay()
   const state = combineFour(useTeams(), useCompetitors(), useResults(), useFrozenSeasons())
@@ -174,30 +173,8 @@ export function TeamDetail() {
    * refused deletion would empty the roster of a team that is still standing - which is the
    * fault `AdminTeams` removed an `alsoRemove` for on 26.09.2026.
    *
-   * <p><b>AND THE OTHER HALF IS STILL THE SESSION'S, WHICH IS A BOUNDARY AND NOT AN
-   * OVERSIGHT.</b> A team approved during this visit is filed under an identity
-   * `admin/entityForms.ts` counts DOWN from nought, and `PendingQueue.tsx` writes its founder
-   * into the session and nowhere else. `DELETE /api/teams/-1` is an address nothing answers
-   * to, so that row is deleted where it lives and its roster is taken along by hand -
-   * `standsOnTheServer` is the question, and the note on it says what sending the other kind
-   * would have cost. There is nothing to be refused on that half, so the ordering that makes
-   * `editRecord` wrong beside a route cannot arise there.
    */
-  async function deleteOne(team: Team, roster: Competitor[]): Promise<void> {
-    if (!standsOnTheServer(team.id)) {
-      /* The people in it are left without a team rather than left pointing at one that is
-         gone. Written as an empty string because the session keeps values as text and cannot
-         hold a `null`; `teamOf` is the one reading that knows the two mean the same thing. */
-      for (const one of roster) {
-        editRecord(recordKey(MEMBERS.id, one.memberNumber), { teamId: '' })
-      }
-
-      remove(TEAMS.id, String(team.id))
-      void navigate(`/${locale}/timovi`, { state: TEAM_DELETED })
-
-      return
-    }
-
+  async function deleteOne(team: Team): Promise<void> {
     /* THE OLD SENTENCE GOES WHEN A NEW ATTEMPT STARTS, and not when it is answered: with the
        request out the page says it is sending (`DeleteSheet`), and a refusal about the one before
        it standing over that would be read as the answer to this one. */
@@ -280,6 +257,9 @@ export function TeamDetail() {
            answer (PDL, odeljak 16: „ako je deo tima, njegovo ime se vidi u timu i bodovi koje je
            doneo"). `membersOf` is the one place the two are put together. */
         const everMembers = membersOf(team, listedMembers)
+        /* The team's own page, asked once: where there is none (a team the portal builds of its own has no
+           link at all) nothing is drawn, and where there is one the same answer is the address. */
+        const ownPage = outsideLink(team.link ?? '')
         const everNumbers = new Set(everMembers.map((one) => one.competitor.memberNumber))
         /* The seasons of the league this team has anything in, plus the one shown, which is
            the default and a control cannot open on an option it does not have. **None before
@@ -405,7 +385,7 @@ export function TeamDetail() {
                                  result (PDL, 04.09.2026), and since 28.09.2026 none of that is
                                  decided on this screen at all: `deleteOne` sends the act to the
                                  route the administration already sends it to. */
-                              onDelete={() => deleteOne(team, everMembers.map((one) => one.competitor))}
+                              onDelete={() => deleteOne(team)}
                               /* A READER WHO ASKED AGAIN AND THEN PUT THE QUESTION AWAY HAS NO USE
                                  FOR THE LAST ANSWER: nothing beside the button is about a deletion
                                  any more (registry item 311; the same shape
@@ -465,9 +445,9 @@ export function TeamDetail() {
                       link at all is `outsideLink`'s question, as on the event's page
                       (`EventDetail.tsx`), with the same `rel` and `target`. The words are the address
                       itself: the team wrote it, so the reader sees where the press lands. */}
-                  {outsideLink(team.link ?? '') !== undefined && (
+                  {ownPage !== undefined && (
                     <p className="profile__bio-text">
-                      <a href={outsideLink(team.link ?? '')} rel="noreferrer noopener" target="_blank">
+                      <a href={ownPage} rel="noreferrer noopener" target="_blank">
                         {team.link}
                       </a>
                     </p>

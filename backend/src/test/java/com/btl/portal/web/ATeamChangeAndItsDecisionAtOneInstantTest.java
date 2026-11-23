@@ -241,6 +241,49 @@ class ATeamChangeAndItsDecisionAtOneInstantTest {
 		}
 	}
 
+	/**
+	 * A DECISION THAT STANDS BEHIND ANOTHER DECISION OF THE SAME CARD is told what every loser of that race is
+	 * told, and never that the change was changed: the card is no longer among those that wait when the
+	 * lock lets it through, so there is nothing to compare, and the claim below answers „already decided".
+	 */
+	@Test
+	void aDecisionThatLosesTheCardToAnotherDecisionIsToldSomebodyAnsweredAndNotThatTheChangeMoved()
+			throws Exception {
+		ExecutorService pool = Executors.newFixedThreadPool(1);
+		List<Future<MockHttpServletResponse>> submitted = new ArrayList<>();
+
+		try {
+			Callable<MockHttpServletResponse> deciding = () -> decide("{\"approved\":true,\"seenTeam\":"
+					+ "{\"name\":\"Prva izmena\",\"city\":\"Zemun\",\"country\":\"RS\","
+					+ "\"bio\":\"Prvi opis\",\"link\":\"\"}}");
+
+			holdingTheRow.execute(held -> {
+				db.sql("select 1 from verification where id = ? for update").param(card)
+						.query(Integer.class).single();
+
+				submitted.add(pool.submit(deciding));
+				untilItIsHeldUp(submitted);
+
+				/* THE OTHER DECISION, committed when the hold is let go. */
+				db.sql("update verification set state = 'rejected', decided_at = now(),"
+								+ " decided_by_name = 'Moderator Probni', reason = 'Ne.' where id = ?")
+						.param(card).update();
+
+				return null;
+			});
+
+			MockHttpServletResponse answer = submitted.get(0).get(30, TimeUnit.SECONDS);
+
+			assertThat(answer.getStatus()).isEqualTo(409);
+			assertThat(answer.getContentAsString()).contains("O stavci je već odlučeno.")
+					.doesNotContain(THE_SENTENCE);
+			assertThat(db.sql("select state from verification where id = ?").param(card)
+					.query(String.class).single()).isEqualTo("rejected");
+		} finally {
+			pool.shutdownNow();
+		}
+	}
+
 	/** Until the one request is behind this connection's lock, as the lock manager says. */
 	private void untilItIsHeldUp(List<Future<MockHttpServletResponse>> submitted) {
 		Instant deadline = Instant.now().plusSeconds(10);

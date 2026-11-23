@@ -1,7 +1,5 @@
-import { useState } from 'react'
 import type { Competitor } from '../data/types'
-import { cropIn, fittedTo } from './crop'
-import './Crop.css'
+import { CutPicture } from './CutPicture'
 import './Portrait.css'
 
 /**
@@ -59,71 +57,23 @@ import './Portrait.css'
  * widget of ten slots is the same height whether the league has thirty members or three.
  */
 export function Portrait({ competitor, whole = false }: { competitor?: Competitor; whole?: boolean }) {
-  /* The small address that would not load, so the circle falls back to the original. Kept as
-     the ADDRESS and not as a flag, so a circle that is handed another member is not left
-     thinking his picture failed too. */
-  const [failed, setFailed] = useState<string | null>(null)
-
   if (competitor === undefined) {
     return <span className="face-circle portrait portrait--empty" aria-hidden="true" />
   }
 
   if (competitor.photo !== null) {
-    /* THE SMALL PICTURE, ALREADY CUT, FOR EVERY CIRCLE BUT THE PROFILE'S. Owner, 23.10.2026
-       (PDL, „Umanjene slike za kružiće"): „Server pravi i šalje umanjenu, već isečenu sliku za
-       kružiće [...] original ostaje za profil." Cut on the server, so it is drawn whole and the
-       square is not applied a second time.
-
-       And the original, cut here as it always was, in three cases: the profile asked for it
-       (`whole`), the answer carried no small one, or the small one would not load - the server
-       declines to cut a picture larger than it can safely decode (`SmallPicture`), and a circle
-       showing the original is better than an empty one. */
-    const small = whole ? null : competitor.smallPhoto
-
-    if (small !== null && small !== failed) {
-      return (
-        <span className="face-circle portrait crop-fitted" aria-hidden="true">
-          <img
-            src={small}
-            alt=""
-            width={64}
-            height={64}
-            loading="lazy"
-            decoding="async"
-            onError={() => setFailed(small)}
-          />
-        </span>
-      )
-    }
-
+    /* THE SMALL PICTURE, ALREADY CUT, FOR EVERY CIRCLE BUT THE PROFILE'S, which asks for the
+       original (`whole`). Which of the two is drawn, and how the original is cut, is
+       `CutPicture`'s, and only `CutPicture`'s: until 23.11.2026 this drew both itself and the
+       profile's circle cut a different part of the picture from every other circle. */
     return (
-      /* The circle is the box around the picture and not the picture itself, which is the
-         one thing this has to get right that a plain `object-fit: cover` does not. A crop
-         is a magnification, and magnifying an element magnifies its rounded corners with
-         it: applied to the picture, a face cropped close would grow out of its own circle
-         and over the name beside it. The clipping belongs to something that is never
-         scaled (components/Crop.css, `.crop-fitted`). */
-      <span className="face-circle portrait crop-fitted" aria-hidden="true">
-        <img
-          src={competitor.photo}
-          alt=""
-          /* A square, and that is the whole of what these two say. The circle is drawn at
-             seven different sizes across the portal, from 1,7rem in a table row to 7,5rem
-             on a card, and the stylesheet decides which; these give the box a ratio of one
-             to one before any of it has loaded, so a list of faces does not jump. */
-          width={64}
-          height={64}
-          /* Loaded when it comes near, not with the page: a standing has a row per member
-             and each of these is a request nobody asked for yet. */
-          loading="lazy"
-          decoding="async"
-          /* Read through the check and not straight off the record. A member is whatever
-             the file, the overlay or F5 last said he was, and a record with no square at
-             all threw on a field that was not there and took a whole table into the error
-             boundary: nought rows over one missing key (components/crop.ts). */
-          style={fittedTo(cropIn(competitor.crop))}
-        />
-      </span>
+      <CutPicture
+        className="face-circle portrait"
+        original={competitor.photo}
+        crop={competitor.crop}
+        small={whole ? null : competitor.smallPhoto}
+        lazy
+      />
     )
   }
 

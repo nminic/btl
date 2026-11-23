@@ -6,7 +6,7 @@ import { sayYes } from '../../test/deleteSheet'
 import { arrivedResource } from '../../data/client'
 import { fakeQueue } from '../../test/fakeQueue'
 import { renderAt } from '../../test/render'
-import { serverThat, type Asked } from '../../test/serverAnswers'
+import { refused, serverThat, type Asked } from '../../test/serverAnswers'
 import { SLOW } from '../../test/slow'
 import { typeATownTheCodebookKnows } from '../../test/town'
 import { setupUser } from '../../test/user'
@@ -212,6 +212,26 @@ describe('the form a team is changed on', () => {
     )
   }
 
+  it('opens with an empty link for a team that is served with none', async () => {
+    const served = serverThat((path, init) =>
+      path === '/api/teams' && init?.method === undefined
+        ? new Response(
+            JSON.stringify(MOCK_TEAMS.map(({ link: _link, ...rest }) => rest)),
+            { status: 200, headers: { 'content-type': 'application/json' } },
+          )
+        : null,
+    )
+
+    try {
+      renderAt('/sr/tim/dunavski-trkaci/izmena', 'competitor', '000001')
+
+      expect(await screen.findByLabelText(/Naziv tima/)).toHaveValue('Dunavski trkači')
+      expect(screen.getByLabelText(/^Link/)).toHaveValue('')
+    } finally {
+      served.stop()
+    }
+  })
+
   it('is not rewritten by the codebook while nobody has touched the town', async () => {
     /* A RECORD OPENED FOR EDITING IS LEFT EXACTLY AS IT WAS WRITTEN (`forms/PlaceField.tsx`),
        and this form is one since 03.10.2026: it is the proposal's own, seeded, so it draws the
@@ -332,6 +352,62 @@ describe('the form a team is changed on', () => {
 
     expect(await screen.findByRole('heading', { name: 'Izmena je poslata' })).toBeVisible()
   })
+
+  it('sends one change however many times the button is pressed while the request is out', async () => {
+    /* The guard every form of the portal keeps (`outstanding`), measured the way `proposeTeam.test.tsx`
+       measures it: the request is held open with a promise nothing has resolved, and a second press while
+       it is out must not send a second change. */
+    let letGo: (() => void) | null = null
+    const held = serverThat((path, init) =>
+      path === '/api/teams/1/changes' && init?.method === 'POST'
+        ? new Promise<Response>((resolve) => {
+            letGo = () => resolve(new Response(JSON.stringify({ id: 1 }), { status: 201, headers: { 'content-type': 'application/json' } }))
+          })
+        : null,
+    )
+
+    try {
+      const user = setupUser()
+      renderAt('/sr/tim/dunavski-trkaci/izmena', 'competitor', '000001')
+
+      await user.clear(await screen.findByLabelText(/Naziv tima/))
+      await user.type(screen.getByLabelText(/Naziv tima/), 'Dunavska družina')
+
+      const send = screen.getByRole('button', { name: 'Pošalji izmenu' })
+
+      await user.click(send)
+      await user.click(send)
+
+      must<() => void>(letGo, 'the way to answer the request this case is holding open')()
+
+      expect(await screen.findByRole('heading', { name: 'Izmena je poslata' })).toBeVisible()
+      expect(held.asked.filter((one) => one.path === '/api/teams/1/changes' && one.init?.method === 'POST'))
+        .toHaveLength(1)
+    } finally {
+      held.stop()
+    }
+  }, SLOW)
+
+  it('says why when the route refuses the change, and keeps what he typed', async () => {
+    const refusing = serverThat((path, init) =>
+      path === '/api/teams/1/changes' && init?.method === 'POST' ? refused('theAddressIsTaken', 409) : null,
+    )
+
+    try {
+      const user = setupUser()
+      renderAt('/sr/tim/dunavski-trkaci/izmena', 'competitor', '000001')
+
+      await user.clear(await screen.findByLabelText(/Naziv tima/))
+      await user.type(screen.getByLabelText(/Naziv tima/), 'Dunavska družina')
+      await user.click(screen.getByRole('button', { name: 'Pošalji izmenu' }))
+
+      expect(await screen.findByText(/Tim sa ovim nazivom već postoji/)).toBeVisible()
+      expect(screen.queryByRole('heading', { name: 'Izmena je poslata' })).toBeNull()
+      expect(screen.getByLabelText(/Naziv tima/)).toHaveValue('Dunavska družina')
+    } finally {
+      refusing.stop()
+    }
+  }, SLOW)
 
   it('still refuses the name of another team', async () => {
     const user = setupUser()
