@@ -227,6 +227,16 @@
   transition: transform var(--fast);
 }
 
+/* Where the reader has asked the system for its own colours the muted tone is the palette's and not the system's:
+   the caret stayed grey on the system's white (1,92:1, measured in Chrome, review of PR 803, medium 1; the system
+   does not take the `color` of an SVG that is drawn in `currentColor`). It takes the colour of the button it stands
+   in, which the system gives (`geometry/dropdownArrowForced.geometry.ts`). */
+@media (forced-colors: active) {
+  .lang__caret {
+    color: inherit;
+  }
+}
+
 .lang.is-open .lang__caret {
   transform: rotate(180deg);
 }

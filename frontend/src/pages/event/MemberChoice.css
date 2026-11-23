@@ -26,8 +26,8 @@
      may have moved. */
   position: absolute;
   z-index: 6;
-  top: calc(var(--member-choice-bottom, 0px) + var(--space-6));
-  left: var(--member-choice-left, 0px);
+  top: calc(var(--member-choice-bottom) + var(--space-6));
+  left: var(--member-choice-left);
   inline-size: var(--member-choice-width, auto);
   box-sizing: border-box;
   margin: 0;

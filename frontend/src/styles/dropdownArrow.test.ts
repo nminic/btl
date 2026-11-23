@@ -45,7 +45,7 @@ function stylesheets(dir = SRC, prefix = ''): { path: string; css: string }[] {
 }
 
 /** What dresses a dropdown: how the browser draws it, what is painted behind its text, and the room around it. */
-const DRESS = /^(?:-webkit-|-moz-)?(?:appearance|background(?:-[a-z]+)*|padding(?:-[a-z]+)*)$/
+const DRESS = /^(?:-webkit-|-moz-)?(?:all|appearance|background(?:-[a-z]+)*|padding(?:-[a-z]+)*)$/
 
 /** Every important declaration of a sheet: of what, with what, and under which selector and which query. */
 function important(css: string): { property: string; value: string; selector: string; inside: string }[] {
@@ -79,10 +79,13 @@ const DARK_BY_THE_SYSTEM = {
   inside: '@media (prefers-color-scheme: dark)',
 }
 const DARK_BY_CHOICE = { selector: ":root[data-theme='dark'] :is(select, .dropdown)", inside: '' }
+/** The fourth, for the reader who has asked the system for its own colours (review of PR 803, medium 1). */
+const FORCED = { selector: ':root:root :is(select, .dropdown)', inside: '@media (forced-colors: active)' }
+/** The three palettes, one rule each; the fourth is no palette and is read on its own. */
 const DRAWING = [LIGHT, DARK_BY_THE_SYSTEM, DARK_BY_CHOICE]
 
 function draws(one: { selector: string; inside: string }): boolean {
-  return DRAWING.some((rule) => rule.selector === one.selector && rule.inside === one.inside)
+  return [...DRAWING, FORCED].some((rule) => rule.selector === one.selector && rule.inside === one.inside)
 }
 
 function ruleOf(rule: { selector: string; inside: string }) {
@@ -117,6 +120,29 @@ describe('the rule that draws the arrow', () => {
   })
 })
 
+describe('the rule for the reader who has asked the system for its own colours', () => {
+  it('draws the same chevron, edged in white and drawn in black, which one of the two is always seen against any ground', () => {
+    const [drawn, ...others] = ruleOf(FORCED).map((one) => `${one.property}: ${one.value}`)
+
+    expect(others, 'nothing else than the picture changes: the place and the room stay the rule\'s own').toEqual([])
+    expect(drawn).toMatch(/^background-image: url\("data:image\/svg\+xml,/)
+
+    /* The path is the one of the rule for every palette (the same shape, the portal's one arrow), twice: the edge, then the line. */
+    const light = ruleOf(LIGHT).find((one) => one.property === 'background-image')?.value ?? ''
+    const path = /d='([^']+)'/.exec(decodeURIComponent(light))?.[1]
+    const picture = decodeURIComponent(drawn ?? '')
+
+    expect(path).toBe('M4 8.5l8 8 8-8')
+    expect([...picture.matchAll(/<path d='([^']+)'/g)].map((one) => one[1])).toEqual([path, path])
+    /* White three pixels thick under black one pixel thick: the line is the stroke of the rule above (2 of 24), the edge
+       is three times that. */
+    expect([...picture.matchAll(/stroke='(#[0-9a-f]+)' stroke-width='(\d+)'/g)].map((one) => `${one[1]} ${one[2]}`)).toEqual([
+      '#fff 6',
+      '#000 2',
+    ])
+  })
+})
+
 describe('nothing else in the portal can take the arrow away', () => {
   const sheets = stylesheets()
 
@@ -128,7 +154,7 @@ describe('nothing else in the portal can take the arrow away', () => {
   })
 
   it('reads the important declarations it says it reads, the ones of the three rules among them', () => {
-    expect(important(read(INDEX)).filter(draws)).toHaveLength(8)
+    expect(important(read(INDEX)).filter(draws)).toHaveLength(9)
   })
 
   it('has no important declaration of what dresses a dropdown outside those three rules', () => {
