@@ -696,13 +696,13 @@ class RaceWriteApi {
 	}
 
 	/**
-	 * THE RUNS AT THIS RACE COUNTED AGAIN, AND EACH MEMBER WHOSE RUN MOVED TOLD IN HIS INBOX,
-	 * when the edit moved something the race fixes and nothing below says otherwise.
-	 * {@link #change} carries the decisions and the reason for each condition; this is the order
-	 * they are asked in.
+	 * WHETHER THE RECOUNT OF THIS WRITE WOULD MAKE A RUN ALREADY WRITTEN AT THIS RACE ONE NOBODY RAN: asked before
+	 * anything is written, and only where what the race fixes moved, since a race whose fixed figures stay leaves
+	 * every run as it was.
 	 *
+	 * @param id     the race
 	 * @param before the race as it stood before the write
-	 * @param race   the race as it has just been written
+	 * @param race   the race as it would be written
 	 */
 	private boolean aRunWouldBeImpossible(long id, AsItStands before, Checked race) {
 		WhatARaceCarries.ARace after = whatItFixes(race);
@@ -713,6 +713,16 @@ class RaceWriteApi {
 				&& TheRunsOfARace.wouldMakeOneImpossible(db, id, after, TheRunsOfARace.at(db, id));
 	}
 
+	/**
+	 * THE RUNS AT THIS RACE COUNTED AGAIN, AND EACH MEMBER WHOSE RUN MOVED TOLD IN HIS INBOX,
+	 * when the edit moved something the race fixes and nothing below says otherwise.
+	 * {@link #change} carries the decisions and the reason for each condition; this is the order
+	 * they are asked in.
+	 *
+	 * @param id     the race
+	 * @param before the race as it stood before the write
+	 * @param race   the race as it has just been written
+	 */
 	private void recountItsRunsIfWhatItFixesMoved(long id, AsItStands before, Checked race) {
 		WhatARaceCarries.ARace after = whatItFixes(race);
 
