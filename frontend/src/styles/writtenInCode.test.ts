@@ -344,7 +344,6 @@ describe('what a screen says in its own voice', () => {
          „rankings-categories", which nobody hears; what is heard is the word it points at. */
       'labelledBy',
       'leftId',
-      'loading',
       'look',
       'name',
       /* HOW A DRAWING MEETS ITS BOX, 15.11.2026, and it is machinery rather than speech. It carries

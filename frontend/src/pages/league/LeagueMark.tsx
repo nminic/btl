@@ -1,6 +1,5 @@
-import { useState } from 'react'
 import type { League } from '../../data/types'
-import { cropIn, fittedTo } from '../../components/crop'
+import { CutPicture } from '../../components/CutPicture'
 
 /** What a mark is drawn from: the name, and the picture where the league has one. */
 type Marked = Pick<League, 'name' | 'logo' | 'crop' | 'smallLogo'>
@@ -28,34 +27,20 @@ type Marked = Pick<League, 'name' | 'logo' | 'crop' | 'smallLogo'>
  * full, and a mark read out before it would be the same words twice.
  */
 export function LeagueMark({ league }: { league: Marked }) {
-  /* The small address that would not load; `Portrait` says why an address and not a flag. */
-  const [failed, setFailed] = useState<string | null>(null)
-
   /* Asked of the type and not compared with null: a league is whatever the answer, the file or the
      overlay of the administration last said it was, and a record missing the key is a league with no
      mark rather than an image with no address. */
   if (typeof league.logo === 'string') {
-    if (typeof league.smallLogo === 'string' && league.smallLogo !== failed) {
-      const small = league.smallLogo
-
-      return (
-        <span className="leagues__mark leagues__mark--logo crop-fitted" aria-hidden="true">
-          <img
-            src={small}
-            alt=""
-            width={64}
-            height={64}
-            decoding="async"
-            onError={() => setFailed(small)}
-          />
-        </span>
-      )
-    }
-
+    /* The small mark when there is one, the original cut here when not: `CutPicture`, the one way
+       every circle on the portal is cut (components/CutPicture.tsx). */
     return (
-      <span className="leagues__mark leagues__mark--logo crop-fitted" aria-hidden="true">
-        <img src={league.logo} alt="" width={64} height={64} decoding="async" style={fittedTo(cropIn(league.crop))} />
-      </span>
+      <CutPicture
+        className="leagues__mark leagues__mark--logo"
+        original={league.logo}
+        crop={league.crop}
+        small={typeof league.smallLogo === 'string' ? league.smallLogo : null}
+        lazy={false}
+      />
     )
   }
 

@@ -1,7 +1,5 @@
-import { useState } from 'react'
 import type { Team } from '../data/types'
-import { cropIn, fittedTo } from './crop'
-import './Crop.css'
+import { CutPicture } from './CutPicture'
 import './TeamMark.css'
 
 /**
@@ -35,55 +33,17 @@ import './TeamMark.css'
  * the sentence beside it is decoration, and decoration is `aria-hidden`.
  */
 export function TeamMark({ team }: { team: Team }) {
-  /* The small address that would not load; `Portrait` says why an address and not a flag. */
-  const [failed, setFailed] = useState<string | null>(null)
-
   if (team.logo !== null) {
-    /* The small mark, already cut on the server (owner, 23.10.2026, „umanjenu, već isečenu
-       sliku za kružiće"), drawn whole; the original cut here only when there is no small one
-       or it would not load, which is `Portrait`'s fall back for the same reason. */
-    if (team.smallLogo !== null && team.smallLogo !== failed) {
-      const small = team.smallLogo
-
-      return (
-        <span className="face-circle team-mark team-mark--logo crop-fitted" aria-hidden="true">
-          <img
-            src={small}
-            alt=""
-            width={64}
-            height={64}
-            loading="lazy"
-            decoding="async"
-            onError={() => setFailed(small)}
-          />
-        </span>
-      )
-    }
-
+    /* The small mark, already cut on the server, or the original cut here: `CutPicture` decides
+       which and cuts it, the one way every circle on the portal is cut (components/CutPicture.tsx). */
     return (
-      /* The circle is the box around the picture and not the picture itself.
-         A crop is a magnification, and magnifying an element magnifies its
-         rounded corners with it: applied to the picture, the logo would grow
-         out of its own circle and over the name beside it. The clipping belongs
-         to something that is never scaled. */
-      <span className="face-circle team-mark team-mark--logo crop-fitted" aria-hidden="true">
-        <img
-          src={team.logo}
-          alt=""
-          width={64}
-          height={64}
-          /* Loaded when it comes near, not with the page: a table of teams may be
-             long and each of these is a request nobody asked for yet. */
-          loading="lazy"
-          decoding="async"
-          /* Read through the check and not straight off the record. A team is
-             whatever the file, the overlay or F5 last said it was, and a record
-             with no square at all threw on a field that was not there and took
-             the whole table into the error boundary: nought rows over one
-             missing key (components/crop.ts). */
-          style={fittedTo(cropIn(team.crop))}
-        />
-      </span>
+      <CutPicture
+        className="face-circle team-mark team-mark--logo"
+        original={team.logo}
+        crop={team.crop}
+        small={team.smallLogo}
+        lazy
+      />
     )
   }
 

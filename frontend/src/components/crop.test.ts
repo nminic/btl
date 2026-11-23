@@ -1,6 +1,8 @@
 import { must } from '../test/at'
-import { aimAt, bigEnough, closestIn, cropIn, draggedTo, fittedTo, frameOf, holeOf, movedTo, sizedTo, UNKNOWN, WHOLE } from './crop'
-import type { CoverStyle, Crop, Frame, Shape } from './crop'
+import { aimAt, bigEnough, closestIn, cropIn, draggedTo, frameOf, holeOf, movedTo, sizedTo, UNKNOWN, WHOLE } from './crop'
+import { fittedTo } from './fitted'
+import type { CoverStyle } from './fitted'
+import type { Crop, Frame, Shape } from './crop'
 
 /* Which square of a picture is the picture.
  *

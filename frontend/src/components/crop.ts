@@ -529,41 +529,9 @@ function share(length: number, whole: number): string {
  * loses. Fewer places would start to matter at the ends, where a square flush
  * against an edge has to stay flush.
  */
-function round(value: number): number {
+export function round(value: number): number {
   return Math.round(value * 1e4) / 1e4
 }
-
-/**
- * The same square, as the browser's own way of showing part of a picture.
- *
- * Where a crop is drawn as the finished thing rather than as a choice being
- * made, the picture fills a box and everything outside the square is simply not
- * there. That is `object-fit: cover` with two more steps, and no width or
- * height is needed for any of it.
- *
- * `cover` already scales a picture until its shorter edge fills a square box,
- * which is this crop at `size` 1. `object-position` in percentages already
- * means „line the point this far along the picture up with the point this far
- * along the box", which for a picture larger than its box is exactly „this far
- * along the room left over". So the two position numbers go in as they are.
- *
- * The zoom is the third step, and it is a scale about the very point those
- * percentages pin down: magnify about the middle instead and a crop pinned to
- * the left edge would drift off it as the member zoomed. With the origin on the
- * same point, the flush edge stays flush and the middle stays middle at every
- * size, which is the whole reason the origin is written twice here.
- */
-export function fittedTo(crop: Crop): CoverStyle {
-  const along = `${round(100 * crop.x)}% ${round(100 * crop.y)}%`
-
-  return {
-    objectPosition: along,
-    transform: `scale(${round(1 / crop.size)})`,
-    transformOrigin: along,
-  }
-}
-
-export type CoverStyle = { objectPosition: string; transform: string; transformOrigin: string }
 
 /**
  * A crop read out of a record, with anything unusable replaced by the whole
