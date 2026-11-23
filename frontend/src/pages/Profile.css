@@ -1020,6 +1020,9 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  /* A line of symbols that fell under the name (the third at 360px and 200% text) ends where the row ends, and is not
+     left alone at the start of its own line; the line with the name has no free room, since the name takes it. */
+  justify-content: flex-end;
   column-gap: var(--space-8);
 }
 
