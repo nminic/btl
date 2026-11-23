@@ -241,7 +241,9 @@ for (const at of WIDTHS) {
 
     const sheet = page.getByRole('dialog', { name: /^Storniraj / })
 
-    await sheet.waitFor({ state: 'visible' })
+    /* Half the clock of the case, so a press that sends at once instead of asking fails on this wait and not on the
+       clock of the case (`btl/CLAUDE.md`, section 25). */
+    await expect(sheet, 'the press on „Storniraj” asked nothing').toBeVisible({ timeout: 15_000 })
 
     const asked = await page.evaluate(() => {
       const root = document.documentElement
