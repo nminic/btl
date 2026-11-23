@@ -2,11 +2,11 @@ import { everyOneNamedExactly } from './exactName'
 import type { Suggestion } from './types'
 
 /*
- * WHAT A BOX TYPED AGAINST A LIST OFFERS FOR WHAT HAS BEEN TYPED, in one home since 23.11.2026, when a second
- * box came to read it: the box of a member on a row of results is a combobox of its own since that day
- * (`pages/event/MemberChoice.tsx`; owner, PDL „Tri brze izmene administracije": „polje za člana postaje
- * padajući izbor u koji se kuca"), and what it offers is what it offered as a `Suggesting` box, letter for
- * letter. Moved here out of `Suggesting.tsx` unchanged, so the two boxes cannot offer differently.
+ * WHAT A BOX TYPED AGAINST A LIST OFFERS FOR WHAT HAS BEEN TYPED (`Suggesting.tsx`). Moved here out of that box
+ * unchanged on 23.11.2026, when the box of a member on a row of results came to read it as well; that box stopped
+ * reading it the same day, when the owner said of it „Ovde nema dropdown-a" (PDL „Tri brze izmene
+ * administracije"), and offers by a rule of its own since (`pages/event/memberList.ts`). The two rules here are
+ * decisions about races and events, not about members.
  */
 
 /** How many letters before the list opens (owner, 23.08.2026: „posle dva slova
