@@ -290,7 +290,7 @@ export function fakeQueue(
     nextId += 1
     held()
 
-    added.push({
+    const card: ServedPendingItem = {
       queue: 'teams',
       kind: 'teamEdit',
       date: TODAY,
@@ -307,7 +307,25 @@ export function fakeQueue(
       crop: null,
       ...NO_RUN,
       link: sent.link.trim(),
-    })
+    }
+
+    /* A SECOND CHANGE OF THE SAME TEAM REPLACES THE ONE THAT WAITS (PDL P13, [ODLUKA 23.11.2026]):
+       the card that waits is repointed at the new words and keeps its key, as the route does it
+       (`TeamWriteApi.replaceTheChangeThatWaits`, after `MePhotoApi`). Only a card of THIS team, only a
+       change, and only one nobody has decided: another team's card, a proposal of a new team (which
+       names no team) and a decided card stand where they stood. */
+    const waiting = added.find(
+      (one) =>
+        one.queue === 'teams' && one.kind === 'teamEdit' && one.subjectId === String(teamId) && !decided.has(String(one.id)),
+    )
+
+    if (waiting !== undefined) {
+      Object.assign(waiting, card, { id: waiting.id })
+
+      return json({ id: waiting.id }, 201)
+    }
+
+    added.push(card)
 
     return json({ id }, 201)
   }

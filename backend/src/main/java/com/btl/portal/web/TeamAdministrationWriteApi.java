@@ -412,6 +412,22 @@ class TeamAdministrationWriteApi {
 				TeamWriteApi.orEmpty(typed.bio()), TeamWriteApi.orEmpty(typed.link()), null,
 				typed.city().strip(), country.get()), season, now);
 
+		/* THE ORGANIZER IS TOLD, in the sentence the owner chose (PDL P13, [ODLUKA 23.11.2026], choosing
+		   between the sentences he was offered, my recommendation): the sentence of an approved proposal
+		   („tvoj tim je prihvaćen") is not true here, because nobody proposed anything. {season} is the
+		   season the route has just written as his `season_from`, the one variable above and not a
+		   second reading of the clock. The sender is spelt here and is NOT a `static final String`,
+		   because `refusals.test.ts` counts every one of those this class declares as a refusal the
+		   screens must answer. Only to him: `message.to_id` left empty is the whole league
+		   (V13), so the addressee is the organizer's own key and nothing else. The subject is mine. */
+		db.sql("insert into message (to_id, from_id, from_name, subject, body)"
+						+ " values (?, null, ?, ?, ?)")
+				.params(organizer.get(), "Administracija", "Napravljen je tim " + name,
+						"Administracija BTL-a je napravila tim " + name + " i tebe postavila za njegovog"
+								+ " organizatora. Tim vodiš od sezone " + season + ", a članove možeš da"
+								+ " pozoveš sa njihovih profila.")
+				.update();
+
 		return ResponseEntity.status(HttpStatus.CREATED).body(writtenDown(made));
 	}
 

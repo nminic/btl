@@ -536,6 +536,76 @@ describe('a change waiting on the queue of teams', () => {
     ])
   }, SLOW)
 
+  /* A SECOND CHANGE OF A TEAM WHILE THE FIRST WAITS REPLACES IT (PDL P13, [ODLUKA 23.11.2026], owner:
+     „nova zamenjuje staru"), and the queue keeps one card of it. The route does it
+     (`TeamWriteApiTest`, in Java, with the three things it must not reach); what the screen holds is
+     that it asks for it once per send and draws what the queue then holds. `fakeQueue` does the same
+     as the route, so these cases measure the screen's reading of it and not the fake. */
+  const sendAChange = async (
+    user: ReturnType<typeof setupUser>,
+    router: { navigate: (to: string) => Promise<void> },
+    name: string,
+    slug = 'dunavski-trkaci',
+  ) => {
+    await router.navigate(`/sr/tim/${slug}/izmena`)
+    await user.clear(await screen.findByLabelText(/Naziv tima/))
+    await user.type(screen.getByLabelText(/Naziv tima/), name)
+    await user.click(screen.getByRole('button', { name: 'Pošalji izmenu' }))
+    await screen.findByRole('heading', { name: 'Izmena je poslata' })
+  }
+
+  it('leaves one card of the team, with the words sent last, when a second change is sent while the first waits', async () => {
+    const user = setupUser()
+    const { router } = renderAt('/sr/tim/dunavski-trkaci/izmena', 'superadmin', '000001')
+
+    await sendAChange(user, router, 'Dunavska družina')
+    await sendAChange(user, router, 'Dunavski klub')
+    await router.navigate('/sr/administracija/verifikacija/timovi')
+
+    expect(await screen.findByRole('heading', { name: 'Dunavski klub' })).toBeVisible()
+    expect(screen.queryByRole('heading', { name: 'Dunavska družina' })).toBeNull()
+  }, SLOW)
+
+  it('leaves the proposal of a new team where it was when a change is replaced beside it', async () => {
+    const user = setupUser()
+    const { router } = renderAt('/sr/tim/dunavski-trkaci/izmena', 'superadmin', '000001')
+
+    await sendAChange(user, router, 'Dunavska družina')
+    await sendAChange(user, router, 'Dunavski klub')
+    await router.navigate('/sr/administracija/verifikacija/timovi')
+
+    const heading = await screen.findByRole('heading', { name: 'Timočka trkačka družina' })
+    const card = within(must(heading.closest('li'), 'the proposal of the new team'))
+
+    expect(card.getByLabelText('Mesto')).toHaveValue('Zaječar')
+  }, SLOW)
+
+  it('opens a second card when the first has been decided, and leaves the decided one decided', async () => {
+    const user = setupUser()
+    const { router } = renderAt('/sr/tim/dunavski-trkaci/izmena', 'superadmin', '000001')
+
+    await sendAChange(user, router, 'Dunavska družina')
+    await router.navigate('/sr/administracija/verifikacija/timovi')
+
+    const first = await screen.findByRole('heading', { name: 'Dunavska družina' })
+
+    await user.click(
+      within(must(first.closest('li'), 'the card of the first change')).getByRole('button', {
+        name: 'Odobri',
+      }),
+    )
+    await waitFor(() => {
+      expect(decisionsSent()).toHaveLength(1)
+    })
+
+    await sendAChange(user, router, 'Dunavski klub', 'dunavska-druzina')
+    await router.navigate('/sr/administracija/verifikacija/timovi')
+
+    expect(await screen.findByRole('heading', { name: 'Dunavski klub' })).toBeVisible()
+    expect(screen.queryByRole('heading', { name: 'Dunavska družina' })).toBeNull()
+    expect(decisionsSent()).toHaveLength(1)
+  }, SLOW)
+
   it('cannot be approved once the team it names has been deleted', async () => {
     /* Approved anyway it wrote into an identity nothing answers to, settled the item,
        and told the member their team had been changed (review, 05.09.2026). The card

@@ -2966,6 +2966,172 @@ class TeamWriteApiTest {
 		assertThat(howManyProposals()).isEqualTo(proposals);
 	}
 
+	// ----- PDL P13, [ODLUKA 23.11.2026]: A SECOND CHANGE WHILE THE FIRST WAITS REPLACES IT -------------
+	//
+	// The shape is MePhotoApi's (the owner's own precedent): the card that waits is repointed and not
+	// deleted and opened again. Each of the three things it must not reach has a case that swaps its source.
+
+	/** A change of a team sitting in the queue, filed by whoever is named, in the state given. */
+	private long aChangeOf(String teamSlug, String filerNumber, String name, String state) {
+		long proposal = db.sql("insert into team_proposal (competitor_id, team_id, name, bio, link, city,"
+						+ " country_id) values (?, (select id from team where slug = ?), ?, 'Stari opis', '',"
+						+ " 'Novi Sad', (select id from country where code = 'RS')) returning id")
+				.params(competitorId(filerNumber), teamSlug, name).query(Long.class).single();
+
+		return aCardOf(proposal, filerNumber, name, state);
+	}
+
+	/** And the proposal of a team that does not exist yet, which carries no team at all. */
+	private long aNewTeamsProposal(String filerNumber, String name) {
+		long proposal = db.sql("insert into team_proposal (competitor_id, team_id, name, bio, link, city,"
+						+ " country_id) values (?, null, ?, 'Stari opis', '', 'Novi Sad',"
+						+ " (select id from country where code = 'RS')) returning id")
+				.params(competitorId(filerNumber), name).query(Long.class).single();
+
+		return aCardOf(proposal, filerNumber, name, "waiting");
+	}
+
+	private long aCardOf(long proposal, String filerNumber, String name, String state) {
+		long card = db.sql("insert into verification (queue, competitor_id, subject, body, team_proposal_id)"
+						+ " values ('teams', ?, ?, '', ?) returning id")
+				.params(competitorId(filerNumber), name, proposal).query(Long.class).single();
+
+		if (!state.equals("waiting")) {
+			db.sql("update verification set state = 'rejected', decided_at = now(),"
+							+ " decided_by_name = 'Moderator', reason = 'Ne.' where id = ?")
+					.param(card).update();
+		}
+
+		return card;
+	}
+
+	/** One card, read back whole: whose, what it says, in which state, and where it stands in the queue. */
+	private String theCard(long card) {
+		return db.sql("select v.competitor_id || '|' || v.subject || '|' || p.name || '|' || p.bio || '|'"
+						+ " || v.state || '|' || v.raised_at from verification v"
+						+ " join team_proposal p on p.id = v.team_proposal_id where v.id = ?")
+				.param(card).query(String.class).single();
+	}
+
+	private List<Long> theCardsOf(String teamSlug) {
+		return db.sql("select v.id from verification v join team_proposal p on p.id = v.team_proposal_id"
+						+ " where p.team_id = (select id from team where slug = ?) order by v.id")
+				.param(teamSlug).query(Long.class).list();
+	}
+
+	private String whenTheCardWasRaised(long card) {
+		return db.sql("select raised_at::text from verification where id = ?").param(card)
+				.query(String.class).single();
+	}
+
+	@Test
+	void aSecondChangeReplacesTheFirstAndKeepsItsCardAndItsPlaceInTheQueue() throws Exception {
+		aTeamWithTwoMembersAndEverythingHangingOffIt();
+		long team = teamId(A_TEAM_WITH_TWO);
+
+		MockHttpServletResponse first = askForAChangeAs("sedi-u-sedistu@primer.rs", team,
+				form("Tim sa dva člana", "Prvi opis", "", "Zemun", "RS"));
+		List<Long> cards = theCardsOf(A_TEAM_WITH_TWO);
+		String raised = whenTheCardWasRaised(cards.get(0));
+
+		MockHttpServletResponse second = askForAChangeAs("sedi-u-sedistu@primer.rs", team,
+				form("Tim sa dva člana Zemun", "Drugi opis", "https://dva.example", "Sremski Karlovci", "RS"));
+
+		assertThat(List.of(first.getStatus(), second.getStatus())).containsExactly(201, 201);
+		assertThat(theCardsOf(A_TEAM_WITH_TWO))
+				.as("the second change opened a second card instead of replacing the first")
+				.isEqualTo(cards);
+		assertThat(db.sql("select count(*) from team_proposal where team_id = ?").param(team)
+				.query(Long.class).single()).isOne();
+		assertThat(db.sql("select p.name || '|' || p.bio || '|' || p.link || '|' || p.city || '|' || v.subject"
+						+ " from team_proposal p join verification v on v.team_proposal_id = p.id"
+						+ " where p.team_id = ?")
+				.param(team).query(String.class).single())
+				.as("what waits is not the words that were sent last")
+				.isEqualTo("Tim sa dva člana Zemun|Drugi opis|https://dva.example|Sremski Karlovci"
+						+ "|Tim sa dva člana Zemun");
+		assertThat(whenTheCardWasRaised(cards.get(0)))
+				.as("the card went to the back of the queue: it was opened again and not repointed")
+				.isEqualTo(raised);
+		assertThat(mapper.readTree(second.getContentAsString()).path("id").asLong())
+				.as("the second answer names another card than the one that waits")
+				.isEqualTo(db.sql("select team_proposal_id from verification where id = ?")
+						.param(cards.get(0)).query(Long.class).single());
+		assertThat(theTeamWithTwo().get(1)).as("the team moved while a change waited")
+				.isEqualTo("Tim sa dva člana");
+	}
+
+	@Test
+	void theCardBelongsToWhoSentTheLastChange() throws Exception {
+		aTeamWithTwoMembersAndEverythingHangingOffIt();
+		long team = teamId(A_TEAM_WITH_TWO);
+
+		askForAChangeAs("sedi-u-sedistu@primer.rs", team, form("Tim sa dva člana", "", "", "Zemun", "RS"));
+		db.sql("update team set admin_id = ? where id = ?").params(competitorId(THE_LONGEST), team).update();
+
+		assertThat(askForAChangeAs("najduze-u-timu@primer.rs", team,
+				form("Tim sa dva člana", "Od novog", "", "Zemun", "RS")).getStatus()).isEqualTo(201);
+		assertThat(db.sql("select v.competitor_id || '|' || p.competitor_id from verification v"
+						+ " join team_proposal p on p.id = v.team_proposal_id where p.team_id = ?")
+				.param(team).query(String.class).single())
+				.as("the notice of the decision would go to somebody who no longer sent it")
+				.isEqualTo(competitorId(THE_LONGEST) + "|" + competitorId(THE_LONGEST));
+	}
+
+	@Test
+	void aChangeOfAnotherTeamIsLeftAloneEvenWhenTheSameMemberSentIt() throws Exception {
+		aTeamWithTwoMembersAndEverythingHangingOffIt();
+		/* The OLDER card, so a reading that drops the team from the question picks it first. */
+		long other = aChangeOf(HIS_TEAM, THE_SEAT, "Sava Runners", "waiting");
+		String before = theCard(other);
+
+		askForAChangeAs("sedi-u-sedistu@primer.rs", teamId(A_TEAM_WITH_TWO),
+				form("Tim sa dva člana", "Novi opis", "", "Zemun", "RS"));
+
+		assertThat(theCard(other)).as("another team's change was replaced").isEqualTo(before);
+		assertThat(theCardsOf(A_TEAM_WITH_TWO)).hasSize(1);
+	}
+
+	@Test
+	void aChangeThatWasDecidedIsLeftAloneAndAnotherOpensBesideIt() throws Exception {
+		aTeamWithTwoMembersAndEverythingHangingOffIt();
+		long decided = aChangeOf(A_TEAM_WITH_TWO, THE_SEAT, "Tim sa dva člana", "rejected");
+		String before = theCard(decided);
+
+		askForAChangeAs("sedi-u-sedistu@primer.rs", teamId(A_TEAM_WITH_TWO),
+				form("Tim sa dva člana", "Novi opis", "", "Zemun", "RS"));
+
+		assertThat(theCard(decided)).as("a decided card was rewritten").isEqualTo(before);
+		assertThat(theCardsOf(A_TEAM_WITH_TWO)).as("no new card opened beside the decided one").hasSize(2);
+	}
+
+	@Test
+	void theProposalOfANewTeamIsLeftAlone() throws Exception {
+		aTeamWithTwoMembersAndEverythingHangingOffIt();
+		long proposal = aNewTeamsProposal(THE_SEAT, "Neki novi tim");
+		String before = theCard(proposal);
+
+		askForAChangeAs("sedi-u-sedistu@primer.rs", teamId(A_TEAM_WITH_TWO),
+				form("Tim sa dva člana", "Novi opis", "", "Zemun", "RS"));
+
+		assertThat(theCard(proposal)).as("a new team's proposal was taken for a change").isEqualTo(before);
+		assertThat(theCardsOf(A_TEAM_WITH_TWO)).hasSize(1);
+	}
+
+	/** Two that waited side by side before the rule (none on production, measured 23.11.2026) come down to one. */
+	@Test
+	void changesThatAlreadyWaitedBesideEachOtherComeDownToOne() throws Exception {
+		aTeamWithTwoMembersAndEverythingHangingOffIt();
+		long older = aChangeOf(A_TEAM_WITH_TWO, THE_SEAT, "Tim sa dva člana", "waiting");
+		aChangeOf(A_TEAM_WITH_TWO, THE_SEAT, "Tim sa dva člana", "waiting");
+
+		askForAChangeAs("sedi-u-sedistu@primer.rs", teamId(A_TEAM_WITH_TWO),
+				form("Tim sa dva člana", "Poslednji", "", "Zemun", "RS"));
+
+		assertThat(theCardsOf(A_TEAM_WITH_TWO)).containsExactly(older);
+		assertThat(theCard(older)).contains("|Poslednji|");
+	}
+
 	@ParameterizedTest
 	@ValueSource(strings = {"najduze-u-timu@primer.rs", "ja@primer.rs", MODERATOR_OVER_TEAMS,
 			THE_SUPERADMIN})

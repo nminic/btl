@@ -598,9 +598,13 @@ class TeamWriteApi {
 	 * <p><b>No window</b>: a team's name, its town and its words are not who is in it (PDL, „drži sve
 	 * što menja sastav tima"), which {@link TeamAdministrationWriteApi} derives for its own change.
 	 *
-	 * <p><b>A second change sent while the first waits stands beside it</b>, as two cards. Nothing
-	 * decided otherwise for a team; the rule that a new text overwrites the one that waits (PDL P11,
-	 * 18.10.2026) is about a member's biography. <b>My reasoning, not a decision.</b>
+	 * <p><b>A SECOND CHANGE SENT WHILE THE FIRST WAITS REPLACES IT</b>, and the queue keeps one card of a
+	 * team's change (PDL P13, [ODLUKA 23.11.2026], owner, choosing between the answers he was offered,
+	 * my recommendation: „nova zamenjuje staru"). It stood beside it as a second card until that day,
+	 * on my reasoning and not on a decision. The shape is {@link MePhotoApi}'s, which is the precedent
+	 * the owner's sentence names: the card that waits is REPOINTED at the new words and not deleted and
+	 * opened again, so it keeps its key and its place in the queue and a moderator who holds it goes on
+	 * holding it (see {@link #write}).
 	 */
 	@PostMapping(path = "/api/teams/{id}/changes", consumes = MediaType.APPLICATION_JSON_VALUE)
 	ResponseEntity<?> askForAChange(@AuthenticationPrincipal WhoIsAsking.Member asking,
@@ -1076,6 +1080,20 @@ class TeamWriteApi {
 
 		String name = typed.name().strip();
 
+		/* A CHANGE THAT FINDS ONE OF THE SAME TEAM STILL WAITING REPLACES IT (PDL P13, [ODLUKA
+		   23.11.2026]). Asked of the TEAM and never of the member who sent it: the administration of a
+		   team can change hands while a change waits, and what the moderator must not be able to do is
+		   approve the older words and send the team back. Three things it does NOT reach, and each has a
+		   case that swaps its source: a change of ANOTHER team, whoever sent it; a card that has been
+		   DECIDED; and the proposal of a NEW team, which has no `team_id` at all. */
+		if (team != null) {
+			Optional<ResponseEntity<?>> replaced = replaceTheChangeThatWaits(me, team, typed, country.orElseThrow());
+
+			if (replaced.isPresent()) {
+				return replaced.orElseThrow();
+			}
+		}
+
 		/* `team_id` IS THE MARK: V11 tells a new team from a change to one that exists by whether
 		   the column is filled, so it is null for a proposal and the team for a change.
 		   `place_id` and `country_id` are the town in the shape the member sent it, which is the
@@ -1107,6 +1125,66 @@ class TeamWriteApi {
 
 		return ResponseEntity.status(HttpStatus.CREATED)
 				.body(new Made(proposal, nameWrittenDown(proposal)));
+	}
+
+	/**
+	 * THE CHANGE THAT WAITS ON ONE TEAM, REPOINTED AT THE WORDS JUST SENT, or nothing where none waits.
+	 *
+	 * <p><b>Repointed and not deleted and opened again, for {@link MePhotoApi}'s reason.</b> The row keeps
+	 * its key and its {@code raised_at}, so a team that changes its mind ten times does not go to the
+	 * back of a queue V9 orders by that column, and V28's {@code verification_lock} row keeps pointing at
+	 * it: a moderator who is holding the card goes on holding it and the words under his hand change,
+	 * which is the cost the owner accepted for a picture and which is the same cost here. Deleted, the
+	 * hold would go with the row ({@code ON DELETE CASCADE}).
+	 *
+	 * <p><b>One turn at a time per team</b>, the advisory lock {@link MePhotoApi#oneSendOfAMemberAtATime}
+	 * takes per member: two changes of one team racing would both find nothing waiting and open two cards,
+	 * and nothing in the schema forbids it (the card's state lives on {@code verification} and the
+	 * proposal has none, so there is no unique index to write). <b>That is a guard the picture has and this
+	 * has not</b>: the lock holds it, and a database that refused it would need a column on the proposal.
+	 *
+	 * <p>Any further card of the same team that waits (there is none on production, measured 23.11.2026,
+	 * and none can be made any more) is taken away with its proposal rather than left beside the one kept.
+	 * Only {@code state = 'waiting'} rows of THIS team are looked at, which is what keeps a decided card,
+	 * another team's card and a new team's proposal out of reach.
+	 */
+	private Optional<ResponseEntity<?>> replaceTheChangeThatWaits(long me, long team, Proposed typed,
+			long country) {
+		db.sql("select pg_advisory_xact_lock(hashtextextended(?, 0))::text")
+				.param("team-change:" + team)
+				.query(String.class)
+				.single();
+
+		List<Long> waiting = db.sql("select v.team_proposal_id from verification v"
+						+ " join team_proposal p on p.id = v.team_proposal_id"
+						+ " where v.queue = 'teams' and v.state = 'waiting' and p.team_id = ?"
+						+ " order by v.raised_at, v.id")
+				.param(team)
+				.query(Long.class)
+				.list();
+
+		if (waiting.isEmpty()) {
+			return Optional.empty();
+		}
+
+		long kept = waiting.get(0);
+
+		for (long extra : waiting.subList(1, waiting.size())) {
+			db.sql("delete from team_proposal where id = ?").param(extra).update();
+		}
+
+		String name = typed.name().strip();
+
+		db.sql("update team_proposal set competitor_id = ?, name = ?, bio = ?, link = ?, city = ?,"
+						+ " place_id = null, country_id = ? where id = ?")
+				.params(me, name, orEmpty(typed.bio()), orEmpty(typed.link()), typed.city().strip(),
+						country, kept)
+				.update();
+		db.sql("update verification set competitor_id = ?, subject = ? where team_proposal_id = ?")
+				.params(me, name, kept)
+				.update();
+
+		return Optional.of(ResponseEntity.status(HttpStatus.CREATED).body(new Made(kept, nameWrittenDown(kept))));
 	}
 
 	/**

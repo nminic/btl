@@ -1009,6 +1009,48 @@ class TeamAdministrationWriteApiTest {
 				.isEqualTo(told + 1);
 	}
 
+	/**
+	 * THE ORGANIZER OF A TEAM THE ADMINISTRATION MADE IS TOLD, IN THE SENTENCE THE OWNER CHOSE (PDL P13,
+	 * [ODLUKA 23.11.2026]: „Administracija BTL-a je napravila tim {tim} i tebe postavila za njegovog
+	 * organizatora. Tim vodiš od sezone {sezona}, a članove možeš da pozoveš sa njihovih profila.").
+	 *
+	 * <p>Three people who are not the one told stand in the fixture on purpose, so that the addressee is
+	 * measured and not only that a line was written: the one who pressed (a moderator over the teams), a
+	 * third member who holds a season and is in no team, and the whole league, which is what an empty
+	 * {@code to_id} means (V13). Exactly one new line exists, and it is his.
+	 */
+	@Test
+	void theOrganizerIsToldInTheOwnersSentenceAndNobodyElseIs() throws Exception {
+		freeMembersInsideTheWindow();
+		int season = SeasonClock.transfersTakeEffect(INSIDE_THE_WINDOW.atZone(SeasonClock.ZONE));
+		long lastBefore = db.sql("select coalesce(max(id), 0) from message").query(Long.class).single();
+
+		assertThat(makeAs(MODERATOR_OVER_TEAMS, whole(THE_NEW_TEAMS_NAME, FREE, "", "")).getStatus())
+				.isEqualTo(201);
+
+		assertThat(db.sql("select coalesce(cast(to_id as text), 'everybody') || '|' || from_name || '|'"
+						+ " || subject || '|' || body from message where id > ? order by id")
+				.param(lastBefore).query(String.class).list())
+				.as("what was written to whom: exactly one line, to the organizer and to nobody else")
+				.containsExactly(competitorId(FREE) + "|Administracija|Napravljen je tim Zemunski trkači"
+						+ "|Administracija BTL-a je napravila tim Zemunski trkači i tebe postavila za"
+						+ " njegovog organizatora. Tim vodiš od sezone " + season
+						+ ", a članove možeš da pozoveš sa njihovih profila.");
+	}
+
+	@Test
+	void anOrganizerTheRouteRefusesIsToldNothing() throws Exception {
+		freeMembersInsideTheWindow();
+		long lastBefore = db.sql("select coalesce(max(id), 0) from message").query(Long.class).single();
+
+		assertThat(makeAs(MODERATOR_OVER_TEAMS, whole(THE_NEW_TEAMS_NAME, FREE_BUT_UNPAID, "", ""))
+				.getStatus()).isEqualTo(409);
+		assertThat(db.sql("select count(*) from message where id > ?").param(lastBefore)
+				.query(Long.class).single())
+				.as("a team that was not made was announced")
+				.isZero();
+	}
+
 	@ParameterizedTest
 	@ValueSource(strings = {MODERATOR_OVER_THE_QUEUE, MODERATOR_OVER_SOMETHING_ELSE,
 			THE_TEAMS_OWN_ADMINISTRATOR, A_PLAIN_MEMBER})
