@@ -104,7 +104,7 @@ for (const at of WIDTHS) {
     await page.locator(LIST).waitFor({ state: 'visible' })
 
     const measured = await page.evaluate(
-      ([box, listed]) => {
+      ({ box, listed }) => {
         const list = document.querySelector(listed)?.getBoundingClientRect()
         const member = document.querySelector(box)?.getBoundingClientRect()
 
@@ -112,7 +112,7 @@ for (const at of WIDTHS) {
           ? null
           : { top: list.top, bottom: list.bottom, left: list.left, right: list.right, memberBottom: member.bottom }
       },
-      [BOX, LIST],
+      { box: BOX, listed: LIST },
     )
     const viewport = await page.evaluate(() => document.documentElement.clientWidth)
     const opened = await figureTop()
