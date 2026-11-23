@@ -660,7 +660,8 @@ class MemberMembershipApiTest {
 		db.sql("insert into season_points_at_freeze (season, competitor_id, points) values (2027, ?, 123.45)")
 				.param(member).update();
 		db.sql("insert into season_competitor (season, position, competitor_id, who, gender, category, points,"
-						+ " races) values (2027, 1, ?, 'Probni Clan', 'M', 'M35', 123.45, 3)")
+						+ " races, kilometers, ascent, descent, seconds, category_position) values (2027, 1, ?,"
+						+ " 'Probni Clan', 'M', 'M35', 123.45, 3, 42.1950, 300, 250, 12000, 1)")
 				.param(member).update();
 
 		List<String> tables = db.sql("select t.table_name from information_schema.tables t"
