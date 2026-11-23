@@ -156,9 +156,13 @@ describe('the box of a member', () => {
     const { box, onChoose } = drawn()
 
     await user.type(box, 'Relja')
-    await user.click(screen.getByRole('option', { name: 'Relja Momčilović (000002)' }))
+    /* The row pressed is the SECOND of the two offered, never the first hit: a box that chose the first row
+       whatever was pressed would still give the first member of this list. */
+    await user.click(screen.getByRole('option', { name: 'Relja Petrović (000004)' }))
 
-    expect(onChoose).toHaveBeenCalledWith(MEMBERS[0])
+    expect(onChoose).toHaveBeenCalledTimes(1)
+    expect(onChoose).toHaveBeenCalledWith(MEMBERS[2])
+    expect(box).toHaveValue('Relja Petrović (000004)')
     expect(box).toHaveFocus()
     expect(screen.queryByRole('listbox')).toBeNull()
   })

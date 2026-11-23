@@ -324,6 +324,26 @@ describe('the entry of several members', () => {
     server.stop()
   }, SLOW)
 
+  it('sends the number of the member whose row was pressed, which is not the first row the typing offered', async () => {
+    const user = setupUser()
+    const server = serving()
+
+    renderAt(`/sr/kalendar/${EVENT}/rezultati?trka=${String(OF_A_LENGTH)}`, 'superadmin')
+
+    await screen.findByRole('heading', { level: 1, name: /^Unos rezultata: / })
+    /* „00000" offers 000001 first, so the member pressed is the fourth row of the list and the number sent
+       cannot come from the first hit. */
+    await choose(user, 0, '00000', /Časlav Radenković \(000004\)/)
+    await user.type(box('Sati', 0), '3')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Maraton maratona' })).toBeVisible()
+    expect(writes(server.asked).map((one) => one.body)).toEqual([
+      { rows: [expect.objectContaining({ memberNumber: '000004' })] },
+    ])
+    server.stop()
+  }, SLOW)
+
   it('asks the inbox again once a save is written, which may be the inbox of the moderator himself', async () => {
     /* A moderator who is also a member has an inbox, drawn in the header on every screen, and the
        route writes the member a line. Read once while the header is drawn, and again only if the
