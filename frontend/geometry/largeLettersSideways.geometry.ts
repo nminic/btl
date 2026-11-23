@@ -91,6 +91,36 @@ for (const screen of SCREENS) {
   }
 }
 
+/* THE WORDS OF A TILE STAY IN IT, AND THE STATE KEEPS ITS WORD WHOLE WHERE THE DAY CAN GO UNDER IT. Two things the
+ * sideways scroll of the page cannot say, because a tile is a box with room round it on a page that is wider than
+ * the tile: a word that runs out of its tile at 320px scrolls nothing (measured 23.11.2026: the row of the state
+ * and the day was 168px in a tile of 140px, and the page did not move), and a state that is broken into pieces
+ * where the day could have gone under it is a state broken for nothing. */
+for (const at of [
+  { width: 320, text: 200 },
+  { width: 360, text: 200 },
+  { width: 390, text: 200 },
+] satisfies At[]) {
+  test(`the row of the state and the day stays inside its tile, ${label(at)}`, async ({ open }) => {
+    const { page } = await open(at, '/sr/lige?sezona=2027', '.leagues__event-tile', VISITOR)
+
+    const rows = await page.evaluate(() =>
+      [...document.querySelectorAll('.leagues__event-top')].map((row) => ({
+        wide: row.scrollWidth - row.clientWidth,
+        state: row.querySelector('.leagues__event-state')?.getBoundingClientRect().height ?? Number.NaN,
+        line: Number.parseFloat(getComputedStyle(row.querySelector('.leagues__event-state') ?? row).lineHeight),
+      })),
+    )
+
+    expect(rows.length, 'the eight events of the sample, eight rows').toBe(8)
+    expect(rows.filter((one) => one.wide > 0.5), 'rows wider than their tile').toEqual([])
+
+    if (at.width > 320) {
+      expect(rows.filter((one) => one.state > one.line + 0.5), 'a state broken where the day could go under it').toEqual([])
+    }
+  })
+}
+
 /* WHAT WAS DRAWN BESIDE WHAT IS STILL DRAWN BESIDE IT at the browser's own text, on the three widths of the portal:
  * the mark of a sheet beside its name, and the stars of a mark beside its figure and its count. The rules above act
  * only where there is no room, and this is what says that there is room on every window the portal is drawn on at
