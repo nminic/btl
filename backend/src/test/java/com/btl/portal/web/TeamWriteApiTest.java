@@ -3010,7 +3010,8 @@ class TeamWriteApiTest {
 		return db.sql("select v.competitor_id || '|' || v.subject || '|' || p.name || '|' || p.bio || '|'"
 						+ " || v.state || '|' || v.raised_at from verification v"
 						+ " join team_proposal p on p.id = v.team_proposal_id where v.id = ?")
-				.param(card).query(String.class).single();
+				.param(card).query(String.class).list().stream()
+				.findFirst().orElse("the card is not there any more");
 	}
 
 	private List<Long> theCardsOf(String teamSlug) {
