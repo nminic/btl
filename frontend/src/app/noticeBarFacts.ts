@@ -5,8 +5,8 @@ import { TABLE_ADDRESS, TEAMS_ADDRESS, TOP_BOARDS_ADDRESS } from './routes'
 
 /** The one key the strip keeps in the browser's local store (owner, 21.11.2026: „Zatvaranje krstićem pregledač
  *  pamti do 1.1.2027"). The privacy policy stays silent about it on purpose (owner, 21.11.2026), and
- *  `pages/writtenPages.test.tsx` holds it as the one named exemption (`NOT_DISCLOSED`) from the stores the
- *  policy has to name. */
+ *  `pages/writtenPages.test.tsx` holds it as a named exemption (`NOT_DISCLOSED`, which also holds the developer
+ *  tools' day, never kept on the portal) from the stores the policy has to name. */
 export const NOTICE_STORAGE_KEY = 'btl-notice-closed'
 
 /** The addresses the strip stands on, as the part of the path after the language (`canonicalPath`): the front
