@@ -362,7 +362,8 @@ class VerificationWriteApi {
 	 * veci nego trocifren uz jos dve decimale", refused at the approval as the record derives beside it).
 	 * Until then the approval met {@code numeric(8,2)} and answered 500 with nothing written. Asked of the
 	 * points the approval is about to write, so the moderator's own figures, the runner's and the race's
-	 * are one question ({@link TheRunIsImpossible}). The words are the owner's choice of 23.11.2026, among those offered, with the PDL anchor „Nemoguć rezultat".
+	 * are one question ({@link TheRunIsImpossible}). The words are the owner's choice of 23.11.2026, made among
+	 * those offered (PDL anchor „Nemoguć rezultat").
 	 */
 	private static final String THE_RUN_IS_IMPOSSIBLE = "Nemoguć rezultat.";
 
