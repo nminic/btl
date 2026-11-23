@@ -5,11 +5,14 @@ import com.btl.portal.TheEndOfTheTransaction;
 import com.btl.portal.domain.account.SessionLife;
 import com.btl.portal.domain.photo.PicturesThatCarryMetadata;
 import com.btl.portal.domain.photo.WhatAPictureIs;
+import com.btl.portal.domain.photo.WithoutMetadata;
 import com.btl.portal.domain.season.SeasonClock;
 import com.btl.portal.domain.token.SecretToken;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -361,16 +364,33 @@ class LeagueMarkApiTest {
 	 * THE THREE TYPES THE PORTAL TAKES ARE TAKEN HERE, decided by the bytes and not by the name or the header,
 	 * which every case here sends as {@code image/jpeg} and {@code znak.jpg}.
 	 */
-	@Test
-	void eachOfTheThreeTypesIsTakenByItsBytes() throws Exception {
-		for (byte[] picture : List.of(PicturesThatCarryMetadata.aTelephoneJpeg(6),
-				PicturesThatCarryMetadata.aPngThatSaysEverything(6), PicturesThatCarryMetadata.aTelephoneWebp(6))) {
-			MockHttpServletResponse answer = mark(this1, picture, "0.5", OVER_THE_LEAGUES);
+	@ParameterizedTest
+	@ValueSource(strings = { "image/jpeg", "image/png", "image/webp" })
+	void eachOfTheThreeTypesIsTakenByItsBytesAndWhatTheCameraWroteIsTakenOff(String type) throws Exception {
+		byte[] sent = switch (type) {
+			case "image/jpeg" -> PicturesThatCarryMetadata.aTelephoneJpeg(6);
+			case "image/png" -> PicturesThatCarryMetadata.aPngThatSaysEverything(6);
+			default -> PicturesThatCarryMetadata.aTelephoneWebp(6);
+		};
 
-			assertThat(answer.getStatus()).as(answer.getContentAsString()).isEqualTo(200);
-			assertThat(db.sql("select media_type from photo where id = ?").param(markOf(this1)).query(String.class)
-					.single()).isEqualTo(WhatAPictureIs.sniff(picture));
-		}
+		MockHttpServletResponse answer = mark(this1, sent, "0.5", OVER_THE_LEAGUES);
+
+		assertThat(answer.getStatus()).as(answer.getContentAsString()).isEqualTo(200);
+
+		long photo = markOf(this1);
+		byte[] stored = Files.readAllBytes(PHOTOS.resolve(String.valueOf(photo)));
+
+		assertThat(db.sql("select media_type from photo where id = ?").param(photo).query(String.class).single())
+				.isEqualTo(type).isEqualTo(WhatAPictureIs.sniff(sent));
+		assertThat(PicturesThatCarryMetadata.says(stored, PicturesThatCarryMetadata.WHERE_AND_WITH_WHAT))
+				.as("the %s set as the mark of a league still says where, when and with what it was taken", type)
+				.isFalse();
+		assertThat(stored).isEqualTo(WithoutMetadata.of(sent, type));
+		assertThat(db.sql("select byte_size || ' ' || digest from photo where id = ?").param(photo)
+				.query(String.class).single())
+				.as("the size or the digest of the mark describe the file that was sent, not the one stored")
+				.isEqualTo(stored.length + " " + WhatAPictureIs.digestOf(stored));
+		assertThat(body(answer).get("photo").asString()).isEqualTo("/api/photos/" + WhatAPictureIs.digestOf(stored));
 	}
 
 	@Test
