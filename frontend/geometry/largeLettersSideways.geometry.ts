@@ -90,3 +90,47 @@ for (const screen of SCREENS) {
     })
   }
 }
+
+/* WHAT WAS DRAWN BESIDE WHAT IS STILL DRAWN BESIDE IT at the browser's own text, on the three widths of the portal:
+ * the mark of a sheet beside its name, and the stars of a mark beside its figure and its count. The rules above act
+ * only where there is no room, and this is what says that there is room on every window the portal is drawn on at
+ * 100% (the narrowest sheet is 288px, 18em, and the container rule meets 10em). */
+for (const at of [
+  { width: 360, text: 100 },
+  { width: 768, text: 100 },
+  { width: 1280, text: 100 },
+] satisfies At[]) {
+  test(`the mark of a sheet stands beside its name, ${label(at)}`, async ({ open }) => {
+    const { page } = await open(at, '/sr/lige?sezona=2027', '.leagues__event-tile', ADMINISTRATION)
+
+    const seen = await page.evaluate(() => {
+      const box = (selector: string) => document.querySelector(selector)?.getBoundingClientRect()
+
+      return {
+        markRight: box('.leagues__score .leagues__mark')?.right ?? Number.NaN,
+        nameLeft: box('.leagues__score h2')?.left ?? Number.NaN,
+      }
+    })
+
+    expect(seen.markRight, 'the mark ends before the name begins').toBeLessThanOrEqual(seen.nameLeft)
+  })
+
+  test(`the marks of an event stand on one line each, ${label(at)}`, async ({ open }) => {
+    const { page } = await open(at, '/sr/kalendar/fruskogorski-maraton-2010', 'tbody td.table__points', ADMINISTRATION)
+
+    const rows = await page.evaluate(() =>
+      [...document.querySelectorAll('.comments__mark, .comments__overall')].map((row) => {
+        const middles = [...row.children].map((one) => {
+          const box = one.getBoundingClientRect()
+
+          return Math.round(box.top + box.height / 2)
+        })
+
+        return { row: row.className, lines: new Set(middles).size }
+      }),
+    )
+
+    expect(rows.length, 'the mark of the event and the marks of its comments').toBeGreaterThan(1)
+    expect(rows.filter((one) => one.lines !== 1), 'rows that took a second line').toEqual([])
+  })
+}
