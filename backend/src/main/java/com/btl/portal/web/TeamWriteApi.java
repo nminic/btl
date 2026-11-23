@@ -782,9 +782,29 @@ class TeamWriteApi {
 			return no(HttpStatus.CONFLICT, THE_WINDOW_IS_SHUT);
 		}
 
+		takeOut(db, emptyTeams, me, team, his.get(), Membership.LEFT_ON_HIS_OWN, now);
+
+		return ResponseEntity.noContent().build();
+	}
+
+	/**
+	 * THE MEMBERSHIP ENDED OR REMOVED, THE SEAT EMPTIED AND THE TEAM GONE IF NOBODY IS LEFT: what a member
+	 * leaving writes, once, for both doors out of a team.
+	 *
+	 * <p>Lifted out of {@link #leaving} on 23.11.2026, word for word, because PDL P13, „Administracija
+	 * dodaje i izbacuje članove tima direktno”, gives the administration a second door out („Važe ista
+	 * pravila kao inače”), and {@link TeamAdministrationWriteApi#remove} writes through this method and
+	 * not a copy of it. What differs between the two doors is asked BEFORE this is called - who may, the
+	 * window, which membership - and the reason the row carries, which is the caller's.
+	 *
+	 * @param his the open membership being left, read by the caller
+	 * @param why what {@code left_reason} says, one of {@link Membership}'s words
+	 */
+	static void takeOut(JdbcClient db, ATeamGoesWithItsLastMember emptyTeams, long member, long team,
+			Membership his, String why, ZonedDateTime now) {
 		int running = SeasonClock.seasonBeingRun(now);
 
-		if (his.get().covers(running)) {
+		if (his.covers(running)) {
 			/* ENDED, and the season and the reason are taken off `Membership.ended` rather
 			   than written straight into the statement. That is where the two halves of
 			   leaving are already said to belong together, and its constructor is the guard
@@ -792,7 +812,7 @@ class TeamWriteApi {
 			   `team_membership_did_not_leave_before_joining` holds one table along. Reached
 			   only through `covers`, it can never be asked for an end it would refuse, and
 			   that is the point of asking it here rather than trusting the branch. */
-			Membership left = his.get().ended(running, Membership.LEFT_ON_HIS_OWN);
+			Membership left = his.ended(running, why);
 
 			/* KEYED ON THE OPEN MEMBERSHIP AND NOT ON A ROW KEY, which the schema makes
 			   exact: `team_membership_one_team_at_a_time` is an exclusion constraint over
@@ -800,12 +820,12 @@ class TeamWriteApi {
 			   team it is in. */
 			db.sql("update team_membership set season_to = ?, left_reason = ?"
 							+ " where competitor_id = ? and team_id = ? and season_to is null")
-					.params(left.seasonTo(), left.leftReason(), me, team)
+					.params(left.seasonTo(), left.leftReason(), member, team)
 					.update();
 		} else {
 			db.sql("delete from team_membership"
 							+ " where competitor_id = ? and team_id = ? and season_to is null")
-					.params(me, team)
+					.params(member, team)
 					.update();
 		}
 
@@ -813,7 +833,7 @@ class TeamWriteApi {
 		   member who is not named in it changes nothing, so there is no branch here to get
 		   wrong and no second reading of who sits there. */
 		db.sql("update team set admin_id = null where id = ? and admin_id = ?")
-				.params(team, me)
+				.params(team, member)
 				.update();
 
 		/* AND THE TEAM ITSELF, IF HE WAS THE LAST OF IT. Asked of the object that holds the
@@ -822,8 +842,6 @@ class TeamWriteApi {
 		   would be asking whether the team is empty while a column of it is still being
 		   written. */
 		emptyTeams.goIfEmpty(List.of(team));
-
-		return ResponseEntity.noContent().build();
 	}
 
 	/**

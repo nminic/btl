@@ -3,10 +3,12 @@ package com.btl.portal.web;
 import com.btl.portal.domain.event.EventAddress;
 import com.btl.portal.domain.event.WhatAnEventCarries;
 import com.btl.portal.domain.season.SeasonClock;
+import com.btl.portal.domain.team.Membership;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -103,15 +105,33 @@ import java.util.Optional;
  * „Prozor za osnivanje tima vezuje oba pozivaoca") is about founding a team, which is not this
  * route.
  *
+ * <p><b>AND SINCE 23.11.2026 WHO IS IN IT, AT {@code POST /api/teams/{id}/members} AND
+ * {@code DELETE /api/teams/{id}/members/{memberNumber}}</b> ({@link #add}, {@link #remove}). PDL P13,
+ * „[ODLUKA 23.11.2026 ...] Administracija dodaje i izbacuje članove tima direktno”: „U Administracija →
+ * Timovi, uz svaki tim: „Dodaj člana” (izbor člana sa kucanjem) i „Izbaci” uz svakog člana. Važe ista
+ * pravila kao inače (plaćena članarina, jedan tim u isto vreme, prelazni rok), a član dobija poruku na
+ * portalu. Time odluka od 05.09.2026 („niko ne sme da upiše promenu koja se tiče drugog čoveka bez
+ * njegove reči”) ne važi za administraciju”. So the window binds both routes, which is why the
+ * paragraph below, about the change of a name, says it binds nothing: the change is not who is in the
+ * team, and these two are. <b>The addresses are my choice, not a decision.</b> The rules are not
+ * written again: the membership is {@link TeamJoiningWriteApi#takeHimIn}'s, the way out is
+ * {@link TeamWriteApi#takeOut}'s, and the three questions are the ones an accepted invitation asks.
+ *
  * <p><b>WHAT IS NOT HERE, EACH NAMED RATHER THAN DISCOVERED.</b>
  *
  * <ul>
  * <li><b>A change the team's administrator has sent and that still waits</b> is not touched. It
  * stays in the queue, and approved later it is the moderator's decision about what the team
  * becomes; nothing decided that a direct change withdraws it.
- * <li><b>Telling anybody.</b> Nothing here writes a {@code message}: nothing decided that a
- * change made by the administration is announced, and a sentence invented here would be the
- * server writing the portal's Serbian for a decision nobody took.
+ * <li><b>Telling anybody about a change.</b> {@link #changing} writes no {@code message}: nothing
+ * decided that a change made by the administration is announced, and a sentence invented here would
+ * be the server writing the portal's Serbian for a decision nobody took. Adding and taking out a
+ * member DO tell him, because that decision says so („član dobija poruku na portalu”).
+ * <li><b>A question that stands between the member and this team when the administration adds
+ * him</b> - this team's invitation to him, or his application to it - is left where it is, which is
+ * what the two other doors in already do with the question they did not answer: the invitation's
+ * „Prihvati” is then refused as {@code heIsAlreadyInATeam}, and the application is no longer shown
+ * to the team. That is the precedent copied, not a decision of the owner's.
  * <li><b>Two changes racing to one address.</b> The address is judged inside the write itself
  * ({@code not exists} in the same statement), which is {@link LeagueWriteApi}'s shape and its own
  * note on what remains: two requests that commit inside each other's window still end with the
@@ -172,6 +192,13 @@ class TeamAdministrationWriteApi {
 	 */
 	static final String THE_ORGANIZER_IS_NOT_KNOWN = "theOrganizerIsNotKnown";
 
+	/**
+	 * THE MEMBER THE ADMINISTRATION ADDS TO A TEAM IS NOT ONE THE PORTAL HAS: a number nobody holds. Its
+	 * own word and not {@link #THE_ORGANIZER_IS_NOT_KNOWN}, because the screen says it of a different
+	 * box.
+	 */
+	static final String THE_MEMBER_IS_NOT_KNOWN = "theMemberIsNotKnown";
+
 	/** The organizer is in a team, or written into one for a later season (PDL P13, 05.09.2026). */
 	static final String HE_IS_ALREADY_IN_A_TEAM = "heIsAlreadyInATeam";
 
@@ -194,12 +221,25 @@ class TeamAdministrationWriteApi {
 	/** What makes a team with its founder in it: the one home this route and an approval share. */
 	private final FoundingATeam founding;
 
+	/** „Jedan tim u isto vreme”, the question an accepted invitation asks ({@link TeamJoiningWriteApi}). */
+	private final ATeamHeIsAlreadyIn alreadyInATeam;
+
+	/** „Plaćena članarina”, the same question an accepted invitation asks. */
+	private final AMembershipOfTheSeasonHeWouldJoin holdsTheSeason;
+
+	/** What a team left with nobody does, which a member taken out may be the last of. */
+	private final ATeamGoesWithItsLastMember emptyTeams;
+
 	TeamAdministrationWriteApi(JdbcClient db, TransactionTemplate inOneTransaction, Clock clock,
-			FoundingATeam founding) {
+			FoundingATeam founding, ATeamHeIsAlreadyIn alreadyInATeam,
+			AMembershipOfTheSeasonHeWouldJoin holdsTheSeason, ATeamGoesWithItsLastMember emptyTeams) {
 		this.db = db;
 		this.inOneTransaction = inOneTransaction;
 		this.clock = clock;
 		this.founding = founding;
+		this.alreadyInATeam = alreadyInATeam;
+		this.holdsTheSeason = holdsTheSeason;
+		this.emptyTeams = emptyTeams;
 	}
 
 	/**
@@ -219,6 +259,17 @@ class TeamAdministrationWriteApi {
 	 */
 	record Changed(String name, String city, String country, String organizerMemberNumber,
 			String bio, String link) {
+	}
+
+	/**
+	 * THE MEMBER THE ADMINISTRATION ADDS, by the number printed on his card - the spelling
+	 * {@link TeamJoiningWriteApi.Asked} takes for an invitation and the one the screen's box holds.
+	 */
+	record Added(String memberNumber) {
+	}
+
+	/** A member as the two routes about who is in a team read him: his key, his name, his letter. */
+	private record TheMember(long id, String name, String gender) {
 	}
 
 	/** Why a team could not be changed, in the shape every writing route on this server uses. */
@@ -429,6 +480,208 @@ class TeamAdministrationWriteApi {
 				.update();
 
 		return ResponseEntity.status(HttpStatus.CREATED).body(writtenDown(made));
+	}
+
+	/**
+	 * „DODAJ ČLANA”: THE ADMINISTRATION PUTS A MEMBER INTO A TEAM, WITH NO QUESTION TO ANYBODY.
+	 *
+	 * <p>PDL P13, „[ODLUKA 23.11.2026 ...] Administracija dodaje i izbacuje članove tima direktno” (quoted on
+	 * the class). <b>„Ista pravila kao inače” are the three an accepted invitation asks, in its order</b>
+	 * ({@link TeamJoiningWriteApi}, „Prihvati”): the window, then one team at a time - which also answers a
+	 * member already in THIS team - then the season he would join paid for. The membership is written by
+	 * {@link TeamJoiningWriteApi#takeHimIn}, so it begins in {@link SeasonClock#transfersTakeEffect} as on
+	 * every other door, and the teams that had invited him are told as on every other door
+	 * ({@link TeamJoiningWriteApi#theOtherTeamsThatAskedHim}).
+	 *
+	 * <p><b>A team that is not there is 404 with nothing in it</b>, the answer {@link #changing} gives, and
+	 * a number nobody holds is the one sentence about the box. A member whose fee has lapsed is not told
+	 * apart: what he lacks is the season he would join, which is the third question's sentence.
+	 *
+	 * <p><b>He is told, in words of mine the owner sees before this is merged</b> (the decision: „Tekst
+	 * poruke članu i oblik ekrana se pokazuju vlasniku pre spajanja”). Only to him: {@code message.to_id}
+	 * left empty is the whole league (V13).
+	 */
+	@PostMapping("/api/teams/{id}/members")
+	@RightIsNeeded(TeamApi.OVER_THE_TEAMS)
+	ResponseEntity<?> add(@PathVariable long id, @RequestBody Added typed) {
+		return inOneTransaction.execute(committing -> adding(id, typed));
+	}
+
+	private ResponseEntity<?> adding(long id, Added typed) {
+		if (!thereIsSuchATeam(id)) {
+			return no(HttpStatus.NOT_FOUND, null);
+		}
+
+		ZonedDateTime now = ZonedDateTime.now(clock);
+
+		if (!SeasonClock.transferWindowOpen(now)) {
+			return no(HttpStatus.CONFLICT, THE_WINDOW_IS_SHUT);
+		}
+
+		if (isNothing(typed.memberNumber())) {
+			return no(HttpStatus.BAD_REQUEST, THE_FORM_IS_NOT_COMPLETE);
+		}
+
+		Optional<TheMember> him = numbered(typed.memberNumber().strip());
+
+		if (him.isEmpty()) {
+			return no(HttpStatus.CONFLICT, THE_MEMBER_IS_NOT_KNOWN);
+		}
+
+		long member = him.get().id();
+
+		if (alreadyInATeam.standsInHisWay(member, now)) {
+			return no(HttpStatus.CONFLICT, HE_IS_ALREADY_IN_A_TEAM);
+		}
+
+		if (!holdsTheSeason.holds(member, now)) {
+			return no(HttpStatus.CONFLICT, THE_SEASON_IS_NOT_PAID);
+		}
+
+		TeamJoiningWriteApi.takeHimIn(db, member, id, now);
+
+		String team = nameOf(id);
+
+		tellHim(member, theAddingReads(team),
+				theAddingBodyReads(team, SeasonClock.transfersTakeEffect(now), whoLeadsItBut(id, member, now)));
+
+		TeamJoiningWriteApi.theOtherTeamsThatAskedHim(db, member, id, him.get().name(), him.get().gender(),
+				team, now);
+
+		return ResponseEntity.noContent().build();
+	}
+
+	/**
+	 * „IZBACI”: THE ADMINISTRATION TAKES A MEMBER OUT OF A TEAM, WITH NO QUESTION TO HIM.
+	 *
+	 * <p>The same decision. <b>What leaving writes is {@link TeamWriteApi#takeOut}, the member's own way
+	 * out</b>, so the two branches are his (a membership that has begun ends with the season being run, one
+	 * that has not is removed), the seat empties when it was his, and a team left with nobody goes
+	 * (PDL P13a, 25.09.2026). Only the reason on the row is this door's own,
+	 * {@link Membership#TAKEN_OUT_BY_THE_ADMINISTRATION}.
+	 *
+	 * <p><b>Which membership: the open one in this team</b> ({@code season_to is null}), the reading
+	 * {@code TeamWriteApi.membershipHeCouldLeave} has of „the team he has”, <b>without its question about
+	 * his fee</b>: that question is about who may press „Izađi iz tima”, and here the one pressing is the
+	 * administration. This is my reasoning, not the owner's sentence. Anybody else - in another team,
+	 * already out of this one, a number nobody holds - is {@link #HE_IS_NOT_IN_THE_TEAM}.
+	 *
+	 * <p><b>The window, and asked before the member</b>, so that on a shut day no request learns who is in
+	 * which team, the order {@link TeamWriteApi} keeps for its own reason.
+	 */
+	@DeleteMapping("/api/teams/{id}/members/{memberNumber}")
+	@RightIsNeeded(TeamApi.OVER_THE_TEAMS)
+	ResponseEntity<?> remove(@PathVariable long id, @PathVariable String memberNumber) {
+		return inOneTransaction.execute(committing -> removing(id, memberNumber));
+	}
+
+	private ResponseEntity<?> removing(long id, String memberNumber) {
+		if (!thereIsSuchATeam(id)) {
+			return no(HttpStatus.NOT_FOUND, null);
+		}
+
+		ZonedDateTime now = ZonedDateTime.now(clock);
+
+		if (!SeasonClock.transferWindowOpen(now)) {
+			return no(HttpStatus.CONFLICT, THE_WINDOW_IS_SHUT);
+		}
+
+		Optional<TheMember> him = numbered(memberNumber.strip());
+		Optional<Membership> his = him.flatMap(one -> openMembershipIn(one.id(), id));
+
+		if (his.isEmpty()) {
+			return no(HttpStatus.CONFLICT, HE_IS_NOT_IN_THE_TEAM);
+		}
+
+		/* READ BEFORE HE GOES, because he may be the last of it and the team goes with him. */
+		String team = nameOf(id);
+		long member = him.get().id();
+
+		TeamWriteApi.takeOut(db, emptyTeams, member, id, his.get(), Membership.TAKEN_OUT_BY_THE_ADMINISTRATION,
+				now);
+
+		tellHim(member, theTakingOutReads(team), theTakingOutBodyReads(team, SeasonClock.transfersTakeEffect(now)));
+
+		return ResponseEntity.noContent().build();
+	}
+
+	/** The subject a member added by the administration reads. Working words, shown to the owner. */
+	static String theAddingReads(String team) {
+		return "Administracija te je dodala u tim \"" + team + "\"";
+	}
+
+	/**
+	 * What he reads under it: the season he runs for it from, and who runs the team when that is somebody
+	 * else. Working words, shown to the owner.
+	 *
+	 * @param leader the name of whoever leads the team, or null when nobody else does
+	 */
+	static String theAddingBodyReads(String team, int season, String leader) {
+		return "Administracija BTL-a te je dodala u tim \"" + team + "\". Za ovaj tim trčiš od sezone "
+				+ season + "." + (leader == null ? "" : " Tim vodi " + leader + ".");
+	}
+
+	/** The subject a member taken out by the administration reads. Working words, shown to the owner. */
+	static String theTakingOutReads(String team) {
+		return "Izlazak iz tima \"" + team + "\"";
+	}
+
+	/**
+	 * What he reads under it. {@code season} is the first one he is not in the team for, which is the same
+	 * number for both branches of {@link TeamWriteApi#takeOut}: an ended membership carries the season being
+	 * run, and a removed one would have begun in the next.
+	 */
+	static String theTakingOutBodyReads(String team, int season) {
+		return "Administracija BTL-a te je izvela iz tima \"" + team + "\". Od sezone " + season
+				+ " više ne trčiš za ovaj tim.";
+	}
+
+	/** Somebody by the number on his card, whatever his fee: the questions after this one ask about it. */
+	private Optional<TheMember> numbered(String memberNumber) {
+		return db.sql("select id, first_name || ' ' || last_name, gender from competitor where member_number = ?")
+				.param(memberNumber)
+				.query((row, one) -> new TheMember(row.getLong(1), row.getString(2), row.getString(3)))
+				.optional();
+	}
+
+	/** His membership in this team that has not ended, or nothing. */
+	private Optional<Membership> openMembershipIn(long member, long team) {
+		return db.sql("select team_id, season_from, season_to, left_reason from team_membership"
+						+ " where competitor_id = ? and team_id = ? and season_to is null")
+				.params(member, team)
+				.query((row, one) -> new Membership(row.getLong(1), row.getInt(2),
+						row.getObject(3, Integer.class), row.getString(4)))
+				.optional();
+	}
+
+	/**
+	 * The name of whoever leads the team now, read through {@link TeamApi#WHO_ADMINISTERS_IT} as every
+	 * other reader of that question is, or null when that is nobody or the member himself.
+	 */
+	private String whoLeadsItBut(long team, long member, ZonedDateTime now) {
+		return db.sql("with standing as (" + TeamApi.whoStandsInATeam(now) + ")"
+						+ " select c.first_name || ' ' || c.last_name from team t"
+						+ " join competitor c on c.id = " + TeamApi.WHO_ADMINISTERS_IT
+						+ " where t.id = ? and c.id <> ?")
+				.params(team, member)
+				.query(String.class)
+				.optional()
+				.orElse(null);
+	}
+
+	private String nameOf(long team) {
+		return db.sql("select name from team where id = ?").param(team).query(String.class).single();
+	}
+
+	/**
+	 * THE PORTAL WRITING TO THE MEMBER IN THE ADMINISTRATION'S NAME, the sender {@link #make} signs its own
+	 * message with. Spelt here and not in a {@code static final String}, for the reason {@link #make}
+	 * gives: {@code refusals.test.ts} counts every one of those as a refusal.
+	 */
+	private void tellHim(long member, String subject, String body) {
+		db.sql("insert into message (to_id, from_id, from_name, subject, body) values (?, null, ?, ?, ?)")
+				.params(member, "Administracija", subject, body)
+				.update();
 	}
 
 	/** The description and the link, asked the same way by the change and by the making. */

@@ -62,6 +62,15 @@ public record Membership(long teamId, int seasonFrom, Integer seasonTo, String l
 	 */
 	public static final String THE_FEE_LAPSED = "članarina nije produžena";
 
+	/**
+	 * WHY A MEMBERSHIP ENDED, WHEN WHAT ENDED IT IS THE ADMINISTRATION TAKING HIM OUT OF THE TEAM.
+	 *
+	 * <p>The third writer, PDL P13, „Administracija dodaje i izbacuje članove tima direktno” (23.11.2026).
+	 * The words are mine and not the owner's, and like {@link #THE_FEE_LAPSED} they have no grammatical
+	 * gender, so they read the same for a man and a woman.
+	 */
+	public static final String TAKEN_OUT_BY_THE_ADMINISTRATION = "izvela administracija";
+
 	public Membership {
 		if (seasonFrom < FIRST_SEASON) {
 			throw new IllegalArgumentException("the league has no season " + seasonFrom);
