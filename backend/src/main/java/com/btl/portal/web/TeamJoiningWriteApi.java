@@ -706,7 +706,7 @@ class TeamJoiningWriteApi {
 			return no(HttpStatus.CONFLICT, THE_WINDOW_IS_SHUT);
 		}
 
-		takeHimIn(his.get().applicant(), team, now);
+		takeHimIn(db, his.get().applicant(), team, now);
 		theApplicationIsOver(application);
 
 		tell(his.get().applicant(), heIsInTheTeamReads(his.get().teamName()),
@@ -949,7 +949,7 @@ class TeamJoiningWriteApi {
 			return no(HttpStatus.CONFLICT, THE_SEASON_IS_NOT_PAID);
 		}
 
-		takeHimIn(me, team, now);
+		takeHimIn(db, me, team, now);
 		theInvitationIsOver(invitation);
 
 		theOtherTeamsThatAskedHim(db, me, team, his.get().hisName(), his.get().hisGender(),
@@ -1044,8 +1044,13 @@ class TeamJoiningWriteApi {
 	 * which is what an open membership is ({@code Membership.open}), and the exclusion
 	 * constraint {@code team_membership_one_team_at_a_time} is the last word behind every
 	 * condition this class asks first.
+	 *
+	 * <p><b>Static and package-wide since 23.11.2026, because a third door into a team writes the same
+	 * row.</b> PDL P13, „Administracija dodaje i izbacuje članove tima direktno”: „Važe ista pravila kao
+	 * inače”, so {@link TeamAdministrationWriteApi#add} writes its membership through this statement and
+	 * not a copy of it, and the season the two doors write cannot drift apart.
 	 */
-	private void takeHimIn(long member, long team, ZonedDateTime now) {
+	static void takeHimIn(JdbcClient db, long member, long team, ZonedDateTime now) {
 		db.sql("insert into team_membership (competitor_id, team_id, season_from)"
 						+ " values (?, ?, ?)")
 				.params(member, team, SeasonClock.transfersTakeEffect(now))

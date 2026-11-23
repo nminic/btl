@@ -1607,6 +1607,25 @@
     "leagueDeleteAsk": "Delete the competition?",
     "teamGone": "The team has been deleted.",
     "teamDeleteAsk": "Delete the team?",
+    "teamMembersOf": "Members of the team {team}",
+    "teamNoMembers": "Nobody is in the team.",
+    "teamMemberChoose": "Member to add",
+    "teamMemberAdd": "Add a member",
+    "teamMemberNotChosen": "Choose a member from the list.",
+    "teamMemberOut": "Remove",
+    "teamMemberOutNamed": "Remove from the team: {member}",
+    "teamMemberOutAsk": "Remove the member from the team?",
+    "teamMemberOutWhom": "{member} leaves the team {team}.",
+    "teamMemberAdded": "The member has been added to the team.",
+    "teamMemberTakenOut": "The member has been taken out of the team.",
+    "teamMemberRefused": {
+      "theWindowIsShut": "Members are added and removed only in the transfer window, from 21 November to 31 December.",
+      "theFormIsNotComplete": "Choose a member from the list.",
+      "theMemberIsNotKnown": "The portal does not know that member.",
+      "heIsAlreadyInATeam": "That member is already in a team.",
+      "theSeasonIsNotPaid": "That member has not paid the membership for season {season}.",
+      "heIsNotInTheTeam": "That member is no longer in this team."
+    },
     "teamDeleteRefused": {
       "theWindowIsShut": "A team is deleted only in the transfer window, from 21 November to 31 December."
     },

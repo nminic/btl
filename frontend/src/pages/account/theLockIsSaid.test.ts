@@ -401,6 +401,11 @@ const OPENING: { file: string; how: How; why: string }[] = [
     why: 'MY REASONING, read off the code on 25.10.2026: every answer that is not done goes whole into `WhatTheServerSaid`. Of a sweep of several rows the first refusal is the one drawn, and on a locked site every row meets the same lock. No case puts the lock on this screen.',
   },
   {
+    file: 'pages/admin/TeamMembers.tsx',
+    how: 'says',
+    why: 'MY REASONING, read off the code on 23.11.2026: „Dodaj člana” and „Izbaci” (after its „Da”) keep every answer that is not done and draw it through `ServerSaid` under the panel of the team, and the question of „Izbaci” closes when the answer is in, so nothing stands over the sentence. No case puts the lock on this screen; what says it is drawn is `ServerSaid`\'s own case in `theSiteIsLocked.test.tsx`.',
+  },
+  {
     file: 'pages/admin/WhatTheServerSaid.tsx',
     how: 'says',
     why: 'THE FILE\'S OWN, and held by `theSiteIsLocked.test.tsx` („is said by the queues of administration too”): the queues\' own switch draws the lock through `TheSiteIsLocked`.',

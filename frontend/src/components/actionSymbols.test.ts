@@ -81,6 +81,9 @@ const SYMBOL_OF = new Map<string, { symbol: ActionSymbol; word: string }>([
      (pages/Leagues.tsx, owner 21.11.2026). */
   ['admin.change', { symbol: SYMBOL.pencil, word: 'Izmeni' }],
   ['admin.dropRace', { symbol: SYMBOL.cross, word: 'Izbaci' }],
+  /* Taking a member out of a team in the administration (PDL P13, 23.11.2026): the same word as taking a race out
+     of a league just above, and so the same symbol. Derived from that row, not a new decision. */
+  ['admin.teamMemberOut', { symbol: SYMBOL.cross, word: 'Izbaci' }],
   /* The row of a race in the form of an event (PDL 20.10.2026, derived from the map). */
   ['admin.form.delete', { symbol: SYMBOL.cross, word: 'Obriši' }],
   ['admin.form.open', { symbol: SYMBOL.pencil, word: 'Otvori' }],
@@ -147,6 +150,9 @@ const NOT_AN_ACTION =
 const STAYS_A_WORD = new Map([
   ['account.passwordSubmit', FORM],
   ['admin.addRace', FORM],
+  /* „Dodaj člana” under a team in the administration (PDL P13, 23.11.2026): the button of the box that asks for the
+     member, the same kind of button as „Dodaj u ligu” just above. Derived from that row, not a new decision. */
+  ['admin.teamMemberAdd', FORM],
   ['admin.changeToExemption', LISTED],
   ['admin.form.back', NOT_AN_ACTION],
   ['admin.form.new.races', LISTED],
