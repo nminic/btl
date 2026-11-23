@@ -312,6 +312,10 @@ describe('the names an amendment is sent under', () => {
       writes.anApprovalOnANewRace({ raceName: 'Trka', raceKind: 'length', eventId: 3 }, AMENDED),
     ],
     ['anApprovalOnTheRace', writes.anApprovalOnTheRace(5, AMENDED)],
+    [
+      'anApprovalOfTheTeam',
+      writes.anApprovalOfTheTeam({ name: 'Tim', city: 'Zemun', country: 'RS', bio: '', link: '' }),
+    ],
     ['aRefusal', writes.aRefusal('razlog')],
     ['aRefusalOfTheText', writes.aRefusalOfTheText('razlog', 'tekst')],
     ['aRefusalOfThePicture', writes.aRefusalOfThePicture('razlog', 7, CROP)],

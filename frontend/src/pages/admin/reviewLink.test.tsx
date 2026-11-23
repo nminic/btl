@@ -77,8 +77,12 @@ describe('the shape an address of somebody else’s page must have', () => {
     /* A sweep that finds nothing answers „nothing is wrong" in the same words as
        one that finds nothing broken. Three today; the number is written down so
        that a folder read wrongly says so instead of passing. */
+    /* Five since 23.11.2026: a team's own page, on the administration's form and on the member's
+       proposal (PDL P13, „[ODLUKE 23.11.2026 ...]"). */
     expect(forms.map((one) => one.what).sort()).toEqual([
       'admin-dogadjaj.form.json',
+      'admin-tim.form.json',
+      'predlog-tima.form.json',
       'prijava-sa-trke.form.json',
       'unos-rezultata.form.json',
     ])

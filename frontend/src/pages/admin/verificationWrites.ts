@@ -132,6 +132,12 @@ export type Answered = {
    * never beside `newRace`: a run is counted on one race.
    */
   raceId?: number
+  /**
+   * The team as the card shows it, on an approval on the queue of teams and nowhere else
+   * (`VerificationWriteApi.TeamAsCorrected`, 23.11.2026). Only {@link anApprovalOfTheTeam} writes it.
+   * Left out, the route makes the team as the member sent it.
+   */
+  team?: { name: string; city: string; country: string; bio: string; link: string }
 }
 
 /**
@@ -230,6 +236,27 @@ export function photoPath(id: string, photoId: number): string {
  */
 export function anApproval(): Answered {
   return { approved: true, reason: '' }
+}
+
+/**
+ * Yes, to a team as the card shows it: the name, the town, the country, the description and the
+ * link the moderator left there, which may be the member's or his own correction (PDL P13, owner
+ * 03.08.2026: „mogu da menjaju ili ne menjaju podatke tima i ako ga prihvate"; 11.08.2026:
+ * „odobriti, editovati i odobriti ili odbiti"). The route makes or changes the team out of these and
+ * never writes them back over the proposal (`VerificationWriteApi.TeamAsCorrected`).
+ */
+export function anApprovalOfTheTeam(team: {
+  name: string
+  city: string
+  country: string
+  bio: string
+  link: string
+}): Answered {
+  return {
+    approved: true,
+    reason: '',
+    team: { name: team.name, city: team.city, country: team.country, bio: team.bio, link: team.link },
+  }
 }
 
 /**

@@ -223,12 +223,10 @@ export function ProposeTeam() {
             void submit(
               {
                 name,
-                note: String(values.note),
-                /* Asked for before the form does (`TeamWriteApi.ASKED_FOR_BEFORE_THE_FORM_ASKS`):
-                   the form has neither field yet, so both go in empty rather than
-                   missing from the body at all. */
-                bio: '',
-                link: '',
+                /* THE DESCRIPTION AND THE LINK IN PLACE OF THE NOTE „Zašto ovaj tim” (PDL P13,
+                   „[ODLUKE 23.11.2026 ...]", point 2: „predlog ima naziv, mesto, opis i link"). */
+                bio: String(values.bio),
+                link: String(values.link),
                 /* THE TOWN GOES BY NAME AND COUNTRY, AND `placeId` IS NOT SENT: `PlaceField`
                    writes the town's name and its country code and has no codebook mark to give,
                    which is what `Registration.tsx` decided for the same control (PDL, 02.10.2026:

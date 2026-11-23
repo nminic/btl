@@ -25,6 +25,7 @@ import { EMPTY_TOTALS, type RankingRow, type Totals } from '../data/derive'
 import { FrozenName } from './frozen/FrozenName'
 import { useFrozenPeople, type FrozenOne } from './frozen/frozenPeople'
 import { clearResourceCache } from '../data/client'
+import { outsideLink } from '../data/outsideLink'
 import type { Competitor, RaceCategory, Team } from '../data/types'
 import { askTheServer, type Answer } from './account/askTheServer'
 import { ServerSaid } from './account/ServerSaid'
@@ -458,6 +459,18 @@ export function TeamDetail() {
                         {paragraph}
                       </p>
                     ))
+                  )}
+                  {/* AND THE TEAM'S OWN PAGE, under its words and only where it has one (PDL P13,
+                      11.08.2026: „neobavezni link"; on the page since 23.11.2026). Whether there is a
+                      link at all is `outsideLink`'s question, as on the event's page
+                      (`EventDetail.tsx`), with the same `rel` and `target`. The words are the address
+                      itself: the team wrote it, so the reader sees where the press lands. */}
+                  {outsideLink(team.link ?? '') !== undefined && (
+                    <p className="profile__bio-text">
+                      <a href={outsideLink(team.link ?? '')} rel="noreferrer noopener" target="_blank">
+                        {team.link}
+                      </a>
+                    </p>
                   )}
                 </section>
 

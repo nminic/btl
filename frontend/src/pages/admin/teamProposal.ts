@@ -19,13 +19,23 @@ import { slugify } from '../rulebookToc'
  * check that the name is free, and the record the approval makes.
  */
 export function proposed(item: PendingItem): Proposed {
-  return { name: item.subject, city: item.city, country: item.country }
+  /* The description is what the card reads as its text since 23.11.2026 (`VerificationApi`
+     serves the proposal's own `bio` there), and the link is the proposal's (PDL P13, „[ODLUKE
+     23.11.2026 ...]"). */
+  return {
+    name: item.subject,
+    city: item.city,
+    country: item.country,
+    bio: item.body,
+    link: item.link ?? '',
+  }
 }
 
-/** What a team is made of, as three named things rather than a bag of strings:
+/** What a team is made of, as named things rather than a bag of strings:
  *  read out of a record, each of them is "string or nothing", and the whole
- *  point here is that none of the three may be nothing. */
-export type Proposed = { name: string; city: string; country: string }
+ *  point here is that none of the first three may be nothing. The description
+ *  and the link may be empty. */
+export type Proposed = { name: string; city: string; country: string; bio: string; link: string }
 
 /** The address a team of that name answers at, which is the thing that has to
  *  be unique: `slugify` is not one to one, so two names can make one address. */
@@ -164,6 +174,8 @@ export function teamFrom(item: PendingItem, edits: Edits): Proposed {
     name: String(edits[recordKey(WAITING, item.id)]?.name ?? said.name),
     city: String(edits[recordKey(WAITING, item.id)]?.city ?? said.city),
     country: String(edits[recordKey(WAITING, item.id)]?.country ?? said.country),
+    bio: String(edits[recordKey(WAITING, item.id)]?.bio ?? said.bio),
+    link: String(edits[recordKey(WAITING, item.id)]?.link ?? said.link),
   }
 }
 

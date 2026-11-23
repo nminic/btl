@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest'
 import {
   WHEN_ASKING_FOR_A_NEW_PASSWORD,
   WHEN_ASKING_FOR_THE_LINK_AGAIN,
+  WHEN_CHANGING_A_TEAM,
   WHEN_CONFIRMING_AN_ADDRESS,
   WHEN_LEAVING_A_TEAM,
   WHEN_PROPOSING_A_TEAM,
@@ -29,7 +30,7 @@ import {
   WHEN_GRANTING_AN_EXEMPTION,
   WHEN_PAYING_OVER_THE_EXEMPTION,
 } from '../admin/memberMembership'
-import { WHEN_DELETING_A_TEAM } from '../admin/teamWrites'
+import { WHEN_DELETING_A_TEAM, WHEN_THE_ADMINISTRATION_WRITES_A_TEAM } from '../admin/teamWrites'
 import { WHEN_SENDING_A_PICTURE } from '../member/photoWrites'
 import { WHEN_LETTING_MYSELF_IN } from '../member/fromTheBalance'
 import { WHEN_CHOOSING_THE_LANGUAGE_OF_MAIL } from '../member/mailLanguage'
@@ -321,8 +322,16 @@ describe('the reasons the server can name', () => {
        only, by the owner's own sentence, which is also the one the screen draws in place of the
        form. The count moved from six exactly as the note above says it should: as a red gate with
        the number in the message. */
+    /* EIGHT SINCE 23.11.2026: `THE_TEXT_IS_TOO_LONG`, a description longer than 360 (PDL P13,
+       „[ODLUKE 23.11.2026 ...]"), answered on the proposal and on the change a team's own
+       administrator asks for, which is the fourth dictionary of this class
+       (`WHEN_CHANGING_A_TEAM`, `member/EditTeam.tsx`). */
     ['TeamWriteApi.java',
-      [WHEN_PROPOSING_A_TEAM, WHEN_LEAVING_A_TEAM, WHEN_DELETING_A_TEAM], 7],
+      [WHEN_PROPOSING_A_TEAM, WHEN_LEAVING_A_TEAM, WHEN_DELETING_A_TEAM, WHEN_CHANGING_A_TEAM], 8],
+    /* ADDED 23.11.2026 WITH THE SCREEN THAT FINALLY SENDS IT (`admin/AdminTeams.tsx`): the
+       administration's making of a team and its change, eleven reasons between them, all answered
+       by one dictionary because one form meets both. */
+    ['TeamAdministrationWriteApi.java', [WHEN_THE_ADMINISTRATION_WRITES_A_TEAM], 11],
     ['CommentWriteApi.java', [WHEN_RATING_AN_EVENT], 3],
     /* THE SIXTH, ADDED 25.09.2026, AND IT IS THE FIRST THAT WAS OWED RATHER THAN NEW.
        `LeagueWriteApi` has named eleven reasons since B40 and six of them have been drawn

@@ -129,18 +129,38 @@ describe('a team taken away from the administration', () => {
   ) {
     clearResourceCache()
 
-    return serverThat((path, init) => {
+    /* WHAT THE SERVER HOLDS, AND A DELETION IT AGREED TO TAKES THE TEAM OUT OF IT, since
+       23.11.2026: the screen reads the list again after every write instead of taking the row away
+       in the session, so a server that went on serving a deleted team would be measuring a server
+       nobody has. */
+    const held = [...TEAMS]
+
+    return serverThat(async (path, init) => {
       const how = init?.method ?? 'GET'
 
       if (how === 'GET' && path === '/api/teams') {
-        return listOf(TEAMS)
+        return listOf(held)
       }
 
       if (how === 'GET' && path === '/api/competitors') {
         return listOf(MEMBERS)
       }
 
-      return how === 'GET' ? null : toAWrite(path, init)
+      if (how === 'GET') {
+        return null
+      }
+
+      const answer = await toAWrite(path, init)
+
+      if (how === 'DELETE' && answer.ok) {
+        const gone = held.findIndex((one) => path === `/api/teams/${String(one.id)}`)
+
+        if (gone >= 0) {
+          held.splice(gone, 1)
+        }
+      }
+
+      return answer
     })
   }
 
@@ -390,22 +410,49 @@ describe('a team taken away from the administration', () => {
     }, SLOW)
 
   /**
-   * A TEAM ENTERED DURING THIS VISIT IS NOT THE DATABASE'S, AND ITS DELETE IS SENT NOWHERE.
+   * „NOVI TIM" MAKES THE TEAM ON THE SERVER, AND THE LIST SHOWS IT WITH ITS ORGANIZER COUNTED.
    *
-   * <p>This is the boundary of the increment held as a case rather than as a paragraph.
-   * Making a team is still the session's, because no route makes one (`admin/AdminTeams.tsx`
-   * says how that was measured), and `entityForms.idFor` counts identities DOWN from nought so
-   * that nothing it hands out collides with a `bigserial`. So the row entered here is number
-   * `-1`, and a delete sent for it would go to `DELETE /api/teams/-1` - the fault PR 368 closed
-   * one number along, where a panel posted to `/api/leagues/-1/races`.
+   * <p>PDL P13, „[ZATEČENO 23.11.2026 ...]", owner: „NAPRAVIM TIM KAO ADMIN I NESTANE IZ LISTE. A I
+   * KAD SE POJAVI NA KRATKO, PIŠE 0 ČLANOVA IAKO TREBA DA ODMAH RAČUNA SVOG ORGANIZATORA". ~~A team
+   * entered during this visit was the session's and its delete was sent nowhere~~, which is the case
+   * that stood here until that day.
    *
-   * <p><b>The assertion is over EVERY write, not over the absence of one address.</b> „Nothing
-   * was sent" is the claim; naming `/api/teams/-1` would pass a screen that had invented some
-   * other address for the same row.
+   * <p><b>The source is swapped, not trusted</b>: the server below knows nothing of the team until
+   * the `POST` reaches it, and from then on serves it and serves the organizer in it. A screen that
+   * drew the team out of what it hoped would show a row with nobody in it, or no row on the second
+   * read; one that read the list again shows exactly what the server holds.
    */
-  it('sends nothing at all for a team entered during this visit, and still takes its row away',
+  it('makes a new team at the administration\'s own address and draws it as the server holds it',
     async () => {
-      const server = serving()
+      clearResourceCache()
+
+      const made = { id: 77, slug: 'probni-tim', name: 'Probni tim', city: 'Užice', country: 'RS',
+        bio: 'Opis', link: '', logo: null, crop: null, smallLogo: null, organizerMemberNumber: '000005' }
+      const teams: object[] = [...TEAMS]
+      const members = MEMBERS.map((one) => ({ ...one }))
+      const server = serverThat((path, init) => {
+        const how = init?.method ?? 'GET'
+
+        if (how === 'GET' && path === '/api/teams') {
+          return listOf(teams)
+        }
+
+        if (how === 'GET' && path === '/api/competitors') {
+          return listOf(members)
+        }
+
+        if (how === 'POST' && path === '/api/teams/direct') {
+          teams.push(made)
+          must(members.find((one) => one.memberNumber === '000005'), 'the organizer').teamId = 77
+
+          return new Response(JSON.stringify({ id: 77, slug: 'probni-tim', name: 'Probni tim' }), {
+            status: 201,
+            headers: { 'content-type': 'application/json' },
+          })
+        }
+
+        return null
+      })
       const user = setupUser()
       renderAt('/sr/administracija/timovi', 'superadmin', null, undefined, IN_WINDOW)
 
@@ -415,19 +462,34 @@ describe('a team taken away from the administration', () => {
       await user.type(screen.getByLabelText(/^Mesto/), 'Užice')
       await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
       await user.selectOptions(screen.getByLabelText(/^Organizator tima/), '000005')
+      await user.type(screen.getByLabelText(/^Opis tima/), 'Opis')
       await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
       await screen.findByRole('status', { name: 'Sačuvano' })
+
+      const sent = must(
+        server.asked.find((one) => one.init?.method === 'POST'),
+        'the write of the new team',
+      )
+
+      expect(sent.path).toBe('/api/teams/direct')
+      expect(JSON.parse(String(sent.init?.body))).toEqual({
+        name: 'Probni tim', city: 'Užice', country: 'RS', organizerMemberNumber: '000005',
+        bio: 'Opis', link: '',
+      })
+
       await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
 
-      await screen.findByText('Probni tim')
-      await deleteNamed(user, 'Probni tim')
+      const row = await waitFor(() =>
+        must(
+          within(screen.getByRole('table', { name: 'Timovi' })).getAllByRole('row')
+            .find((one) => one.textContent?.includes('Probni tim')),
+          'the row of the new team',
+        ))
 
-      expect(within(screen.getByRole('table', { name: 'Timovi' })).queryByText('Probni tim'))
-        .toBeNull()
-
-      /* NOT ONE WRITE, of any verb, to any address. Making it was the session's and so was
-         taking it away. */
-      expect(writes(server.asked)).toEqual([])
+      /* ONE MEMBER, THE ORGANIZER, and his name in the organizer's column. */
+      expect(within(row).getAllByRole('cell').map((one) => one.textContent)).toEqual(
+        expect.arrayContaining(['1', 'Časlav Radenković']),
+      )
 
       server.stop()
     }, SLOW)

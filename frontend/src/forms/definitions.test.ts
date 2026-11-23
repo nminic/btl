@@ -168,10 +168,15 @@ describe('every form definition in the portal', () => {
        there is no box to limit. And the box that rewrote the terms and the prizes of a
        competition in place on the list of competitions went on 21.11.2026: the owner sent that
        to the form in the administration („male veze „Izmeni” kod Propozicija i Nagrada
-       nestaju”), and the form is `FormRenderer`. */
+       nestaju”), and the form is `FormRenderer`. And a fourth again since 23.11.2026, which is NOT
+       the biography coming back: the description of a TEAM on the queue of teams, which the
+       moderator may correct before approving (PDL P13, owner 03.08.2026 „sme da ispravi podatke"
+       and 11.08.2026 „odobriti, editovati i odobriti ili odbiti"; the description is on the card
+       since „[ODLUKE 23.11.2026 ...]"), limited by `admin-tim.form.json` through `limitOf`. */
     expect(drawn.map(({ path }) => path).sort()).toEqual([
       'forms/FormRenderer.tsx',
       'forms/LongBox.tsx',
+      'pages/admin/PendingQueue.tsx',
       'pages/event/GoingToEvent.tsx',
     ])
     expect(loose).toEqual([])

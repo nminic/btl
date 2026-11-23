@@ -830,6 +830,15 @@ export type Team = {
    */
   bio: string
   /**
+   * The team's own page, or empty where it has none (PDL P13, 11.08.2026: „opis (ograniceni
+   * unos) i neobavezni link"). Drawn under the description on the team's page since 23.11.2026.
+   *
+   * Optional, and the one field of a team that is: the server always answers it (`TeamApi.Team`),
+   * but the portal also builds team records of its own that are no answer of any route (the team
+   * a frozen season names, `Teams.tsx`), and those have no page to point at. Read as `?? ''`.
+   */
+  link?: string
+  /**
    * The logo, as a path to a picture, or null until the team has one.
    *
    * Owner, 12.08.2026: added at team level and drawn in the table of teams
@@ -1359,6 +1368,13 @@ export type PendingItem = {
    */
   city: string
   country: string
+  /**
+   * On the queue of teams, the team's own page the proposal or the change would write
+   * (`VerificationApi`, `coalesce(rs.link, tp.link, '')`, since 23.11.2026), which the card shows
+   * and the moderator may correct before approving (PDL P13, „[ODLUKE 23.11.2026 ...]").
+   * Optional because an item this visit makes up locally names none; the server always sends it.
+   */
+  link?: string
 }
 
 /**

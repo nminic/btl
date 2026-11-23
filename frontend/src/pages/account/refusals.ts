@@ -119,6 +119,25 @@ export const WHEN_PROPOSING_A_TEAM: Record<string, string> = {
   theLinkIsNotShaped: 'teams.proposeLinkNotShaped',
   theAddressIsTaken: 'teams.proposeTaken',
   theSeasonIsNotPaid: 'teams.joinWhenPaid',
+  /* A description longer than 360 (PDL P13, 23.11.2026), the box's own `maxLength` being the
+     door and this the race past it. The sentence is `profile.textIsTooLong`'s shape for a
+     biography that is too long, about the team's words. */
+  theTextIsTooLong: 'teams.proposeTextTooLong',
+}
+
+/**
+ * `TeamWriteApi` once more, for the change a team's own administrator asks for
+ * (`POST /api/teams/{id}/changes`, sent by `member/EditTeam.tsx` since 23.11.2026). The same
+ * questions about the same form as a proposal, so the same sentences; the window and the fee are
+ * not asked of a change, and everything else it turns away is one empty 404 (ADL A8).
+ */
+export const WHEN_CHANGING_A_TEAM: Record<string, string> = {
+  theFormIsNotComplete: 'teams.proposeFormIncomplete',
+  theCountryIsNotKnown: 'teams.proposeCountryUnknown',
+  theNameMakesNoAddress: 'teams.proposeNoAddress',
+  theLinkIsNotShaped: 'teams.proposeLinkNotShaped',
+  theAddressIsTaken: 'teams.proposeTaken',
+  theTextIsTooLong: 'teams.proposeTextTooLong',
 }
 
 /**

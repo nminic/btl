@@ -23,6 +23,7 @@ import {
   aRefusalOfThePicture,
   aRefusalOfTheText,
   anApproval,
+  anApprovalOfTheTeam,
   anApprovalOfThePicture,
   anApprovalOfTheText,
   decisionPath,
@@ -50,6 +51,7 @@ import {
   proposed,
   refusal,
   teamFrom,
+  type Proposed,
 } from './teamProposal'
 import { AskedLabel } from '../../forms/AskedLabel'
 import { useOverlay } from './overlay'
@@ -130,9 +132,16 @@ function isProposal(id: string): boolean {
  * decision is only about what the moderator saw. It is read where `photoId` is, off the same card,
  * and for the same reason: two facts about one picture that came in one answer.
  */
-function approvalOf(one: PendingItem): Answered {
+function approvalOf(one: PendingItem, made: Proposed | null): Answered {
   if (one.photoId !== null) {
     return anApprovalOfThePicture(one.photoId, one.crop)
+  }
+
+  /* A TEAM AS THE CARD SHOWS IT, the moderator's corrections included (PDL P13, 03.08.2026 and
+     11.08.2026; the description and the link since 23.11.2026). Until that day the corrections
+     stayed in the browser and the server made the team as the member had sent it. */
+  if (made !== null) {
+    return anApprovalOfTheTeam(made)
   }
 
   return one.kind === 'bio' ? anApprovalOfTheText(one.body) : anApproval()
@@ -401,7 +410,7 @@ function TeamFields({ item }: { item: PendingItem }) {
   const { t } = useI18n()
   const { edits, edit } = useSession()
 
-  const value = (field: 'name' | 'city' | 'country') =>
+  const value = (field: 'name' | 'city' | 'country' | 'bio' | 'link') =>
     String(edits[recordKey(WAITING, item.id)]?.[field] ?? proposed(item)[field])
 
   return (
@@ -462,6 +471,31 @@ function TeamFields({ item }: { item: PendingItem }) {
             ))}
           </optgroup>
         </select>
+      </div>
+
+      {/* THE DESCRIPTION AND THE LINK, since 23.11.2026 (PDL P13, „[ODLUKE 23.11.2026 ...]"): what
+          the proposal or the change would write, corrected here like the three above and sent with
+          the approval (`approvalOf`). Neither is obligatory, as on the forms that ask for them; the
+          box takes as much as the route keeps (`admin-tim.form.json`, 360). */}
+      <div className="rankings__field">
+        <label htmlFor={`team-bio-${item.id}`}>{t('admin.field.teamBio')}</label>
+        <textarea
+          id={`team-bio-${item.id}`}
+          value={value('bio')}
+          maxLength={limitOf(tim, 'bio')}
+          onChange={(event) => edit(recordKey(WAITING, item.id), 'bio', event.target.value)}
+        />
+      </div>
+
+      <div className="rankings__field">
+        <label htmlFor={`team-link-${item.id}`}>{t('admin.field.teamLink')}</label>
+        <input
+          id={`team-link-${item.id}`}
+          type="url"
+          value={value('link')}
+          maxLength={limitOf(tim, 'link')}
+          onChange={(event) => edit(recordKey(WAITING, item.id), 'link', event.target.value)}
+        />
       </div>
     </div>
   )
@@ -913,7 +947,7 @@ export function PendingQueue({ queue }: { queue: Queue }) {
          * this whole screen decided everything before this increment: locally, and
          * at once. */
         if (!isProposal(one.id)) {
-          const answer = await askTheServer(decisionPath(one.id), approvalOf(one))
+          const answer = await askTheServer(decisionPath(one.id), approvalOf(one, made))
 
           if (answer.got !== 'done') {
             refusals.push({ id: one.id, answer })
@@ -958,6 +992,29 @@ export function PendingQueue({ queue }: { queue: Queue }) {
            event's own screen: „Redova je pet, ne šest." */
 
         if (made === null) {
+          continue
+        }
+
+        /* A ROW THE SERVER DECIDED MADE OR CHANGED THE TEAM ON THE SERVER, and nothing is written
+           into the session for it since 23.11.2026. The approval writes the team, the founder's
+           membership and his seat, tells him, and tells the teams that had asked him
+           (`VerificationWriteApi`, `FoundingATeam`); a copy of all that written here as well stood
+           beside the server's own team as a second one, under a number counted down from nought,
+           and that was the team the owner saw appear and go (PDL P13, „[ZATEČENO 23.11.2026 ...]").
+           What makes every screen agree is reading the two resources again. The rest of this
+           block is for a card this visit made up itself, which has no server to ask. */
+        if (!isProposal(one.id)) {
+          /* What the rest of this walk asks of the next card still learns of this one: its
+             address is taken now, and a founder is in a team now. */
+          addresses.push(addressOf(made.name))
+
+          if (!isChange(one)) {
+            inATeam.push(one.memberNumber)
+          }
+
+          clearResourceCache('teams')
+          clearResourceCache('competitors')
+
           continue
         }
 
@@ -1673,6 +1730,11 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                             about an event and the other four queues are not. */}
                         {queue.id === 'comments' && <RatingGiven rating={one.rating} />}
 
+                        {/* Not on the queue of teams since 23.11.2026, where the text is the
+                            team's description and stands in its own box among the fields the
+                            moderator may correct (`TeamFields`); drawn here as well it would be
+                            the same words twice under one label. */}
+                        {queue.id !== 'teams' && (
                         <dl className="pending__facts">
                           <div className="pending__text">
                             <dt>{bodyLabelFor(one)}</dt>
@@ -1685,6 +1747,7 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                             <dd className="pending__body">{one.body}</dd>
                           </div>
                         </dl>
+                        )}
 
                         {/* THE PICTURE, where this row still holds one.
 

@@ -15,8 +15,7 @@ import { setupUser } from '../../test/user'
 import { SLOW } from '../../test/slow'
 import { categoryOf } from '../../data/raceCategory'
 import { EditableCell } from './EditableCell'
-import { EntityEditor, RowActions } from './EntityEditor'
-import { useOverlay } from './overlay'
+import { EntityEditor } from './EntityEditor'
 import {
   ENTITY_FORMS,
   EVENTS,
@@ -29,7 +28,6 @@ import {
   addressField,
   idFor,
   recordFrom,
-  recordsOf,
   takenAddress,
   type EntityDef,
 } from './entityForms'
@@ -977,44 +975,35 @@ describe('a field changed in the row rather than on the form', () => {
    * the family is a required prop, so a cell that does not take one does not
    * build. What it cannot answer is whether the family handed in is the right
    * one, which is what this measures. */
-  it('reaches the record every other reader of it sees', async () => {
+  /* ~~The case that stood here measured the key the cell wrote into the session.~~ Since
+     23.11.2026 the cell writes nothing of its own: it hands the typed value to its caller
+     (`AdminTeams.tsx` sends it to `PUT /api/teams/{id}`), so what is measured is that it hands
+     exactly that value, once, and nothing where the value did not change. */
+  it('hands the typed value to its caller and nothing where it did not change', async () => {
     const user = setupUser()
-    const base = [{ id: 'tim-1', name: 'Prvobitno' }]
-
-    function FixtureRow() {
-      const overlay = useOverlay()
-      const row = must(recordsOf(TEAMS, base, overlay).at(0), 'the one row this fixture holds')
-
-      return (
-        <>
-          <EditableCell under={TEAMS.id} id={row.id} field="name" value={row.name} label="Naziv" />
-          <RowActions entity={TEAMS} record={row} name={row.name} asks="Obriši tim?" onOpen={vi.fn()} />
-        </>
-      )
-    }
+    const commit = vi.fn()
 
     render(
       <I18nProvider locale="sr">
-        <SessionProvider>
-          <FixtureRow />
-        </SessionProvider>
+        <EditableCell value="Prvobitno" label="Mesto" commit={commit} />
       </I18nProvider>,
     )
 
-    await user.click(screen.getByRole('button', { name: `Naziv: Prvobitno. ${t('admin.change')}` }))
-    await user.clear(screen.getByRole('textbox', { name: 'Naziv' }))
-    await user.type(screen.getByRole('textbox', { name: 'Naziv' }), 'Izmenjena')
+    await user.click(screen.getByRole('button', { name: `Mesto: Prvobitno. ${t('admin.change')}` }))
     await user.tab()
 
-    /* The half that must go on working, first: without it the case below passes
-       on a fixture that has stopped drawing a cell altogether. */
-    expect(
-      screen.getByRole('button', { name: `Naziv: Izmenjena. ${t('admin.change')}` }),
-    ).toBeVisible()
+    expect(commit, 'leaving the box as it was sent something').not.toHaveBeenCalled()
 
-    /* And the half that was broken. The name on this button is built out of the
-       record `recordsOf` merged, not out of the cell. */
-    expect(screen.getByRole('button', { name: 'Otvori: Izmenjena' })).toBeVisible()
+    await user.click(screen.getByRole('button', { name: `Mesto: Prvobitno. ${t('admin.change')}` }))
+    await user.clear(screen.getByRole('textbox', { name: 'Mesto' }))
+    await user.type(screen.getByRole('textbox', { name: 'Mesto' }), 'Izmenjeno{Enter}')
+
+    expect(commit.mock.calls).toEqual([['Izmenjeno']])
+
+    await user.click(screen.getByRole('button', { name: `Mesto: Prvobitno. ${t('admin.change')}` }))
+    await user.type(screen.getByRole('textbox', { name: 'Mesto' }), 'x{Escape}')
+
+    expect(commit, 'Escape sent what was typed').toHaveBeenCalledTimes(1)
   })
 })
 
