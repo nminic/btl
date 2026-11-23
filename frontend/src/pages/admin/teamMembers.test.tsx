@@ -194,6 +194,8 @@ describe('members of a team moved by the administration', () => {
       fireEvent.click(add)
     })
 
+    /* While the request is out the reader is told so, in the place the answer will be said. */
+    expect(screen.getByText('Šalje se')).toHaveAttribute('aria-live', 'polite')
     expect(await screen.findByText('Član je dodat u tim.')).toBeInTheDocument()
     expect(writes(server.asked)).toEqual([
       { path: `/api/teams/${String(ACTED)}/members`, how: 'POST', body: { memberNumber: '000008' } },
