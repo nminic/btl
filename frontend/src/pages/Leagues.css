@@ -382,19 +382,47 @@
    was 58px, in which „PROPRATNA” of the line above the name is 150px, so the head was wider than its sheet and
    the page scrolled sideways, measured 23.11.2026 in `geometry/largeLettersSideways.geometry.ts`). Asked of the
    sheet and in em, as the rule above is, so it is a container and not a width at which the portal changes
-   shape (`styles/scale.test.ts`); 10em is 160px at the browser's own text and 320px at 200%, so no window the
-   portal draws at the browser's own text meets it (the narrowest sheet is 288px, 18em). */
-@container league-sheet (max-width: 10em) {
-  .leagues__score,
-  .leagues__score--changes {
+   shape (`styles/scale.test.ts`); 10.5em is 168px at the browser's own text and 336px at 200%, so no window the
+   portal draws at the browser's own text meets it (the narrowest sheet is 288px, 18em). It was 10em until
+   23.11.2026 and the head of a visitor at 390px and 200% (a sheet of 10.19em, a column of 128px for the name, the
+   line above it 22px out of it) was left outside; the sheet of 412px (10.875em) has 150px for the name and keeps
+   the two side by side. */
+@container league-sheet (max-width: 10.5em) {
+  .leagues__score {
     grid-template-columns: minmax(0, 1fr);
   }
+}
 
-  .leagues__score .leagues__edit {
-    grid-column: 1;
-    grid-row: auto;
-    justify-self: start;
+/* THE SAME FOR THE HEAD THAT CARRIES THE PENCIL, WHICH NEEDS MORE ROOM FOR IT (owner, 23.11.2026, PDL „Olovka za
+   izmenu stoji u gornjem redu uz naziv lige i kad je tekst uvećan na 200 %"; review of PR 801, medium 1 and 2).
+   Three columns, the mark, the name and the square of the pencil, leave the name nothing at 390px and 412px at
+   200% (36px and 58px, measured 23.11.2026), and the rule above does not ask for them. So where the three do not
+   leave the name room for the longest word of the line above it (`PROPRATNA`, 150px at 200%), the NAME goes under
+   the mark and the pencil STAYS in the top row, at the far end of the row of the mark: it is never sent under the
+   statistics. 15em is 240px at the browser's own text and 480px at 200%; the narrowest sheet at 100% is 288px, 18em,
+   so no window the portal draws at the browser's own text meets it (`geometry/largeLettersSideways.geometry.ts`: the
+   head at 200% on four widths, and the pencil beside the name at the browser's own text on three). */
+@container league-sheet (max-width: 15em) {
+  .leagues__score--changes {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .leagues__score--changes .leagues__score-name {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .leagues__score--changes .leagues__edit {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
     margin-block-start: 0;
+  }
+
+  .leagues__score--changes .leagues__pills,
+  .leagues__score--changes .leagues__cta {
+    grid-column: 1 / -1;
+    grid-row: auto;
   }
 }
 

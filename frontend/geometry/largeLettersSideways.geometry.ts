@@ -126,12 +126,19 @@ for (const at of [
           /* How far the top of the day is above the bottom of the state: above zero is the day beside the
              state (they share a line), zero or under is the day under it. */
           sharedLine: (state?.bottom ?? Number.NaN) - (day?.top ?? Number.NaN),
+          /* How far the day ends from the far end of its row (`margin-inline-start: auto`, `Leagues.css`): zero
+             where it is at the far end, as on the first line, and the width of the room left where it is not. */
+          fromTheEnd: row.getBoundingClientRect().right - (day?.right ?? Number.NaN),
         }
       }),
     )
 
     expect(rows.length, 'the eight events of the sample, eight rows').toBe(8)
     expect(rows.filter((one) => one.wide > 0.5), 'rows wider than their tile').toEqual([])
+    expect(
+      rows.filter((one) => one.sharedLine <= 0.5 && Math.abs(one.fromTheEnd) > 0.5),
+      'a day that went under its state and stands at the start of its line and not at the far end of it',
+    ).toEqual([])
     expect(
       rows.filter((one) => one.broken && one.sharedLine > 0.5),
       'a state broken with the day beside it, where the day could go under it',
@@ -152,7 +159,7 @@ for (const who of [
   { name: 'a visitor', answers: VISITOR },
   { name: 'the administration', answers: ADMINISTRATION },
 ] as const) {
-  for (const at of LARGE) {
+  for (const at of [...LARGE, { width: 412, text: 200 }] satisfies At[]) {
     test(`the head of a sheet keeps the mark and the name apart and every word in its box, as ${who.name}, ${label(at)}`, async ({
       open,
     }) => {
@@ -171,6 +178,8 @@ for (const who of [
           mark: box('.leagues__score .leagues__mark'),
           name: box('.leagues__score .leagues__score-name'),
           pencil: document.querySelector('.leagues__score .leagues__edit') !== null,
+          edit: box('.leagues__score .leagues__edit'),
+          pills: box('.leagues__score .leagues__pills'),
           wide: [...document.querySelectorAll('.leagues__score, .leagues__score *')]
             .filter((one) => !one.matches('.visually-hidden') && one.scrollWidth - one.clientWidth > 0.5)
             .map((one) => `${one.tagName.toLowerCase()}.${one.className.toString()} +${String(one.scrollWidth - one.clientWidth)}px`),
@@ -188,13 +197,21 @@ for (const who of [
       const down = Math.min(head.mark.bottom, head.name.bottom) - Math.max(head.mark.top, head.name.top)
 
       expect(across > 0.5 && down > 0.5, `the mark and the name overlap by ${String(across)} x ${String(down)}px`).toBe(false)
-      /* Where it is NOT asked, and why: at 390px the line above the name is wider than its box by 22px for a visitor
-         and 114px for the administration (measured 23.11.2026), and the head of the sheet at 390px and 412px is a
-         finding of its own in PENDING, left for the pass over the medium and the low ones. The page does not move
-         for it (the sideways guard above holds at 390px), so this is not asked there until that pass puts it right. */
-      if (at.width <= 360) {
-        expect(head.wide, 'elements of the head that run out of their box').toEqual([])
+      /* **The pencil stays in the top row, the row of the mark, and is never sent under the statistics** (owner,
+         23.11.2026, PDL „Olovka za izmenu stoji u gornjem redu uz naziv lige i kad je tekst uvećan na 200 %"): its
+         top is above the bottom of the mark, and the statistics start under its bottom. Asked only where there is
+         a pencil. */
+      if (who.name === 'the administration') {
+        expect(head.edit.top, 'the pencil stands in the row of the mark, not lower').toBeLessThan(head.mark.bottom)
+        expect(head.edit.bottom, 'the statistics start under the pencil, not beside or above it').toBeLessThanOrEqual(
+          head.pills.top + 0.5,
+        )
       }
+
+      /* Every element of the head inside its own box, at every one of the four widths: until 23.11.2026 this was
+         asked at 360px and under only, and the head at 390px and 412px, the name in a column of 36px and 58px and
+         „PROPRATNA" 114px and 92px out of its box, was left to the pass over the medium findings (review of PR 801). */
+      expect(head.wide, 'elements of the head that run out of their box').toEqual([])
     })
   }
 }
@@ -221,6 +238,33 @@ for (const at of [
     })
 
     expect(seen.markRight, 'the mark ends before the name begins').toBeLessThanOrEqual(seen.nameLeft)
+  })
+
+  test(`the pencil stands in the row of the mark and after the name, ${label(at)}`, async ({ open }) => {
+    const { page } = await open(at, '/sr/lige?sezona=2027', '.leagues__event-tile', ADMINISTRATION)
+
+    const seen = await page.evaluate(() => {
+      const box = (selector: string) => {
+        const found = document.querySelector(selector)?.getBoundingClientRect()
+
+        return found === undefined
+          ? { left: Number.NaN, top: Number.NaN, right: Number.NaN, bottom: Number.NaN }
+          : { left: found.left, top: found.top, right: found.right, bottom: found.bottom }
+      }
+
+      return {
+        mark: box('.leagues__score .leagues__mark'),
+        name: box('.leagues__score .leagues__score-name'),
+        edit: box('.leagues__score .leagues__edit'),
+      }
+    })
+
+    /* What the rule for the head with a pencil (`@container league-sheet (max-width: 15em)`, `Leagues.css`) must NOT
+       do where there is room: at the browser's own text the name stays beside the mark and the pencil after the
+       name, in the row of the mark (measured 23.11.2026: 360px, 768px and 1280px, the sheet 20,5em to 66,75em). */
+    expect(seen.edit.left, 'the pencil comes after the name, not under it').toBeGreaterThanOrEqual(seen.name.right - 0.5)
+    expect(seen.edit.top, 'the pencil is not above the row of the mark').toBeGreaterThanOrEqual(seen.mark.top - 0.5)
+    expect(seen.edit.bottom, 'the pencil is not under the row of the mark').toBeLessThanOrEqual(seen.mark.bottom + 0.5)
   })
 
   test(`the marks of an event stand on one line each, ${label(at)}`, async ({ open }) => {
