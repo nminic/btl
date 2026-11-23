@@ -147,7 +147,7 @@ describe('the way back from a confirmation', () => {
 
     await user.type(await screen.findByLabelText(/Naziv tima/), 'Trkači Morave')
     await typeATownTheCodebookKnows(user, 'Čačak', 'RS')
-    await user.type(screen.getByLabelText(/Zašto ovaj tim/), 'Trčimo zajedno već tri godine.')
+    await user.type(screen.getByLabelText(/^Opis tima/), 'Trčimo zajedno već tri godine.')
     await user.click(screen.getByRole('button', { name: 'Pošalji predlog' }))
 
     expect(await screen.findByRole('heading', { name: 'Predlog je poslat' })).toBeVisible()
@@ -179,7 +179,7 @@ describe('the way back from a confirmation', () => {
     )
     const form = router.state.location.pathname
 
-    await user.type(await screen.findByLabelText(/Zašto ovaj tim/), 'Dopisujemo par reči o timu.')
+    await user.type(await screen.findByLabelText(/^Opis tima/), 'Dopisujemo par reči o timu.')
     await user.click(screen.getByRole('button', { name: 'Pošalji izmenu' }))
 
     expect(await screen.findByRole('heading', { name: 'Izmena je poslata' })).toBeVisible()

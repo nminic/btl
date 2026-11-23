@@ -149,7 +149,7 @@ describe('the form a team is changed on', () => {
     expect(await screen.findByLabelText(/Naziv tima/)).toHaveValue('Dunavski trkači')
     expect(screen.getByLabelText(/^Mesto/)).toHaveValue('Novi Sad')
     expect(screen.getByLabelText(/^Država/)).toHaveValue('RS')
-    expect(screen.getByLabelText(/Zašto ovaj tim/)).toHaveValue('')
+    expect(screen.getByLabelText(/^Opis tima/)).toHaveValue('')
   })
 
   /**

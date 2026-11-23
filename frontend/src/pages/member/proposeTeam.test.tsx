@@ -338,7 +338,7 @@ describe('a proposal a member sends', () => {
   const fill = async (user: ReturnType<typeof setupUser>, name: string) => {
     await user.type(await screen.findByLabelText(/Naziv tima/), name)
     await typeATownTheCodebookKnows(user, 'Čačak', 'RS')
-    await user.type(screen.getByLabelText(/Zašto ovaj tim/), 'Trčimo zajedno već tri godine.')
+    await user.type(screen.getByLabelText(/^Opis tima/), 'Trčimo zajedno već tri godine.')
     await user.click(screen.getByRole('button', { name: 'Pošalji predlog' }))
   }
 
@@ -1495,7 +1495,7 @@ describe('the queue of new teams', () => {
 
     await user.type(await screen.findByLabelText(/Naziv tima/), 'Trkači Morave')
     await typeATownTheCodebookKnows(user, 'Čačak', 'RS')
-    await user.type(screen.getByLabelText(/Zašto ovaj tim/), 'Trčimo zajedno već tri godine.')
+    await user.type(screen.getByLabelText(/^Opis tima/), 'Trčimo zajedno već tri godine.')
     await user.click(screen.getByRole('button', { name: 'Pošalji predlog' }))
     await screen.findByRole('heading', { name: 'Predlog je poslat' })
     await router.navigate('/sr/administracija/verifikacija/timovi')
@@ -1537,7 +1537,7 @@ describe('the queue of new teams', () => {
 
     await user.type(await screen.findByLabelText(/Naziv tima/), 'Kranjski tekači')
     await typeATownTheCodebookKnows(user, 'Kranj', 'SI')
-    await user.type(screen.getByLabelText(/Zašto ovaj tim/), 'Trčimo Julijske Alpe.')
+    await user.type(screen.getByLabelText(/^Opis tima/), 'Trčimo Julijske Alpe.')
     await user.click(screen.getByRole('button', { name: 'Pošalji predlog' }))
     await screen.findByRole('heading', { name: 'Predlog je poslat' })
     await router.navigate('/sr/administracija/verifikacija/timovi')
