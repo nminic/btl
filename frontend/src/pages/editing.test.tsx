@@ -1,8 +1,24 @@
-import { screen, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import { at, must } from '../test/at'
 import { SLOW } from '../test/slow'
 import { renderAt } from '../test/render'
 import { setupUser } from '../test/user'
+import { fakeQueue } from '../test/fakeQueue'
+
+/* THE SERVER'S TEAMS ARE IN FRONT OF EVERY CASE HERE since 23.11.2026, because the screens of teams
+ * speak to routes (`POST /api/teams/direct`, `PUT` and `DELETE /api/teams/{id}`) and read the lists
+ * again after a write instead of keeping the row in the session. `fakeQueue()` remembers what was
+ * written and serves the two lists it changes. */
+let theServerOfTeams: { stop: () => void } | null = null
+
+beforeEach(() => {
+  theServerOfTeams = fakeQueue()
+})
+
+afterEach(() => {
+  theServerOfTeams?.stop()
+  theServerOfTeams = null
+})
 
 /**
  * THE CELL IS MEASURED THROUGH THE SCREEN OF TEAMS SINCE B107, AND THIS IS THE SECOND TIME
@@ -38,7 +54,11 @@ describe('changing data in administration', () => {
     await user.type(box, 'Vršac')
     await user.tab()
 
-    expect(within(row).getByRole('button', { name: /^Mesto:/ })).toHaveTextContent('Vršac')
+    /* AWAITED: the town is written to the server (`PUT /api/teams/{id}`) and the row draws what the list
+       holds when it is read again, so the cell shows the new town on the answer and not on the press. */
+    await waitFor(() => {
+      expect(within(row).getByRole('button', { name: /^Mesto:/ })).toHaveTextContent('Vršac')
+    })
     expect(within(row).getByRole('button', { name: /^Mesto:/ })).not.toHaveTextContent(before)
   })
 
@@ -58,7 +78,9 @@ describe('changing data in administration', () => {
     await user.clear(box)
     await user.type(box, 'Kikinda{Enter}')
 
-    expect(within(row).getByRole('button', { name: /^Mesto:/ })).toHaveTextContent('Kikinda')
+    await waitFor(() => {
+      expect(within(row).getByRole('button', { name: /^Mesto:/ })).toHaveTextContent('Kikinda')
+    })
   })
 
   it('lets an edit be abandoned', async () => {

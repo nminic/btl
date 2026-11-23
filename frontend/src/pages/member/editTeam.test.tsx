@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { configure, screen, waitFor, within } from '@testing-library/react'
 import { must } from '../../test/at'
 import { sayYes } from '../../test/deleteSheet'
+import { arrivedResource } from '../../data/client'
 import { fakeQueue } from '../../test/fakeQueue'
 import { renderAt } from '../../test/render'
 import { serverThat, type Asked } from '../../test/serverAnswers'
@@ -284,6 +285,38 @@ describe('the form a team is changed on', () => {
     } finally {
       server.stop()
     }
+  }, SLOW)
+
+  it("drops the moderator's queue once the server has taken the change, so the next reading asks again", async () => {
+    /* The queue is held BEFORE the press, the way the shell holds it for a superadmin's header counter
+       on every admin screen, and gone after a 201 (`EditTeam`, `clearResourceCache('verification')`):
+       without the first half the case would pass with or without the drop. The same case as the
+       proposal's (`proposeTeam.test.tsx`), for the other write that queues a row of the teams. */
+    const user = setupUser()
+    const { router } = renderAt('/sr/administracija/verifikacija/timovi', 'superadmin', '000001')
+
+    await screen.findByRole('list', { name: /Čeka/ })
+
+    const held = arrivedResource('verification')
+
+    expect(held, 'the queue was never held').toBeDefined()
+
+    await router.navigate('/sr/tim/dunavski-trkaci/izmena')
+    await user.clear(await screen.findByLabelText(/Naziv tima/))
+    await user.type(screen.getByLabelText(/Naziv tima/), 'Dunavska družina')
+    await user.click(screen.getByRole('button', { name: 'Pošalji izmenu' }))
+    await screen.findByRole('heading', { name: 'Izmena je poslata' })
+
+    await waitFor(
+      () => {
+        expect(arrivedResource('verification')).not.toBe(held)
+      },
+      { timeout: 3000 },
+    )
+
+    await router.navigate('/sr/administracija/verifikacija/timovi')
+
+    expect(await screen.findByRole('heading', { name: 'Dunavska družina' })).toBeVisible()
   }, SLOW)
 
   it('does not refuse the team its own name', async () => {

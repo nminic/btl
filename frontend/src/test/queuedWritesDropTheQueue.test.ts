@@ -45,6 +45,10 @@ const GUARDS: Record<string, { file: string; title: string }> = {
     file: 'src/pages/member/proposeTeam.test.tsx',
     title: "drops the moderator's queue once the server has taken the proposal",
   },
+  'POST /api/teams/{id}/changes': {
+    file: 'src/pages/member/editTeam.test.tsx',
+    title: "drops the moderator's queue once the server has taken the change",
+  },
   'POST /api/me/photo': {
     file: 'src/pages/member/pictureIsOneRow.test.tsx',
     title: 'appears on a queue this visit had ALREADY read once',
