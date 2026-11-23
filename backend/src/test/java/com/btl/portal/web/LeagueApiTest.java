@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.stream.StreamSupport;
 
@@ -103,6 +104,32 @@ class LeagueApiTest {
 		counts("liga-2027", "srednji-prva");
 
 		counts("liga-2029", "tudja");
+
+		/* AND THE MARKS (V108), each with a circle of its own so that no two of them answer alike. Two
+		   leagues carry one and the third does not, so „a league with a mark" and „a league without" are
+		   both in the answer; and a TEAM carries a fourth picture, so a league's mark read off a team is
+		   told apart from its own. The league that is the subject of most cases here (`liga-2027`) is the
+		   SECOND row written, so „the first league's mark" is somebody else's. */
+		marked("liga-2027", "a7", "0.20000000", "0.30000000", "0.40000000");
+		marked("liga-2029", "b9", "0.60000000", "0.70000000", "0.50000000");
+		db.sql("insert into team (slug, name, bio, link, place_id, city, country_id, logo_id, first_season,"
+						+ " admin_id) values ('tim-sa-znakom', 'Tim sa znakom', '', '',"
+						+ " (select id from place where rank = 1), null, null, ?, 2027, null)")
+				.param(aPicture("c1", "0.11000000", "0.12000000", "0.13000000"))
+				.update();
+	}
+
+	/** A picture row with this digest (the two characters said 32 times) and this circle. */
+	private long aPicture(String twice, String x, String y, String size) {
+		return db.sql("insert into photo (media_type, byte_size, digest, crop_x, crop_y, crop_diameter)"
+						+ " values ('image/png', 4096, ?, ?, ?, ?) returning id")
+				.params(twice.repeat(32), new BigDecimal(x), new BigDecimal(y), new BigDecimal(size))
+				.query(Long.class).single();
+	}
+
+	private void marked(String leagueSlug, String twice, String x, String y, String size) {
+		db.sql("update league set logo_id = ? where slug = ?")
+				.params(aPicture(twice, x, y, size), leagueSlug).update();
 	}
 
 	/**
@@ -388,6 +415,53 @@ class LeagueApiTest {
 						+ " empty list")
 				.isTrue();
 		assertThat(empty.path("eventIds")).isEmpty();
+	}
+
+	/**
+	 * A LEAGUE ANSWERS WITH ITS OWN MARK, ITS OWN CIRCLE AND ITS OWN SMALL ONE (owner, PDL 23.11.2026, „Pravi
+	 * logo lige": „krug, seče se kao znak tima ... čuva se original, prikazuje se u krugu").
+	 *
+	 * <p>Each is asked by its own slug and compared with the row ITS {@code logo_id} names, read off the
+	 * table, so the mark of the league beside it, of the first league, or of the team, is not what this
+	 * reads. The original's address is the digest and never the key (ADL A60), and the small one is the
+	 * address {@link PhotoApi} cuts at.
+	 */
+	@Test
+	void aLeagueAnswersWithItsOwnMarkItsOwnCircleAndItsOwnSmallOne() throws Exception {
+		for (String slug : List.of("liga-2027", "liga-2029")) {
+			JsonNode one = league(slug);
+			List<String> row = db.sql("select p.digest || ' ' || p.crop_x || ' ' || p.crop_y || ' '"
+							+ " || p.crop_diameter from league l join photo p on p.id = l.logo_id where l.slug = ?")
+					.param(slug).query(String.class).list();
+
+			assertThat(row).as("the fixture gave %s no mark", slug).hasSize(1);
+
+			String[] its = row.get(0).split(" ");
+
+			assertThat(one.path("logo").asString()).as(slug).isEqualTo("/api/photos/" + its[0]);
+			assertThat(one.path("crop").path("x").decimalValue()).as(slug).isEqualByComparingTo(its[1]);
+			assertThat(one.path("crop").path("y").decimalValue()).as(slug).isEqualByComparingTo(its[2]);
+			assertThat(one.path("crop").path("size").decimalValue()).as(slug).isEqualByComparingTo(its[3]);
+			assertThat(one.path("smallLogo").asString()).as(slug)
+					.isEqualTo(PhotoApi.addressOfTheSmall(its[0], new BigDecimal(its[1]), new BigDecimal(its[2]),
+							new BigDecimal(its[3])));
+		}
+	}
+
+	/**
+	 * AND A LEAGUE WITH NO MARK ANSWERS NULL TO ALL THREE HALVES, never the empty path and never a circle of
+	 * nothing: the shape {@code aTeamAnswersWithBothHalvesOfItsMarkOrNeither} holds a team to. The screen draws
+	 * the initials for exactly this (PDL: „bez loga ostaje krug sa inicijalima").
+	 */
+	@Test
+	void aLeagueWithNoMarkAnswersNullToAllThreeHalvesOfIt() throws Exception {
+		JsonNode none = league("liga-2028");
+
+		for (String field : List.of("logo", "crop", "smallLogo")) {
+			assertThat(none.has(field) && none.path(field).isNull())
+					.as("a league with no mark answered %s with %s", field, none.path(field))
+					.isTrue();
+		}
 	}
 
 	/** And a visitor reads the rules before he decides anything. */

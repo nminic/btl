@@ -218,6 +218,9 @@ function inputs(season: Fixture) {
     eventIds: [],
     rules: '',
     prizes: '',
+    logo: null,
+    crop: null,
+    smallLogo: null,
   }))
 
   return { competitors, results, teams, pairs, events, allRaces, leagues }

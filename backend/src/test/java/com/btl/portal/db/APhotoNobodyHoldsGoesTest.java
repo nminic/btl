@@ -58,13 +58,17 @@ class APhotoNobodyHoldsGoesTest extends DatabaseTest {
 			+ " referral_code, referred_by, bio, profile_hidden, birthday_shown,"
 			+ " father_name, address, shirt_size, health_statement_at";
 
-	/** The four columns that may point at a photo, the table each lives in and its trigger. */
+	/**
+	 * The columns that may point at a photo, the table each lives in and its trigger: four since V54, and
+	 * the fifth, a league's mark, since V108.
+	 */
 	private enum Holder {
 
 		COMPETITOR("competitor", "photo_id", "competitor_leaves_a_photo_nobody_holds"),
 		VERIFICATION("verification", "photo_id", "verification_leaves_a_photo_nobody_holds"),
 		TEAM("team", "logo_id", "team_leaves_a_photo_nobody_holds"),
-		TEAM_PROPOSAL("team_proposal", "logo_id", "team_proposal_leaves_a_photo_nobody_holds");
+		TEAM_PROPOSAL("team_proposal", "logo_id", "team_proposal_leaves_a_photo_nobody_holds"),
+		LEAGUE("league", "logo_id", "league_leaves_a_photo_nobody_holds");
 
 		private final String table;
 
@@ -101,6 +105,8 @@ class APhotoNobodyHoldsGoesTest extends DatabaseTest {
 	private int photos;
 
 	private int teams;
+
+	private int leagues;
 
 	/**
 	 * Every photo key is far above every holder key, in every case: the sequence is not rolled
@@ -215,7 +221,10 @@ class APhotoNobodyHoldsGoesTest extends DatabaseTest {
 				Arguments.of(Holder.VERIFICATION, Holder.COMPETITOR),
 				Arguments.of(Holder.COMPETITOR, Holder.TEAM),
 				Arguments.of(Holder.TEAM, Holder.TEAM_PROPOSAL),
-				Arguments.of(Holder.TEAM_PROPOSAL, Holder.VERIFICATION));
+				/* AND THE FIFTH IN THE RING SINCE V108, between a proposed mark and the queue, so that a
+				   league's mark is once the column that keeps the photo and once the one that lets go. */
+				Arguments.of(Holder.TEAM_PROPOSAL, Holder.LEAGUE),
+				Arguments.of(Holder.LEAGUE, Holder.VERIFICATION));
 	}
 
 	/**
@@ -460,7 +469,7 @@ class APhotoNobodyHoldsGoesTest extends DatabaseTest {
 	 * its own list, and each list has its own floor.
 	 */
 	@Test
-	void everyColumnThatPointsAtAPhotoIsOneOfTheFour() {
+	void everyColumnThatPointsAtAPhotoIsOneOfTheHolders() {
 		assertThat(theColumnsThatPointAtAPhoto())
 				.as("a column points at `photo` that nothing here arranges, or this names one the"
 						+ " schema no longer has; a fifth holder needs a trigger of its own and a"
@@ -493,7 +502,7 @@ class APhotoNobodyHoldsGoesTest extends DatabaseTest {
 	 * that REFUSES something runs another function and is still asked for its row.
 	 */
 	@Test
-	void theConstraintTriggersThatActAreTheFourAndEachOfThemIsDeferred() {
+	void theConstraintTriggersThatActAreTheHoldersAndEachOfThemIsDeferred() {
 		assertThat(constraintTriggersThatAct())
 				.containsExactlyInAnyOrderElementsOf(
 						Arrays.stream(Holder.values()).map(holder -> holder.trigger).toList());
@@ -558,6 +567,7 @@ class APhotoNobodyHoldsGoesTest extends DatabaseTest {
 			case VERIFICATION -> holdingFor(aMember(null), holder, photo);
 			case TEAM -> aTeam(photo);
 			case TEAM_PROPOSAL -> holdingFor(aMember(null), holder, photo);
+			case LEAGUE -> aLeague(photo);
 		};
 	}
 
@@ -589,6 +599,15 @@ class APhotoNobodyHoldsGoesTest extends DatabaseTest {
 						+ " first_season, admin_id) values (?, 'Probni tim', '', '', " + A_TOWN
 						+ ", null, null, " + literal(photo) + ", 2027, null) returning id")
 				.param("nosilac-" + which).query(Long.class).single();
+	}
+
+	/** A league that may carry this photo as its mark, or none (V108). */
+	private long aLeague(Long photo) {
+		int which = ++leagues;
+
+		return db.sql("insert into league (slug, name, season, rules, prizes, logo_id) values (?,"
+						+ " 'Probna liga', 2027, '', '', " + literal(photo) + ") returning id")
+				.param("nosilac-lige-" + which).query(Long.class).single();
 	}
 
 	/** A number written into a statement, or the word null. Keys the tests made, never input. */

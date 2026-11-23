@@ -146,6 +146,36 @@
   letter-spacing: 0.02em;
 }
 
+/* The league's own mark in the same circle (owner, 23.11.2026, PDL „Pravi logo lige”: „prikazuje se u
+   krugu”). The ring stays, so a mark and the initials beside it read as one kind of thing; the ground under
+   a picture with transparent parts is the page's, not the blue the letters stand on. */
+.leagues__mark--logo {
+  background: var(--surface);
+}
+
+/* The mark that stands, in the moderation of the league, beside the sentence that says what it is. */
+.leagues__mark-standing {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+}
+
+/* On the page of one league the mark stands in its heading, before the name (PDL, the third of the three
+   places). The heading is the row, so the circle is sized by the heading's own type and stays beside the
+   name however the reader has set his text. */
+.league__title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+}
+
+.league__title .leagues__mark {
+  /* Its own type is six tenths of the heading's, so 2.6 of its own is about one and a half of the heading's. */
+  font-size: 0.6em;
+  inline-size: 2.6em;
+  block-size: 2.6em;
+}
+
 /* THE SHEET OF THE CHOSEN COMPETITION, ACROSS THE WHOLE PAGE. Its head is the front page's blue box
    (`styles/counter.css`, the scoreboard), with the same golden marks and blue pills, and the golden
    way to the table. */

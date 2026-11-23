@@ -51,6 +51,9 @@ const league = (id: number, name: string, rules: string, prizes: string): League
   eventIds: [],
   rules,
   prizes,
+  logo: null,
+  crop: null,
+  smallLogo: null,
 })
 
 const LEAGUES = [
