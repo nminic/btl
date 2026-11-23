@@ -1151,6 +1151,34 @@ class VerificationDecisionConcurrencyTest {
 	}
 
 	/**
+	 * AN APPROVAL THAT MAKES THE RACE AT FIGURES WORTH MORE THAN ANY RUN MAKES NOTHING, AND THE RUN WAITS (review of
+	 * PR 805, medium 2; {@code catch (TheRunIsImpossible)} in {@code VerificationWriteApi}). The refusal is met
+	 * where the points are worked out, which is after the event, the race and the claim are written, so what is
+	 * measured here is that the throw takes all of it back: 400 with the sentence, no event, no race, no result,
+	 * and the row waiting as he sent it. Here and not in {@code VerificationWriteApiTest} for the reason of the
+	 * case above: only a transaction the route owns rolls the claim back. The same answer at figures of a run
+	 * then goes through, so the refusal was the figures and not the rest of what was sent.
+	 */
+	@Test
+	void anApprovalThatMakesTheRaceAtFiguresNobodyRanMakesNoEventNoRaceNoResultAndTheRunWaits() throws Exception {
+		aRunOnARaceTheCalendarDoesNotHoldWaits();
+
+		String amended = ",\"amended\":{\"distanceKm\":99.8926,\"ascentM\":0,\"descentM\":0,\"seconds\":8800}}";
+		MockHttpServletResponse refused = answerWith(ONE_MODERATOR, runItem,
+				makingTheRace(A_THIRD_NAME).replaceFirst("}$", amended));
+
+		assertThat(refused.getStatus()).as(refused.getContentAsString(StandardCharsets.UTF_8)).isEqualTo(400);
+		assertThat(refused.getContentAsString(StandardCharsets.UTF_8)).contains("Nemoguć rezultat.");
+		assertThat(eventAt(A_THIRD_ADDRESS))
+				.as("the event outlived the approval that was refused after it was made")
+				.isEmpty();
+		theRowWaitsAsItWasSent();
+
+		assertThat(answerWith(ONE_MODERATOR, runItem, makingTheRace(A_THIRD_NAME)).getStatus()).isEqualTo(200);
+		assertThat(eventAt(A_THIRD_ADDRESS)).isPresent();
+	}
+
+	/**
 	 * A RUN ON A RACE HE ALREADY HAS A RESULT ON WAITS AGAIN AFTER THE REFUSED APPROVAL, AND THE
 	 * MODERATOR'S OWN REFUSAL OF IT THEN GOES THROUGH.
 	 *
