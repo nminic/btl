@@ -7,6 +7,8 @@ import com.btl.portal.domain.token.SecretToken;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -252,6 +254,173 @@ class TeamDecisionsCarryWhatTheCardShowsTest {
 				.as("the card does not show what each of the two waiting items would write")
 				.containsExactly("Poslat opis", "https://poslat.example", "Opis izmene",
 						"https://izmena.example", "teamEdit");
+	}
+
+	// ----- PDL P13, [ODLUKA 23.11.2026]: A DECISION NAMES THE WORDS IT WAS TAKEN ABOUT --------------------
+	//
+	// A second change of a team is written over the card that waits (TeamWriteApiTest), so the moderator who
+	// has the first open must not be able to approve it over the second he never saw. The shape is the
+	// picture's: the request names what he saw, the route takes the card and compares, 409 where it differs.
+
+	private static final String THE_SENTENCE = "Izmena tima je promenjena, pogledaj je ponovo.";
+
+	/** The five words of a card, as a decision names them. */
+	private String words(String name, String city, String country, String bio, String link) {
+		return "{\"name\":\"" + name + "\",\"city\":\"" + city + "\",\"country\":\"" + country
+				+ "\",\"bio\":\"" + bio + "\",\"link\":\"" + link + "\"}";
+	}
+
+	/** A decision written whole: what it names is exactly what the case names, and is never read off the
+	 *  row by the helper, which would be the very route this case is written against. */
+	private MockHttpServletResponse decideAsSent(long item, String body) throws Exception {
+		return http.perform(post("/api/verification/" + item + "/decision").with(csrf())
+						.contentType(MediaType.APPLICATION_JSON).content(body)
+						.cookie(new Cookie(SessionCookie.NAME, session.secret())))
+				.andReturn().getResponse();
+	}
+
+	/** The first change as it was served, and the second written over it, which is what the route does. */
+	private long aChangeThatWasWrittenOver(String field) {
+		long item = aChangeWaiting("Dunavski trkači Zemun", "Prvi opis", "https://prvi.example");
+		String set = switch (field) {
+			case "name" -> "name = 'Dunavski trkači Beograd'";
+			case "city" -> "city = 'Bor'";
+			case "country" -> "country_id = (select id from country where code = 'BA')";
+			case "bio" -> "bio = 'Drugi opis'";
+			default -> "link = 'https://drugi.example'";
+		};
+
+		db.sql("update team_proposal set " + set + " where id = (select team_proposal_id from verification"
+				+ " where id = ?)").param(item).update();
+
+		return item;
+	}
+
+	@ParameterizedTest
+	@ValueSource(strings = {"name", "city", "country", "bio", "link"})
+	void aChangeWrittenOverWhileTheModeratorLookedIsRefusedForEachWordAndTheTeamStays(String field)
+			throws Exception {
+		long item = aChangeThatWasWrittenOver(field);
+		List<String> before = theTeam();
+		long messages = count("message");
+
+		MockHttpServletResponse approving = decideAsSent(item, "{\"approved\":true,\"seenTeam\":"
+				+ words("Dunavski trkači Zemun", "Zemun", "RS", "Prvi opis", "https://prvi.example") + "}");
+
+		assertThat(approving.getStatus()).as("an approval over the first words went through").isEqualTo(409);
+		assertThat(mapper.readTree(approving.getContentAsString()).path("reason").asString())
+				.isEqualTo(THE_SENTENCE);
+		assertThat(stateOf(item)).as("the card was decided").isEqualTo("waiting");
+		assertThat(theTeam()).as("the team moved on the strength of words the moderator never saw")
+				.isEqualTo(before);
+
+		MockHttpServletResponse refusing = decideAsSent(item, "{\"approved\":false,\"reason\":\"Ne.\","
+				+ "\"seenTeam\":" + words("Dunavski trkači Zemun", "Zemun", "RS", "Prvi opis",
+				"https://prvi.example") + "}");
+
+		assertThat(refusing.getStatus()).as("a refusal over the first words went through (the picture's"
+				+ " does not)").isEqualTo(409);
+		assertThat(stateOf(item)).isEqualTo("waiting");
+		assertThat(count("message")).as("somebody was written to about a decision that was not taken")
+				.isEqualTo(messages);
+	}
+
+	@Test
+	void aChangeThatIsWhatTheModeratorSawIsDecidedAndTheTeamTakesIt() throws Exception {
+		long item = aChangeThatWasWrittenOver("bio");
+
+		MockHttpServletResponse answer = decideAsSent(item, "{\"approved\":true,\"seenTeam\":"
+				+ words("Dunavski trkači Zemun", "Zemun", "RS", "Drugi opis", "https://prvi.example") + "}");
+
+		assertThat(answer.getStatus()).isEqualTo(200);
+		assertThat(theTeam().get(2)).as("the team did not take the words he saw").isEqualTo("Drugi opis");
+	}
+
+	@Test
+	void whatTheModeratorTypedOverTheCardIsTheCorrectionAndNeverWhatHeSaw() throws Exception {
+		long item = aChangeWaiting("Dunavski trkači Zemun", "Prvi opis", "https://prvi.example");
+
+		MockHttpServletResponse answer = decideAsSent(item, "{\"approved\":true,\"seenTeam\":"
+				+ words("Dunavski trkači Zemun", "Zemun", "RS", "Prvi opis", "https://prvi.example")
+				+ ",\"team\":" + words("Dunavski ispravljen", "Zemun", "RS", "Prvi opis",
+				"https://prvi.example") + "}");
+
+		assertThat(answer.getStatus()).as("a correction was taken for a change of the words").isEqualTo(200);
+		assertThat(theTeam().get(1)).isEqualTo("Dunavski ispravljen");
+	}
+
+	@Test
+	void aChangeOfAnotherTeamDoesNotStandInForThisOne() throws Exception {
+		/* THE OLDER ONE FIRST, so a comparison made with whichever card waits first (or with every card that
+		   waits) reads the wrong words for the card being decided. */
+		db.sql("update team set admin_id = ? where slug = 'savski-trkaci'").param(id(THE_LEADER)).update();
+		long other = aChangeFor("savski-trkaci", "Savski trkači Nov", "Opis drugog", "https://drugi.example");
+		long item = aChangeWaiting("Dunavski trkači Zemun", "Prvi opis", "https://prvi.example");
+		List<String> theirs = theCardsWords(other);
+
+		assertThat(decideAsSent(item, "{\"approved\":true,\"seenTeam\":" + words("Dunavski trkači Zemun",
+				"Zemun", "RS", "Prvi opis", "https://prvi.example") + "}").getStatus())
+				.as("a change was refused over the words of the card of another team that waits")
+				.isEqualTo(200);
+		assertThat(stateOf(other)).as("the card of another team was decided").isEqualTo("waiting");
+		assertThat(theCardsWords(other)).isEqualTo(theirs);
+
+		/* The team is called by its new address now, which the first decision wrote. */
+		long again = aChangeFor("dunavski-trkaci-zemun", "Dunavski trkači Zemun", "Prvi opis",
+				"https://prvi.example");
+
+		assertThat(decideAsSent(again, "{\"approved\":true,\"seenTeam\":" + words("Savski trkači Nov",
+				"Zemun", "RS", "Opis drugog", "https://drugi.example") + "}").getStatus())
+				.as("the words of another team's card were taken for the words of this one")
+				.isEqualTo(409);
+	}
+
+	@ParameterizedTest
+	@ValueSource(booleans = {true, false})
+	void aDecisionAboutATeamThatNamesNoWordsIsAFormNotFilledIn(boolean approved) throws Exception {
+		long item = aChangeWaiting("Dunavski trkači Zemun", "Prvi opis", "https://prvi.example");
+
+		MockHttpServletResponse answer = decideAsSent(item, approved ? "{\"approved\":true}"
+				: "{\"approved\":false,\"reason\":\"Ne.\"}");
+
+		assertThat(answer.getStatus()).isEqualTo(400);
+		assertThat(stateOf(item)).isEqualTo("waiting");
+
+		assertThat(decideAsSent(item, "{\"approved\":" + approved + ",\"reason\":\"Ne.\",\"seenTeam\":"
+				+ words("Dunavski trkači Zemun", "", "RS", "", "") + "}").getStatus())
+				.as("a town left out of the words was taken for the words").isEqualTo(400);
+	}
+
+	@Test
+	void wordsOfATeamBesideACardThatIsNotATeamAreAFormFault() throws Exception {
+		db.sql("insert into account_admin_right (account_id, right_code)"
+						+ " values ((select id from account where email = ?), 'queue:profiles')")
+				.param(THE_MODERATOR).update();
+		long text = db.sql("insert into verification (queue, competitor_id, subject, body)"
+						+ " values ('profiles', ?, 'Biografija', 'Trčim.') returning id")
+				.param(id(THE_FOUNDER)).query(Long.class).single();
+
+		MockHttpServletResponse answer = decideAsSent(text, "{\"approved\":true,\"seenText\":\"Trčim.\","
+				+ "\"seenTeam\":" + words("Tim", "Zemun", "RS", "", "") + "}");
+
+		assertThat(answer.getStatus()).isEqualTo(400);
+		assertThat(stateOf(text)).isEqualTo("waiting");
+	}
+
+	private long aChangeFor(String slug, String name, String bio, String link) {
+		long proposal = db.sql("insert into team_proposal (competitor_id, team_id, name, bio, link,"
+						+ " city, country_id) values (?, ?, ?, ?, ?, 'Zemun',"
+						+ " (select id from country where code = 'RS')) returning id")
+				.params(id(THE_LEADER), teamKey(slug), name, bio, link)
+				.query(Long.class).single();
+
+		return queued(THE_LEADER, name, proposal);
+	}
+
+	private List<String> theCardsWords(long item) {
+		return db.sql("select p.name || '|' || p.bio || '|' || p.link || '|' || p.city from verification v"
+						+ " join team_proposal p on p.id = v.team_proposal_id where v.id = ?")
+				.param(item).query(String.class).list();
 	}
 
 	private JsonNode card(JsonNode served, long item) {
