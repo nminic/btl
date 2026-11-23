@@ -1,5 +1,6 @@
 import { configure, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
+import { timesDropped } from '../../data/client'
 import sr from '../../i18n/sr.json'
 import { must } from '../../test/at'
 import { measurePicture } from '../../test/picture'
@@ -95,9 +96,15 @@ describe('the mark of a league, in its moderation', () => {
     expect(writes(asked)).toHaveLength(0)
 
     await chooseAPicture(box, user)
+
+    /* What every page of the leagues reads is dropped once the route has taken the write, so the card, the
+       sheet and the page of the league ask the server again. */
+    const dropped = timesDropped('leagues')
+
     await user.click(save)
 
     expect(await box.findByText(sr.leagueMark.saved)).toHaveAttribute('role', 'status')
+    expect(timesDropped('leagues'), 'the list of the leagues was not dropped after the save').toBe(dropped + 1)
 
     const [sent] = writes(asked)
 
@@ -123,6 +130,7 @@ describe('the mark of a league, in its moderation', () => {
     await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: sr.admin.form.delete }))
 
     expect(await box.findByText(sr.leagueMark.removed)).toHaveAttribute('role', 'status')
+    expect(timesDropped('leagues'), 'the list of the leagues was not dropped after the removal').toBe(dropped + 2)
     expect(writes(asked).map((one) => [one.path, one.init?.method])).toEqual([
       ['/api/leagues/2/logo', 'POST'],
       ['/api/leagues/2/logo', 'DELETE'],
@@ -141,9 +149,13 @@ describe('the mark of a league, in its moderation', () => {
     const box = await theBox(2)
 
     await chooseAPicture(box, user)
+
+    const dropped = timesDropped('leagues')
+
     await user.click(box.getByRole('button', { name: sr.leagueMark.save }))
 
     expect(await box.findByText(said)).toBeVisible()
+    expect(timesDropped('leagues'), 'a refused write dropped the list of the leagues').toBe(dropped)
     expect(box.queryByText(sr.leagueMark.saved)).toBeNull()
     expect(box.getByText(sr.leagueMark.none)).toBeVisible()
   }, SLOW)
