@@ -375,19 +375,19 @@ class LeagueMarkApiTest {
 
 	@Test
 	void aMarkIsRefusedForWhatAMembersPictureIsRefusedFor() throws Exception {
-		assertThat(body(mark(this1, null, "0.5", OVER_THE_LEAGUES)).get("reason").asString())
+		assertThat(body(mark(this1, null, "0.5", OVER_THE_LEAGUES)).path("reason").asString())
 				.isEqualTo(MePhotoApi.THE_FORM_IS_NOT_COMPLETE);
-		assertThat(body(mark(this1, new byte[0], "0.5", OVER_THE_LEAGUES)).get("reason").asString())
+		assertThat(body(mark(this1, new byte[0], "0.5", OVER_THE_LEAGUES)).path("reason").asString())
 				.isEqualTo(MePhotoApi.THE_FORM_IS_NOT_COMPLETE);
-		assertThat(body(mark(this1, aJpeg("x"), "0", OVER_THE_LEAGUES)).get("reason").asString())
+		assertThat(body(mark(this1, aJpeg("x"), "0", OVER_THE_LEAGUES)).path("reason").asString())
 				.isEqualTo(MePhotoApi.THE_CROP_IS_NOT_A_CIRCLE);
 		assertThat(body(mark(this1, "nije slika".getBytes(StandardCharsets.UTF_8), "0.5", OVER_THE_LEAGUES))
-				.get("reason").asString()).isEqualTo(MePhotoApi.THIS_IS_NOT_A_PICTURE);
+				.path("reason").asString()).isEqualTo(MePhotoApi.THIS_IS_NOT_A_PICTURE);
 		/* A GIF is a picture, and not one the portal takes (V8: JPEG, PNG, WebP). */
 		assertThat(body(mark(this1, "GIF89a\u0001\u0000".getBytes(StandardCharsets.ISO_8859_1), "0.5",
-				OVER_THE_LEAGUES)).get("reason").asString()).isEqualTo(MePhotoApi.THIS_IS_NOT_A_PICTURE);
+				OVER_THE_LEAGUES)).path("reason").asString()).isEqualTo(MePhotoApi.THIS_IS_NOT_A_PICTURE);
 		assertThat(body(mark(this1, aJpeg("x".repeat(WhatAPictureIs.AT_MOST_BYTES)), "0.5", OVER_THE_LEAGUES))
-				.get("reason").asString()).isEqualTo(MePhotoApi.THE_PICTURE_IS_TOO_BIG);
+				.path("reason").asString()).isEqualTo(MePhotoApi.THE_PICTURE_IS_TOO_BIG);
 
 		assertThat(mark(this1, aJpeg("x"), "0", OVER_THE_LEAGUES).getStatus()).isEqualTo(400);
 		assertThat(everyMark()).containsExactlyElementsOf(asItWas());
@@ -401,7 +401,7 @@ class LeagueMarkApiTest {
 		assertThat(largest).hasSize(WhatAPictureIs.AT_MOST_BYTES);
 		assertThat(mark(this1, largest, "0.5", OVER_THE_LEAGUES).getStatus()).isEqualTo(200);
 		assertThat(body(mark(theFirst, aJpeg("x".repeat(WhatAPictureIs.AT_MOST_BYTES - 2)), "0.5",
-				OVER_THE_LEAGUES)).get("reason").asString()).isEqualTo(MePhotoApi.THE_PICTURE_IS_TOO_BIG);
+				OVER_THE_LEAGUES)).path("reason").asString()).isEqualTo(MePhotoApi.THE_PICTURE_IS_TOO_BIG);
 		assertThat(markOf(theFirst)).isEqualTo(theFirstsMark);
 	}
 
@@ -414,7 +414,7 @@ class LeagueMarkApiTest {
 			asking.file(new MockMultipartFile("picture", "p.jpg", MediaType.IMAGE_JPEG_VALUE, aJpeg("y")));
 			asking.param("cropX", three[0]).param("cropY", three[1]).param("cropSize", three[2]);
 
-			assertThat(body(sent(asking.with(csrf()), OVER_THE_LEAGUES)).get("reason").asString())
+			assertThat(body(sent(asking.with(csrf()), OVER_THE_LEAGUES)).path("reason").asString())
 					.isEqualTo(MePhotoApi.THE_CROP_IS_NOT_A_CIRCLE);
 		}
 
@@ -458,9 +458,9 @@ class LeagueMarkApiTest {
 		MockHttpServletResponse down = takenDown(frozen, OVER_THE_LEAGUES);
 
 		assertThat(set.getStatus()).isEqualTo(409);
-		assertThat(body(set).get("reason").asString()).isEqualTo(LeagueWriteApi.THE_SEASON_IS_FROZEN);
+		assertThat(body(set).path("reason").asString()).isEqualTo(LeagueWriteApi.THE_SEASON_IS_FROZEN);
 		assertThat(down.getStatus()).isEqualTo(409);
-		assertThat(body(down).get("reason").asString()).isEqualTo(LeagueWriteApi.THE_SEASON_IS_FROZEN);
+		assertThat(body(down).path("reason").asString()).isEqualTo(LeagueWriteApi.THE_SEASON_IS_FROZEN);
 		assertThat(everyMark()).containsExactlyElementsOf(asItWas());
 	}
 }

@@ -115,8 +115,18 @@ describe('the mark of a league, in its moderation', () => {
 
     /* And the box now stands on the mark just saved, with the way to take it down. */
     expect(box.getByText(sr.leagueMark.standing)).toBeVisible()
-    expect(box.getByRole('button', { name: sr.leagueMark.remove })).toBeVisible()
     await waitFor(() => expect(save).toHaveAttribute('aria-disabled', 'true'))
+
+    /* TAKEN DOWN AGAIN, at the same league's address: the second league, so a removal built from the first
+       league of the list is told apart (the first is the one the file gives a mark). */
+    await user.click(box.getByRole('button', { name: sr.leagueMark.remove }))
+    await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: sr.admin.form.delete }))
+
+    expect(await box.findByText(sr.leagueMark.removed)).toHaveAttribute('role', 'status')
+    expect(writes(asked).map((one) => [one.path, one.init?.method])).toEqual([
+      ['/api/leagues/2/logo', 'POST'],
+      ['/api/leagues/2/logo', 'DELETE'],
+    ])
   }, SLOW)
 
   it.each([
