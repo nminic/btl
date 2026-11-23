@@ -91,6 +91,7 @@ const HER_DATA = {
   idNumber: 'AB12345',
   email: 'isidora@primer.rs',
   emailConfirmed: true,
+  viberCommunity: false,
   address: 'Bulevar Pupina 10',
   phone: '+381 60 123 456',
   placeId: null,

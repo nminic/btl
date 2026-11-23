@@ -1,0 +1,127 @@
+import { readdirSync, readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { expect } from '@playwright/test'
+import { SLACK, label, notMeasured, test } from './support/harness.ts'
+import type { Answers, At } from './support/harness.ts'
+
+/**
+ * THE BOX OF A MEMBER ON A ROW OF RESULTS OPENS ITS LIST OVER THE BOXES BELOW AND MOVES NONE OF THEM, ASKED OF
+ * CHROME (owner, 23.11.2026, PDL „Tri brze izmene administracije": „Spisak predloga se otvara preko sadržaja
+ * ispod, ne gura ga nadole."; ADL A63).
+ *
+ * <p>jsdom lays nothing out, so `pages/event/memberChoice.test.tsx` holds the combobox by role and key and this
+ * holds where it LANDS: at a telephone, a tablet in portrait and a desktop, and at 200% text, with the list open,
+ * <b>the first box of figures under it stands exactly where it stood with the list shut</b>, <b>the list stands
+ * over that box</b> (it starts below the member's box and reaches past the top of the figures), <b>the list is
+ * inside the viewport</b>, and <b>the page does not move sideways</b> (PDL P24).
+ *
+ * <p><b>The mutation that fells it</b> is the list put back in the flow (`position: static`, what
+ * `forms/Suggesting.css` and `.place__list` on a telephone do): the figures then move down by the list's height.
+ */
+
+const MOCK = fileURLToPath(new URL('../src/test/mock/', import.meta.url))
+
+/** Every answer of the sample, under the address it answers (the shape `raceInMotion.geometry.ts` reads it in). */
+function everyAnswer(dir = MOCK, prefix = ''): Record<string, unknown> {
+  return Object.fromEntries(
+    readdirSync(dir, { withFileTypes: true }).flatMap((entry): [string, unknown][] => {
+      const at = join(dir, entry.name)
+
+      if (entry.isDirectory()) {
+        return Object.entries(everyAnswer(at, `${prefix}${entry.name}/`))
+      }
+
+      return entry.name.endsWith('.json')
+        ? [[`/api/${prefix}${entry.name.slice(0, -'.json'.length)}`, JSON.parse(readFileSync(at, 'utf-8'))]]
+        : []
+    }),
+  )
+}
+
+const SAMPLE = everyAnswer()
+
+/** The event the vitest cases of this screen are written around (`pages/event/leagueResults.test.tsx`), and its
+ *  last race, which is one of a length and so draws three figures beside the member. */
+const EVENT = 'maraton-maratona-2015'
+
+function theRace(): number {
+  const events = SAMPLE['/api/events']
+  const races = SAMPLE['/api/races']
+
+  if (!Array.isArray(events) || !Array.isArray(races)) {
+    throw notMeasured('the sample carries no events or no races')
+  }
+
+  const event: unknown = events.find((one: unknown) => Reflect.get(Object(one), 'slug') === EVENT)
+  const id: unknown = Reflect.get(Object(event), 'id')
+  const own = races.filter((one: unknown) => Reflect.get(Object(one), 'eventId') === id)
+  const race: unknown = Reflect.get(Object(own.at(-1)), 'id')
+
+  if (typeof race !== 'number') {
+    throw notMeasured(`the sample has no race of ${EVENT}`)
+  }
+
+  return race
+}
+
+const ANSWERS: Answers = { ...SAMPLE, '/api/me': { role: 'superadmin', account: 41, membershipBasis: null } }
+
+const WIDTHS: At[] = [
+  { width: 360, text: 100 },
+  { width: 768, text: 100 },
+  { width: 1280, text: 100 },
+  { width: 1280, text: 200 },
+]
+
+const BOX = '#league-row-1-member'
+
+for (const at of WIDTHS) {
+  test(`the list of members opens over the figures and moves none of them, ${label(at)}`, async ({ open }) => {
+    const { page, probe } = await open(at, `/sr/kalendar/${EVENT}/rezultati?trka=${String(theRace())}`, BOX, ANSWERS)
+
+    /* The first box after the member's in the document: the first figure of the row. */
+    const figureTop = () =>
+      page.evaluate((selector) => {
+        const boxes = [...document.querySelectorAll('form input')]
+        const member = document.querySelector(selector)
+        const next = member === null ? undefined : boxes[boxes.indexOf(member) + 1]
+
+        return next === undefined ? null : next.getBoundingClientRect().top
+      }, BOX)
+
+    const shut = await figureTop()
+
+    if (shut === null) {
+      throw notMeasured('the row drew no box after the member')
+    }
+
+    await page.locator(BOX).fill('Re')
+    await page.getByRole('listbox').waitFor({ state: 'visible' })
+
+    const measured = await page.evaluate((selector) => {
+      const list = document.querySelector('[role="listbox"]')?.getBoundingClientRect()
+      const member = document.querySelector(selector)?.getBoundingClientRect()
+
+      return list === undefined || member === undefined
+        ? null
+        : { top: list.top, bottom: list.bottom, left: list.left, right: list.right, memberBottom: member.bottom }
+    }, BOX)
+    const viewport = await page.evaluate(() => document.documentElement.clientWidth)
+    const opened = await figureTop()
+
+    if (measured === null || opened === null) {
+      throw notMeasured('the list or the member box was not drawn')
+    }
+
+    expect(opened, 'the figures under the box moved while the list was open').toBeCloseTo(shut, 0)
+    expect(measured.top, 'the list starts above the bottom of the member box').toBeGreaterThanOrEqual(
+      measured.memberBottom - SLACK,
+    )
+    expect(measured.bottom, 'the list does not reach over the figures below').toBeGreaterThan(opened)
+    expect(measured.left, 'the list starts inside the page').toBeGreaterThanOrEqual(-SLACK)
+    expect(measured.right, 'the list ends inside the page').toBeLessThanOrEqual(viewport + SLACK)
+    expect(probe.widened, 'the page was widened by something running off its right edge').toBe(0)
+    expect(probe.sideways, 'the page scrolls sideways').toBe(0)
+  })
+}

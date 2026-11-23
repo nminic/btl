@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
 import { useFilterParams } from '../../app/useFilterParams'
+import { useToday } from '../../clock/useClock'
 import { Resource } from '../../components/Resource'
 import { clearResourceCache } from '../../data/client'
 import type { League } from '../../data/types'
@@ -17,6 +18,7 @@ import { LeagueRaceModeration } from './LeagueRaceModeration'
 import { countedDaysOf, countedRacesOf } from './leagueCounted'
 import { LEAGUES, recordsOf, type Editing, type Overlay } from './entityForms'
 import { WHEN_WRITING_A_LEAGUE, identityIn, upsertFrom } from './leagueWrites'
+import { seasonChoices } from './leagueSeasons'
 import '../member/Member.css'
 
 /** An overlay holding nothing, which is what this screen starts every visit with. */
@@ -114,6 +116,7 @@ export function AdminLeagues() {
    */
   const [params, setParams] = useFilterParams()
   const changedId = params.get('izmena')
+  const today = useToday()
 
   /**
    * WHAT THIS VISIT HAS WRITTEN, ON TOP OF WHAT THE SERVER ANSWERED WITH.
@@ -364,6 +367,12 @@ export function AdminLeagues() {
               <EntityEditor
                 entity={LEAGUES}
                 editing={editing}
+                /* THE SEASON IS CHOSEN OUT OF THE YEAR AND THE NEXT, never before 2027 (owner, 23.11.2026, PDL
+                   „Tri brze izmene administracije"), with the competition's own where it is another
+                   (`leagueSeasons.ts`). */
+                options={{
+                  season: seasonChoices(today, editing.mode === 'one' ? String(editing.record.season) : ''),
+                }}
                 /* WHO REFUSES AN ADDRESS SOMEBODY ALREADY ANSWERS AT, AND SINCE
                    25.09.2026 IT IS THE ROUTE ALONE. `taken` used to carry every
                    address on the screen, and `takenAddress` coloured the field

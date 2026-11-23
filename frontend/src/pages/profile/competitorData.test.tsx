@@ -56,6 +56,7 @@ function dataOf(memberNumber: string, over: Record<string, unknown> = {}): Recor
     idNumber: 'AB12345',
     email: 'vladan@primer.rs',
     emailConfirmed: false,
+    viberCommunity: false,
     address: 'Bulevar 1',
     phone: '060111222',
     placeId: null,
@@ -357,6 +358,77 @@ describe('the card the administration opens', () => {
     asTheAdministration()
 
     expect(await screen.findByRole('button', { name: /Pokušaj ponovo/ })).toBeVisible()
+  }, SLOW)
+})
+
+/**
+ * THE BOX FOR THE COMMUNITY ON VIBER ON THE CARD (owner, 23.11.2026, PDL „Tri brze izmene administracije":
+ * „Hoću da u podacima članova vidim status štikliranosti Viber community", and „I da menja").
+ *
+ * <p><b>The axes:</b> the box as served ticked and as served not, so a box drawn off anything but the answer
+ * fails one of the two; ticked with a telephone and with none; and taken back.
+ */
+describe('the box for Viber on the card', () => {
+  const asTheAdministration = () =>
+    renderAt(`/sr/takmicar/${SOMEBODY}/podaci`, 'moderator', null, moderatorWith([OVER_THE_MEMBERS]))
+  const theBox = () => screen.findByRole('checkbox', { name: sr.registration.viberCommunity })
+
+  it.each([
+    [true, 'ticked'],
+    [false, 'not ticked'],
+  ])('is drawn as the server holds it, %s', async (served, _said) => {
+    theAdministrationsServer(SOMEBODY, { viberCommunity: served })
+    asTheAdministration()
+
+    expect(await theBox()).toHaveProperty('checked', served)
+  }, SLOW)
+
+  it('is ticked by the administration and sent as a tick, alone', async () => {
+    const user = setupUser()
+    const asked = theAdministrationsServer(SOMEBODY)
+
+    asTheAdministration()
+    await user.click(await theBox())
+    await user.click(screen.getByRole('button', { name: sr.account.save }))
+
+    expect(await screen.findByText(sr.account.saved)).toBeVisible()
+    expect(corrections(asked)).toEqual([{ viberCommunity: true }])
+  }, SLOW)
+
+  it('is taken back by the administration and sent as no tick', async () => {
+    const user = setupUser()
+    const asked = theAdministrationsServer(SOMEBODY, { viberCommunity: true })
+
+    asTheAdministration()
+    await user.click(await theBox())
+    await user.click(screen.getByRole('button', { name: sr.account.save }))
+
+    expect(await screen.findByText(sr.account.saved)).toBeVisible()
+    expect(corrections(asked)).toEqual([{ viberCommunity: false }])
+  }, SLOW)
+
+  it('asks for a telephone when it is ticked for a member with none, in the member’s own sentence, and sends nothing', async () => {
+    const user = setupUser()
+    const asked = theAdministrationsServer(SOMEBODY, { phone: null })
+
+    asTheAdministration()
+    await user.click(await theBox())
+    await user.click(screen.getByRole('button', { name: sr.account.save }))
+
+    expect(await screen.findByText(sr.registration.phoneForViber)).toBeVisible()
+    expect(corrections(asked)).toEqual([])
+  }, SLOW)
+
+  it('says the server’s refusal of a tick with no telephone in the same sentence', async () => {
+    const user = setupUser()
+
+    theAdministrationsServer(SOMEBODY, {}, () => refused('theViberCommunityNeedsATelephone'))
+    asTheAdministration()
+    await user.click(await theBox())
+    await user.click(screen.getByRole('button', { name: sr.account.save }))
+
+    expect(await screen.findByText(sr.registration.phoneForViber)).toBeVisible()
+    expect(screen.queryByText(sr.account.saved)).toBeNull()
   }, SLOW)
 })
 

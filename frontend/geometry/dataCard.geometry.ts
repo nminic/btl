@@ -89,6 +89,7 @@ const THE_ADMINISTRATION: Answers = {
     idNumber: 'AB12345',
     email: 'vladan.djurisic.dugacka.adresa@primer.rs',
     emailConfirmed: false,
+    viberCommunity: false,
     address: 'Bulevar Pupina 10, stan 14, ulaz B',
     phone: '+381 60 123 456',
     placeId: null,

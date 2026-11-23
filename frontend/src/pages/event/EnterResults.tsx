@@ -69,6 +69,7 @@ import {
 import '../admin/Entity.css'
 import '../member/Member.css'
 import { SYMBOL } from '../../app/actionSymbol'
+import { MemberChoice } from './MemberChoice'
 import { ActionButton } from '../../components/ActionButton'
 
 /**
@@ -373,17 +374,15 @@ function Rows({
                       {t('leagueResults.member')}
                     </AskedLabel>
                     {editing === null ? (
-                      <Suggesting
-                        shared={{
-                          /* The dress of every box of a form (`forms/held.ts`), as the renderer
-                             puts it on the box it hands this same component. */
-                          className: heldControl(false),
-                          id: `league-row-${which}-member`,
-                          name: `member-${which}`,
-                          'aria-required': true,
-                          'aria-invalid': words !== undefined,
-                          'aria-describedby': said,
-                        }}
+                      /* A LIST TO CHOOSE FROM THAT TAKES TYPING, opened over the boxes below (owner,
+                         23.11.2026, PDL „Tri brze izmene administracije": „polje za člana postaje padajući
+                         izbor u koji se kuca. Spisak predloga se otvara preko sadržaja ispod, ne gura ga
+                         nadole."). It was a `Suggesting` box, whose list pushes the figures down. */
+                      <MemberChoice
+                        id={`league-row-${which}-member`}
+                        name={`member-${which}`}
+                        invalid={words !== undefined}
+                        describedBy={said}
                         value={row.typed}
                         suggestions={offered}
                         /* Typing over a chosen member lets go of him, as typing over a chosen race

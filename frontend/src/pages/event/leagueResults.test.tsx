@@ -129,13 +129,13 @@ const EVERY_READER_OF_A_RESULT = ['/api/results', '/api/races', '/api/events']
 const box = (label: string, row: number): HTMLElement =>
   must(screen.getAllByLabelText(label)[row], `${label} of row ${String(row + 1)}`)
 
-/** Chooses a member in the box of one row by typing part of him and pressing his line. */
+/** Chooses a member in the box of one row by typing part of him and pressing his row of the list (`MemberChoice`). */
 async function choose(user: ReturnType<typeof setupUser>, row: number, typed: string, line: RegExp) {
   const here = must(screen.getAllByLabelText(/^Član/)[row], `the box of row ${String(row + 1)}`)
 
   await user.clear(here)
   await user.type(here, typed)
-  await user.click(await screen.findByRole('button', { name: line }))
+  await user.click(await screen.findByRole('option', { name: line }))
 }
 
 describe('the ways in, on the page of an event', () => {
@@ -253,11 +253,11 @@ describe('the entry of several members', () => {
     const box = await screen.findByLabelText(/^Član/)
 
     await user.type(box, 'Antonij')
-    expect(await screen.findByRole('button', { name: 'Vojislav Antonijević (000032)' })).toBeVisible()
+    expect(await screen.findByRole('option', { name: 'Vojislav Antonijević (000032)' })).toBeVisible()
 
     await user.clear(box)
     await user.type(box, '00000')
-    expect(await screen.findByRole('button', { name: 'Vladan Đurišić (000001)' })).toBeVisible()
+    expect(await screen.findByRole('option', { name: 'Vladan Đurišić (000001)' })).toBeVisible()
     server.stop()
   }, SLOW)
 
@@ -279,7 +279,7 @@ describe('the entry of several members', () => {
     renderAt(`/sr/kalendar/${EVENT}/rezultati?trka=${String(OF_A_LENGTH)}`, 'superadmin')
 
     await user.type(await screen.findByLabelText(/^Član/), 'Ovde')
-    expect(await screen.findByRole('button', { name: 'Jedini Ovde (000777)' })).toBeVisible()
+    expect(await screen.findByRole('option', { name: 'Jedini Ovde (000777)' })).toBeVisible()
     server.stop()
   }, SLOW)
 

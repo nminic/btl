@@ -12,6 +12,8 @@ import { setupUser } from '../../test/user'
 import { at, must } from '../../test/at'
 import { sayYes } from '../../test/deleteSheet'
 import { SLOW } from '../../test/slow'
+import { theDayTheSuiteIsReadAs } from '../../test/theDay'
+import { seasonsALeagueMayBeMadeFor } from './leagueSeasons'
 
 /**
  * THE SCREEN OF COMPETITIONS WRITES TO THE SERVER (PDL P28c point 2, owner 24.09.2026:
@@ -155,7 +157,7 @@ describe('a competition made, changed and taken away', () => {
     await user.click(await screen.findByRole('button', { name: 'Nova liga' }))
     await user.type(screen.getByLabelText(/^Naziv lige/), 'Vojvođanska liga 2027')
     await user.type(screen.getByLabelText(/^Adresa/), 'vojvodjanska-2027')
-    await user.type(screen.getByLabelText(/^Sezona/), '2027')
+    await user.selectOptions(screen.getByLabelText(/^Sezona/), '2027')
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
 
     await screen.findByRole('status', { name: 'Sačuvano' })
@@ -201,7 +203,7 @@ describe('a competition made, changed and taken away', () => {
       await user.click(await screen.findByRole('button', { name: 'Nova liga' }))
       await user.type(screen.getByLabelText(/^Naziv lige/), 'Vojvođanska liga 2027')
       await user.type(screen.getByLabelText(/^Adresa/), 'vojvodjanska-2027')
-      await user.type(screen.getByLabelText(/^Sezona/), '2027')
+      await user.selectOptions(screen.getByLabelText(/^Sezona/), '2027')
       await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
       await screen.findByRole('status', { name: 'Sačuvano' })
       await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
@@ -256,7 +258,7 @@ describe('a competition made, changed and taken away', () => {
       await user.click(await screen.findByRole('button', { name: 'Nova liga' }))
       await user.type(screen.getByLabelText(/^Naziv lige/), 'Vojvođanska liga 2027')
       await user.type(screen.getByLabelText(/^Adresa/), 'vojvodjanska-2027')
-      await user.type(screen.getByLabelText(/^Sezona/), '2027')
+      await user.selectOptions(screen.getByLabelText(/^Sezona/), '2027')
       await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
 
       expect(await screen.findByRole('alert')).toHaveTextContent(/Osveži stranu/)
@@ -290,7 +292,7 @@ describe('a competition made, changed and taken away', () => {
       await user.click(await screen.findByRole('button', { name: 'Nova liga' }))
       await user.type(screen.getByLabelText(/^Naziv lige/), 'Vojvođanska liga 2027')
       await user.type(screen.getByLabelText(/^Adresa/), 'vojvodjanska-2027')
-      await user.type(screen.getByLabelText(/^Sezona/), '2027')
+      await user.selectOptions(screen.getByLabelText(/^Sezona/), '2027')
 
       /* SENT THREE TIMES INSIDE ONE TICK, which is the arrangement the ref exists for and
          the one `user.click` cannot make: it awaits between presses, so a lock held in
@@ -340,7 +342,7 @@ describe('a competition made, changed and taken away', () => {
       await user.click(await screen.findByRole('button', { name: 'Nova liga' }))
       await user.type(screen.getByLabelText(/^Naziv lige/), 'Vojvođanska liga 2027')
       await user.type(screen.getByLabelText(/^Adresa/), 'vojvodjanska-2027')
-      await user.type(screen.getByLabelText(/^Sezona/), '2027')
+      await user.selectOptions(screen.getByLabelText(/^Sezona/), '2027')
       await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
       await waitFor(() => {
         expect(writes(server.asked)).toHaveLength(1)
@@ -421,6 +423,44 @@ describe('a competition made, changed and taken away', () => {
     server.stop()
   }, SLOW)
 
+  /**
+   * THE SEASON IS CHOSEN, NOT TYPED (owner, 23.11.2026, PDL „Tri brze izmene administracije": „Želim dropdown
+   * gde mogu izabrati naredne dve sezone"), out of the seasons of the day the screen is read on: on one of the
+   * two days the suite is read as that is 2027 alone, on the other 2027 and 2028, so a box of choices that is
+   * not worked out of the portal's day fails one of the two passes. And a competition of a season that has gone
+   * by opens with its own season chosen, not with this year's.
+   */
+  it('offers the seasons of the day as choices, and opens a competition on its own season', async () => {
+    const server = serving()
+    const user = setupUser()
+
+    renderAt('/sr/administracija/lige', 'superadmin')
+
+    await user.click(await screen.findByRole('button', { name: 'Nova liga' }))
+
+    const chosen = screen.getByRole('combobox', { name: /^Sezona/ })
+    const offered = within(chosen)
+      .getAllByRole('option')
+      .map((one) => one.textContent)
+      .filter((one) => one !== 'Izaberi')
+
+    expect(offered).toEqual(seasonsALeagueMayBeMadeFor(theDayTheSuiteIsReadAs()).map(String))
+
+    await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
+
+    const rows = within(await screen.findByRole('table', { name: 'Lige' }))
+    const old = must(
+      rows.getAllByRole('row').find((one) => one.textContent?.includes(FROZEN_NAME)),
+      'the row of the competition of 2019',
+    )
+
+    await user.click(within(old).getByRole('button', { name: `Otvori: ${FROZEN_NAME}` }))
+
+    expect(await screen.findByRole('combobox', { name: /^Sezona/ })).toHaveValue('2019')
+
+    server.stop()
+  }, SLOW)
+
   it('says in words what the route refused, and keeps the form as it was', async () => {
     const server = serving(() => refused('theSeasonIsNotThisOneOrTheNext'))
     const user = setupUser()
@@ -430,7 +470,9 @@ describe('a competition made, changed and taken away', () => {
     await user.click(await screen.findByRole('button', { name: 'Nova liga' }))
     await user.type(screen.getByLabelText(/^Naziv lige/), 'Liga 2099')
     await user.type(screen.getByLabelText(/^Adresa/), 'liga-2099')
-    await user.type(screen.getByLabelText(/^Sezona/), '2099')
+    /* The box offers no season the route refuses (`leagueSeasons.ts`), so the refusal is reached the way a reader
+       can still reach it: a season chosen while the year is turning under the form. */
+    await user.selectOptions(screen.getByLabelText(/^Sezona/), '2027')
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
@@ -458,7 +500,7 @@ describe('a competition made, changed and taken away', () => {
       await user.click(await screen.findByRole('button', { name: 'Nova liga' }))
       await user.type(screen.getByLabelText(/^Naziv lige/), 'Još jedna druga')
       await user.type(screen.getByLabelText(/^Adresa/), ITS_ADDRESS)
-      await user.type(screen.getByLabelText(/^Sezona/), '2027')
+      await user.selectOptions(screen.getByLabelText(/^Sezona/), '2027')
       await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
 
       expect(writes(server.asked).map((one) => one.how)).toEqual(['POST'])
@@ -530,7 +572,7 @@ describe('a competition made, changed and taken away', () => {
       await user.click(await screen.findByRole('button', { name: 'Nova liga' }))
       await user.type(screen.getByLabelText(/^Naziv lige/), 'Vojvođanska liga 2027')
       await user.type(screen.getByLabelText(/^Adresa/), 'vojvodjanska-2027')
-      await user.type(screen.getByLabelText(/^Sezona/), '2027')
+      await user.selectOptions(screen.getByLabelText(/^Sezona/), '2027')
       await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
       await screen.findByRole('status', { name: 'Sačuvano' })
       await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
@@ -594,15 +636,12 @@ describe('a competition made, changed and taken away', () => {
        `theSeasonIsFrozen` means „no more races go in and taking one out still works"; here
        it means „the record is settled and deleting it still works".
 
-       ASKED OF `buduca-2028` AND NOT OF `stara-2019`, AND THAT IS A MEASUREMENT OF THE
-       FORM. Freezing is the ROUTE'S answer and this screen computes none of it, so which
-       row is used would be arbitrary - except that the form's own `season` field carries
-       `min: 2027` (`admin-liga.form.json`, which agrees with
-       `league_season_not_before_the_league`). Opening the 2019 row and pressing Save is
-       therefore refused by the FIELD, before anything is sent, and the case would have
-       measured the form rather than the sentence. Production cannot hold such a row at
-       all; the fixture carries one only so that „its own season" is a claim that can
-       fail. */
+       ASKED OF `buduca-2028` AND NOT OF `stara-2019`. Freezing is the ROUTE'S answer and this
+       screen computes none of it, so which row is used would be arbitrary. ~~Except that the
+       form's own `season` field carries `min: 2027`, so the 2019 row is refused by the FIELD.~~
+       Since 23.11.2026 the season is a box of choices that holds the competition's own season
+       (`leagueSeasons.ts`), so either row would reach the route; this one is kept because
+       production cannot hold the other at all. */
     const server = serving(() => refused('theSeasonIsFrozen', 409))
     const user = setupUser()
 
@@ -745,7 +784,7 @@ describe('a competition made, changed and taken away', () => {
         await user.click(await screen.findByRole('button', { name: 'Nova liga' }))
         await user.type(screen.getByLabelText(/^Naziv lige/), 'Vojvođanska liga 2027')
         await user.type(screen.getByLabelText(/^Adresa/), 'vojvodjanska-2027')
-        await user.type(screen.getByLabelText(/^Sezona/), '2027')
+        await user.selectOptions(screen.getByLabelText(/^Sezona/), '2027')
         await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
         await screen.findByRole('status', { name: 'Sačuvano' })
         await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))

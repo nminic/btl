@@ -20,12 +20,9 @@
     },
     {
       "name": "season",
-      "type": "number",
+      "type": "select",
       "labelKey": "rankings.season",
-      "required": true,
-      "min": 2027,
-      "max": 2100,
-      "integer": true
+      "required": true
     },
     {
       "name": "rules",

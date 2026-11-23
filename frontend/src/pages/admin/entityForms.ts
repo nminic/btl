@@ -430,12 +430,14 @@ export const TEAMS: EntityDef = {
  * with 2014 passed the form and came back a 500. He settled it the same day: the ROUTE
  * decides, the form agrees with it, the schema stays as the floor.
  *
- * The floor here is `admin-liga.form.json`, whose `min` is now the first season the
- * league has (`SeasonClock.FIRST_SEASON` on the far side). It is the nearest a written
- * definition can come: „this year or the next" is an answer that changes with the day,
- * and a JSON file cannot read a clock. `LeagueWriteApi.add` holds the whole sentence and
- * refuses everything else BY NAME, which is what `pages/admin/LeagueRaceModeration.tsx`
- * draws.
+ * ~~The floor here is `admin-liga.form.json`, whose `min` is now the first season the
+ * league has. It is the nearest a written definition can come: a JSON file cannot read a
+ * clock.~~ Since 23.11.2026 the season is a box of choices worked out of the portal's day
+ * (owner, PDL „Tri brze izmene administracije": „Želim dropdown gde mogu izabrati naredne
+ * dve sezone", the year and the next and never before 2027), handed to the form by
+ * `AdminLeagues.tsx` out of `leagueSeasons.ts`, so the form offers exactly what the route
+ * takes. `LeagueWriteApi.add` still holds the whole sentence and refuses everything else BY
+ * NAME, which is what this screen says when a request loses a race against the turning year.
  */
 export const LEAGUES: EntityDef = {
   id: 'leagues',

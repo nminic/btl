@@ -75,11 +75,17 @@ class MemberDataApi {
 	 *                       (`GET /api/me` has answered it this way all along). Until then it was the
 	 *                       typed town only, and a town of the codebook opened an empty box
 	 * @param country        the code of that town's country, whichever road it came by
+	 * @param viberCommunity whether he asked to join the league's community on Viber, off
+	 *                       {@code competitor.viber_community_at} (V106). Owner, 23.11.2026 (PDL, „Tri
+	 *                       brze izmene administracije"): „Hoću da u podacima članova vidim status
+	 *                       štikliranosti Viber community", and on the card „Podaci", chosen with the
+	 *                       recommendation, „I da menja" ({@link MemberDataWriteApi} takes it). Never
+	 *                       null: a member who never ticked it has not asked
 	 */
 	record Data(String memberNumber, String firstName, String lastName, String fatherName, String gender,
 			String birthDate, String idNumber, String email, Boolean emailConfirmed, String address,
 			String phone, Long placeId, String city, String country, String shirtSize, String bio, String photo,
-			MePhotoApi.Crop crop) {
+			MePhotoApi.Crop crop, boolean viberCommunity) {
 	}
 
 	@GetMapping("/api/members/{memberNumber}/data")
@@ -175,7 +181,8 @@ class MemberDataApi {
 						   carry (owner, 06.11.2026, PDL „Boksovi „Profilna slika" i „Tekst o sebi" prelaze sa
 						   Podešavanja": the administration changes the picture and the words of a member whose
 						   fee has lapsed too, and sees the picture itself). */
-						+ " c.bio, '/api/photos/' || ph.digest, ph.crop_x, ph.crop_y, ph.crop_diameter"
+						+ " c.bio, '/api/photos/' || ph.digest, ph.crop_x, ph.crop_y, ph.crop_diameter,"
+						+ " c.viber_community_at is not null"
 						+ " from competitor c"
 						+ " left join competitor_document d on d.competitor_id = c.id"
 						+ " left join account a on a.competitor_id = c.id"
@@ -190,7 +197,8 @@ class MemberDataApi {
 						row.getString(8), (Boolean) row.getObject(9), row.getString(10), row.getString(11),
 						(Long) row.getObject(12), row.getString(13), row.getString(14), row.getString(15),
 						row.getString(16), row.getString(17), row.getString(17) == null ? null
-								: new MePhotoApi.Crop(row.getBigDecimal(18), row.getBigDecimal(19), row.getBigDecimal(20))))
+								: new MePhotoApi.Crop(row.getBigDecimal(18), row.getBigDecimal(19), row.getBigDecimal(20)),
+						row.getBoolean(21)))
 				.optional();
 	}
 }

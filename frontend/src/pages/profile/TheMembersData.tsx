@@ -131,6 +131,10 @@ function TheForm({ address, opened }: { address: string; opened: MembersData }) 
        including one whose answer this portal cannot read: the row was written all the same. */
     if (answered.got === 'done') {
       clearResourceCache('payments')
+      /* AND THE LIST OF THE MEMBERS, whose row draws „Viber <broj>" for whoever asked to join (`MembersApi`,
+         `viberPhone`), and the box for it is on this form since 23.11.2026: the owner's derived rule is that the
+         mark in Moderacija „prati isti podatak" (PDL, „Tri brze izmene administracije"). */
+      clearResourceCache('members')
     }
 
     /* AN ANSWER THAT SAYS DONE BUT CANNOT BE READ is the number of a reply this portal does not know,

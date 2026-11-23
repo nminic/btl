@@ -57,6 +57,8 @@ public final class WhatADataCorrectionSays {
 		EMAIL("email"),
 		ADDRESS("address"),
 		PHONE("phone"),
+		/** The box for the league's community on Viber, which the administration changes since 23.11.2026. */
+		VIBER_COMMUNITY("viberCommunity"),
 		TOWN("town"),
 		SHIRT_SIZE("shirtSize");
 

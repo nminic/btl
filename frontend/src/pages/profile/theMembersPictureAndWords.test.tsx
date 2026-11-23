@@ -361,6 +361,7 @@ describe('a member the public list does not carry', () => {
     idNumber: 'AB12345',
     email: 'vojislav@primer.rs',
     emailConfirmed: true,
+    viberCommunity: false,
     address: 'Ulica 1',
     phone: null,
     placeId: null,

@@ -144,10 +144,10 @@ export type FieldDef = {
   /**
    * A number the server keeps as a WHOLE number, so the box takes no separator at all.
    *
-   * <p>Fourteen of the sixteen number fields the portal has: hours, minutes and seconds (the
+   * <p>Thirteen of the fifteen number fields the portal has (fourteen of sixteen until 23.11.2026): hours, minutes and seconds (the
    * server keeps their sum, `result.seconds integer`, so each of the three has to be whole for
-   * the sum to be whole), the climb and the fall (`ascent_m`, `descent_m integer`), the season
-   * of a competition, a member's first season, and since 10.10.2026 the two amounts of a price
+   * the sum to be whole), the climb and the fall (`ascent_m`, `descent_m integer`), ~~the season
+   * of a competition~~ (a box of choices since 23.11.2026, `admin/leagueSeasons.ts`), a member's first season, and since 10.10.2026 the two amounts of a price
    * (PDL, ODLUKA 02.10.2026, „Iznosi se unose kao celi brojevi", recorded as the owner's own
    * words: „Iznosi se unose bez tačaka i zareza!"; for what is typed confirmed on 10.10.2026). A
    * length is kept with decimals and does not carry it.

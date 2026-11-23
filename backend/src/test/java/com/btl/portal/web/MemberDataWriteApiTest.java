@@ -370,6 +370,9 @@ class MemberDataWriteApiTest {
 		now.put("tokens", count("select count(*) from email_verification_token")
 				+ count("select count(*) from password_reset_token"));
 		now.put("messages", messages());
+		/* WHO HAS ASKED TO JOIN THE COMMUNITY ON VIBER, and since when, which the route writes since 23.11.2026. */
+		now.put("viber", db.sql("select id || ' ' || viber_community_at from competitor"
+				+ " where viber_community_at is not null order by id").query(String.class).list());
 
 		return now;
 	}
@@ -382,6 +385,7 @@ class MemberDataWriteApiTest {
 
 		assertThat(read("000005", null).getStatus()).isEqualTo(401);
 		assertThat(corrected("000005", "{\"firstName\": \"Novo\"}", null).getStatus()).isEqualTo(401);
+		assertThat(corrected("000005", "{\"viberCommunity\": true}", null).getStatus()).isEqualTo(401);
 		nothingWasWritten(before);
 	}
 
@@ -394,6 +398,8 @@ class MemberDataWriteApiTest {
 		for (String refused : List.of(AN_ACTIVE_MEMBER, OVER_THE_PAYMENTS_ONLY, "upar@primer.rs")) {
 			assertThat(read("000005", refused).getStatus()).as(refused).isEqualTo(404);
 			assertThat(corrected("000005", "{\"firstName\": \"Novo\"}", refused).getStatus()).as(refused)
+					.isEqualTo(404);
+			assertThat(corrected("000005", "{\"viberCommunity\": true}", refused).getStatus()).as(refused)
 					.isEqualTo(404);
 		}
 
@@ -491,7 +497,9 @@ class MemberDataWriteApiTest {
 
 		assertThat(names).containsExactlyInAnyOrder("memberNumber", "firstName", "lastName", "fatherName",
 				"gender", "birthDate", "idNumber", "email", "emailConfirmed", "address", "phone", "placeId",
-				"city", "country", "shirtSize", "bio", "photo", "crop");
+				"city", "country", "shirtSize", "bio", "photo", "crop", "viberCommunity");
+		assertThat(data.path("viberCommunity").isBoolean()).isTrue();
+		assertThat(data.path("viberCommunity").asBoolean()).isFalse();
 		/* No words and no picture in the fixture of this member: both null, the shape the public list gives. */
 		assertThat(data.path("bio").asString()).isEmpty();
 		assertThat(data.path("photo").isNull()).isTrue();
@@ -794,10 +802,120 @@ class MemberDataWriteApiTest {
 		assertThat(corrected("000005", "{\"phone\": \" \"}", OVER_THE_MEMBERS).getStatus()).isEqualTo(200);
 		assertThat(rowOf(corrected)).contains("|Ulica 1|-|");
 
-		MockHttpServletResponse theBox = corrected("000005", "{\"viberCommunity\": true}", OVER_THE_MEMBERS);
+		/* THE BOX SENT BACK TICKED AS IT STOOD, with the telephone emptied beside it, is the same refusal: he
+		   was in the community and stays in it, which is the form sending the whole card. */
+		MockHttpServletResponse resent = corrected("000002", "{\"phone\": \"\", \"viberCommunity\": true}",
+				OVER_THE_MEMBERS);
 
-		assertThat(theBox.getStatus()).isEqualTo(400);
-		assertThat(reasonIn(theBox)).isEqualTo(MemberDataWriteApi.NOT_TAKEN_HERE);
+		assertThat(resent.getStatus()).isEqualTo(409);
+		assertThat(reasonIn(resent)).isEqualTo(MemberDataWriteApi.THE_VIBER_COMMUNITY_HOLDS_THE_PHONE);
+		assertThat(rowOf(first)).contains("|Ulica 1|0659998887|");
+	}
+
+	/**
+	 * THE BOX FOR THE COMMUNITY ON VIBER IS READ AND CHANGED BY THE ADMINISTRATION (owner, 23.11.2026, PDL „Tri
+	 * brze izmene administracije": „Hoću da u podacima članova vidim status štikliranosti Viber community", and
+	 * „I da menja").
+	 *
+	 * <p><b>The axes, each with both states:</b> ticked and not, read off two members at once so a read of the
+	 * wrong row is told from the right one; ticked with a telephone on the row, with none, and with one sent in
+	 * the same request; taken back alone and together with the telephone; and the member beside the one
+	 * corrected, whose box nothing moves.
+	 */
+	@Test
+	void theBoxForViberIsReadOnTheCardAndTickedOrTakenBackByTheAdministration() throws Exception {
+		db.sql("update competitor set viber_community_at = timestamptz '2026-11-20 10:00:00+00' where id = ?")
+				.param(first).update();
+
+		assertThat(body(read("000002", OVER_THE_MEMBERS)).path("viberCommunity").asBoolean()).isTrue();
+		assertThat(body(read("000005", OVER_THE_MEMBERS)).path("viberCommunity").asBoolean()).isFalse();
+
+		/* TICKED, with his telephone on the row: written now, and he is told it moved. */
+		MockHttpServletResponse ticked = corrected("000005", "{\"viberCommunity\": true}", OVER_THE_MEMBERS);
+
+		assertThat(ticked.getStatus()).isEqualTo(200);
+		assertThat(body(ticked).path("viberCommunity").asBoolean()).isTrue();
+		assertThat(viberOf(corrected)).isNotNull();
+		assertThat(db.sql("select body from message where to_id = ?").param(corrected).query(String.class).single())
+				.startsWith("Administracija lige je izmenila tvoje podatke: prijava za BTL zajednicu na Viberu.");
+
+		/* TICKED AGAIN IS NOT A NEW WISH: the moment it was first given stays, and nothing moved to tell. */
+		Instant given = viberOf(corrected);
+
+		assertThat(corrected("000005", "{\"viberCommunity\": true}", OVER_THE_MEMBERS).getStatus()).isEqualTo(200);
+		assertThat(viberOf(corrected)).isEqualTo(given);
+		assertThat(count("select count(*) from message where to_id = ?", corrected)).isEqualTo(1);
+
+		/* TAKEN BACK, and the member beside him keeps his. */
+		MockHttpServletResponse taken = corrected("000005", "{\"viberCommunity\": false}", OVER_THE_MEMBERS);
+
+		assertThat(taken.getStatus()).isEqualTo(200);
+		assertThat(body(taken).path("viberCommunity").asBoolean()).isFalse();
+		assertThat(viberOf(corrected)).isNull();
+		assertThat(viberOf(first)).isEqualTo(Instant.parse("2026-11-20T10:00:00Z"));
+	}
+
+	/**
+	 * TICKED WITH NO TELEPHONE, the administration is told what the member is told (owner, 23.11.2026, the rule
+	 * derived from P36: „telefon je obavezan, uz istu rečenicu „Za Viber zajednicu upišite broj telefona.”"):
+	 * the member's own route's refusal, naming the telephone. With no number on the row, with one emptied in the
+	 * same request, and the same request with a number in it, which goes through.
+	 */
+	@Test
+	void theBoxTickedWithNoTelephoneIsRefusedWithTheMembersOwnSentence() throws Exception {
+		Map<String, Object> before = everythingNow();
+
+		MockHttpServletResponse emptiedBeside = corrected("000005", "{\"phone\": \" \", \"viberCommunity\": true}",
+				OVER_THE_MEMBERS);
+
+		assertThat(emptiedBeside.getStatus()).isEqualTo(400);
+		assertThat(reasonIn(emptiedBeside)).isEqualTo(MeWriteApi.THE_VIBER_COMMUNITY_NEEDS_A_TELEPHONE);
+		assertThat(listIn(emptiedBeside, "fields")).containsExactly("phone");
+		nothingWasWritten(before);
+
+		db.sql("update competitor set phone = null where id = ?").param(corrected).update();
+
+		MockHttpServletResponse none = corrected("000005", "{\"viberCommunity\": true}", OVER_THE_MEMBERS);
+
+		assertThat(none.getStatus()).isEqualTo(400);
+		assertThat(reasonIn(none)).isEqualTo(MeWriteApi.THE_VIBER_COMMUNITY_NEEDS_A_TELEPHONE);
+		assertThat(viberOf(corrected)).isNull();
+
+		/* The first member, who has a number, is ticked by the same body: the row read is his own. */
+		assertThat(corrected("000002", "{\"viberCommunity\": true}", OVER_THE_MEMBERS).getStatus()).isEqualTo(200);
+
+		MockHttpServletResponse withANumber = corrected("000005", "{\"phone\": \"0641112223\", \"viberCommunity\": true}",
+				OVER_THE_MEMBERS);
+
+		assertThat(withANumber.getStatus()).isEqualTo(200);
+		assertThat(rowOf(corrected)).contains("|Ulica 1|0641112223|");
+		assertThat(viberOf(corrected)).isNotNull();
+	}
+
+	/**
+	 * TAKEN BACK AND THE TELEPHONE EMPTIED IN ONE REQUEST GOES THROUGH: once it is written he is no longer in the
+	 * community, which is the row as it would stand, the way the member's own route reads it. The assistant's
+	 * reasoning, 23.11.2026, and not the owner's word (PDL P36 refuses the telephone of a member who IS in it).
+	 */
+	@Test
+	void theBoxTakenBackFreesHisTelephoneInTheSameRequest() throws Exception {
+		db.sql("update competitor set viber_community_at = timestamptz '2026-11-20 10:00:00+00' where id = ?")
+				.param(first).update();
+
+		MockHttpServletResponse both = corrected("000002", "{\"phone\": \"\", \"viberCommunity\": false}",
+				OVER_THE_MEMBERS);
+
+		assertThat(both.getStatus()).isEqualTo(200);
+		assertThat(rowOf(first)).contains("|Ulica 1|-|");
+		assertThat(viberOf(first)).isNull();
+		assertThat(db.sql("select body from message where to_id = ?").param(first).query(String.class).single())
+				.startsWith("Administracija lige je izmenila tvoje podatke: telefon, prijava za BTL zajednicu na Viberu.");
+	}
+
+	/** When the member asked to join the community on Viber, or null where he has not. */
+	private Instant viberOf(long competitor) {
+		return db.sql("select viber_community_at from competitor where id = ?").param(competitor)
+				.query(Instant.class).optional().orElse(null);
 	}
 
 	@Test
@@ -1163,7 +1281,6 @@ class MemberDataWriteApiTest {
 		elsewhere.put("healthStatement", "a moment recorded once at registration, not a fact");
 		elsewhere.put("parentConsent", "evidence that a consent was given (V8), which is not edited");
 		elsewhere.put("parentRelation", "the same row");
-		elsewhere.put("viberCommunity", "the member's own wish, which he gives and takes back himself (PDL P36)");
 
 		List<String> onTheForm = new ArrayList<>();
 
