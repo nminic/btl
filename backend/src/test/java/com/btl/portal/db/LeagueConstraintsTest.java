@@ -220,7 +220,7 @@ class LeagueConstraintsTest extends DatabaseTest {
 		/* V108's trigger on `league` deletes a photo row that nobody holds and never refuses, so there
 		   is no row that breaks it. It is taken away by the function it runs, and the exemption has its
 		   own floor in APhotoNobodyHoldsGoesTest, which walks `league` as the fifth holder. */
-		declared = withoutTheConstraintTriggersThatAct(new java.util.ArrayList<>(declared));
+		declared = new java.util.ArrayList<>(withoutTheConstraintTriggersThatAct(declared));
 
 		Set<String> covered = violations().stream().map(Violation::constraint).collect(Collectors.toSet());
 
