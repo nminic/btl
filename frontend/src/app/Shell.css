@@ -213,13 +213,17 @@
 }
 
 /* The same arrow as every dropdown of the portal (`index.css`, `select, .dropdown`): the same chevron on the grid of 24,
-   the same stroke of 2, a box of 1,125rem, and the full colour of the text, not a faded one (owner, 23.11.2026, PDL
-   „Sve padajuće strelice [...] odmiču se od desne ivice koliko i strelica izbora jezika”). Its distance from the edge of
+   the same stroke of 2, a box of 0,75rem (12px), and the muted tone of the text, `--text-muted`, the one the
+   dropdowns have (owner, 23.11.2026, PDL „Strelica padajućeg izbora je manja i suptilnija”: „Strelica na jezicima
+   (a možda i negde drugde, nisam siguran) ipak treba da bude manja i suptilnija.”; before it the arrow was 18px and
+   in the full colour of the text, which that day's „Sve padajuće strelice [...] odmiču se od desne ivice koliko i
+   strelica izbora jezika” had asked for the room at the edge of, and that room is unchanged). Its distance from the edge of
    the button is the padding of the button and is left as it was: that is the measure the others are given
    (`geometry/dropdownArrow.geometry.ts`). */
 .lang__caret {
-  width: 1.125rem;
-  height: 1.125rem;
+  width: 0.75rem;
+  height: 0.75rem;
+  color: var(--text-muted);
   transition: transform var(--fast);
 }
 

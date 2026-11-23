@@ -15,14 +15,14 @@ import type { Answers, At } from './support/harness.ts'
  * dropdowns the owner named (the season of a competition on the form of the administration, the SEZONA filter
  * of the tables and of the teams, and the box of a member on a row of results), <b>every</b> `select` and
  * `.dropdown` the page draws, read off the DOM and not listed here, has the browser's own arrow taken away, the
- * portal's arrow painted in the colour of its own text, a chevron 12px wide (the browser's was about 9) standing
+ * portal's arrow painted in the muted tone of its text (`--text-muted`, owner, 23.11.2026, PDL „Strelica padajućeg izbora je manja i suptilnija”), a chevron 8px wide in a box of 12px (the browser's was about 9) standing
  * in from the right edge and not in the corner, the text kept clear of it, and a height that is the height of the
  * boxes beside it. Both themes, a telephone and a desktop.
  *
  * <p><b>THE ROOM AT THE EDGE IS THE ROOM THE LANGUAGE BOX HAS</b> (owner, 23.11.2026, PDL „Sve padajuće strelice
  * [...] odmiču se od desne ivice koliko i strelica izbora jezika”: „Ali na jezicima je strelica divno odmaknuta od
  * desne ivice, ne prilepljena kao na ostalim mestima!”). The language box of the header is measured here as one more
- * element with the same arrow (the same size, the same stroke, the colour of its text and not a faded one), and its
+ * element with the same arrow (the same size, the same stroke, the muted tone of its text, `--text-muted`, and not the full colour), and its
  * own distance from the edge of its button is the measure: measured in Chrome 23.11.2026, 10px at 1280 and 6px on
  * the telephone header (`.shell__header--phone .lang__btn`, a narrower button). Every dropdown stands that far in
  * from its edge within a pixel on a desktop, and on a telephone it is never nearer to its edge than the language
@@ -112,7 +112,15 @@ for (const screen of SCREENS) {
             /* A text box of the same field or row, where there is one: a dropdown is as tall as what stands
                beside it (`--control-height`). */
             const beside = field?.querySelector<HTMLElement>('input:not(.dropdown):not([type="checkbox"]):not([type="radio"])')
-            const [r, g, b] = (style.color.match(/\d+/g) ?? []).map(Number)
+            /* The muted tone of the text, asked of the palette on the screen by a probe that wears it. */
+            const probe = document.createElement('span')
+
+            probe.style.color = 'var(--text-muted)'
+            document.body.append(probe)
+
+            const [r, g, b] = (getComputedStyle(probe).color.match(/\d+/g) ?? []).map(Number)
+
+            probe.remove()
             const hex = [r, g, b].map((one) => (one ?? 0).toString(16).padStart(2, '0')).join('')
 
             return {
@@ -137,6 +145,14 @@ for (const screen of SCREENS) {
       const lang = await page.evaluate(() => {
         const button = document.querySelector<HTMLElement>('.lang__btn')
         const caret = document.querySelector<SVGElement>('.lang__caret')
+        const mutedProbe = document.createElement('span')
+
+        mutedProbe.style.color = 'var(--text-muted)'
+        document.body.append(mutedProbe)
+
+        const mutedColour = getComputedStyle(mutedProbe).color
+
+        mutedProbe.remove()
 
         if (button === null || caret === null) {
           return null
@@ -153,6 +169,7 @@ for (const screen of SCREENS) {
           stroke: parseFloat(style.strokeWidth),
           opacity: parseFloat(style.opacity),
           sameAsText: style.stroke === getComputedStyle(button).color,
+          muted: style.stroke === mutedColour,
         }
       })
 
@@ -163,9 +180,9 @@ for (const screen of SCREENS) {
       for (const one of seen) {
         expect(one.appearance, `${one.what} draws the browser's own arrow`).toBe('none')
         expect(one.image, `${one.what} wears no arrow of the portal`).toContain('data:image/svg+xml')
-        expect(one.image, `${one.what}: the arrow is not in the colour of its text`).toContain(`%23${one.textHex}`)
+        expect(one.image, `${one.what}: the arrow is not in the muted colour of its text`).toContain(`%23${one.textHex}`)
         expect(one.repeat, one.what).toBe('no-repeat')
-        expect(one.size, `${one.what}: the arrow is not the size the portal gives it`).toBe('18px 18px')
+        expect(one.size, `${one.what}: the arrow is not the size the portal gives it`).toBe('12px 12px')
         /* `right 10px center`, as Chrome gives it back: the room of the language box at the edge. */
         const standsIn = Number(/^calc\(100% - ([\d.]+)px\) 50%$/.exec(one.position)?.[1])
 
@@ -178,20 +195,21 @@ for (const screen of SCREENS) {
           expect(standsIn, `${one.what}: the arrow is not as far from the edge as the language box's`).toBeCloseTo(lang.gap, 0)
         }
 
-        expect(one.paddingRight, `${one.what}: the text can run under the arrow`).toBeGreaterThanOrEqual(standsIn + 18 + 4)
-        expect(one.width, `${one.what} is too narrow to hold its arrow`).toBeGreaterThan(standsIn + 18 + 4)
+        expect(one.paddingRight, `${one.what}: the text can run under the arrow`).toBeGreaterThanOrEqual(standsIn + 12 + 4)
+        expect(one.width, `${one.what} is too narrow to hold its arrow`).toBeGreaterThan(standsIn + 12 + 4)
 
         if (one.besideHeight !== null) {
           expect(one.height, `${one.what} is not as tall as the box beside it`).toBeCloseTo(one.besideHeight, 0)
         }
       }
 
-      /* The language box wears the same arrow: the same box, the same line, the colour of its text, not faded. */
-      expect(lang.width, 'the language arrow is not the size of the dropdowns').toBeCloseTo(18, 0)
-      expect(lang.height, 'the language arrow is not the size of the dropdowns').toBeCloseTo(18, 0)
+      /* The language box wears the same arrow: the same box, the same line, the muted tone of its text. */
+      expect(lang.width, 'the language arrow is not the size of the dropdowns').toBeCloseTo(12, 0)
+      expect(lang.height, 'the language arrow is not the size of the dropdowns').toBeCloseTo(12, 0)
       expect(lang.stroke, 'the line of the language arrow is not the line of the dropdowns').toBeCloseTo(2, 1)
       expect(lang.opacity, 'the language arrow is faded').toBe(1)
-      expect(lang.sameAsText, 'the language arrow is not in the colour of its text').toBe(true)
+      expect(lang.muted, 'the language arrow is not in the muted tone of the dropdowns').toBe(true)
+      expect(lang.sameAsText, 'the language arrow is still in the full colour of its text').toBe(false)
 
       /* One arrow on the screen, the same picture on every dropdown of it. */
       expect(new Set(seen.map((one) => one.image)).size, seen.map((one) => one.what).join(', ')).toBe(1)
