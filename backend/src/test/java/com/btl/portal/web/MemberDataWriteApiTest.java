@@ -839,8 +839,14 @@ class MemberDataWriteApiTest {
 		assertThat(db.sql("select body from message where to_id = ?").param(corrected).query(String.class).single())
 				.startsWith("Administracija lige je izmenila tvoje podatke: prijava za BTL zajednicu na Viberu.");
 
-		/* TICKED AGAIN IS NOT A NEW WISH: the moment it was first given stays, and nothing moved to tell. */
-		Instant given = viberOf(corrected);
+		/* TICKED AGAIN IS NOT A NEW WISH: the moment it was first given stays, and nothing moved to tell. The
+		   moment is set back to a day of its own first, because the case runs in one transaction and `now()` is
+		   the same instant for every request in it: a statement that wrote `now()` again would leave the moment
+		   the first tick wrote, and this would measure nothing. */
+		Instant given = Instant.parse("2026-11-21T08:00:00Z");
+
+		db.sql("update competitor set viber_community_at = ? where id = ?")
+				.params(java.sql.Timestamp.from(given), corrected).update();
 
 		assertThat(corrected("000005", "{\"viberCommunity\": true}", OVER_THE_MEMBERS).getStatus()).isEqualTo(200);
 		assertThat(viberOf(corrected)).isEqualTo(given);
