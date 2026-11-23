@@ -1978,6 +1978,19 @@
     "wordsSave": "Sačuvaj tekst",
     "saved": "Sačuvano. Izmena već stoji na profilu i član je dobio poruku."
   },
+  "leagueMark": {
+    "title": "Znak lige",
+    "standing": "Ovo je znak koji liga sada nosi.",
+    "none": "Liga još nema svoj znak, pa se umesto njega prikazuje krug sa inicijalima.",
+    "atOnce": "Znak odmah stoji na kartici lige, u glavi njenog lista i na strani lige, bez odobravanja.",
+    "choose": "Izaberi znak",
+    "chosenAlt": "Izabrani znak, sa uokvirenim delom koji će se videti u krugu",
+    "save": "Sačuvaj znak",
+    "remove": "Ukloni znak",
+    "removeAsks": "Ukloni znak lige? Liga će se ponovo prikazivati sa inicijalima.",
+    "saved": "Sačuvano. Znak već stoji na svim stranama lige.",
+    "removed": "Znak je uklonjen, i liga se ponovo prikazuje sa inicijalima."
+  },
   "account": {
     "personalTitle": "Lični podaci",
     "save": "Sačuvaj",

@@ -528,6 +528,9 @@ class KeysAndIndexesTest extends DatabaseTest {
 			   that stood beside it are gone with what they served: the administrator's in V19,
 			   because a league has none, and `league_event_event_idx` in V20 with its table. */
 			new Index("league_season_idx", "the leagues of one season, which is how they are listed"),
+			/* V108. The league a mark belongs to, which is what the photo's last-holder trigger and the
+			   picture route ask by. */
+			new Index("league_logo_idx", "the league a mark belongs to"),
 
 			/* V19. Asked from the race's side by the standings: which leagues does this race
 			   count towards. The league's side is already served by the primary key. */

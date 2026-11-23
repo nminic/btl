@@ -351,7 +351,7 @@ export function Leagues() {
                 {/* Which card is chosen is said by its frame alone, and by `aria-current` to a reader by
                     ear (owner, 21.11.2026, PDL „ne dobija natpis „Otvorena ispod””): „Dovoljno je što je
                     uokvireno, veoma je intuitivno i bez te labele.” */}
-                <LeagueMark name={one.name} />
+                <LeagueMark league={one} />
                 <p className="leagues__tile-name">
                   <Link
                     to={choosing(one.slug)}
@@ -394,7 +394,7 @@ export function Leagues() {
           aria-labelledby={`league-name-${league.id}`}
         >
           <div className={mayChange ? 'leagues__score leagues__score--changes' : 'leagues__score'}>
-            <LeagueMark name={league.name} />
+            <LeagueMark league={league} />
             <div className="leagues__score-name">
               <p className="leagues__kicker">{t('leagues.kicker')}</p>
               <h2 id={`league-name-${league.id}`} ref={sheetName} tabIndex={-1}>

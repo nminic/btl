@@ -142,6 +142,20 @@ const SCREENS: Screen[] = [
     words: { open: sr.theirBoxes.pictureRemove, asks: sr.theirBoxes.pictureRemoveAsks },
   },
   {
+    /* The mark of a league, taken down in its moderation (owner, PDL 23.11.2026, „Pravi logo lige”). The first
+       league of the served file has one; once it is down there is no second to take, so the page is as good as
+       left (`leaves`). */
+    name: 'a league\'s mark, taken down by the administration',
+    asks: sr.leagueMark.removeAsks,
+    gone: sr.leagueMark.removed,
+    leaves: true,
+    source: 'admin/LeagueMarkModeration.tsx',
+    at: '/sr/administracija/lige?izmena=1',
+    role: 'superadmin',
+    ask: async () => screen.findByRole('button', { name: sr.leagueMark.remove }),
+    words: { open: sr.leagueMark.remove, asks: sr.leagueMark.removeAsks },
+  },
+  {
     name: 'a member\'s own counted result',
     asks: sr.results.deleteAsk,
     gone: sr.results.deleted,

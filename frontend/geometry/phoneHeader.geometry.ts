@@ -245,6 +245,39 @@ for (const reader of READERS) {
   }
 }
 
+/* THE FLAG AND THE CARET OF THE LANGUAGE BUTTON NEVER OVERLAP (owner, 23.11.2026: the room between them was taken
+   back to make the caret of the dropdowns fit, „U redu”, on condition that they never overlap). Asked of the boxes:
+   the right edge of the flag is at most the left edge of the caret box, and neither box holds the other. Measured:
+   the drawn chevron is 2px from the flag at 100% text, 4px at 200%. Both themes, every width of a telephone. */
+for (const width of [320, 360, 390, 414]) {
+  for (const text of [100, 200] as const) {
+    for (const theme of ['light', 'dark'] as const) {
+      const at: At = { width, text, theme }
+
+      test(`the flag and the caret of the language never overlap at ${label(at)}`, async ({ open }) => {
+        const reader = READERS[0]
+
+        if (reader === undefined) {
+          throw new Error('the visitor is the first reader')
+        }
+
+        const { page } = await open(at, '/sr/kalendar', 'header .brand', reader.answers)
+        const flag = await boxOf(page.locator('.lang__btnflag'))
+        const caret = await boxOf(page.locator('.lang__caret'))
+
+        expect(flag.width, 'the flag has no box').toBeGreaterThan(0)
+        expect(caret.width, 'the caret has no box').toBeGreaterThan(0)
+        expect(flag.right, 'the flag runs into the caret').toBeLessThanOrEqual(caret.left + SLACK)
+
+        const holds = (outer: Box, inner: Box) =>
+          outer.left <= inner.left && outer.right >= inner.right && outer.top <= inner.top && outer.bottom >= inner.bottom
+
+        expect(holds(flag, caret) || holds(caret, flag), 'one box holds the other').toBe(false)
+      })
+    }
+  }
+}
+
 for (const at of ON_A_DESKTOP) {
   test(`a desktop draws the words under the first row and no row of symbols at ${label(at)}`, async ({ open }) => {
     const reader = READERS[3]

@@ -132,3 +132,89 @@ for (const at of WIDTHS) {
     expect(probe.sideways, 'the page scrolls sideways').toBe(0)
   })
 }
+
+/* EVERY MEMBER, IN A LIST THAT SCROLLS INSIDE ITSELF AND STAYS IN THE WINDOW (owner, 23.11.2026, after PR 800:
+   „Ovde nema dropdown-a, gde si ti zapravo uradio izmenu????”; recorded under the decision: „klik ili strelica
+   dole otvaraju spisak SVIH članova koji se mogu izabrati, spisak se skroluje unutar sebe”). A press on the ARROW,
+   the right end of the box and not its middle, opens the list on every member the route answers with; the list
+   is shorter than they are and scrolls; it ends inside the window; and nothing under it moved. The mutations that
+   fell it: the list given back its two letters or its eight, and the list let grow past the window
+   (`max-block-size` taken away). */
+const RUNNERS = SAMPLE['/api/results/runners']
+
+for (const at of WIDTHS) {
+  test(`a press on the arrow opens every member in a list that scrolls and stays in the window, ${label(at)}`, async ({ open }) => {
+    if (!Array.isArray(RUNNERS) || RUNNERS.length < 20) {
+      throw notMeasured('the sample has too few runners for a list longer than its room')
+    }
+
+    const { page, probe } = await open(at, `/sr/kalendar/${EVENT}/rezultati?trka=${String(theRace())}`, BOX, ANSWERS)
+    const box = page.locator(BOX)
+    const size = await box.boundingBox()
+
+    if (size === null) {
+      throw notMeasured('the member box was not drawn')
+    }
+
+    const nextTop = () =>
+      page.evaluate((selector) => {
+        const boxes = [...document.querySelectorAll('form input')]
+        const member = document.querySelector(selector)
+        const next = member === null ? undefined : boxes[boxes.indexOf(member) + 1]
+
+        return next === undefined ? null : next.getBoundingClientRect().top
+      }, BOX)
+    const shut = await nextTop()
+
+    /* Where the arrow is painted: 8px in from the right edge, in a box 18px wide, so its middle is 17px in. */
+    await box.click({ position: { x: size.width - 17, y: size.height / 2 } })
+    /* A short wait of its own, so a press that opens nothing fails here, by this sentence, and not by the clock of
+       the case (`CLAUDE.md`, 25). */
+    await expect(page.locator(LIST), 'a press on the arrow opened no list').toBeVisible({ timeout: 3_000 })
+
+    const list = await page.evaluate((listed) => {
+      const one = document.querySelector(listed)
+
+      return one === null
+        ? null
+        : {
+            rows: one.querySelectorAll('[role="option"]').length,
+            scrolls: one.scrollHeight > one.clientHeight,
+            top: one.getBoundingClientRect().top,
+            bottom: one.getBoundingClientRect().bottom,
+            viewport: window.innerHeight,
+          }
+    }, LIST)
+
+    if (list === null || shut === null) {
+      throw notMeasured('the list or the box after the member was not drawn')
+    }
+
+    expect(await box.getAttribute('aria-expanded')).toBe('true')
+    expect(list.rows, 'the list is not every member the route answers with').toBe(RUNNERS.length)
+    expect(list.scrolls, 'a list of every member does not scroll inside itself').toBe(true)
+    expect(list.top, 'the list starts above the window').toBeGreaterThanOrEqual(0)
+    expect(list.bottom, 'the list runs out of the window').toBeLessThanOrEqual(list.viewport)
+    expect(await nextTop(), 'the figures under the box moved while the list was open').toBeCloseTo(shut, 0)
+    expect(probe.sideways, 'the page scrolls sideways').toBe(0)
+
+    /* Walked to its last row with the keys, the list has scrolled to show it. */
+    await page.keyboard.press('ArrowUp')
+
+    const last = await page.evaluate((listed) => {
+      const one = document.querySelector(listed)
+      const row = one?.querySelector('[role="option"]:last-child')
+
+      return one === null || row === null || row === undefined
+        ? null
+        : { list: one.getBoundingClientRect(), row: row.getBoundingClientRect() }
+    }, LIST)
+
+    if (last === null) {
+      throw notMeasured('the last row was not drawn')
+    }
+
+    expect(last.row.bottom, 'the row walked to is under the edge of the list').toBeLessThanOrEqual(last.list.bottom + SLACK)
+    expect(last.row.top, 'the row walked to is above the edge of the list').toBeGreaterThanOrEqual(last.list.top - SLACK)
+  })
+}

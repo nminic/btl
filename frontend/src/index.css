@@ -57,6 +57,60 @@ a {
   outline-offset: 2px;
 }
 
+/* EVERY DROPDOWN OF THE PORTAL WEARS ONE ARROW, AND THIS IS THE ONE PLACE IT IS SAID (owner, 23.11.2026, PDL
+   „Strelica padajućeg izbora je veća”: „I dropdown strelica na 2027 stoji jako malo i skroz desno u ćošku, ne
+   sviđa mi se. Može li malo manje diskretna i estetski lepše?”, and on the question where, every dropdown: the
+   forms, the filters such as SEZONA, and the box of a member on a row of results).
+
+   `select` reaches every select there is, whatever class a screen gives it, and `.dropdown` is the box that is
+   a dropdown one can type into (`pages/event/MemberChoice.tsx`), which a reader has to see as the same kind of
+   thing. The browser's own arrow goes (`appearance: none`); the control stays the browser's, so a select still
+   opens from the keyboard and still says what it is to a screen reader, because `appearance` is the drawing
+   and nothing else.
+
+   IMPORTANT, AND THAT IS THE POINT RATHER THAN A SHORTCUT. Every screen dresses its controls with a class that
+   writes the `padding` and `background` shorthands (`.field__control`, `.rankings__field select`,
+   `.role-switch__select`), and a shorthand resets the image and the room beside it. At the weight of a class
+   this rule would lose to each of them by the order the sheets load in (`app/stylesheets.ts`), which is the
+   reason the reduced motion rule below is important too. Written so, no class and no `style` attribute can take
+   the arrow away; only another important declaration can, and `styles/dropdownArrow.test.ts` refuses one
+   anywhere in the portal's stylesheets outside the three rules here.
+
+   THE ARROW ITSELF is a chevron on the grid of 24, in the stroke of the portal's own symbols (`app/icons.tsx`:
+   `strokeWidth 2`, round caps and joins), a chevron 12px wide in a box of 1,125rem where the browser's was about
+   9px, standing 0,625rem in from the right edge rather than in the corner, as far in as the caret of the
+   language box of the header stands from the edge of its button (owner, 23.11.2026: „Ali na jezicima je strelica
+   divno odmaknuta od desne ivice, ne prilepljena kao na ostalim mestima!”; measured in Chrome at 1280: 10px, the
+   padding of `.lang__btn`), and 2rem of room for it (`--space-32`: 18 of arrow, 10 of space and a gap of 4), that space and the gap
+   before the text. A picture cannot take `currentColor`, so its colour is written into it, once per theme, and
+   it is the colour of the control's text: `--text` of that theme (`styles/tokens.css`), which keeps the 3:1 WCAG
+   2.2 SC 1.4.11 asks of a graphic on every surface a control stands on. The three themes are the three blocks
+   `tokens.css` writes, by the same selectors, so the arrow turns with the palette.
+
+   NUMBERS AND NOT TOKENS IN THE PICTURE'S OWN DECLARATIONS, and that is measured: a `var()` in any longhand of
+   `background` leaves jsdom unable to say what the shorthand is, and `forms/held.test.tsx` reads the ground of a
+   held select as that shorthand (23.11.2026). The room beside it is a token, since padding is on the scale. */
+select,
+.dropdown {
+  appearance: none !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2314181f' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 8.5l8 8 8-8'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 0.625rem center !important;
+  background-size: 1.125rem 1.125rem !important;
+  padding-inline-end: var(--space-32) !important;
+}
+
+/* The same arrow in the dark palette's `--text`, by the two selectors the dark palette is applied by. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) :is(select, .dropdown) {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23eef2f8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 8.5l8 8 8-8'/%3E%3C/svg%3E") !important;
+  }
+}
+
+:root[data-theme='dark'] :is(select, .dropdown) {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23eef2f8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 8.5l8 8 8-8'/%3E%3C/svg%3E") !important;
+}
+
 /* Under reduced motion nothing is drawn between two states, and `0s` is what says so: `0.01ms` was
    kept so that `animationend` would still fire, but nothing here listens for it, and a duration above
    zero turned every element that declares no transition (`transition-property: all`, duration 0) into

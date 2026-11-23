@@ -824,9 +824,12 @@ describe('a competition, on one page', () => {
 
     const page = within(screen.getByRole('main'))
 
-    expect(page.getAllByRole('heading').map((one) => one.textContent)).toEqual([
-      'Brdska liga 2019',
-    ])
+    /* By the name a reader is given and not by the text in the box: the league's mark stands inside the
+       heading, hidden from a reader (`aria-hidden`), and its initials are not part of the title. */
+    const headings = page.getAllByRole('heading')
+
+    expect(headings).toHaveLength(1)
+    expect(headings[0]).toHaveAccessibleName('Brdska liga 2019')
     expect(screen.queryByRole('heading', { name: 'Propozicije' })).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Nagrade' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /^Događaji i trke/ })).toBeNull()

@@ -371,6 +371,11 @@ const OPENING: { file: string; how: How; why: string }[] = [
     why: 'MY REASONING, read off the code on 25.10.2026: the deletion of a team keeps the answer beside its row and draws it through `ServerSaid`. No case puts the lock on this screen; what says it is drawn is `ServerSaid`\'s own case in `theSiteIsLocked.test.tsx`.',
   },
   {
+    file: 'pages/admin/LeagueMarkModeration.tsx',
+    how: 'says',
+    why: 'MY REASONING, read off the code on 23.11.2026: setting a league\'s mark and taking it down keep every answer that is not done and draw it through `ServerSaid` (`answer`), under the buttons. No case puts the lock on this screen; what says it is drawn is `ServerSaid`\'s own case in `theSiteIsLocked.test.tsx`.',
+  },
+  {
     file: 'pages/admin/LeagueRaceModeration.tsx',
     how: 'says',
     why: 'Owner, 23.10.2026 (PDL, „važi za svaki ekran koji upisuje”, the races of a league named in it), and held by `admin/leagueRaceModeration.test.tsx` (the cases about the site being locked): the lock is drawn by `TheSiteIsLocked` under the panel, for adding a race and for taking one out, and is not one of the panel\'s own sentences.',

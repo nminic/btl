@@ -1978,6 +1978,19 @@
     "wordsSave": "Save the text",
     "saved": "Saved. The change already stands on the profile and the member has been sent a message."
   },
+  "leagueMark": {
+    "title": "League mark",
+    "standing": "This is the mark the league carries now.",
+    "none": "The league has no mark of its own yet, so a circle with its initials is shown instead.",
+    "atOnce": "The mark stands at once on the league card, in the head of its sheet and on the league page, with no approval.",
+    "choose": "Choose a mark",
+    "chosenAlt": "The chosen mark, with the framed part that will show in the circle",
+    "save": "Save the mark",
+    "remove": "Remove the mark",
+    "removeAsks": "Remove the league mark? The league will be shown with its initials again.",
+    "saved": "Saved. The mark already stands on every page of the league.",
+    "removed": "The mark is removed, and the league is shown with its initials again."
+  },
   "account": {
     "personalTitle": "Personal details",
     "save": "Save",

@@ -26,7 +26,14 @@
       1155,
       1159,
       1162
-    ]
+    ],
+    "logo": "/mock/logo/runtrace-liga.svg",
+    "crop": {
+      "x": 0.5,
+      "y": 0.5,
+      "size": 1
+    },
+    "smallLogo": "/mock/logo/runtrace-liga.small.svg"
   },
   {
     "id": 2,
@@ -36,7 +43,10 @@
     "rules": "",
     "prizes": "",
     "raceIds": [],
-    "eventIds": []
+    "eventIds": [],
+    "logo": null,
+    "crop": null,
+    "smallLogo": null
   },
   {
     "id": 3,
@@ -73,6 +83,9 @@
       615,
       769,
       772
-    ]
+    ],
+    "logo": null,
+    "crop": null,
+    "smallLogo": null
   }
 ]

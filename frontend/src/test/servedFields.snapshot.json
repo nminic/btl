@@ -196,14 +196,20 @@
     "teamInvitationId"
   ],
   "leagues.json": [
+    "crop",
+    "crop.size",
+    "crop.x",
+    "crop.y",
     "eventIds",
     "id",
+    "logo",
     "name",
     "prizes",
     "raceIds",
     "rules",
     "season",
-    "slug"
+    "slug",
+    "smallLogo"
   ],
   "me/applications.json": [
     "alreadyInATeam",

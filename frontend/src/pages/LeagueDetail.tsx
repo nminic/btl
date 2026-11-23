@@ -6,6 +6,7 @@ import type { Gender } from '../data/types'
 import { Resource } from '../components/Resource'
 import { combinePair, useEvents, useLeagues } from '../data/useResource'
 import { useI18n } from '../i18n/useI18n'
+import { LeagueMark } from './league/LeagueMark'
 import { LeagueResults } from './league/LeagueResults'
 import './Profile.css'
 
@@ -99,7 +100,14 @@ export function LeagueDetail() {
               <header className="profile__head rankings--tooled">
                 {/* The name of a competition already carries its season, so it is the whole title
                     on its own, and nothing stands under it (owner, 31.07.2026). */}
-                <h1>{league.name}</h1>
+                {/* With the league's mark before the name (owner, 23.11.2026, PDL „Pravi logo lige”: „strana
+                    pojedinačne lige” is the third place it is seen). Inside the heading and not beside it, so
+                    the row of the heading and the box of the tool stays two things; the mark is hidden from a
+                    reader by ear, so the heading is still read as the name and nothing else. */}
+                <h1 className="league__title">
+                  <LeagueMark league={league} />
+                  {league.name}
+                </h1>
 
                 <div className="rankings__head-tool">
                   {/* Named by the competition itself and not by a word out of the

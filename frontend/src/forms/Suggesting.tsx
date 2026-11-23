@@ -19,7 +19,8 @@ import './Suggesting.css'
  * **The box of a member on a row of results is not one of these since 23.11.2026**: the owner asked
  * for a „dropdown koji prima kucanje slova, a ne edit koji povuče imena i pomeri donje bokseve", so
  * that one is a combobox whose list stands over the boxes below (`pages/event/MemberChoice.tsx`).
- * What it offers is still this box's rule (`matching.ts`).
+ * Since the same day it no longer offers by this box's rule either: a press opens it on every member and
+ * typing narrows it from the first letter (`pages/event/memberList.ts`), so `matching.ts` is this box's alone.
  *
  * It opens on what is typed and on nothing else. Shut is where it starts, since
  * 23.08.2026: derived from the value alone it opened by itself on a form that

@@ -212,6 +212,10 @@ export const aLeague = {
   prizes: '',
   raceIds: [275],
   eventIds: [273],
+  /* A league with no mark answers null to all three halves of it (`LeagueApi`, V108). */
+  logo: null,
+  crop: null,
+  smallLogo: null,
 }
 
 /* Handed to the names the screens read them through, here rather than in the guard, so

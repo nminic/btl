@@ -4,6 +4,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 /**
@@ -46,6 +47,18 @@ import java.util.List;
  * <p><b>In season order, newest last.</b> A league is spoken of by its year and
  * the list is read as a history; sorted by the key it would come back in
  * whatever order the rows were written.
+ *
+ * <p><b>AND ITS MARK, IN THE SHAPE A TEAM'S HAS</b> (owner, PDL 23.11.2026, „Pravi logo
+ * lige": „krug, seče se kao znak tima ... čuva se original, prikazuje se u krugu; bez loga
+ * ostaje krug sa inicijalima"). {@code league.logo_id} (V108) is answered as {@link TeamApi}
+ * answers {@code team.logo_id}, copied with its guards: the DIGEST under
+ * {@code /api/photos/} and never the key, which is countable; the circle as three exact
+ * fractions under the portal's name {@code size}; the small circle already cut
+ * ({@link PhotoApi#addressOfTheSmall}); and all three null together for a league with no
+ * mark, never the empty path. The picture is public because a league is: {@link PhotoApi}
+ * serves a picture {@code league.logo_id} holds to anybody, which is the owner's „gde se
+ * vidi: kartica lige na strani „Lige”, glava lista izabrane lige i strana pojedinačne lige",
+ * three pages nobody signs in to read.
  */
 @RestController
 class LeagueApi {
@@ -63,8 +76,18 @@ class LeagueApi {
 	 *                 calendar runs them - one entry however many of its races count
 	 */
 	record League(long id, String slug, String name, int season, String rules, String prizes,
-			List<Long> raceIds, List<Long> eventIds) {
+			List<Long> raceIds, List<Long> eventIds, String logo, Crop crop, String smallLogo) {
 	}
+
+	/**
+	 * Which circle of the mark is drawn, as three fractions between 0 and 1, under the portal's
+	 * word {@code size} for V21's {@code crop_diameter}: the shape {@link TeamApi.Crop} gives a team's.
+	 */
+	record Crop(BigDecimal x, BigDecimal y, BigDecimal size) {
+	}
+
+	/** The address a picture is asked for at, followed by its digest (`PhotoApi`). */
+	private static final String A_PICTURE_IS_ASKED_FOR_AT = "/api/photos/";
 
 	@GetMapping("/api/leagues")
 	List<League> leagues() {
@@ -94,12 +117,31 @@ class LeagueApi {
 						+ "     from league_race lr join race r on r.id = lr.race_id"
 						+ "     where lr.league_id = l.id"
 						+ "   )"
-						+ " ), '{}') as event_ids"
-						+ " from league l order by l.season, l.id")
-				.query((row, one) -> new League(row.getLong(1), row.getString(2), row.getString(3),
-						row.getInt(4), row.getString(5), row.getString(6),
-						List.of((Long[]) row.getArray(7).getArray()),
-						List.of((Long[]) row.getArray(8).getArray())))
+						+ " ), '{}') as event_ids,"
+						+ " mark.digest, mark.crop_x, mark.crop_y, mark.crop_diameter"
+						+ " from league l"
+						/* Left, because a league with no mark is an ordinary league and not one
+						   missing from the list, the same reason `TeamApi` gives. */
+						+ " left join photo mark on mark.id = l.logo_id"
+						+ " order by l.season, l.id")
+				.query((row, one) -> {
+					/* Every column of `photo` is NOT NULL, so the digest is null exactly when no
+					   picture joined, and the mark, its circle and its small one leave together or
+					   not at all. */
+					String mark = row.getString(9);
+
+					return new League(row.getLong(1), row.getString(2), row.getString(3),
+							row.getInt(4), row.getString(5), row.getString(6),
+							List.of((Long[]) row.getArray(7).getArray()),
+							List.of((Long[]) row.getArray(8).getArray()),
+							mark == null ? null : A_PICTURE_IS_ASKED_FOR_AT + mark,
+							mark == null ? null
+									: new Crop(row.getBigDecimal(10), row.getBigDecimal(11),
+											row.getBigDecimal(12)),
+							mark == null ? null
+									: PhotoApi.addressOfTheSmall(mark, row.getBigDecimal(10),
+											row.getBigDecimal(11), row.getBigDecimal(12)));
+				})
 				.list();
 	}
 }

@@ -162,6 +162,15 @@ class PhotoApiTest {
 	private static final Written A_HIDDEN_MEMBERS = new Written("29".repeat(32), "image/jpeg",
 			new byte[] {'h', 'i', 'd', 'd', 'e', 'n', (byte) 0xD8, (byte) 0xFF});
 
+	/**
+	 * A LEAGUE'S MARK, the third public holder since V108 (owner, PDL 23.11.2026, „Pravi logo lige": set by
+	 * the administration „bez odobravanja, i odmah važi"). A picture of its own, so that „a league's mark is
+	 * answered" is not „a team's mark is answered" read a second time: the team holds WEBP, and moving this
+	 * one onto the team would be caught by {@link #whatHolds}.
+	 */
+	private static final Written A_LEAGUES = new Written("3a".repeat(32), "image/png",
+			new byte[] {'l', 'e', 'a', 'g', 'u', 'e', (byte) 0x89, 'P'});
+
 	/** The shape of a digest, belonging to no row at all. */
 	private static final String NOBODY_WROTE = "f6".repeat(32);
 
@@ -235,6 +244,7 @@ class PhotoApiTest {
 		write(WAITING, true);
 		write(PROPOSED, true);
 		write(A_HIDDEN_MEMBERS, true);
+		write(A_LEAGUES, true);
 
 		/* The same digest twice: the elder carries the file, the younger does not. Written
 		   in this order so that „the newest row" answers 404 and „the oldest" answers the
@@ -274,6 +284,7 @@ class PhotoApiTest {
 		teamHolding(WEBP);
 		waitingOn(WAITING);
 		proposalHolding(PROPOSED);
+		leagueHolding(A_LEAGUES);
 
 		account(A_MEMBER);
 		anActiveMemberWhoHoldsNothing("000907");
@@ -421,6 +432,14 @@ class PhotoApiTest {
 						+ " city, country_id, logo_id) values ((select id from competitor"
 						+ " where member_number = '000902'), null, 'Predlozen tim', '', '',"
 						+ " (select id from place where rank = 1), null, null, ?)")
+				.param(ids.get(picture.digest()))
+				.update();
+	}
+
+	/** And a league whose mark this is (V108), the third holder the portal publishes. */
+	private void leagueHolding(Written picture) {
+		db.sql("insert into league (slug, name, season, rules, prizes, logo_id)"
+						+ " values ('liga-sa-znakom', 'Liga sa znakom', 2027, '', '', ?)")
 				.param(ids.get(picture.digest()))
 				.update();
 	}
@@ -828,6 +847,7 @@ class PhotoApiTest {
 		return Stream.of(
 				new Held("competitor.photo_id", JPEG, 200),
 				new Held("team.logo_id", WEBP, 200),
+				new Held("league.logo_id", A_LEAGUES, 200),
 				new Held("verification.photo_id", WAITING, 404),
 				new Held("team_proposal.logo_id", PROPOSED, 404));
 	}
