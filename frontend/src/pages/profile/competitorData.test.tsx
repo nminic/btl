@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { configure, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 import sr from '../../i18n/sr.json'
+import { inputElement } from '../../test/at'
 import { moderatorWith, renderAt } from '../../test/render'
 import { membersAsServed, refused, serverThat, type Asked } from '../../test/serverAnswers'
 import { SLOW } from '../../test/slow'
@@ -471,7 +472,7 @@ describe('the box for Viber on the card', () => {
 
     /* The star is drawn and hidden from the name, so the name is the bare word and the star is read off the label. */
     expect(asked).toHaveAccessibleName('Telefon')
-    expect(asked.labels?.[0]?.parentElement?.querySelector('.field__required')?.textContent).toBe('*')
+    expect(inputElement(asked).labels?.[0]?.parentElement?.querySelector('.field__required')?.textContent).toBe('*')
     expect(asked).toHaveAttribute('aria-required', 'true')
   }, SLOW)
 
@@ -481,7 +482,7 @@ describe('the box for Viber on the card', () => {
 
     const optional = await screen.findByRole('textbox', { name: /^Telefon/ })
 
-    expect(optional.labels?.[0]?.textContent).toBe('Telefon (neobavezno)')
+    expect(inputElement(optional).labels?.[0]?.textContent).toBe('Telefon (neobavezno)')
     expect(optional).not.toHaveAttribute('aria-required')
   }, SLOW)
 

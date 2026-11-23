@@ -77,15 +77,13 @@ export function theMembersForm(withAnAddress: boolean, onViber = false): FormDef
           (withAnAddress || one.name !== 'email'),
       )
       .map((one) => {
-        if (one.name !== 'phone' || !onViber) {
+        if (one.name !== 'phone' || !onViber || one.requiredWhenFilled === undefined) {
           return one
         }
 
         /* The star and `aria-required` stay (P36, 20.11.2026: „natpis telefona postaje „Telefon” sa zvezdicom"),
            and the press goes on to the server (`leftToTheServer`). */
-        return one.requiredWhenFilled === undefined
-          ? one
-          : { ...one, requiredWhenFilled: { ...one.requiredWhenFilled, leftToTheServer: true } }
+        return { ...one, requiredWhenFilled: { ...one.requiredWhenFilled, leftToTheServer: true } }
       }),
   }
 }
