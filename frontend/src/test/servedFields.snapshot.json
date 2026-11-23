@@ -309,6 +309,7 @@
     "accounts.expected",
     "accounts.firstName",
     "accounts.lastName",
+    "accounts.mayBeDeleted",
     "accounts.memberNumber",
     "accounts.price",
     "season"

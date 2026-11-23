@@ -40,6 +40,7 @@ const ACCOUNTS: MembershipDue[] = [
     expected: 4800,
     price: 4800,
     balance: 0,
+    mayBeDeleted: false,
   },
   {
     competitorId: 58,
@@ -51,6 +52,7 @@ const ACCOUNTS: MembershipDue[] = [
     expected: 43,
     price: 40,
     balance: 12.75,
+    mayBeDeleted: false,
   },
   {
     competitorId: 23,
@@ -62,6 +64,7 @@ const ACCOUNTS: MembershipDue[] = [
     expected: 4800,
     price: 4800,
     balance: 6000,
+    mayBeDeleted: false,
   },
   {
     competitorId: 17,
@@ -73,6 +76,7 @@ const ACCOUNTS: MembershipDue[] = [
     expected: 4800,
     price: 4800,
     balance: 0,
+    mayBeDeleted: false,
   },
 ]
 

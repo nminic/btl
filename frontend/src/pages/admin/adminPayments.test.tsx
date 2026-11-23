@@ -53,6 +53,7 @@ describe('the payments screen', () => {
       expected: 4800,
       price: 4800,
       balance: 0,
+      mayBeDeleted: false,
     },
     {
       competitorId: 23,
@@ -64,6 +65,7 @@ describe('the payments screen', () => {
       expected: 4800,
       price: 4800,
       balance: 6000,
+      mayBeDeleted: false,
     },
     {
       competitorId: 58,
@@ -75,6 +77,7 @@ describe('the payments screen', () => {
       expected: 43,
       price: 40,
       balance: 12.75,
+      mayBeDeleted: false,
     },
     {
       competitorId: 17,
@@ -86,6 +89,7 @@ describe('the payments screen', () => {
       expected: 4800,
       price: 4800,
       balance: 1500,
+      mayBeDeleted: false,
     },
   ]
 
