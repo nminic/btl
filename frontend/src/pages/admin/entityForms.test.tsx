@@ -1171,6 +1171,7 @@ describe('a record does not compete with its own address', () => {
           entity={PAGES}
           editing={{ mode: 'one', record }}
           taken={['pravilnik', 'uslovi-koriscenja']}
+          save={async () => ({ written: 'pravilnik' })}
           onDone={() => setRemount((n) => n + 1)}
         />
       )

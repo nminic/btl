@@ -161,7 +161,7 @@ export function EditTeam() {
                  visit; dropped only on 201, because a refusal queued nothing. The team is not
                  dropped: nothing about it moved. */
               clearResourceCache('verification')
-              confirm(`/${locale}/tim/${slug ?? ''}`, name)
+              confirm(`/${locale}/tim/${about.slug}`, name)
 
               return
             }

@@ -745,6 +745,30 @@ describe('a team taken away from the administration', () => {
     server.stop()
   }, SLOW)
 
+  it('confirms the change of a team the route answered with nothing but its number', async () => {
+    /* `PUT /api/teams/{id}` answers its own team (`TeamAdministrationWriteApi`), but a change that is
+       answered with no body at all is still a change that was done: the confirmation names the team by
+       the identity the form was opened with and not by one read off the answer. */
+    const server = serving(() => did())
+    const user = setupUser()
+    renderAt('/sr/administracija/timovi', 'superadmin', null, undefined, IN_WINDOW)
+
+    const rows = within(await screen.findByRole('table', { name: 'Timovi' }))
+    const row = must(
+      rows.getAllByRole('row').find((one) => one.textContent?.includes(ITS_NAME)),
+      'the row of the acted team',
+    )
+
+    await user.click(within(row).getByRole('button', { name: new RegExp(`^Otvori: ${ITS_NAME}`) }))
+    await user.click(await screen.findByRole('button', { name: 'Sačuvaj' }))
+
+    expect(await screen.findByRole('status', { name: 'Sačuvano' })).toBeVisible()
+    expect(server.asked.some((one) => one.init?.method === 'PUT' && one.path === `/api/teams/${String(ACTED)}`))
+      .toBe(true)
+
+    server.stop()
+  }, SLOW)
+
   it('says why the route refused the town written in a cell, beside the row', async () => {
     const server = serving((path) => (path === `/api/teams/${String(ACTED)}`
       ? refused('theCountryIsNotKnown')

@@ -212,6 +212,26 @@ describe('the form a team is changed on', () => {
     )
   }
 
+  it('opens with an empty link for a team that is served with none', async () => {
+    const served = serverThat((path, init) =>
+      path === '/api/teams' && init?.method === undefined
+        ? new Response(
+            JSON.stringify(MOCK_TEAMS.map(({ link: _link, ...rest }) => rest)),
+            { status: 200, headers: { 'content-type': 'application/json' } },
+          )
+        : null,
+    )
+
+    try {
+      renderAt('/sr/tim/dunavski-trkaci/izmena', 'competitor', '000001')
+
+      expect(await screen.findByLabelText(/Naziv tima/)).toHaveValue('Dunavski trkači')
+      expect(screen.getByLabelText(/^Link/)).toHaveValue('')
+    } finally {
+      served.stop()
+    }
+  })
+
   it('is not rewritten by the codebook while nobody has touched the town', async () => {
     /* A RECORD OPENED FOR EDITING IS LEFT EXACTLY AS IT WAS WRITTEN (`forms/PlaceField.tsx`),
        and this form is one since 03.10.2026: it is the proposal's own, seeded, so it draws the
