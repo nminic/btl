@@ -643,7 +643,9 @@ describe('the reasons the server can name', () => {
        Thirteen the same day with `anUnscoredRaceIsNotInALeague`, the same change refused while a race of the event
        counts in a league. Both are answered on the event form, so neither stands in `NOT_YET_ON_ANY_SCREEN`. */
     ['EventWriteApi.java', [WHEN_WRITING_AN_EVENT], 13],
-    ['RaceWriteApi.java', [WHEN_WRITING_A_RACE], 14],
+    /* Fifteen since 23.11.2026: `theRaceWouldMakeARunImpossible`, a race whose new figures would count a run at it
+       over 999,99 points (PDL P4, 10.10.2026, „Nikad broj bodova nece biti veci nego trocifren uz jos dve decimale"). */
+    ['RaceWriteApi.java', [WHEN_WRITING_A_RACE], 15],
     /* THE LEAGUE'S OWN ENTRY OF RESULTS FROM THE EVENT PAGE, added 19.10.2026 with the screen that
        meets it (`event/EnterResults.tsx`, PDL P9, 18.10.2026). Eight constants and six reasons then, ten reasons now; the two
        that are not are in `NOT_A_REASON`. The route also answers with three words it borrows by name
@@ -665,8 +667,10 @@ describe('the reasons the server can name', () => {
        (07.11.2026: `theEventWouldMoveOntoAnother` stays, since an event with no race moves forward into the
        next year's address when its first race is entered; the review of PR 700 found it.) Fifteen since
        15.11.2026: `theEventIsOfAnotherKind`, a new event typed that the calendar already has, of the other kind
-       than the one chosen beside it (PDL, 15.11.2026, the kind of a new event is the one the league chooses). */
-    ['ResultsByTheLeagueApi.java', [WHEN_THE_LEAGUE_ENTERS_RESULTS], 15],
+       than the one chosen beside it (PDL, 15.11.2026, the kind of a new event is the one the league chooses).
+       Sixteen since 23.11.2026: `theRunIsImpossible`, a row or the pencil at figures worth more than 999,99
+       points (PDL P4, 10.10.2026), declared again here rather than borrowed from `ResultWriteApi`. */
+    ['ResultsByTheLeagueApi.java', [WHEN_THE_LEAGUE_ENTERS_RESULTS], 16],
     /* ADDED 25.10.2026 WITH THE BANK STATEMENT ON THE PAYMENTS SCREEN (PDL 24.10.2026). Seven constants:
        four refusals, answered by the statement box, and the three states of a line in `NOT_A_REASON`. */
     /* NINE SINCE 25.10.2026: „Nije članarina" names one refusal of its own, and a fourth state. */

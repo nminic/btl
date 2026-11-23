@@ -204,7 +204,8 @@ class ResultWriteApi {
 	 * ({@link PointsOfARun#THE_MOST_A_RUN_IS_WORTH}, PDL P4, owner, 10.10.2026: „Nikad broj bodova nece biti
 	 * veci nego trocifren uz jos dve decimale"), so it is refused when it is sent, as the record derives
 	 * beside that decision. Asked of the figures as they are counted, so on a race of a length the length
-	 * is the race's. The league's own entry answers with this very word ({@link ResultsByTheLeagueApi}).
+	 * is the race's. The league's own entry answers with the same word, declared again there
+	 * ({@link ResultsByTheLeagueApi#THE_RUN_IS_IMPOSSIBLE}).
 	 */
 	static final String THE_RUN_IS_IMPOSSIBLE = "theRunIsImpossible";
 

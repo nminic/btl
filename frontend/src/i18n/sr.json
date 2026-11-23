@@ -1149,6 +1149,7 @@
       "theRaceHasNotBeenRun": "Rezultat ne može da se pošalje pre dana same trke.",
       "theRaceIsNamedTwice": "Rezultat nije poslat: trka je i izabrana iz kalendara i opisana rukom. Može samo jedno od toga.",
       "heHasAResultOnThisRace": "Za ovu trku već imaš rezultat. Ako vrednosti nisu tačne, pošalji ispravku tog rezultata.",
+      "theRunIsImpossible": "Rezultat nije poslat: bodovi ovih mera su van opsega koji portal prima.",
       "theRaceIsOutsideTheSeason": "Rezultat nije poslat: preko portala se prijavljuju samo trke tekuće sezone. Za rezultate ranijih sezona javi se ligi.",
       "theTownIsNotSaidOnce": "Mesto mora da se navede tačno jednom: ili izabrano iz šifarnika ili upisano rukom.",
       "theTownIsNotKnown": "To mesto ne stoji u šifarniku.",
@@ -1574,6 +1575,7 @@
       "theAddressIsTaken": "Na toj adresi već stoji jedna trka.",
       "theDateWouldMoveAResultToAnotherYear": "Datum ne može da pređe u drugu godinu dok je na trci upisan rezultat.",
       "theKindCannotChangeOnceRunsAreCounted": "Vrsta trke ne može da se promeni dok na trci stoji odobren rezultat.",
+      "theRaceWouldMakeARunImpossible": "Trka nije sačuvana: sa ovim merama bodovi bar jednog rezultata na njoj bili bi van opsega koji portal prima.",
       "anEventStillAheadWouldMoveIntoTheYearJustEnded": "Dan trke mora da bude u godini događaja."
     },
     "eventGone": "Događaj je obrisan, sa svojim trkama i rezultatima.",
@@ -2013,6 +2015,7 @@
       "theMemberIsNotKnown": "Izaberi člana sa spiska.",
       "theMemberIsNamedTwice": "Isti član je unet u više redova.",
       "heHasAResultOnThisRace": "Član već ima rezultat na ovoj trci. Izmeni ga olovkom u tabeli rezultata.",
+      "theRunIsImpossible": "Bodovi ovih mera su van opsega koji portal prima.",
       "hisSubmissionWaits": "Član već ima prijavu koja čeka za ovu trku. Prvo je odobri ili odbij u redu za proveru.",
       "heHoldsNoMembershipOfTheRunningSeason": "Član nema aktivno članstvo za sezonu ove trke.",
       "theFormIsNotComplete": "Nedostaje vreme ili mera, ili je upisana vrednost izvan dozvoljene.",

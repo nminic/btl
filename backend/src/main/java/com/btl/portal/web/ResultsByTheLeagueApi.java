@@ -232,6 +232,15 @@ class ResultsByTheLeagueApi {
 	/** No member holds the number on the row (or the row names none). */
 	static final String THE_MEMBER_IS_NOT_KNOWN = "theMemberIsNotKnown";
 
+	/**
+	 * A ROW, OR THE PENCIL, AT FIGURES NOBODY RAN: the run would be worth more than any run can be
+	 * ({@link PointsOfARun#THE_MOST_A_RUN_IS_WORTH}, PDL P4, owner, 10.10.2026). The same literal
+	 * {@link ResultWriteApi#THE_RUN_IS_IMPOSSIBLE} holds, declared again rather than referenced, the choice
+	 * {@code RaceWriteApi} made for {@code THE_ADDRESS_IS_TAKEN}: what this route can name is read off this
+	 * file. 400.
+	 */
+	static final String THE_RUN_IS_IMPOSSIBLE = "theRunIsImpossible";
+
 	/** The same member stands on two rows of one save. */
 	static final String THE_MEMBER_IS_NAMED_TWICE = "theMemberIsNamedTwice";
 
@@ -907,7 +916,7 @@ class ResultsByTheLeagueApi {
 					: notARun(figures) ? ResultWriteApi.THE_FORM_IS_NOT_COMPLETE
 					/* FIGURES NOBODY RAN, refused before anything is written rather than met as a 500 at
 					   `numeric(8,2)` (PointsOfARun#THE_MOST_A_RUN_IS_WORTH, PDL P4, 10.10.2026). */
-					: PointsOfARun.impossible(scored, figures) ? ResultWriteApi.THE_RUN_IS_IMPOSSIBLE
+					: PointsOfARun.impossible(scored, figures) ? THE_RUN_IS_IMPOSSIBLE
 					: times.get(member) > 1 ? THE_MEMBER_IS_NAMED_TWICE
 					: hasAResultOn(member, race.id()) ? HE_HAS_A_RESULT_ON_THIS_RACE
 					: hisSubmissionWaits(member, race.id()) ? HIS_SUBMISSION_WAITS
@@ -976,7 +985,7 @@ class ResultsByTheLeagueApi {
 
 			/* AND FIGURES NOBODY RAN, as on a row of the save (PointsOfARun#THE_MOST_A_RUN_IS_WORTH). */
 			if (PointsOfARun.impossible(standing.scored(), figures)) {
-				return Done.only(no(HttpStatus.BAD_REQUEST, ResultWriteApi.THE_RUN_IS_IMPOSSIBLE));
+				return Done.only(no(HttpStatus.BAD_REQUEST, THE_RUN_IS_IMPOSSIBLE));
 			}
 
 			int season = standing.race().day().getYear() + 1;

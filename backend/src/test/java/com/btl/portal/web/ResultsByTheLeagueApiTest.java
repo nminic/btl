@@ -2527,7 +2527,7 @@ class ResultsByTheLeagueApiTest {
 				row(VERA, ONE_HUNDREDTH_TOO_MANY, 0, 0, THE_TIME_AT_THE_EDGE)));
 
 		assertThat(refused.getStatus()).as(refused.getContentAsString()).isEqualTo(400);
-		assertThat(wrongRows(refused)).containsExactly("1 " + ResultWriteApi.THE_RUN_IS_IMPOSSIBLE);
+		assertThat(wrongRows(refused)).containsExactly("1 " + ResultsByTheLeagueApi.THE_RUN_IS_IMPOSSIBLE);
 		assertThat(resultsOf(BOJAN)).as("a refused save wrote its good row").isEmpty();
 		assertThat(resultsOf(VERA)).isEmpty();
 
@@ -2544,7 +2544,7 @@ class ResultsByTheLeagueApiTest {
 				row(VERA, ONE_HUNDREDTH_TOO_MANY, 0, 0, THE_TIME_AT_THE_EDGE)));
 
 		assertThat(refused.getStatus()).as(refused.getContentAsString()).isEqualTo(400);
-		assertThat(wrongRows(refused)).containsExactly("0 " + ResultWriteApi.THE_RUN_IS_IMPOSSIBLE);
+		assertThat(wrongRows(refused)).containsExactly("0 " + ResultsByTheLeagueApi.THE_RUN_IS_IMPOSSIBLE);
 		assertThat(db.sql("select count(*) from race where name = 'Prebrza trka'").query(Integer.class).single())
 				.isZero();
 	}
@@ -2558,7 +2558,7 @@ class ResultsByTheLeagueApiTest {
 				figuresBody(ONE_HUNDREDTH_TOO_MANY, 0, 0, THE_TIME_AT_THE_EDGE));
 
 		assertThat(refused.getStatus()).isEqualTo(400);
-		assertThat(reasonIn(refused)).isEqualTo(ResultWriteApi.THE_RUN_IS_IMPOSSIBLE);
+		assertThat(reasonIn(refused)).isEqualTo(ResultsByTheLeagueApi.THE_RUN_IS_IMPOSSIBLE);
 		assertThat(pointsOf(VERA, theHill)).isEqualTo("5.00");
 
 		assertThat(changed(RESULTS_MODERATOR, theHill, veras, figuresBody(THE_MOST, 0, 0, THE_TIME_AT_THE_EDGE))
