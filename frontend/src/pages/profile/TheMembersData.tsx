@@ -95,7 +95,7 @@ function TheForm({ address, opened }: { address: string; opened: MembersData }) 
   const [asking, setAsking] = useState(false)
   const out = useRef(false)
   const said = useRef<HTMLParagraphElement>(null)
-  const form = theMembersForm(opened.emailConfirmed !== null)
+  const form = theMembersForm(opened.emailConfirmed !== null, standing.viberCommunity)
   const saved = answer !== null && answer.got === 'done'
 
   /* Said out loud, because the answer to the press appears somewhere else on the screen (WCAG 2.2

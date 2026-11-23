@@ -430,6 +430,64 @@ describe('the box for Viber on the card', () => {
     expect(await screen.findByText(sr.registration.phoneForViber)).toBeVisible()
     expect(screen.queryByText(sr.account.saved)).toBeNull()
   }, SLOW)
+
+  /* THE TELEPHONE OF A MEMBER ON VIBER (owner, 23.11.2026, PDL „Tri brze izmene administracije": the screen says
+     the sentence of 20.11.2026, „Član je prijavljen za Viber zajednicu, pa broj ne može da se obriše dok se ne
+     odjavi.", and not „Za Viber zajednicu upišite broj telefona."). Three states, each with the telephone
+     emptied; the first two differ in what the SERVER holds (ticked, and not, with the box as served in the
+     first and ticked now in the second), so a card that read the box from the form instead of from the served
+     record answers one of them wrongly. The stub refuses as the route does (`MemberDataWriteApi`): an emptied telephone of a
+     member held on Viber. */
+  const theRouteThatHoldsThePhone = (held: boolean) =>
+    theAdministrationsServer(SOMEBODY, { viberCommunity: held }, (body) =>
+      held && body.viberCommunity !== false && (body.phone === '' || body.phone === null)
+        ? refused('theViberCommunityHoldsThePhone', 409)
+        : null,
+    )
+  const theTelephone = () => screen.findByRole('textbox', { name: new RegExp(`^${sr.registration.phone}`) })
+
+  it('says the sentence of 20.11.2026 for a telephone emptied of a member served ticked, and not the form’s own', async () => {
+    const user = setupUser()
+    const asked = theRouteThatHoldsThePhone(true)
+
+    asTheAdministration()
+    await user.clear(await theTelephone())
+    await user.click(screen.getByRole('button', { name: sr.account.save }))
+
+    expect(
+      await screen.findByText('Član je prijavljen za Viber zajednicu, pa broj ne može da se obriše dok se ne odjavi.'),
+    ).toBeVisible()
+    expect(screen.queryByText(sr.registration.phoneForViber)).toBeNull()
+    /* The press WENT to the server, which is what says the sentence. */
+    expect(corrections(asked)).toEqual([{ phone: '' }])
+  }, SLOW)
+
+  it('says „upišite broj" for a box ticked now over a member served not ticked, with the telephone emptied', async () => {
+    const user = setupUser()
+    const asked = theRouteThatHoldsThePhone(false)
+
+    asTheAdministration()
+    await user.clear(await theTelephone())
+    await user.click(await theBox())
+    await user.click(screen.getByRole('button', { name: sr.account.save }))
+
+    expect(await screen.findByText('Za Viber zajednicu upišite broj telefona.')).toBeVisible()
+    expect(screen.queryByText(sr.memberData.theViberCommunityHoldsThePhone)).toBeNull()
+    expect(corrections(asked)).toEqual([])
+  }, SLOW)
+
+  it('lets the telephone go with the box taken back in the same press, for a member served ticked', async () => {
+    const user = setupUser()
+    const asked = theRouteThatHoldsThePhone(true)
+
+    asTheAdministration()
+    await user.clear(await theTelephone())
+    await user.click(await theBox())
+    await user.click(screen.getByRole('button', { name: sr.account.save }))
+
+    expect(await screen.findByText(sr.account.saved)).toBeVisible()
+    expect(corrections(asked)).toEqual([{ phone: '', viberCommunity: false }])
+  }, SLOW)
 })
 
 describe('his own data, on „Moji podaci"', () => {

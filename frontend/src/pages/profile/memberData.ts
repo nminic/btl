@@ -56,19 +56,35 @@ export const THE_BOX_FOR_VIBER = 'viberCommunity'
  *                      member older than the portal, or entered by the league before he took an
  *                      account over) has no box for it: the route refuses an address for him
  *                      (`thereIsNoAccount`), and the registration's box is one that must be filled
+ * @param onViber       whether the server holds the member as joined to the community on Viber. Then the
+ *                      telephone does NOT ask for a number on its own (`requiredWhenFilled` is left off
+ *                      the card's copy of it): owner, 23.11.2026 (PDL, „Tri brze izmene administracije"),
+ *                      „ekran kaže rečenicu od 20.11.2026", so the press goes to the server, which answers
+ *                      an emptied telephone with the 409 of that sentence. The registration and „Moji
+ *                      podaci" use the field as written and keep the rule
  */
-export function theMembersForm(withAnAddress: boolean): FormDef {
+export function theMembersForm(withAnAddress: boolean, onViber = false): FormDef {
   return {
     ...registracija,
     id: 'podaci-clana',
     /* The button saves a correction, and its word is the one the member's own panel saves with
        („Sačuvaj"), not the registration's „Pošalji prijavu". */
     submitKey: 'account.save',
-    fields: registracija.fields.filter(
-      (one) =>
-        (one.name === THE_BOX_FOR_VIBER || WHAT_THE_ADMINISTRATION_CORRECTS.some((name) => name === one.name)) &&
-        (withAnAddress || one.name !== 'email'),
-    ),
+    fields: registracija.fields
+      .filter(
+        (one) =>
+          (one.name === THE_BOX_FOR_VIBER || WHAT_THE_ADMINISTRATION_CORRECTS.some((name) => name === one.name)) &&
+          (withAnAddress || one.name !== 'email'),
+      )
+      .map((one) => {
+        if (one.name !== 'phone' || !onViber) {
+          return one
+        }
+
+        const { requiredWhenFilled: _unasked, ...kept } = one
+
+        return kept
+      }),
   }
 }
 
