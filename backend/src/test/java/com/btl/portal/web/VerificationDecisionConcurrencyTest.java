@@ -1523,7 +1523,7 @@ class VerificationDecisionConcurrencyTest {
 		return http.perform(post("/api/verification/" + id + "/decision").with(csrf())
 						.cookie(new Cookie(SessionCookie.NAME, sessions.get(email)))
 						.contentType(MediaType.APPLICATION_JSON)
-						.content(body))
+						.content(TheTeamHeSaw.beside(db, id, body)))
 				.andReturn().getResponse();
 	}
 
@@ -1560,7 +1560,7 @@ class VerificationDecisionConcurrencyTest {
 		return http.perform(post("/api/verification/" + id + "/decision").with(csrf())
 						.cookie(new Cookie(SessionCookie.NAME, sessions.get(email)))
 						.contentType(MediaType.APPLICATION_JSON)
-						.content(body))
+						.content(TheTeamHeSaw.beside(db, id, body)))
 				.andReturn().getResponse();
 	}
 

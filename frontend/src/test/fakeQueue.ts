@@ -341,6 +341,24 @@ export function fakeQueue(
   function decideTeam(card: ServedPendingItem, approved: boolean, sentBody: string): Response {
     const id = String(card.id)
 
+    /* WHAT THE MODERATOR SAW IS WHAT THE CARD HOLDS NOW, or nothing is decided (`VerificationWriteApi.
+       whyTheChangeIsNotTheOneHeSaw`, PDL P13 [ODLUKA 23.11.2026]): the same for an approval and a refusal,
+       and a decision that names no words is a form not filled in. */
+    const seen: { seenTeam?: { name: string; city: string; country: string; bio: string; link: string } } =
+      JSON.parse(sentBody)
+
+    if (seen.seenTeam === undefined) {
+      return refused('theFormIsNotComplete')
+    }
+
+    const same = [seen.seenTeam.name, seen.seenTeam.city, seen.seenTeam.country, seen.seenTeam.bio, seen.seenTeam.link]
+      .map((one) => one.trim())
+      .join('|') === [card.subject, card.city, card.country, card.body, card.link ?? ''].map((one) => one.trim()).join('|')
+
+    if (!same) {
+      return refused('Izmena tima je promenjena, pogledaj je ponovo.', 409)
+    }
+
     if (!approved) {
       decided.add(id)
 

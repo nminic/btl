@@ -24,6 +24,7 @@ import {
   aRefusalOfTheText,
   anApproval,
   anApprovalOfTheTeam,
+  aRefusalOfTheTeam,
   anApprovalOfThePicture,
   anApprovalOfTheText,
   decisionPath,
@@ -141,7 +142,7 @@ function approvalOf(one: PendingItem, made: Proposed | null): Answered {
      11.08.2026; the description and the link since 23.11.2026). Until that day the corrections
      stayed in the browser and the server made the team as the member had sent it. */
   if (made !== null) {
-    return anApprovalOfTheTeam(made)
+    return anApprovalOfTheTeam(made, proposed(one))
   }
 
   return one.kind === 'bio' ? anApprovalOfTheText(one.body) : anApproval()
@@ -150,6 +151,12 @@ function approvalOf(one: PendingItem, made: Proposed | null): Answered {
 function refusalOf(one: PendingItem, reason: string): Answered {
   if (one.photoId !== null) {
     return aRefusalOfThePicture(reason, one.photoId, one.crop)
+  }
+
+  /* A TEAM NAMES THE WORDS IT DREW, as a picture names its print: the card of a change may have been
+     written over while the moderator looked (PDL P13, [ODLUKA 23.11.2026]). */
+  if (one.queue === 'teams') {
+    return aRefusalOfTheTeam(reason, proposed(one))
   }
 
   return one.kind === 'bio' ? aRefusalOfTheText(reason, one.body) : aRefusal(reason)
@@ -167,7 +174,7 @@ function refusalOf(one: PendingItem, reason: string): Answered {
  * route asks of the row (`VerificationWriteApi.isAText`).
  */
 function drewWhatItNames(one: PendingItem): boolean {
-  return one.photoId !== null || one.kind === 'bio'
+  return one.photoId !== null || one.kind === 'bio' || one.queue === 'teams'
 }
 
 /** Whether a queue has a second decision that hands the work back to its

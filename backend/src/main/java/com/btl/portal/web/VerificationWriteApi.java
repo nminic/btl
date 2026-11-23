@@ -42,6 +42,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZonedDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
@@ -403,6 +404,27 @@ class VerificationWriteApi {
 	 * they are written here as the record has them, full stop included.
 	 */
 	private static final String THE_PICTURE_WAS_CHANGED = "Slika je promenjena, pogledaj je ponovo.";
+
+	/**
+	 * THE CHANGE OF A TEAM THE MODERATOR SAW IS NOT THE ONE THE CARD HOLDS NOW: NOTHING IS DECIDED AND
+	 * THE CARD STAYS.
+	 *
+	 * <p>The sentence is <b>mine, in the shape of the picture's and the text's</b> ({@link
+	 * #THE_PICTURE_WAS_CHANGED}, {@link #THE_TEXT_WAS_CHANGED}), and there is no sentence of the owner's
+	 * for it: the owner decided that a second change of a team replaces the first that waits (PDL P13,
+	 * [ODLUKA 23.11.2026], „nova zamenjuje staru"), and the moderator who has the older one open must not
+	 * be able to approve it over the newer one nobody showed him. 409, for the reason the head of this
+	 * class gives. One sentence for the approval and for the refusal, as the picture's is.
+	 */
+	private static final String THE_CHANGE_OF_THE_TEAM_WAS_CHANGED =
+			"Izmena tima je promenjena, pogledaj je ponovo.";
+
+	/**
+	 * THE WORDS OF A TEAM BESIDE A DECISION THAT IS NOT ABOUT ONE: a form fault, so 400, as the picture's
+	 * and the text's are.
+	 */
+	private static final String A_SEEN_TEAM_GOES_WITH_A_DECISION_ABOUT_ONE =
+			"Viđen tim se zadaje samo uz odluku o timu.";
 
 	/**
 	 * THE KEY OR THE CIRCLE OF A SEEN PICTURE BESIDE A DECISION THAT HAS NO PICTURE: a form fault,
@@ -830,7 +852,8 @@ class VerificationWriteApi {
 	 *                    it read
 	 */
 	record Answered(Boolean approved, String reason, Amended amended, NewRace newRace, Long raceId,
-			Long seenPhotoId, VerificationApi.Crop seenCrop, String seenText, TeamAsCorrected team) {
+			Long seenPhotoId, VerificationApi.Crop seenCrop, String seenText, TeamAsCorrected team,
+			TeamAsCorrected seenTeam) {
 	}
 
 	/**
@@ -1299,6 +1322,15 @@ class VerificationWriteApi {
 			return new Carried(textUnnamed.get(), null, null);
 		}
 
+		/* AND FOR A TEAM: a decision about a proposal or a change names the words the moderator had in
+		   front of him (`seenTeam`), the same for an approval and a refusal, and a decision about
+		   anything else names none. */
+		Optional<ResponseEntity<?>> teamUnnamed = whyTheTeamIsNotNamedRight(item, typed);
+
+		if (teamUnnamed.isPresent()) {
+			return new Carried(teamUnnamed.get(), null, null);
+		}
+
 		/* THE ROW IS TAKEN HERE, FIRST, AND THEN LOOKED AT, for a decision about a picture (every other
 		   decision passes through this line without touching the database). See the head of this class
 		   for why it is two statements and what was measured. For a picture everything below this line
@@ -1320,6 +1352,17 @@ class VerificationWriteApi {
 
 		if (notTheTextHeRead.isPresent()) {
 			return new Carried(notTheTextHeRead.get(), null, null);
+		}
+
+		/* THE ROW IS TAKEN AND THEN LOOKED AT FOR A TEAM TOO. A second change of a team is written over
+		   the card that waits (`TeamWriteApi.replaceTheChangeThatWaits`, which takes the same row
+		   first), so the words it holds can change under a decision that has read the card and not
+		   yet claimed it; the claim below would then match all the same and make the team out of the
+		   words read BEFORE the wait. */
+		Optional<ResponseEntity<?>> notTheChangeHeSaw = whyTheChangeIsNotTheOneHeSaw(item, typed);
+
+		if (notTheChangeHeSaw.isPresent()) {
+			return new Carried(notTheChangeHeSaw.get(), null, null);
 		}
 
 		/* WHAT AN APPROVAL WOULD RUN INTO, ASKED FIRST AND WRITING NOTHING. It has to be
@@ -1618,6 +1661,94 @@ class VerificationWriteApi {
 
 		return theSame ? Optional.empty()
 				: Optional.of(no(HttpStatus.CONFLICT, THE_PICTURE_WAS_CHANGED));
+	}
+
+	/**
+	 * A CARD OF A TEAM, WHICH IS ONE THAT HAS A PROPOSAL BEHIND IT (a new team or the change of one).
+	 */
+	private static boolean isATeam(Item item) {
+		return TEAMS.equals(item.queue()) && item.teamProposalId() != null;
+	}
+
+	/**
+	 * WHETHER THE REQUEST NAMES THE WORDS OF A TEAM WHERE THERE ARE SOME AND NONE WHERE THERE ARE NOT,
+	 * asked of the request and the row alone and writing nothing: {@link #whyTheTextIsNotNamedRight}
+	 * for a team.
+	 *
+	 * <p>The name, the town and its country are the three things a team cannot be made without, so a
+	 * request that leaves one out is a form not filled in; the description and the link may be empty
+	 * and are read as empty when absent. <b>The same for the approval and the refusal</b>, which is
+	 * what {@code seenPhotoId} and {@code seenText} do and for the same reason: a reason typed about
+	 * one change would otherwise reach the member as the verdict on another.
+	 */
+	private static Optional<ResponseEntity<?>> whyTheTeamIsNotNamedRight(Item item, Answered typed) {
+		TeamAsCorrected seen = typed.seenTeam();
+
+		if (isATeam(item)) {
+			return seen == null || TeamWriteApi.isNothing(seen.name()) || TeamWriteApi.isNothing(seen.city())
+					|| TeamWriteApi.isNothing(seen.country())
+					? Optional.of(no(HttpStatus.BAD_REQUEST, THE_FORM_IS_NOT_COMPLETE))
+					: Optional.empty();
+		}
+
+		return seen == null ? Optional.empty()
+				: Optional.of(no(HttpStatus.BAD_REQUEST, A_SEEN_TEAM_GOES_WITH_A_DECISION_ABOUT_ONE));
+	}
+
+	/**
+	 * WHETHER THE CARD STILL HOLDS THE WORDS THE MODERATOR SAW, asked of the card WHILE HOLDING IT.
+	 * Writes nothing, and the first thing a decision about a team does to the database.
+	 *
+	 * <p><b>Two statements, in this order</b>, the picture's shape and for its reason: the first takes the
+	 * row of the card ({@code for update}, {@code state = 'waiting'}) and waits for any change of the team
+	 * that is in the middle of being written over it; the second reads the words in a statement of its
+	 * own, which takes its snapshot after the wait. The words live on {@code team_proposal}, another table
+	 * than the row that was locked, and a statement that waited does not re-read another table: folded
+	 * into one statement by a join, the words would be the ones it saw BEFORE it waited.
+	 *
+	 * <p><b>What is compared is what the card is served as</b> (the same expressions as
+	 * {@link VerificationApi}: the town typed or the codebook's, the description or, for a proposal sent
+	 * before 23.11.2026, the note in {@code body}), so the screen can send back what it drew and nothing
+	 * else. Compared as written, stripped, with an absent description or link read as empty.
+	 *
+	 * <p><b>Nothing here when the card is not waiting any more</b>: somebody decided it while this
+	 * request stood behind the lock, and the claim then answers what it always did,
+	 * {@link #SOMEBODY_ANSWERED_IT_ALREADY}. A moderator who lost a race is never told the change was
+	 * changed.
+	 */
+	private Optional<ResponseEntity<?>> whyTheChangeIsNotTheOneHeSaw(Item item, Answered typed) {
+		if (typed.seenTeam() == null || !isATeam(item)) {
+			return Optional.empty();
+		}
+
+		Optional<Long> held = db.sql("select id from verification where id = ? and state = ? for update")
+				.params(item.id(), DecidingOnASubmission.WAITING)
+				.query(Long.class)
+				.optional();
+
+		if (held.isEmpty()) {
+			return Optional.empty();
+		}
+
+		List<String> now = db.sql("select p.name, coalesce(town.name, p.city, ''),"
+						+ " coalesce(town_country.code, typed_country.code, ''),"
+						+ " case when p.bio <> '' then p.bio else v.body end, p.link"
+						+ " from verification v join team_proposal p on p.id = v.team_proposal_id"
+						+ " left join place town on town.id = p.place_id"
+						+ " left join country town_country on town_country.id = town.country_id"
+						+ " left join country typed_country on typed_country.id = p.country_id"
+						+ " where v.id = ?")
+				.param(item.id())
+				.query((row, number) -> List.of(row.getString(1).strip(), row.getString(2).strip(),
+						row.getString(3).strip(), row.getString(4).strip(), row.getString(5).strip()))
+				.single();
+
+		TeamAsCorrected saw = typed.seenTeam();
+		List<String> seen = List.of(saw.name().strip(), saw.city().strip(), saw.country().strip(),
+				TeamWriteApi.orEmpty(saw.bio()), TeamWriteApi.orEmpty(saw.link()));
+
+		return now.equals(seen) ? Optional.empty()
+				: Optional.of(no(HttpStatus.CONFLICT, THE_CHANGE_OF_THE_TEAM_WAS_CHANGED));
 	}
 
 	/**

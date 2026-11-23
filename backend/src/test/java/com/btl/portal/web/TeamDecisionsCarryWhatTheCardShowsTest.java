@@ -298,7 +298,7 @@ class TeamDecisionsCarryWhatTheCardShowsTest {
 
 	private MockHttpServletResponse decide(long item, String body) throws Exception {
 		return http.perform(post("/api/verification/" + item + "/decision").with(csrf())
-						.contentType(MediaType.APPLICATION_JSON).content(body)
+						.contentType(MediaType.APPLICATION_JSON).content(TheTeamHeSaw.beside(db, item, body))
 						.cookie(new Cookie(SessionCookie.NAME, session.secret())))
 				.andReturn().getResponse();
 	}

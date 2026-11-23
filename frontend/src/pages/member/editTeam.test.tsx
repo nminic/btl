@@ -612,6 +612,109 @@ describe('a change waiting on the queue of teams', () => {
     expect(decisionsSent()).toHaveLength(1)
   }, SLOW)
 
+  /* A DECISION NAMES THE WORDS IT WAS TAKEN ABOUT (PDL P13, [ODLUKA 23.11.2026], „nova zamenjuje staru"; the
+     shape is the picture's, `seenPhotoId`). The moderator who has the first change open when the second
+     is written over it is refused with the sentence, the card is read again, and the team has not moved;
+     asked again over the new words, the same press goes through. `fakeQueue` answers as the route does
+     (`VerificationWriteApi.whyTheChangeIsNotTheOneHeSaw`, in Java). */
+  const THE_CHANGE_WAS_CHANGED = 'Izmena tima je promenjena, pogledaj je ponovo.'
+
+  /** What the team is called on the server, which is what a decision that did not go through leaves. */
+  const theTeamIsCalled = async (): Promise<string> => {
+    const teams: { id: number; name: string }[] = await (await fetch('/api/teams')).json()
+
+    return must(teams.find((one) => one.id === 1), 'the team every case here acts on').name
+  }
+
+  /** The second change, sent behind the screen's back, which is what an administrator does while the
+   *  moderator looks at the first. */
+  const sendBehindHisBack = async (name: string): Promise<void> => {
+    await fetch('/api/teams/1/changes', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ name, city: 'Novi Sad', country: 'RS', bio: DUNAV.bio, link: DUNAV.link }),
+    })
+  }
+
+  it('refuses the approval of a change that was replaced while the moderator looked, says so and reads the card again', async () => {
+    const user = setupUser()
+    const { router } = renderAt('/sr/tim/dunavski-trkaci/izmena', 'superadmin', '000001')
+
+    await sendAChange(user, router, 'Dunavska družina')
+    await router.navigate('/sr/administracija/verifikacija/timovi')
+
+    const first = await screen.findByRole('heading', { name: 'Dunavska družina' })
+
+    await sendBehindHisBack('Dunavski klub')
+    await user.click(
+      within(must(first.closest('li'), 'the card of the first change')).getByRole('button', { name: 'Odobri' }),
+    )
+
+    expect(await screen.findByText(THE_CHANGE_WAS_CHANGED)).toBeVisible()
+    expect(await screen.findByRole('heading', { name: 'Dunavski klub' })).toBeVisible()
+    expect(screen.queryByRole('heading', { name: 'Dunavska družina' })).toBeNull()
+    expect(await theTeamIsCalled()).toBe('Dunavski trkači')
+
+    /* THE SAME PRESS, OVER WHAT HE SAW NOW, GOES THROUGH. */
+    const second = screen.getByRole('heading', { name: 'Dunavski klub' })
+
+    await user.click(
+      within(must(second.closest('li'), 'the card he reads now')).getByRole('button', { name: 'Odobri' }),
+    )
+
+    await waitFor(() => {
+      expect(decisionsSent()).toHaveLength(2)
+    })
+    await waitFor(async () => {
+      expect(await theTeamIsCalled()).toBe('Dunavski klub')
+    })
+  }, SLOW)
+
+  it('refuses the refusal of a change that was replaced while the moderator looked, as the picture does', async () => {
+    const user = setupUser()
+    const { router } = renderAt('/sr/tim/dunavski-trkaci/izmena', 'superadmin', '000001')
+
+    await sendAChange(user, router, 'Dunavska družina')
+    await router.navigate('/sr/administracija/verifikacija/timovi')
+
+    const first = await screen.findByRole('heading', { name: 'Dunavska družina' })
+
+    await sendBehindHisBack('Dunavski klub')
+    await user.click(
+      within(must(first.closest('li'), 'the card of the first change')).getByRole('button', { name: 'Odbij' }),
+    )
+    await user.type(screen.getByLabelText('Razlog odbijanja'), 'Opis nije potreban.')
+    await user.click(screen.getByRole('button', { name: 'Odbij uz ovaj razlog' }))
+
+    expect(await screen.findByText(THE_CHANGE_WAS_CHANGED)).toBeVisible()
+    expect(await screen.findByRole('heading', { name: 'Dunavski klub' })).toBeVisible()
+  }, SLOW)
+
+  it('names what the card showed and not what the moderator typed over it, beside the correction', async () => {
+    const user = setupUser()
+    const { router } = renderAt('/sr/tim/dunavski-trkaci/izmena', 'superadmin', '000001')
+
+    await sendAChange(user, router, 'Dunavska družina')
+    await router.navigate('/sr/administracija/verifikacija/timovi')
+
+    const heading = await screen.findByRole('heading', { name: 'Dunavska družina' })
+    const card = within(must(heading.closest('li'), 'the card of the change'))
+
+    await user.clear(card.getByLabelText('Naziv tima'))
+    await user.type(card.getByLabelText('Naziv tima'), 'Dunavski ispravljen')
+    await user.click(card.getByRole('button', { name: 'Odobri' }))
+
+    await waitFor(() => {
+      expect(decisionsSent()).toHaveLength(1)
+    })
+
+    const sent = JSON.parse(String(must(decisionsSent()[0], 'the decision').init?.body))
+
+    expect(sent.seenTeam.name).toBe('Dunavska družina')
+    expect(sent.team.name).toBe('Dunavski ispravljen')
+    expect(await theTeamIsCalled()).toBe('Dunavski ispravljen')
+  }, SLOW)
+
   it('cannot be approved once the team it names has been deleted', async () => {
     /* Approved anyway it wrote into an identity nothing answers to, settled the item,
        and told the member their team had been changed (review, 05.09.2026). The card

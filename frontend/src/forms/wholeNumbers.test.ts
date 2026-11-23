@@ -314,7 +314,14 @@ describe('the names an amendment is sent under', () => {
     ['anApprovalOnTheRace', writes.anApprovalOnTheRace(5, AMENDED)],
     [
       'anApprovalOfTheTeam',
-      writes.anApprovalOfTheTeam({ name: 'Tim', city: 'Zemun', country: 'RS', bio: '', link: '' }),
+      writes.anApprovalOfTheTeam(
+        { name: 'Tim', city: 'Zemun', country: 'RS', bio: '', link: '' },
+        { name: 'Tim', city: 'Zemun', country: 'RS', bio: '', link: '' },
+      ),
+    ],
+    [
+      'aRefusalOfTheTeam',
+      writes.aRefusalOfTheTeam('razlog', { name: 'Tim', city: 'Zemun', country: 'RS', bio: '', link: '' }),
     ],
     ['aRefusal', writes.aRefusal('razlog')],
     ['aRefusalOfTheText', writes.aRefusalOfTheText('razlog', 'tekst')],

@@ -1158,7 +1158,12 @@ class TeamWriteApi {
 		List<Long> waiting = db.sql("select v.team_proposal_id from verification v"
 						+ " join team_proposal p on p.id = v.team_proposal_id"
 						+ " where v.queue = 'teams' and v.state = 'waiting' and p.team_id = ?"
-						+ " order by v.raised_at, v.id")
+						/* THE CARD IS TAKEN HERE, `for update of v`, AND A DECISION ABOUT IT TAKES THE SAME
+						   ROW FIRST (`VerificationWriteApi.whyTheChangeIsNotTheOneHeSaw`): one of the two
+						   waits for the other. A statement that waited re-checks the locked row against
+						   its WHERE (READ COMMITTED), so a card decided meanwhile is no longer among the
+						   ones that wait and a new card is opened beside the decided one. */
+						+ " order by v.raised_at, v.id for update of v")
 				.param(team)
 				.query(Long.class)
 				.list();
@@ -1180,7 +1185,8 @@ class TeamWriteApi {
 				.params(me, name, orEmpty(typed.bio()), orEmpty(typed.link()), typed.city().strip(),
 						country, kept)
 				.update();
-		db.sql("update verification set competitor_id = ?, subject = ? where team_proposal_id = ?")
+		db.sql("update verification set competitor_id = ?, subject = ? where team_proposal_id = ?"
+						+ " and state = 'waiting'")
 				.params(me, name, kept)
 				.update();
 
