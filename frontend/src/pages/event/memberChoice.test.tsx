@@ -365,6 +365,22 @@ describe('where the list of members stands', () => {
     expect(list.style.getPropertyValue('--member-choice-room')).toBe(`${String(window.innerHeight - 148 - 12)}px`)
   })
 
+  it('is given its room and its place when it is opened by typing, as when it is opened by a press', async () => {
+    /* Review of PR 803, low 3: the road by typing to the room was held by Chrome only (`memberChoice.geometry.ts`). */
+    const user = setupUser()
+    const { box } = drawn()
+
+    box.getBoundingClientRect = () => DOMRect.fromRect({ x: 40, y: 100, width: 300, height: 48 })
+    await user.type(box, 'Rel')
+
+    const list = screen.getByRole('listbox')
+
+    expect(list.style.getPropertyValue('--member-choice-room')).toBe(`${String(window.innerHeight - 148 - 12)}px`)
+    expect(list.style.getPropertyValue('--member-choice-bottom')).toBe('148px')
+    expect(list.style.getPropertyValue('--member-choice-left')).toBe('40px')
+    expect(list.style.getPropertyValue('--member-choice-width')).toBe('300px')
+  })
+
   it('is worked out again where the box stands when it opens the next time', async () => {
     const user = setupUser()
     const { box } = drawn()
