@@ -2506,6 +2506,83 @@ class ResultsByTheLeagueApiTest {
 		assertThat(pointsOf(VERA, race)).isEqualTo("0.00");
 	}
 
+	/* ======================== figures nobody ran (PDL P4, owner, 10.10.2026, „Nikad broj bodova nece biti
+	 * veci nego trocifren uz jos dve decimale"): two lengths over 8800 seconds, worth exactly 999,99 and
+	 * exactly 1000,00 as the column keeps them, so the boundary is asked from both sides. */
+
+	private static final String THE_MOST = "99.8923";
+
+	private static final String ONE_HUNDREDTH_TOO_MANY = "99.8926";
+
+	private static final int THE_TIME_AT_THE_EDGE = 8800;
+
+	@Test
+	void aRowWorthMoreThanAnyRunIsRefusedAndNothingOfTheSaveIsWritten() throws Exception {
+		assertThat(BtlScoreCalculator.calculate(99.8923, 0, 0, THE_TIME_AT_THE_EDGE)).isEqualByComparingTo("999.99");
+		assertThat(BtlScoreCalculator.calculate(99.8926, 0, 0, THE_TIME_AT_THE_EDGE))
+				.isEqualByComparingTo("1000.00");
+
+		MockHttpServletResponse refused = entered(RESULTS_MODERATOR, theHill, rows(
+				row(BOJAN, THE_MOST, 0, 0, THE_TIME_AT_THE_EDGE),
+				row(VERA, ONE_HUNDREDTH_TOO_MANY, 0, 0, THE_TIME_AT_THE_EDGE)));
+
+		assertThat(refused.getStatus()).as(refused.getContentAsString()).isEqualTo(400);
+		assertThat(wrongRows(refused)).containsExactly("1 " + ResultsByTheLeagueApi.THE_RUN_IS_IMPOSSIBLE);
+		assertThat(resultsOf(BOJAN)).as("a refused save wrote its good row").isEmpty();
+		assertThat(resultsOf(VERA)).isEmpty();
+
+		assertThat(entered(RESULTS_MODERATOR, theHill, rows(row(BOJAN, THE_MOST, 0, 0, THE_TIME_AT_THE_EDGE)))
+				.getStatus()).isEqualTo(201);
+		assertThat(pointsOf(BOJAN, theHill)).isEqualTo("999.99");
+	}
+
+	/** On the save that makes its race, the row is judged on the race as it will be, and nothing is made. */
+	@Test
+	void aRowWorthMoreThanAnyRunOnANewRaceMakesNoRace() throws Exception {
+		MockHttpServletResponse refused = onAnEvent(RESULTS_MODERATOR, onTheEvent(theHillsEvent(),
+				newRace("Prebrza trka", "2027-05-08", "free", null, null, null, null),
+				row(VERA, ONE_HUNDREDTH_TOO_MANY, 0, 0, THE_TIME_AT_THE_EDGE)));
+
+		assertThat(refused.getStatus()).as(refused.getContentAsString()).isEqualTo(400);
+		assertThat(wrongRows(refused)).containsExactly("0 " + ResultsByTheLeagueApi.THE_RUN_IS_IMPOSSIBLE);
+		assertThat(db.sql("select count(*) from race where name = 'Prebrza trka'").query(Integer.class).single())
+				.isZero();
+	}
+
+	@Test
+	void thePencilRefusesFiguresWorthMoreThanAnyRunAndLeavesTheResult() throws Exception {
+		long veras = resultAlreadyCounted(VERA, theHill, LocalDate.of(2027, 5, 8), AN_HOUR, "5.00",
+				"10.00", 100, 80);
+
+		MockHttpServletResponse refused = changed(RESULTS_MODERATOR, theHill, veras,
+				figuresBody(ONE_HUNDREDTH_TOO_MANY, 0, 0, THE_TIME_AT_THE_EDGE));
+
+		assertThat(refused.getStatus()).isEqualTo(400);
+		assertThat(reasonIn(refused)).isEqualTo(ResultsByTheLeagueApi.THE_RUN_IS_IMPOSSIBLE);
+		assertThat(pointsOf(VERA, theHill)).isEqualTo("5.00");
+
+		assertThat(changed(RESULTS_MODERATOR, theHill, veras, figuresBody(THE_MOST, 0, 0, THE_TIME_AT_THE_EDGE))
+				.getStatus()).isEqualTo(204);
+		assertThat(pointsOf(VERA, theHill)).isEqualTo("999.99");
+	}
+
+	/** At an unscored race a run keeps nought, so the same figures are entered and changed there. */
+	@Test
+	void atAnUnscoredRaceFiguresWorthAnyNumberAreEnteredAndChanged() throws Exception {
+		long swim = race(anUnscoredEvent("plivanje-ivica-2027", "Plivanje", LocalDate.of(2027, 5, 9)), "Plivanje",
+				LocalDate.of(2027, 5, 9), "free", 0, "0", 0, 0);
+
+		assertThat(entered(RESULTS_MODERATOR, swim, rows(row(VERA, ONE_HUNDREDTH_TOO_MANY, 0, 0, 60)))
+				.getStatus()).isEqualTo(201);
+
+		long result = db.sql("select r.id from result r join competitor c on c.id = r.competitor_id"
+				+ " where c.member_number = ? and r.race_id = ?").params(VERA, swim).query(Long.class).single();
+
+		assertThat(changed(RESULTS_MODERATOR, swim, result, figuresBody(ONE_HUNDREDTH_TOO_MANY, 0, 0, 30))
+				.getStatus()).isEqualTo(204);
+		assertThat(pointsOf(VERA, swim)).isEqualTo("0.00");
+	}
+
 	private long anUnscoredEvent(String slug, String name, LocalDate date) {
 		long made = event(slug, name, date);
 

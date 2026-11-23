@@ -201,6 +201,16 @@ class RaceWriteApi {
 	static final String THE_KIND_CANNOT_CHANGE_ONCE_RUNS_ARE_COUNTED =
 			"theKindCannotChangeOnceRunsAreCounted";
 
+	/**
+	 * THE RACE AS WRITTEN WOULD MAKE A RUN AT IT WORTH MORE THAN ANY RUN CAN BE, once its runs are counted
+	 * again at it ({@link TheRunsOfARace#wouldMakeOneImpossible}). PDL P4, owner, 10.10.2026: „Nikad broj
+	 * bodova nece biti veci nego trocifren uz jos dve decimale" ({@link PointsOfARun#THE_MOST_A_RUN_IS_WORTH});
+	 * until then the recount met {@code numeric(8,2)} and the save answered 500. Refused before anything is
+	 * written, as P10b is, and 409 for P10b's reason: the race alone is a race, it is the runs already on it
+	 * that it cannot carry.
+	 */
+	static final String THE_RACE_WOULD_MAKE_A_RUN_IMPOSSIBLE = "theRaceWouldMakeARunImpossible";
+
 	/** What a race that fixes no measure of that sort carries (V7, and PDL on 0/0). */
 	private static final BigDecimal NO_DISTANCE = BigDecimal.ZERO;
 
@@ -637,6 +647,12 @@ class RaceWriteApi {
 				return no(HttpStatus.CONFLICT, THE_KIND_CANNOT_CHANGE_ONCE_RUNS_ARE_COUNTED);
 			}
 
+			/* AND A RACE THAT WOULD COUNT A RUN AT IT AS ONE NOBODY RAN, asked before anything is written
+			   for the reason P10b is (THE_RACE_WOULD_MAKE_A_RUN_IMPOSSIBLE). */
+			if (aRunWouldBeImpossible(id, before, checked)) {
+				return no(HttpStatus.CONFLICT, THE_RACE_WOULD_MAKE_A_RUN_IMPOSSIBLE);
+			}
+
 			LocalDate beginning = TheDayOfAnEvent.theDayItWillBeginOn(db, event.get(), id,
 					checked.date());
 
@@ -688,6 +704,15 @@ class RaceWriteApi {
 	 * @param before the race as it stood before the write
 	 * @param race   the race as it has just been written
 	 */
+	private boolean aRunWouldBeImpossible(long id, AsItStands before, Checked race) {
+		WhatARaceCarries.ARace after = whatItFixes(race);
+
+		/* Only where the recount below would move a run: a race whose fixed figures stay leaves every run
+		   as it was, and a run already written is not this write's to judge. */
+		return WhatARaceCarries.whatItFixesMoved(before.fixes(), after)
+				&& TheRunsOfARace.wouldMakeOneImpossible(db, id, after, TheRunsOfARace.at(db, id));
+	}
+
 	private void recountItsRunsIfWhatItFixesMoved(long id, AsItStands before, Checked race) {
 		WhatARaceCarries.ARace after = whatItFixes(race);
 
