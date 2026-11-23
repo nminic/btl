@@ -1,6 +1,4 @@
 import { first } from '../../test/at'
-import { recordKey } from '../../session/context'
-import { WAITING } from './pending'
 import type { Competitor, PendingItem, Team } from '../../data/types'
 import { NO_RATING } from '../../data/types'
 import {
@@ -9,6 +7,7 @@ import {
   nameFault,
   organisers,
   refusal,
+  editsKeyOf,
   teamFrom,
   type Proposed,
 } from './teamProposal'
@@ -141,9 +140,11 @@ describe('what a team would be made of', () => {
   })
 
   it('is what the moderator left, where they have', () => {
+    const served = item({ body: 'Opis koji je član napisao', link: 'https://clan.example' })
+
     expect(
-      teamFrom(item({ body: 'Opis koji je član napisao', link: 'https://clan.example' }), {
-        [recordKey(WAITING, 'prop-1')]: {
+      teamFrom(served, {
+        [editsKeyOf(served)]: {
           name: 'Trkači Zapadne Morave',
           city: 'Kraljevo',
           bio: 'Opis koji je moderator ispravio',
@@ -156,6 +157,18 @@ describe('what a team would be made of', () => {
       bio: 'Opis koji je moderator ispravio',
       link: 'https://clan.example',
     })
+  })
+
+  /* A CORRECTION BELONGS TO THE WORDS IT WAS TYPED OVER: the card keeps its key when a second change is
+     written over it, and a correction found under the key alone would be drawn over words it was never
+     typed over (review of PR 807, round 2). */
+  it('does not find a correction that was typed over other words', () => {
+    const before = item({ body: 'Prvi opis' })
+    const after = item({ body: 'Drugi opis' })
+    const typed = { [editsKeyOf(before)]: { name: 'Ispravljeno', bio: 'Moj opis' } }
+
+    expect(teamFrom(after, typed)).toEqual(teamFrom(after, {}))
+    expect(teamFrom(before, typed).name).toBe('Ispravljeno')
   })
 
   /* The card's text on the queue of teams is the proposal's description (`VerificationApi`,
