@@ -1809,8 +1809,6 @@
     "subject": "Subject",
     "teamChange": "A change to an existing team",
     "teamChangeOf": "A change to the team \"{name}\"",
-    "teamChangeAccepted": "The change to the team \"{name}\" has been accepted",
-    "teamChangeAcceptedBody": "The details of the team \"{name}\" have been changed.",
     "sentBy": "Sent by {who}, member {memberNumber}",
     "sentByAnonymous": "Reported by a visitor without an account",
     "paymentsSeason": "Not members for the {season} season",
@@ -1891,8 +1889,6 @@
       "few": "{count} items have been settled.",
       "other": "{count} items have been settled."
     },
-    "teamAccepted": "The team \"{name}\" has been accepted",
-    "teamAcceptedBody": "Your proposal for the team \"{name}\" has been accepted. You are its organiser.",
     "teamTaken": "A team under this name, or under a name that gives the same address, already exists in the League. Correct the name or refuse the proposal.",
     "teamNoAddress": "No page address can be made from this name. Correct the name so that it has at least one letter of our alphabet or of Cyrillic, or a digit, or refuse the proposal.",
     "teamIncomplete": "The name, the town and the country must all be filled in for the team to come into being.",

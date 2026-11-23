@@ -1809,8 +1809,6 @@
     "subject": "Predmet",
     "teamChange": "Izmena postojećeg tima",
     "teamChangeOf": "Izmena tima \"{name}\"",
-    "teamChangeAccepted": "Izmena tima \"{name}\" je prihvaćena",
-    "teamChangeAcceptedBody": "Podaci tima \"{name}\" su izmenjeni.",
     "sentBy": "Poslao {who}, član {memberNumber}",
     "sentByAnonymous": "Prijavio posetilac bez naloga",
     "paymentsSeason": "Nisu članovi za sezonu {season}",
@@ -1891,8 +1889,6 @@
       "few": "Rešene su {count} stavke.",
       "other": "Rešeno je {count} stavki."
     },
-    "teamAccepted": "Tim \"{name}\" je prihvaćen",
-    "teamAcceptedBody": "Tvoj predlog tima \"{name}\" je prihvaćen. Ti si njegov organizator.",
     "teamTaken": "Tim pod ovim nazivom, ili pod nazivom koji daje istu adresu, već postoji u ligi. Ispravi naziv ili odbij predlog.",
     "teamNoAddress": "Od ovog naziva se ne može napraviti adresa strane tima. Ispravi naziv tako da ima bar jedno slovo naše abecede ili ćirilice, ili cifru, ili odbij predlog.",
     "teamIncomplete": "Naziv, mesto i država moraju biti popunjeni da bi tim mogao da nastane.",
