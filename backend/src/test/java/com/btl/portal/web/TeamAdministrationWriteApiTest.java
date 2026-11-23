@@ -751,6 +751,335 @@ class TeamAdministrationWriteApiTest {
 				.containsExactlyInAnyOrderElementsOf(onTheForm);
 	}
 
+	/*
+	 * THE ADMINISTRATION MAKING A TEAM DIRECTLY, POST /api/teams/direct (23.11.2026).
+	 *
+	 * PDL P13, „[ODLUKA 09.10.2026 ...] Administracija pravi i menja tim direktno, bez reda za
+	 * moderaciju", and „[ZATEČENO 23.11.2026 ...]": the organizer is in the team at once and sits in
+	 * its seat. Every case asks the DATABASE, never an answer of the route: the fault this closes was
+	 * a team that existed in the browser alone.
+	 *
+	 * THE AXES, each with both of its states in the cases below: the administration, a moderator of
+	 * the queue only, the team's own administrator, a plain member and a visitor; an organizer who
+	 * holds the season he would join and one who does not; free, in another team, and written ahead
+	 * into one; a name free and one another team answers at; a description of 360 and of 361; inside
+	 * the window and outside it; the organizer the form names and the one asking, who are two
+	 * different members in `theOrganizerIsTheOneTheFormNamesAndNotTheOneAsking`.
+	 */
+
+	private static final String FREE = "000150";
+
+	private static final String FREE_BUT_UNPAID = "000160";
+
+	private static final String THE_RACING_MODERATORS_NUMBER = "000170";
+
+	private static final String A_MODERATOR_WHO_RACES = "trkac-moderator@primer.rs";
+
+	private static final String THE_NEW_TEAMS_NAME = "  Zemunski trkači  ";
+
+	private static final String THE_NEW_TEAM = "zemunski-trkaci";
+
+	/** Three members in no team, two of whom hold the season a team made in the window takes them in for. */
+	private void freeMembersInsideTheWindow() {
+		clock.moveTo(INSIDE_THE_WINDOW);
+		int next = AMembershipOfTheSeasonHeWouldJoin.season(INSIDE_THE_WINDOW.atZone(SeasonClock.ZONE));
+
+		for (String number : List.of(FREE, FREE_BUT_UNPAID, THE_RACING_MODERATORS_NUMBER)) {
+			competitor(number);
+		}
+
+		for (String number : List.of(FREE, THE_RACING_MODERATORS_NUMBER, ELSEWHERE, THE_SEAT)) {
+			HeldOn.season(db, competitorId(number), next, "payment");
+		}
+	}
+
+	private MockHttpServletResponse makeAs(String email, String body) throws Exception {
+		MockHttpServletRequestBuilder asking = org.springframework.test.web.servlet.request
+				.MockMvcRequestBuilders.post("/api/teams/direct").with(csrf())
+				.contentType(MediaType.APPLICATION_JSON).content(body);
+
+		return http.perform(email == null ? asking
+						: asking.cookie(new Cookie(SessionCookie.NAME, sessions.get(email).secret())))
+				.andReturn().getResponse();
+	}
+
+	private String whole(String name, String organizer, String bio, String link) {
+		Map<String, String> fields = new LinkedHashMap<>();
+		fields.put("name", name);
+		fields.put("city", "  Zemun  ");
+		fields.put("country", "RS");
+		fields.put("organizerMemberNumber", organizer);
+		fields.put("bio", bio);
+		fields.put("link", link);
+
+		return mapper.writeValueAsString(fields);
+	}
+
+	/** The new team's row and its memberships, read off the database, or an empty list. */
+	private List<String> theNewTeam() {
+		return db.sql("select t.name || '|' || coalesce(t.city, '-') || '|' || c.code || '|'"
+						+ " || (t.place_id is null) || '|' || t.bio || '|' || t.link || '|'"
+						+ " || t.first_season || '|' || t.admin_id || '|' || m.competitor_id || '|'"
+						+ " || m.season_from || '|' || (m.season_to is null)"
+						+ " from team t join country c on c.id = t.country_id"
+						+ " left join team_membership m on m.team_id = t.id"
+						+ " where t.slug = ? order by m.id")
+				.param(THE_NEW_TEAM).query(String.class).list();
+	}
+
+	@ParameterizedTest
+	@ValueSource(strings = {MODERATOR_OVER_TEAMS, THE_SUPERADMIN})
+	void theAdministrationMakesATeamWithItsOrganizerInItAtOnce(String who) throws Exception {
+		freeMembersInsideTheWindow();
+		long queued = db.sql("select count(*) from verification").query(Long.class).single();
+		int season = SeasonClock.transfersTakeEffect(INSIDE_THE_WINDOW.atZone(SeasonClock.ZONE));
+
+		MockHttpServletResponse answer = makeAs(who, whole(THE_NEW_TEAMS_NAME, "  " + FREE + "  ",
+				"  Trčimo uz Savu.  ", "  https://zemun.example  "));
+
+		assertThat(answer.getStatus()).as("%s could not make a team", who).isEqualTo(201);
+		assertThat(theNewTeam())
+				.as("the team is not in the database as the form named it, with its organizer in it"
+						+ " from the season a change of team takes effect in and in its seat")
+				.containsExactly("Zemunski trkači|Zemun|RS|true|Trčimo uz Savu.|https://zemun.example|"
+						+ season + "|" + competitorId(FREE) + "|" + competitorId(FREE) + "|" + season
+						+ "|true");
+
+		JsonNode said = mapper.readTree(answer.getContentAsString());
+		assertThat(List.of(said.path("slug").asString(), said.path("name").asString()))
+				.isEqualTo(List.of(THE_NEW_TEAM, "Zemunski trkači"));
+		assertThat(said.path("id").asLong())
+				.isEqualTo(db.sql("select id from team where slug = ?").param(THE_NEW_TEAM)
+						.query(Long.class).single());
+		assertThat(db.sql("select count(*) from verification").query(Long.class).single())
+				.as("the administration's team went to the queue")
+				.isEqualTo(queued);
+	}
+
+	@Test
+	void theOrganizerIsTheOneTheFormNamesAndNotTheOneAsking() throws Exception {
+		freeMembersInsideTheWindow();
+		db.sql("insert into account (first_name, last_name, email, role_id, competitor_id) values"
+						+ " ('Moderator', 'Trkac', ?, (select id from role where code = 'moderator'),"
+						+ " (select id from competitor where member_number = ?))")
+				.params(A_MODERATOR_WHO_RACES, THE_RACING_MODERATORS_NUMBER).update();
+		openSession(A_MODERATOR_WHO_RACES);
+		ticked(A_MODERATOR_WHO_RACES, TeamApi.OVER_THE_TEAMS);
+
+		assertThat(makeAs(A_MODERATOR_WHO_RACES, whole(THE_NEW_TEAMS_NAME, FREE, "", "")).getStatus())
+				.isEqualTo(201);
+		assertThat(db.sql("select admin_id from team where slug = ?").param(THE_NEW_TEAM)
+				.query(Long.class).single())
+				.as("the seat went to the one who pressed rather than the one the form named")
+				.isEqualTo(competitorId(FREE));
+		assertThat(db.sql("select count(*) from team_membership where competitor_id = ?")
+				.param(competitorId(THE_RACING_MODERATORS_NUMBER)).query(Long.class).single())
+				.as("the moderator who pressed was put into the team")
+				.isZero();
+	}
+
+	@ParameterizedTest
+	@ValueSource(strings = {ELSEWHERE, THE_SEAT})
+	void anOrganizerAlreadyInATeamOrWrittenAheadIntoOneIsRefused(String number) throws Exception {
+		freeMembersInsideTheWindow();
+		List<String> before = everyTeam();
+		List<String> memberships = theMemberships();
+
+		MockHttpServletResponse answer = makeAs(MODERATOR_OVER_TEAMS,
+				whole(THE_NEW_TEAMS_NAME, number, "", ""));
+
+		assertThat(answer.getStatus()).as("%s founded a second team", number).isEqualTo(409);
+		assertThat(reasonIn(answer)).isEqualTo(TeamAdministrationWriteApi.HE_IS_ALREADY_IN_A_TEAM);
+		assertThat(everyTeam()).isEqualTo(before);
+		assertThat(theMemberships()).isEqualTo(memberships);
+	}
+
+	@Test
+	void anOrganizerWhoDoesNotHoldTheSeasonIsRefused() throws Exception {
+		freeMembersInsideTheWindow();
+		List<String> before = everyTeam();
+
+		MockHttpServletResponse answer = makeAs(MODERATOR_OVER_TEAMS,
+				whole(THE_NEW_TEAMS_NAME, FREE_BUT_UNPAID, "", ""));
+
+		assertThat(answer.getStatus()).isEqualTo(409);
+		assertThat(reasonIn(answer)).isEqualTo(TeamAdministrationWriteApi.THE_SEASON_IS_NOT_PAID);
+		assertThat(everyTeam()).isEqualTo(before);
+	}
+
+	@Test
+	void aNumberNobodyHoldsIsRefused() throws Exception {
+		freeMembersInsideTheWindow();
+		List<String> before = everyTeam();
+
+		MockHttpServletResponse answer = makeAs(MODERATOR_OVER_TEAMS,
+				whole(THE_NEW_TEAMS_NAME, NOBODY_HAS_IT, "", ""));
+
+		assertThat(answer.getStatus()).isEqualTo(409);
+		assertThat(reasonIn(answer)).isEqualTo(TeamAdministrationWriteApi.THE_ORGANIZER_IS_NOT_KNOWN);
+		assertThat(everyTeam()).isEqualTo(before);
+	}
+
+	@ParameterizedTest
+	@ValueSource(strings = {"  PRVI TIM!  ", "  Први тим  "})
+	void aNameAnotherTeamAnswersAtMakesNoTeam(String name) throws Exception {
+		freeMembersInsideTheWindow();
+		List<String> before = everyTeam();
+
+		MockHttpServletResponse answer = makeAs(MODERATOR_OVER_TEAMS, whole(name, FREE, "", ""));
+
+		assertThat(answer.getStatus()).isEqualTo(409);
+		assertThat(reasonIn(answer)).isEqualTo(TeamAdministrationWriteApi.THE_ADDRESS_IS_TAKEN);
+		assertThat(everyTeam()).isEqualTo(before);
+	}
+
+	@Test
+	void outsideTheWindowNoTeamIsMade() throws Exception {
+		freeMembersInsideTheWindow();
+		clock.moveTo(OUTSIDE_THE_WINDOW);
+		List<String> before = everyTeam();
+
+		MockHttpServletResponse answer = makeAs(MODERATOR_OVER_TEAMS,
+				whole(THE_NEW_TEAMS_NAME, FREE, "", ""));
+
+		assertThat(answer.getStatus()).isEqualTo(409);
+		assertThat(reasonIn(answer)).isEqualTo(TeamAdministrationWriteApi.THE_WINDOW_IS_SHUT);
+		assertThat(everyTeam()).isEqualTo(before);
+	}
+
+	@ParameterizedTest
+	@CsvSource(nullValues = "NIC", value = {"NIC", "''", "'   '"})
+	void aTeamWithNoOrganizerIsAFormNotFilledIn(String organizer) throws Exception {
+		freeMembersInsideTheWindow();
+
+		MockHttpServletResponse answer = makeAs(MODERATOR_OVER_TEAMS,
+				whole(THE_NEW_TEAMS_NAME, organizer, "", ""));
+
+		assertThat(answer.getStatus()).isEqualTo(400);
+		assertThat(reasonIn(answer)).isEqualTo(TeamAdministrationWriteApi.THE_FORM_IS_NOT_COMPLETE);
+		assertThat(theNewTeam()).isEmpty();
+	}
+
+	@Test
+	void aDescriptionOfThreeHundredAndSixtyMakesATeamAndOneLongerDoesNot() throws Exception {
+		freeMembersInsideTheWindow();
+
+		MockHttpServletResponse longer = makeAs(MODERATOR_OVER_TEAMS,
+				whole(THE_NEW_TEAMS_NAME, FREE, "a".repeat(361), ""));
+
+		assertThat(longer.getStatus()).isEqualTo(400);
+		assertThat(reasonIn(longer)).isEqualTo(TeamAdministrationWriteApi.THE_TEXT_IS_TOO_LONG);
+		assertThat(theNewTeam()).isEmpty();
+
+		assertThat(makeAs(MODERATOR_OVER_TEAMS,
+				whole(THE_NEW_TEAMS_NAME, FREE, " " + "a".repeat(360) + " ", "")).getStatus())
+				.isEqualTo(201);
+		assertThat(db.sql("select bio from team where slug = ?").param(THE_NEW_TEAM)
+				.query(String.class).single())
+				.isEqualTo("a".repeat(360));
+	}
+
+	@Test
+	void aLinkThatIsNotOneMakesNoTeam() throws Exception {
+		freeMembersInsideTheWindow();
+
+		MockHttpServletResponse answer = makeAs(MODERATOR_OVER_TEAMS,
+				whole(THE_NEW_TEAMS_NAME, FREE, "", "zemun.example"));
+
+		assertThat(answer.getStatus()).isEqualTo(400);
+		assertThat(reasonIn(answer)).isEqualTo(TeamAdministrationWriteApi.THE_LINK_IS_NOT_SHAPED);
+		assertThat(theNewTeam()).isEmpty();
+	}
+
+	@Test
+	void theTeamsThatHadAskedTheOrganizerAreTold() throws Exception {
+		freeMembersInsideTheWindow();
+		int next = SeasonClock.transfersTakeEffect(INSIDE_THE_WINDOW.atZone(SeasonClock.ZONE));
+		db.sql("insert into team_invitation (team_id, competitor_id, season) values"
+						+ " ((select id from team where slug = ?), ?, ?)")
+				.params(ANOTHER_TEAM, competitorId(FREE), next).update();
+		long told = db.sql("select count(*) from message where to_id = ?")
+				.param(competitorId(ELSEWHERE)).query(Long.class).single();
+
+		assertThat(makeAs(MODERATOR_OVER_TEAMS, whole(THE_NEW_TEAMS_NAME, FREE, "", "")).getStatus())
+				.isEqualTo(201);
+		assertThat(db.sql("select count(*) from message where to_id = ?")
+				.param(competitorId(ELSEWHERE)).query(Long.class).single())
+				.as("the team whose invitation the organizer can no longer answer was not told")
+				.isEqualTo(told + 1);
+	}
+
+	@ParameterizedTest
+	@ValueSource(strings = {MODERATOR_OVER_THE_QUEUE, MODERATOR_OVER_SOMETHING_ELSE,
+			THE_TEAMS_OWN_ADMINISTRATOR, A_PLAIN_MEMBER})
+	void nobodyButTheAdministrationMakesATeam(String who) throws Exception {
+		freeMembersInsideTheWindow();
+
+		assertThat(makeAs(who, whole(THE_NEW_TEAMS_NAME, FREE, "", "")).getStatus())
+				.as("%s made a team", who)
+				.isEqualTo(404);
+		assertThat(theNewTeam()).isEmpty();
+	}
+
+	@Test
+	void somebodyNotSignedInMakesNoTeam() throws Exception {
+		freeMembersInsideTheWindow();
+
+		assertThat(makeAs(null, whole(THE_NEW_TEAMS_NAME, FREE, "", "")).getStatus()).isEqualTo(401);
+		assertThat(theNewTeam()).isEmpty();
+	}
+
+	/* AND THE CHANGE OF THE DESCRIPTION AND THE LINK (PDL P13, „[ODLUKE 23.11.2026 ...]", point 3:
+	   „u Administracija → Timovi (direktno, bez odobravanja, i za postojeće timove)"). */
+
+	@Test
+	void aChangeWritesTheDescriptionAndTheLinkAndEmptyEmptiesThem() throws Exception {
+		assertThat(changeAs(MODERATOR_OVER_TEAMS, theTeam(), changing("  Novi opis.  ",
+				"  https://novi.example  ")).getStatus()).isEqualTo(200);
+		assertThat(theWords()).containsExactly("Novi opis.", "https://novi.example");
+
+		assertThat(changeAs(MODERATOR_OVER_TEAMS, theTeam(), changing("", "")).getStatus())
+				.isEqualTo(200);
+		assertThat(theWords()).as("an empty description or link was not written as empty")
+				.containsExactly("", "");
+	}
+
+	@Test
+	void aChangeWithADescriptionTooLongOrALinkThatIsNotOneWritesNothing() throws Exception {
+		MockHttpServletResponse longer = changeAs(MODERATOR_OVER_TEAMS, theTeam(),
+				changing("a".repeat(361), ""));
+
+		assertThat(longer.getStatus()).isEqualTo(400);
+		assertThat(reasonIn(longer)).isEqualTo(TeamAdministrationWriteApi.THE_TEXT_IS_TOO_LONG);
+
+		MockHttpServletResponse shapeless = changeAs(MODERATOR_OVER_TEAMS, theTeam(),
+				changing("", "novi.example"));
+
+		assertThat(shapeless.getStatus()).isEqualTo(400);
+		assertThat(reasonIn(shapeless)).isEqualTo(TeamAdministrationWriteApi.THE_LINK_IS_NOT_SHAPED);
+		assertThat(theWords()).containsExactly(ITS_BIO, ITS_LINK);
+		assertThat(theRowOf(theTeam())).isEqualTo(asItStood());
+
+		assertThat(changeAs(MODERATOR_OVER_TEAMS, theTeam(), changing("a".repeat(360), ""))
+				.getStatus()).isEqualTo(200);
+	}
+
+	private String changing(String bio, String link) {
+		Map<String, String> fields = new LinkedHashMap<>();
+		fields.put("name", THE_TEAMS_NAME);
+		fields.put("city", "Novi Sad");
+		fields.put("country", "RS");
+		fields.put("bio", bio);
+		fields.put("link", link);
+
+		return mapper.writeValueAsString(fields);
+	}
+
+	private List<String> theWords() {
+		return db.sql("select bio, link from team where id = ?").param(theTeam())
+				.query((row, one) -> List.of(row.getString(1), row.getString(2))).single();
+	}
+
 	private void team(String slug, String name) {
 		db.sql("insert into team (slug, name, bio, link, place_id, city, country_id, logo_id,"
 						+ " first_season, admin_id)"

@@ -28,6 +28,19 @@
       "type": "select",
       "labelKey": "admin.field.teamOrganizer",
       "required": true
+    },
+    {
+      "name": "bio",
+      "type": "textarea",
+      "labelKey": "admin.field.teamBio",
+      "maxLength": 360
+    },
+    {
+      "name": "link",
+      "type": "text",
+      "labelKey": "admin.field.teamLink",
+      "pattern": "^https?:\\/\\/[^\\s]+$",
+      "maxLength": 500
     }
   ]
 }

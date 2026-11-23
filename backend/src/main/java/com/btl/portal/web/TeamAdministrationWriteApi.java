@@ -1,11 +1,14 @@
 package com.btl.portal.web;
 
 import com.btl.portal.domain.event.EventAddress;
+import com.btl.portal.domain.event.WhatAnEventCarries;
+import com.btl.portal.domain.season.SeasonClock;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -26,12 +29,14 @@ import java.util.Optional;
  * team in the browser's session alone and the server never heard of it, which is what the QA
  * review of 09.10.2026 found.
  *
- * <p><b>THIS IS THE CHANGE AND NOT THE MAKING, AND THE DIFFERENCE IS AN OPEN QUESTION RATHER
- * THAN AN OMISSION.</b> The same decision lets the administration make a team directly, but the
- * address that act goes to is the owner's to choose: {@code POST /api/teams} already carries a
- * member's proposal ({@link TeamWriteApi#propose}), and ADL, the entry „sme da napiše red u
- * tabelu koja nije taj resurs", says that one address carrying two meanings is the day its shape
- * changes rather than gets explained. Nothing here makes a team.
+ * <p><b>AND SINCE 23.11.2026 THE MAKING AS WELL, AT {@code POST /api/teams/direct}</b> ({@link #make}).
+ * PDL P13, „[ZATEČENO 23.11.2026 ...]": the decision of 09.10.2026 had never been carried out, a
+ * team made on the administration's screen did not exist in the database, and the owner met it on
+ * production („NAPRAVIM TIM KAO ADMIN I NESTANE IZ LISTE"). <b>The address is my choice, not a
+ * decision</b>: {@code POST /api/teams} already carries a member's proposal
+ * ({@link TeamWriteApi#propose}), and ADL, the entry „sme da napiše red u tabelu koja nije taj
+ * resurs", says that one address carrying two meanings is the day its shape changes rather than
+ * gets explained, so the direct making has an address of its own.
  *
  * <p><b>ONE ADDRESS FOR THE ADMINISTRATION AND NOT THE ONE THE TEAM'S OWN ADMINISTRATOR WILL
  * USE.</b> {@code DELETE /api/teams/{id}} serves both of them because PDL P13b (25.09.2026) makes
@@ -50,10 +55,14 @@ import java.util.Optional;
  * than a gap: his change goes through the queue. Everybody refused is answered 404 at the door
  * ({@link RightsAtTheDoor}, ADL A8), and somebody who is not signed in 401 by the chain.
  *
- * <p><b>WHAT IS CHANGED IS THE FOUR THINGS THE ADMINISTRATION'S FORM ASKS FOR, AND NOTHING
- * ELSE.</b> {@code admin-tim.form.json} asks for a name, a town, its country and the member who
- * sits in the seat, and {@link Changed} carries exactly those four
+ * <p><b>WHAT IS CHANGED IS THE SIX THINGS THE ADMINISTRATION'S FORM ASKS FOR, AND NOTHING
+ * ELSE.</b> {@code admin-tim.form.json} asks for a name, a town, its country, the member who
+ * sits in the seat, and since 23.11.2026 the description and the link (PDL P13, „[ODLUKE
+ * 23.11.2026 ...]", point 3: „u Administracija → Timovi (direktno, bez odobravanja, i za
+ * postojeće timove)"), and {@link Changed} carries exactly those six
  * ({@code TeamAdministrationWriteApiTest} reads the form file and holds the two to each other).
+ * <b>A description or a link that is absent is left as it stands</b>, as the seat is; empty is
+ * written as empty.
  *
  * <ul>
  * <li><b>The name, and the address with it.</b> ADL, of a team's name: it is changed on a form
@@ -82,7 +91,7 @@ import java.util.Optional;
  * </ul>
  *
  * <p><b>WHAT IS NOT CHANGED, AND THIS PARAGRAPH IS MY REASONING OVER THE SCHEMA, NOT A DECISION
- * OF THE OWNER'S.</b> The team's description, its link, its mark, the season it collects from and
+ * OF THE OWNER'S.</b> The team's mark, the season it collects from and
  * who is in it are not written: the form does not ask for any of them, so a change sent from it
  * must not quietly empty what it never offered to change. The mark is the sharp edge of that:
  * {@code team.logo_id} emptied would take its {@code photo} row with it at the end of the
@@ -142,6 +151,36 @@ class TeamAdministrationWriteApi {
 	 */
 	static final String HE_IS_NOT_IN_THE_TEAM = "heIsNotInTheTeam";
 
+	/** A link that is not one, {@link TeamWriteApi}'s word for {@code team_link_shape}. */
+	static final String THE_LINK_IS_NOT_SHAPED = "theLinkIsNotShaped";
+
+	/** A description longer than {@link TeamWriteApi#THE_LONGEST_DESCRIPTION}, the same word. */
+	static final String THE_TEXT_IS_TOO_LONG = "theTextIsTooLong";
+
+	/**
+	 * A TEAM MADE OUTSIDE THE TRANSFER WINDOW. PDL P13, owner 26.09.2026, choosing against my
+	 * recommendation: „Prozor za osnivanje tima vezuje oba pozivaoca: i člana, i administraciju kad
+	 * tim pravi direktno." Only {@link #make} asks it; a change of name, town or seat is not who is in
+	 * the team.
+	 */
+	static final String THE_WINDOW_IS_SHUT = "theWindowIsShut";
+
+	/**
+	 * THE ORGANIZER NAMED FOR A NEW TEAM IS NOT A MEMBER THE PORTAL HAS: a number nobody holds.
+	 * One answered with a member's number is asked the founder's three questions instead
+	 * ({@link FoundingATeam#obstacle}).
+	 */
+	static final String THE_ORGANIZER_IS_NOT_KNOWN = "theOrganizerIsNotKnown";
+
+	/** The organizer is in a team, or written into one for a later season (PDL P13, 05.09.2026). */
+	static final String HE_IS_ALREADY_IN_A_TEAM = "heIsAlreadyInATeam";
+
+	/**
+	 * The organizer does not hold the season the team would take him in for (PDL 30.10.2026, „U
+	 * prelaznom roku svaki ulaz u tim traži plaćenu narednu sezonu"), {@link TeamWriteApi}'s word.
+	 */
+	static final String THE_SEASON_IS_NOT_PAID = "theSeasonIsNotPaid";
+
 	private final JdbcClient db;
 
 	/**
@@ -152,23 +191,34 @@ class TeamAdministrationWriteApi {
 
 	private final Clock clock;
 
-	TeamAdministrationWriteApi(JdbcClient db, TransactionTemplate inOneTransaction, Clock clock) {
+	/** What makes a team with its founder in it: the one home this route and an approval share. */
+	private final FoundingATeam founding;
+
+	TeamAdministrationWriteApi(JdbcClient db, TransactionTemplate inOneTransaction, Clock clock,
+			FoundingATeam founding) {
 		this.db = db;
 		this.inOneTransaction = inOneTransaction;
 		this.clock = clock;
+		this.founding = founding;
 	}
 
 	/**
-	 * WHAT ARRIVES, WHICH IS THE ADMINISTRATION'S FORM AND NOTHING BESIDES.
+	 * WHAT ARRIVES, WHICH IS THE ADMINISTRATION'S FORM AND NOTHING BESIDES, for a change and for a
+	 * team made directly alike.
 	 *
 	 * @param name                  what the team is called, stripped on the way in
 	 * @param city                  the town as typed, stripped on the way in
 	 * @param country               the code of its country, {@code RS}, never its key - the same
 	 *                              spelling {@link TeamApi} answers with
 	 * @param organizerMemberNumber the member who is to sit in the seat, or nothing where the seat
-	 *                              is to stay as it stands
+	 *                              is to stay as it stands; required for a team being made
+	 * @param bio                   what the team says about itself, at most
+	 *                              {@link TeamWriteApi#THE_LONGEST_DESCRIPTION}; absent on a change
+	 *                              leaves it as it stands
+	 * @param link                  the team's own page, or empty; absent on a change leaves it
 	 */
-	record Changed(String name, String city, String country, String organizerMemberNumber) {
+	record Changed(String name, String city, String country, String organizerMemberNumber,
+			String bio, String link) {
 	}
 
 	/** Why a team could not be changed, in the shape every writing route on this server uses. */
@@ -231,6 +281,12 @@ class TeamAdministrationWriteApi {
 		/* RESOLVED BEFORE ANYTHING IS WRITTEN, because a code nothing maps would otherwise be an
 		   error inside the UPDATE rather than an answer to the person - {@link TeamWriteApi}'s own
 		   arrangement for the same column. */
+		Optional<ResponseEntity<?>> words = whatIsWrongWithTheWords(typed);
+
+		if (words.isPresent()) {
+			return words.get();
+		}
+
 		Optional<Long> country = countryKey(typed.country());
 
 		if (country.isEmpty()) {
@@ -255,14 +311,17 @@ class TeamAdministrationWriteApi {
 
 		/* THE ADDRESS IS JUDGED BY THE WRITE ITSELF, and against every team but this one: a team
 		   is never refused the address it already has. `place_id` is emptied because the town that
-		   arrives is the typed one (see the note on this class), and nothing else the team carries
-		   - its description, its link, its mark, its first season - is named here at all. */
+		   arrives is the typed one (see the note on this class). The description and the link go
+		   through a coalesce as the seat does, so a request that names neither leaves both; nothing
+		   else the team carries - its mark, its first season - is named here at all. */
 		int written = db.sql("update team set slug = ?, name = ?, place_id = null, city = ?,"
-						+ " country_id = ?, admin_id = coalesce(cast(? as bigint), admin_id)"
+						+ " country_id = ?, admin_id = coalesce(cast(? as bigint), admin_id),"
+						+ " bio = coalesce(cast(? as text), bio), link = coalesce(cast(? as text), link)"
 						+ " where id = ? and not exists(select 1 from team other"
 						+ " where other.slug = ? and other.id <> ?)")
 				.params(address, typed.name().strip(), typed.city().strip(), country.get(), seat,
-						id, address, id)
+						typed.bio() == null ? null : typed.bio().strip(),
+						typed.link() == null ? null : typed.link().strip(), id, address, id)
 				.update();
 
 		if (written == 0) {
@@ -270,6 +329,103 @@ class TeamAdministrationWriteApi {
 		}
 
 		return ResponseEntity.ok(writtenDown(id));
+	}
+
+	/**
+	 * THE ADMINISTRATION MAKING A TEAM DIRECTLY, WITH ITS ORGANIZER IN IT AT ONCE.
+	 *
+	 * <p>PDL P13, „[ODLUKA 09.10.2026 ...] Administracija pravi i menja tim direktno, bez reda za
+	 * moderaciju. Administracija već odlučuje o predlozima, pa je njen upis odmah važeći", and
+	 * „[ZATEČENO 23.11.2026 ...]": „organizator odmah ulazi u tim (odluka od 05.09.2026: „Odmah ulazi
+	 * u tim”, a obračun počinje 1.1. naredne sezone) i postaje administrator tima". So nothing goes to
+	 * the queue: the team, the organizer's membership and his seat are written here, by the same
+	 * statements an approval writes them with ({@link FoundingATeam}), and the teams that had asked
+	 * him are told as on every other door into a team.
+	 *
+	 * <p><b>In this order</b>, each answer before anything is written: the window (PDL P13,
+	 * 26.09.2026, „Prozor za osnivanje tima vezuje oba pozivaoca"), the form, the organizer, and the
+	 * founder's three questions. Who may is the right over the teams, the door the change has, so
+	 * somebody without it is told 404 and somebody signed out 401 (ADL A8).
+	 *
+	 * <p><b>The organizer is told nothing</b>: the message an approval sends him says his proposal
+	 * was accepted, which is not what happened here, and no decision gives this door a sentence of
+	 * its own.
+	 */
+	@PostMapping("/api/teams/direct")
+	@RightIsNeeded(TeamApi.OVER_THE_TEAMS)
+	ResponseEntity<?> make(@RequestBody Changed typed) {
+		return inOneTransaction.execute(committing -> making(typed));
+	}
+
+	private ResponseEntity<?> making(Changed typed) {
+		ZonedDateTime now = ZonedDateTime.now(clock);
+
+		if (!SeasonClock.transferWindowOpen(now)) {
+			return no(HttpStatus.CONFLICT, THE_WINDOW_IS_SHUT);
+		}
+
+		if (isNothing(typed.name()) || isNothing(typed.city()) || isNothing(typed.country())
+				|| isNothing(typed.organizerMemberNumber())) {
+			return no(HttpStatus.BAD_REQUEST, THE_FORM_IS_NOT_COMPLETE);
+		}
+
+		if (EventAddress.written(typed.name()).isEmpty()) {
+			return no(HttpStatus.BAD_REQUEST, THE_NAME_MAKES_NO_ADDRESS);
+		}
+
+		Optional<ResponseEntity<?>> words = whatIsWrongWithTheWords(typed);
+
+		if (words.isPresent()) {
+			return words.get();
+		}
+
+		Optional<Long> country = countryKey(typed.country());
+
+		if (country.isEmpty()) {
+			return no(HttpStatus.BAD_REQUEST, THE_COUNTRY_IS_NOT_KNOWN);
+		}
+
+		/* THE ORGANIZER OFF THE FORM, BY HIS NUMBER, and never the person pressing: the
+		   administration names who will run the team. */
+		Optional<Long> organizer = db.sql("select id from competitor where member_number = ?")
+				.param(typed.organizerMemberNumber().strip())
+				.query(Long.class)
+				.optional();
+
+		if (organizer.isEmpty()) {
+			return no(HttpStatus.CONFLICT, THE_ORGANIZER_IS_NOT_KNOWN);
+		}
+
+		String name = typed.name().strip();
+		int season = SeasonClock.transfersTakeEffect(now);
+		Optional<FoundingATeam.Obstacle> obstacle = founding.obstacle(organizer.get(), name, season, now);
+
+		if (obstacle.isPresent()) {
+			return no(HttpStatus.CONFLICT, switch (obstacle.get()) {
+				case THE_NAME_IS_TAKEN -> THE_ADDRESS_IS_TAKEN;
+				case HE_IS_ALREADY_IN_A_TEAM -> HE_IS_ALREADY_IN_A_TEAM;
+				case HE_HAS_NOT_PAID -> THE_SEASON_IS_NOT_PAID;
+			});
+		}
+
+		long made = founding.found(new FoundingATeam.Founded(organizer.get(), name,
+				TeamWriteApi.orEmpty(typed.bio()), TeamWriteApi.orEmpty(typed.link()), null,
+				typed.city().strip(), country.get()), season, now);
+
+		return ResponseEntity.status(HttpStatus.CREATED).body(writtenDown(made));
+	}
+
+	/** The description and the link, asked the same way by the change and by the making. */
+	private static Optional<ResponseEntity<?>> whatIsWrongWithTheWords(Changed typed) {
+		if (!WhatAnEventCarries.linkIsShaped(TeamWriteApi.orEmpty(typed.link()))) {
+			return Optional.of(no(HttpStatus.BAD_REQUEST, THE_LINK_IS_NOT_SHAPED));
+		}
+
+		if (TeamWriteApi.orEmpty(typed.bio()).length() > TeamWriteApi.THE_LONGEST_DESCRIPTION) {
+			return Optional.of(no(HttpStatus.BAD_REQUEST, THE_TEXT_IS_TOO_LONG));
+		}
+
+		return Optional.empty();
 	}
 
 	private boolean thereIsSuchATeam(long id) {

@@ -22,7 +22,6 @@ import java.time.Clock;
 import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 
 /**
  * A MEMBER PUTTING A TEAM FORWARD, WHICH IS THE FIRST WRITE ON THIS PORTAL THAT ENDS IN
@@ -363,33 +362,24 @@ class TeamWriteApi {
 	 */
 
 	/**
-	 * WHAT THIS ROUTE TAKES THAT THE MEMBER'S FORM DOES NOT YET ASK FOR, named rather than
-	 * silent.
-	 *
-	 * <p>A field the form does not have and a field that went missing look exactly alike
-	 * from inside a handler, which is the reason this is a constant and not a sentence.
-	 * PDL P13, 11.08.2026 says a member fills in „naziv tima, opis (ograniceni unos) i
-	 * neobavezni link" and V11 gives {@code team_proposal} a column for each of the two;
-	 * {@code predlog-tima.form.json} asks for neither.
-	 *
-	 * <p>{@code TeamWriteApiTest} reads that file and demands that every field on it be a
-	 * component of {@link Proposed}, and that every name on this list really is one the
-	 * form does NOT ask for - so a field added to the form tomorrow fails the build until
-	 * somebody decides where it goes, and a name that starts being asked for cannot sit
-	 * here excusing nothing. That is {@link CompetitorWriteApi#NOT_ASKED_OF_A_GROUP}'s
-	 * shape, inverted: there the form asks and the route does not collect, here the route
-	 * collects and the form does not yet ask. ~~{@code RegistrationApi.NOT_COLLECTED_YET}
-	 * was the example named here~~ until 28.09.2026, when the registration stopped asking
-	 * for a picture and that constant went with it.
-	 *
-	 * <p><b>It exists because the other direction was measured and was wrong.</b> This
-	 * record once said it was „what the form sends and nothing besides" while differing
-	 * from that file in two of five names, and a request carrying the form's own
-	 * {@code note} was answered 201 with the queue row left blank - Jackson drops a field
-	 * nothing is named for, and nothing in {@code backend/src/main/resources} configures it
-	 * otherwise.
+	 * A DESCRIPTION LONGER THAN {@link #THE_LONGEST_DESCRIPTION}, answered with the word
+	 * {@link MeWriteApi#THE_TEXT_IS_TOO_LONG} gives a biography that is too long, because it is the
+	 * same rule about the same kind of text (PDL P13, „[ODLUKE 23.11.2026 ...]", point 1: „Opis tima
+	 * je najviše 360 znakova, kao biografija člana").
 	 */
-	static final Set<String> ASKED_FOR_BEFORE_THE_FORM_ASKS = Set.of("bio", "link");
+	static final String THE_TEXT_IS_TOO_LONG = "theTextIsTooLong";
+
+	/**
+	 * HOW LONG A TEAM'S DESCRIPTION MAY BE, counted on the text as it would be stored (stripped),
+	 * which is {@link MeWriteApi#AS_LONG_AS_THE_FORM_ALLOWS}'s own way of counting a biography. PDL
+	 * P13, „[ODLUKE 23.11.2026 ...]", point 1. The three forms that ask for one carry the same number
+	 * as their {@code maxLength}, and {@code TeamWriteApiTest} holds them to it.
+	 *
+	 * <p>~~{@code ASKED_FOR_BEFORE_THE_FORM_ASKS}~~ stood here until 23.11.2026, naming {@code bio}
+	 * and {@code link} as what this route took before the member's form asked for them. The form
+	 * asks for both since that day (same entry, point 2), so the list had nothing left to excuse.
+	 */
+	static final int THE_LONGEST_DESCRIPTION = 360;
 
 	private final JdbcClient db;
 
@@ -416,10 +406,8 @@ class TeamWriteApi {
 	 * {@code TransactionTemplate} joins whatever is already open, so a route with no
 	 * transaction of its own is still inside the test's.
 	 * {@code TeamProposalAndItsQueueRowAreOneThingTest} is therefore NOT
-	 * {@code @Transactional}, and it makes the second write fail with nothing stubbed - the
-	 * note is the one field that goes only into {@code verification}, so a note
-	 * {@code text} cannot hold is a request whose first statement succeeds and whose second
-	 * does not.
+	 * {@code @Transactional}, and it makes the second write fail with a trigger over
+	 * {@code verification} alone, so the first statement succeeds and the second does not.
 	 */
 	private final TransactionTemplate inOneTransaction;
 
@@ -461,40 +449,29 @@ class TeamWriteApi {
 	 * sources disagree about what a proposal carries and a round measured what pretending
 	 * otherwise costs.
 	 *
-	 * <p><b>Four of these are {@code predlog-tima.form.json}'s own values</b> - the fields
-	 * {@code name}, {@code city} and {@code note}, and the {@code country} the town writes
-	 * beside itself: {@code city} is a {@code place} field since 03.10.2026, and a place
-	 * writes two values, its own and {@code country}, so the file has no field of that name
-	 * any more. {@link #ASKED_FOR_BEFORE_THE_FORM_ASKS} is the floor that keeps that true in
-	 * both directions, and {@code TeamWriteApiTest} counts the country a place writes as one
-	 * of the form's.
+	 * <p><b>All five are {@code predlog-tima.form.json}'s own values</b> - the fields
+	 * {@code name}, {@code city}, {@code bio} and {@code link}, and the {@code country} the town
+	 * writes beside itself: {@code city} is a {@code place} field since 03.10.2026, and a place
+	 * writes two values, its own and {@code country}, so the file has no field of that name any
+	 * more. {@code TeamWriteApiTest} holds the two to each other in both directions and counts the
+	 * country a place writes as one of the form's.
 	 *
-	 * <p><b>{@code note} IS NOT THE TEAM'S DESCRIPTION, AND CONFUSING THE TWO IS THE
-	 * MISTAKE THIS PARAGRAPH EXISTS TO NOT MAKE.</b> Its label is {@code teams.proposeNote},
-	 * „Zasto ovaj tim", and the portal puts it in front of whoever decides:
-	 * {@code teams.proposeBody} is „{city}, {country}. {note}", which is the one piece of
-	 * text a queue card draws. So it goes into {@code verification.body} and into no column
-	 * of {@code team_proposal}, which has none for it - a sentence addressed to a moderator
-	 * is not a thing the team would afterwards carry. The town is NOT built into that
-	 * sentence here: it has columns of its own on the proposal, and a server writing the
-	 * portal's Serbian would be a second home for both.
-	 *
-	 * <p><b>{@code bio} and {@code link} are the other source, and they are PDL's.</b> PDL
-	 * P13, 11.08.2026: „Korisnik popunjava naziv tima, opis (ograniceni unos) i neobavezni
-	 * link", and V11 gives {@code team_proposal} a column for each „so an approval can copy
-	 * them across without deciding anything on the way". The form has neither field today,
-	 * which is why they are named on {@link #ASKED_FOR_BEFORE_THE_FORM_ASKS} rather than
-	 * left to look like fields that went missing.
+	 * <p><b>The description and the link are the form's since 23.11.2026</b>, and PDL's since
+	 * 11.08.2026: „Korisnik popunjava naziv tima, opis (ograniceni unos) i neobavezni link". PDL
+	 * P13, „[ODLUKE 23.11.2026 ...]", point 2: „Polje „Zašto ovaj tim” se zamenjuje opisom:
+	 * predlog ima naziv, mesto, opis i link". ~~{@code note}~~, „Zasto ovaj tim", the sentence
+	 * written to whoever decides, went from the form and from this record that day. V11 gives
+	 * {@code team_proposal} a column for each of the two „so an approval can copy them across
+	 * without deciding anything on the way".
 	 *
 	 * <p>There is no {@code teamId}, no {@code firstSeason} and no {@code logo}, each for
 	 * its own reason given above; and no {@code placeId}, because the town arrives by name
 	 * and country whether it was typed or chosen from the codebook's list (the entry above on
 	 * a town out of the world codebook).
 	 *
-	 * @param note    why this team, in the member's own words, for whoever decides. Empty
-	 *                where he wrote none, and then the card draws the name and the town
 	 * @param bio     what the team would say about itself, which may be empty - the same
-	 *                shape {@code competitor.bio} and {@code btl_event.description} have
+	 *                shape {@code competitor.bio} and {@code btl_event.description} have - and
+	 *                no longer than {@link #THE_LONGEST_DESCRIPTION}
 	 * @param link    the team's own page, optional and empty where there is none
 	 * @param city    the town's name, as typed or as the row chosen from the codebook's list
 	 *                gives it (this route cannot tell which, and does not need to), which
@@ -502,8 +479,7 @@ class TeamWriteApi {
 	 * @param country the code of that country, {@code RS}, never its key - the same
 	 *                spelling {@link TeamApi} answers with
 	 */
-	record Proposed(String name, String note, String bio, String link, String city,
-			String country) {
+	record Proposed(String name, String bio, String link, String city, String country) {
 	}
 
 	/** Why a team could not be put forward. */
@@ -587,7 +563,77 @@ class TeamWriteApi {
 			return no(HttpStatus.BAD_REQUEST, THE_LINK_IS_NOT_SHAPED);
 		}
 
-		return inOneTransaction.execute(committing -> write(me, typed, address));
+		if (orEmpty(typed.bio()).length() > THE_LONGEST_DESCRIPTION) {
+			return no(HttpStatus.BAD_REQUEST, THE_TEXT_IS_TOO_LONG);
+		}
+
+		return inOneTransaction.execute(committing -> write(me, null, typed, address));
+	}
+
+	/**
+	 * THE TEAM'S OWN ADMINISTRATOR ASKING FOR A CHANGE TO IT, WHICH GOES TO THE QUEUE AND NOT INTO
+	 * THE TEAM.
+	 *
+	 * <p>PDL P13 (04.09.2026), owner: „Izmeni tim ulazi u podatke tima koji se menjaju i ponovo
+	 * prolaze verifikaciju, dok na strani timova ostaju postojeći podaci dok se novi ne verifikuju",
+	 * and „[ODLUKA 09.10.2026 ...]": „predlozi članova i izmene koje traži administrator tima i dalje
+	 * idu u red". Since 23.11.2026 the change carries the description and the link too (PDL P13,
+	 * „[ODLUKE 23.11.2026 ...]", point 3: „u izmeni tima (administrator tima; ide na odobravanje, a
+	 * dok čeka vidi se stari opis)"). Until this route the screen that asks for it
+	 * ({@code member/EditTeam.tsx}) filed the change in the browser's session, and no moderator ever
+	 * saw it.
+	 *
+	 * <p><b>A change is a proposal with the team named</b>, which is V11's own way of telling the two
+	 * apart ({@code team_proposal.team_id}), and the queue already draws it as one
+	 * ({@link VerificationApi}, {@code teamEdit}); approved, it writes into that team
+	 * ({@link VerificationWriteApi}). Nothing about the team moves until then, so the old description
+	 * is what every page shows while it waits.
+	 *
+	 * <p><b>WHO MAY: whoever administers this team and whose fee stands</b>, the same reading
+	 * {@link #remove} makes of the team's own administrator ({@link TeamApi#WHO_ADMINISTERS_IT}).
+	 * Everybody else is answered 404, the team itself included where it is not there (ADL A8). The
+	 * administration changes a team directly ({@link TeamAdministrationWriteApi#change}) and has no
+	 * business sending itself a change to approve, so the right over the teams opens nothing here.
+	 *
+	 * <p><b>No window</b>: a team's name, its town and its words are not who is in it (PDL, „drži sve
+	 * što menja sastav tima"), which {@link TeamAdministrationWriteApi} derives for its own change.
+	 *
+	 * <p><b>A second change sent while the first waits stands beside it</b>, as two cards. Nothing
+	 * decided otherwise for a team; the rule that a new text overwrites the one that waits (PDL P11,
+	 * 18.10.2026) is about a member's biography. <b>My reasoning, not a decision.</b>
+	 */
+	@PostMapping(path = "/api/teams/{id}/changes", consumes = MediaType.APPLICATION_JSON_VALUE)
+	ResponseEntity<?> askForAChange(@AuthenticationPrincipal WhoIsAsking.Member asking,
+			@PathVariable AKey id, WhatWasSent<Proposed> sent) throws IOException {
+		ZonedDateTime now = ZonedDateTime.now(clock);
+		Long me = readers.activeMember(asking, now).orElse(null);
+
+		if (!heAdministersIt(me, id.value(), now)) {
+			return awayAtAnOpenAddress();
+		}
+
+		Proposed typed = sent.read();
+
+		if (typed == null || isNothing(typed.name()) || isNothing(typed.city())
+				|| isNothing(typed.country())) {
+			return no(HttpStatus.BAD_REQUEST, THE_FORM_IS_NOT_COMPLETE);
+		}
+
+		String address = EventAddress.written(typed.name());
+
+		if (address.isEmpty()) {
+			return no(HttpStatus.BAD_REQUEST, THE_NAME_MAKES_NO_ADDRESS);
+		}
+
+		if (!WhatAnEventCarries.linkIsShaped(orEmpty(typed.link()))) {
+			return no(HttpStatus.BAD_REQUEST, THE_LINK_IS_NOT_SHAPED);
+		}
+
+		if (orEmpty(typed.bio()).length() > THE_LONGEST_DESCRIPTION) {
+			return no(HttpStatus.BAD_REQUEST, THE_TEXT_IS_TOO_LONG);
+		}
+
+		return inOneTransaction.execute(committing -> write(me, id.value(), typed, address));
 	}
 
 	/**
@@ -1015,30 +1061,30 @@ class TeamWriteApi {
 	 * {@code team_slug_unique}, and what it protects against is two APPROVALS, which is a
 	 * different increment's race to lose.
 	 */
-	private ResponseEntity<?> write(long me, Proposed typed, String address) {
+	private ResponseEntity<?> write(long me, Long team, Proposed typed, String address) {
 		Optional<Long> country = countryKey(typed.country());
 
 		if (country.isEmpty()) {
 			return no(HttpStatus.BAD_REQUEST, THE_COUNTRY_IS_NOT_KNOWN);
 		}
 
-		if (addressIsTaken(address)) {
+		/* Against every team but the one a change is about: a team is never refused the address
+		   it already has. */
+		if (addressIsTaken(address, team)) {
 			return no(HttpStatus.CONFLICT, THE_ADDRESS_IS_TAKEN);
 		}
 
 		String name = typed.name().strip();
 
-		/* `team_id` IS NOT IN THIS LIST, and its absence is the mark: V11 tells a new team
-		   from a change to one that exists by whether the column is filled, and this route
-		   writes new teams only. `place_id` and `country_id` are the town in the shape the
-		   member sent it, which is the second of the two V11 allows. And `note` is not in
-		   it either, because this table has no column for it: what a member writes TO A
-		   MODERATOR is not a thing the team would carry afterwards. */
+		/* `team_id` IS THE MARK: V11 tells a new team from a change to one that exists by whether
+		   the column is filled, so it is null for a proposal and the team for a change.
+		   `place_id` and `country_id` are the town in the shape the member sent it, which is the
+		   second of the two V11 allows. */
 		long proposal = db.sql("insert into team_proposal"
-						+ " (competitor_id, name, bio, link, city, country_id)"
-						+ " values (?, ?, ?, ?, ?, ?)"
+						+ " (competitor_id, team_id, name, bio, link, city, country_id)"
+						+ " values (?, ?, ?, ?, ?, ?, ?)"
 						+ " returning id")
-				.params(me, name, orEmpty(typed.bio()), orEmpty(typed.link()),
+				.params(me, team, name, orEmpty(typed.bio()), orEmpty(typed.link()),
 						typed.city().strip(), country.orElseThrow())
 				.query(Long.class)
 				.single();
@@ -1050,14 +1096,13 @@ class TeamWriteApi {
 		   home for what time it is. */
 		db.sql("insert into verification (queue, competitor_id, subject, body, team_proposal_id)"
 						+ " values ('teams', ?, ?, ?, ?)")
-				/* THE NOTE AND NOT THE DESCRIPTION, which is the whole of what a round on
-				   19.09.2026 found: this carried `bio`, and a member sending what his own
-				   form defines was answered 201 with a card nobody could read anything off.
-				   V9 makes `body` NOT NULL and blankable because it is „what was written or
-				   proposed", and what is written HERE, to a moderator, is `teams.proposeNote`
-				   - „Zasto ovaj tim". The description is the team's and stays on the
-				   proposal, where an approval copies it from. */
-				.params(me, name, orEmpty(typed.note()), proposal)
+				/* NOTHING IN `body`, since 23.11.2026. It carried the note to the moderator
+				   („Zasto ovaj tim"), and the note went from the form (PDL P13, „[ODLUKE
+				   23.11.2026 ...]", point 2). The description is the team's and stays on the
+				   proposal alone, where an approval copies it from and where the queue reads it
+				   for the card (`VerificationApi`): written here as well it would be one text
+				   with two homes. V9 makes `body` NOT NULL and blankable. */
+				.params(me, name, "", proposal)
 				.update();
 
 		return ResponseEntity.status(HttpStatus.CREATED)
@@ -1087,9 +1132,10 @@ class TeamWriteApi {
 	 * <p>Over {@code team} and never over {@code team_proposal}, which is PDL P13's word
 	 * „odobrenim" doing the work: a proposal is not a team and has no address to take.
 	 */
-	private boolean addressIsTaken(String address) {
-		return Boolean.TRUE.equals(db.sql("select exists(select 1 from team where slug = ?)")
-				.param(address).query(Boolean.class).single());
+	private boolean addressIsTaken(String address, Long but) {
+		return Boolean.TRUE.equals(db.sql("select exists(select 1 from team where slug = ?"
+						+ " and id is distinct from ?)")
+				.params(address, but).query(Boolean.class).single());
 	}
 
 	private Optional<Long> countryKey(String code) {
@@ -1112,12 +1158,12 @@ class TeamWriteApi {
 	 * three lets the other two through to a column whose {@code btrim(...) <> ''} would
 	 * then refuse them as an error.
 	 */
-	private static boolean isNothing(String value) {
+	static boolean isNothing(String value) {
 		return value == null || value.isBlank();
 	}
 
 	/** {@code bio} and {@code link} are NOT NULL and may be empty (V11). */
-	private static String orEmpty(String value) {
+	static String orEmpty(String value) {
 		return value == null ? "" : value.strip();
 	}
 

@@ -573,7 +573,15 @@ class VerificationApi {
 						   too (PDL P6, an event copied into the next season keeps its name). */
 						+ " coalesce(cast(tp.team_id as text), cast(cs.event_id as text), '')"
 						+ "     as subject_id,"
-						+ " v.body,"
+						/* WHAT WAS WRITTEN, AND ON THE TEAMS TAB SINCE 23.11.2026 THE TEAM'S
+						   DESCRIPTION, off the proposal where the approval copies it from (PDL
+						   P13, „[ODLUKE 23.11.2026 ...]", point 2: the note „Zašto ovaj tim" is
+						   replaced by the description, so `TeamWriteApi` writes `body` empty).
+						   A proposal sent before that day carries no description and its note
+						   in `body`, and goes on showing the note: the moderator reads what the
+						   member wrote either way. */
+						+ " case when tp.id is not null and tp.bio <> '' then tp.bio"
+						+ "      else v.body end as body,"
 						/* WHICH SORT OF THING IT IS, asked of the schema and not of a column
 						   of its own. `tp.team_id` can only be there on the teams tab -
 						   `verification_only_the_teams_queue_carries_a_proposal` says so and
@@ -654,7 +662,9 @@ class VerificationApi {
 						+ " ra.limit_seconds as the_races_limit,"
 						+ " rs.distance_km as sent_distance, rs.ascent_m as sent_ascent,"
 						+ " rs.descent_m as sent_descent, rs.seconds as sent_seconds,"
-						+ " coalesce(rs.link, '') as link,"
+						/* The run's official results, or on the teams tab the team's own page
+						   (since 23.11.2026); the two tables never join on one row. */
+						+ " coalesce(rs.link, tp.link, '') as link,"
 						/* THE EVENT THE RUN IS ON (see `Waiting.eventId`): the race's for a run from
 						   the calendar, the one the member chose or typed for a described run, and
 						   nothing on every other tab, where both columns join to nothing. */

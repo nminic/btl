@@ -690,8 +690,8 @@ class VerificationWriteApi {
 	 */
 	private final ObjectMapper json;
 
-	/** Whether the founder of a proposed team holds the season the team takes him in for: what an approval asks. */
-	private final AMembershipOfTheSeasonHeWouldJoin holdsTheSeason;
+	/** What makes a team with its founder in it, and what stops it: the one home both doors share. */
+	private final FoundingATeam founding;
 
 	/** The league's own address, which the letter about an approved run is blind-copied to
 	 *  ({@link #post} carries why). Configured rather than written here for the reason
@@ -700,11 +700,11 @@ class VerificationWriteApi {
 
 	VerificationWriteApi(JdbcClient db, WhatHeMayDo mayHe, TransactionTemplate inOneTransaction,
 			Clock clock, MemberOfAccount memberOfAccount, BestOfficialSeason bestOfficialSeason,
-			Postman postman, ObjectMapper json, AMembershipOfTheSeasonHeWouldJoin holdsTheSeason,
+			Postman postman, ObjectMapper json, FoundingATeam founding,
 			@Value("${btl.mail.league}") String theLeague, DucatsFollowTheResults ducats) {
 		this.db = db;
 		this.ducats = ducats;
-		this.holdsTheSeason = holdsTheSeason;
+		this.founding = founding;
 		this.mayHe = mayHe;
 		this.inOneTransaction = inOneTransaction;
 		this.clock = clock;
@@ -819,7 +819,28 @@ class VerificationWriteApi {
 	 *                    it read
 	 */
 	record Answered(Boolean approved, String reason, Amended amended, NewRace newRace, Long raceId,
-			Long seenPhotoId, VerificationApi.Crop seenCrop, String seenText) {
+			Long seenPhotoId, VerificationApi.Crop seenCrop, String seenText, TeamAsCorrected team) {
+	}
+
+	/**
+	 * A TEAM AS THE MODERATOR LEFT IT ON THE CARD, which is what an approval on the queue of teams
+	 * makes or changes when it is sent.
+	 *
+	 * <p>PDL P13, owner 03.08.2026: „Moderator sa adekvatnim pravima ili administrator mogu da
+	 * menjaju ili ne menjaju podatke tima i ako ga prihvate", and 11.08.2026: „mogu ga odobriti,
+	 * editovati i odobriti ili odbiti". Since 23.11.2026 the card carries the description and the
+	 * link as well (PDL P13, „[ODLUKE 23.11.2026 ...]", point 3).
+	 *
+	 * <p><b>Absent is "as the member sent it"</b>, so an approval that corrects nothing is the
+	 * proposal copied across, as it was before this record existed. <b>Never written back into the
+	 * proposal</b>: the row stays what the member asked for, and the correction is applied to the
+	 * team the approval makes, inside the claim, so a correction nobody won writes nothing.
+	 *
+	 * @param city    the town as typed; a corrected town is always the typed one, as on the
+	 *                administration's own form ({@link TeamAdministrationWriteApi})
+	 * @param country its country, as a code
+	 */
+	record TeamAsCorrected(String name, String city, String country, String bio, String link) {
 	}
 
 	/**
@@ -1296,6 +1317,19 @@ class VerificationWriteApi {
 		   just no longer asked a second time from this route. */
 		Proposal proposal = TEAMS.equals(item.queue()) ? proposalBehind(item) : null;
 
+		/* AND AS THE MODERATOR CORRECTED IT, where he did and only on an approval: a refusal makes
+		   nothing, so nothing it carries can be wrong. Asked here, with the refusals, and writing
+		   nothing (`TeamAsCorrected` says why the correction never goes back into the proposal). */
+		if (proposal != null && answer.yes() && typed.team() != null) {
+			Optional<Proposal> corrected = corrected(proposal, typed.team());
+
+			if (corrected.isEmpty()) {
+				return new Carried(no(HttpStatus.BAD_REQUEST, THE_FORM_IS_NOT_COMPLETE), null, null);
+			}
+
+			proposal = corrected.get();
+		}
+
 		/* AND WHAT A RESULT ROW IS ABOUT, read the same way and for the same reason. It is
 		   read for a REFUSAL too and not only for an approval, because {@link #tell} on a
 		   refused result says nothing about the run - the reason the moderator typed is the
@@ -1662,12 +1696,39 @@ class VerificationWriteApi {
 	 */
 	private Proposal proposalBehind(Item item) {
 		return db.sql("select competitor_id, name, bio, link, place_id, city,"
-						+ " country_id from team_proposal where id = ?")
+						+ " country_id, team_id from team_proposal where id = ?")
 				.param(item.teamProposalId())
 				.query((row, one) -> new Proposal(row.getLong(1), row.getString(2), row.getString(3),
 						row.getString(4), row.getObject(5, Long.class), row.getString(6),
-						row.getObject(7, Long.class)))
+						row.getObject(7, Long.class), row.getObject(8, Long.class)))
 				.single();
+	}
+
+	/**
+	 * THE PROPOSAL WITH THE MODERATOR'S CORRECTION LAID OVER IT, or nothing where the correction is
+	 * not a team the portal could carry.
+	 *
+	 * <p>The questions the administration's own form is asked ({@link TeamAdministrationWriteApi}):
+	 * a name, a town and its country filled in, a name that makes an address, a country the codebook
+	 * knows, a link shaped as one and a description no longer than
+	 * {@link TeamWriteApi#THE_LONGEST_DESCRIPTION}. All are answered with ONE sentence, the route's
+	 * own „Forma nije popunjena.", because the card asks every one of them before it sends and a
+	 * request that fails one went round the card. <b>My reasoning, not a decision.</b>
+	 */
+	private Optional<Proposal> corrected(Proposal sent, TeamAsCorrected team) {
+		if (TeamWriteApi.isNothing(team.name()) || TeamWriteApi.isNothing(team.city())
+				|| TeamWriteApi.isNothing(team.country())
+				|| EventAddress.written(team.name()).isEmpty()
+				|| TeamWriteApi.orEmpty(team.bio()).length() > TeamWriteApi.THE_LONGEST_DESCRIPTION
+				|| !WhatAnEventCarries.linkIsShaped(TeamWriteApi.orEmpty(team.link()))) {
+			return Optional.empty();
+		}
+
+		return db.sql("select id from country where code = ?").param(team.country().strip())
+				.query(Long.class).optional()
+				.map(country -> new Proposal(sent.competitorId(), team.name().strip(),
+						TeamWriteApi.orEmpty(team.bio()), TeamWriteApi.orEmpty(team.link()), null,
+						team.city().strip(), country, sent.teamId()));
 	}
 
 	/**
@@ -2575,75 +2636,65 @@ class VerificationWriteApi {
 	 */
 	private Optional<ResponseEntity<?>> whyTheTeamCannotBeMade(Proposal proposal, int season,
 			ZonedDateTime now) {
-		if (Boolean.TRUE.equals(db.sql("select exists(select 1 from team where slug = ?)")
-				.param(EventAddress.written(proposal.name())).query(Boolean.class).single())) {
-			return Optional.of(no(HttpStatus.CONFLICT, THE_NAME_IS_TAKEN));
+		/* A CHANGE TO A TEAM THAT EXISTS (V11: `team_id` filled in) makes no team and puts nobody in
+		   one, so of the three questions below only the name is asked of it, and against every team
+		   but the one it changes: a team is never refused the address it already has. The team
+		   cannot have gone, because `team_proposal_team_fk` cascades and the queue row goes with the
+		   proposal. */
+		if (proposal.teamId() != null) {
+			return Boolean.TRUE.equals(db.sql("select exists(select 1 from team where slug = ? and id <> ?)")
+					.params(EventAddress.written(proposal.name()), proposal.teamId())
+					.query(Boolean.class).single())
+					? Optional.of(no(HttpStatus.CONFLICT, THE_NAME_IS_TAKEN))
+					: Optional.empty();
 		}
 
-		/* AND WHETHER HE MAY STILL BE PUT IN ONE. `team_membership_one_team_at_a_time` is an
-		   exclusion constraint and would refuse the row anyway, but it would refuse it as a
-		   server fault after the team had been made inside this same transaction. Asked
-		   here, the moderator is told which of the two things stopped him. The question is
-		   the schema's own - a membership that ends at or after the season he would join
-		   stands in the way - and `Membership.standsInTheWayOfJoiningIn` is where it is
-		   written; read as „has an open membership" it would let through a member somebody
-		   wrote ahead for a later season. */
-		if (Boolean.TRUE.equals(db.sql("select exists(select 1 from team_membership"
-						+ " where competitor_id = ? and (season_to is null or season_to >= ?))")
-				.params(proposal.competitorId(), season).query(Boolean.class).single())) {
-			return Optional.of(no(HttpStatus.CONFLICT, HE_IS_ALREADY_IN_A_TEAM));
-		}
-
-		/* AND WHETHER HE HOLDS THE SEASON THE TEAM TAKES HIM IN FOR (PDL 30.10.2026, entry „U
-		   prelaznom roku svaki ulaz u tim traži plaćenu narednu sezonu", and the owner's wording of
-		   31.10.2026 on `theFounderHasNotPaidReads`). The season is `seasonHeWouldJoin`, which is
-		   the season on sale at the moment of the decision: inside the window the next one, which
-		   is what the founder pays for to enter, and outside it the one being run, which every
-		   member whose fee stands holds. NOT the `season` this method is handed, which is
-		   `transfersTakeEffect` and names a season nobody can have paid for in January. Checked at
-		   the decision and not at the proposal, so a founder whose season was cancelled in
-		   between is stopped; the item stays in the queue and waits for him, like the two above. */
-		if (!holdsTheSeason.holds(proposal.competitorId(), now)) {
-			return Optional.of(no(HttpStatus.CONFLICT,
-					theFounderHasNotPaidReads(AMembershipOfTheSeasonHeWouldJoin.season(now))));
-		}
-
-		return Optional.empty();
+		/* THE THREE THINGS THAT STOP A TEAM, asked of the one home both doors share
+		   (`FoundingATeam.obstacle`). A founder whose season was cancelled between the proposal and
+		   the decision is stopped, and the item stays in the queue and waits for him (PDL 30.10.2026,
+		   „U prelaznom roku svaki ulaz u tim traži plaćenu narednu sezonu", and the owner's wording of
+		   31.10.2026 on `theFounderHasNotPaidReads`). */
+		return founding.obstacle(proposal.competitorId(), proposal.name(), season, now)
+				.map(obstacle -> switch (obstacle) {
+					case THE_NAME_IS_TAKEN -> no(HttpStatus.CONFLICT, THE_NAME_IS_TAKEN);
+					case HE_IS_ALREADY_IN_A_TEAM -> no(HttpStatus.CONFLICT, HE_IS_ALREADY_IN_A_TEAM);
+					case HE_HAS_NOT_PAID -> no(HttpStatus.CONFLICT,
+							theFounderHasNotPaidReads(AMembershipOfTheSeasonHeWouldJoin.season(now)));
+				});
 	}
 
 	/** And the writing half, which runs only once this answer has claimed the row. */
 	private void makeTheTeam(Proposal proposal, int season) {
-		long team = db.sql("insert into team (slug, name, bio, link, place_id, city, country_id,"
-						+ " first_season, admin_id) values (?, ?, ?, ?, ?, ?, ?, ?, ?) returning id")
-				.params(EventAddress.written(proposal.name()), proposal.name(), proposal.bio(),
-						proposal.link(), proposal.placeId(), proposal.city(), proposal.countryId(),
-						season, proposal.competitorId())
-				.query(Long.class)
-				.single();
+		/* A CHANGE WRITES INTO THE TEAM IT IS ABOUT, and only a proposal makes one. Owner, PDL P13
+		   (04.09.2026): „Izmeni tim ulazi u podatke tima koji se menjaju i ponovo prolaze
+		   verifikaciju, dok na strani timova ostaju postojeći podaci dok se novi ne verifikuju". The
+		   address goes with the name, because the team's page answers at what its name makes. Who is
+		   in it, its seat, its mark and its first season are not what a change asks about. */
+		if (proposal.teamId() != null) {
+			db.sql("update team set slug = ?, name = ?, bio = ?, link = ?, place_id = ?, city = ?,"
+							+ " country_id = ? where id = ?")
+					.params(EventAddress.written(proposal.name()), proposal.name(), proposal.bio(),
+							proposal.link(), proposal.placeId(), proposal.city(), proposal.countryId(),
+							proposal.teamId())
+					.update();
 
-		db.sql("insert into team_membership (competitor_id, team_id, season_from)"
-						+ " values (?, ?, ?)")
-				.params(proposal.competitorId(), team, season)
-				.update();
+			/* The words the screen wrote this same message with while the change lived in the
+			   browser's session (`verification.teamChangeAccepted` and its body, `i18n/sr.json`). */
+			tell(proposal.competitorId(), "Izmena tima \"" + proposal.name() + "\" je prihvaćena",
+					"Podaci tima \"" + proposal.name() + "\" su izmenjeni.");
+
+			return;
+		}
+
+		/* THE TEAM, ITS FOUNDER IN IT AND IN ITS SEAT, AND EVERY OTHER TEAM THAT HAD ASKED HIM TOLD
+		   (PDL 06.09.2026: „javlja se bez obzira kojim putem je član ušao"), by the one home both
+		   doors share, inside the transaction the claim runs in. */
+		founding.found(new FoundingATeam.Founded(proposal.competitorId(), proposal.name(),
+				proposal.bio(), proposal.link(), proposal.placeId(), proposal.city(),
+				proposal.countryId()), season, clock.instant().atZone(SeasonClock.ZONE));
 
 		tell(proposal.competitorId(), "Tim je prihvaćen",
 				"Tvoj tim \"" + proposal.name() + "\" je prihvaćen i od sada ga vodiš.");
-
-		/* AND THE TEAMS THAT HAD ALREADY ASKED HIM ARE TOLD, because the approval is the third door a
-		   member goes into a team by. PDL 06.09.2026: „Tim čiji je poziv ostao neodgovoren dobija poruku
-		   u sandučetu portala", and it „javlja se bez obzira kojim putem je član ušao, jer je poziv koji
-		   je ostao bez odgovora isti događaj u oba slučaja". Until now only the two doors of
-		   `TeamJoiningWriteApi` called it, so the team of a man a moderator made a founder never learnt
-		   he was no longer to be had. The same statement and the same sentences, called rather than
-		   copied, and inside the transaction the claim runs in. The team just made is the one he joined,
-		   which that statement leaves out. */
-		String[] him = db.sql("select first_name || ' ' || last_name, gender from competitor where id = ?")
-				.param(proposal.competitorId())
-				.query((row, number) -> new String[] { row.getString(1), row.getString(2) })
-				.single();
-
-		TeamJoiningWriteApi.theOtherTeamsThatAskedHim(db, proposal.competitorId(), team, him[0], him[1],
-				proposal.name(), clock.instant().atZone(SeasonClock.ZONE));
 	}
 
 	/**
@@ -2737,7 +2788,7 @@ class VerificationWriteApi {
 
 	/** What a member asked for, in the shape an approval copies across. */
 	private record Proposal(long competitorId, String name, String bio, String link,
-			Long placeId, String city, Long countryId) {
+			Long placeId, String city, Long countryId, Long teamId) {
 	}
 
 	/**

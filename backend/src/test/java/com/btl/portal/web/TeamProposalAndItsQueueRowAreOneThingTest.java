@@ -95,11 +95,13 @@ class TeamProposalAndItsQueueRowAreOneThingTest {
 	private static final String MY_ADDRESS = "predlog-u-celini@primer.rs";
 
 	/**
-	 * A note the database refuses and the route does not, which is what makes the SECOND write
-	 * fail. Ordinary words: not blank, nowhere near any length, and not a shape any check of the
-	 * route looks at.
+	 * A name the queue row refuses and the proposal does not, which is what makes the SECOND write
+	 * fail: the trigger stands over {@code verification.subject} alone, so the same name goes into
+	 * {@code team_proposal} untouched. Ordinary words, a name any check of the route accepts. It was
+	 * a note in {@code verification.body} until 23.11.2026, when the note left the form (PDL P13) and
+	 * {@code body} stopped carrying anything the member writes.
 	 */
-	private static final String A_NOTE_ONLY_THE_DATABASE_REFUSES = "Razlog koji baza odbija";
+	private static final String A_NAME_ONLY_THE_QUEUE_REFUSES = "Predlog koji puca";
 
 	@Autowired
 	private MockMvc http;
@@ -188,21 +190,21 @@ class TeamProposalAndItsQueueRowAreOneThingTest {
 				.isZero();
 
 		try (AFailureOnlyTheDatabaseCanCause theNote = AFailureOnlyTheDatabaseCanCause.on(db,
-				"verification", "body", A_NOTE_ONLY_THE_DATABASE_REFUSES)) {
+				"verification", "subject", A_NAME_ONLY_THE_QUEUE_REFUSES)) {
 
 			/* THE FIRST WRITE REALLY DOES SUCCEED ON ITS OWN, which is what makes the rollback
 			   below a claim about a rollback rather than about a request that never got started.
 			   A different name, so the two rows could stand side by side if both stuck. It is
 			   sent with the trigger already standing, so it also shows that the trigger refuses
 			   the marker and nothing else. */
-			assertThat(proposing("Predlog koji prolazi", "obican razlog").getStatus()).isEqualTo(201);
+			assertThat(proposing("Predlog koji prolazi").getStatus()).isEqualTo(201);
 			assertThat(howManyProposalsAreMine())
 					.as("a request this route accepts wrote no proposal, so the comparison below has"
 							+ " no other side")
 					.isOne();
 
 			Throwable halfWay = catchThrowable(
-					() -> proposing("Predlog koji puca", A_NOTE_ONLY_THE_DATABASE_REFUSES));
+					() -> proposing(A_NAME_ONLY_THE_QUEUE_REFUSES));
 
 			assertThat(theNote.wentOffIn(halfWay))
 					.as("the second statement of this route did not fail because of the trigger this"
@@ -228,13 +230,13 @@ class TeamProposalAndItsQueueRowAreOneThingTest {
 				.param(ME).query(Long.class).single();
 	}
 
-	private org.springframework.mock.web.MockHttpServletResponse proposing(String name,
-			String note) throws Exception {
+	private org.springframework.mock.web.MockHttpServletResponse proposing(String name)
+			throws Exception {
 
 		return http.perform(post("/api/teams").with(csrf())
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("{\"name\": \"" + name + "\", \"city\": \"Novi Sad\","
-								+ " \"country\": \"RS\", \"note\": \"" + note + "\"}")
+								+ " \"country\": \"RS\", \"bio\": \"Obican opis\"}")
 						.cookie(new Cookie(SessionCookie.NAME, session.secret())))
 				.andReturn().getResponse();
 	}
