@@ -294,7 +294,22 @@ class GroupEntryTest {
 	 */
 	@Test
 	void theInvitationLastsTheSevenDaysItsLetterPromises() throws Exception {
-		assertThat(enter(aGroupOfThree(), EVERYTHING).getStatus()).isEqualTo(201);
+		/* **THE ACCOUNT IS WRITTEN TWO DAYS BEFORE THE SENDING, ON THE CLOCK OF THIS FILE.** `account.created_at` is the
+		   database's own `now()`, which is the real day and years before {@link #NOW}, so an account entered here was
+		   always past its fourteenth day and the case went by the one branch of `AnInvitationOfAMember.of` that never
+		   looks at it: `return theFourteenthDay;` stayed green. With the default moved onto the file's clock the three
+		   moments are three different ones (the fourteenth day twelve days on, seven days from the writing five days
+		   on, seven days from the sending seven on) and only the last is what the row may end at. Put back in the
+		   `finally`, because the column belongs to every other class that runs after this one. */
+		db.sql("alter table account alter column created_at set default timestamptz '"
+				+ NOW.minus(Duration.ofDays(2)) + "'").update();
+
+		try {
+			assertThat(enter(aGroupOfThree(), EVERYTHING).getStatus()).isEqualTo(201);
+		}
+		finally {
+			db.sql("alter table account alter column created_at set default now()").update();
+		}
 
 		/* FROM THE SENDING, which the clock of this file fixes at NOW and the row's own `created_at` does
 		   not (it is the database's), so the row is held to the clock and not to its own column. */
