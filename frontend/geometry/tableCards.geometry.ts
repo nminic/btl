@@ -162,8 +162,10 @@ const WIDTHS: At[] = [
 /* WHERE THE HEADING AND THE SEASON DO NOT FIT ON ONE LINE ON A TELEPHONE, written out cell by cell and
    not read off the page: there the season goes to a line of its own, at the right, still above the row
    of the cards (`Rankings.css`), instead of being drawn over the heading. Everywhere else on a telephone
-   it is level with the heading, as the owner asked. */
-const SEASON_UNDER_THE_HEADING = new Set(['360/200', '320/150', '360/150', '375/150'])
+   it is level with the heading, as the owner asked, except 320px at the reader's own text size: there the
+   season goes to its own line too, since the new arrow of the dropdowns (owner's decision, 23.11.2026)
+   leaves it no room beside the heading. */
+const SEASON_UNDER_THE_HEADING = new Set(['360/200', '320/100', '320/150', '360/150', '375/150'])
 
 const CARDS = '[role="group"][aria-label="BTL tabele"]'
 
