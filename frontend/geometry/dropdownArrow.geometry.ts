@@ -91,8 +91,10 @@ for (const screen of SCREENS) {
     test(`every dropdown on ${screen.name} wears the portal's arrow, ${label(at)}`, async ({ open }) => {
       const { page } = await open(at, screen.path, screen.ready, ANSWERS)
 
-      const seen = await page.evaluate(() =>
-        [...document.querySelectorAll<HTMLElement>('select, .dropdown')]
+      /* Every dropdown the page draws, and the one this screen is opened for whatever it is dressed as: a box that
+         lost its class is then measured, and found wanting, rather than left out of the measuring. */
+      const seen = await page.evaluate((ready) =>
+        [...new Set([...document.querySelectorAll<HTMLElement>(`select, .dropdown, ${ready}`)])]
           .filter((one) => one.getClientRects().length > 0)
           .map((one) => {
             const style = getComputedStyle(one)
@@ -118,6 +120,7 @@ for (const screen of SCREENS) {
               textHex: hex,
             }
           }),
+        screen.ready,
       )
 
       if (seen.length === 0) {
