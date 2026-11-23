@@ -20,11 +20,16 @@
    thing; unlike that one it does not go into the flow on a telephone, because the owner's sentence names no
    width. `geometry/memberChoice.geometry.ts` holds that nothing under it moves while it is open. */
 .member-choice__list {
+  /* IN THE BODY, ABSOLUTE IN THE DOCUMENT: a list inside the box is cut by whatever clips above it, and the panel of
+     a team stands in a table that scrolls (`MemberChoice.tsx`, and `geometry/teamMembersPanel.geometry.ts`). Where
+     it stands is the box's place in the document, written by the component each time it opens and whenever the box
+     may have moved. */
   position: absolute;
   z-index: 6;
-  top: calc(100% + var(--space-6));
-  left: 0;
-  right: 0;
+  top: calc(var(--member-choice-bottom, 0px) + var(--space-6));
+  left: var(--member-choice-left, 0px);
+  inline-size: var(--member-choice-width, auto);
+  box-sizing: border-box;
   margin: 0;
   padding: var(--space-6);
   list-style: none;
@@ -40,6 +45,30 @@
   max-block-size: min(20rem, var(--member-choice-room, 20rem));
   overflow-y: auto;
   overscroll-behavior: contain;
+}
+
+/* AS WIDE AS THE LONGEST NAME IT OFFERS AND NO WIDER, where the box stands beside a button (owner, 23.11.2026, on
+   the panel „Članovi" of a team: „Nema potrebe uopšte da dropdown bude ovoliko širok, može da bude mnogo uži").
+   Counted in `ch` of the box's own text, as the search box of the rankings is (`.rankings__head-tool .rankings__field
+   input[type='search']`, 32ch, `Rankings.css`): a size in characters stays right when somebody enlarges the text
+   (WCAG 2.2 SC 1.4.4). The count is the longest label of the list the component was handed, so a longer name than
+   today's widens it; `--member-choice-arrow` is the room the arrow and the padding take. A `ch` is the width of
+   a nought, and a name in letters with their marks is wider than the same number of noughts: measured in Chrome on
+   23.11.2026 with the sample, one `ch` per character cut the longest by 25px to 40px, so the count is of 1,2 `ch`
+   (`geometry/teamMembersPanel.geometry.ts` holds that no row is cut). Never wider than the
+   room it is in (`100%`), where it is the whole row, as on a telephone. */
+.member-choice--fitted > .field__control {
+  --member-choice-arrow: 3.5rem;
+
+  /* The size of the rows of the list, which is drawn in the body and so in the text of the page: counted in the
+     same `ch` as the rows are read in. */
+  font-size: 1rem;
+  inline-size: calc(var(--member-choice-widest) * 1.2ch + var(--member-choice-arrow));
+  /* Never wider than the field it is in, and never wider than the window can show: the row of the panel is as wide
+     as the table, which on a telephone is wider than the screen, and a box as wide as that row would be, and its
+     list with it, off the right edge of the window. A percentage as the width itself would be measured against a
+     field that is as wide as the box (a circle), so the ceiling is a ceiling and the width is the count. */
+  max-inline-size: min(100%, calc(100vw - 4.5rem));
 }
 
 .member-choice__one {

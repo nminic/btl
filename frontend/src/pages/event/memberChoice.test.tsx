@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import { useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import type { Suggestion } from '../../forms/types'
@@ -351,6 +351,66 @@ describe('where the list of members stands', () => {
     expect(screen.getByRole('listbox').style.getPropertyValue('--member-choice-room')).toBe(
       `${String(window.innerHeight - 348 - 12)}px`,
     )
+  })
+
+  it('stands where the box stands, in the window and not in the box (a table that clips cannot cut it)', async () => {
+    const user = setupUser()
+    const { box } = drawn()
+
+    box.getBoundingClientRect = () => DOMRect.fromRect({ x: 40, y: 100, width: 300, height: 48 })
+    await user.click(box)
+
+    const list = screen.getByRole('listbox')
+
+    expect(list.style.getPropertyValue('--member-choice-bottom')).toBe('148px')
+    expect(list.style.getPropertyValue('--member-choice-left')).toBe('40px')
+    expect(list.style.getPropertyValue('--member-choice-width')).toBe('300px')
+  })
+
+  it('goes with the box when the page or a table scrolls, or the window changes size, while it is open', async () => {
+    const user = setupUser()
+    const { box } = drawn()
+
+    box.getBoundingClientRect = () => DOMRect.fromRect({ x: 40, y: 100, width: 300, height: 48 })
+    await user.click(box)
+    box.getBoundingClientRect = () => DOMRect.fromRect({ x: 40, y: 60, width: 300, height: 48 })
+    act(() => {
+      box.closest('.member-choice')?.dispatchEvent(new Event('scroll'))
+      window.dispatchEvent(new Event('scroll'))
+    })
+
+    expect(screen.getByRole('listbox').style.getPropertyValue('--member-choice-bottom')).toBe('108px')
+
+    box.getBoundingClientRect = () => DOMRect.fromRect({ x: 10, y: 60, width: 200, height: 48 })
+    act(() => {
+      window.dispatchEvent(new Event('resize'))
+    })
+
+    expect(screen.getByRole('listbox').style.getPropertyValue('--member-choice-left')).toBe('10px')
+    expect(screen.getByRole('listbox').style.getPropertyValue('--member-choice-width')).toBe('200px')
+  })
+
+  it('does not draw again for a scroll that did not move the box, and stops listening once shut', async () => {
+    const user = setupUser()
+    const { box } = drawn()
+    const listened = vi.spyOn(window, 'removeEventListener')
+
+    box.getBoundingClientRect = () => DOMRect.fromRect({ x: 40, y: 100, width: 300, height: 48 })
+    await user.click(box)
+
+    const before = screen.getByRole('listbox')
+
+    act(() => {
+      before.dispatchEvent(new Event('scroll'))
+    })
+
+    expect(screen.getByRole('listbox').style.getPropertyValue('--member-choice-bottom')).toBe('148px')
+
+    await user.keyboard('{Escape}')
+
+    expect(listened).toHaveBeenCalledWith('scroll', expect.any(Function), true)
+    expect(listened).toHaveBeenCalledWith('resize', expect.any(Function))
+    listened.mockRestore()
   })
 
   it('scrolls itself to keep the row walked to with the keys in sight', async () => {

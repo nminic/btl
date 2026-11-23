@@ -1,4 +1,5 @@
-import { useState, type KeyboardEvent } from 'react'
+import { useEffect, useState, type KeyboardEvent } from 'react'
+import { createPortal } from 'react-dom'
 import { heldControl } from '../../forms/held'
 import type { Suggestion } from '../../forms/types'
 import { useI18n } from '../../i18n/useI18n'
@@ -40,7 +41,39 @@ import './MemberChoice.css'
  * member whose label holds it, with no upper bound. The list is no taller than the room the window has under the
  * box (`roomFor`), and scrolls inside itself, keeping the row walked to in sight. A name
  * typed and not chosen is nobody (`whatIsWrongWith`), as before.
+ *
+ * <p><b>The list is drawn in the body, at the place of the box in the document, and put again where the box is
+ * whenever it may have moved</b> (owner, 23.11.2026, on the panel „Članovi" of a team: „Em se ne vidi lista clanova
+ * u dropdown, em se pojavljuje scroll bar"). A list inside the box is cut by the nearest ancestor that clips, and the
+ * panel of a team stands in a row of a table that scrolls (`.table-scroll`, `overflow-x: auto`, which makes the
+ * vertical overflow clip as well): measured in Chrome, the list of a table with one team was cut to the height of
+ * the row and the table grew a scroll bar. Working the room out against the container instead would have left the
+ * list a few rows high at the last row of a table; a list in the body is cut by no container, at any row, and the
+ * room it is given is the window's, as before. It is `absolute` in the document and not `fixed` on purpose: where
+ * the box is near the foot of the page, the list the window has not the room for makes the page longer, as it
+ * did inside the box, and the page can be scrolled to the rest of it. The portal's own precedent for a thing that
+ * must not be cut by what it stands in is the tip of an action (`components/ActionButton.tsx`, the body and the two
+ * listeners of `scroll` in the capture phase and of `resize`).
  */
+/** Where the box stands in the window, and the room the list has under it. */
+function seatOf(box: HTMLInputElement) {
+  const found = box.getBoundingClientRect()
+
+  return {
+    room: roomFor(found.bottom, window.innerHeight),
+    bottom: found.bottom + window.scrollY,
+    left: found.left + window.scrollX,
+    width: found.width,
+  }
+}
+
+/** The new seat, or the old one itself where nothing moved, so that the state is not set and nothing is drawn. */
+function same(was: ReturnType<typeof seatOf>, now: ReturnType<typeof seatOf>) {
+  return was.room === now.room && was.bottom === now.bottom && was.left === now.left && was.width === now.width
+    ? was
+    : now
+}
+
 export function MemberChoice({
   id,
   name,
@@ -48,6 +81,7 @@ export function MemberChoice({
   suggestions,
   invalid,
   describedBy,
+  fitted = false,
   onType,
   onChoose,
 }: {
@@ -57,16 +91,22 @@ export function MemberChoice({
   suggestions: readonly Suggestion[]
   invalid: boolean
   describedBy: string | undefined
+  /** Where the box stands beside a button and not in a row of boxes of its own: it is as wide as the longest
+   *  name it offers (`MemberChoice.css`), where it would otherwise take the whole width it is given. */
+  fitted?: boolean
   onType: (next: string) => void
   onChoose: (one: Suggestion) => void
 }) {
   const { t } = useI18n()
-  /* Shut is where it starts, and opened by a press, by typing or by Down. */
-  const [open, setOpen] = useState(false)
+  /* The box the list stands under while it is open, and nothing while it is shut: opened by a press, by typing or
+     by Down, and the one fact that says which of the two it is. */
+  const [anchor, setAnchor] = useState<HTMLInputElement | null>(null)
+  const open = anchor !== null
   /* Which row is highlighted, or -1 for none: what Enter would choose. */
   const [at, setAt] = useState(-1)
-  /* How tall the list may be, in pixels, worked out from the box each time it opens (`roomFor`). */
-  const [room, setRoom] = useState(0)
+  /* Where the box is in the window and how tall the list may be, in pixels, worked out each time it opens and
+     whenever the box may have moved (`seatOf`). */
+  const [seat, setSeat] = useState({ room: 0, bottom: 0, left: 0, width: 0 })
   const offered = open ? membersOffered(value, suggestions) : []
   /* Whether a list is actually drawn: what `aria-expanded` says, since a box opened on letters nobody's name holds
      draws no list, and saying it is expanded then would send a reader to look for one. */
@@ -75,13 +115,31 @@ export function MemberChoice({
   const highlighted = offered[at]
 
   function opening(box: HTMLInputElement) {
-    setRoom(roomFor(box.getBoundingClientRect().bottom, window.innerHeight))
-    setOpen(true)
+    setSeat(seatOf(box))
+    setAnchor(box)
   }
+
+  /* Where the box stands again: the page, the table the panel is in and anything between them scroll, and the
+     window changes size. A scroll of the list itself finds the box where it was, and nothing is drawn again. */
+  useEffect(() => {
+    if (anchor === null) {
+      return undefined
+    }
+
+    const again = () => setSeat((was) => same(was, seatOf(anchor)))
+
+    window.addEventListener('scroll', again, true)
+    window.addEventListener('resize', again)
+
+    return () => {
+      window.removeEventListener('scroll', again, true)
+      window.removeEventListener('resize', again)
+    }
+  }, [anchor])
 
   function choose(one: Suggestion) {
     onChoose(one)
-    setOpen(false)
+    setAnchor(null)
     setAt(-1)
   }
 
@@ -89,7 +147,7 @@ export function MemberChoice({
     if (event.key === 'Escape') {
       /* And stops here, so one press does not also close whatever the form stands inside (`PlaceField`). */
       event.stopPropagation()
-      setOpen(false)
+      setAnchor(null)
       setAt(-1)
 
       return
@@ -128,7 +186,10 @@ export function MemberChoice({
   }
 
   return (
-    <div className="member-choice">
+    <div
+      className={fitted ? 'member-choice member-choice--fitted' : 'member-choice'}
+      style={fitted ? { '--member-choice-widest': Math.max(0, ...suggestions.map((one) => one.value.length)) } : undefined}
+    >
       <input
         id={id}
         name={name}
@@ -157,14 +218,14 @@ export function MemberChoice({
            finger both give, and the arrow is part of the box, so a press on the arrow is this press. */
         onClick={(event) => {
           if (open) {
-            setOpen(false)
+            setAnchor(null)
             setAt(-1)
           } else {
             opening(event.currentTarget)
           }
         }}
         onBlur={() => {
-          setOpen(false)
+          setAnchor(null)
           setAt(-1)
         }}
       />
@@ -173,13 +234,18 @@ export function MemberChoice({
           reader walking the list hears each row as an option of a list of so many. The `Suggesting` box it
           replaced said „N trka iz kalendara odgovara" over a list of members (`form.suggested`), which was a
           sentence about another list. */}
-      {drawn && (
+      {drawn && createPortal(
         <ul
           className="member-choice__list"
           id={listId}
           role="listbox"
           aria-label={t('form.members')}
-          style={{ '--member-choice-room': `${String(room)}px` }}
+          style={{
+            '--member-choice-room': `${String(seat.room)}px`,
+            '--member-choice-bottom': `${String(seat.bottom)}px`,
+            '--member-choice-left': `${String(seat.left)}px`,
+            '--member-choice-width': `${String(seat.width)}px`,
+          }}
           /* The row walked to with the keys is kept in sight, and the list is moved no further than that. Asked
              on every drawing, which costs nothing where the row is already seen (`keptInView`). */
           ref={(list) => {
@@ -211,7 +277,8 @@ export function MemberChoice({
               {one.said}
             </li>
           ))}
-        </ul>
+        </ul>,
+        document.body,
       )}
     </div>
   )

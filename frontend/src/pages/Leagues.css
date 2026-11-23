@@ -941,6 +941,21 @@
   min-width: 0;
 }
 
+/* The chooser of a member beside the button that adds him (the panel of a team in the administration). On a telephone
+   the field is a row of its own and the button is the next one (owner, 23.11.2026: „Na telefonu može jedan red
+   dropdown, a drugi dugme"); from the width where a telephone stops being one (`35em`, as the query at the top of
+   this sheet) the field takes the width of the box in it, which is as wide as the longest name
+   (`MemberChoice.css`, `fitted`), and not what is left of the row, and the button stands next to it, at the start. */
+.leagues__adding .leagues__adding-member {
+  flex: 1 1 100%;
+}
+
+@media (min-width: 35em) {
+  .leagues__adding .leagues__adding-member {
+    flex: 0 1 auto;
+  }
+}
+
 .leagues__adding .rankings__field select {
   min-width: 0;
 }

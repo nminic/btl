@@ -167,9 +167,10 @@ export function TeamMembers({
       )}
 
       <div className="leagues__adding">
-        <div className="rankings__field">
+        <div className="rankings__field leagues__adding-member">
           <label htmlFor={boxId}>{t('admin.teamMemberChoose')}</label>
           <MemberChoice
+            fitted
             id={boxId}
             name={boxId}
             value={typed}
