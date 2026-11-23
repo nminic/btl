@@ -508,6 +508,16 @@ describe('a field another field demands, saying why', () => {
       })
     })
 
+    it('lets nothing through for a field that is required of everybody, whatever else it carries', () => {
+      /* `written.required !== true` in `validate.ts`: a field required of everybody is told what every obligatory
+         field is told, neither the sentence of the rule nor silence, even if it carries the rule and the flag. */
+      const everybody: FieldDef = { ...left, required: true }
+
+      expect(validateForm({ ...form, fields: [everybody, viber] }, answered, today)).toEqual({
+        phone: { key: 'form.errors.required' },
+      })
+    })
+
     it('does nothing without the sentence of the rule', () => {
       const bare: FieldDef = { ...left, requiredWhenFilled: { field: 'viber', leftToTheServer: true } }
 
