@@ -117,6 +117,29 @@ describe('members of a team moved by the administration', () => {
       server.stop()
     }, SLOW)
 
+  it('opens one team at a time, shuts it on a second press, and says a team with nobody is empty', async () => {
+    const server = serving()
+    const user = setupUser()
+    renderAt('/sr/administracija/timovi', 'superadmin', null, undefined, IN_WINDOW)
+
+    const acted = await screen.findByRole('button', { name: `2 Članovi tima ${ITS_NAME}` })
+    const empty = screen.getByRole('button', { name: '0 Članovi tima Dunavski trkači' })
+
+    await user.click(acted)
+    await user.click(empty)
+
+    expect(screen.queryByRole('region', { name: `Članovi tima ${ITS_NAME}` })).toBeNull()
+    expect(within(screen.getByRole('region', { name: 'Članovi tima Dunavski trkači' }))
+      .getByText('U timu nema nikoga.')).toBeVisible()
+
+    await user.click(empty)
+
+    expect(empty).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByRole('region', { name: 'Članovi tima Dunavski trkači' })).toBeNull()
+
+    server.stop()
+  }, SLOW)
+
   it('adds the member chosen to ITS OWN team by his number, and reads both lists again', async () => {
     const server = serving()
     const user = setupUser()
