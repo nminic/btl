@@ -673,9 +673,16 @@
   gap: var(--space-8);
 }
 
+/* **Down the left column, then down the right** (owner, 23.11.2026, PDL „Pločice se u dve kolone slažu po
+   kolonama, ne po redovima”): the rows are as many as half the tiles, rounded up (`--league-tile-rows`,
+   handed in by `league/LeagueEvents.tsx`), and the grid fills a column before it starts the next, so 8 stand
+   4 and 4 and 9 stand 5 and 4. The order in the document is the order of the season and does not move;
+   the one column of a telephone, above, takes no part in this and so reads the same order down. */
 @container league-counting (min-width: 40em) {
   .leagues__event-tiles {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: repeat(var(--league-tile-rows), auto);
+    grid-auto-flow: column;
   }
 }
 

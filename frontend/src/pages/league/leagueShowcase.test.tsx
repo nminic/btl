@@ -49,9 +49,9 @@ describe('the showcase of competitions', () => {
     expect(within(sheet()).getByRole('heading', { level: 2 })).toHaveTextContent('RunTrace liga 2027')
     expect(screen.getAllByRole('heading', { name: 'Propozicije' })).toHaveLength(1)
     expect(screen.getAllByRole('heading', { name: 'Nagrade' })).toHaveLength(1)
-    expect(screen.getAllByRole('button', { name: /^Događaji i trke, / })).toHaveLength(1)
-    expect(screen.getByRole('button', { name: 'Događaji i trke, RunTrace liga 2027' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Događaji i trke, Planinska liga 2027' })).toBeNull()
+    expect(screen.getAllByRole('heading', { level: 3, name: 'Događaji i trke' })).toHaveLength(1)
+    expect(within(sheet()).getByRole('heading', { level: 3, name: 'Događaji i trke' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Događaji i trke/ })).toBeNull()
   })
 
   it('opens on the one the address names', { timeout: SLOW }, async () => {
@@ -61,8 +61,8 @@ describe('the showcase of competitions', () => {
 
     expect(chosenLink(list).map((one) => one.textContent)).toEqual(['Planinska liga 2027'])
     expect(within(sheet()).getByRole('heading', { level: 2 })).toHaveTextContent('Planinska liga 2027')
-    expect(screen.getByRole('button', { name: 'Događaji i trke, Planinska liga 2027' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Događaji i trke, RunTrace liga 2027' })).toBeNull()
+    expect(within(sheet()).getByRole('heading', { level: 3, name: 'Događaji i trke' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Događaji i trke/ })).toBeNull()
   })
 
   it.each([
