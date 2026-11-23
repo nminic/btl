@@ -156,6 +156,12 @@ class LeagueConstraintsTest extends DatabaseTest {
 				Violation.of("league_slug_shape",
 						league("'Nije Slug', 'Nova liga', 2028, '', ''")),
 
+				/* The mark of a league, V108: a pointer into `photo`, nullable, so the one row that
+				   breaks it names a picture that is not there. */
+				Violation.of("league_logo_fk",
+						"insert into league (" + COLUMNS + ", logo_id) values ('nova-liga', 'Nova liga', 2028,"
+								+ " '', '', 999999)"),
+
 				Violation.notNull("league_name_not_null", "name",
 						league("'nova-liga', null, 2028, '', ''")),
 				Violation.of("league_name_not_blank",
@@ -210,7 +216,11 @@ class LeagueConstraintsTest extends DatabaseTest {
 						+ " and not exists (select 1 from pg_constraint own where own.conindid = idx.indexrelid)")
 				.query(String.class)
 				.list();
-		declared = new java.util.ArrayList<>(declared);
+
+		/* V108's trigger on `league` deletes a photo row that nobody holds and never refuses, so there
+		   is no row that breaks it. It is taken away by the function it runs, and the exemption has its
+		   own floor in APhotoNobodyHoldsGoesTest, which walks `league` as the fifth holder. */
+		declared = withoutTheConstraintTriggersThatAct(new java.util.ArrayList<>(declared));
 
 		Set<String> covered = violations().stream().map(Violation::constraint).collect(Collectors.toSet());
 
