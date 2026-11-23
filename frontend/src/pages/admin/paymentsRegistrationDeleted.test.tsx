@@ -291,6 +291,72 @@ describe('„Obriši" on the screen Uplate', () => {
     expect(deletions()).toHaveLength(1)
   }, SLOW)
 
+  it('does not open while an activation of the same row is out, though the same press opens it before', async () => {
+    let release = () => {}
+    const held = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const booked: string[] = []
+
+    clearResourceCache()
+
+    const { stop } = serverThat((path, init) => {
+      const how = init?.method ?? 'GET'
+
+      if (path === '/api/payments' && how === 'GET') {
+        const answer: Outstanding = { season: 2031, accounts: [THE_FIRST_BORKO, JOVANA, THE_SECOND_BORKO, PETAR] }
+
+        return json(answer)
+      }
+
+      if (path !== '/api/payments' || how !== 'POST') {
+        return null
+      }
+
+      booked.push(path)
+
+      return (async () => {
+        await held
+
+        return json({})
+      })()
+    })
+
+    stops.push(stop)
+
+    const user = setupUser()
+
+    renderAt(ADDRESS, 'superadmin')
+
+    const second = await rowAt('Borko Olar', 1)
+
+    /* NOT VACUOUS: before anything is sent, the same press opens the sheet, and „Odustani" puts it away. */
+    await user.click(deleteOn(second, 'Borko Olar'))
+    await user.click(
+      within(await screen.findByRole('dialog', { name: sr.admin.registrationDeleteAsk })).getByRole('button', {
+        name: sr.admin.form.keep,
+      }),
+    )
+    expect(screen.queryByRole('dialog')).toBeNull()
+
+    /* HIS AMOUNT IN FULL, which books at once with no question (his case 1), and the booking is held. */
+    await user.type(within(second).getByRole('textbox', { name: 'Uplaćeno (RSD)' }), '4800')
+    await user.click(within(second).getByRole('button', { name: sr.verification.activate }))
+    await waitFor(() => expect(booked).toHaveLength(1))
+
+    /* TOLD OFF, NOT SWITCHED OFF, so the press reaches the handler, and the handler is what refuses it. */
+    const cross = deleteOn(second, 'Borko Olar')
+
+    expect(cross).toHaveAttribute('aria-disabled', 'true')
+    await user.click(cross)
+    expect(screen.queryByRole('dialog')).toBeNull()
+
+    await act(async () => {
+      release()
+      await held
+    })
+  }, SLOW)
+
   it('says the server\'s refusal beside the row and deletes nothing it was not told it deleted', async () => {
     const { deletions } = serving({ status: 404 })
     const user = setupUser()
