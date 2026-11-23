@@ -70,11 +70,15 @@ const ANSWERS: Answers = { ...SAMPLE, '/api/me': { role: 'superadmin', account: 
 const WIDTHS: At[] = [
   { width: 360, text: 100 },
   { width: 768, text: 100 },
-  { width: 1280, text: 100 },
+  /* Shorter than the harness's default, so the page is taller than the window and a desktop draws the scrollbar
+     every reader's has (`support/harness.ts`). */
+  { width: 1280, text: 100, height: 600 },
   { width: 1280, text: 200 },
 ]
 
 const BOX = '#league-row-1-member'
+/* The list the box controls, by its own id: the header carries listboxes of its own. */
+const LIST = `${BOX}-list`
 
 for (const at of WIDTHS) {
   test(`the list of members opens over the figures and moves none of them, ${label(at)}`, async ({ open }) => {
@@ -97,16 +101,19 @@ for (const at of WIDTHS) {
     }
 
     await page.locator(BOX).fill('Re')
-    await page.getByRole('listbox').waitFor({ state: 'visible' })
+    await page.locator(LIST).waitFor({ state: 'visible' })
 
-    const measured = await page.evaluate((selector) => {
-      const list = document.querySelector('[role="listbox"]')?.getBoundingClientRect()
-      const member = document.querySelector(selector)?.getBoundingClientRect()
+    const measured = await page.evaluate(
+      ([box, listed]) => {
+        const list = document.querySelector(listed)?.getBoundingClientRect()
+        const member = document.querySelector(box)?.getBoundingClientRect()
 
-      return list === undefined || member === undefined
-        ? null
-        : { top: list.top, bottom: list.bottom, left: list.left, right: list.right, memberBottom: member.bottom }
-    }, BOX)
+        return list === undefined || member === undefined
+          ? null
+          : { top: list.top, bottom: list.bottom, left: list.left, right: list.right, memberBottom: member.bottom }
+      },
+      [BOX, LIST],
+    )
     const viewport = await page.evaluate(() => document.documentElement.clientWidth)
     const opened = await figureTop()
 
