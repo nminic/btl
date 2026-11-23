@@ -476,6 +476,28 @@ describe('the box for Viber on the card', () => {
     expect(corrections(asked)).toEqual([])
   }, SLOW)
 
+  it('goes by what the server holds NOW: a box saved ticked, then the telephone emptied, says the sentence of 20.11.2026', async () => {
+    /* Served not ticked and saved ticked (with his telephone), so the record moved and the page did not reload:
+       the box as OPENED and the box as HELD now are two sources of one fact, and only this case tells them apart. */
+    const user = setupUser()
+    const asked = theAdministrationsServer(SOMEBODY, { viberCommunity: false }, (body) =>
+      body.phone === '' ? refused('theViberCommunityHoldsThePhone', 409) : null,
+    )
+
+    asTheAdministration()
+    await user.click(await theBox())
+    await user.click(screen.getByRole('button', { name: sr.account.save }))
+    expect(await screen.findByText(sr.account.saved)).toBeVisible()
+
+    await user.clear(await theTelephone())
+    await user.click(screen.getByRole('button', { name: sr.account.save }))
+
+    expect(
+      await screen.findByText('Član je prijavljen za Viber zajednicu, pa broj ne može da se obriše dok se ne odjavi.'),
+    ).toBeVisible()
+    expect(corrections(asked)).toEqual([{ viberCommunity: true }, { phone: '' }])
+  }, SLOW)
+
   it('lets the telephone go with the box taken back in the same press, for a member served ticked', async () => {
     const user = setupUser()
     const asked = theRouteThatHoldsThePhone(true)
