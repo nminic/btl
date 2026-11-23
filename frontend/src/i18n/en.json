@@ -1692,7 +1692,8 @@
       "theFormIsNotComplete": "The request failed. Refresh the page and try again.",
       "theBasisIsNotKnown": "The portal does not know the basis of membership that was sent, so nothing was done. Refresh the page and try again.",
       "thisChangeIsNotOffered": "An activation from the balance is cancelled first, and a new one is recorded after.",
-      "theBasisHasChanged": "The basis for this season has changed in the meantime, so nothing was done. Refresh the page."
+      "theBasisHasChanged": "The basis for this season has changed in the meantime, so nothing was done. Refresh the page.",
+      "theSeasonIsNotOffered": "This season can't be changed now."
     },
     "editMember": "Edit the details",
     "editMemberNamed": "Edit the details: {name}"
