@@ -134,6 +134,8 @@ class NoTextHoldsAZeroTest {
 	private static final Map<String, String> THE_OTHER_TEXTS = Map.ofEntries(
 			Map.entry("CompetitorWriteApi#remove:memberNumber (path)",
 					"a zero in a path is a 400 before any handler is reached"),
+			Map.entry("TeamAdministrationWriteApi#remove:memberNumber (path)",
+					"a zero in a path is a 400 before any handler is reached"),
 			Map.entry("MemberMembershipApi#cancel:memberNumber (path)",
 					"a zero in a path is a 400 before any handler is reached"),
 			Map.entry("MemberMembershipApi#change:memberNumber (path)",
