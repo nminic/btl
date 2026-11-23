@@ -6011,4 +6011,89 @@ class VerificationWriteApiTest {
 		assertThat(messagesTo(DETE)).containsExactly("Stavka ti je oduzeta | Superadmin je preuzeo stavku koju"
 				+ " si držao u redu za verifikaciju.");
 	}
+
+	/* ========================== figures nobody ran (PDL P4, owner, 10.10.2026, „Nikad broj bodova nece biti
+	 * veci nego trocifren uz jos dve decimale", and the refusal at the approval derived beside it). Until then
+	 * the approval met `numeric(8,2)` and answered 500. Two lengths over 8800 seconds are worth exactly 999,99
+	 * and exactly 1000,00 as the column keeps them, so the boundary is asked from both sides.
+	 *
+	 * This class runs every route inside the case's transaction (see the note over the cases of one result
+	 * of one member on one race), so the refusal, met after the claim, is asserted by what is written after
+	 * it and never was; that the row waits again is VerificationDecisionConcurrencyTest's, which commits. */
+
+	private static final String THE_RUN_IS_IMPOSSIBLE = "Nemoguć rezultat.";
+
+	private static final String THE_MOST = "{\"distanceKm\":99.8923,\"ascentM\":0,\"descentM\":0,\"seconds\":8800}";
+
+	private static final String ONE_HUNDREDTH_TOO_MANY =
+			"{\"distanceKm\":99.8926,\"ascentM\":0,\"descentM\":0,\"seconds\":8800}";
+
+	@Test
+	void aCorrectionApprovedWithFiguresWorthMoreThanAnyRunIsRefusedAndTheMostIsTaken() throws Exception {
+		assertThat(BtlScoreCalculator.calculate(99.8923, 0, 0, 8800)).isEqualByComparingTo("999.99");
+		assertThat(BtlScoreCalculator.calculate(99.8926, 0, 0, 8800)).isEqualByComparingTo("1000.00");
+
+		MockHttpServletResponse refused = decideWith(THE_SUPERADMIN, verasCorrection,
+				"{\"approved\":true,\"amended\":" + ONE_HUNDREDTH_TOO_MANY + "}");
+
+		assertThat(refused.getStatus()).as(refused.getContentAsString()).isEqualTo(400);
+		assertThat(reasonIn(refused)).isEqualTo(THE_RUN_IS_IMPOSSIBLE);
+		assertThat(counted(verasCountedRun).orElseThrow().points())
+				.as("the counted run took the figures of a refused approval").isEqualByComparingTo("3.73");
+		assertThat(howManyResults(VERA)).isEqualTo(1);
+	}
+
+	@Test
+	void aCorrectionApprovedWithFiguresWorthTheMostARunCanBeIsCounted() throws Exception {
+		assertThat(decideWith(THE_SUPERADMIN, verasCorrection, "{\"approved\":true,\"amended\":" + THE_MOST + "}")
+				.getStatus()).isEqualTo(200);
+		assertThat(counted(verasCountedRun).orElseThrow().points()).isEqualByComparingTo("999.99");
+	}
+
+	/**
+	 * THE FIGURES ASKED ARE THE ONES THE APPROVAL WRITES, AND THEY HAVE TWO SOURCES: a run sent worth more than
+	 * any run is refused as it was sent, and approved once the moderator puts figures of his own in place of
+	 * the runner's; on a race of a length the length is the race's, so a time the moderator types is judged
+	 * over the race's 42,195 km.
+	 */
+	@Test
+	void aRunSentWorthMoreThanAnyRunIsRefusedUntilTheModeratorsFiguresMakeItARun() throws Exception {
+		long bojans = runWaitingFor(BOJAN, theTrail, SATURDAY, "99.8926", 0, 0, 8800, null);
+
+		MockHttpServletResponse asSent = decideWith(THE_SUPERADMIN, bojans, "{\"approved\":true}");
+
+		assertThat(asSent.getStatus()).as(asSent.getContentAsString()).isEqualTo(400);
+		assertThat(reasonIn(asSent)).isEqualTo(THE_RUN_IS_IMPOSSIBLE);
+		assertThat(howManyResults(BOJAN)).isZero();
+
+		MockHttpServletResponse overTheRacesLength = decideWith(THE_SUPERADMIN, anasMarathon,
+				"{\"approved\":true,\"amended\":{\"distanceKm\":1.0,\"ascentM\":0,\"descentM\":0,"
+						+ "\"seconds\":1000}}");
+
+		assertThat(overTheRacesLength.getStatus()).as(overTheRacesLength.getContentAsString()).isEqualTo(400);
+		assertThat(reasonIn(overTheRacesLength)).isEqualTo(THE_RUN_IS_IMPOSSIBLE);
+		assertThat(howManyResults(ANA)).isZero();
+	}
+
+	/** THE OTHER SOURCE: the same run sent worth more than any run, approved at figures of the moderator's own. */
+	@Test
+	void aRunSentWorthMoreThanAnyRunIsCountedAtTheModeratorsFigures() throws Exception {
+		long bojans = runWaitingFor(BOJAN, theTrail, SATURDAY, "99.8926", 0, 0, 8800, null);
+
+		assertThat(decideWith(THE_SUPERADMIN, bojans, "{\"approved\":true,\"amended\":{\"distanceKm\":10.0,"
+				+ "\"ascentM\":0,\"descentM\":0,\"seconds\":3600}}").getStatus()).isEqualTo(200);
+		assertThat(counted(onlyResultOf(BOJAN)).orElseThrow().points())
+				.isEqualByComparingTo(BtlScoreCalculator.calculate(10.0, 0, 0, 3600));
+	}
+
+	/** AND A RUN SENT AS AN UNSCORED ONE KEEPS NOUGHT, so figures worth any number are approved there. */
+	@Test
+	void aRunOfAnUnscoredRaceIsApprovedWithFiguresWorthAnyNumber() throws Exception {
+		long unscored = sentAsUnscored(describedRun(ANA, "Ada", "free", THE_DAY_HE_RAN, "99.8926", 0, 0, 60));
+
+		MockHttpServletResponse made = decideWith(THE_SUPERADMIN, unscored,
+				makingTheRace("Plivanje oko Ade", "Krug", "free", null));
+
+		assertThat(made.getStatus()).as(made.getContentAsString()).isEqualTo(200);
+	}
 }

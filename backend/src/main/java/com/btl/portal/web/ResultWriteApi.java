@@ -199,6 +199,16 @@ class ResultWriteApi {
 	/** No {@code race} answers to the id that was sent. */
 	static final String THE_RACE_IS_NOT_KNOWN = "theRaceIsNotKnown";
 
+	/**
+	 * FIGURES NOBODY RAN: the run they make would be worth more than any run can be
+	 * ({@link PointsOfARun#THE_MOST_A_RUN_IS_WORTH}, PDL P4, owner, 10.10.2026: „Nikad broj bodova nece biti
+	 * veci nego trocifren uz jos dve decimale"), so it is refused when it is sent, as the record derives
+	 * beside that decision. Asked of the figures as they are counted, so on a race of a length the length
+	 * is the race's. The league's own entry answers with the same word, declared again there
+	 * ({@link ResultsByTheLeagueApi#THE_RUN_IS_IMPOSSIBLE}).
+	 */
+	static final String THE_RUN_IS_IMPOSSIBLE = "theRunIsImpossible";
+
 	/** PDL, owner, 11.08.2026: „Ne sme, ne moze biti rezultata u buducnosti." The day of the
 	 *  race itself counts as run, the same comparison {@link CommentWriteApi} makes for a
 	 *  rating and for the owner's own reason. */
@@ -523,6 +533,10 @@ class ResultWriteApi {
 			return no(THE_FORM_IS_NOT_COMPLETE);
 		}
 
+		if (PointsOfARun.impossible(before.scored(), figures)) {
+			return no(THE_RUN_IS_IMPOSSIBLE);
+		}
+
 		Run after = new Run(before.raceName(), before.day(), figures.distanceKm(),
 				figures.ascentM(), figures.descentM(), figures.seconds(), PointsOfARun.toTell(
 						before.scored(), pointsFor(figures.distanceKm(), figures.ascentM(),
@@ -663,6 +677,10 @@ class ResultWriteApi {
 			return no(THE_FORM_IS_NOT_COMPLETE);
 		}
 
+		if (PointsOfARun.impossible(scored, figures)) {
+			return no(THE_RUN_IS_IMPOSSIBLE);
+		}
+
 		Run run = new Run(race.name(), race.day(), figures.distanceKm(), figures.ascentM(),
 				figures.descentM(), figures.seconds(), PointsOfARun.toTell(scored,
 						pointsFor(figures.distanceKm(), figures.ascentM(), figures.descentM(),
@@ -713,6 +731,12 @@ class ResultWriteApi {
 				|| notAClimb(figures.descentM()) || notATime(figures.seconds())
 				|| (typed.eventId() == null && isNothing(typed.eventName()))) {
 			return no(THE_FORM_IS_NOT_COMPLETE);
+		}
+
+		/* AND FIGURES NOBODY RAN, judged as the kind he sent it under is judged: a run of an unscored race
+		   keeps nought and is never refused for it. */
+		if (PointsOfARun.impossible(scored, figures)) {
+			return no(THE_RUN_IS_IMPOSSIBLE);
 		}
 
 		/* A KIND BESIDE A CHOSEN EVENT is a second answer to what the calendar answers (see Ran), and is

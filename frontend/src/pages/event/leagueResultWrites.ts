@@ -33,6 +33,9 @@ export const WHEN_THE_LEAGUE_ENTERS_RESULTS: Record<string, string> = {
      za tu sezonu; inače se red odbija uz rečenicu." */
   heHoldsNoMembershipOfTheRunningSeason: 'leagueResults.refused.heHoldsNoMembershipOfTheRunningSeason',
   theFormIsNotComplete: 'leagueResults.refused.theFormIsNotComplete',
+  /* PDL P4, 10.10.2026: „Nikad broj bodova nece biti veci nego trocifren uz jos dve decimale"; a row, or the
+     pencil, at figures worth more is refused with the word the member's own report gets (`ResultWriteApi`). */
+  theRunIsImpossible: 'leagueResults.refused.theRunIsImpossible',
   theGroupIsEmpty: 'leagueResults.refused.theGroupIsEmpty',
   theGroupIsTooBig: 'leagueResults.refused.theGroupIsTooBig',
   /* The three of the moderator's own screen, „Unos rezultata za događaj”, in the words the owner
