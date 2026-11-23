@@ -31,7 +31,7 @@ import {
   photoPath,
   type Answered,
 } from './verificationWrites'
-import { usePending, WAITING, waitingIn } from './pending'
+import { usePending, waitingIn } from './pending'
 import {
   cardPictureOf,
   mayApprove,
@@ -50,6 +50,7 @@ import {
   isChange,
   organisers,
   proposed,
+  editsKeyOf,
   refusal,
   teamFrom,
   type Proposed,
@@ -418,7 +419,7 @@ function TeamFields({ item }: { item: PendingItem }) {
   const { edits, edit } = useSession()
 
   const value = (field: 'name' | 'city' | 'country' | 'bio' | 'link') =>
-    String(edits[recordKey(WAITING, item.id)]?.[field] ?? proposed(item)[field])
+    String(edits[editsKeyOf(item)]?.[field] ?? proposed(item)[field])
 
   return (
     /* All three are obligatory in the definition a proposed team is saved
@@ -435,7 +436,7 @@ function TeamFields({ item }: { item: PendingItem }) {
           value={value('name')}
           aria-required="true"
           maxLength={limitOf(tim, 'name')}
-          onChange={(event) => edit(recordKey(WAITING, item.id), 'name', event.target.value)}
+          onChange={(event) => edit(editsKeyOf(item), 'name', event.target.value)}
         />
       </div>
 
@@ -447,7 +448,7 @@ function TeamFields({ item }: { item: PendingItem }) {
           value={value('city')}
           aria-required="true"
           maxLength={limitOf(tim, 'city')}
-          onChange={(event) => edit(recordKey(WAITING, item.id), 'city', event.target.value)}
+          onChange={(event) => edit(editsKeyOf(item), 'city', event.target.value)}
         />
       </div>
 
@@ -457,7 +458,7 @@ function TeamFields({ item }: { item: PendingItem }) {
           id={`team-country-${item.id}`}
           value={value('country')}
           aria-required="true"
-          onChange={(event) => edit(recordKey(WAITING, item.id), 'country', event.target.value)}
+          onChange={(event) => edit(editsKeyOf(item), 'country', event.target.value)}
         >
           <option value="">{t('form.choose')}</option>
           {/* The region first and named, like every other choice of country on
@@ -490,7 +491,7 @@ function TeamFields({ item }: { item: PendingItem }) {
           id={`team-bio-${item.id}`}
           value={value('bio')}
           maxLength={limitOf(tim, 'bio')}
-          onChange={(event) => edit(recordKey(WAITING, item.id), 'bio', event.target.value)}
+          onChange={(event) => edit(editsKeyOf(item), 'bio', event.target.value)}
         />
       </div>
 
@@ -501,7 +502,7 @@ function TeamFields({ item }: { item: PendingItem }) {
           type="url"
           value={value('link')}
           maxLength={limitOf(tim, 'link')}
-          onChange={(event) => edit(recordKey(WAITING, item.id), 'link', event.target.value)}
+          onChange={(event) => edit(editsKeyOf(item), 'link', event.target.value)}
         />
       </div>
     </div>

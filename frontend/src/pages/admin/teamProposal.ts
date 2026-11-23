@@ -166,16 +166,34 @@ export function refusal(
   return null
 }
 
+/**
+ * WHERE THE MODERATOR'S CORRECTIONS OF A CARD OF A TEAM ARE KEPT: under the card AND THE WORDS HE TYPED THEM OVER.
+ *
+ * <p>A second change of a team is written over the card that waits and keeps its key (PDL P13, [ODLUKA
+ * 23.11.2026]; `TeamWriteApi.replaceTheChangeThatWaits`), so a correction kept under the key alone
+ * outlives the words it was typed over: after the route's 409 the card was drawn again with the
+ * moderator's old correction and the new words were seen nowhere, and the second press named words he had
+ * never been shown (review of PR 807, round 2). Kept under the words as well, the correction belongs to
+ * the card as it was served: when the words change the key changes, the old correction is simply not
+ * found, and the card draws what the route holds. Chosen over deleting the corrections after a 409
+ * because it needs no call from the one place that happens to learn of the change (the queue can also be
+ * read again by a refusal of another kind, or by a moderator who comes back to it) and no new operation on
+ * the session, which has none that takes an edit away.
+ */
+export function editsKeyOf(item: PendingItem): string {
+  return recordKey(WAITING, `${item.id}|${JSON.stringify(proposed(item))}`)
+}
+
 /** The team a proposal would make, with whatever the moderator has corrected. */
 export function teamFrom(item: PendingItem, edits: Edits): Proposed {
   const said = proposed(item)
 
   return {
-    name: String(edits[recordKey(WAITING, item.id)]?.name ?? said.name),
-    city: String(edits[recordKey(WAITING, item.id)]?.city ?? said.city),
-    country: String(edits[recordKey(WAITING, item.id)]?.country ?? said.country),
-    bio: String(edits[recordKey(WAITING, item.id)]?.bio ?? said.bio),
-    link: String(edits[recordKey(WAITING, item.id)]?.link ?? said.link),
+    name: String(edits[editsKeyOf(item)]?.name ?? said.name),
+    city: String(edits[editsKeyOf(item)]?.city ?? said.city),
+    country: String(edits[editsKeyOf(item)]?.country ?? said.country),
+    bio: String(edits[editsKeyOf(item)]?.bio ?? said.bio),
+    link: String(edits[editsKeyOf(item)]?.link ?? said.link),
   }
 }
 

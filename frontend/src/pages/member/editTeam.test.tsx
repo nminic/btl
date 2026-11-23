@@ -628,11 +628,14 @@ describe('a change waiting on the queue of teams', () => {
 
   /** The second change, sent behind the screen's back, which is what an administrator does while the
    *  moderator looks at the first. */
-  const sendBehindHisBack = async (name: string): Promise<void> => {
+  const sendBehindHisBack = async (
+    name: string,
+    more: { city: string; bio: string; link: string } = { city: 'Novi Sad', bio: DUNAV.bio, link: DUNAV.link },
+  ): Promise<void> => {
     await fetch('/api/teams/1/changes', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ name, city: 'Novi Sad', country: 'RS', bio: DUNAV.bio, link: DUNAV.link }),
+      body: JSON.stringify({ name, city: more.city, country: 'RS', bio: more.bio, link: more.link }),
     })
   }
 
@@ -713,6 +716,111 @@ describe('a change waiting on the queue of teams', () => {
     expect(sent.seenTeam.name).toBe('Dunavska družina')
     expect(sent.team.name).toBe('Dunavski ispravljen')
     expect(await theTeamIsCalled()).toBe('Dunavski ispravljen')
+  }, SLOW)
+
+  /* AFTER THE 409 THE MODERATOR SEES THE NEW WORDS AND NOT HIS OLD CORRECTION (review of PR 807, round 2).
+     The card keeps its key when a second change is written over it, and a correction kept under the key
+     alone outlived the words it was typed over: the card drew the correction, the new words were seen
+     nowhere, and the second press named words he had never been shown. A correction is now kept under the
+     card AND THE WORDS it was typed over (`editsKeyOf`), so when the words change it is not found. */
+  const THE_NEW_WORDS = { city: 'Sremski Karlovci', bio: 'Nov opis tima.', link: 'https://klub.example' }
+
+  it('draws every word of the new change after the 409, and not what the moderator had typed over the old', async () => {
+    const user = setupUser()
+    const { router } = renderAt('/sr/tim/dunavski-trkaci/izmena', 'superadmin', '000001')
+
+    await sendAChange(user, router, 'Dunavska družina')
+    await router.navigate('/sr/administracija/verifikacija/timovi')
+
+    const first = await screen.findByRole('heading', { name: 'Dunavska družina' })
+    const card = within(must(first.closest('li'), 'the card of the first change'))
+
+    /* He corrects every box he is given, so every one of them can show the old correction. */
+    await user.clear(card.getByLabelText('Naziv tima'))
+    await user.type(card.getByLabelText('Naziv tima'), 'Dunavska Družina')
+    await user.clear(card.getByLabelText('Mesto'))
+    await user.type(card.getByLabelText('Mesto'), 'Zemun')
+    await user.clear(card.getByLabelText('Opis tima'))
+    await user.type(card.getByLabelText('Opis tima'), 'Moj opis.')
+    await user.clear(card.getByLabelText('Link'))
+    await user.type(card.getByLabelText('Link'), 'https://moj.example')
+
+    await sendBehindHisBack('Dunavski klub', THE_NEW_WORDS)
+    await user.click(card.getByRole('button', { name: 'Odobri' }))
+
+    expect(await screen.findByText(THE_CHANGE_WAS_CHANGED)).toBeVisible()
+
+    const heading = await screen.findByRole('heading', { name: 'Dunavski klub' })
+    const now = within(must(heading.closest('li'), 'the card he reads now'))
+
+    expect(screen.queryByRole('heading', { name: /Dunavska/i })).toBeNull()
+    expect(now.getByLabelText('Naziv tima')).toHaveValue('Dunavski klub')
+    expect(now.getByLabelText('Mesto')).toHaveValue(THE_NEW_WORDS.city)
+    expect(now.getByLabelText('Opis tima')).toHaveValue(THE_NEW_WORDS.bio)
+    expect(now.getByLabelText('Link')).toHaveValue(THE_NEW_WORDS.link)
+  }, SLOW)
+
+  it('names the new words as seen and as the team on the second press, when he corrects nothing after the 409', async () => {
+    const user = setupUser()
+    const { router } = renderAt('/sr/tim/dunavski-trkaci/izmena', 'superadmin', '000001')
+
+    await sendAChange(user, router, 'Dunavska družina')
+    await router.navigate('/sr/administracija/verifikacija/timovi')
+
+    const first = await screen.findByRole('heading', { name: 'Dunavska družina' })
+    const card = within(must(first.closest('li'), 'the card of the first change'))
+
+    await user.clear(card.getByLabelText('Naziv tima'))
+    await user.type(card.getByLabelText('Naziv tima'), 'Dunavska Družina')
+    await sendBehindHisBack('Dunavski klub', THE_NEW_WORDS)
+    await user.click(card.getByRole('button', { name: 'Odobri' }))
+    await screen.findByText(THE_CHANGE_WAS_CHANGED)
+
+    const heading = await screen.findByRole('heading', { name: 'Dunavski klub' })
+
+    await user.click(
+      within(must(heading.closest('li'), 'the card he reads now')).getByRole('button', { name: 'Odobri' }),
+    )
+    await waitFor(() => {
+      expect(decisionsSent()).toHaveLength(2)
+    })
+
+    const sent = JSON.parse(String(must(decisionsSent()[1], 'the second press').init?.body))
+
+    expect(sent.seenTeam).toEqual({ name: 'Dunavski klub', city: THE_NEW_WORDS.city, country: 'RS', bio: THE_NEW_WORDS.bio, link: THE_NEW_WORDS.link })
+    expect(sent.team).toEqual(sent.seenTeam)
+    expect(await theTeamIsCalled()).toBe('Dunavski klub')
+  }, SLOW)
+
+  it('leaves the correction of another card of the same queue where it was when the 409 reads it again', async () => {
+    const user = setupUser()
+    const { router } = renderAt('/sr/tim/dunavski-trkaci/izmena', 'superadmin', '000001')
+
+    await sendAChange(user, router, 'Dunavska družina')
+    await router.navigate('/sr/administracija/verifikacija/timovi')
+
+    const other = await screen.findByRole('heading', { name: 'Timočka trkačka družina' })
+    const theirs = within(must(other.closest('li'), 'the card of another proposal'))
+
+    await user.clear(theirs.getByLabelText('Mesto'))
+    await user.type(theirs.getByLabelText('Mesto'), 'Bor')
+
+    const first = screen.getByRole('heading', { name: 'Dunavska družina' })
+
+    await sendBehindHisBack('Dunavski klub', THE_NEW_WORDS)
+    await user.click(
+      within(must(first.closest('li'), 'the card of the first change')).getByRole('button', {
+        name: 'Odobri',
+      }),
+    )
+    await screen.findByText(THE_CHANGE_WAS_CHANGED)
+    await screen.findByRole('heading', { name: 'Dunavski klub' })
+
+    const again = screen.getByRole('heading', { name: 'Timočka trkačka družina' })
+
+    expect(
+      within(must(again.closest('li'), 'the card of another proposal')).getByLabelText('Mesto'),
+    ).toHaveValue('Bor')
   }, SLOW)
 
   it('cannot be approved once the team it names has been deleted', async () => {
