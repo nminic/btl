@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { configure, screen, waitFor, within } from '@testing-library/react'
 import { clearResourceCache } from '../../data/client'
 import { moderatorWith, renderAt } from '../../test/render'
 import { answeredWith, did, refused, serverThat, type Asked } from '../../test/serverAnswers'
@@ -6,6 +6,12 @@ import { setupUser } from '../../test/user'
 import { must } from '../../test/at'
 import { sayYes } from '../../test/deleteSheet'
 import { SLOW } from '../../test/slow'
+
+/* Every wait is given half of what a case is given, for the reason `admin/deleting.test.tsx` gives and
+   `admin/saveWhileSaving.test.tsx` is the precedent of: a wait that is stuck then fails on its own
+   assertion with its own sentence, and not on the clock of the case, which says nothing about what was
+   wrong (a mutation that removes the effect measured here was only ever „not measured" before). */
+configure({ asyncUtilTimeout: SLOW / 2 })
 
 /**
  * THE SCREEN OF TEAMS DELETES THROUGH THE SERVER (PDL P28c point 2, owner 24.09.2026: „Svi
@@ -129,18 +135,38 @@ describe('a team taken away from the administration', () => {
   ) {
     clearResourceCache()
 
+    /* WHAT THE SERVER HOLDS, AND A DELETION IT AGREED TO TAKES THE TEAM OUT OF IT, since
+       23.11.2026: the screen reads the list again after every write instead of taking the row away
+       in the session, so a server that went on serving a deleted team would be measuring a server
+       nobody has. */
+    const held = [...TEAMS]
+
     return serverThat((path, init) => {
       const how = init?.method ?? 'GET'
 
       if (how === 'GET' && path === '/api/teams') {
-        return listOf(TEAMS)
+        return listOf(held)
       }
 
       if (how === 'GET' && path === '/api/competitors') {
         return listOf(MEMBERS)
       }
 
-      return how === 'GET' ? null : toAWrite(path, init)
+      if (how === 'GET') {
+        return null
+      }
+
+      return Promise.resolve(toAWrite(path, init)).then((answer) => {
+        if (how === 'DELETE' && answer.ok) {
+          const gone = held.findIndex((one) => path === `/api/teams/${String(one.id)}`)
+
+          if (gone >= 0) {
+            held.splice(gone, 1)
+          }
+        }
+
+        return answer
+      })
     })
   }
 
@@ -390,22 +416,49 @@ describe('a team taken away from the administration', () => {
     }, SLOW)
 
   /**
-   * A TEAM ENTERED DURING THIS VISIT IS NOT THE DATABASE'S, AND ITS DELETE IS SENT NOWHERE.
+   * „NOVI TIM" MAKES THE TEAM ON THE SERVER, AND THE LIST SHOWS IT WITH ITS ORGANIZER COUNTED.
    *
-   * <p>This is the boundary of the increment held as a case rather than as a paragraph.
-   * Making a team is still the session's, because no route makes one (`admin/AdminTeams.tsx`
-   * says how that was measured), and `entityForms.idFor` counts identities DOWN from nought so
-   * that nothing it hands out collides with a `bigserial`. So the row entered here is number
-   * `-1`, and a delete sent for it would go to `DELETE /api/teams/-1` - the fault PR 368 closed
-   * one number along, where a panel posted to `/api/leagues/-1/races`.
+   * <p>PDL P13, „[ZATEČENO 23.11.2026 ...]", owner: „NAPRAVIM TIM KAO ADMIN I NESTANE IZ LISTE. A I
+   * KAD SE POJAVI NA KRATKO, PIŠE 0 ČLANOVA IAKO TREBA DA ODMAH RAČUNA SVOG ORGANIZATORA". ~~A team
+   * entered during this visit was the session's and its delete was sent nowhere~~, which is the case
+   * that stood here until that day.
    *
-   * <p><b>The assertion is over EVERY write, not over the absence of one address.</b> „Nothing
-   * was sent" is the claim; naming `/api/teams/-1` would pass a screen that had invented some
-   * other address for the same row.
+   * <p><b>The source is swapped, not trusted</b>: the server below knows nothing of the team until
+   * the `POST` reaches it, and from then on serves it and serves the organizer in it. A screen that
+   * drew the team out of what it hoped would show a row with nobody in it, or no row on the second
+   * read; one that read the list again shows exactly what the server holds.
    */
-  it('sends nothing at all for a team entered during this visit, and still takes its row away',
+  it('makes a new team at the administration\'s own address and draws it as the server holds it',
     async () => {
-      const server = serving()
+      clearResourceCache()
+
+      const made = { id: 77, slug: 'probni-tim', name: 'Probni tim', city: 'Užice', country: 'RS',
+        bio: 'Opis', link: '', logo: null, crop: null, smallLogo: null, organizerMemberNumber: '000005' }
+      const teams: object[] = [...TEAMS]
+      const members = MEMBERS.map((one) => ({ ...one }))
+      const server = serverThat((path, init) => {
+        const how = init?.method ?? 'GET'
+
+        if (how === 'GET' && path === '/api/teams') {
+          return listOf(teams)
+        }
+
+        if (how === 'GET' && path === '/api/competitors') {
+          return listOf(members)
+        }
+
+        if (how === 'POST' && path === '/api/teams/direct') {
+          teams.push(made)
+          must(members.find((one) => one.memberNumber === '000005'), 'the organizer').teamId = 77
+
+          return new Response(JSON.stringify({ id: 77, slug: 'probni-tim', name: 'Probni tim' }), {
+            status: 201,
+            headers: { 'content-type': 'application/json' },
+          })
+        }
+
+        return null
+      })
       const user = setupUser()
       renderAt('/sr/administracija/timovi', 'superadmin', null, undefined, IN_WINDOW)
 
@@ -415,19 +468,34 @@ describe('a team taken away from the administration', () => {
       await user.type(screen.getByLabelText(/^Mesto/), 'Užice')
       await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
       await user.selectOptions(screen.getByLabelText(/^Organizator tima/), '000005')
+      await user.type(screen.getByLabelText(/^Opis tima/), 'Opis')
       await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
       await screen.findByRole('status', { name: 'Sačuvano' })
+
+      const sent = must(
+        server.asked.find((one) => one.init?.method === 'POST'),
+        'the write of the new team',
+      )
+
+      expect(sent.path).toBe('/api/teams/direct')
+      expect(JSON.parse(String(sent.init?.body))).toEqual({
+        name: 'Probni tim', city: 'Užice', country: 'RS', organizerMemberNumber: '000005',
+        bio: 'Opis', link: '',
+      })
+
       await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
 
-      await screen.findByText('Probni tim')
-      await deleteNamed(user, 'Probni tim')
+      const row = await waitFor(() =>
+        must(
+          within(screen.getByRole('table', { name: 'Timovi' })).getAllByRole('row')
+            .find((one) => one.textContent?.includes('Probni tim')),
+          'the row of the new team',
+        ))
 
-      expect(within(screen.getByRole('table', { name: 'Timovi' })).queryByText('Probni tim'))
-        .toBeNull()
-
-      /* NOT ONE WRITE, of any verb, to any address. Making it was the session's and so was
-         taking it away. */
-      expect(writes(server.asked)).toEqual([])
+      /* ONE MEMBER, THE ORGANIZER, and his name in the organizer's column. */
+      expect(within(row).getAllByRole('cell').map((one) => one.textContent)).toEqual(
+        expect.arrayContaining(['1', 'Časlav Radenković']),
+      )
 
       server.stop()
     }, SLOW)
@@ -612,6 +680,10 @@ describe('a team taken away from the administration', () => {
           '/sr/administracija/timovi', 'superadmin', null, undefined, IN_WINDOW,
         )
 
+        await screen.findByRole('table', { name: 'Timovi' })
+
+        const before = reads(server.asked, '/api/competitors')
+
         /* THE FIRST SERVED TEAM THIS TIME, so that a team with members remains after it and
            the count being checked is somebody else's rather than the deleted team's own. */
         await deleteNamed(user, FIRST_SERVED_NAME)
@@ -620,12 +692,15 @@ describe('a team taken away from the administration', () => {
             .queryByText(FIRST_SERVED_NAME)).toBeNull()
         })
 
-        const before = reads(server.asked, '/api/competitors')
+        /* READ AGAIN BY THE DELETION ITSELF, while the screen stays: since 23.11.2026 the list
+           asks for the teams and the members the moment the server has taken the team away, so
+           the count beside every remaining row is the fresh one before the screen is ever left. */
+        await waitFor(() => {
+          expect(reads(server.asked, '/api/competitors')).toBeGreaterThan(before)
+        })
 
         await awayAndBack(router)
         await screen.findByRole('table', { name: 'Timovi' })
-
-        expect(reads(server.asked, '/api/competitors')).toBeGreaterThan(before)
 
         /* AND 000003, WHO WAS IN THE DELETED TEAM, IS COUNTED INTO NOTHING NOW. The acted team
            still has its two, which is what says the fresh answer was read rather than an empty
@@ -641,6 +716,80 @@ describe('a team taken away from the administration', () => {
         server.stop()
       }, SLOW)
   })
+
+  /**
+   * WHAT THE ROUTE REFUSED IS SAID IN ITS OWN WORDS, ON THE FORM AND ON THE CELL.
+   *
+   * <p>`POST /api/teams/direct` and `PUT /api/teams/{id}` answer a refusal with a reason
+   * (`TeamAdministrationWriteApi`) and the screen draws the sentence the dictionary has for it
+   * (`WHEN_THE_ADMINISTRATION_WRITES_A_TEAM`): on the form the save is not confirmed and what was typed
+   * stays, and on the town's cell the sentence stands beside the row. A screen that drew nothing would
+   * leave the administration looking at a team that was never made.
+   */
+  it('says why the route refused the team the form made, and confirms nothing', async () => {
+    const server = serving(() => refused('heIsAlreadyInATeam', 409))
+    const user = setupUser()
+    renderAt('/sr/administracija/timovi', 'superadmin', null, undefined, IN_WINDOW)
+
+    await user.click(await screen.findByRole('button', { name: 'Novi tim' }))
+    await user.type(screen.getByLabelText(/^Naziv tima/), 'Probni tim')
+    await user.type(screen.getByLabelText(/^Mesto/), 'Užice')
+    await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
+    await user.selectOptions(screen.getByLabelText(/^Organizator tima/), '000005')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    expect(await screen.findByText('Osnivač je već u nekom timu.')).toBeVisible()
+    expect(screen.queryByRole('status', { name: 'Sačuvano' })).toBeNull()
+    expect(screen.getByLabelText(/^Naziv tima/)).toHaveValue('Probni tim')
+
+    server.stop()
+  }, SLOW)
+
+  it('confirms the change of a team the route answered with nothing but its number', async () => {
+    /* `PUT /api/teams/{id}` answers its own team (`TeamAdministrationWriteApi`), but a change that is
+       answered with no body at all is still a change that was done: the confirmation names the team by
+       the identity the form was opened with and not by one read off the answer. */
+    const server = serving(() => did())
+    const user = setupUser()
+    renderAt('/sr/administracija/timovi', 'superadmin', null, undefined, IN_WINDOW)
+
+    const rows = within(await screen.findByRole('table', { name: 'Timovi' }))
+    const row = must(
+      rows.getAllByRole('row').find((one) => one.textContent?.includes(ITS_NAME)),
+      'the row of the acted team',
+    )
+
+    await user.click(within(row).getByRole('button', { name: new RegExp(`^Otvori: ${ITS_NAME}`) }))
+    await user.click(await screen.findByRole('button', { name: 'Sačuvaj' }))
+
+    expect(await screen.findByRole('status', { name: 'Sačuvano' })).toBeVisible()
+    expect(server.asked.some((one) => one.init?.method === 'PUT' && one.path === `/api/teams/${String(ACTED)}`))
+      .toBe(true)
+
+    server.stop()
+  }, SLOW)
+
+  it('says why the route refused the town written in a cell, beside the row', async () => {
+    const server = serving((path) => (path === `/api/teams/${String(ACTED)}`
+      ? refused('theCountryIsNotKnown')
+      : did()))
+    const user = setupUser()
+    renderAt('/sr/administracija/timovi', 'superadmin', null, undefined, IN_WINDOW)
+
+    const rows = within(await screen.findByRole('table', { name: 'Timovi' }))
+    const row = must(
+      rows.getAllByRole('row').find((one) => one.textContent?.includes(ITS_NAME)),
+      'the row of the acted team',
+    )
+
+    await user.click(within(row).getByRole('button', { name: /^Mesto:/ }))
+    await user.clear(within(row).getByRole('textbox'))
+    await user.type(within(row).getByRole('textbox'), 'Valjevo{Enter}')
+
+    expect(await screen.findByText('Izabrana država nije prepoznata.')).toBeVisible()
+
+    server.stop()
+  }, SLOW)
 
   /**
    * WHO MAY OPEN THIS SCREEN AT ALL, WHICH IS THREE PEOPLE AND NOT TWO.

@@ -5,6 +5,7 @@ import sr from '../i18n/sr.json'
 import { must } from '../test/at'
 import { sayNo, sayYes, theSheet } from '../test/deleteSheet'
 import { renderAt } from '../test/render'
+import { fakeQueue } from '../test/fakeQueue'
 import { did, refused, serverThat, type Asked } from '../test/serverAnswers'
 import { playTheHistoryAsLeagueSeasons } from '../test/leagueSeasons'
 import { SLOW } from '../test/slow'
@@ -301,13 +302,18 @@ describe('a team its administrator takes down', () => {
     server.stop()
   }, SLOW)
 
-  it('takes the roster with it even when that roster exists only in this visit', async () => {
+  it('takes the roster with it when the team was made by an approval in this visit, which the server holds', async () => {
     /* **The half the case above cannot see.** Dunav's roster lives in the file, so a
        deletion that read the file took it along all the same. Who is in a team approved
        during this visit is written by `PendingQueue` into the session and nowhere else,
        and read from the file that roster is empty: the deletion took nothing along and
        left the founder holding an address that answers nothing — refused a new team,
-       and shown no club on their own profile (review, 05.09.2026). */
+       and shown no club on their own profile (review, 05.09.2026).
+
+       SINCE 23.11.2026 THE APPROVAL MAKES THE TEAM ON THE SERVER and nothing is written into the
+       session, so the roster is the server's and so is its going: the delete reaches the server,
+       which takes the team and every seat in it (`fakeQueue` stands in for both writes). */
+    const server = fakeQueue()
     const user = setupUser()
     const { router } = renderAt(
       '/sr/administracija/verifikacija/timovi',
@@ -357,6 +363,8 @@ describe('a team its administrator takes down', () => {
     /* The founder is free again, which is the whole of what the roster being taken along
        means to the person it happened to. */
     expect(await screen.findByRole('link', { name: /^Prijavi\s+tim$/ })).toBeVisible()
+
+    server.stop()
   }, SLOW)
 
   it('is not offered to a member of the team who does not administer it', async () => {
@@ -553,24 +561,18 @@ describe('a team its administrator takes down', () => {
       }, SLOW)
 
     /**
-     * A TEAM APPROVED DURING THIS VISIT IS NOT THE DATABASE'S, AND ITS DELETE IS SENT NOWHERE.
+     * A TEAM APPROVED DURING THIS VISIT IS THE DATABASE'S, AND ITS DELETE GOES TO ITS OWN NUMBER.
      *
-     * <p>This is the boundary of the increment held as a case rather than as a paragraph, and
-     * it is the same one `admin/adminTeams.test.tsx` holds for the other screen. Making a team
-     * is still the session's, because no route makes one, and `admin/entityForms.ts` counts
-     * identities DOWN from nought so that nothing it hands out collides with a `bigserial`. So
-     * the team approved below is number `-1`, and a delete sent for it would go to
-     * `DELETE /api/teams/-1` - the fault PR 368 closed one number along, where a panel posted
-     * to `/api/leagues/-1/races`.
-     *
-     * <p><b>And the roster still goes with it by hand on this half</b>, because the server has
-     * never heard of either the team or the membership: 000004's team is written into the
-     * session by the approval and nowhere else. Left undone, that member kept a team nobody
-     * could open (review, 05.09.2026).
+     * <p>This case stood here until 23.11.2026 as „sends nothing at all", because making a team was
+     * the session's and `admin/entityForms.ts` counted identities down from nought: a delete sent for
+     * the team approved here would have gone to `DELETE /api/teams/-1`, the fault PR 368 closed one
+     * number along. The approval makes the team on the server now (PDL P13, „[ZATEČENO 23.11.2026
+     * ...]"), the screen reads the two lists again, and the number it holds is the server's. So the
+     * case holds the opposite: the delete is SENT, and to the number the server gave the team.
      */
-    it('sends nothing at all for a team approved during this visit, and still frees its '
-      + 'founder', async () => {
-        const server = aServerThatDeletes()
+    it('sends the delete of a team approved during this visit to the number the server gave it, and '
+      + 'frees its founder', async () => {
+        const server = fakeQueue()
         const user = setupUser()
         const { router } = renderAt(
           '/sr/administracija/verifikacija/timovi',
@@ -585,21 +587,14 @@ describe('a team its administrator takes down', () => {
 
         await user.click(card.getByRole('button', { name: 'Odobri' }))
 
-        /* TO ITS OWN PAGE BY THE ADDRESS THE PORTAL MADE FOR IT, followed rather than spelt
-           out here: what a name turns into is `admin/entityForms.ts`'s business and a guess
-           written down here would be a second answer to it. */
+        /* TO ITS OWN PAGE BY THE ADDRESS THE SERVER MADE FOR IT, followed rather than spelt out. */
+        await waitFor(() => {
+          expect(writes(server.asked)).toHaveLength(1)
+        })
         await router.navigate('/sr/timovi')
         await user.click(await screen.findByRole('link', { name: 'Timočka trkačka družina' }))
 
         await screen.findByRole('heading', { level: 1, name: 'Timočka trkačka družina' })
-
-        /* WHAT HAD BEEN SENT BEFORE THE DELETION, so that „nothing was sent" is a claim about
-           the deletion and not about the visit. Approving is itself a write - the moderator's
-           decision goes to `POST /api/verification/{id}/decision` - and the team it creates is
-           still the session's, which is exactly the split this case is about. */
-        const approving = writes(server.asked)
-
-        expect(approving).toHaveLength(1)
 
         await user.click(
           await screen.findByRole('button', { name: 'Obriši: Timočka trkačka družina' }),
@@ -610,27 +605,28 @@ describe('a team its administrator takes down', () => {
           expect(router.state.location.pathname).toBe('/sr/timovi')
         })
 
-        /* NOT ONE WRITE MORE, of any verb, to any address. The team itself is the session's
-           and so was taking it away. */
-        expect(writes(server.asked)).toEqual(approving)
+        /* THE DECISION AND THEN THE DELETE, and the delete is at a number that is no team of the
+           file's (four), never at a number counted down from nought. */
+        const sent = writes(server.asked)
 
-        /* AND THE LIST IT LEFT FOR SAYS SO (PDL, 24.10.2026), by this road as well as by the route's: a team
-           that stands only in the session is taken away without a request, and the sentence is the reader's
-           only word that it went. */
+        expect(sent).toHaveLength(2)
+        expect(sent[0]?.how).toBe('POST')
+        expect(sent[1]?.how).toBe('DELETE')
+        expect(Number(/^\/api\/teams\/(\d+)$/.exec(sent[1]?.path ?? '')?.[1])).toBeGreaterThan(
+          TEAMS_ON_FILE.length,
+        )
+
         expect(await screen.findByText('Tim je obrisan.')).toBeVisible()
 
         expect(
           (await listedTeams()).some((one) => /Timočka/.test(one.textContent ?? '')),
         ).toBe(false)
 
-        /* And the founder is free again, which is what the roster being taken along by hand
-           means to the person it happened to. */
+        /* And the founder is free again, which is what the roster going with the team means to the
+           person it happened to. */
         expect(await screen.findByRole('link', { name: /^Prijavi\s+tim$/ })).toBeVisible()
 
-        /* AND NOBODY OUTSIDE THE TEAM LOST THEIRS WITH IT. Handing this half the whole list
-           of members instead of this team's would pass every assertion above and leave the
-           portal with nobody in any team, which is the same fault the served half is held
-           against one case along. Dunav keeps its six. */
+        /* AND NOBODY OUTSIDE THE TEAM LOST THEIRS WITH IT. Dunav keeps its six. */
         await router.navigate('/sr/tim/dunavski-trkaci')
 
         expect(await screen.findByText(/6 članova/)).toBeVisible()

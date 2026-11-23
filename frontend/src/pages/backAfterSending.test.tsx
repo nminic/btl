@@ -8,6 +8,22 @@ import { sources } from '../test/sources'
 import { SLOW } from '../test/slow'
 import { typeATownTheCodebookKnows } from '../test/town'
 import { setupUser } from '../test/user'
+import { fakeQueue } from '../test/fakeQueue'
+
+/* THE SERVER'S TEAMS ARE IN FRONT OF EVERY CASE HERE since 23.11.2026, because the screens of teams
+ * speak to routes (`POST /api/teams/direct`, `PUT` and `DELETE /api/teams/{id}`) and read the lists
+ * again after a write instead of keeping the row in the session. `fakeQueue()` remembers what was
+ * written and serves the two lists it changes. */
+let theServerOfTeams: { stop: () => void } | null = null
+
+beforeEach(() => {
+  theServerOfTeams = fakeQueue()
+})
+
+afterEach(() => {
+  theServerOfTeams?.stop()
+  theServerOfTeams = null
+})
 
 /* Where the browser's own way back leads from a screen that says something was sent.
  *
@@ -147,7 +163,7 @@ describe('the way back from a confirmation', () => {
 
     await user.type(await screen.findByLabelText(/Naziv tima/), 'Trkači Morave')
     await typeATownTheCodebookKnows(user, 'Čačak', 'RS')
-    await user.type(screen.getByLabelText(/Zašto ovaj tim/), 'Trčimo zajedno već tri godine.')
+    await user.type(screen.getByLabelText(/^Opis tima/), 'Trčimo zajedno već tri godine.')
     await user.click(screen.getByRole('button', { name: 'Pošalji predlog' }))
 
     expect(await screen.findByRole('heading', { name: 'Predlog je poslat' })).toBeVisible()
@@ -179,7 +195,7 @@ describe('the way back from a confirmation', () => {
     )
     const form = router.state.location.pathname
 
-    await user.type(await screen.findByLabelText(/Zašto ovaj tim/), 'Dopisujemo par reči o timu.')
+    await user.type(await screen.findByLabelText(/^Opis tima/), 'Dopisujemo par reči o timu.')
     await user.click(screen.getByRole('button', { name: 'Pošalji izmenu' }))
 
     expect(await screen.findByRole('heading', { name: 'Izmena je poslata' })).toBeVisible()

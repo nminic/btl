@@ -18,10 +18,17 @@
       "maxLength": 80
     },
     {
-      "name": "note",
+      "name": "bio",
       "type": "textarea",
-      "labelKey": "teams.proposeNote",
-      "maxLength": 600
+      "labelKey": "admin.field.teamBio",
+      "maxLength": 360
+    },
+    {
+      "name": "link",
+      "type": "text",
+      "labelKey": "admin.field.teamLink",
+      "pattern": "^https?:\\/\\/[^\\s]+$",
+      "maxLength": 500
     }
   ]
 }

@@ -668,7 +668,6 @@ describe('a sentence with a value put into it', () => {
          30.10.2026, word for word. A year in figures, after „sezonu" and before the verb, so it has
          no case to be wrong in. */
       'teams.joinWhenPaid',
-      'teams.proposeBody',
       'teams.proposeDone',
       'topBoards.place',
       /* „Napredak takmičara se meri tek od sezone {season}." (owner, 13.11.2026, for the league's first
@@ -764,11 +763,7 @@ describe('a sentence with a value put into it', () => {
          a subject, so there is nothing to format and no case to get wrong
          (`pages/admin/PendingQueue.tsx`, `refusedElsewhere`). */
       'verification.refusedCardNamed',
-      'verification.sentBy',
-      'verification.teamAccepted',
-      'verification.teamAcceptedBody',
-      'verification.teamChangeAccepted',
-      'verification.teamChangeAcceptedBody',
+      'verification.sentBy',
       'verification.teamChangeOf',
     ])
   })

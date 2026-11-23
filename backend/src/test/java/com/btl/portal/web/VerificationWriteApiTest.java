@@ -5038,7 +5038,8 @@ class VerificationWriteApiTest {
 				: "{\"approved\":" + approved + ",\"reason\":\"" + reason + "\"}";
 
 		return http.perform(asking(email, post(decision(id)))
-						.contentType(MediaType.APPLICATION_JSON).content(body))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(TheTeamHeSaw.beside(db, id, body)))
 				.andReturn().getResponse();
 	}
 
@@ -5049,7 +5050,8 @@ class VerificationWriteApiTest {
 	 */
 	private MockHttpServletResponse decideWith(String email, long id, String body) throws Exception {
 		return http.perform(asking(email, post(decision(id)))
-						.contentType(MediaType.APPLICATION_JSON).content(body))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(TheTeamHeSaw.beside(db, id, body)))
 				.andReturn().getResponse();
 	}
 

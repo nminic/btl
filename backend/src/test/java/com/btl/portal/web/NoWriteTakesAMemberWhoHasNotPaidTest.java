@@ -232,6 +232,9 @@ class NoWriteTakesAMemberWhoHasNotPaidTest {
 			entry("DELETE /api/teams/{id}/membership", (f, owner) -> delete("/api/teams/"
 					+ f.ownTeam(owner) + "/membership")),
 			entry("DELETE /api/teams/{id}", (f, owner) -> delete("/api/teams/" + f.ownTeam(owner))),
+			entry("POST /api/teams/{id}/changes", (f, owner) -> json(post("/api/teams/"
+					+ f.ownTeam(owner) + "/changes"),
+					"{\"name\":\"Tim b257 izmena " + owner + "\",\"city\":\"Beograd\",\"country\":\"RS\"}")),
 			entry("POST /api/teams/{id}/applications", (f, owner) -> post("/api/teams/"
 					+ f.anotherTeam() + "/applications")),
 			entry("PUT /api/teams/{id}/applications/{application}", (f, owner) -> json(

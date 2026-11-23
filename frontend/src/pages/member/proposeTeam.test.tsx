@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { screen, waitFor, within } from '@testing-library/react'
+import { configure, screen, waitFor, within } from '@testing-library/react'
 import sr from '../../i18n/sr.json'
 import { must } from '../../test/at'
 import { arrivedResource } from '../../data/client'
@@ -13,6 +13,12 @@ import { typeATownTheCodebookKnows } from '../../test/town'
 import { everyRule } from '../../test/stylesheet'
 import { setupUser } from '../../test/user'
 import type { Asked } from '../../test/serverAnswers'
+
+/* Every wait is given half of what a case is given, for the reason `admin/deleting.test.tsx` gives and
+   `admin/saveWhileSaving.test.tsx` is the precedent of: a wait that is stuck then fails on its own
+   assertion with its own sentence, and not on the clock of the case, which says nothing about what was
+   wrong (a mutation that removes the effect measured here was only ever „not measured" before). */
+configure({ asyncUtilTimeout: SLOW / 2 })
 
 /**
  * THE QUEUE IS READ AS THE SESSION LEAVES IT, NEVER AFTER A FRESH PAGE.
@@ -338,7 +344,7 @@ describe('a proposal a member sends', () => {
   const fill = async (user: ReturnType<typeof setupUser>, name: string) => {
     await user.type(await screen.findByLabelText(/Naziv tima/), name)
     await typeATownTheCodebookKnows(user, 'Čačak', 'RS')
-    await user.type(screen.getByLabelText(/Zašto ovaj tim/), 'Trčimo zajedno već tri godine.')
+    await user.type(screen.getByLabelText(/^Opis tima/), 'Trčimo zajedno već tri godine.')
     await user.click(screen.getByRole('button', { name: 'Pošalji predlog' }))
   }
 
@@ -467,7 +473,6 @@ describe('a proposal a member sends', () => {
       'country',
       'link',
       'name',
-      'note',
     ])
   })
 
@@ -679,7 +684,7 @@ describe('the town a member proposes a team in', () => {
     await screen.findByRole('heading', { name: 'Predlog je poslat' })
 
     expect(proposalSent()).toMatchObject({ city: 'London', country: 'CA' })
-    expect(keysSent()).toEqual(['bio', 'city', 'country', 'link', 'name', 'note'])
+    expect(keysSent()).toEqual(['bio', 'city', 'country', 'link', 'name'])
   })
 
   it('leaves the country to be chosen for a name two countries share, typed out in full', async () => {
@@ -734,7 +739,7 @@ describe('the town a member proposes a team in', () => {
     await screen.findByRole('heading', { name: 'Predlog je poslat' })
 
     expect(proposalSent()).toMatchObject({ city: 'Rome (Marietta)', country: 'US' })
-    expect(keysSent()).toEqual(['bio', 'city', 'country', 'link', 'name', 'note'])
+    expect(keysSent()).toEqual(['bio', 'city', 'country', 'link', 'name'])
   })
 
   it.each([
@@ -945,17 +950,19 @@ describe('the town a member proposes a team in', () => {
 })
 
 describe('a member who founds a team', () => {
-  it('is in it from the next season the moment the proposal is approved', async () => {
+  it('is in it from the next season the moment the proposal is approved, as the server holds it', async () => {
     /* The high finding of the review of PR 186: an approval wrote the organiser onto
        the team and nothing onto the member, so the founder was in no team at all and
        could found a second one the same minute. Owner, 05.09.2026: „Odmah ulazi u
        tim... on ce biti prvi i jedini clan u tom trenutku", and the team scores from
        1 January, so the season written is the next one.
 
-       Read off what the session was told rather than off a screen: no public screen
-       reads the overlay this prototype keeps its changes in (`admin/entityForms.ts`),
-       so the roster of a team made today is a thing the database will draw. What can
-       be held now is that the record is written, and written with both fields. */
+       SINCE 23.11.2026 THE SERVER WRITES THE SEAT (`FoundingATeam`, measured in Java by
+       `VerificationWriteApiTest`) and the screen writes nothing into the session: the case
+       that read „what the session was told" held the copy that stood beside the server's
+       team as a second one. What is held here is what the screen does instead: it asks for
+       the decision, and the two lists it reads again agree on one team with its founder in
+       it, from the season the server named. */
     const user = setupUser()
     const { router } = renderAt('/sr/novi-tim', 'superadmin', '000002', undefined, DAY, <Saved />)
 
@@ -971,27 +978,24 @@ describe('a member who founds a team', () => {
 
     await user.click(card.getByRole('button', { name: 'Odobri' }))
 
-    const saved = within(screen.getByRole('list', { name: 'session records' }))
-    const written = must(
-      saved
-        .getAllByRole('listitem')
-        .map((one) => one.textContent ?? '')
-        .find((one) => one.startsWith('edit members:000002 |')),
-      'what the session was told about the member who founded it',
-    )
+    await waitFor(() => {
+      expect(
+        must(queue, 'the fake server').asked.filter(
+          (one) => one.init?.method === 'POST' && one.path.endsWith('/decision'),
+        ),
+      ).toHaveLength(1)
+    })
 
-    /* The team it names is the one that was just made, not a word from the file. */
-    const made = must(
-      saved
-        .getAllByRole('listitem')
-        .map((one) => /^new teams (\S+) \|/.exec(one.textContent ?? ''))
-        .find((one) => one !== null),
-      'the team the approval made',
-    )
+    /* Nothing written into the session: not the team and not the member's seat. */
+    expect(within(screen.getByRole('list', { name: 'session records' })).queryAllByRole('listitem')).toHaveLength(0)
 
-    expect(written).toContain(`teamId=${made[1]}`)
-    expect(written).toContain('teamSince=2027')
-  })
+    /* And the founder is in the one team the server made, counted once, from the next season. */
+    await router.navigate('/sr/tim/trkaci-morave')
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Trkači Morave' })).toBeVisible()
+    expect(await screen.findByText(/1 član/)).toBeVisible()
+    expect(within(await screen.findByRole('table', { name: 'Članovi' })).getAllByRole('row')).toHaveLength(2)
+  }, SLOW)
 })
 
 describe('a member who has founded one team', () => {
@@ -1286,6 +1290,11 @@ describe('a team the moment it is approved', () => {
        measures is the founding and not the arithmetic. Both states pass these three assertions, so the
        day has to be pinned or the walk quietly changes what it measures on 15 October
        (review, 05.09.2026). */
+    /* The server names the season the founder is in from, off the day (`transfersTakeEffect`):
+       on a day of the window of 2027 it is 2028. The fake is told it, because it has no clock. */
+    queue?.stop()
+    queue = fakeQueue([], 2028)
+
     const user = setupUser()
     const { router } = renderAt(
       '/sr/administracija/verifikacija/timovi',
@@ -1495,7 +1504,7 @@ describe('the queue of new teams', () => {
 
     await user.type(await screen.findByLabelText(/Naziv tima/), 'Trkači Morave')
     await typeATownTheCodebookKnows(user, 'Čačak', 'RS')
-    await user.type(screen.getByLabelText(/Zašto ovaj tim/), 'Trčimo zajedno već tri godine.')
+    await user.type(screen.getByLabelText(/^Opis tima/), 'Trčimo zajedno već tri godine.')
     await user.click(screen.getByRole('button', { name: 'Pošalji predlog' }))
     await screen.findByRole('heading', { name: 'Predlog je poslat' })
     await router.navigate('/sr/administracija/verifikacija/timovi')
@@ -1511,13 +1520,12 @@ describe('the queue of new teams', () => {
       must(items.find((one) => /Trkači Morave/.test(one.textContent ?? '')), 'the card just sent'),
     )
 
-    /* Carrying what they said, which is what a moderator decides on: `body` is
-       the note alone (`TeamWriteApi.write`: „note is not the team's description
-       ... a sentence addressed to a moderator is not a thing the team would
-       afterwards carry"), and the town is not built into it - it is on the card
-       as its own two fields, which `TeamFields` draws as inputs a moderator may
-       still correct (owner, 03.08.2026). */
-    expect(card.getByText('Trčimo zajedno već tri godine.')).toBeVisible()
+    /* Carrying what they said, which is what a moderator decides on: `body` is the
+       description the member wrote (`VerificationApi`, since 23.11.2026; the note is gone),
+       drawn in a box of its own that a moderator may correct like the rest, and the town is not
+       built into it - it is on the card as its own two fields, which `TeamFields` draws as
+       inputs a moderator may still correct (owner, 03.08.2026). */
+    expect(card.getByLabelText('Opis tima')).toHaveValue('Trčimo zajedno već tri godine.')
     expect(card.getByLabelText('Mesto')).toHaveValue('Čačak')
     expect(card.getByLabelText(/^Država/)).toHaveValue('RS')
   })
@@ -1537,7 +1545,7 @@ describe('the queue of new teams', () => {
 
     await user.type(await screen.findByLabelText(/Naziv tima/), 'Kranjski tekači')
     await typeATownTheCodebookKnows(user, 'Kranj', 'SI')
-    await user.type(screen.getByLabelText(/Zašto ovaj tim/), 'Trčimo Julijske Alpe.')
+    await user.type(screen.getByLabelText(/^Opis tima/), 'Trčimo Julijske Alpe.')
     await user.click(screen.getByRole('button', { name: 'Pošalji predlog' }))
     await screen.findByRole('heading', { name: 'Predlog je poslat' })
     await router.navigate('/sr/administracija/verifikacija/timovi')
@@ -1603,9 +1611,12 @@ describe('a proposal a moderator accepts', () => {
     await screen.findByRole('heading', { name: 'Predlog je poslat' })
   }
 
-  it('writes to the member who asked for it, in the inbox', async () => {
-    /* Not a message on a screen nobody is looking at: the decision may come
-       days later. */
+  it('leaves the notice to the member who asked for it to the route, and writes none of its own', async () => {
+    /* Not a message on a screen nobody is looking at: the decision may come days later, and
+       since 23.11.2026 the route writes it (`VerificationWriteApi`, the sentence in
+       `TeamDecisionsCarryWhatTheCardShowsTest`). What stays on this screen is that the
+       approval is asked of the route and that a second sentence is not written beside the
+       route's, which is what the member used to read twice. */
     const user = setupUser()
     const { router } = renderAt('/sr/novi-tim', 'superadmin', '000002', undefined, DAY)
 
@@ -1622,10 +1633,18 @@ describe('a proposal a moderator accepts', () => {
 
     await user.click(within(mine).getByRole('button', { name: 'Odobri' }))
 
+    await waitFor(() => {
+      expect(
+        must(queue, 'the fake server').asked.filter(
+          (one) => one.init?.method === 'POST' && /^\/api\/verification\/\d+\/decision$/.test(one.path),
+        ),
+      ).toHaveLength(1)
+    })
+
     await router.navigate('/sr/poruke')
     const inbox = within(await screen.findByRole('list'))
 
-    expect(inbox.getByText(/Tim "Trkači Morave" je prihvaćen/)).toBeVisible()
+    expect(inbox.queryByText(/Tim "Trkači Morave" je prihvaćen/)).toBeNull()
   })
 
   it('makes the team, with the member who proposed it as its organiser', async () => {

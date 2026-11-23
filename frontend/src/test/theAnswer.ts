@@ -144,6 +144,7 @@ export const aTeam = {
   city: 'Novi Sad',
   country: 'RS',
   bio: '',
+  link: '',
   logo: '/api/photos/7d1f0a2b',
   smallLogo: '/api/photos/7d1f0a2b/small',
   crop: { x: 0.5, y: 0.35, size: 0.72 },

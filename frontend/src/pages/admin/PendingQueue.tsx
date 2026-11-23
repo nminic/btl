@@ -6,8 +6,6 @@ import { Resource } from '../../components/Resource'
 import { combinePair, dataOr, failed, useCompetitors, useTeams } from '../../data/useResource'
 import { Stars } from '../../components/Stars'
 import { CropWindow } from '../../components/CropWindow'
-import { afterJoining } from '../../data/afterJoining'
-import { transfersTakeEffect } from '../../data/season'
 import { RATING_MARKS } from '../../data/types'
 import type { EventRating } from '../../data/types'
 import { formatNumber, formatShortDate } from '../../i18n/format'
@@ -23,13 +21,15 @@ import {
   aRefusalOfThePicture,
   aRefusalOfTheText,
   anApproval,
+  anApprovalOfTheTeam,
+  aRefusalOfTheTeam,
   anApprovalOfThePicture,
   anApprovalOfTheText,
   decisionPath,
   photoPath,
   type Answered,
 } from './verificationWrites'
-import { usePending, WAITING, waitingIn } from './pending'
+import { usePending, waitingIn } from './pending'
 import {
   cardPictureOf,
   mayApprove,
@@ -38,9 +38,8 @@ import {
   type Outcome,
   type Outcomes,
 } from './cardPicture'
-import { recordKey } from '../../session/context'
 import type { PendingItem, Team } from '../../data/types'
-import { idFor, MEMBERS, recordsOf, TEAMS } from './entityForms'
+import { MEMBERS, recordsOf, TEAMS } from './entityForms'
 import {
   addressesAgainst,
   addressesIn,
@@ -48,8 +47,10 @@ import {
   isChange,
   organisers,
   proposed,
+  editsKeyOf,
   refusal,
   teamFrom,
+  type Proposed,
 } from './teamProposal'
 import { AskedLabel } from '../../forms/AskedLabel'
 import { useOverlay } from './overlay'
@@ -87,33 +88,6 @@ import { ActionButton } from '../../components/ActionButton'
  */
 
 /**
- * Whether this item lives only in this visit's session and has no row on the
- * server at all, unlike everything else this screen decides on.
- *
- * Its id says so on its own construction: `session/SessionProvider.tsx`'s
- * `propose` mints `prop-${n}` for a row nothing has served, which is how
- * `EditTeam.tsx`, `ProfileBio.tsx` and `ProfilePicture.tsx` all put a card here
- * before a route exists to carry what they collect (crop, free text, a changed
- * town) to the server. `pending.ts` merges those straight into the same list
- * `usePending` serves everything else through, so a card drawn from `prop-1`
- * and a card drawn from `ver-tim-1` are, by the time this screen sees them,
- * the same shape asking the same buttons for a decision.
- *
- * **Why a decision on one of these cannot be sent to the route that decides
- * everything else.** `POST /api/verification/{id}/decision` reads the address
- * as `@PathVariable long id` (`VerificationWriteApi.decide`), so `prop-1` is
- * not a request the route refuses, it is one the address cannot even carry -
- * the framework never reaches the method body. Until a route exists to receive
- * what one of these three screens collects, a proposal is decided the way this
- * whole screen decided everything before server-recorded decisions existed:
- * locally, and at once (`approveAll`, `handBack` below both read this before
- * asking the server anything).
- */
-function isProposal(id: string): boolean {
-  return id.startsWith('prop-')
-}
-
-/**
  * THE DECISIONS A CARD SENDS, each naming the picture the card drew where it drew one, and the
  * circle that came with it.
  *
@@ -130,9 +104,16 @@ function isProposal(id: string): boolean {
  * decision is only about what the moderator saw. It is read where `photoId` is, off the same card,
  * and for the same reason: two facts about one picture that came in one answer.
  */
-function approvalOf(one: PendingItem): Answered {
+function approvalOf(one: PendingItem, made: Proposed | null): Answered {
   if (one.photoId !== null) {
     return anApprovalOfThePicture(one.photoId, one.crop)
+  }
+
+  /* A TEAM AS THE CARD SHOWS IT, the moderator's corrections included (PDL P13, 03.08.2026 and
+     11.08.2026; the description and the link since 23.11.2026). Until that day the corrections
+     stayed in the browser and the server made the team as the member had sent it. */
+  if (made !== null) {
+    return anApprovalOfTheTeam(made, proposed(one))
   }
 
   return one.kind === 'bio' ? anApprovalOfTheText(one.body) : anApproval()
@@ -141,6 +122,12 @@ function approvalOf(one: PendingItem): Answered {
 function refusalOf(one: PendingItem, reason: string): Answered {
   if (one.photoId !== null) {
     return aRefusalOfThePicture(reason, one.photoId, one.crop)
+  }
+
+  /* A TEAM NAMES THE WORDS IT DREW, as a picture names its print: the card of a change may have been
+     written over while the moderator looked (PDL P13, [ODLUKA 23.11.2026]). */
+  if (one.queue === 'teams') {
+    return aRefusalOfTheTeam(reason, proposed(one))
   }
 
   return one.kind === 'bio' ? aRefusalOfTheText(reason, one.body) : aRefusal(reason)
@@ -158,7 +145,7 @@ function refusalOf(one: PendingItem, reason: string): Answered {
  * route asks of the row (`VerificationWriteApi.isAText`).
  */
 function drewWhatItNames(one: PendingItem): boolean {
-  return one.photoId !== null || one.kind === 'bio'
+  return one.photoId !== null || one.kind === 'bio' || one.queue === 'teams'
 }
 
 /** Whether a queue has a second decision that hands the work back to its
@@ -401,8 +388,8 @@ function TeamFields({ item }: { item: PendingItem }) {
   const { t } = useI18n()
   const { edits, edit } = useSession()
 
-  const value = (field: 'name' | 'city' | 'country') =>
-    String(edits[recordKey(WAITING, item.id)]?.[field] ?? proposed(item)[field])
+  const value = (field: 'name' | 'city' | 'country' | 'bio' | 'link') =>
+    String(edits[editsKeyOf(item)]?.[field] ?? proposed(item)[field])
 
   return (
     /* All three are obligatory in the definition a proposed team is saved
@@ -419,7 +406,7 @@ function TeamFields({ item }: { item: PendingItem }) {
           value={value('name')}
           aria-required="true"
           maxLength={limitOf(tim, 'name')}
-          onChange={(event) => edit(recordKey(WAITING, item.id), 'name', event.target.value)}
+          onChange={(event) => edit(editsKeyOf(item), 'name', event.target.value)}
         />
       </div>
 
@@ -431,7 +418,7 @@ function TeamFields({ item }: { item: PendingItem }) {
           value={value('city')}
           aria-required="true"
           maxLength={limitOf(tim, 'city')}
-          onChange={(event) => edit(recordKey(WAITING, item.id), 'city', event.target.value)}
+          onChange={(event) => edit(editsKeyOf(item), 'city', event.target.value)}
         />
       </div>
 
@@ -441,7 +428,7 @@ function TeamFields({ item }: { item: PendingItem }) {
           id={`team-country-${item.id}`}
           value={value('country')}
           aria-required="true"
-          onChange={(event) => edit(recordKey(WAITING, item.id), 'country', event.target.value)}
+          onChange={(event) => edit(editsKeyOf(item), 'country', event.target.value)}
         >
           <option value="">{t('form.choose')}</option>
           {/* The region first and named, like every other choice of country on
@@ -463,14 +450,38 @@ function TeamFields({ item }: { item: PendingItem }) {
           </optgroup>
         </select>
       </div>
+
+      {/* THE DESCRIPTION AND THE LINK, since 23.11.2026 (PDL P13, „[ODLUKE 23.11.2026 ...]"): what
+          the proposal or the change would write, corrected here like the three above and sent with
+          the approval (`approvalOf`). Neither is obligatory, as on the forms that ask for them; the
+          box takes as much as the route keeps (`admin-tim.form.json`, 360). */}
+      <div className="rankings__field">
+        <label htmlFor={`team-bio-${item.id}`}>{t('admin.field.teamBio')}</label>
+        <textarea
+          id={`team-bio-${item.id}`}
+          value={value('bio')}
+          maxLength={limitOf(tim, 'bio')}
+          onChange={(event) => edit(editsKeyOf(item), 'bio', event.target.value)}
+        />
+      </div>
+
+      <div className="rankings__field">
+        <label htmlFor={`team-link-${item.id}`}>{t('admin.field.teamLink')}</label>
+        <input
+          id={`team-link-${item.id}`}
+          type="url"
+          value={value('link')}
+          maxLength={limitOf(tim, 'link')}
+          onChange={(event) => edit(editsKeyOf(item), 'link', event.target.value)}
+        />
+      </div>
     </div>
   )
 }
 
 export function PendingQueue({ queue }: { queue: Queue }) {
   const { locale, t } = useI18n()
-  const { close, create, creations, decisions, editRecord, edits, invitations, notify, settle } =
-    useSession()
+  const { decisions, edits, notify, settle } = useSession()
   const overlay = useOverlay()
   /* The message carries the day the portal is being read as, so a walk through
      a simulated October is dated in October and not in the day it was walked. */
@@ -679,13 +690,19 @@ export function PendingQueue({ queue }: { queue: Queue }) {
   /* The teams as well, for one rule: a name already in the league cannot be
      taken by a proposal (PDL P13). Read through what this visit has entered, so
      two proposals of the same name in one sitting cannot both go through. */
-  const state = combinePair(usePending(revision), useTeams())
+  /* HOW MANY TIMES A TEAM THE SERVER MADE OR CHANGED HAS BEEN LEARNT OF, since 23.11.2026: what bumps
+     the two readers below so that the card of the next proposal asks again who is in a team and
+     which names are taken, while this screen stays mounted. Dropping the cached answer alone would
+     leave a mounted reader drawing the one it holds (`data/useResource.ts`, `revision`), and a
+     moderator would be offered „Odobri" on a founder who is in a team now. */
+  const [teamsWritten, setTeamsWritten] = useState(0)
+  const state = combinePair(usePending(revision), useTeams(teamsWritten))
   /* The members, for the one rule a team proposal cannot be decided without:
      a member is in one team at a time (PDL P13), so a proposal from somebody who
      already has one cannot be approved. Read through the overlay like everything
      else, because the team a member got a minute ago in this same visit is in
      there and nowhere else. */
-  const membersState = useCompetitors()
+  const membersState = useCompetitors(teamsWritten)
   const allMembers = recordsOf(MEMBERS, dataOr(membersState, []), overlay)
 
   /**
@@ -728,12 +745,15 @@ export function PendingQueue({ queue }: { queue: Queue }) {
    * cards (PENDING, „Odbijanje koje dokazuje da je ekran zastareo ostavlja zastareo crtež"), and
    * `ReviewQueue.tsx` makes it for the queue of results.
    *
-   * <p>Asked only of a decision about a CARD THAT DREW A PICTURE OR THE WORDS OF A BIOGRAPHY
+   * <p>Asked only of a decision about a CARD THAT DREW A PICTURE, THE WORDS OF A BIOGRAPHY OR A TEAM
    * (`drewWhatItNames`; the biography since 18.10.2026, when a new text began to overwrite the one that
-   * waits and a decision began to name the words it read: „Tekst je promenjen, pogledaj ga ponovo."),
-   * and that is the extent of what was asked and not a finding that no other refusal here proves a
-   * list stale. A refusal about a team is left to say what it says over a card that stays where it
-   * was.
+   * waits and a decision began to name the words it read: „Tekst je promenjen, pogledaj ga ponovo."; the
+   * team since 23.11.2026, when a second change began to be written over the one that waits and a
+   * decision began to name the words it saw: „Izmena tima je promenjena, pogledaj je ponovo."), and that
+   * is the extent of what was asked and not a finding that no other refusal here proves a list stale. A
+   * refusal about a team that is NOT that one (a name taken, a founder in a team) is left to say what it
+   * says over a card that stays where it was; it is read again all the same, which costs one request
+   * and cannot draw anything but what the route holds.
    */
   const readTheQueueAgain = (): void => {
     clearResourceCache('verification')
@@ -789,8 +809,6 @@ export function PendingQueue({ queue }: { queue: Queue }) {
     putTheLineAway()
 
     try {
-      /* Everything already spoken for, growing as the walk hands more out. */
-      const identities = (creations[TEAMS.id] ?? []).map((row) => row.id)
       const addresses = addressesIn(teams)
       /* Who is in a team already, growing as the walk puts people into the ones it
          makes. Read once and carried, for the same reason the identities and the
@@ -885,45 +903,25 @@ export function PendingQueue({ queue }: { queue: Queue }) {
           continue
         }
 
-        /* THE SERVER DECIDES, AND NOTHING LOCAL HAPPENS BEFORE IT ANSWERS -
-         * EXCEPT FOR A ROW THIS VISIT MADE UP ITSELF, WHICH HAS NO SERVER TO ASK
-         * (`isProposal` above).
+        /* THE SERVER DECIDES, AND NOTHING LOCAL HAPPENS BEFORE IT ANSWERS.
          *
-         * This is the whole of why this increment exists. Until 26.09.2026 the
-         * walk began at the `settle` below, so a moderator who approved a
-         * photograph watched the card leave the queue while `competitor.photo_id`
-         * was never written: the decision lived in the browser and F5 undid it.
-         * The owner met it himself on QA (PDL P28f) - „po odobravanju slike ona tog
-         * trenutka pocinje da se vidi na svim avatar mestima" - and the route that
-         * does the work, `VerificationWriteApi.decide`, had been there all along
-         * with nothing calling it.
-         *
-         * So the order is the order: ask, and write locally only in the branch that
-         * ran because the answer said it did. `settle` and everything under it -
-         * the team, the membership, the message - are
-         * consequences of a decision that has been RECORDED, and a consequence of
-         * something that did not happen is the fault this replaces.
-         *
-         * A proposal is the one exception, and it is a boundary rather than an
-         * oversight: `decisionPath` addresses `POST /api/verification/{id}/decision`,
-         * which reads the id as `@PathVariable long id`
-         * (`VerificationWriteApi.decide`), so `prop-1` cannot reach that method body
-         * at all. Until a route exists to carry what `EditTeam.tsx`, `ProfileBio.tsx`
-         * and `ProfilePicture.tsx` collect, one of their cards is decided the way
-         * this whole screen decided everything before this increment: locally, and
-         * at once. */
-        if (!isProposal(one.id)) {
-          const answer = await askTheServer(decisionPath(one.id), approvalOf(one))
+         * Until 26.09.2026 the walk began at the `settle` below, so a moderator who approved a
+         * photograph watched the card leave the queue while `competitor.photo_id` was never written:
+         * the decision lived in the browser and F5 undid it (PDL P28f). So the order is the order: ask,
+         * and write locally only in the branch that ran because the answer said it did. There is no
+         * card made up in this visit any more (`propose` and the `prop-` cards of the session went on
+         * 23.11.2026, the last that made one being the change of a team, which is a card of the
+         * server's now), so every row on this screen has a route to decide it at. */
+        const answer = await askTheServer(decisionPath(one.id), approvalOf(one, made))
 
-          if (answer.got !== 'done') {
-            refusals.push({ id: one.id, answer })
+        if (answer.got !== 'done') {
+          refusals.push({ id: one.id, answer })
 
-            if (answer.got === 'refused' && drewWhatItNames(one)) {
-              staleRefused = true
-            }
-
-            continue
+          if (answer.got === 'refused' && drewWhatItNames(one)) {
+            staleRefused = true
           }
+
+          continue
         }
 
         settle(one.id, {
@@ -961,129 +959,24 @@ export function PendingQueue({ queue }: { queue: Queue }) {
           continue
         }
 
-        /* A change writes into the team it is about; only a proposal makes one
-           (owner, 04.09.2026). The address goes with the name, because that is what
-           the team entity itself derives it from (`entityForms.ts`, TEAMS), so a
-           team renamed here answers where the administration's own form would leave
-           it rather than at the address of its old name.
-
-           What is not written is who administers it: that is worked out from the
-           roster (`data/teamAdmin.ts`), and a change is the administrator's own act
-           so there is nothing to move. */
-        if (isChange(one)) {
-          addresses.push(addressOf(made.name))
-          editRecord(recordKey(TEAMS.id, one.subjectId), { ...made, slug: addressOf(made.name) })
-
-          notify({
-            from: t('app.name'),
-            to: one.memberNumber,
-            subject: t('verification.teamChangeAccepted', { name: made.name }),
-            body: t('verification.teamChangeAcceptedBody', { name: made.name }),
-            date: today,
-          })
-
-          continue
-        }
-
-        const id = idFor(TEAMS, {}, identities, [])
-
-        identities.push(id)
+        /* A ROW THE SERVER DECIDED MADE OR CHANGED THE TEAM ON THE SERVER, and nothing is written
+           into the session for it since 23.11.2026. The approval writes the team, the founder's
+           membership and his seat, tells him, and tells the teams that had asked him
+           (`VerificationWriteApi`, `FoundingATeam`); a copy of all that written here as well stood
+           beside the server's own team as a second one, under a number counted down from nought,
+           and that was the team the owner saw appear and go (PDL P13, „[ZATEČENO 23.11.2026 ...]").
+           What makes every screen agree is reading the two resources again. */
+        /* What the rest of this walk asks of the next card still learns of this one: its
+           address is taken now, and a founder is in a team now. */
         addresses.push(addressOf(made.name))
 
-        create(TEAMS.id, id, {
-          ...made,
-          organizerMemberNumber: one.memberNumber,
-          /* **The picture does not survive the approval, and that is a limit
-             rather than a decision.** What stands in for a database until F5 is an
-             overlay of text (session/context.ts): a crop is three numbers and
-             cannot go into it without being written a second way, and nothing
-             anywhere reads a created team's logo back. No public screen reads the
-             overlay at all (entityForms.ts) and the administration draws no mark,
-             so a line carrying the picture here is a line no test can reach and
-             no reader can see. A review measured exactly that: with the line in
-             place, deleting it left all 1888 tests passing.
-           *
-             So nothing about the picture crosses this point until F5, said once
-             rather than half done. The moderator still judges the square the
-             member chose, on the card above, which is what the owner asked for
-             (12.08.2026). Written down in PENDING. */
-        })
-
-        /* **And the member who asked for it is in it.** Owner, 05.09.2026: „Odmah
-           ulazi u tim... on ce biti prvi i jedini clan u tom trenutku." Until then an
-           approval wrote the organiser onto the team and nothing onto the member, so
-           the founder was in no team at all and could found a second one the same
-           minute; that was a high finding of the review of PR 186.
-
-           **From the next season**, because a team founded during the transfer window
-           scores nothing until 1 January (owner, same day). `teamSince` is what every
-           reader of „was this member in the team that season" asks (`data/derive.ts`,
-           `inTeamIn`), so writing next season is what keeps the new team out of this
-           season's standing without a second rule to remember.
-
-           Written as text, like everything else in the overlay that stands in for a
-           database (session/context.ts). A record read back through the overlay
-           carries the season as the digits rather than as a number, which every
-           comparison in the portal reads the same way and the database will type
-           properly; written down rather than papered over. */
-        inATeam.push(one.memberNumber)
-        editRecord(recordKey(MEMBERS.id, one.memberNumber), {
-          teamId: id,
-          teamSince: String(transfersTakeEffect(today)),
-        })
-
-        notify({
-          from: t('app.name'),
-          to: one.memberNumber,
-          subject: t('verification.teamAccepted', { name: made.name }),
-          body: t('verification.teamAcceptedBody', { name: made.name }),
-          date: today,
-        })
-
-        /* And the third door into a club owes what the other two owe: every team that
-           had invited this member stops waiting on a question that can no longer be
-           answered, and is told so. The owner's sentence names the road as „ko god da
-           je poslao poziv" (PDL, 06.09.2026), and a founder who was invited elsewhere
-           last week is exactly the case it describes. Nothing is kept, because nobody
-           accepted an invitation here. */
-        const after = afterJoining({
-          member: one.memberNumber,
-          joined: Number(id),
-          keep: undefined,
-          invitations,
-          teams,
-          competitors: allMembers,
-        })
-
-        for (const gone of after.close) {
-          close(gone)
+        if (!isChange(one)) {
+          inATeam.push(one.memberNumber)
         }
 
-        for (const to of after.tell) {
-          notify({
-            from: t('app.name'),
-            to,
-            subject: t('teams.inviteMissedSubject'),
-            /* The word the notice says he did follows HIS sex, who founded the team, and never
-               the sex of the leader who reads it (PDL P18, 18.10.2026). */
-            body: t(
-              allMembers.some((each) => each.memberNumber === one.memberNumber && each.gender === 'F')
-                ? 'teams.inviteMissedBodyFemale'
-                : 'teams.inviteMissedBody',
-              {
-                /* Off the member's own record and not off the queue item, which carries the
-                   proposal and not the person. Joined rather than taken out of the list, so a
-                   member the portal no longer has needs no question of its own. */
-                name: allMembers
-                  .filter((each) => each.memberNumber === one.memberNumber)
-                  .map((each) => `${each.firstName} ${each.lastName}`)
-                  .join(''),
-                team: made.name,
-              },
-            ),
-            date: today,
-          })
-        }
+        clearResourceCache('teams')
+        clearResourceCache('competitors')
+        setTeamsWritten((was) => was + 1)
       }
 
       /* THE NEXT MOUNT READS THE SERVER AND NOT THIS VISIT'S FIRST ANSWER, which is the
@@ -1252,36 +1145,31 @@ export function PendingQueue({ queue }: { queue: Queue }) {
     /* AND HERE, for the same reason as at the start of `approveAll` (`putTheLineAway`). */
     putTheLineAway()
 
-    /* THE SAME EXCEPTION `approveAll` MAKES, FOR THE SAME REASON: a row this visit
-       made up itself (`isProposal`, above `handsBack`) has no server row to ask
-       `POST /api/verification/{id}/decision` about, and the address cannot even
-       carry an id of this shape (`@PathVariable long id`). Handed back locally,
-       exactly as every queue was decided before server-recorded decisions existed. */
-    if (!isProposal(one.id)) {
-      const answer = await askTheServer(decisionPath(one.id), refusalOf(one, reason))
+    /* AND THE DECISION IS THE SERVER'S FOR EVERY ROW, since there is no card made up in this visit any
+       more (see `approveAll`). */
+    const answer = await askTheServer(decisionPath(one.id), refusalOf(one, reason))
 
-      if (answer.got !== 'done') {
-        sayIt({ id: one.id, answer })
-        putTheBoxAway(one)
+    if (answer.got !== 'done') {
+      sayIt({ id: one.id, answer })
+      putTheBoxAway(one)
 
-        /* A refusal of a picture that moved on says the list is stale as the approval's does
-           (`readTheQueueAgain`), and it reads it again for the same reason: the box has just
-           closed over the reason he typed about a picture that is not on the row any more, and
-           the card must draw the one that is before he writes another. */
-        if (answer.got === 'refused' && drewWhatItNames(one)) {
-          readTheQueueAgain()
-        }
-
-        return
+      /* A refusal of a picture that moved on says the list is stale as the approval's does
+         (`readTheQueueAgain`), and it reads it again for the same reason: the box has just
+         closed over the reason he typed about a picture that is not on the row any more, and
+         the card must draw the one that is before he writes another. */
+      if (answer.got === 'refused' && drewWhatItNames(one)) {
+        readTheQueueAgain()
       }
 
-      /* For the reason the approval clears it: a decision the server has recorded and
-         the overlay has patched is one a remounted screen must read from the server
-         (`admin/AdminLeagues.tsx`, review 25.09.2026). Skipped for a proposal along
-         with the request above: nothing server-side changed for the cache to be
-         wrong about. */
-      clearResourceCache('verification')
+      return
     }
+
+    /* For the reason the approval clears it: a decision the server has recorded and
+       the overlay has patched is one a remounted screen must read from the server
+       (`admin/AdminLeagues.tsx`, review 25.09.2026). Skipped for a proposal along
+       with the request above: nothing server-side changed for the cache to be
+       wrong about. */
+    clearResourceCache('verification')
 
     sayIt(null)
 
@@ -1673,6 +1561,11 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                             about an event and the other four queues are not. */}
                         {queue.id === 'comments' && <RatingGiven rating={one.rating} />}
 
+                        {/* Not on the queue of teams since 23.11.2026, where the text is the
+                            team's description and stands in its own box among the fields the
+                            moderator may correct (`TeamFields`); drawn here as well it would be
+                            the same words twice under one label. */}
+                        {queue.id !== 'teams' && (
                         <dl className="pending__facts">
                           <div className="pending__text">
                             <dt>{bodyLabelFor(one)}</dt>
@@ -1685,6 +1578,7 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                             <dd className="pending__body">{one.body}</dd>
                           </div>
                         </dl>
+                        )}
 
                         {/* THE PICTURE, where this row still holds one.
 

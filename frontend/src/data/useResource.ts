@@ -788,7 +788,18 @@ export const useResults = (revision?: number): ResourceState<Result[]> =>
 export const usePairs = () => useResource<RacingPair[]>('pairs')
 /** The seasons the freeze has written down: the record, never the clock (`data/frozen.ts`). */
 export const useFrozenSeasons = () => useResource<FrozenSeason[]>('frozen-seasons')
-export const useTeams = () => useResource<Team[]>('teams')
+/**
+ * @param revision bumped by the administration's screen of teams once a team it wrote is on the
+ *   server (`admin/AdminTeams.tsx`, `useHowManyTimesDropped`), so the list it is still showing asks
+ *   again and draws the team the server holds, with its organizer counted. Every other caller
+ *   passes none.
+ */
+export const useTeams = (revision?: number) => useResource<Team[]>(THE_TEAMS, { revision })
+
+/* The name held apart from the call, because `teams` is also a namespace of `sr.json` and a call
+   whose first word is a key of the dictionary followed by an object is read as a sentence being
+   made (`i18n/valueInSentence.test.ts`). It is the resource's name and nothing more. */
+const THE_TEAMS: ResourceName = 'teams'
 
 /**
  * WHOEVER THE INBOX IN THE CACHE WAS FETCHED FOR, kept beside the cache rather than

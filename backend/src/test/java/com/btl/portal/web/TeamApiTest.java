@@ -598,13 +598,18 @@ class TeamApiTest {
 	private void team(String slug, String name, String bio, String town, int firstSeason,
 			Long mark, String adminNumber) {
 		db.sql("insert into team (slug, name, bio, link, place_id, city, country_id, first_season,"
-						+ " logo_id, admin_id) values (?, ?, ?, '', " + town + ", ?, "
+						/* THE LINK FOLLOWS THE DESCRIPTION, so a team with words has a page of its own
+						   and one without has none: two different links and an empty one across the
+						   fixture, and no answer a constant could give (23.11.2026). */
+						+ " logo_id, admin_id) values (?, ?, ?,"
+						+ " case when ? = '' then '' else 'https://' || ? || '.example' end, "
+						+ town + ", ?, "
 						+ (mark == null ? "null" : String.valueOf(mark)) + ", "
 						+ (adminNumber == null ? "null"
 								: "(select id from competitor where member_number = '"
 										+ adminNumber + "')")
 						+ ")")
-				.params(slug, name, bio, firstSeason).update();
+				.params(slug, name, bio, bio, slug, firstSeason).update();
 	}
 
 	/**

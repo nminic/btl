@@ -1,13 +1,12 @@
 import { SLOW } from '../test/slow'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { formatShortDate } from '../i18n/format'
 import sr from '../i18n/sr.json'
 import { screen, waitFor, within } from '@testing-library/react'
 import { JUNIOR, PRICES, PROCESSING_FEE_EUR } from '../data/pricing'
 import servedMembers from '../test/mock/members.json'
 import servedPrices from '../test/mock/pricing.json'
-import { did, refused, serverThat } from '../test/serverAnswers'
+import { refused, serverThat } from '../test/serverAnswers'
 import { translate } from '../i18n/translate'
 import { Decided } from '../test/decided'
 import { sayNo, sayYes } from '../test/deleteSheet'
@@ -27,6 +26,22 @@ import {
   RECIPIENT_ACCOUNT,
   RECIPIENT_NAME,
 } from '../data/paymentQr'
+import { fakeQueue } from '../test/fakeQueue'
+
+/* THE SERVER'S TEAMS ARE IN FRONT OF EVERY CASE HERE since 23.11.2026, because the screens of teams
+ * speak to routes (`POST /api/teams/direct`, `PUT` and `DELETE /api/teams/{id}`) and read the lists
+ * again after a write instead of keeping the row in the session. `fakeQueue()` remembers what was
+ * written and serves the two lists it changes. */
+let theServerOfTeams: { stop: () => void } | null = null
+
+beforeEach(() => {
+  theServerOfTeams = fakeQueue()
+})
+
+afterEach(() => {
+  theServerOfTeams?.stop()
+  theServerOfTeams = null
+})
 
 const dictionary = sr
 
@@ -2500,17 +2515,17 @@ describe('the five queues read from the file', () => {
       .toBeVisible()
   })
 
-  it('tells the member their team was accepted, and says who is telling them', async () => {
-    /* The other place on these screens that writes to a member, and until now
-       the only one nothing followed. A review emptied the sender here and all
-       1907 tests stayed green, so the one line of provenance on the message
-       would have read „ · 15.08.2026" with nobody's name in front of it.
-     *
-       The league writes it, never the moderator by name: a decision is the
-       league's, and a member who could read the name of whoever decided would
-       write back to a person rather than to the association (PDL P22). */
+  it('leaves the telling of the member whose team was accepted to the route, and writes nothing of its own', async () => {
+    /* The other place on these screens that wrote to a member, and until 23.11.2026 the one that
+       wrote a sentence of its own: „Tvoj predlog tima ... je prihvaćen. Ti si njegov organizator.",
+       from the league and never from the moderator by name (PDL P22). The route writes the notice
+       now, in the one transaction that makes the team (`FoundingATeam`; the sentence and who it comes
+       from are `TeamDecisionsCarryWhatTheCardShowsTest`'s, in Java), and a second one written here
+       stood beside the server's own. What is held on this screen is that the approval is asked of
+       the route, and that the session holds no message about it. */
     const user = setupUser()
     const day = '2026-08-15'
+    const queue = fakeQueue()
 
     renderAt(`/sr/${QUEUE.teams.path}`, 'superadmin', '000004', undefined, day)
     await screen.findByRole('heading', { level: 1, name: 'Novi timovi' })
@@ -2526,30 +2541,17 @@ describe('the five queues read from the file', () => {
 
     await user.click(card.getByRole('button', { name: 'Odobri' }))
 
+    await waitFor(() => {
+      expect(
+        queue.asked.filter((one) => one.init?.method === 'POST' && one.path === '/api/verification/ver-tim-1/decision'),
+      ).toHaveLength(1)
+    })
+
     await user.click(screen.getByRole('button', { name: /Otvori poruke/ }))
-    await user.click(screen.getByRole('link', { name: /Timočka trkačka družina/ }))
 
-    const subject = screen.getByRole('heading', { level: 1, name: /je prihvaćen/ })
-    const provenance = must(
-      subject.nextElementSibling,
-      'the line of provenance under the subject',
-    ).textContent
+    expect(screen.queryByRole('link', { name: /Timočka trkačka družina/ })).toBeNull()
 
-    expect(provenance).toContain(sr.app.name)
-    expect(provenance).toContain(formatShortDate(day, 'sr'))
-    /* And the sentence itself, which is the only part of the message that tells
-       the member anything they did not already know: that the team exists and
-       that they are the one who runs it. Emptied, it left all 1908 tests green,
-       so a member could be told their team was accepted by a message with
-       nothing in it. And the name of the team is read here as well: emptied, it
-       left the same 1908 green, and the member would have been told „Tvoj
-       predlog tima „" je prihvaćen". The name in the subject is checked only in
-       passing, by the link the message is opened from. */
-    expect(
-      screen.getByText(
-        'Tvoj predlog tima "Timočka trkačka družina" je prihvaćen. Ti si njegov organizator.',
-      ),
-    ).toBeVisible()
+    queue.stop()
   })
 
   it('leads from one queue straight to the next', async () => {
@@ -3111,7 +3113,7 @@ describe('the section of entities', () => {
        not match an address carrying an id (`test/setup.ts`), so the request came back 404 and
        the row stayed. Its own answer rather than a branch in `test/setup.ts`, which every case
        in the suite reads. */
-    const server = serverThat((_, init) => ((init?.method ?? 'GET') === 'GET' ? null : did()))
+    const server = serverThat(() => null)
     const user = setupUser()
     renderAt('/sr/administracija/timovi', 'superadmin')
 

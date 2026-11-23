@@ -281,6 +281,11 @@ const IN_WINDOW = '2026-10-15'
  *  06.09.2026 the list at `/sr/poruke` carries the same links: on that address this returns
  *  both sets and a case that means „the panel" has to say so itself. Everywhere else it is the
  *  panel alone, because nothing else on the portal links to a message. */
+/** The decisions the screen asked of the route, in the order it asked them. */
+function decisionsSent(): Asked[] {
+  return (queue?.asked ?? []).filter((one) => one.init?.method === 'POST' && one.path.endsWith('/decision'))
+}
+
 async function inbox(user: ReturnType<typeof setupUser>) {
   await user.click(await screen.findByRole('button', { name: /Otvori poruke/ }))
 
@@ -778,6 +783,11 @@ describe('the transfer window holds the answer as well as the question', () => {
 
 describe('the third door writes the season the other two write', () => {
   it('puts a founder in their club from the season that has not begun, even when approved late', async () => {
+    /* The route names the season off the day it decides on (`transfersTakeEffect`): on 5 January 2027 it
+       is 2028. The fake has no clock and is told. */
+    queue?.stop()
+    queue = fakeQueue([], 2028)
+
     const user = setupUser()
     const { router } = renderAt(
       '/sr/novi-tim',
@@ -790,7 +800,7 @@ describe('the third door writes the season the other two write', () => {
 
     await user.type(await screen.findByLabelText(/Naziv tima/), 'Trkači Morave')
     await typeATownTheCodebookKnows(user, 'Čačak', 'RS')
-    await user.type(screen.getByLabelText(/Zašto ovaj tim/), 'Trčimo zajedno već tri godine.')
+    await user.type(screen.getByLabelText(/^Opis tima/), 'Trčimo zajedno već tri godine.')
     await user.click(screen.getByRole('button', { name: 'Pošalji predlog' }))
 
     await screen.findByRole('heading', { name: 'Predlog je poslat' })
@@ -912,7 +922,7 @@ describe('which day the answer is read off', () => {
 })
 
 describe('the day the notice carries, on the other two doors', () => {
-  it('dates it by the day the proposal was approved, not by the day it was sent', async () => {
+  it('leaves the day of the notice to the route, and writes no notice of its own, on the road through the queue', async () => {
     const user = setupUser()
     const { router } = renderAt(
       FREE,
@@ -939,7 +949,7 @@ describe('the day the notice carries, on the other two doors', () => {
 
     await user.type(await screen.findByLabelText(/Naziv tima/), 'Trkači Morave')
     await typeATownTheCodebookKnows(user, 'Čačak', 'RS')
-    await user.type(screen.getByLabelText(/Zašto ovaj tim/), 'Trčimo zajedno već tri godine.')
+    await user.type(screen.getByLabelText(/^Opis tima/), 'Trčimo zajedno već tri godine.')
     await user.click(screen.getByRole('button', { name: 'Pošalji predlog' }))
 
     await screen.findByRole('heading', { name: 'Predlog je poslat' })
@@ -953,23 +963,27 @@ describe('the day the notice carries, on the other two doors', () => {
 
     await user.click(card.getByRole('button', { name: 'Odobri' }))
 
-    await user.click(screen.getByRole('button', { name: 'danas je 2027-02-10' }))
+    /* THE NOTICE TO THE TEAMS THAT HAD ASKED HIM IS THE ROUTE'S SINCE 23.11.2026, written in the one
+       transaction that makes the team (`FoundingATeam`, `TeamJoiningWriteApi.theOtherTeamsThatAskedHim`),
+       and its sentence, its day and the word „ušao" or „ušla" are measured in Java
+       (`VerificationWriteApiTest`, `TeamJoiningWriteApiTest`). What stays on this screen is two
+       things, held here: the approval is asked of the route, and a second notice is not written
+       beside the route's - the one these cases used to read out of the session is the copy that
+       stood beside the server's own. */
+    await waitFor(() => {
+      expect(decisionsSent()).toHaveLength(1)
+    })
+
     await user.click(screen.getByRole('button', { name: 'postani 000001' }))
 
-    const told = (await inbox(user)).filter((one) => /ostao bez odgovora/.test(one.textContent ?? ''))
-
-    /* Whole, and not as a piece of a longer day: „5. 1. 2027." is inside „15. 1. 2027.", so a
-       notice ten days late would satisfy `toContain` (review, 06.09.2026). Nothing in this walk
-       can produce that day, which is why it is a doubt rather than a fault; it costs one
-       boundary to remove it. */
-    expect(must(told[0], 'the notice Dunavski trkači were sent').textContent).toMatch(
-      /(?<!\d)5\. 1\. 2027\./,
-    )
+    expect(
+      (await inbox(user)).filter((one) => /ostao bez odgovora/.test(one.textContent ?? '')),
+    ).toEqual([])
   }, SEVERAL_SCREENS)
 })
 
 describe('the third door, and the team that was joined', () => {
-  it('tells the team that was waiting when a moderator approves the team the member proposed', async () => {
+  it('leaves the telling of the team that was waiting to the route when a moderator approves the team', async () => {
     const user = setupUser()
     const { router } = renderAt(
       FREE,
@@ -997,7 +1011,7 @@ describe('the third door, and the team that was joined', () => {
 
     await user.type(await screen.findByLabelText(/Naziv tima/), 'Trkači Morave')
     await typeATownTheCodebookKnows(user, 'Čačak', 'RS')
-    await user.type(screen.getByLabelText(/Zašto ovaj tim/), 'Trčimo zajedno već tri godine.')
+    await user.type(screen.getByLabelText(/^Opis tima/), 'Trčimo zajedno već tri godine.')
     await user.click(screen.getByRole('button', { name: 'Pošalji predlog' }))
 
     await screen.findByRole('heading', { name: 'Predlog je poslat' })
@@ -1008,32 +1022,25 @@ describe('the third door, and the team that was joined', () => {
 
     await user.click(card.getByRole('button', { name: 'Odobri' }))
 
-    /* **Who was told, first**, because a case that only says who was not told passes just as
-       well when nobody was told at all. The invitation was written while 000007 was reading, but
-       000001 leads Dunavski trkači, so this also says the notice goes to the role and not to
-       whoever was at the keyboard. */
+    /* THE NOTICE TO THE TEAMS THAT HAD ASKED HIM IS THE ROUTE'S SINCE 23.11.2026, written in the one
+       transaction that makes the team (`FoundingATeam`, `TeamJoiningWriteApi.theOtherTeamsThatAskedHim`),
+       and its sentence, its day and the word „ušao" or „ušla" are measured in Java
+       (`VerificationWriteApiTest`, `TeamJoiningWriteApiTest`). What stays on this screen is two
+       things, held here: the approval is asked of the route, and a second notice is not written
+       beside the route's - the one these cases used to read out of the session is the copy that
+       stood beside the server's own. */
+    await waitFor(() => {
+      expect(decisionsSent()).toHaveLength(1)
+    })
+
     await user.click(screen.getByRole('button', { name: 'postani 000001' }))
-
-    expect(
-      (await inbox(user)).filter((one) => /ostao bez odgovora/.test(one.textContent ?? '')),
-    ).toHaveLength(1)
-
-    /* And two people who have nothing to do with it: Anđelija leads another club entirely, and
-       Relja is the one who left rather than the one who was left. */
-    await user.click(screen.getByRole('button', { name: 'postani 000003' }))
-
-    expect(
-      (await inbox(user)).filter((one) => /ostao bez odgovora/.test(one.textContent ?? '')),
-    ).toEqual([])
-
-    await user.click(screen.getByRole('button', { name: 'postani 000002' }))
 
     expect(
       (await inbox(user)).filter((one) => /ostao bez odgovora/.test(one.textContent ?? '')),
     ).toEqual([])
   }, SEVERAL_SCREENS)
 
-  it('names the member and the club they went to, on the road through the queue', async () => {
+  it('leaves the naming of the member and the club to the route, on the road through the queue', async () => {
     const user = setupUser()
     const { router } = renderAt(
       FREE,
@@ -1061,7 +1068,7 @@ describe('the third door, and the team that was joined', () => {
 
     await user.type(await screen.findByLabelText(/Naziv tima/), 'Trkači Morave')
     await typeATownTheCodebookKnows(user, 'Čačak', 'RS')
-    await user.type(screen.getByLabelText(/Zašto ovaj tim/), 'Trčimo zajedno već tri godine.')
+    await user.type(screen.getByLabelText(/^Opis tima/), 'Trčimo zajedno već tri godine.')
     await user.click(screen.getByRole('button', { name: 'Pošalji predlog' }))
 
     await screen.findByRole('heading', { name: 'Predlog je poslat' })
@@ -1079,18 +1086,25 @@ describe('the third door, and the team that was joined', () => {
     await user.click(screen.getByRole('button', { name: 'postani 000007' }))
     await user.click(card.getByRole('button', { name: 'Odobri' }))
 
+    /* THE NOTICE TO THE TEAMS THAT HAD ASKED HIM IS THE ROUTE'S SINCE 23.11.2026, written in the one
+       transaction that makes the team (`FoundingATeam`, `TeamJoiningWriteApi.theOtherTeamsThatAskedHim`),
+       and its sentence, its day and the word „ušao" or „ušla" are measured in Java
+       (`VerificationWriteApiTest`, `TeamJoiningWriteApiTest`). What stays on this screen is two
+       things, held here: the approval is asked of the route, and a second notice is not written
+       beside the route's - the one these cases used to read out of the session is the copy that
+       stood beside the server's own. */
+    await waitFor(() => {
+      expect(decisionsSent()).toHaveLength(1)
+    })
+
     await user.click(screen.getByRole('button', { name: 'postani 000001' }))
 
-    const told = (await inbox(user)).filter((one) => /ostao bez odgovora/.test(one.textContent ?? ''))
-
-    await user.click(must(told[0], 'the notice Dunavski trkači were sent'))
-
     expect(
-      await screen.findByText(/Relja Momčilović je u međuvremenu ušao u tim "Trkači Morave"/),
-    ).toBeVisible()
+      (await inbox(user)).filter((one) => /ostao bez odgovora/.test(one.textContent ?? '')),
+    ).toEqual([])
   }, SEVERAL_SCREENS)
 
-  it('says "ušla" on the road through the queue when the one who founded it is a woman', async () => {
+  it('leaves the word of the notice to the route when the one who founded it is a woman', async () => {
     const user = setupUser()
     const { router } = renderAt(
       FREE,
@@ -1113,7 +1127,7 @@ describe('the third door, and the team that was joined', () => {
 
     await user.type(await screen.findByLabelText(/Naziv tima/), 'Trkačice Morave')
     await typeATownTheCodebookKnows(user, 'Čačak', 'RS')
-    await user.type(screen.getByLabelText(/Zašto ovaj tim/), 'Trčimo zajedno već tri godine.')
+    await user.type(screen.getByLabelText(/^Opis tima/), 'Trčimo zajedno već tri godine.')
     await user.click(screen.getByRole('button', { name: 'Pošalji predlog' }))
 
     await screen.findByRole('heading', { name: 'Predlog je poslat' })
@@ -1127,15 +1141,22 @@ describe('the third door, and the team that was joined', () => {
     await user.click(screen.getByRole('button', { name: 'postani 000007' }))
     await user.click(card.getByRole('button', { name: 'Odobri' }))
 
+    /* THE NOTICE TO THE TEAMS THAT HAD ASKED HIM IS THE ROUTE'S SINCE 23.11.2026, written in the one
+       transaction that makes the team (`FoundingATeam`, `TeamJoiningWriteApi.theOtherTeamsThatAskedHim`),
+       and its sentence, its day and the word „ušao" or „ušla" are measured in Java
+       (`VerificationWriteApiTest`, `TeamJoiningWriteApiTest`). What stays on this screen is two
+       things, held here: the approval is asked of the route, and a second notice is not written
+       beside the route's - the one these cases used to read out of the session is the copy that
+       stood beside the server's own. */
+    await waitFor(() => {
+      expect(decisionsSent()).toHaveLength(1)
+    })
+
     await user.click(screen.getByRole('button', { name: 'postani 000001' }))
 
-    const told = (await inbox(user)).filter((one) => /ostao bez odgovora/.test(one.textContent ?? ''))
-
-    await user.click(must(told[0], 'the notice Dunavski trkači were sent'))
-
     expect(
-      await screen.findByText(/Ivona Stamenkovska je u međuvremenu ušla u tim "Trkačice Morave"/),
-    ).toBeVisible()
+      (await inbox(user)).filter((one) => /ostao bez odgovora/.test(one.textContent ?? '')),
+    ).toEqual([])
   }, SEVERAL_SCREENS)
 
 })

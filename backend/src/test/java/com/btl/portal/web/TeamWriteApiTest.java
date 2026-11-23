@@ -697,14 +697,12 @@ class TeamWriteApiTest {
 	}
 
 	/** The ordinary request every case starts from, with one field replaced. */
-	private String form(String name, String note, String bio, String link, String city,
-			String country) {
-		return mapper.writeValueAsString(
-				new TeamWriteApi.Proposed(name, note, bio, link, city, country));
+	private String form(String name, String bio, String link, String city, String country) {
+		return mapper.writeValueAsString(new TeamWriteApi.Proposed(name, bio, link, city, country));
 	}
 
 	private String naming(String name) {
-		return form(name, null, null, null, "  Novi Sad  ", "RS");
+		return form(name, null, null, "  Novi Sad  ", "RS");
 	}
 
 	private String reasonIn(MockHttpServletResponse answer) throws Exception {
@@ -825,8 +823,7 @@ class TeamWriteApiTest {
 		long proposalsBefore = howManyProposals();
 
 		MockHttpServletResponse answer = proposeAs(ME,
-				form("  Dunavski   TRKAČ  ", "  Zato sto trcimo zajedno  ",
-						"  Ekipa sa Dunava  ", null, "  Novi Sad  ", "RS"));
+				form("  Dunavski   TRKAČ  ", "  Ekipa sa Dunava  ", null, "  Novi Sad  ", "RS"));
 
 		assertThat(answer.getStatus()).isEqualTo(201);
 
@@ -837,18 +834,17 @@ class TeamWriteApiTest {
 		assertThat(proposalNamed("Dunavski   TRKAČ"))
 				.as("the row does not hold what was sent: the town, the description and the link"
 						+ " are the columns an approval builds the team out of, `team_id` being empty"
-						+ " is what makes this a NEW team rather than a change to one, and the NOTE is"
-						+ " not here at all because this table has no column for it")
+						+ " is what makes this a NEW team rather than a change to one")
 				.containsExactly(competitorId(ME), "null", "Dunavski   TRKAČ",
 						"Ekipa sa Dunava", "", "null", "Novi Sad", String.valueOf(countryKey()), "null");
 
 		assertThat(theQueueRowFor("Dunavski   TRKAČ"))
-				.as("the queue row does not carry the proposal, the member it is about, the name"
-						+ " and the NOTE, in the tab that is the only one V11 lets a proposal stand"
-						+ " in. The description is not what a moderator reads here: the two are sent"
-						+ " as different words and must land in different places")
+				.as("the queue row does not carry the proposal, the member it is about and the"
+						+ " name, in the tab that is the only one V11 lets a proposal stand in, or it"
+						+ " carries the description a second time in `body` (PDL P13, 23.11.2026: the"
+						+ " note is gone and the description stays on the proposal alone)")
 				.containsExactly("teams", competitorId(ME), "Dunavski   TRKAČ",
-						"Zato sto trcimo zajedno", "waiting", proposalIdNamed("Dunavski   TRKAČ"),
+						"", "waiting", proposalIdNamed("Dunavski   TRKAČ"),
 						"null", "null");
 
 		assertThat(howManyTeams())
@@ -1078,7 +1074,7 @@ class TeamWriteApiTest {
 			"Dobar tim, Novi Sad, NIC", "Dobar tim, Novi Sad, ''", "Dobar tim, Novi Sad, '   '"})
 	void aFormMissingSomethingIsRefused(String name, String city, String country) throws Exception {
 		MockHttpServletResponse answer =
-				proposeAs(ME, form(name, null, null, null, city, country));
+				proposeAs(ME, form(name, null, null, city, country));
 
 		assertThat(answer.getStatus())
 				.as("name=[%s] city=[%s] country=[%s] was accepted", name, city, country)
@@ -1097,7 +1093,7 @@ class TeamWriteApiTest {
 	@Test
 	void aCountryNobodyServesIsRefused() throws Exception {
 		MockHttpServletResponse answer = proposeAs(ME,
-				form("  Timski tim  ", null, null, null, "  Novi Sad  ", A_COUNTRY_NOBODY_SERVES));
+				form("  Timski tim  ", null, null, "  Novi Sad  ", A_COUNTRY_NOBODY_SERVES));
 
 		assertThat(answer.getStatus()).isEqualTo(400);
 		assertThat(reasonIn(answer)).isEqualTo(TeamWriteApi.THE_COUNTRY_IS_NOT_KNOWN);
@@ -1117,7 +1113,7 @@ class TeamWriteApiTest {
 	@ValueSource(strings = {"primer.rs/tim", "ftp://primer.rs", "https://", "https://a.rs/b c"})
 	void aLinkThatIsNotOneIsRefused(String link) throws Exception {
 		MockHttpServletResponse answer = proposeAs(ME,
-				form("  Linkovani tim  ", "", "", link, "  Novi Sad  ", "RS"));
+				form("  Linkovani tim  ", "", link, "  Novi Sad  ", "RS"));
 
 		assertThat(answer.getStatus())
 				.as("'%s' was accepted as a link", link)
@@ -1132,7 +1128,7 @@ class TeamWriteApiTest {
 	 */
 	@Test
 	void aLinkThatIsOneIsKept() throws Exception {
-		assertThat(proposeAs(ME, form("  Linkovani tim  ", "", "", "  https://primer.rs/tim  ",
+		assertThat(proposeAs(ME, form("  Linkovani tim  ", "", "  https://primer.rs/tim  ",
 				"  Novi Sad  ", "RS")).getStatus()).isEqualTo(201);
 
 		assertThat(db.sql("select link from team_proposal where name = ?").param("Linkovani tim")
@@ -1203,11 +1199,11 @@ class TeamWriteApiTest {
 	 * THE ROUTE TAKES BESIDES IS ONE THE FORM REALLY DOES NOT ASK FOR.
 	 *
 	 * <p><b>Neither side is written here.</b> The form is read off the working tree, the
-	 * shape of the request is read off the record's own components, and the only list is
-	 * {@link TeamWriteApi#ASKED_FOR_BEFORE_THE_FORM_ASKS}, which this case holds to being
-	 * true in both directions - so a field added to the form tomorrow fails the build until
-	 * somebody decides where it goes, and a name that starts being asked for cannot sit on
-	 * that list excusing nothing. It is the shape {@code WhatRegistrationAsksForTest}
+	 * shape of the request is read off the record's own components, and the two are held to
+	 * each other in both directions - so a field added to the form tomorrow fails the build
+	 * until somebody decides where it goes. ~~A list of names the route took before the form
+	 * asked for them~~ stood beside it until 23.11.2026, when the form began to ask for the
+	 * description and the link. It is the shape {@code WhatRegistrationAsksForTest}
 	 * already uses for the registration's own form file.
 	 *
 	 * <p><b>It exists because the comparison was made by eye and was wrong.</b> The record
@@ -1255,25 +1251,59 @@ class TeamWriteApiTest {
 			theRouteTakes.add(one.getName());
 		}
 
+		/* BOTH DIRECTIONS AT ONCE, since 23.11.2026, when the form began to ask for the description
+		   and the link and the list that excused them (`ASKED_FOR_BEFORE_THE_FORM_ASKS`) had nothing
+		   left to excuse: a field on the form this route has no name for is dropped by Jackson with a
+		   201, and a name this route takes that the form does not ask for is a field nobody fills. */
 		assertThat(theRouteTakes)
-				.as("a field the member's form asks for is one this route has no name for, so"
-						+ " Jackson drops it and he is answered 201 with it thrown away")
-				.containsAll(onTheForm);
+				.as("the member's form and this route do not name the same fields")
+				.containsExactlyInAnyOrderElementsOf(onTheForm);
+	}
 
-		assertThat(TeamWriteApi.ASKED_FOR_BEFORE_THE_FORM_ASKS)
-				.as("a name excused as one the form does not ask for is one the form DOES ask"
-						+ " for, so the list is excusing nothing")
-				.doesNotContainAnyElementsOf(onTheForm)
-				.allSatisfy(named -> assertThat(theRouteTakes)
-						.as("%s is excused as a field this route takes before the form asks for"
-								+ " it, and this route does not take it at all", named)
-						.contains(named));
+	/**
+	 * THE DESCRIPTION IS AS LONG AS EVERY FORM THAT ASKS FOR IT ALLOWS, AND NO LONGER.
+	 *
+	 * <p>PDL P13, „[ODLUKE 23.11.2026 ...]", point 1: 360 characters, as a member's biography. The
+	 * three forms that ask for it are read off the working tree, so a form whose box takes more than
+	 * the route keeps is a member who types the 361st character and is refused after pressing.
+	 */
+	@ParameterizedTest
+	@ValueSource(strings = {"predlog-tima.form.json", "admin-tim.form.json"})
+	void theDescriptionIsAsLongAsTheFormLetsItBe(String file) throws Exception {
+		JsonNode bio = null;
 
-		assertThat(theRouteTakes)
-				.as("this route takes a field that is neither on the member's form nor named as"
-						+ " one the form does not ask for yet")
-				.allMatch(one -> onTheForm.contains(one)
-						|| TeamWriteApi.ASKED_FOR_BEFORE_THE_FORM_ASKS.contains(one));
+		for (JsonNode field : mapper.readTree(Files.readString(THE_MEMBERS_FORM.resolveSibling(file)))
+				.path("fields")) {
+			if ("bio".equals(field.path("name").asString())) {
+				bio = field;
+			}
+		}
+
+		assertThat(bio).as("%s asks for no description", file).isNotNull();
+		assertThat(bio.path("maxLength").asInt())
+				.as("%s lets a description be a different length from the one the route keeps", file)
+				.isEqualTo(TeamWriteApi.THE_LONGEST_DESCRIPTION);
+	}
+
+	@Test
+	void aDescriptionOfThreeHundredAndSixtyIsKeptAndOneLongerIsRefused() throws Exception {
+		assertThat(proposeAs(ME, form("  Opisani tim  ", " " + "a".repeat(360) + " ", "",
+				"  Novi Sad  ", "RS")).getStatus())
+				.as("a description exactly as long as the form allows was refused, or the spaces"
+						+ " round it were counted")
+				.isEqualTo(201);
+		assertThat(db.sql("select bio from team_proposal where name = ?").param("Opisani tim")
+				.query(String.class).single())
+				.isEqualTo("a".repeat(360));
+
+		MockHttpServletResponse longer = proposeAs(ME, form("  Predugo opisani  ", "a".repeat(361),
+				"", "  Novi Sad  ", "RS"));
+
+		assertThat(longer.getStatus()).isEqualTo(400);
+		assertThat(reasonIn(longer)).isEqualTo(TeamWriteApi.THE_TEXT_IS_TOO_LONG);
+		assertThat(db.sql("select count(*) from team_proposal where name = ?")
+				.param("Predugo opisani").query(Long.class).single())
+				.isZero();
 	}
 
 	/**
@@ -1293,20 +1323,20 @@ class TeamWriteApiTest {
 	void whatTheFormSendsIsWhatTheModeratorReads() throws Exception {
 		MockHttpServletResponse answer = proposeAs(ME, "{\"name\": \"  Pancevacki trkaci  \","
 				+ " \"city\": \"  Pancevo  \", \"country\": \"RS\","
-				+ " \"note\": \"  Trcimo svake subote i hocemo svoj tim  \"}");
+				+ " \"bio\": \"  Trcimo svake subote  \", \"link\": \"  https://pancevo.example  \"}");
 
 		assertThat(answer.getStatus()).isEqualTo(201);
+
+		assertThat(db.sql("select bio || ' ' || link from team_proposal where name = ?")
+				.param("Pancevacki trkaci").query(String.class).single())
+				.as("the description and the link the member wrote did not reach the proposal an"
+						+ " approval copies them from")
+				.isEqualTo("Trcimo svake subote https://pancevo.example");
 
 		assertThat(db.sql("select v.body from verification v join team_proposal tp"
 						+ " on tp.id = v.team_proposal_id where tp.name = ?")
 				.param("Pancevacki trkaci").query(String.class).single())
-				.as("what the member wrote to whoever decides did not reach the queue card")
-				.isEqualTo("Trcimo svake subote i hocemo svoj tim");
-
-		assertThat(db.sql("select bio from team_proposal where name = ?")
-				.param("Pancevacki trkaci").query(String.class).single())
-				.as("the note was written into the team's own description as well, which is a"
-						+ " second home for it and a description nobody wrote")
+				.as("the description was written into the queue row as well, a second home for it")
 				.isEmpty();
 	}
 
@@ -2855,6 +2885,334 @@ class TeamWriteApiTest {
 		}
 
 		return runs;
+	}
+
+	// ----- PDL P13, 04.09.2026 and 23.11.2026: THE TEAM'S ADMINISTRATOR ASKS FOR A CHANGE -------------
+
+	private MockHttpServletResponse askForAChangeAs(String email, long team, String body)
+			throws Exception {
+		MockHttpServletRequestBuilder asking = post("/api/teams/" + team + "/changes").with(csrf())
+				.contentType(MediaType.APPLICATION_JSON).content(body);
+
+		return http.perform(email == null ? asking
+						: asking.cookie(new Cookie(SessionCookie.NAME, sessions.get(email).secret())))
+				.andReturn().getResponse();
+	}
+
+	/** The team being changed, as every page reads it. */
+	private List<String> theTeamWithTwo() {
+		return db.sql("select slug, name, bio, link, coalesce(city, '-') from team where slug = ?")
+				.param(A_TEAM_WITH_TWO)
+				.query((row, one) -> List.of(row.getString(1), row.getString(2), row.getString(3),
+						row.getString(4), row.getString(5)))
+				.single();
+	}
+
+	@Test
+	void theTeamsAdministratorAsksForAChangeAndTheTeamStaysAsItIsWhileItWaits() throws Exception {
+		aTeamWithTwoMembersAndEverythingHangingOffIt();
+		List<String> before = theTeamWithTwo();
+		long team = teamId(A_TEAM_WITH_TWO);
+
+		MockHttpServletResponse answer = askForAChangeAs("sedi-u-sedistu@primer.rs", team,
+				form("  Tim sa dva člana Zemun  ", "  Novi opis  ", "  https://dva.example  ",
+						"  Zemun  ", "RS"));
+
+		assertThat(answer.getStatus()).isEqualTo(201);
+		assertThat(db.sql("select tp.competitor_id, tp.name, tp.bio, tp.link, tp.city, v.queue,"
+						+ " v.state, v.subject from team_proposal tp"
+						+ " join verification v on v.team_proposal_id = tp.id where tp.team_id = ?")
+				.param(team)
+				.query((row, one) -> List.of(row.getObject(1), row.getString(2), row.getString(3),
+						row.getString(4), row.getString(5), row.getString(6), row.getString(7),
+						row.getString(8)))
+				.single())
+				.as("the change is not in the queue as a change to THIS team, from the one who asked")
+				.isEqualTo(List.of(competitorId(THE_SEAT), "Tim sa dva člana Zemun", "Novi opis",
+						"https://dva.example", "Zemun", "teams", "waiting", "Tim sa dva člana Zemun"));
+		assertThat(theTeamWithTwo())
+				.as("the team moved before anybody approved the change (PDL P13, 04.09.2026: „na strani"
+						+ " timova ostaju postojeći podaci dok se novi ne verifikuju”)")
+				.isEqualTo(before);
+	}
+
+	@Test
+	void aChangeKeepingTheTeamsOwnNameIsTakenAndAnotherTeamsNameIsNot() throws Exception {
+		aTeamWithTwoMembersAndEverythingHangingOffIt();
+		long team = teamId(A_TEAM_WITH_TWO);
+
+		assertThat(askForAChangeAs("sedi-u-sedistu@primer.rs", team,
+				form("  TIM SA DVA CLANA  ", "", "", "Zemun", "RS")).getStatus())
+				.as("a team was refused the address it already has")
+				.isEqualTo(201);
+
+		MockHttpServletResponse taken = askForAChangeAs("sedi-u-sedistu@primer.rs", team,
+				form("  " + TAKEN_NAME + "  ", "", "", "Zemun", "RS"));
+
+		assertThat(taken.getStatus()).isEqualTo(409);
+		assertThat(reasonIn(taken)).isEqualTo(TeamWriteApi.THE_ADDRESS_IS_TAKEN);
+	}
+
+	@Test
+	void aChangeWithADescriptionTooLongWaitsNowhere() throws Exception {
+		aTeamWithTwoMembersAndEverythingHangingOffIt();
+		long proposals = howManyProposals();
+
+		MockHttpServletResponse answer = askForAChangeAs("sedi-u-sedistu@primer.rs",
+				teamId(A_TEAM_WITH_TWO), form("Tim sa dva člana", "a".repeat(361), "", "Zemun", "RS"));
+
+		assertThat(answer.getStatus()).isEqualTo(400);
+		assertThat(reasonIn(answer)).isEqualTo(TeamWriteApi.THE_TEXT_IS_TOO_LONG);
+		assertThat(howManyProposals()).isEqualTo(proposals);
+	}
+
+	// ----- PDL P13, [ODLUKA 23.11.2026]: A SECOND CHANGE WHILE THE FIRST WAITS REPLACES IT -------------
+	//
+	// The shape is MePhotoApi's (the owner's own precedent): the card that waits is repointed and not
+	// deleted and opened again. Each of the three things it must not reach has a case that swaps its source.
+
+	/** A change of a team sitting in the queue, filed by whoever is named, in the state given. */
+	private long aChangeOf(String teamSlug, String filerNumber, String name, String state) {
+		long proposal = db.sql("insert into team_proposal (competitor_id, team_id, name, bio, link, city,"
+						+ " country_id) values (?, (select id from team where slug = ?), ?, 'Stari opis', '',"
+						+ " 'Novi Sad', (select id from country where code = 'RS')) returning id")
+				.params(competitorId(filerNumber), teamSlug, name).query(Long.class).single();
+
+		return aCardOf(proposal, filerNumber, name, state);
+	}
+
+	/** And the proposal of a team that does not exist yet, which carries no team at all. */
+	private long aNewTeamsProposal(String filerNumber, String name) {
+		long proposal = db.sql("insert into team_proposal (competitor_id, team_id, name, bio, link, city,"
+						+ " country_id) values (?, null, ?, 'Stari opis', '', 'Novi Sad',"
+						+ " (select id from country where code = 'RS')) returning id")
+				.params(competitorId(filerNumber), name).query(Long.class).single();
+
+		return aCardOf(proposal, filerNumber, name, "waiting");
+	}
+
+	private long aCardOf(long proposal, String filerNumber, String name, String state) {
+		long card = db.sql("insert into verification (queue, competitor_id, subject, body, team_proposal_id)"
+						+ " values ('teams', ?, ?, '', ?) returning id")
+				.params(competitorId(filerNumber), name, proposal).query(Long.class).single();
+
+		if (!state.equals("waiting")) {
+			db.sql("update verification set state = 'rejected', decided_at = now(),"
+							+ " decided_by_name = 'Moderator', reason = 'Ne.' where id = ?")
+					.param(card).update();
+		}
+
+		return card;
+	}
+
+	/** One card, read back whole: whose, what it says, in which state, and where it stands in the queue. */
+	private String theCard(long card) {
+		return db.sql("select v.competitor_id || '|' || v.subject || '|' || p.name || '|' || p.bio || '|'"
+						+ " || v.state || '|' || v.raised_at from verification v"
+						+ " join team_proposal p on p.id = v.team_proposal_id where v.id = ?")
+				.param(card).query(String.class).list().stream()
+				.findFirst().orElse("the card is not there any more");
+	}
+
+	private List<Long> theCardsOf(String teamSlug) {
+		return db.sql("select v.id from verification v join team_proposal p on p.id = v.team_proposal_id"
+						+ " where p.team_id = (select id from team where slug = ?) order by v.id")
+				.param(teamSlug).query(Long.class).list();
+	}
+
+	private String whenTheCardWasRaised(long card) {
+		return db.sql("select raised_at::text from verification where id = ?").param(card)
+				.query(String.class).single();
+	}
+
+	@Test
+	void aSecondChangeReplacesTheFirstAndKeepsItsCardAndItsPlaceInTheQueue() throws Exception {
+		aTeamWithTwoMembersAndEverythingHangingOffIt();
+		long team = teamId(A_TEAM_WITH_TWO);
+
+		MockHttpServletResponse first = askForAChangeAs("sedi-u-sedistu@primer.rs", team,
+				form("Tim sa dva člana", "Prvi opis", "", "Zemun", "RS"));
+		List<Long> cards = theCardsOf(A_TEAM_WITH_TWO);
+		String raised = whenTheCardWasRaised(cards.get(0));
+
+		MockHttpServletResponse second = askForAChangeAs("sedi-u-sedistu@primer.rs", team,
+				form("Tim sa dva člana Zemun", "Drugi opis", "https://dva.example", "Sremski Karlovci", "RS"));
+
+		assertThat(List.of(first.getStatus(), second.getStatus())).containsExactly(201, 201);
+		assertThat(theCardsOf(A_TEAM_WITH_TWO))
+				.as("the second change opened a second card instead of replacing the first")
+				.isEqualTo(cards);
+		assertThat(db.sql("select count(*) from team_proposal where team_id = ?").param(team)
+				.query(Long.class).single()).isOne();
+		assertThat(db.sql("select p.name || '|' || p.bio || '|' || p.link || '|' || p.city || '|' || v.subject"
+						+ " from team_proposal p join verification v on v.team_proposal_id = p.id"
+						+ " where p.team_id = ?")
+				.param(team).query(String.class).single())
+				.as("what waits is not the words that were sent last")
+				.isEqualTo("Tim sa dva člana Zemun|Drugi opis|https://dva.example|Sremski Karlovci"
+						+ "|Tim sa dva člana Zemun");
+		assertThat(whenTheCardWasRaised(cards.get(0)))
+				.as("the card went to the back of the queue: it was opened again and not repointed")
+				.isEqualTo(raised);
+		assertThat(mapper.readTree(second.getContentAsString()).path("id").asLong())
+				.as("the second answer names another card than the one that waits")
+				.isEqualTo(db.sql("select team_proposal_id from verification where id = ?")
+						.param(cards.get(0)).query(Long.class).single());
+		assertThat(theTeamWithTwo().get(1)).as("the team moved while a change waited")
+				.isEqualTo("Tim sa dva člana");
+	}
+
+	@Test
+	void theCardBelongsToWhoSentTheLastChange() throws Exception {
+		aTeamWithTwoMembersAndEverythingHangingOffIt();
+		long team = teamId(A_TEAM_WITH_TWO);
+
+		askForAChangeAs("sedi-u-sedistu@primer.rs", team, form("Tim sa dva člana", "", "", "Zemun", "RS"));
+		db.sql("update team set admin_id = ? where id = ?").params(competitorId(THE_LONGEST), team).update();
+
+		assertThat(askForAChangeAs("najduze-u-timu@primer.rs", team,
+				form("Tim sa dva člana", "Od novog", "", "Zemun", "RS")).getStatus()).isEqualTo(201);
+		assertThat(db.sql("select v.competitor_id || '|' || p.competitor_id from verification v"
+						+ " join team_proposal p on p.id = v.team_proposal_id where p.team_id = ?")
+				.param(team).query(String.class).single())
+				.as("the notice of the decision would go to somebody who no longer sent it")
+				.isEqualTo(competitorId(THE_LONGEST) + "|" + competitorId(THE_LONGEST));
+	}
+
+	@Test
+	void aChangeOfAnotherTeamIsLeftAloneEvenWhenTheSameMemberSentIt() throws Exception {
+		aTeamWithTwoMembersAndEverythingHangingOffIt();
+		/* The OLDER card, so a reading that drops the team from the question picks it first. */
+		long other = aChangeOf(HIS_TEAM, THE_SEAT, "Sava Runners", "waiting");
+		String before = theCard(other);
+
+		askForAChangeAs("sedi-u-sedistu@primer.rs", teamId(A_TEAM_WITH_TWO),
+				form("Tim sa dva člana", "Novi opis", "", "Zemun", "RS"));
+
+		assertThat(theCard(other)).as("another team's change was replaced").isEqualTo(before);
+		assertThat(theCardsOf(A_TEAM_WITH_TWO)).hasSize(1);
+	}
+
+	@Test
+	void aChangeThatWasDecidedIsLeftAloneAndAnotherOpensBesideIt() throws Exception {
+		aTeamWithTwoMembersAndEverythingHangingOffIt();
+		long decided = aChangeOf(A_TEAM_WITH_TWO, THE_SEAT, "Tim sa dva člana", "rejected");
+		String before = theCard(decided);
+
+		askForAChangeAs("sedi-u-sedistu@primer.rs", teamId(A_TEAM_WITH_TWO),
+				form("Tim sa dva člana", "Novi opis", "", "Zemun", "RS"));
+
+		assertThat(theCard(decided)).as("a decided card was rewritten").isEqualTo(before);
+		assertThat(theCardsOf(A_TEAM_WITH_TWO)).as("no new card opened beside the decided one").hasSize(2);
+	}
+
+	@Test
+	void theProposalOfANewTeamIsLeftAlone() throws Exception {
+		aTeamWithTwoMembersAndEverythingHangingOffIt();
+		long proposal = aNewTeamsProposal(THE_SEAT, "Neki novi tim");
+		String before = theCard(proposal);
+
+		askForAChangeAs("sedi-u-sedistu@primer.rs", teamId(A_TEAM_WITH_TWO),
+				form("Tim sa dva člana", "Novi opis", "", "Zemun", "RS"));
+
+		assertThat(theCard(proposal)).as("a new team's proposal was taken for a change").isEqualTo(before);
+		assertThat(theCardsOf(A_TEAM_WITH_TWO)).hasSize(1);
+	}
+
+	/** Two that waited side by side before the rule (none on production, measured 23.11.2026) come down to one. */
+	@Test
+	void changesThatAlreadyWaitedBesideEachOtherComeDownToOne() throws Exception {
+		aTeamWithTwoMembersAndEverythingHangingOffIt();
+		long older = aChangeOf(A_TEAM_WITH_TWO, THE_SEAT, "Tim sa dva člana", "waiting");
+		aChangeOf(A_TEAM_WITH_TWO, THE_SEAT, "Tim sa dva člana", "waiting");
+
+		askForAChangeAs("sedi-u-sedistu@primer.rs", teamId(A_TEAM_WITH_TWO),
+				form("Tim sa dva člana", "Poslednji", "", "Zemun", "RS"));
+
+		assertThat(theCardsOf(A_TEAM_WITH_TWO)).containsExactly(older);
+		assertThat(theCard(older)).contains("|Poslednji|");
+	}
+
+	/** The three things a change cannot be asked for without, absent, empty and blank, for the team's own administrator. */
+	@ParameterizedTest
+	@CsvSource(nullValues = "NIC", value = {
+			"NIC, Zemun, RS", "'   ', Zemun, RS", "Tim sa dva člana, NIC, RS", "Tim sa dva člana, '', RS",
+			"Tim sa dva člana, Zemun, NIC", "Tim sa dva člana, Zemun, '   '"})
+	void aChangeWithSomethingMissingIsAFormNotFilledIn(String name, String city, String country)
+			throws Exception {
+		aTeamWithTwoMembersAndEverythingHangingOffIt();
+		long proposals = howManyProposals();
+		Map<String, String> fields = new java.util.LinkedHashMap<>();
+		fields.put("name", name);
+		fields.put("city", city);
+		fields.put("country", country);
+
+		MockHttpServletResponse answer = askForAChangeAs("sedi-u-sedistu@primer.rs",
+				teamId(A_TEAM_WITH_TWO), mapper.writeValueAsString(fields));
+
+		assertThat(answer.getStatus()).isEqualTo(400);
+		assertThat(reasonIn(answer)).isEqualTo(TeamWriteApi.THE_FORM_IS_NOT_COMPLETE);
+		assertThat(howManyProposals()).isEqualTo(proposals);
+	}
+
+	@Test
+	void aChangeUnderANameNoPageCouldBeOpenedAtOrWithALinkThatIsNotOneWaitsNowhere() throws Exception {
+		aTeamWithTwoMembersAndEverythingHangingOffIt();
+		long proposals = howManyProposals();
+
+		MockHttpServletResponse noAddress = askForAChangeAs("sedi-u-sedistu@primer.rs",
+				teamId(A_TEAM_WITH_TWO), form("  !!! ---  ", "", "", "Zemun", "RS"));
+		MockHttpServletResponse noLink = askForAChangeAs("sedi-u-sedistu@primer.rs",
+				teamId(A_TEAM_WITH_TWO), form("Tim sa dva člana", "", "nije link", "Zemun", "RS"));
+
+		assertThat(noAddress.getStatus()).isEqualTo(400);
+		assertThat(reasonIn(noAddress)).isEqualTo(TeamWriteApi.THE_NAME_MAKES_NO_ADDRESS);
+		assertThat(noLink.getStatus()).isEqualTo(400);
+		assertThat(reasonIn(noLink)).isEqualTo(TeamWriteApi.THE_LINK_IS_NOT_SHAPED);
+		assertThat(howManyProposals()).isEqualTo(proposals);
+	}
+
+	/** A body that is read and says nothing: for a member who is not the administrator it is the same 404. */
+	@Test
+	void aMemberWhoDoesNotAdministerTheTeamIsToldNothingIsThereWhateverTheWordsAre() throws Exception {
+		aTeamWithTwoMembersAndEverythingHangingOffIt();
+
+		assertThat(askForAChangeAs("najduze-u-timu@primer.rs", teamId(A_TEAM_WITH_TWO),
+				form("  !!! ---  ", "", "nije link", "Zemun", "RS")).getStatus())
+				.as("somebody who may not touch the team was told what is wrong with a thing he cannot send")
+				.isEqualTo(404);
+	}
+
+	@ParameterizedTest
+	@ValueSource(strings = {"najduze-u-timu@primer.rs", "ja@primer.rs", MODERATOR_OVER_TEAMS,
+			THE_SUPERADMIN})
+	void nobodyButTheTeamsOwnAdministratorAsksForAChange(String who) throws Exception {
+		aTeamWithTwoMembersAndEverythingHangingOffIt();
+		long proposals = howManyProposals();
+
+		assertThat(askForAChangeAs(who, teamId(A_TEAM_WITH_TWO),
+				form("Tim sa dva člana", "", "", "Zemun", "RS")).getStatus())
+				.as("%s sent a change to a team he does not administer", who)
+				.isEqualTo(404);
+		assertThat(howManyProposals()).isEqualTo(proposals);
+	}
+
+	@Test
+	void theAdministratorOfOneTeamAsksNothingOfAnother() throws Exception {
+		aTeamWithTwoMembersAndEverythingHangingOffIt();
+
+		assertThat(askForAChangeAs("sedi-u-sedistu@primer.rs", teamId(HIS_TEAM),
+				form("Sava Runners", "", "", "Zemun", "RS")).getStatus())
+				.isEqualTo(404);
+	}
+
+	@Test
+	void somebodyNotSignedInAsksForNoChange() throws Exception {
+		aTeamWithTwoMembersAndEverythingHangingOffIt();
+
+		assertThat(askForAChangeAs(null, teamId(A_TEAM_WITH_TWO),
+				form("Tim sa dva člana", "", "", "Zemun", "RS")).getStatus())
+				.isEqualTo(401);
 	}
 
 	private MockHttpServletResponse deleteTheTeamAs(String email, long team) throws Exception {

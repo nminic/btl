@@ -906,6 +906,7 @@
     "proposeFormIncomplete": "The name, the town and the country must all be filled in.",
     "proposeCountryUnknown": "The country chosen is not recognised.",
     "proposeLinkNotShaped": "The link given is not valid.",
+    "proposeTextTooLong": "The team description is longer than the portal takes. Shorten it and send it again.",
     "join": "Apply to the team",
     "joinTaken": "Take into the team",
     "joinTakenNamed": "Take into the team: {name}",
@@ -1479,6 +1480,8 @@
       "categoryFromDistance": "It will be set once a length is entered",
       "teamName": "Team name",
       "teamOrganizer": "Team organiser",
+      "teamBio": "Team description",
+      "teamLink": "Link",
       "leagueName": "Competition name",
       "priceLabel": "Period name",
       "eur": "The amount in euros",
@@ -1606,6 +1609,14 @@
     "teamDeleteAsk": "Delete the team?",
     "teamDeleteRefused": {
       "theWindowIsShut": "A team is deleted only in the transfer window, from 21 November to 31 December."
+    },
+    "teamRefused": {
+      "theFormIsNotComplete": "The name, the town, the country and the organiser must all be filled in.",
+      "heIsNotInTheTeam": "The organiser has to be in this team.",
+      "theTextIsTooLong": "The team description is longer than the portal takes. Shorten it and save it again.",
+      "theOrganizerIsNotKnown": "The organiser is not a member of the portal.",
+      "heIsAlreadyInATeam": "The founder is already in a team.",
+      "theSeasonIsNotPaid": "The founder has not paid the membership for season {season}."
     },
     "leagueSavedUnseen": "The competition was saved. Refresh the page.",
     "priceSaved": "The price has been saved.",
@@ -1798,8 +1809,6 @@
     "subject": "Subject",
     "teamChange": "A change to an existing team",
     "teamChangeOf": "A change to the team \"{name}\"",
-    "teamChangeAccepted": "The change to the team \"{name}\" has been accepted",
-    "teamChangeAcceptedBody": "The details of the team \"{name}\" have been changed.",
     "sentBy": "Sent by {who}, member {memberNumber}",
     "sentByAnonymous": "Reported by a visitor without an account",
     "paymentsSeason": "Not members for the {season} season",
@@ -1845,10 +1854,10 @@
     },
     "body": {
       "leagues": "Competition description",
-      "teams": "The reasoning",
+      "teams": "Team description",
       "bio": "Biography text",
       "photo": "File",
-      "teamEdit": "The reasoning",
+      "teamEdit": "Team description",
       "comments": "Comment"
     },
     "results": "Results",
@@ -1880,8 +1889,6 @@
       "few": "{count} items have been settled.",
       "other": "{count} items have been settled."
     },
-    "teamAccepted": "The team \"{name}\" has been accepted",
-    "teamAcceptedBody": "Your proposal for the team \"{name}\" has been accepted. You are its organiser.",
     "teamTaken": "A team under this name, or under a name that gives the same address, already exists in the League. Correct the name or refuse the proposal.",
     "teamNoAddress": "No page address can be made from this name. Correct the name so that it has at least one letter of our alphabet or of Cyrillic, or a digit, or refuse the proposal.",
     "teamIncomplete": "The name, the town and the country must all be filled in for the team to come into being.",

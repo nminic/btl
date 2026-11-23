@@ -906,6 +906,7 @@
     "proposeFormIncomplete": "Naziv, mesto i država moraju biti popunjeni.",
     "proposeCountryUnknown": "Izabrana država nije prepoznata.",
     "proposeLinkNotShaped": "Uneta veza nije ispravna.",
+    "proposeTextTooLong": "Opis tima je duži nego što portal prima. Skrati ga pa pošalji ponovo.",
     "join": "Prijavi se u tim",
     "joinTaken": "Primi u tim",
     "joinTakenNamed": "Primi u tim: {name}",
@@ -1479,6 +1480,8 @@
       "categoryFromDistance": "Odrediće se kad se unese dužina",
       "teamName": "Naziv tima",
       "teamOrganizer": "Organizator tima",
+      "teamBio": "Opis tima",
+      "teamLink": "Link",
       "leagueName": "Naziv lige",
       "priceLabel": "Naziv perioda",
       "eur": "Iznos u evrima",
@@ -1627,6 +1630,14 @@
     "moderatorRightsSavedUnseen": "Pravo je sačuvano, ali portal ne može da prikaže novo stanje. Osveži stranu.",
     "teamDeleteRefused": {
       "theWindowIsShut": "Tim se briše samo u prelaznom roku, od 21. novembra do 31. decembra."
+    },
+    "teamRefused": {
+      "theFormIsNotComplete": "Naziv, mesto, država i organizator moraju biti popunjeni.",
+      "heIsNotInTheTeam": "Organizator mora da bude u ovom timu.",
+      "theTextIsTooLong": "Opis tima je duži nego što portal prima. Skrati ga pa sačuvaj ponovo.",
+      "theOrganizerIsNotKnown": "Organizator nije član portala.",
+      "heIsAlreadyInATeam": "Osnivač je već u nekom timu.",
+      "theSeasonIsNotPaid": "Osnivač nije platio članarinu za sezonu {season}."
     },
     "teamGone": "Tim je obrisan.",
     "teamDeleteAsk": "Obriši tim?",
@@ -1798,8 +1809,6 @@
     "subject": "Predmet",
     "teamChange": "Izmena postojećeg tima",
     "teamChangeOf": "Izmena tima \"{name}\"",
-    "teamChangeAccepted": "Izmena tima \"{name}\" je prihvaćena",
-    "teamChangeAcceptedBody": "Podaci tima \"{name}\" su izmenjeni.",
     "sentBy": "Poslao {who}, član {memberNumber}",
     "sentByAnonymous": "Prijavio posetilac bez naloga",
     "paymentsSeason": "Nisu članovi za sezonu {season}",
@@ -1845,10 +1854,10 @@
     },
     "body": {
       "leagues": "Opis lige",
-      "teams": "Obrazloženje",
+      "teams": "Opis tima",
       "bio": "Tekst biografije",
       "photo": "Datoteka",
-      "teamEdit": "Obrazloženje",
+      "teamEdit": "Opis tima",
       "comments": "Komentar"
     },
     "results": "Rezultati",
@@ -1880,8 +1889,6 @@
       "few": "Rešene su {count} stavke.",
       "other": "Rešeno je {count} stavki."
     },
-    "teamAccepted": "Tim \"{name}\" je prihvaćen",
-    "teamAcceptedBody": "Tvoj predlog tima \"{name}\" je prihvaćen. Ti si njegov organizator.",
     "teamTaken": "Tim pod ovim nazivom, ili pod nazivom koji daje istu adresu, već postoji u ligi. Ispravi naziv ili odbij predlog.",
     "teamNoAddress": "Od ovog naziva se ne može napraviti adresa strane tima. Ispravi naziv tako da ima bar jedno slovo naše abecede ili ćirilice, ili cifru, ili odbij predlog.",
     "teamIncomplete": "Naziv, mesto i država moraju biti popunjeni da bi tim mogao da nastane.",

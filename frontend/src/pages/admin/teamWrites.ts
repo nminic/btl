@@ -20,13 +20,65 @@
  * does reach it is the linter, and a table of dictionary keys is data rather than words on
  * a screen.
  *
- * <p><b>THIS SCREEN SENDS ONE VERB AND ONE ONLY, AND THAT IS A BOUNDARY RATHER THAN A
- * STAGE OF THE WORK.</b> See the note on `admin/AdminTeams.tsx`, which states it in full:
- * a team has no route to be made at or changed at, so `DELETE /api/teams/{id}` is the whole
- * of what this file has anything to say about. Measured on 26.09.2026 over
- * `backend/src/main/java`, which declares exactly four (verb, address) pairs for a team and
- * no `PUT` among them.
+ * <p><b>THREE VERBS SINCE 23.11.2026, AND ALL THREE GO TO THE SERVER.</b> ~~This screen sent one
+ * verb and one only~~, because a team had no route to be made or changed at, so the making and the
+ * changing lived in the browser's session and a team made there did not exist (PDL P13,
+ * „[ZATEČENO 23.11.2026 ...]", measured on production). The administration now makes a team at
+ * `POST /api/teams/direct` and changes one at `PUT /api/teams/{id}`
+ * (`TeamAdministrationWriteApi`), both directly, by the decision of 09.10.2026 („Administracija
+ * pravi i menja tim direktno, bez reda za moderaciju").
  */
+
+/**
+ * WHERE THE ADMINISTRATION'S FORM GOES: a team being made to the making, a team that exists to its
+ * own change. Asked of the identity the form was opened with, never of what the form holds.
+ */
+export function whereTheTeamGoes(id: number | null): { path: string; method: 'POST' | 'PUT' } {
+  return id === null
+    ? { path: '/api/teams/direct', method: 'POST' }
+    : { path: `/api/teams/${String(id)}`, method: 'PUT' }
+}
+
+/**
+ * WHAT THE FORM SENDS, NAMED FIELD BY FIELD AND NEVER SPREAD, so a value the form holds for its own
+ * reasons (the identity, the address) cannot ride along. The six are `admin-tim.form.json`'s, which
+ * `TeamAdministrationWriteApiTest` holds to the route's record.
+ */
+export function theTeamAsWritten(values: Record<string, unknown>): Record<string, string> {
+  return {
+    name: String(values.name ?? ''),
+    city: String(values.city ?? ''),
+    country: String(values.country ?? ''),
+    organizerMemberNumber: String(values.organizerMemberNumber ?? ''),
+    bio: String(values.bio ?? ''),
+    link: String(values.link ?? ''),
+  }
+}
+
+/**
+ * THE REASONS THE ADMINISTRATION'S TWO WRITES OF A TEAM NAME, each to a sentence.
+ *
+ * <p>Five are the member's own sentences, because they are the same fact about the same form
+ * (`WHEN_PROPOSING_A_TEAM`): a name taken, a name that makes no address, a country nobody serves, a
+ * link that is not one, and the window (`teams.proposeShut`, the portal's sentence for the window a
+ * team is founded in, which binds the administration too: PDL P13, 26.09.2026). Two are the
+ * moderator's sentences, word for word, because this reader is the one who decides and the founder
+ * is somebody else: „Osnivač je već u nekom timu." and the owner's „Osnivač nije platio članarinu
+ * za sezonu [sezona]." (PDL, 31.10.2026). The four left are this form's own, worded by me.
+ */
+export const WHEN_THE_ADMINISTRATION_WRITES_A_TEAM: Record<string, string> = {
+  theFormIsNotComplete: 'admin.teamRefused.theFormIsNotComplete',
+  theCountryIsNotKnown: 'teams.proposeCountryUnknown',
+  theNameMakesNoAddress: 'teams.proposeNoAddress',
+  theAddressIsTaken: 'teams.proposeTaken',
+  heIsNotInTheTeam: 'admin.teamRefused.heIsNotInTheTeam',
+  theLinkIsNotShaped: 'teams.proposeLinkNotShaped',
+  theTextIsTooLong: 'admin.teamRefused.theTextIsTooLong',
+  theWindowIsShut: 'teams.proposeShut',
+  theOrganizerIsNotKnown: 'admin.teamRefused.theOrganizerIsNotKnown',
+  heIsAlreadyInATeam: 'admin.teamRefused.heIsAlreadyInATeam',
+  theSeasonIsNotPaid: 'admin.teamRefused.theSeasonIsNotPaid',
+}
 
 /**
  * THE ONE REFUSAL `DELETE /api/teams/{id}` NAMES, and the sentence this screen turns it
@@ -75,34 +127,4 @@
  */
 export const WHEN_DELETING_A_TEAM: Record<string, string> = {
   theWindowIsShut: 'admin.teamDeleteRefused.theWindowIsShut',
-}
-
-/**
- * WHETHER THIS TEAM IS ONE THE DATABASE HANDED OUT, WHICH IS THE QUESTION „MAY THIS ROW'S
- * DELETE BE SENT ANYWHERE" REDUCED TO SOMETHING ANSWERABLE OFF ONE LOOK.
- *
- * <p><b>Why the question exists at all, and it is a measurement rather than caution.</b>
- * A team entered on this screen is still remembered as a session overlay (see the note on
- * `admin/AdminTeams.tsx`), and an entity filed under `id` takes its identity from
- * `admin/entityForms.ts`'s `idFor`, which counts DOWN from nought so that nothing it hands
- * out can collide with a `bigserial`. So the first team entered during a visit is number
- * `-1`, and a delete pressed on its row without this would send
- * `DELETE /api/teams/-1`. That is the very fault PR 368 closed one number along, where the
- * panel of races posted to `/api/leagues/-1/races`; it is written down here rather than
- * rediscovered, because this screen is the one where both kinds of row stand in one table.
- *
- * <p><b>A whole number ABOVE NOUGHT, which is the same range `leagueWrites.identityIn`
- * refuses outside of and for the same reason.</b> `team.id` is a `bigserial` and starts at
- * one; nought and below is precisely the range the overlay hands out.
- *
- * <p><b>Read without an assertion (ADL A14), and `typeof` first.</b> What a row carries
- * here is `unknown` as far as this question goes: a served team carries a number, and a row
- * folded back out of the overlay may carry the text it was filed under. Both are answered
- * correctly by looking rather than by coercing - and coercing is the trap, because
- * `Number('-1')` is a number and `Number('')` is nought, so a string that went through
- * `Number` would be judged on a value this function never saw. A row whose identity is not
- * a number is not the database's, which is the honest answer and the safe one.
- */
-export function standsOnTheServer(id: unknown): boolean {
-  return typeof id === 'number' && Number.isInteger(id) && id > 0
 }

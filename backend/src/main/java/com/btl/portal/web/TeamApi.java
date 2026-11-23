@@ -687,7 +687,8 @@ class TeamApi {
 			List<EndedMembership> endedMemberships,
 			@JsonInclude(JsonInclude.Include.NON_NULL) Boolean foundedByMe,
 			@JsonInclude(JsonInclude.Include.NON_NULL) Boolean administeredByMe,
-			@JsonInclude(JsonInclude.Include.NON_NULL) Optional<String> organizerMemberNumber) {
+			@JsonInclude(JsonInclude.Include.NON_NULL) Optional<String> organizerMemberNumber,
+			String link) {
 	}
 
 	/**
@@ -990,7 +991,11 @@ class TeamApi {
 						   be one no mutation can reach, because the mapper would go on hiding
 						   the field after it was taken away. */
 						+ " case when t.admin_id is null then ''"
-						+ "      else seat.member_number end as organizer_member_number"
+						+ "      else seat.member_number end as organizer_member_number,"
+						/* THE TEAM'S OWN PAGE, read by name and placed last so that no position
+						   above it moves (PDL P13, 11.08.2026: „opis (ograniceni unos) i neobavezni
+						   link"; drawn on the team's page since 23.11.2026). */
+						+ " t.link"
 						+ " from team t"
 						+ " left join place town on town.id = t.place_id"
 						+ " left join country town_country on town_country.id = town.country_id"
@@ -1079,7 +1084,7 @@ class TeamApi {
 							   sentence „you do not administer this" told to somebody who was never
 							   asked about. */
 							row.getObject(11, Boolean.class), row.getObject(12, Boolean.class),
-							inTheSeat);
+							inTheSeat, row.getString("link"));
 				})
 				.list();
 	}

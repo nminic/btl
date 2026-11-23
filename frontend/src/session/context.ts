@@ -2,7 +2,6 @@ import { createContext } from 'react'
 import type {
   Crop,
   MembershipBasis,
-  PendingItem,
   RacingPair,
 } from '../data/types'
 
@@ -816,18 +815,6 @@ export type SessionValue = {
   /** Removes one record of one entity. Asked for twice on screen before it gets
    *  here (EntityEditor.tsx), because nothing brings it back. */
   remove: (entity: string, id: string) => void
-
-  /**
-   * What a member has put forward during this visit and nobody has decided on.
-   *
-   * A team, today. It is the same kind of thing as the teams that are read off
-   * the disc, and it joins them rather than living in a list of its own
-   * (src/pages/admin/pending.ts): a moderator opening the queue must not be able
-   * to tell which of two waiting teams came from a file and which from a member,
-   * because there is no such difference once the database exists.
-   */
-  proposals: PendingItem[]
-  propose: (item: Omit<PendingItem, 'id'>) => void
 
   /**
    * THE QUEUE ROW THE SERVER FILED FOR THE PICTURE THIS VISIT SENT, and nothing else about it.

@@ -132,6 +132,23 @@ export type Answered = {
    * never beside `newRace`: a run is counted on one race.
    */
   raceId?: number
+  /**
+   * The team as the card shows it, on an approval on the queue of teams and nowhere else
+   * (`VerificationWriteApi.TeamAsCorrected`, 23.11.2026). Only {@link anApprovalOfTheTeam} writes it.
+   * Left out, the route makes the team as the member sent it.
+   */
+  team?: { name: string; city: string; country: string; bio: string; link: string }
+  /**
+   * The words of the team the moderator had in front of him, as the card was served, on a decision about
+   * a proposal or a change of a team and nowhere else (`VerificationWriteApi.Answered.seenTeam`,
+   * 23.11.2026). A second change of a team is written over the card that waits (PDL P13, [ODLUKA
+   * 23.11.2026], „nova zamenjuje staru"), so the route compares these with what the card holds when it
+   * takes the card and answers 409 „Izmena tima je promenjena, pogledaj je ponovo." when they differ,
+   * for the refusal as much as for the approval. NOT the correction: that is {@link team}, and the
+   * two differ exactly when the moderator typed over a box. Written by {@link anApprovalOfTheTeam} and
+   * {@link aRefusalOfTheTeam} and by nothing else.
+   */
+  seenTeam?: { name: string; city: string; country: string; bio: string; link: string }
 }
 
 /**
@@ -230,6 +247,39 @@ export function photoPath(id: string, photoId: number): string {
  */
 export function anApproval(): Answered {
   return { approved: true, reason: '' }
+}
+
+/**
+ * Yes, to a team as the card shows it: the name, the town, the country, the description and the
+ * link the moderator left there, which may be the member's or his own correction (PDL P13, owner
+ * 03.08.2026: „mogu da menjaju ili ne menjaju podatke tima i ako ga prihvate"; 11.08.2026:
+ * „odobriti, editovati i odobriti ili odbiti"). The route makes or changes the team out of these and
+ * never writes them back over the proposal (`VerificationWriteApi.TeamAsCorrected`).
+ */
+export function anApprovalOfTheTeam(team: TheWordsOfATeam, seen: TheWordsOfATeam): Answered {
+  return {
+    approved: true,
+    reason: '',
+    team: { name: team.name, city: team.city, country: team.country, bio: team.bio, link: team.link },
+    seenTeam: { name: seen.name, city: seen.city, country: seen.country, bio: seen.bio, link: seen.link },
+  }
+}
+
+/** The five things a team is written with, which a card shows and a decision names. */
+export type TheWordsOfATeam = { name: string; city: string; country: string; bio: string; link: string }
+
+/**
+ * No, to the team this card drew, and here is why.
+ *
+ * <p>The refusal names the words as the approval does, for the picture's reason: a reason typed about
+ * one change would reach the member as the verdict on another otherwise.
+ */
+export function aRefusalOfTheTeam(reason: string, seen: TheWordsOfATeam): Answered {
+  return {
+    approved: false,
+    reason,
+    seenTeam: { name: seen.name, city: seen.city, country: seen.country, bio: seen.bio, link: seen.link },
+  }
 }
 
 /**

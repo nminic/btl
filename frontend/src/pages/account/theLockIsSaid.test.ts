@@ -456,6 +456,11 @@ const OPENING: { file: string; how: How; why: string }[] = [
     why: 'MY REASONING, read off the code on 25.10.2026: changing the password keeps the answer and draws it through `ServerSaid`. No case puts the lock on this screen; what says it is drawn is `ServerSaid`\'s own case in `theSiteIsLocked.test.tsx`.',
   },
   {
+    file: 'pages/member/EditTeam.tsx',
+    how: 'says',
+    why: 'MY REASONING, read off the code on 23.11.2026: the change of a team (`POST /api/teams/{id}/changes`) keeps the answer and draws it through `ServerSaid`, under the form. No case puts the lock on this screen; what says it is drawn is the own case of `ServerSaid`, which stands in `theSiteIsLocked.test.tsx`.',
+  },
+  {
     file: 'pages/member/LeaveThePortal.tsx',
     how: 'says',
     why: 'MY REASONING, read off the code on 20.11.2026: „Obriši nalog" keeps every answer that is not done and draws it through `ServerSaid` under the button, after the window closes; `member/leaveThePortal.test.tsx` holds that a refusal is drawn as an alert. No case puts the lock on this screen; what says it is drawn is `ServerSaid`\'s own case in `theSiteIsLocked.test.tsx`.',

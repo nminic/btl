@@ -559,6 +559,14 @@ class RightsAtTheDoorTest {
 					   with a team-mate who is genuinely in the team and a moderator who
 					   genuinely holds a right that is not this one. */
 					"DELETE /api/teams/{id}",
+					/* THE TEAM'S OWN ADMINISTRATOR ASKING FOR A CHANGE, ADDED 23.11.2026 (PDL P13,
+					   04.09.2026 and „[ODLUKE 23.11.2026 ...]"). No box opens it: the one who may is
+					   whoever administers that team, read off the team inside the handler, and the
+					   administration changes a team directly at `PUT /api/teams/{id}` instead.
+					   Every other signed in account is refused 404, which `TeamWriteApiTest` holds
+					   with a team-mate, a member of no team, a moderator over the teams and the
+					   superadmin. */
+					"POST /api/teams/{id}/changes",
 					/* A MEMBER'S OWN CHOICE OF CATEGORY, ADDED 27.09.2026. Here for the reason
 					   `PUT /api/me` is: no box the superadmin ticks decides it,
 					   because choosing which category one runs in is not a privilege anybody

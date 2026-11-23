@@ -7,6 +7,22 @@ import { SLOW } from '../../test/slow'
 import { whoDraws } from '../../test/whoDraws'
 import { setupUser } from '../../test/user'
 import sr from '../../i18n/sr.json'
+import { fakeQueue } from '../../test/fakeQueue'
+
+/* THE SERVER'S TEAMS ARE IN FRONT OF EVERY CASE HERE since 23.11.2026, because the screens of teams
+ * speak to routes (`POST /api/teams/direct`, `PUT` and `DELETE /api/teams/{id}`) and read the lists
+ * again after a write instead of keeping the row in the session. `fakeQueue()` remembers what was
+ * written and serves the two lists it changes. */
+let theServerOfTeams: { stop: () => void } | null = null
+
+beforeEach(() => {
+  theServerOfTeams = fakeQueue()
+})
+
+afterEach(() => {
+  theServerOfTeams?.stop()
+  theServerOfTeams = null
+})
 
 /* Every wait is given half of what a case is given, for the reason `rowMembership.test.tsx` gives: a
    mutation then fails on its assertion and not on the clock of the case. */
@@ -111,6 +127,13 @@ async function twoRows() {
 const deletions = (asked: Asked[]) => asked.filter((one) => one.init?.method === 'DELETE')
 
 /**
+ * THE SERVER'S ANSWER TO A DELETION THAT IT AGREES TO, except for a team: the server of teams in front of
+ * every case (`fakeQueue`) takes the team out of the list the screen reads again, so it answers that one
+ * itself (`null` here lets it), and every other entity is answered with the bare 204 as before.
+ */
+const done = (path: string): Response | null => (/^\/api\/teams\/\d+$/.test(path) ? null : did())
+
+/**
  * A server whose answer to every `DELETE` is made when `settle` is called, so a case can look at the page
  * while the request is out. `settle` takes a FUNCTION that makes the answer, and not the answer: a
  * `Response` body can be read once.
@@ -170,7 +193,7 @@ describe.each(SCREENS)('the sheet that asks before $name delete a row', (one) =>
   }, SLOW)
 
   it('deletes the row that was pressed, the second, and leaves the first where it was', async () => {
-    const server = serverThat((_, init) => (init?.method === 'DELETE' ? did() : null))
+    const server = serverThat((path, init) => (init?.method === 'DELETE' ? done(path) : null))
     const user = setupUser()
 
     renderAt(one.at, 'superadmin')
@@ -250,7 +273,7 @@ describe.each(SCREENS)('the sheet that asks before $name delete a row', (one) =>
   }, SLOW)
 
   it('does not take the second click of a double press for an answer, and opens one sheet', async () => {
-    const server = serverThat((_, init) => (init?.method === 'DELETE' ? did() : null))
+    const server = serverThat((path, init) => (init?.method === 'DELETE' ? done(path) : null))
     const user = setupUser()
 
     renderAt(one.at, 'superadmin')
@@ -348,7 +371,7 @@ describe.each(SCREENS)('the sheet that asks before $name delete a row', (one) =>
   }, SLOW)
 
   it('says the row is gone on the screen, takes the row away, and puts the focus on the control that starts a new record', async () => {
-    const server = serverThat((_, init) => (init?.method === 'DELETE' ? did() : null))
+    const server = serverThat((path, init) => (init?.method === 'DELETE' ? done(path) : null))
     const user = setupUser()
 
     renderAt(one.at, 'superadmin')
@@ -404,14 +427,14 @@ describe.each(SCREENS)('the sheet that asks before $name delete a row', (one) =>
     /* The guard against a second press is a ref, and one left standing after the answer would answer
        every press with nothing beside a sheet that looks live. */
     let answers = 0
-    const server = serverThat((_, init) => {
+    const server = serverThat((path, init) => {
       if (init?.method !== 'DELETE') {
         return null
       }
 
       answers += 1
 
-      return answers === 1 ? answeredWith(404) : did()
+      return answers === 1 ? answeredWith(404) : done(path)
     })
     const user = setupUser()
 
@@ -505,14 +528,14 @@ describe.each(SCREENS)('the sheet that asks before $name delete a row', (one) =>
 
   it('takes the sentence of a deletion back when the next one is refused, and when a form is opened', async () => {
     let answers = 0
-    const server = serverThat((_, init) => {
+    const server = serverThat((path, init) => {
       if (init?.method !== 'DELETE') {
         return null
       }
 
       answers += 1
 
-      return answers === 1 ? did() : answeredWith(404)
+      return answers === 1 ? done(path) : answeredWith(404)
     })
     const user = setupUser()
 
@@ -538,7 +561,7 @@ describe.each(SCREENS)('the sheet that asks before $name delete a row', (one) =>
   }, SLOW)
 
   it('does not bring the sentence back when the list comes back after a form was open', async () => {
-    const server = serverThat((_, init) => (init?.method === 'DELETE' ? did() : null))
+    const server = serverThat((path, init) => (init?.method === 'DELETE' ? done(path) : null))
     const user = setupUser()
 
     renderAt(one.at, 'superadmin')

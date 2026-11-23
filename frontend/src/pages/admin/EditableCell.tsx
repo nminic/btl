@@ -1,48 +1,34 @@
 import { useState } from 'react'
 import { useI18n } from '../../i18n/useI18n'
-import { recordKey } from '../../session/context'
-import { useSession } from '../../session/useSession'
 
 /* One field of one record, changed in place.
  *
  * Editing in the row rather than on a separate screen, because the work is
  * almost always a correction of one value spotted while reading a list, and
  * sending somebody to a form and back to find their place again costs more than
- * the correction.
+ * the correction. ADL, of a team's town: „mesto ostaje u ćeliji, jer iza njega ne
+ * stoji ništa".
  *
- * **The family comes in from the caller and is not optional** (20.09.2026). A
- * change is filed under the family AND the identity since the records took the
- * shape the schema keeps, because a `bigserial` is only unique inside its own
- * table (`session/context.ts`, `recordKey`). This cell wrote and read the
- * identity on its own for a day, and a key written one way and read the other
- * never meets: the cell drew the new value out of its own state and every screen
- * reading through `recordsOf` went on showing the old one, the button in that
- * same row included.
- *
- * Handed in rather than worked out here, because every screen that draws a cell
- * already holds the definition the row came out of, and a cell that guessed the
- * family would be a second answer to a question that has one. Required rather
- * than defaulted, so the compiler is what answers „does every caller pass it":
- * a new cell that leaves it out does not build.
+ * **WHAT A CHANGE DOES IS THE CALLER'S, SINCE 23.11.2026.** ~~The cell wrote the
+ * value into the browser's session under the family and the identity it was
+ * handed~~, which for the one screen that draws it (`AdminTeams.tsx`) meant a town
+ * changed in the list and never on the server (PDL P13, „[ZATEČENO 23.11.2026
+ * ...]"). The cell now hands the typed value to `commit` and draws what it is
+ * given: the caller sends it to its route and the list reads the answer back.
+ * A value left as it was is not handed on, so leaving the box without changing it
+ * sends nothing.
  */
 export function EditableCell({
-  under,
-  id,
-  field,
   value,
   label,
+  commit,
 }: {
-  under: string
-  id: string
-  field: string
   value: string
   label: string
+  commit: (value: string) => void
 }) {
   const { t } = useI18n()
-  const { edits, edit } = useSession()
   const [editing, setEditing] = useState(false)
-  const key = recordKey(under, id)
-  const current = edits[key]?.[field] ?? value
 
   if (!editing) {
     return (
@@ -50,9 +36,9 @@ export function EditableCell({
         type="button"
         className="editable"
         onClick={() => setEditing(true)}
-        aria-label={`${label}: ${current}. ${t('admin.change')}`}
+        aria-label={`${label}: ${value}. ${t('admin.change')}`}
       >
-        {current}
+        {value}
       </button>
     )
   }
@@ -63,9 +49,12 @@ export function EditableCell({
       type="text"
       autoFocus
       aria-label={label}
-      defaultValue={current}
+      defaultValue={value}
       onBlur={(event) => {
-        edit(key, field, event.target.value)
+        if (event.target.value !== value) {
+          commit(event.target.value)
+        }
+
         setEditing(false)
       }}
       onKeyDown={(event) => {
