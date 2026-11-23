@@ -822,7 +822,9 @@
 /* The language as its flag and its caret (owner, answer 2: „dugme jezika se svodi na zastavicu, a
    oznaka jezika ostaje u imenu dugmeta za čitač ekrana”), on a narrower button. The caret is the arrow of every dropdown,
    a box of 1,125rem, five pixels wider than the one it had, and those are taken back from the gap beside the flag (the
-   chevron stands three pixels in from its box, so the flag and the chevron are still three apart): without them the
+   chevron stands in from its box, and the round end of its line passes the point where the drawing begins, so the flag and
+   the drawn chevron are 2px apart, 4px at 200% text, measured; the boxes themselves never overlap, which
+   `geometry/phoneHeader.geometry.ts` holds): without them the
    name of the league breaks onto two lines at 360px (`geometry/phoneHeader.geometry.ts`, measured 23.11.2026). */
 .shell__header--phone .lang__btn {
   gap: 0;
