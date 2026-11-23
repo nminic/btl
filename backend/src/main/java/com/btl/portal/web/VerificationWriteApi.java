@@ -356,6 +356,17 @@ class VerificationWriteApi {
 
 	private static final String THE_FORM_IS_NOT_COMPLETE = "Forma nije popunjena.";
 
+	/**
+	 * FIGURES NOBODY RAN: approved, the run would be worth more than any run can be
+	 * ({@link PointsOfARun#THE_MOST_A_RUN_IS_WORTH}; PDL P4, owner, 10.10.2026, „Nikad broj bodova nece biti
+	 * veci nego trocifren uz jos dve decimale", refused at the approval as the record derives beside it).
+	 * Until then the approval met {@code numeric(8,2)} and answered 500 with nothing written. Asked of the
+	 * points the approval is about to write, so the moderator's own figures, the runner's and the race's
+	 * are one question ({@link TheRunIsImpossible}). The words are the owner's choice of 23.11.2026, made among
+	 * those offered (PDL anchor „Nemoguć rezultat").
+	 */
+	private static final String THE_RUN_IS_IMPOSSIBLE = "Nemoguć rezultat.";
+
 	private static final String THE_NAME_IS_TAKEN = "Tim sa tim nazivom već postoji.";
 
 	private static final String HE_IS_ALREADY_IN_A_TEAM = "Osnivač je već u nekom timu.";
@@ -1173,6 +1184,11 @@ class VerificationWriteApi {
 					   written, so the row waits as it did and nothing of the answer is left. The
 					   sentence is the one the same refusal gets before the claim. */
 					yield no(HttpStatus.CONFLICT, moved.getMessage());
+				}
+				catch (TheRunIsImpossible impossible) {
+					/* FIGURES NOBODY RAN, met where the points are worked out, after the claim, and taken
+					   back the same way; 400, because what is wrong is the figures and not the calendar. */
+					yield no(HttpStatus.BAD_REQUEST, THE_RUN_IS_IMPOSSIBLE);
 				}
 				catch (HeHasAResultOnThisRace already) {
 					/* AND THE ONE MET AT THE RESULT ITSELF, the same way and for the same reason: the
@@ -2145,6 +2161,13 @@ class VerificationWriteApi {
 		   counted on, which is the one made just above where the calendar did not hold it. */
 		BigDecimal points = PointsOfARun.at(db, race, counted);
 
+		/* AND NOT A RUN ANYBODY RAN, which is refused here and not before the claim: only here are the
+		   figures the ones the run is counted at on the race it goes on, a race found under the name
+		   typed included, and a throw takes the claim back with everything else (TheRunIsImpossible). */
+		if (PointsOfARun.beyondAnyRun(points)) {
+			throw new TheRunIsImpossible();
+		}
+
 		/* THE MOMENT OF THIS APPROVAL, which the result keeps with the word „approval” (V97): a ducat this
 		   result carries him over to is told because of it, now or at night (PDL, 12.11.2026). */
 		Timestamp approvedAt = Timestamp.from(clock.instant());
@@ -2853,6 +2876,21 @@ class VerificationWriteApi {
 
 		HeHasAResultOnThisRace() {
 			super(HE_HAS_A_RESULT_ON_THIS_RACE, null, false, false);
+		}
+	}
+
+	/**
+	 * A RUN WORTH MORE THAN ANY RUN CAN BE, met when the points of the approval are worked out
+	 * ({@link #countTheResult}). An exception and not an answer carried back, for
+	 * {@link TheCalendarMovedMeanwhile}'s reason: the row is claimed by then. {@link #decide} answers it
+	 * with {@link #THE_RUN_IS_IMPOSSIBLE}. No stack: it is a refusal, not a fault.
+	 */
+	private static final class TheRunIsImpossible extends RuntimeException {
+
+		private static final long serialVersionUID = 1L;
+
+		TheRunIsImpossible() {
+			super(THE_RUN_IS_IMPOSSIBLE, null, false, false);
 		}
 	}
 

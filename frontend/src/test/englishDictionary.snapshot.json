@@ -1149,6 +1149,7 @@
       "theRaceHasNotBeenRun": "A result cannot be sent before the day of the race itself.",
       "theRaceIsNamedTwice": "The result was not sent: the race is both chosen from the calendar and described by hand. Only one of the two is allowed.",
       "heHasAResultOnThisRace": "You already have a result on this race. If its figures are wrong, send a correction of it.",
+      "theRunIsImpossible": "Impossible result.",
       "theRaceIsOutsideTheSeason": "The result was not sent: only races of the current season are reported through the portal. For results of earlier seasons, contact the league.",
       "theTownIsNotSaidOnce": "The town must be given exactly once: either chosen from the codebook or typed in by hand.",
       "theTownIsNotKnown": "That town is not in the codebook.",
@@ -1574,6 +1575,7 @@
       "theAddressIsTaken": "There is already a race at that address.",
       "theDateWouldMoveAResultToAnotherYear": "The date cannot cross into another year while a result stands at this race.",
       "theKindCannotChangeOnceRunsAreCounted": "The kind of a race cannot change while an approved result stands at it.",
+      "theRaceWouldMakeARunImpossible": "The race was not saved: impossible result.",
       "anEventStillAheadWouldMoveIntoTheYearJustEnded": "The day of the race has to be in the year of the event."
     },
     "eventGone": "The event has been deleted, with its races and its results.",
@@ -2026,6 +2028,7 @@
       "theMemberIsNotKnown": "Choose a member from the list.",
       "theMemberIsNamedTwice": "The same member is entered on more than one row.",
       "heHasAResultOnThisRace": "The member already has a result on this race. Change it with the pencil in the table of results.",
+      "theRunIsImpossible": "Impossible result.",
       "hisSubmissionWaits": "The member already has a report waiting for this race. Approve or refuse it in the review queue first.",
       "heHoldsNoMembershipOfTheRunningSeason": "The member has no active membership for the season of this race.",
       "theFormIsNotComplete": "A time or a measure is missing, or a value is outside what is allowed.",

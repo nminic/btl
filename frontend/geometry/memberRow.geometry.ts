@@ -223,6 +223,53 @@ for (const at of WIDTHS) {
     expect(drawn.right).toBeLessThanOrEqual(drawn.window)
     expect(drawn.sideways).toBe(0)
   })
+
+  /* „STORNIRAJ” ASKS FIRST, LIKE THE DELETION (owner, PDL 23.11.2026: „„Storniraj” u administraciji članova prvo pita
+     „Sigurno?”, kao brisanje”), in the sheet and the words of 18.10.2026 („Storniraj uplatu za sezonu {season}?”,
+     „Da” / „Ne”). Asked here what the case above asks of the deletion's sheet: it fits the window, the page does not
+     move sideways, nothing is written until „Da”, and „Ne” writes nothing. */
+  test(`the sheet about cancelling a membership fits and writes nothing on „Ne”, at ${label(at)}`, async ({ open }) => {
+    const { page } = await open(at, '/sr/administracija/clanovi', 'table.members-table tbody tr', ANSWERS)
+    const writes = await writesOf(page)
+
+    await everybody(page)
+
+    const cancel = page.locator('button:not([aria-disabled="true"])', { hasText: 'Storniraj' }).first()
+
+    await cancel.scrollIntoViewIfNeeded()
+    await cancel.click()
+
+    const sheet = page.getByRole('dialog', { name: /^Storniraj / })
+
+    /* Half the clock of the case, so a press that sends at once instead of asking fails on this wait and not on the
+       clock of the case (`btl/CLAUDE.md`, section 25). */
+    await expect(sheet, 'the press on „Storniraj” asked nothing').toBeVisible({ timeout: 15_000 })
+
+    const asked = await page.evaluate(() => {
+      const root = document.documentElement
+      const buttons = [...(document.querySelector('[role="dialog"]')?.querySelectorAll('button') ?? [])]
+
+      return {
+        sideways: Math.max(0, root.scrollWidth - root.clientWidth),
+        words: buttons.map((one) => (one.textContent ?? '').trim()),
+        inside: buttons.every((one) => {
+          const box = one.getBoundingClientRect()
+
+          return box.left >= 0 && box.right <= root.clientWidth && box.top >= 0 && box.bottom <= innerHeight
+        }),
+      }
+    })
+
+    expect(asked.words).toEqual(['Da', 'Ne'])
+    expect(asked.sideways).toBe(0)
+    expect(asked.inside, 'both buttons of the sheet are inside the window').toBe(true)
+    expect(writes, 'the press that opened the sheet wrote something').toHaveLength(0)
+
+    await sheet.getByRole('button', { name: 'Ne' }).click()
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+
+    expect(writes, '„Ne” wrote something').toHaveLength(0)
+  })
 }
 
 /**

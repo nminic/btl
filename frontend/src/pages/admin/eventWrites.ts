@@ -306,6 +306,9 @@ export const WHEN_WRITING_A_RACE: Record<string, string> = {
   theDateWouldMoveAResultToAnotherYear: 'admin.raceSaveRefused.theDateWouldMoveAResultToAnotherYear',
   theKindCannotChangeOnceRunsAreCounted:
     'admin.raceSaveRefused.theKindCannotChangeOnceRunsAreCounted',
+  /* PDL P4, 10.10.2026: no run is worth more than 999,99 points, so a race whose new figures would count a run
+     at it over that is refused before anything is written (`RaceWriteApi`). */
+  theRaceWouldMakeARunImpossible: 'admin.raceSaveRefused.theRaceWouldMakeARunImpossible',
   /* PDL P9, 06.11.2026: on the morning of 1 January before ten, a race of the year just ended is refused
      under an event that is still ahead, because the event would begin on it. */
   anEventStillAheadWouldMoveIntoTheYearJustEnded:
