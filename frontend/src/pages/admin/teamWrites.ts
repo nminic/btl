@@ -128,33 +128,3 @@ export const WHEN_THE_ADMINISTRATION_WRITES_A_TEAM: Record<string, string> = {
 export const WHEN_DELETING_A_TEAM: Record<string, string> = {
   theWindowIsShut: 'admin.teamDeleteRefused.theWindowIsShut',
 }
-
-/**
- * WHETHER THIS TEAM IS ONE THE DATABASE HANDED OUT, WHICH IS THE QUESTION „MAY THIS ROW'S
- * DELETE BE SENT ANYWHERE" REDUCED TO SOMETHING ANSWERABLE OFF ONE LOOK.
- *
- * <p><b>Why the question exists at all, and it is a measurement rather than caution.</b>
- * A team entered on this screen is still remembered as a session overlay (see the note on
- * `admin/AdminTeams.tsx`), and an entity filed under `id` takes its identity from
- * `admin/entityForms.ts`'s `idFor`, which counts DOWN from nought so that nothing it hands
- * out can collide with a `bigserial`. So the first team entered during a visit is number
- * `-1`, and a delete pressed on its row without this would send
- * `DELETE /api/teams/-1`. That is the very fault PR 368 closed one number along, where the
- * panel of races posted to `/api/leagues/-1/races`; it is written down here rather than
- * rediscovered, because this screen is the one where both kinds of row stand in one table.
- *
- * <p><b>A whole number ABOVE NOUGHT, which is the same range `leagueWrites.identityIn`
- * refuses outside of and for the same reason.</b> `team.id` is a `bigserial` and starts at
- * one; nought and below is precisely the range the overlay hands out.
- *
- * <p><b>Read without an assertion (ADL A14), and `typeof` first.</b> What a row carries
- * here is `unknown` as far as this question goes: a served team carries a number, and a row
- * folded back out of the overlay may carry the text it was filed under. Both are answered
- * correctly by looking rather than by coercing - and coercing is the trap, because
- * `Number('-1')` is a number and `Number('')` is nought, so a string that went through
- * `Number` would be judged on a value this function never saw. A row whose identity is not
- * a number is not the database's, which is the honest answer and the safe one.
- */
-export function standsOnTheServer(id: unknown): boolean {
-  return typeof id === 'number' && Number.isInteger(id) && id > 0
-}

@@ -718,6 +718,56 @@ describe('a team taken away from the administration', () => {
   })
 
   /**
+   * WHAT THE ROUTE REFUSED IS SAID IN ITS OWN WORDS, ON THE FORM AND ON THE CELL.
+   *
+   * <p>`POST /api/teams/direct` and `PUT /api/teams/{id}` answer a refusal with a reason
+   * (`TeamAdministrationWriteApi`) and the screen draws the sentence the dictionary has for it
+   * (`WHEN_THE_ADMINISTRATION_WRITES_A_TEAM`): on the form the save is not confirmed and what was typed
+   * stays, and on the town's cell the sentence stands beside the row. A screen that drew nothing would
+   * leave the administration looking at a team that was never made.
+   */
+  it('says why the route refused the team the form made, and confirms nothing', async () => {
+    const server = serving(() => refused('heIsAlreadyInATeam', 409))
+    const user = setupUser()
+    renderAt('/sr/administracija/timovi', 'superadmin', null, undefined, IN_WINDOW)
+
+    await user.click(await screen.findByRole('button', { name: 'Novi tim' }))
+    await user.type(screen.getByLabelText(/^Naziv tima/), 'Probni tim')
+    await user.type(screen.getByLabelText(/^Mesto/), 'Užice')
+    await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
+    await user.selectOptions(screen.getByLabelText(/^Organizator tima/), '000005')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    expect(await screen.findByText('Osnivač je već u nekom timu.')).toBeVisible()
+    expect(screen.queryByRole('status', { name: 'Sačuvano' })).toBeNull()
+    expect(screen.getByLabelText(/^Naziv tima/)).toHaveValue('Probni tim')
+
+    server.stop()
+  }, SLOW)
+
+  it('says why the route refused the town written in a cell, beside the row', async () => {
+    const server = serving((path) => (path === `/api/teams/${String(ACTED)}`
+      ? refused('theCountryIsNotKnown')
+      : did()))
+    const user = setupUser()
+    renderAt('/sr/administracija/timovi', 'superadmin', null, undefined, IN_WINDOW)
+
+    const rows = within(await screen.findByRole('table', { name: 'Timovi' }))
+    const row = must(
+      rows.getAllByRole('row').find((one) => one.textContent?.includes(ITS_NAME)),
+      'the row of the acted team',
+    )
+
+    await user.click(within(row).getByRole('button', { name: /^Mesto:/ }))
+    await user.clear(within(row).getByRole('textbox'))
+    await user.type(within(row).getByRole('textbox'), 'Valjevo{Enter}')
+
+    expect(await screen.findByText('Izabrana država nije prepoznata.')).toBeVisible()
+
+    server.stop()
+  }, SLOW)
+
+  /**
    * WHO MAY OPEN THIS SCREEN AT ALL, WHICH IS THREE PEOPLE AND NOT TWO.
    *
    * <p>Without the third - the one who SUCCEEDS - „refused" is the only outcome the fixture

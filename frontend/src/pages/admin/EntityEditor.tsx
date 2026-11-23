@@ -14,7 +14,6 @@ import { DeleteSheet } from './DeleteSheet'
 import {
   addressField,
   fieldValues,
-  idFor,
   takenAddress,
   type EntityDef,
   type Editing,
@@ -264,7 +263,7 @@ export function EntityEditor({
   }
 }) {
   const { t } = useI18n()
-  const { creations, create, editRecord } = useSession()
+  const { editRecord } = useSession()
   const [saved, setSaved] = useState<FormValues | null>(null)
   /** What the screen's own save said instead of a confirmation, or nothing. */
   const [said, setSaid] = useState<ReactNode>(null)
@@ -399,17 +398,10 @@ export function EntityEditor({
       if (editing.mode === 'new') {
         onCreated?.(outcome.written)
       }
-    } else if (editing.mode === 'new') {
-      const made = idFor(
-        entity,
-        values,
-        (creations[entity.id] ?? []).map((one) => one.id),
-        taken,
-      )
-
-      create(entity.id, made, text)
-      onCreated?.(made)
-    } else {
+    } else if (editing.mode === 'one') {
+      /* A SCREEN WITHOUT A SAVE OF ITS OWN IS A SCREEN THAT CHANGES A RECORD THAT EXISTS (the events), and
+         never one that makes a new one: every form that makes a record has a route to make it at, since
+         23.11.2026 the teams' too, and the session no longer counts an identity out for any of them. */
       editRecord(recordKey(entity.id, String(editing.record[entity.idField])), text)
     }
 

@@ -4,7 +4,6 @@ import { NO_RATING } from '../../data/types'
 import { WHOLE } from '../../components/crop'
 import { useHowManyTimesDropped, useResource, type ResourceState } from '../../data/useResource'
 import type { Decisions } from '../../session/context'
-import { useSession } from '../../session/useSession'
 
 /* What is waiting in the five queues `/api/verification` answers for.
  *
@@ -211,14 +210,13 @@ function itemFrom(served: ServedPendingItem): PendingItem {
  */
 export function usePending(revision?: number): ResourceState<PendingItem[]> {
   const state = useResource<ServedPendingItem[]>('verification', { revision })
-  const { proposals } = useSession()
 
   return useMemo(
     () =>
       state.status === 'ready'
-        ? { status: 'ready', data: [...state.data.map(itemFrom), ...proposals] }
+        ? { status: 'ready', data: state.data.map(itemFrom) }
         : state,
-    [state, proposals],
+    [state],
   )
 }
 
