@@ -245,14 +245,15 @@ for (const at of WIDTHS) {
     for (const [index, member] of MEMBERS.entries()) {
       const { page, probe } = await open(at, `/sr/takmicar/${member.row?.memberNumber ?? ''}`, '.profile__head .crop-fitted img', ANSWERS)
       const circles = await circlesOf(page)
-      const head = circles.filter((one) => one.member === index)
-
-      if (head.length === 0 || !head.some((one) => one.how === 'the original')) {
-        throw notMeasured(`the profile of member ${member.row?.memberNumber ?? '?'} drew no circle from the original`)
-      }
 
       for (const circle of circles) {
         showsTheSquare(circle, `the profile of ${member.row?.memberNumber ?? '?'}`)
+      }
+
+      /* After the pixels and not before, so a circle that shows the wrong square is reported as that and
+         not as a screen that was not measured. */
+      if (!circles.some((one) => one.member === index && one.how === 'the original')) {
+        throw notMeasured(`the profile of member ${member.row?.memberNumber ?? '?'} drew no circle from the original`)
       }
 
       expect(probe.sideways).toBe(0)
@@ -267,13 +268,14 @@ for (const at of WIDTHS) {
     const { page, probe } = await open(at, '/sr/takmicari', '.cards .card .portrait', ANSWERS)
     const circles = await circlesOf(page)
 
-    /* Both ways of drawing, or this is not the comparison it says it is. */
-    if (!circles.some((one) => one.how === 'the small picture') || !circles.some((one) => one.how === 'the original')) {
-      throw notMeasured(`the cards drew ${circles.map((one) => one.how).join(', ') || 'no picture'}, not both ways`)
-    }
-
     for (const circle of circles) {
       showsTheSquare(circle, 'the cards')
+    }
+
+    /* Both ways of drawing, or this is not the comparison it says it is; asked after the pixels, for
+       the reason the profile's case gives. */
+    if (!circles.some((one) => one.how === 'the small picture') || !circles.some((one) => one.how === 'the original')) {
+      throw notMeasured(`the cards drew ${circles.map((one) => one.how).join(', ') || 'no picture'}, not both ways`)
     }
 
     expect(probe.sideways).toBe(0)
