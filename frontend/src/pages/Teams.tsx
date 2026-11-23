@@ -281,7 +281,7 @@ export function Teams() {
                   </Link>
                 </p>
               )}
-              {offer === 'sentence' && <p className="rankings__propose rankings__empty">{t('teams.proposeShut')}</p>}
+              {offer === 'sentence' && <p className="rankings__propose rankings__propose--sentence">{t('teams.proposeShut')}</p>}
             </>
           )
 
