@@ -28,7 +28,37 @@ final class PointsOfARun {
 	/** What a run at an unscored race keeps: zero, at the scale of the column ({@code numeric(8,2)}). */
 	static final BigDecimal AT_AN_UNSCORED_RACE = new BigDecimal("0.00");
 
+	/**
+	 * THE MOST A RUN CAN BE WORTH, and a run the formula makes worth more is refused as one nobody ran.
+	 *
+	 * <p>Owner, PDL P4, 10.10.2026: „Nikad broj bodova nece biti veci nego trocifren uz jos dve decimale.
+	 * Uradi najekonomicnije prema tome". The economy derived beside it in PDL (my reasoning of that day):
+	 * the column is not touched ({@code numeric(8,2)} holds every real run), and a run that would be worth
+	 * more than 999,99 is refused when it is sent and when it is approved, with a short sentence instead
+	 * of the 500 the column answered with (PENDING, „{@code result.points} je {@code numeric(8,2)}"). The
+	 * decision „Ne postoji gornja granica bodova po jednoj trci" stands: this is not a rule of scoring but
+	 * a refusal of figures that cannot be real. Compared with the points as the column would keep them,
+	 * rounded to two decimals, so 999,99 is taken and 1000,00 is not.
+	 */
+	static final BigDecimal THE_MOST_A_RUN_IS_WORTH = new BigDecimal("999.99");
+
 	private PointsOfARun() {
+	}
+
+	/**
+	 * WHETHER A RUN OF THESE FIGURES WOULD BE WORTH MORE THAN ANY RUN CAN BE ({@link #THE_MOST_A_RUN_IS_WORTH}),
+	 * asked of the same answer every write keeps ({@link #of}), so a run at an unscored race, which keeps
+	 * nought, is never refused for it.
+	 *
+	 * @param figures the four figures as they are counted, never as they were typed
+	 */
+	static boolean impossible(boolean scored, Figures figures) {
+		return beyondAnyRun(of(scored, figures));
+	}
+
+	/** Whether these points are more than a run can be worth ({@link #THE_MOST_A_RUN_IS_WORTH}). */
+	static boolean beyondAnyRun(BigDecimal points) {
+		return points.compareTo(THE_MOST_A_RUN_IS_WORTH) > 0;
 	}
 
 	/**

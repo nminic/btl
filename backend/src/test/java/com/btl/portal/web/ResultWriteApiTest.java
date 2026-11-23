@@ -2533,4 +2533,123 @@ class ResultWriteApiTest {
 		assertThat(deletedAs(ME, mine).getStatus()).isEqualTo(204);
 		assertThat(linesAboutHisResults(ME).get(1)).contains("Plivanje").doesNotContain("bod");
 	}
+
+	/*
+	 * FIGURES NOBODY RAN ARE REFUSED WHEN THEY ARE SENT (PDL P4, owner, 10.10.2026: „Nikad broj bodova nece
+	 * biti veci nego trocifren uz jos dve decimale", and the refusal at sending derived beside it). The
+	 * boundary is asked from both sides: two lengths over 8800 seconds a third of a metre apart, worth
+	 * exactly 999,99 and exactly 1000,00 as the column keeps them (the fixture asks the calculator so).
+	 */
+
+	/** Worth 999,99 over {@link #THE_TIME_AT_THE_EDGE}, the most a run can be: taken. */
+	private static final String THE_MOST = "99.8923";
+
+	/** Worth 1000,00 over the same time: one hundredth too many, refused. */
+	private static final String ONE_HUNDREDTH_TOO_MANY = "99.8926";
+
+	private static final int THE_TIME_AT_THE_EDGE = 8800;
+
+	@Test
+	void theTwoLengthsAtTheEdgeAreWorthWhatTheCasesBelowSayTheyAre() {
+		assertThat(BtlScoreCalculator.calculate(Double.parseDouble(THE_MOST), 0, 0, THE_TIME_AT_THE_EDGE))
+				.isEqualByComparingTo("999.99");
+		assertThat(BtlScoreCalculator.calculate(Double.parseDouble(ONE_HUNDREDTH_TOO_MANY), 0, 0,
+				THE_TIME_AT_THE_EDGE)).isEqualByComparingTo("1000.00");
+	}
+
+	private Map<String, Object> aFreeRun(String distanceKm) {
+		Map<String, Object> fields = new HashMap<>();
+
+		fields.put("raceId", freeRace);
+		fields.put("distanceKm", distanceKm);
+		fields.put("ascentM", 0);
+		fields.put("descentM", 0);
+		fields.put("seconds", THE_TIME_AT_THE_EDGE);
+		fields.put("link", "https://rezultati.rs/na-ivici");
+
+		return fields;
+	}
+
+	@Test
+	void aRunWorthMoreThanAnyRunIsRefusedWhenItIsSentAndOneWorthTheMostIsTaken() throws Exception {
+		assertThat(reasonIn(reportedAs(ME, form(aFreeRun(ONE_HUNDREDTH_TOO_MANY)))))
+				.isEqualTo(ResultWriteApi.THE_RUN_IS_IMPOSSIBLE);
+		assertThat(howManySubmissions()).as("a refused run was kept all the same").isZero();
+
+		MockHttpServletResponse theMost = reportedAs(ME, form(aFreeRun(THE_MOST)));
+
+		assertThat(theMost.getStatus()).as(theMost.getContentAsString()).isEqualTo(201);
+	}
+
+	/**
+	 * ON A RACE OF A LENGTH THE LENGTH IS THE RACE'S, and so is the question: 2000 seconds over its 42,2035
+	 * km and its climb are worth far more than any run, while the one kilometre he typed beside them would
+	 * be worth a few points. The two sources of the length are told apart by this case alone.
+	 */
+	@Test
+	void onARaceOfALengthTheRunIsJudgedAtTheRacesLengthAndNotAtTheOneTyped() throws Exception {
+		assertThat(reasonIn(reportedAs(ME, form(Map.of(
+				"raceId", lengthRace,
+				"distanceKm", "1.00",
+				"ascentM", 0,
+				"descentM", 0,
+				"seconds", 2000,
+				"link", "https://rezultati.rs/prebrzo")))))
+				.isEqualTo(ResultWriteApi.THE_RUN_IS_IMPOSSIBLE);
+		assertThat(howManySubmissions()).isZero();
+	}
+
+	/** AT AN UNSCORED RACE A RUN KEEPS NOUGHT, so figures that would be worth any number are not refused for it. */
+	@Test
+	void atAnUnscoredRaceFiguresWorthAnyNumberAreTaken() throws Exception {
+		Map<String, Object> fields = aFreeRun(ONE_HUNDREDTH_TOO_MANY);
+
+		fields.put("raceId", unscored(race("Voznja na ivici", "2027-03-12", "free", 0, BigDecimal.ZERO, 0, 0)));
+		fields.put("seconds", 60);
+
+		MockHttpServletResponse answered = reportedAs(ME, form(fields));
+
+		assertThat(answered.getStatus()).as(answered.getContentAsString()).isEqualTo(201);
+	}
+
+	@Test
+	void aDescribedRunWorthMoreThanAnyRunIsRefusedAndAtAnUnscoredOneItIsTaken() throws Exception {
+		Map<String, Object> fields = aDescribedRun();
+
+		fields.put("distanceKm", ONE_HUNDREDTH_TOO_MANY);
+		fields.put("ascentM", 0);
+		fields.put("descentM", 0);
+		fields.put("seconds", THE_TIME_AT_THE_EDGE);
+
+		assertThat(reasonIn(reportedAs(ME, form(fields)))).isEqualTo(ResultWriteApi.THE_RUN_IS_IMPOSSIBLE);
+		assertThat(howManySubmissions()).isZero();
+
+		fields.put("distanceKm", THE_MOST);
+		assertThat(reportedAs(ME, form(fields)).getStatus()).isEqualTo(201);
+
+		fields.put("distanceKm", ONE_HUNDREDTH_TOO_MANY);
+		fields.put("eventKind", "unscored");
+		fields.put("day", "2027-02-03");
+
+		MockHttpServletResponse unscored = reportedAs(ME, form(fields));
+
+		assertThat(unscored.getStatus()).as(unscored.getContentAsString()).isEqualTo(201);
+	}
+
+	@Test
+	void aCorrectionWorthMoreThanAnyRunIsRefusedAndTheResultStaysAsItWas() throws Exception {
+		Map<String, Object> fields = aFreeRun(ONE_HUNDREDTH_TOO_MANY);
+
+		fields.remove("raceId");
+
+		assertThat(reasonIn(correctedAs(ME, myOtherResult, form(fields))))
+				.isEqualTo(ResultWriteApi.THE_RUN_IS_IMPOSSIBLE);
+		assertThat(howManySubmissions()).isZero();
+
+		fields.put("distanceKm", THE_MOST);
+
+		MockHttpServletResponse theMost = correctedAs(ME, myOtherResult, form(fields));
+
+		assertThat(theMost.getStatus()).as(theMost.getContentAsString()).isBetween(200, 299);
+	}
 }

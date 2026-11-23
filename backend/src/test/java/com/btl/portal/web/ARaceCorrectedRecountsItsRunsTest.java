@@ -1542,6 +1542,50 @@ class ARaceCorrectedRecountsItsRunsTest {
 		return new Form(null, name, true, day, "time", limit, null, ascent, descent);
 	}
 
+	/**
+	 * A CORRECTED COURSE THAT WOULD MAKE A RUN AT THE RACE WORTH MORE THAN ANY RUN CAN BE IS REFUSED, AND NOTHING
+	 * MOVES (PDL P4, owner, 10.10.2026, „Nikad broj bodova nece biti veci nego trocifren uz jos dve decimale";
+	 * the recount met {@code numeric(8,2)} and answered 500 until then). Asked from both sides: 122,0073 km
+	 * with the climb and the fall below make the runner's 12600 seconds worth 1000,00, and 122,007 km worth
+	 * 999,99, the most a run can be, which is taken. His run is the fastest at the race, so it decides.
+	 */
+	@Test
+	void aCorrectedCourseThatWouldMakeARunWorthMoreThanAnyRunIsRefusedAndTheMostIsTaken() throws Exception {
+		assertThat(counted("122.0073", 520, 310, 12600)).isEqualByComparingTo("1000.00");
+		assertThat(counted("122.007", 520, 310, 12600)).isEqualByComparingTo("999.99");
+
+		Map<Long, Run> before = rowsOf(runnersFirst, runnersSecond, lapsedRun, alreadyThereRun);
+
+		MockHttpServletResponse refused = change(theMarathon,
+				ofALength("Maraton", THE_MARATHONS_DAY, "122.0073", 520, 310));
+
+		assertThat(refused.getStatus()).as(refused.getContentAsString()).isEqualTo(409);
+		assertThat(reasonIn(refused)).isEqualTo(RaceWriteApi.THE_RACE_WOULD_MAKE_A_RUN_IMPOSSIBLE);
+		assertThat(rowsOf(runnersFirst, runnersSecond, lapsedRun, alreadyThereRun))
+				.as("a refused edit counted the runs again").isEqualTo(before);
+		assertThat(db.sql("select distance_km from race where id = ?").param(theMarathon)
+				.query(BigDecimal.class).single()).as("a refused edit wrote the race").isEqualByComparingTo("42.2");
+		assertThat(newLines()).isEmpty();
+
+		assertThat(change(theMarathon, ofALength("Maraton", THE_MARATHONS_DAY, "122.007", 520, 310)).getStatus())
+				.isEqualTo(200);
+		assertThat(rowOf(runnersFirst).points()).isEqualByComparingTo("999.99");
+	}
+
+	/** AND AT AN UNSCORED RACE A RUN KEEPS NOUGHT, so a course that would make it worth any number is taken. */
+	@Test
+	void anUnscoredRaceTakesACourseThatWouldMakeARunWorthAnyNumber() throws Exception {
+		event("plivanje-2027", "Plivanje", THE_TENS_DAY);
+		db.sql("update btl_event set kind = 'unscored' where slug = 'plivanje-2027'").update();
+
+		long swim = race("plivanje-2027", "Plivanje", THE_TENS_DAY, "length", 0, "10", 120, 110);
+		long swum = result(secondRunner, swim, "10", 120, 110, 2700, new BigDecimal("0.00"));
+
+		assertThat(counted("9999", 120, 110, 2700)).isGreaterThan(new BigDecimal("999.99"));
+		assertThat(change(swim, ofALength("Plivanje", THE_TENS_DAY, "9999", 120, 110)).getStatus()).isEqualTo(200);
+		assertThat(rowOf(swum).points()).isEqualByComparingTo("0.00");
+	}
+
 	private static Form free(String name, LocalDate day, int ascent, int descent) {
 		return new Form(null, name, true, day, "free", null, null, ascent, descent);
 	}

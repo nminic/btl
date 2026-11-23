@@ -99,6 +99,22 @@ final class TheRunsOfARace {
 	}
 
 	/**
+	 * WHETHER COUNTING THE RUNS AGAIN AT THE RACE AS IT IS ABOUT TO BE WRITTEN WOULD MAKE ONE OF THEM WORTH
+	 * MORE THAN ANY RUN CAN BE ({@link PointsOfARun#impossible}), asked before the race is written
+	 * ({@code RaceWriteApi.THE_RACE_WOULD_MAKE_A_RUN_IMPOSSIBLE}). Each run is counted exactly as
+	 * {@link #countAgain} would count it, by the one function that says what the race fixes.
+	 *
+	 * @param id   {@code race.id}, whose being scored is asked of {@code scored_race} as every write asks it
+	 * @param race the race as it is about to be written
+	 * @param runs the runs at it, as they stand ({@link #at})
+	 */
+	static boolean wouldMakeOneImpossible(JdbcClient db, long id, ARace race, List<Counted> runs) {
+		boolean scored = PointsOfARun.scored(db, id);
+
+		return runs.stream().anyMatch(run -> PointsOfARun.impossible(scored, countedAt(race, run)));
+	}
+
+	/**
 	 * WHETHER A RUN ALREADY CARRIES THE FOUR FIGURES IT WOULD BE COUNTED AT NOW, a length being
 	 * compared as a number: it is one number whatever scale it was written at.
 	 *

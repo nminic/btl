@@ -905,6 +905,9 @@ class ResultsByTheLeagueApi {
 							row.descentM(), row.seconds())));
 			String why = member == null ? THE_MEMBER_IS_NOT_KNOWN
 					: notARun(figures) ? ResultWriteApi.THE_FORM_IS_NOT_COMPLETE
+					/* FIGURES NOBODY RAN, refused before anything is written rather than met as a 500 at
+					   `numeric(8,2)` (PointsOfARun#THE_MOST_A_RUN_IS_WORTH, PDL P4, 10.10.2026). */
+					: PointsOfARun.impossible(scored, figures) ? ResultWriteApi.THE_RUN_IS_IMPOSSIBLE
 					: times.get(member) > 1 ? THE_MEMBER_IS_NAMED_TWICE
 					: hasAResultOn(member, race.id()) ? HE_HAS_A_RESULT_ON_THIS_RACE
 					: hisSubmissionWaits(member, race.id()) ? HIS_SUBMISSION_WAITS
@@ -969,6 +972,11 @@ class ResultsByTheLeagueApi {
 
 			if (notARun(figures)) {
 				return Done.only(no(HttpStatus.BAD_REQUEST, ResultWriteApi.THE_FORM_IS_NOT_COMPLETE));
+			}
+
+			/* AND FIGURES NOBODY RAN, as on a row of the save (PointsOfARun#THE_MOST_A_RUN_IS_WORTH). */
+			if (PointsOfARun.impossible(standing.scored(), figures)) {
+				return Done.only(no(HttpStatus.BAD_REQUEST, ResultWriteApi.THE_RUN_IS_IMPOSSIBLE));
 			}
 
 			int season = standing.race().day().getYear() + 1;
