@@ -156,10 +156,13 @@ describe('deleting', () => {
     expect(screen.queryByRole('heading', { name: 'Moja članarina' })).toBeNull()
     /* AND THE PORTAL HAS FORGOTTEN HIM: the header offers the way in again, which it draws only to nobody. */
     expect(await screen.findByRole('link', { name: 'Prijavi se' })).toBeInTheDocument()
-    /* AND NOBODY IS THE MEMBER ANY MORE: the role is a visitor's, not the competitor's until the next visit,
-       which the member's own door in the header says (it is drawn to a competitor and to nobody else). */
+    /* AND NOBODY IS THE MEMBER ANY MORE, in the session and in the role. The session is read off the member's own
+       doors in the header, which are drawn to a signed in member only. The role has no door of its own on this screen
+       (every reader of it also asks the session), so it is read off the development switch, which writes the role
+       the portal holds: without `become('visitor')` it goes on saying the competitor's until the next visit. */
     expect(screen.queryByRole('link', { name: 'Moja članarina' })).toBeNull()
     expect(screen.queryByRole('link', { name: 'Moj profil' })).toBeNull()
+    expect(await screen.findByRole('combobox', { name: 'Uloga' })).toHaveValue('visitor')
   }, SLOW)
 
   it('sends one request for two presses while the first is out, and for a double press', async () => {

@@ -475,6 +475,48 @@ describe('a field another field demands, saying why', () => {
     expect(validateForm(always, { phone: '', viber: true }, today)).toEqual({ phone: { key: 'form.errors.required' } })
   })
 
+  describe('left to the server', () => {
+    /* THE REACH OF `leftToTheServer`: the flag lets ONE empty answer through, the one of the field that carries it, and
+       only while the rule holds. It must not silence the other obligatory fields of the form, nor the other
+       things wrong with its own field, nor stand without the rule's own sentence (`validate.ts`). */
+    const left: FieldDef = {
+      ...phone,
+      requiredWhenFilled: { field: 'viber', errorKey: 'because.viber', leftToTheServer: true },
+    }
+    const another: FieldDef = {
+      name: 'other',
+      type: 'text',
+      labelKey: 'x',
+      requiredWhenFilled: { field: 'viber', errorKey: 'because.other' },
+    }
+    const always: FieldDef = { name: 'always', type: 'text', labelKey: 'x', required: true }
+    const flagged: FormDef = { ...form, fields: [left, another, always, viber] }
+    const answered = { phone: '', viber: true, other: '', always: '' }
+
+    it('lets the empty answer of its own field through and tells every other empty field its usual sentence', () => {
+      expect(validateForm(flagged, answered, today)).toEqual({
+        other: { key: 'because.other' },
+        always: { key: 'form.errors.required' },
+      })
+    })
+
+    it('goes on telling the field what else is wrong with it', () => {
+      expect(validateForm(flagged, { ...answered, phone: '0647654321' }, today)).toEqual({
+        phone: { key: 'form.errors.maxLength', params: { max: 5 } },
+        other: { key: 'because.other' },
+        always: { key: 'form.errors.required' },
+      })
+    })
+
+    it('does nothing without the sentence of the rule', () => {
+      const bare: FieldDef = { ...left, requiredWhenFilled: { field: 'viber', leftToTheServer: true } }
+
+      expect(validateForm({ ...form, fields: [bare, viber] }, answered, today)).toEqual({
+        phone: { key: 'form.errors.required' },
+      })
+    })
+  })
+
   it('draws no field without the word „neobavezno" that could ever be required', () => {
     /* `noOptionalWord` takes the star away with the word (`FormRenderer`, `unmarked`), so a field that carries
        it and could become required would be required with nothing on the screen to say so. Over every form the
