@@ -1134,7 +1134,7 @@ class VerificationDecisionConcurrencyTest {
 
 		assertThat(refused.getStatus()).as(refused.getContentAsString(StandardCharsets.UTF_8)).isEqualTo(400);
 		assertThat(refused.getContentAsString(StandardCharsets.UTF_8))
-				.contains("Bodovi ovih mera su van opsega koji portal prima.");
+				.contains("Nemoguć rezultat.");
 		assertThat(db.sql("select state from verification where id = ?").param(runItem)
 				.query(String.class).single())
 				.as("the row the refused approval had claimed was left decided")

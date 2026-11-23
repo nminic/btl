@@ -6021,7 +6021,7 @@ class VerificationWriteApiTest {
 	 * of one member on one race), so the refusal, met after the claim, is asserted by what is written after
 	 * it and never was; that the row waits again is VerificationDecisionConcurrencyTest's, which commits. */
 
-	private static final String THE_RUN_IS_IMPOSSIBLE = "Bodovi ovih mera su van opsega koji portal prima.";
+	private static final String THE_RUN_IS_IMPOSSIBLE = "Nemoguć rezultat.";
 
 	private static final String THE_MOST = "{\"distanceKm\":99.8923,\"ascentM\":0,\"descentM\":0,\"seconds\":8800}";
 
