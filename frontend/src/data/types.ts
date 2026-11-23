@@ -926,6 +926,17 @@ export type League = {
    *  section does not appear at all. */
   rules: string
   prizes: string
+  /**
+   * THE LEAGUE'S MARK, as a path to a picture, or null until the administration gives it one (owner, PDL
+   * 23.11.2026, „Pravi logo lige": „krug, seče se kao znak tima ... čuva se original, prikazuje se u krugu;
+   * bez loga ostaje krug sa inicijalima"). The shape `Team.logo` has, for the reason it gives: null and
+   * never the empty path, because a league with none is not a league whose mark is the empty path.
+   */
+  logo: string | null
+  /** Which circle of that mark is drawn (components/crop.ts); nothing for a league with no mark, as `Team.crop`. */
+  crop: Crop | null
+  /** The same mark already cut to that circle and made small, which is what the circles draw. Null exactly when `logo` is. */
+  smallLogo: string | null
 }
 
 /**

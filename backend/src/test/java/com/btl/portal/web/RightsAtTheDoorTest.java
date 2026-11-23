@@ -1332,7 +1332,11 @@ class RightsAtTheDoorTest {
 						"MemberPictureAndWordsApi#setThePicture is not the handler the dispatcher gives the request the sweeps send",
 						"MemberPictureAndWordsApi#setThePicture is a write with no required body and no typed variable",
 						"MemberPictureAndWordsApi#setTheWords is not the handler the dispatcher gives the request the sweeps send",
-						"MemberPictureAndWordsApi#setTheWords is a write with no required body and no typed variable");
+						"MemberPictureAndWordsApi#setTheWords is a write with no required body and no typed variable",
+						/* 23.11.2026, V108: a league's mark is sent as multipart, the `consumes` condition the
+						   sweeps' JSON request is refused by before the door runs. Its door is measured by
+						   `LeagueMarkApiTest`, where a moderator over the teams and a member are answered 404. */
+						"LeagueMarkApi#setTheMark is not the handler the dispatcher gives the request the sweeps send");
 	}
 
 	/**

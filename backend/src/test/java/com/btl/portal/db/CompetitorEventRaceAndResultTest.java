@@ -623,6 +623,9 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 				   a brisanje lige ne sme da ostavi red koji je imenuje. Imenovanog administratora
 				   nema od V19 ("NE POSTOJI ADMINISTRATOR PROPRATNE LIGE"), pa ni kljuca koji bi
 				   se praznio; a `league_event` od V20 nema uopste, jer liga broji trke. */
+				/* V108. A league's mark empties when its picture goes, as a team's does (`team_logo_fk`):
+				   a league with no mark is an ordinary league, drawn with its initials. */
+				"league.league_logo_fk set null",
 				"league_race.league_race_league_fk cascade",
 				"league_race.league_race_race_fk cascade",
 				/* V22, AND ITS FIRST HALF HELD UNTIL V79. A membership is a fact ABOUT a member and

@@ -69,7 +69,7 @@ import java.util.regex.Pattern;
  * owner, 13.09.2026: „javno je ono sto Clan 73 nabraja, i nista vise. Sve ostalo ceka
  * resurs koji zna ko pita", and beside it „Kad je sporno, polje se IZOSTAVLJA ... Nikad se
  * ne servira 'za svaki slucaj'." The table {@code photo} is not a table of public pictures:
- * four columns in the schema point at it and only two of them belong to something the
+ * five columns in the schema point at it and three of them belong to something the
  * portal publishes.
  *
  * <ul>
@@ -79,6 +79,13 @@ import java.util.regex.Pattern;
  * administration excepted</b> (see the paragraphs after this list).
  * <li>{@code team.logo_id} - a team's mark, drawn before its name in the table of teams
  * (PDL, owner, 12.08.2026).
+ * <li>{@code league.logo_id} (V108) - a league's mark, drawn on its card on the page of the
+ * leagues, in the head of the sheet of the league chosen there and on the page of the league
+ * (PDL, owner, 23.11.2026, „Pravi logo lige"). Set by the administration „bez odobravanja, i
+ * odmah važi", so nothing waits behind it and it is public the moment it is held, as a team's is.
+ * <b>That makes THREE public holders where ADL A60 of 20.09.2026 names two</b>; the third is the
+ * owner's decision of 23.11.2026 read into A60's own rule („Javna je slika koju drži javan
+ * nosilac"), since a league is as public as a team.
  * <li>{@code verification.photo_id} - a picture WAITING for a moderator. PDL, „Profilnu
  * sliku administrator odobrava pre objave": a picture in that queue is by definition one
  * nobody has published, so serving it HERE is publishing it instead of him. <b>Since
@@ -92,7 +99,7 @@ import java.util.regex.Pattern;
  * nothing to draw it beside.
  * </ul>
  *
- * <p>So the query asks for the first two and not for the row. <b>What that costs, named
+ * <p>So the query asks for the three public ones and not for the row. <b>What that costs, named
  * rather than left to be found:</b> a picture nothing holds at all - uploaded and not yet
  * attached to anything - answers the same as a digest nobody wrote, and that is the
  * direction P-javno asks for. <b>And a picture that IS refused answers exactly what an
@@ -458,7 +465,8 @@ class PhotoApi {
 				+ "    where me.id = cast(:account as bigint) and me.competitor_id = his.id))"
 				+ "   or (" + AMemberIsActive.of("his.id", at)
 				+ "    and (cast(:readsHiddenProfiles as boolean) or not his.profile_hidden))))"
-				+ " or exists (select 1 from team its where its.logo_id = p.id))";
+				+ " or exists (select 1 from team its where its.logo_id = p.id)"
+				+ " or exists (select 1 from league its where its.logo_id = p.id))";
 	}
 
 	/**
@@ -801,7 +809,8 @@ class PhotoApi {
 	 * is a route of its own.</b> A60 of 20.09.2026 still stands word for word: a picture only a
 	 * queue row holds „nije javna" and „odgovara tacno isto kao slika koje nema". {@link #photo}
 	 * still refuses it and {@code THE_PICTURE_A_DIGEST_NAMES} names no queue row, so „javan nosilac"
-	 * still means exactly {@code competitor.photo_id} and {@code team.logo_id}. A60's own words
+	 * still means exactly {@code competitor.photo_id}, {@code team.logo_id} and, since V108,
+	 * {@code league.logo_id}. A60's own words
 	 * for why this is cheaper: „cuvar uske rute po konstrukciji sluzi jednom pozivaocu nad jednim
 	 * redom, pa se ne moze slucajno prosiriti."
 	 *

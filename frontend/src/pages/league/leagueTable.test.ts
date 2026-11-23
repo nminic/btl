@@ -93,6 +93,9 @@ const league: League = {
   eventIds: [5, 4],
   rules: '',
   prizes: '',
+  logo: null,
+  crop: null,
+  smallLogo: null,
 }
 
 const events = [event(4, '2019-05-01'), event(5, '2019-03-01'), event(6, '2019-04-01')]
@@ -344,6 +347,9 @@ describe('a competition that counts only some of the races of a day', () => {
     eventIds: [20, 21],
     rules: '',
     prizes: '',
+    logo: null,
+    crop: null,
+    smallLogo: null,
   }
 
   /* **One member on a counted race and on two it does not count, all of one day.** 10 + 7 is 17,

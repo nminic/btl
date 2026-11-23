@@ -1,22 +1,67 @@
+import { useState } from 'react'
+import type { League } from '../../data/types'
+import { cropIn, fittedTo } from '../../components/crop'
+
+/** What a mark is drawn from: the name, and the picture where the league has one. */
+type Marked = Pick<League, 'name' | 'logo' | 'crop' | 'smallLogo'>
+
 /**
- * THE SIGN OF A COMPETITION, FROM THE INITIALS OF ITS NAME, FOR TONIGHT.
+ * THE SIGN OF A COMPETITION: ITS OWN MARK IN A CIRCLE, OR THE INITIALS OF ITS NAME UNTIL IT HAS ONE.
  *
- * Owner, 21.11.2026 (PDL, „Strana „Lige” se radi po predlogu B”): „Znak lige večeras je iz inicijala;
- * polje za pravi logo u moderaciji lige je poseban posao posle otvaranja.” So this is drawn from the
- * name and from nothing else, and the day a league carries a picture of its own this is the one place
- * that changes.
+ * Owner, 23.11.2026 (PDL, „Pravi logo lige”), chosen between offered outcomes: „gde se vidi: kartica lige
+ * na strani „Lige”, glava lista izabrane lige i strana pojedinačne lige”, and „oblik: krug, seče se kao
+ * znak tima (uz moju preporuku): čuva se original, prikazuje se u krugu; bez loga ostaje krug sa
+ * inicijalima”. Those three places draw this and nothing else, so the mark and the initials cannot be
+ * spelt two ways.
+ *
+ * **The shape is the team's** (`components/TeamMark.tsx`), copied with its guards: the small circle the
+ * server already cut is drawn whole, and the original cut here by its three fractions only when there is
+ * no small one or it would not load; the clipping is on the box and never on the picture, because a crop
+ * is a magnification and would carry the rounded corners out of the circle with it.
  *
  * **Which letters** is my reasoning and not a decision: a name written as one word with capitals in it
  * („RunTrace”) gives its first two capitals; otherwise the first letter of each of the first two words
  * that are words of the name rather than the word for a league, a year or a joining word (so
  * „RunTrace liga 2027” is RT and „Trail liga Srbije” is TS). A name with one such word gives one letter.
  *
- * Hidden from a reader working by ear: the name it stands beside is said in full.
+ * Hidden from a reader working by ear, picture and letters alike: the name it stands beside is said in
+ * full, and a mark read out before it would be the same words twice.
  */
-export function LeagueMark({ name }: { name: string }) {
+export function LeagueMark({ league }: { league: Marked }) {
+  /* The small address that would not load; `Portrait` says why an address and not a flag. */
+  const [failed, setFailed] = useState<string | null>(null)
+
+  /* Asked of the type and not compared with null: a league is whatever the answer, the file or the
+     overlay of the administration last said it was, and a record missing the key is a league with no
+     mark rather than an image with no address. */
+  if (typeof league.logo === 'string') {
+    if (typeof league.smallLogo === 'string' && league.smallLogo !== failed) {
+      const small = league.smallLogo
+
+      return (
+        <span className="leagues__mark leagues__mark--logo crop-fitted" aria-hidden="true">
+          <img
+            src={small}
+            alt=""
+            width={64}
+            height={64}
+            decoding="async"
+            onError={() => setFailed(small)}
+          />
+        </span>
+      )
+    }
+
+    return (
+      <span className="leagues__mark leagues__mark--logo crop-fitted" aria-hidden="true">
+        <img src={league.logo} alt="" width={64} height={64} decoding="async" style={fittedTo(cropIn(league.crop))} />
+      </span>
+    )
+  }
+
   return (
     <span className="leagues__mark" aria-hidden="true">
-      {initialsOf(name)}
+      {initialsOf(league.name)}
     </span>
   )
 }
