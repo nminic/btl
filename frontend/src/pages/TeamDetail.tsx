@@ -257,6 +257,9 @@ export function TeamDetail() {
            answer (PDL, odeljak 16: „ako je deo tima, njegovo ime se vidi u timu i bodovi koje je
            doneo"). `membersOf` is the one place the two are put together. */
         const everMembers = membersOf(team, listedMembers)
+        /* The team's own page, asked once: where there is none (a team the portal builds of its own has no
+           link at all) nothing is drawn, and where there is one the same answer is the address. */
+        const ownPage = outsideLink(team.link ?? '')
         const everNumbers = new Set(everMembers.map((one) => one.competitor.memberNumber))
         /* The seasons of the league this team has anything in, plus the one shown, which is
            the default and a control cannot open on an option it does not have. **None before
@@ -442,9 +445,9 @@ export function TeamDetail() {
                       link at all is `outsideLink`'s question, as on the event's page
                       (`EventDetail.tsx`), with the same `rel` and `target`. The words are the address
                       itself: the team wrote it, so the reader sees where the press lands. */}
-                  {outsideLink(team.link ?? '') !== undefined && (
+                  {ownPage !== undefined && (
                     <p className="profile__bio-text">
-                      <a href={outsideLink(team.link ?? '')} rel="noreferrer noopener" target="_blank">
+                      <a href={ownPage} rel="noreferrer noopener" target="_blank">
                         {team.link}
                       </a>
                     </p>
