@@ -81,7 +81,7 @@ a {
    9px, standing 0,625rem in from the right edge rather than in the corner, as far in as the caret of the
    language box of the header stands from the edge of its button (owner, 23.11.2026: „Ali na jezicima je strelica
    divno odmaknuta od desne ivice, ne prilepljena kao na ostalim mestima!”; measured in Chrome at 1280: 10px, the
-   padding of `.lang__btn`), and 2,125rem of room for it (`--space-32` and `--space-2`), that space and the gap
+   padding of `.lang__btn`), and 2rem of room for it (`--space-32`: 18 of arrow, 10 of space and a gap of 4), that space and the gap
    before the text. A picture cannot take `currentColor`, so its colour is written into it, once per theme, and
    it is the colour of the control's text: `--text` of that theme (`styles/tokens.css`), which keeps the 3:1 WCAG
    2.2 SC 1.4.11 asks of a graphic on every surface a control stands on. The three themes are the three blocks
@@ -97,7 +97,7 @@ select,
   background-repeat: no-repeat !important;
   background-position: right 0.625rem center !important;
   background-size: 1.125rem 1.125rem !important;
-  padding-inline-end: calc(var(--space-32) + var(--space-2)) !important;
+  padding-inline-end: var(--space-32) !important;
 }
 
 /* The same arrow in the dark palette's `--text`, by the two selectors the dark palette is applied by. */

@@ -178,8 +178,8 @@ for (const screen of SCREENS) {
           expect(standsIn, `${one.what}: the arrow is not as far from the edge as the language box's`).toBeCloseTo(lang.gap, 0)
         }
 
-        expect(one.paddingRight, `${one.what}: the text can run under the arrow`).toBeGreaterThanOrEqual(standsIn + 18 + 6)
-        expect(one.width, `${one.what} is too narrow to hold its arrow`).toBeGreaterThan(standsIn + 18 + 6)
+        expect(one.paddingRight, `${one.what}: the text can run under the arrow`).toBeGreaterThanOrEqual(standsIn + 18 + 4)
+        expect(one.width, `${one.what} is too narrow to hold its arrow`).toBeGreaterThan(standsIn + 18 + 4)
 
         if (one.besideHeight !== null) {
           expect(one.height, `${one.what} is not as tall as the box beside it`).toBeCloseTo(one.besideHeight, 0)

@@ -99,8 +99,8 @@ describe('the rule that draws the arrow', () => {
       'background-position: right 0.625rem center',
       /* A box of 1,125rem, in which the chevron spans 16 of 24: 12px of it, where the browser's own was about 9. */
       'background-size: 1.125rem 1.125rem',
-      /* The room is the arrow, the space it stands in from the edge, and a gap before the text: 18 + 10 + 6. */
-      'padding-inline-end: calc(var(--space-32) + var(--space-2))',
+      /* The room is the arrow, the space it stands in from the edge, and a gap before the text: 18 + 10 + 4, which is the 2rem the portal's cards have room for. */
+      'padding-inline-end: var(--space-32)',
     ])
   })
 
