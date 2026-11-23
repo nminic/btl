@@ -1118,6 +1118,39 @@ class VerificationDecisionConcurrencyTest {
 	}
 
 	/**
+	 * AN APPROVAL AT FIGURES WORTH MORE THAN ANY RUN IS REFUSED AND THE RUN WAITS AGAIN, AND AN APPROVAL AT
+	 * FIGURES WORTH THE MOST A RUN CAN BE THEN GOES THROUGH (PDL P4, owner, 10.10.2026, „Nikad broj bodova
+	 * nece biti veci nego trocifren uz jos dve decimale"). Here and not in {@code VerificationWriteApiTest}
+	 * for the reason the case below gives: the refusal is met after the row is claimed, where the points
+	 * are worked out, and only a transaction the route owns rolls the claim back. 99,8926 km over 8800
+	 * seconds are worth 1000,00 and 99,8923 km 999,99.
+	 */
+	@Test
+	void anApprovalAtFiguresWorthMoreThanAnyRunLeavesTheRunWaitingAndTheMostIsThenCounted() throws Exception {
+		aRunWaitsInTheResultsTab();
+
+		MockHttpServletResponse refused = answerWith(ONE_MODERATOR, runItem, "{\"approved\":true,\"amended\":"
+				+ "{\"distanceKm\":99.8926,\"ascentM\":0,\"descentM\":0,\"seconds\":8800}}");
+
+		assertThat(refused.getStatus()).as(refused.getContentAsString(StandardCharsets.UTF_8)).isEqualTo(400);
+		assertThat(refused.getContentAsString(StandardCharsets.UTF_8))
+				.contains("Nemoguć rezultat.");
+		assertThat(db.sql("select state from verification where id = ?").param(runItem)
+				.query(String.class).single())
+				.as("the row the refused approval had claimed was left decided")
+				.isEqualTo("waiting");
+		assertThat(db.sql("select count(*) from result where competitor_id = ?").param(founder)
+				.query(Integer.class).single()).isZero();
+
+		MockHttpServletResponse theMost = answerWith(ONE_MODERATOR, runItem, "{\"approved\":true,\"amended\":"
+				+ "{\"distanceKm\":99.8923,\"ascentM\":0,\"descentM\":0,\"seconds\":8800}}");
+
+		assertThat(theMost.getStatus()).as(theMost.getContentAsString(StandardCharsets.UTF_8)).isEqualTo(200);
+		assertThat(db.sql("select points from result where competitor_id = ?").param(founder)
+				.query(java.math.BigDecimal.class).single()).isEqualByComparingTo("999.99");
+	}
+
+	/**
 	 * A RUN ON A RACE HE ALREADY HAS A RESULT ON WAITS AGAIN AFTER THE REFUSED APPROVAL, AND THE
 	 * MODERATOR'S OWN REFUSAL OF IT THEN GOES THROUGH.
 	 *

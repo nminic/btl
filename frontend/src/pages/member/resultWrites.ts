@@ -82,6 +82,8 @@ export function theResultAt(result: number): string {
  */
 export const WHEN_A_RESULT_IS_WRITTEN: Record<string, string> = {
   theFormIsNotComplete: 'results.refused.theFormIsNotComplete',
+  /* PDL P4, 10.10.2026: a run worth more than 999,99 points is refused when it is sent. */
+  theRunIsImpossible: 'results.refused.theRunIsImpossible',
   /* The calendar has no race under that number. Reachable from the form away from the
      calendar, where a race chosen from the list carries its id and the list is a read of
      the calendar that may be older than the write. */
