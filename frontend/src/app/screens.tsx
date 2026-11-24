@@ -75,6 +75,7 @@ export const SCREENS: Record<string, Load> = {
   'administracija/cenovnik': of(() => import('../pages/admin/AdminPricing'), (m) => <m.AdminPricing />),
   'administracija/timovi': of(() => import('../pages/admin/AdminTeams'), (m) => <m.AdminTeams />),
   'administracija/lige': of(() => import('../pages/admin/AdminLeagues'), (m) => <m.AdminLeagues />),
+  'administracija/sponzori': of(() => import('../pages/admin/AdminSponsors'), (m) => <m.AdminSponsors />),
   'administracija/strane': of(() => import('../pages/admin/AdminPages'), (m) => <m.AdminPages />),
   'administracija/moderatori': of(() => import('../pages/admin/AdminModerators'), (m) => <m.AdminModerators />),
   'administracija/unos-rezultata': of(() => import('../pages/event/EnterResults'), (m) => <m.EnterForAnEvent />),

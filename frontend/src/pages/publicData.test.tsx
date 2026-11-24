@@ -309,8 +309,9 @@ describe('what administration and the member forms offer', () => {
        that one went missing. Changing this number is a decision, not a formality: nineteen since
        19.10.2026, with the moderator's own screen „Unos rezultata za događaj” (PDL P9), which the route
        table asks for, and twenty since 10.11.2026, with the data of somebody who has no member number
-       (the pencil on Uplate), which it asks for too. */
-    expect(BEHIND).toHaveLength(20)
+       (the pencil on Uplate), which it asks for too, and twenty one since 24.11.2026, with the sponsors
+       (PDL, „Strana za upravljanje sponzorima"), which it asks for as well. */
+    expect(BEHIND).toHaveLength(21)
   })
 
   it.each(BEHIND)('offers no way of its own up a level on %s', async (

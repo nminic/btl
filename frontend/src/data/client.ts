@@ -204,6 +204,18 @@ export const RESOURCE_NAMES = [
      to everybody who may read it, and 404 to the rest, so it is not among the names a change of
      reader drops (`session/theCachesFollowTheReader.ts`). */
   'results/runners',
+  /* THE SPONSOR OF THE DAY AND THE STRIP OF THE FRONT PAGE (`SponsorApi`, PDL 24.11.2026, „Strana za
+     upravljanje sponzorima"), public as the front page is, and the second name on this list that asks in
+     a LANGUAGE (after `pages`): the description is the reader's, and Serbian where no English is written,
+     so the address carries `?lang=` and the two languages are two answers in the cache. The sponsor of
+     the day is worked out by the server in the league's time zone, so every visitor of a day reads the
+     same one and nothing here counts days. */
+  'sponsors',
+  /* EVERY SPONSOR, AS THE ADMINISTRATION'S LIST DRAWS THEM (`SponsorWriteApi.all`), under the right
+     `entity:sponsors` and 404 to whoever has not got it (ADL A8). The same list to everybody who may read
+     it, so, like `results/runners`, it is not among the names a change of reader drops. A slash in it for
+     the reason `me/applications` gives: the route really is declared at `/api/sponsors/all`. */
+  'sponsors/all',
   'teams',
   /* THE RESULTS OF THE RACES THE LEAGUE DOES NOT SCORE (PDL, 14.11.2026, „Ostale discipline kao lična
      evidencija"): the same row as `results`, with 0 points, and read by „Moji rezultati", the page of an

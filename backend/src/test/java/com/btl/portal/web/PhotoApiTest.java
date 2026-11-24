@@ -171,6 +171,14 @@ class PhotoApiTest {
 	private static final Written A_LEAGUES = new Written("3a".repeat(32), "image/png",
 			new byte[] {'l', 'e', 'a', 'g', 'u', 'e', (byte) 0x89, 'P'});
 
+	/**
+	 * A SPONSOR'S LOGO, the fourth public holder since V111 (owner, PDL 24.11.2026, „Strana za upravljanje
+	 * sponzorima”), in a sponsor that is in neither the rotation nor the strip: its logo is public all the same
+	 * (`PhotoApi`, the paragraph on {@code sponsor.logo_id}). A picture and a type of its own, as the league's is.
+	 */
+	private static final Written A_SPONSORS = new Written("4b".repeat(32), "image/png",
+			new byte[] {'s', 'p', 'o', 'n', 's', 'o', 'r', (byte) 0x89});
+
 	/** The shape of a digest, belonging to no row at all. */
 	private static final String NOBODY_WROTE = "f6".repeat(32);
 
@@ -269,6 +277,19 @@ class PhotoApiTest {
 		db.sql("update photo set crop_x = 0.33 where id = ?")
 				.param(ids.get(TWICE_OVER.digest())).update();
 
+		/* AND THE ELDER'S DIGEST IS MOVED AWAY AND BACK, so its entry in the index moves too (V111, 24.11.2026).
+		   The update above is a HOT one: the digest's index goes on pointing at the elder's FIRST place in the
+		   heap, so a read that the planner answers through that index meets the elder first, and only a
+		   sequential scan meets the younger. Measured that day: one more picture in this table (a sponsor's
+		   logo) tipped the planner to the index, and `twoRowsWithOneDigestAreDecidedByTheOlder` stopped
+		   measuring the order. Two updates of the indexed column are never HOT, so after them the elder is
+		   behind the younger in the heap AND in the index, and both kinds of read meet the younger first. */
+		db.sql("update photo set digest = ? where id = ?").params("0".repeat(64), ids.get(TWICE_OVER.digest()))
+				.update();
+		db.sql("update photo set digest = ? where id = ?").params(TWICE_OVER.digest(), ids.get(TWICE_OVER.digest()))
+				.update();
+		write(A_SPONSORS, true);
+
 		competitorHolding("000901", PNG, IN_THE_OPEN);
 		competitorHolding("000902", WITH_NO_FILE, IN_THE_OPEN);
 		competitorHolding("000903", JPEG, IN_THE_OPEN);
@@ -285,6 +306,7 @@ class PhotoApiTest {
 		waitingOn(WAITING);
 		proposalHolding(PROPOSED);
 		leagueHolding(A_LEAGUES);
+		sponsorHolding(A_SPONSORS);
 
 		account(A_MEMBER);
 		anActiveMemberWhoHoldsNothing("000907");
@@ -432,6 +454,14 @@ class PhotoApiTest {
 						+ " city, country_id, logo_id) values ((select id from competitor"
 						+ " where member_number = '000902'), null, 'Predlozen tim', '', '',"
 						+ " (select id from place where rank = 1), null, null, ?)")
+				.param(ids.get(picture.digest()))
+				.update();
+	}
+
+	/** And a sponsor whose logo this is (V111), the fourth holder the portal publishes, with both switches off. */
+	private void sponsorHolding(Written picture) {
+		db.sql("insert into sponsor (name, url, logo_id, description_sr, position)"
+						+ " values ('Sponzor sa logom', 'https://primer.rs/', ?, 'Opis', 0)")
 				.param(ids.get(picture.digest()))
 				.update();
 	}
@@ -848,6 +878,7 @@ class PhotoApiTest {
 				new Held("competitor.photo_id", JPEG, 200),
 				new Held("team.logo_id", WEBP, 200),
 				new Held("league.logo_id", A_LEAGUES, 200),
+				new Held("sponsor.logo_id", A_SPONSORS, 200),
 				new Held("verification.photo_id", WAITING, 404),
 				new Held("team_proposal.logo_id", PROPOSED, 404));
 	}

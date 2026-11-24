@@ -77,3 +77,6 @@ import '../app/Shell.css'
 import 'prosemirror-view/style/prosemirror.css'
 import '../components/markdownEditor/MarkdownEditor.css'
 import '../pages/event/MemberChoice.css'
+/* The sponsors' screen (24.11.2026): placed last, so it wins only the ties it is in, and it has none: every
+   selector in it is its own (`sponsor-logo__`, `sponsor-row__`). */
+import '../pages/admin/Sponsors.css'

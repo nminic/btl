@@ -333,6 +333,12 @@ class KeysAndIndexesTest extends DatabaseTest {
 			new Key("season_team_length_pk", false, "one count per length of one frozen team, written once"),
 			/* V103. One address of a member's profile that Facebook's crawler read, and what it was last given there. */
 			new Key("shared_card_pk", false, "one address Facebook read of one member, never two in one row"),
+			/* V111. A sponsor is looked up by its surrogate from the administration's routes, and its place in the
+			   strip is an order that is NOT deferred: it moves one swap at a time, through a free place past the
+			   end, so no statement moves a range (V111 says why). */
+			new Key("sponsor_pk", false, "a surrogate key nothing outside the portal sees"),
+			new Key("sponsor_position_unique", false,
+					"the manual order of the strip, moved one swap at a time through a free place, never a range"),
 			/* V18. Nijedan se ne odlaze: sesija se trazi po otisku na svakom zahtevu, pa se
 			   sudar mora znati odmah; a pravo u matrici je jedan red i nema sta da ceka. */
 			new Key("account_session_pk", false, "one session, looked up by its own number"),
@@ -531,6 +537,12 @@ class KeysAndIndexesTest extends DatabaseTest {
 			/* V108. The league a mark belongs to, which is what the photo's last-holder trigger and the
 			   picture route ask by. */
 			new Index("league_logo_idx", "the league a mark belongs to"),
+			/* V111. The sponsor a logo belongs to, asked by the photo's last-holder trigger and the picture route;
+			   and the one main sponsor, „Glavni sponzor je najviše jedan” (PDL 24.11.2026), a partial index because
+			   a unique constraint takes no WHERE. */
+			new Index("sponsor_logo_idx", "the sponsor a logo belongs to"),
+			new Index("sponsor_main_is_one",
+					"at most one sponsor is the main one; a partial index because a unique constraint takes no WHERE"),
 
 			/* V19. Asked from the race's side by the standings: which leagues does this race
 			   count towards. The league's side is already served by the primary key. */

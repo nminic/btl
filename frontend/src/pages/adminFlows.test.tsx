@@ -2975,6 +2975,8 @@ describe('the section of entities', () => {
       'Događaji',
       'Timovi',
       'Lige',
+      /* Since 24.11.2026 (PDL, „Strana za upravljanje sponzorima u Administraciji → Podaci → Sponzori"). */
+      'Sponzori',
       'Statične strane',
       'Moderatori',
       'Cenovnik',
@@ -2983,12 +2985,13 @@ describe('the section of entities', () => {
     await openSection()
     /* Written out and not counted off the list under test: an entity that fell
        out of it would have satisfied a count taken from itself. */
-    expect(names).toHaveLength(7)
+    expect(names).toHaveLength(8)
     expect(ENTITIES.map((one) => one.id)).toEqual([
       'members',
       'events',
       'teams',
       'leagues',
+      'sponsors',
       'pages',
       'moderators',
       'pricing',

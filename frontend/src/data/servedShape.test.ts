@@ -35,6 +35,7 @@ import type {
   Attending,
   BtlEvent,
   EventComment,
+  FrontPageSponsors,
   MembershipDue,
   Member,
   Moderator,
@@ -45,6 +46,7 @@ import type {
   SentRun,
   ServedMessage,
   ServedTeamInvitation,
+  SponsorEntered,
   StaticPage,
   WhatIsWaiting,
 } from './types'
@@ -394,6 +396,54 @@ const readAsRunner: Runner = aRunner
 const aFrozenSeason = { season: 2027 }
 
 const readAsFrozenSeason: FrozenSeason = aFrozenSeason
+
+/**
+ * THE SPONSORS OF THE FRONT PAGE (`SponsorApi.FrontPage`, PDL 24.11.2026), the third answer that is a
+ * record and not a list, in both of its states: somebody of the day, and nobody, which is the answer the
+ * served file gives (`mock/sponsors.json`). A sponsor of the day whose description is Serbian on the
+ * English page carries `language: 'sr'`, so a type that dropped the field fails the build here.
+ */
+const aSponsorShown = {
+  id: 7,
+  name: 'Volt',
+  url: 'https://volt.primer.rs/',
+  logo: '/api/photos/5e1f0a9c',
+  description: 'Energetsko piće za duge treninge i noćne trke.',
+  language: 'sr',
+}
+const aFrontPageWithASponsor = { ofTheDay: aSponsorShown, strip: [aSponsorShown] }
+const aFrontPageWithNobody = { ofTheDay: null, strip: [] }
+
+const readAsFrontPageWithASponsor: FrontPageSponsors = aFrontPageWithASponsor
+const readAsFrontPageWithNobody: FrontPageSponsors = aFrontPageWithNobody
+
+/**
+ * EVERY SPONSOR, AS THE ADMINISTRATION READS THEM (`SponsorWriteApi.Entered`), in both states of the two
+ * fields that may be empty: an English description and a logo, each written and not.
+ */
+const aSponsorEntered = {
+  id: 7,
+  name: 'Volt',
+  url: 'https://volt.primer.rs/',
+  descriptionSr: 'Energetsko piće za duge treninge i noćne trke.',
+  descriptionEn: 'An energy drink for long sessions and night races.',
+  main: true,
+  inRotation: true,
+  inStrip: false,
+  position: 2,
+  logo: '/api/photos/5e1f0a9c',
+}
+const aSponsorWithNothingYet = {
+  ...aSponsorEntered,
+  id: 5,
+  descriptionEn: null,
+  main: false,
+  position: 0,
+  logo: null,
+}
+
+const readAsSponsorEntered: SponsorEntered = aSponsorEntered
+const readAsSponsorWithNothingYet: SponsorEntered = aSponsorWithNothingYet
 
 /**
  * THE SIXTEENTH RESOURCE, whose answer is a record and not a list.
@@ -756,6 +806,12 @@ describe('the answer the backend gives', () => {
     expect(readAsLapsedMember.membershipBasis).toBeUndefined()
     expect(readAsRunner.memberNumber).toBe('000002')
     expect(readAsFrozenSeason.season).toBe(2027)
+    expect(readAsFrontPageWithASponsor.ofTheDay?.language).toBe('sr')
+    expect(readAsFrontPageWithASponsor.strip.map((one) => one.logo)).toEqual(['/api/photos/5e1f0a9c'])
+    expect(readAsFrontPageWithNobody.ofTheDay).toBeNull()
+    expect(readAsSponsorEntered.descriptionEn).toBe('An energy drink for long sessions and night races.')
+    expect(readAsSponsorWithNothingYet.descriptionEn).toBeNull()
+    expect(readAsSponsorWithNothingYet.logo).toBeNull()
     /* The four that had never been seen until 21.09.2026, and for each of them the
        state that is the whole reason it is written down twice or not at all. */
     /* THE ONE CONDITIONAL FIELD LEFT, in each of the states its condition puts it in:
@@ -867,6 +923,9 @@ describe('the answer the backend gives', () => {
       ['members', [aMember, aLapsedMember]],
       ['results/runners', [aRunner]],
       ['frozen-seasons', [aFrozenSeason]],
+      /* Both states of the logo and of the English description, so the file may hold „text or nothing"
+         in each and not only the one a single sample shows. */
+      ['sponsors/all', [aSponsorEntered, aSponsorWithNothingYet]],
       /* Both states of the inbox against the served file. The pair is what makes the two
          question ids measured as KEYS: one sample alone would say „a number" or „nothing", and
          the file may then hold either of those and nothing else. */
@@ -915,6 +974,18 @@ describe('the answer the backend gives', () => {
     }
 
     expect(shared([anAccountNotYetAMember], [{ ...account }]), 'payments.accounts').toEqual([])
+  })
+
+  it('reads the third record answer, the sponsors of the front page, with nobody in the served file on purpose', () => {
+    /* THE SERVED FILE ANSWERS NOBODY, and that is the portal as it is until the administration enters a
+       sponsor: every screen of this suite that draws the front page draws the page of a league with none,
+       which is the page it has been since 20.11.2026 and the one its pictures were taken of. So the two
+       fields of the record are held against the file here, and the sponsor INSIDE them is held by the
+       samples above against the type, and by the cases that answer the route themselves
+       (`pages/homeSponsored.test.tsx`). Unlike `payments`, whose accounts this file reads out of the
+       served answer below, a sponsor in this file would move every front page of the suite. */
+    expect(missing(aFrontPageWithNobody, servedAnswer('sponsors'))).toEqual([])
+    expect(servedAnswer('sponsors')).toEqual(aFrontPageWithNobody)
   })
 
   it('reads the second record answer, and the one list on it a screen really sends back', () => {
@@ -1191,6 +1262,10 @@ describe('the answer the backend gives', () => {
          league does not score. The row of `results` with 0 points; measured in both states of the member
          number it shares with it. */
       'unscored-results',
+      /* THE SPONSORS (PDL 24.11.2026), measured on the day they arrive: the front page's record in both
+         of its states and the administration's list in both states of its two optional fields. */
+      'sponsors',
+      'sponsors/all',
     ]
 
     /* AND NOTHING IS EXCUSED ANY MORE. */

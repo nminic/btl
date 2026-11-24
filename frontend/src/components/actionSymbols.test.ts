@@ -84,6 +84,11 @@ const SYMBOL_OF = new Map<string, { symbol: ActionSymbol; word: string }>([
   /* Taking a member out of a team in the administration (PDL P13, 23.11.2026): the same word as taking a race out
      of a league just above, and so the same symbol. Derived from that row, not a new decision. */
   ['admin.teamMemberOut', { symbol: SYMBOL.cross, word: 'Izbaci' }],
+  /* The two arrows of the sponsors' manual order (PDL 24.11.2026, „Redosled u traci: glavni sponzor prvi,
+     pa ručni redosled koji se podešava u administraciji"): one place up and one down, the two arrows the
+     map already draws for a card that opens and folds. MY CHOICE of symbol, not a decision. */
+  ['admin.sponsorUp', { symbol: SYMBOL.up, word: 'Pomeri gore' }],
+  ['admin.sponsorDown', { symbol: SYMBOL.down, word: 'Pomeri dole' }],
   /* The row of a race in the form of an event (PDL 20.10.2026, derived from the map). */
   ['admin.form.delete', { symbol: SYMBOL.cross, word: 'Obriši' }],
   ['admin.form.open', { symbol: SYMBOL.pencil, word: 'Otvori' }],
@@ -229,6 +234,8 @@ const STAYS_A_WORD = new Map([
   /* The administration's button under the mark of a league in its moderation (PDL 23.11.2026, „Pravi logo
      lige”): it saves the box it stands under, the same kind of button as `theirBoxes.pictureSave`. */
   ['leagueMark.save', FORM],
+  /* „Sačuvaj logo", the button of the box that sends a sponsor's logo (24.11.2026), the twin of the one above. */
+  ['sponsorLogo.save', FORM],
   /* The administration's buttons under the picture and the words of a member (PDL 06.11.2026): each saves
      the box it stands under, the same kind of button as `picture.send` and `bio.send` on his own card. */
   ['theirBoxes.pictureSave', FORM],

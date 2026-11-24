@@ -13,6 +13,7 @@ import {
   PRICING,
   RACES,
   recordsOf,
+  SPONSORS,
   TEAMS,
   type EntityDef,
 } from './entityForms'
@@ -97,6 +98,9 @@ const SERVED_AS: [EntityDef, ResourceName | null][] = [
   [RACES, 'races'],
   [TEAMS, 'teams'],
   [LEAGUES, 'leagues'],
+  /* The sponsors, since 24.11.2026: filed under the id the database hands out, and served to the
+     administration as `sponsors/all` (`SponsorWriteApi.all`). */
+  [SPONSORS, 'sponsors/all'],
   [PAGES, 'pages'],
   [MODERATORS, 'moderators'],
   /* THE PRICE LIST WAS THE ONE ENTITY NOTHING SERVED, AND SINCE 26.09.2026 IT IS SERVED

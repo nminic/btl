@@ -170,8 +170,10 @@ class AuthenticationConstraintsTest extends DatabaseTest {
 				Violation.of("account_admin_right_account_fk", granted("999999, " + A_RIGHT)),
 				Violation.notNull("account_admin_right_right_code_not_null", "right_code",
 						granted(AN_ACCOUNT + ", null")),
-				/* A right nobody has decided to have, which is what the key is for. */
-				Violation.of("account_admin_right_right_fk", granted(AN_ACCOUNT + ", 'entity:sponsors'")),
+				/* A right nobody has decided to have, which is what the key is for. Not `entity:sponsors`, which
+				   stood here until V111 made it a right (PDL 24.11.2026); a boutique is a role the portal knows as a
+				   concept and has no box (PDL P20, P21). */
+				Violation.of("account_admin_right_right_fk", granted(AN_ACCOUNT + ", 'entity:boutiques'")),
 				/* Ticking a box that is already ticked is not a second fact. */
 				Violation.of("account_admin_right_pk", granted(AN_ACCOUNT + ", " + A_RIGHT)),
 				Violation.notNull("account_admin_right_granted_at_not_null", "granted_at",

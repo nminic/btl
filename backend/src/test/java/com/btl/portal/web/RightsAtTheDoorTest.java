@@ -1350,7 +1350,10 @@ class RightsAtTheDoorTest {
 						   Its door is measured by `MemberCategoryApiTest`, where a moderator over the payments
 						   alone and the member himself are answered 404. */
 						"MemberCategoryApi#choose is not the handler the dispatcher gives the request the sweeps send",
-						"MemberCategoryApi#choose is a write with no required body and no typed variable");
+						"MemberCategoryApi#choose is a write with no required body and no typed variable",
+						/* 24.11.2026, V111: a sponsor's logo is sent as multipart, as a league's mark is. Its door is measured
+						   by `SponsorLogoApiTest`, where a moderator over the leagues and a member are answered 404. */
+						"SponsorLogoApi#setTheLogo is not the handler the dispatcher gives the request the sweeps send");
 	}
 
 	/**

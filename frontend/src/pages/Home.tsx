@@ -7,15 +7,23 @@ import { DeletionSaid } from './admin/DeletionSaid'
 import { Resource } from '../components/Resource'
 import { citiesOf, countedIn, totalsOf } from '../data/derive'
 import { boardsOpenOn, seasonShown, WARM_UP } from '../data/season'
-import { combineFour, useCompetitors, useEvents, useRaces, useResults } from '../data/useResource'
+import {
+  combineFour,
+  combinePair,
+  useCompetitors,
+  useEvents,
+  useRaces,
+  useResults,
+  useSponsors,
+} from '../data/useResource'
 import { useI18n } from '../i18n/useI18n'
 import { CalendarExtract } from './home/CalendarExtract'
 import { Calculator } from './home/Calculator'
 import { TopByCategory } from './home/TopByCategory'
 import { Counters } from './home/Counters'
-import { SPONSORS } from './home/content'
 import { President } from './home/President'
 import { Sponsor, SponsorStrip } from './home/Sponsor'
+import { sponsorsOrNobody } from './home/sponsorsOrNobody'
 import { TopTen } from './home/TopTen'
 import { putBack, whereIs, type Remembered } from './home/keepTheFocus'
 import { useTwoColumns } from './home/useTwoColumns'
@@ -61,17 +69,23 @@ import './Home.css'
  * Under both columns, across the full width, only the strip of sponsors. The
  * news went on 17.11.2026 (PDL P16, „vesti nema").
  *
- * **Whether there is a sponsor is answered once, here**, and four things read the
- * one answer: the box of the day, the strip, how many races the calendar shows,
- * and the shape of the grid. Without one there is neither box nor strip, the
- * calendar runs to the bottom of the column and the grid is variant A without the
- * box: one layout, not two (owner, 20.11.2026).
+ * **Whether there is a sponsor of the day is the server's answer, read once, here**
+ * (`GET /api/sponsors`, PDL 24.11.2026), and three things read it: the box of the
+ * day, how many races the calendar shows, and the shape of the grid. Without one
+ * there is no box, the calendar runs to the bottom of the column and the grid is
+ * variant A without the box: one layout, not two (owner, 20.11.2026). The strip is
+ * a list of its own on the same answer, since 24.11.2026: the owner gave every
+ * sponsor two switches, one for the box and one for the strip („Zelim prekidace i za
+ * rotaciju u boksu i za donju liniju"), so a strip with nobody of the day under it,
+ * and a sponsor of the day with no strip, are both states the administration can
+ * set. The strip is drawn where it has anybody in it.
  */
 export function Home() {
   const { t } = useI18n()
-  /* The sponsor of the day is the first of them, as it was before variant A. */
-  const [ofTheDay] = SPONSORS
-  const state = combineFour(useCompetitors(), useEvents(), useResults(), useRaces())
+  const state = combinePair(
+    combineFour(useCompetitors(), useEvents(), useResults(), useRaces()),
+    sponsorsOrNobody(useSponsors()),
+  )
   const today = useToday()
   const twoColumns = useTwoColumns()
 
@@ -139,7 +153,7 @@ export function Home() {
       {said !== '' && <DeletionSaid said={said} clear={setSaid} />}
 
       <Resource state={state}>
-        {([competitors, events, results, races]) => {
+        {([[competitors, events, results, races], { ofTheDay, strip }]) => {
           /* The running season, and before the league has one its first, empty or
              not: nothing here falls back to a season the league did not run (owner,
              16.10.2026, `seasonShown`). */
@@ -188,11 +202,11 @@ export function Home() {
           )
           const next = (
             <div className="home__next">
-              <CalendarExtract events={events} races={races} today={today} fill={ofTheDay === undefined} />
+              <CalendarExtract events={events} races={races} today={today} fill={ofTheDay === null} />
             </div>
           )
           const sponsor =
-            ofTheDay === undefined ? null : (
+            ofTheDay === null ? null : (
               <div className="home__sponsor">
                 <Sponsor sponsor={ofTheDay} />
               </div>
@@ -203,7 +217,7 @@ export function Home() {
             <>
               <div
                 className={
-                  ofTheDay === undefined
+                  ofTheDay === null
                     ? 'home__split home__split--cols'
                     : 'home__split home__split--cols home__split--sponsored'
                 }
@@ -237,7 +251,7 @@ export function Home() {
 
               {createPortal(<Calculator />, held)}
 
-              {ofTheDay !== undefined && <SponsorStrip sponsors={SPONSORS} />}
+              {strip.length > 0 && <SponsorStrip sponsors={strip} />}
             </>
           )
         }}

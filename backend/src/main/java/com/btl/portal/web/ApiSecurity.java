@@ -86,7 +86,9 @@ class ApiSecurity {
 					"/api/pricing",
 					"/api/pages",
 					/* Which seasons are frozen: public as their tables are (Član 73), see FrozenSeasonApi. */
-					"/api/frozen-seasons");
+					"/api/frozen-seasons",
+					/* The sponsor of the day and the strip of the front page, public as the front page is (SponsorApi). */
+					"/api/sponsors");
 
 	/**
 	 * AND THE ONE THING ANYBODY MAY READ THAT IS NOT A WHOLE ADDRESS.

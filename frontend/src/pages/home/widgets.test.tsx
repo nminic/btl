@@ -17,7 +17,7 @@ import { SessionProvider } from '../../session/SessionProvider'
 import { TopTen } from './TopTen'
 import { Counters } from './Counters'
 import { ColumnChart } from '../../components/ColumnChart'
-import type { SponsorEntry } from './content'
+import type { SponsorShown } from '../../data/types'
 
 /* **Inside a session, since 06.09.2026.** Whether a name may lead to a profile now depends on
    who is reading: a member hiding from readers who may not read a hidden profile is drawn as plain
@@ -91,19 +91,21 @@ const result = (memberNumber: string, points: number): Result => ({
 describe('Sponsor', () => {
   /* Two of them, so that what the box draws is the first one's and could not have come from the
      other: a name, a logo, a description and an address of its own each. */
-  const volt: SponsorEntry = {
-    id: 'a',
+  const volt: SponsorShown = {
+    id: 7,
     name: 'VOLT',
     url: 'https://volt.primer.rs/',
     logo: '/logo/volt.png',
     description: 'Energetsko piće za duge treninge i noćne trke.',
+    language: 'sr',
   }
-  const sofra: SponsorEntry = {
-    id: 'b',
+  const sofra: SponsorShown = {
+    id: 3,
     name: 'Sofra',
     url: 'https://sofra.primer.rs/',
     logo: '/logo/sofra.png',
     description: 'Domaća kuhinja posle svake trke.',
+    language: 'sr',
   }
 
   it('is one link around the logo and the name, to the sponsor, in a new window', () => {
