@@ -1,5 +1,6 @@
 package com.btl.portal.web;
 
+import com.btl.portal.domain.photo.SmallPicture;
 import com.btl.portal.domain.photo.WhatAPictureIs;
 import com.btl.portal.domain.photo.WithoutMetadata;
 import com.btl.portal.domain.season.SeasonClock;
@@ -132,6 +133,11 @@ class LeagueMarkApi {
 
 		if (mediaType == null) {
 			return no(HttpStatus.BAD_REQUEST, MePhotoApi.THIS_IS_NOT_A_PICTURE);
+		}
+
+		/* AND NO LARGER THAN THE CUT TAKES, for the reason `MePhotoApi.send` gives. */
+		if (SmallPicture.isLargerThanItCuts(bytes, mediaType)) {
+			return no(HttpStatus.BAD_REQUEST, MePhotoApi.THE_PICTURE_IS_TOO_BIG);
 		}
 
 		/* Before the digest, so the address names the stored bytes. */

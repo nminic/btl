@@ -1,6 +1,7 @@
 package com.btl.portal.web;
 
 import com.btl.portal.domain.mail.WhatTheMessageSays.Said;
+import com.btl.portal.domain.photo.SmallPicture;
 import com.btl.portal.domain.photo.WhatAPictureIs;
 import com.btl.portal.domain.photo.WithoutMetadata;
 import com.btl.portal.domain.registration.WhatAProfileChangeSays;
@@ -73,7 +74,9 @@ import java.util.Optional;
  * <p><b>ONE MESSAGE TO HIM, AND ONLY WHEN SOMETHING CHANGED</b> ({@link WhatAProfileChangeSays}), from the
  * league, to the member whose number the address names: {@code to_id} is his row, never nobody's and
  * never the administrator's. Words sent that are the words standing change nothing he needs to hear
- * about, as a form of data saved as it was opened (`MemberDataWriteApi`).
+ * about, as a form of data saved as it was opened (`MemberDataWriteApi`). <b>And none at all for the circle
+ * moved over the picture that stands</b> (owner, 23.11.2026: „Član ne dobija poruku kad administracija
+ * pomeri krug."), which {@link #setThePicture} says beside the branch.
  */
 @RestController
 class MemberPictureAndWordsApi {
@@ -99,10 +102,19 @@ class MemberPictureAndWordsApi {
 	}
 
 	/**
-	 * A NEW PICTURE ON HIS PROFILE, at once.
+	 * A NEW PICTURE ON HIS PROFILE, at once, OR THE CIRCLE MOVED OVER THE ONE THAT STANDS.
 	 *
-	 * @param picture the file, required here: there is no row of his that waits for the administration
-	 *                to move a circle on, so a request with no file has nothing to set
+	 * <p><b>A request with no file moves the circle of the picture that stands</b> (owner, 23.11.2026, PDL
+	 * „Administracija sama podešava krug na članovoj slici": „Čak i kad mu uđem u podatke, želim da mogu da
+	 * se poigram krugom pa da je sačuvam."). The shape is the member's own door's ({@link MePhotoApi#send},
+	 * „A SEND WITH NO FILE"): the same row, the same bytes under the same digest, and only the three
+	 * fractions change. <b>He is told nothing about it</b> (the same decision, chosen between the outcomes
+	 * offered, with the recommendation: „Član ne dobija poruku kad administracija pomeri krug."), and nothing
+	 * of his that waits is touched: the administration's circle replaces the value of the circle and does no
+	 * more. With no picture standing there is nothing to move it on, and that is a form not filled in, as for
+	 * the member.
+	 *
+	 * @param picture the file, or nothing where only the circle of the picture that stands is moved
 	 * @return the picture that now stands, at its public address, with its circle
 	 */
 	@PostMapping(path = "/api/members/{memberNumber}/photo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -122,7 +134,10 @@ class MemberPictureAndWordsApi {
 			return away(response);
 		}
 
-		if (picture == null || picture.isEmpty()) {
+		boolean onlyTheCircle = picture == null || picture.isEmpty();
+		Optional<String> standing = onlyTheCircle ? theDigestStandingOn(member) : Optional.empty();
+
+		if (onlyTheCircle && standing.isEmpty()) {
 			return no(MePhotoApi.THE_FORM_IS_NOT_COMPLETE);
 		}
 
@@ -134,6 +149,21 @@ class MemberPictureAndWordsApi {
 			return no(MePhotoApi.THE_CROP_IS_NOT_A_CIRCLE);
 		}
 
+		/* THE CIRCLE ALONE, ON THE ROW THAT STANDS: no second `photo` row, no file, no message, and the
+		   digest the profile is served at does not move. The small circle is asked for at an address that
+		   names the circle (`PhotoApi.A_SMALL_PICTURE_IS_ASKED_FOR_AT`), so every place that draws him asks
+		   for the new cut by itself. His turn first, the one every send of his takes. */
+		if (onlyTheCircle) {
+			MePhotoApi.oneSendOfAMemberAtATime(db, member);
+
+			db.sql("update photo set crop_x = ?, crop_y = ?, crop_diameter = ?"
+							+ " where id = (select photo_id from competitor where id = ?)")
+					.params(x, y, size, member)
+					.update();
+
+			return ResponseEntity.ok(new Picture("/api/photos/" + standing.get(), new Crop(x, y, size)));
+		}
+
 		if (picture.getSize() > WhatAPictureIs.AT_MOST_BYTES) {
 			return no(MePhotoApi.THE_PICTURE_IS_TOO_BIG);
 		}
@@ -143,6 +173,11 @@ class MemberPictureAndWordsApi {
 
 		if (mediaType == null) {
 			return no(MePhotoApi.THIS_IS_NOT_A_PICTURE);
+		}
+
+		/* AND NO LARGER THAN THE CUT TAKES, for the reason `MePhotoApi.send` gives. */
+		if (SmallPicture.isLargerThanItCuts(bytes, mediaType)) {
+			return no(MePhotoApi.THE_PICTURE_IS_TOO_BIG);
 		}
 
 		/* THE METADATA GOES HERE TOO, for the same decision, which names both doors: „pri svakom otpremanju
@@ -291,6 +326,14 @@ class MemberPictureAndWordsApi {
 	 */
 	private static final String THE_ROW_OF_HIS_THAT_WAITS_UNDER_LOCK =
 			"(select v.id" + MePhotoApi.THE_ONE_OF_MINE_THAT_WAITS + " for update)";
+
+	/** The digest of the picture that stands on his profile, or nothing where none does. */
+	private Optional<String> theDigestStandingOn(long member) {
+		return db.sql("select p.digest from competitor c join photo p on p.id = c.photo_id where c.id = ?")
+				.param(member)
+				.query(String.class)
+				.optional();
+	}
 
 	/**
 	 * His row, where the address names a member and the one asking may change him; nothing otherwise, and

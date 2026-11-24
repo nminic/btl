@@ -440,6 +440,15 @@ class VerificationWriteApi {
 			"Viđena slika se zadaje samo uz odluku o slici.";
 
 	/**
+	 * THE CIRCLE THE MODERATOR SET BESIDE ANYTHING BUT AN APPROVAL OF A PICTURE: a form fault, so 400, for
+	 * the reason {@link #A_SEEN_PICTURE_GOES_WITH_A_DECISION_ABOUT_ONE} gives. A refusal publishes nothing,
+	 * so a circle sent with one would be dropped, and a row with no picture has nothing to cut. The sentence
+	 * is mine, in the shape of the others of this route; nothing on the portal sends one there.
+	 */
+	private static final String A_CIRCLE_GOES_WITH_AN_APPROVED_PICTURE =
+			"Krug se zadaje samo uz odobravanje slike.";
+
+	/**
 	 * THE TEXT THE MODERATOR READ IS NOT THE ONE THE ROW HOLDS NOW: NOTHING IS DECIDED AND THE ROW
 	 * STAYS, WAITING WITH THE NEW TEXT.
 	 *
@@ -850,10 +859,24 @@ class VerificationWriteApi {
 	 *                    <p>Compared as it is, character for character ({@link String#equals}): the
 	 *                    stored text is what the member sent, stripped, and the screen sends back what
 	 *                    it read
+	 * @param crop        THE CIRCLE AS THE MODERATOR LEFT IT, on an approval of a picture and nowhere
+	 *                    else: what the approval writes onto the picture in place of the member's circle.
+	 *                    Owner, 23.11.2026, PDL „Administracija sama podešava krug na članovoj slici":
+	 *                    „kad takmičar pošalje sliku na validaciju, ja kao Admin hoću da mogu da se poigram
+	 *                    krugom pre nego što mu je odobrim." <b>Never the print</b>: {@code seenCrop} is
+	 *                    what the member's row held when the card was served, and is still compared as it
+	 *                    was, so a member who moves his circle while the moderator moves his is refused
+	 *                    with {@link #THE_PICTURE_WAS_CHANGED} like any other change under his hand.
+	 *                    <b>Absent is the member's circle</b>, as an absent {@code team} is the proposal as
+	 *                    sent: the approval publishes what the member chose. Beside a refusal or a row with
+	 *                    no picture it is 400 ({@link #A_CIRCLE_GOES_WITH_AN_APPROVED_PICTURE}); a circle with
+	 *                    a part missing, or one the column cannot hold, is a form not filled in. Nobody is
+	 *                    told: the approval of a picture writes no message, and the circle adds none
+	 *                    („Član ne dobija poruku kad administracija pomeri krug.", the same decision)
 	 */
 	record Answered(Boolean approved, String reason, Amended amended, NewRace newRace, Long raceId,
 			Long seenPhotoId, VerificationApi.Crop seenCrop, String seenText, TeamAsCorrected team,
-			TeamAsCorrected seenTeam) {
+			TeamAsCorrected seenTeam, VerificationApi.Crop crop) {
 	}
 
 	/**
@@ -1188,6 +1211,16 @@ class VerificationWriteApi {
 
 		if (typed.newRace() != null && typed.raceId() != null) {
 			return no(HttpStatus.BAD_REQUEST, THE_RACE_IS_NAMED_TWICE);
+		}
+
+		/* AND THE CIRCLE THE MODERATOR SET THE SAME WAY: with an approval of a picture and nothing else,
+		   and only a circle the column holds (`Answered#crop`). */
+		if (typed.crop() != null && !(typed.approved() && item.photoId() != null)) {
+			return no(HttpStatus.BAD_REQUEST, A_CIRCLE_GOES_WITH_AN_APPROVED_PICTURE);
+		}
+
+		if (typed.crop() != null && asTheColumnHolds(typed.crop()) == null) {
+			return no(HttpStatus.BAD_REQUEST, THE_FORM_IS_NOT_COMPLETE);
 		}
 
 		/* WHETHER THIS ROUTE CAN CARRY THE ANSWER OUT AT ALL, asked before anything about
@@ -1554,9 +1587,34 @@ class VerificationWriteApi {
 			db.sql("update competitor set bio = ? where id = ?")
 					.params(typed.seenText(), item.competitorId()).update();
 		} else {
+			/* THE CIRCLE THE MODERATOR LEFT, where he moved it, written onto the picture before it goes onto
+			   the profile (`Answered#crop`). On the row's own picture, which the claim above has let go of
+			   and the profile is about to hold: the database deletes a `photo` row nobody holds only at the
+			   end of the transaction (V54), so the row is there to be written. */
+			VerificationApi.Crop set = typed.crop() == null ? null : asTheColumnHolds(typed.crop());
+
+			if (set != null) {
+				db.sql("update photo set crop_x = ?, crop_y = ?, crop_diameter = ? where id = ?")
+						.params(set.x(), set.y(), set.size(), item.photoId()).update();
+			}
+
 			db.sql("update competitor set photo_id = ? where id = ?")
 					.params(item.photoId(), item.competitorId()).update();
 		}
+	}
+
+	/**
+	 * A circle as the column holds it (V21, {@code numeric(9, 8)}), or nothing where one of its three is
+	 * missing or is not a fraction the column takes: the same test a circle sent with a picture passes
+	 * ({@link MePhotoApi#fractionOf(BigDecimal, boolean)}), so a circle the moderator sets is held to what
+	 * the member's is.
+	 */
+	private static VerificationApi.Crop asTheColumnHolds(VerificationApi.Crop crop) {
+		BigDecimal x = MePhotoApi.fractionOf(crop.x(), true);
+		BigDecimal y = MePhotoApi.fractionOf(crop.y(), true);
+		BigDecimal size = MePhotoApi.fractionOf(crop.size(), false);
+
+		return x == null || y == null || size == null ? null : new VerificationApi.Crop(x, y, size);
 	}
 
 	/**

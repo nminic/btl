@@ -144,17 +144,9 @@ public final class SmallPicture {
 
 			int width = reader.getWidth(0);
 			int height = reader.getHeight(0);
+			long pixels = pixelsIn(width, height, original, mediaType);
 
-			boolean webp = "image/webp".equals(mediaType);
-
-			/* FOR A WEBP, THE LARGEST THING ITS CHUNKS SAY, NOT ONLY WHAT THE READER SAYS. The
-			   reader answers the canvas of an extended file (VP8X), and the picture inside may
-			   claim a frame far larger: review of PR 639 measured 626 bytes that say a canvas of
-			   100 by 100 around a frame of 16383 by 16383, and an OutOfMemoryError on a heap of
-			   350 MB. So the ceiling is asked of the largest of the two. */
-			long pixels = Math.max((long) width * height, webp ? largestFrameOf(original) : 0);
-
-			if (pixels > (webp ? AT_MOST_WEBP_PIXELS : AT_MOST_PIXELS)) {
+			if (pixels > ceilingOf(mediaType)) {
 				throw new IOException(width + " by " + height + " (" + pixels
 						+ " pixels in its largest frame) is more than this cuts");
 			}
@@ -174,6 +166,64 @@ public final class SmallPicture {
 		} finally {
 			reader.dispose();
 		}
+	}
+
+	/**
+	 * WHETHER THIS PICTURE IS LARGER THAN THE CUT TAKES, ASKED OF ITS HEADER AND OF NOTHING DECODED.
+	 *
+	 * <p>The routes a picture is sent through ask it before they keep one (PDL 23.11.2026, „Administracija
+	 * sama podešava krug na članovoj slici", derived by the assistant from the review of PR 806 and
+	 * recorded as such: „Slika veća od granica koje sečenje već ima (25 MP, a za WebP 4 MP) odbija se pri
+	 * otpremanju postojećom rečenicom"). Until then a picture over the ceiling was
+	 * taken, then never cut, and every circle that drew it fell back to the whole original, up to
+	 * {@link WhatAPictureIs#AT_MOST_BYTES} a circle. <b>The ceiling has one home and it is here</b>:
+	 * {@link #square} asks the same {@link #pixelsIn} against the same {@link #ceilingOf}, so a picture
+	 * this lets through is one the cut takes, and the day the ceiling moves both move.
+	 *
+	 * <p><b>Only the header is read</b>: {@code getWidth} and {@code getHeight} parse the picture's
+	 * own statement of its size, and the WebP's chunks are walked by {@link #largestFrameOf} without
+	 * decoding, which is the whole point, since decoding is what the ceiling protects the heap from.
+	 *
+	 * <p><b>A header the reader cannot read is NOT answered „larger", and that is a boundary written
+	 * down rather than a refusal invented.</b> The routes took such bytes before this existed (the
+	 * type is the sniff's, by the first bytes, ADL A12a), the cut refuses them on its own when asked,
+	 * and refusing them here would be a decision about a picture's readability that nobody made.
+	 */
+	public static boolean isLargerThanItCuts(byte[] original, String mediaType) {
+		try {
+			ImageReader reader = readerFor(mediaType);
+
+			try (ImageInputStream in = new MemoryCacheImageInputStream(
+					new ByteArrayInputStream(original))) {
+				reader.setInput(in, true, true);
+
+				return pixelsIn(reader.getWidth(0), reader.getHeight(0), original, mediaType)
+						> ceilingOf(mediaType);
+			} finally {
+				reader.dispose();
+			}
+		} catch (IOException | RuntimeException unreadable) {
+			return false;
+		}
+	}
+
+	/**
+	 * How many pixels the picture claims at its largest.
+	 *
+	 * <p>FOR A WEBP, THE LARGEST THING ITS CHUNKS SAY, NOT ONLY WHAT THE READER SAYS. The reader
+	 * answers the canvas of an extended file (VP8X), and the picture inside may claim a frame far
+	 * larger: review of PR 639 measured 626 bytes that say a canvas of 100 by 100 around a frame of
+	 * 16383 by 16383, and an OutOfMemoryError on a heap of 350 MB. So the ceiling is asked of the
+	 * largest of the two.
+	 */
+	private static long pixelsIn(int width, int height, byte[] original, String mediaType) {
+		return Math.max((long) width * height,
+				"image/webp".equals(mediaType) ? largestFrameOf(original) : 0);
+	}
+
+	/** The ceiling for the type: {@link #AT_MOST_WEBP_PIXELS} for a WebP, {@link #AT_MOST_PIXELS} else. */
+	private static long ceilingOf(String mediaType) {
+		return "image/webp".equals(mediaType) ? AT_MOST_WEBP_PIXELS : AT_MOST_PIXELS;
 	}
 
 	/**

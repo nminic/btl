@@ -2,6 +2,7 @@ package com.btl.portal.web;
 
 import com.btl.portal.TestcontainersConfiguration;
 import com.btl.portal.domain.account.SessionLife;
+import com.btl.portal.domain.photo.PicturesOfASize;
 import com.btl.portal.domain.photo.PicturesThatCarryMetadata;
 import com.btl.portal.domain.photo.WhatAPictureIs;
 import com.btl.portal.domain.photo.WithoutMetadata;
@@ -406,10 +407,13 @@ class MemberPictureAndWordsApiTest {
 
 	@Test
 	void aPictureIsRefusedForWhatAMembersOwnIsRefusedFor() throws Exception {
-		assertThat(body(picture(HIS_NUMBER, null, "0.5", OVER_THE_MEMBERS)).get("reason").asString())
+		/* NO FILE FOR A MEMBER WITH NO PICTURE STANDING: there is no circle to move, so nothing to set. A member
+		   with one has his circle moved instead (`theCircleAloneMovesOnThePictureThatStandsAndTellsNobody`). */
+		assertThat(body(picture("000002", null, "0.5", OVER_THE_MEMBERS)).get("reason").asString())
 				.isEqualTo(MePhotoApi.THE_FORM_IS_NOT_COMPLETE);
-		assertThat(body(picture(HIS_NUMBER, new byte[0], "0.5", OVER_THE_MEMBERS)).get("reason").asString())
+		assertThat(body(picture("000002", new byte[0], "0.5", OVER_THE_MEMBERS)).get("reason").asString())
 				.isEqualTo(MePhotoApi.THE_FORM_IS_NOT_COMPLETE);
+		assertThat(count("select count(*) from competitor where id = ? and photo_id is not null", first)).isZero();
 		assertThat(body(picture(HIS_NUMBER, aJpeg("x"), "0", OVER_THE_MEMBERS)).get("reason").asString())
 				.isEqualTo(MePhotoApi.THE_CROP_IS_NOT_A_CIRCLE);
 		assertThat(body(picture(HIS_NUMBER, "nije slika".getBytes(StandardCharsets.UTF_8), "0.5",
@@ -418,6 +422,112 @@ class MemberPictureAndWordsApiTest {
 				"0.5", OVER_THE_MEMBERS)).get("reason").asString()).isEqualTo(MePhotoApi.THE_PICTURE_IS_TOO_BIG);
 
 		assertThat(digestStandingOn(him)).isEqualTo(String.format("%064x", 1));
+		assertThat(messages()).isEmpty();
+	}
+
+	/**
+	 * AND A PICTURE OF MORE PIXELS THAN THE CUT TAKES IS REFUSED AT THIS DOOR TOO, each ceiling from both
+	 * sides (PDL 23.11.2026, derived and recorded as such: „Važi za sliku člana i za znak lige.").
+	 */
+	@Test
+	void aPictureOfMorePixelsThanTheCutTakesIsRefusedOnEachCeiling() throws Exception {
+		assertThat(body(picture(HIS_NUMBER, PicturesOfASize.png(5_000, 5_001), "0.5", OVER_THE_MEMBERS))
+				.get("reason").asString()).isEqualTo(MePhotoApi.THE_PICTURE_IS_TOO_BIG);
+		assertThat(body(picture(HIS_NUMBER, PicturesOfASize.webpOverItsCeiling(), "0.5", OVER_THE_MEMBERS))
+				.get("reason").asString()).isEqualTo(MePhotoApi.THE_PICTURE_IS_TOO_BIG);
+		assertThat(digestStandingOn(him)).as("a refused picture replaced his").isEqualTo(String.format("%064x", 1));
+		assertThat(messages()).isEmpty();
+
+		assertThat(picture(HIS_NUMBER, PicturesOfASize.png(5_000, 5_000), "0.5", OVER_THE_MEMBERS).getStatus())
+				.isEqualTo(200);
+		assertThat(digestStandingOn(him)).isEqualTo(WhatAPictureIs.digestOf(
+				WithoutMetadata.of(PicturesOfASize.png(5_000, 5_000), "image/png")));
+		assertThat(picture(HIS_NUMBER, PicturesOfASize.webpUnderItsCeiling(), "0.5", OVER_THE_MEMBERS).getStatus())
+				.isEqualTo(200);
+		assertThat(digestStandingOn(him)).isEqualTo(WhatAPictureIs.digestOf(
+				WithoutMetadata.of(PicturesOfASize.webpUnderItsCeiling(), "image/webp")));
+	}
+
+	// THE CIRCLE ALONE ----------------------------------------------------------------------------------
+
+	private MockHttpServletResponse circle(String number, String x, String y, String size, String email)
+			throws Exception {
+
+		return sent(multipart("/api/members/" + number + "/photo").with(csrf())
+				.param("cropX", x).param("cropY", y).param("cropSize", size), email);
+	}
+
+	/** Every picture there is, as „key: x y diameter", so a circle written onto the wrong one shows. */
+	private List<String> everyCircle() {
+		return db.sql("select id || ': ' || crop_x || ' ' || crop_y || ' ' || crop_diameter from photo order by id")
+				.query(String.class).list();
+	}
+
+	/**
+	 * THE CIRCLE ALONE MOVES ON THE PICTURE THAT STANDS, AND NOBODY IS TOLD (owner, 23.11.2026, PDL
+	 * „Administracija sama podešava krug na članovoj slici": „Čak i kad mu uđem u podatke, želim da mogu da
+	 * se poigram krugom pa da je sačuvam.", and „Član ne dobija poruku kad administracija pomeri krug.").
+	 *
+	 * <p>The circle sent (0.125, 0.875, 0.625) is unlike every circle in the fixture (0.3, 0.7, 0.45) and
+	 * unlike the one {@link #picture} sends (0.25, 0.75), so a circle written from anywhere but the request
+	 * cannot pass. He has a picture waiting with a circle of its own and a third member stands with the same
+	 * circle he had: both stay as they were. The message table is read whole, so a line to him, to the whole
+	 * league or to anybody else fails it.
+	 */
+	@Test
+	void theCircleAloneMovesOnThePictureThatStandsAndTellsNobody() throws Exception {
+		waitingPicture(him);
+
+		long standing = db.sql("select photo_id from competitor where id = ?").param(him).query(Long.class).single();
+		List<String> before = everyCircle();
+
+		MockHttpServletResponse answer = circle(HIS_NUMBER, "0.125", "0.875", "0.625", OVER_THE_MEMBERS);
+
+		assertThat(answer.getStatus()).as(answer.getContentAsString()).isEqualTo(200);
+		assertThat(body(answer).get("photo").asString()).isEqualTo("/api/photos/" + String.format("%064x", 1));
+		assertThat(body(answer).get("crop").get("x").decimalValue()).isEqualByComparingTo("0.125");
+		assertThat(body(answer).get("crop").get("y").decimalValue()).isEqualByComparingTo("0.875");
+		assertThat(body(answer).get("crop").get("size").decimalValue()).isEqualByComparingTo("0.625");
+
+		assertThat(db.sql("select photo_id from competitor where id = ?").param(him).query(Long.class).single())
+				.as("the circle made a new picture instead of moving on the one that stands").isEqualTo(standing);
+
+		List<String> expected = before.stream()
+				.map(one -> one.startsWith(standing + ": ") ? standing + ": 0.12500000 0.87500000 0.62500000" : one)
+				.toList();
+
+		assertThat(everyCircle()).as("the circle landed somewhere but on his picture that stands")
+				.containsExactlyElementsOf(expected);
+		assertThat(picturesWaitingOf(him)).as("his waiting picture is not the circle's business").isOne();
+		assertThat(picturesWaitingOf(aThird)).isOne();
+		assertThat(messages()).as("a moved circle told somebody").isEmpty();
+
+		/* AND THE CIRCLE IS WHAT HIS DATA NOW SERVE, the read the administration's boxes are drawn from. */
+		JsonNode data = body(sent(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+				.get("/api/members/" + HIS_NUMBER + "/data"), OVER_THE_MEMBERS));
+
+		assertThat(data.get("crop").get("x").decimalValue()).isEqualByComparingTo("0.125");
+		assertThat(data.get("crop").get("y").decimalValue()).isEqualByComparingTo("0.875");
+		assertThat(data.get("crop").get("size").decimalValue()).isEqualByComparingTo("0.625");
+	}
+
+	/** And the door and the circle are asked as for a picture: 401, 404, and a circle that is not one. */
+	@Test
+	void theCircleAloneIsAskedWhatAPictureIsAsked() throws Exception {
+		List<String> before = everyCircle();
+
+		assertThat(circle(HIS_NUMBER, "0.125", "0.875", "0.625", null).getStatus()).isEqualTo(401);
+
+		for (String email : List.of(OVER_THE_PAYMENTS_ONLY, A_MEMBER)) {
+			assertThat(circle(HIS_NUMBER, "0.125", "0.875", "0.625", email).getStatus()).as(email).isEqualTo(404);
+		}
+
+		assertThat(circle("000003", "0.125", "0.875", "0.625", OVER_THE_MEMBERS).getStatus())
+				.as("a moderator moved the circle of his own picture").isEqualTo(404);
+		assertThat(body(circle(HIS_NUMBER, "0.125", "0.875", "0", OVER_THE_MEMBERS)).get("reason").asString())
+				.isEqualTo(MePhotoApi.THE_CROP_IS_NOT_A_CIRCLE);
+
+		assertThat(everyCircle()).containsExactlyElementsOf(before);
 		assertThat(messages()).isEmpty();
 	}
 

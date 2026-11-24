@@ -432,6 +432,31 @@ class LeagueMarkApiTest {
 		assertThat(markOf(theFirst)).isEqualTo(theFirstsMark);
 	}
 
+	/**
+	 * AND A MARK OF MORE PIXELS THAN THE CUT TAKES IS REFUSED AT THIS DOOR, with the sentence of a picture too
+	 * big (PDL 23.11.2026, „Administracija sama podešava krug na članovoj slici", derived and recorded as such:
+	 * „Važi za sliku člana i za znak lige."). Each ceiling from both sides: a PNG of exactly twenty five million
+	 * is taken and one row more is not, and a WebP one row over four million is not while a small one is.
+	 */
+	@Test
+	void aMarkOfMorePixelsThanTheCutTakesIsRefusedOnEachCeiling() throws Exception {
+		assertThat(body(mark(theFirst, com.btl.portal.domain.photo.PicturesOfASize.png(5_000, 5_001), "0.5",
+				OVER_THE_LEAGUES)).path("reason").asString()).isEqualTo(MePhotoApi.THE_PICTURE_IS_TOO_BIG);
+		assertThat(body(mark(theFirst, com.btl.portal.domain.photo.PicturesOfASize.webpOverItsCeiling(), "0.5",
+				OVER_THE_LEAGUES)).path("reason").asString()).isEqualTo(MePhotoApi.THE_PICTURE_IS_TOO_BIG);
+		assertThat(markOf(theFirst)).as("a refused mark replaced the one that stood").isEqualTo(theFirstsMark);
+
+		assertThat(mark(theFirst, com.btl.portal.domain.photo.PicturesOfASize.png(5_000, 5_000), "0.5",
+				OVER_THE_LEAGUES).getStatus()).isEqualTo(200);
+		assertThat(markOf(theFirst)).isNotEqualTo(theFirstsMark);
+
+		Long thePng = markOf(theFirst);
+
+		assertThat(mark(theFirst, com.btl.portal.domain.photo.PicturesOfASize.webpUnderItsCeiling(), "0.5",
+				OVER_THE_LEAGUES).getStatus()).isEqualTo(200);
+		assertThat(markOf(theFirst)).isNotEqualTo(thePng);
+	}
+
 	@Test
 	void aCircleThatIsNotOneIsRefusedOnEachOfItsThreeFractions() throws Exception {
 		for (String[] three : List.of(new String[] {"x", "0.5", "0.5"}, new String[] {"0.5", "x", "0.5"},
