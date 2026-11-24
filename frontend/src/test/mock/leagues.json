@@ -33,7 +33,8 @@
       "y": 0.5,
       "size": 1
     },
-    "smallLogo": "/mock/logo/runtrace-liga.small.svg"
+    "smallLogo": "/mock/logo/runtrace-liga.small.svg",
+    "highlightsEvents": false
   },
   {
     "id": 2,
@@ -46,7 +47,8 @@
     "eventIds": [],
     "logo": null,
     "crop": null,
-    "smallLogo": null
+    "smallLogo": null,
+    "highlightsEvents": false
   },
   {
     "id": 3,
@@ -86,6 +88,7 @@
     ],
     "logo": null,
     "crop": null,
-    "smallLogo": null
+    "smallLogo": null,
+    "highlightsEvents": false
   }
 ]

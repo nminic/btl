@@ -1495,6 +1495,7 @@
       "kind": "The kind of event",
       "country": "Country",
       "featured": "Featured",
+      "highlightsEvents": "Highlight events",
       "eventDescription": "Event description",
       "eventLink": "Link to the organiser’s page",
       "rowLabel": "Name"

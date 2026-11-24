@@ -919,7 +919,15 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   other: main stood at V107 when it was written.
 
 			   Pinned LAST, when the file was final, off this very assertion. */
-			new Applied("108", "V108__a_league_carries_a_mark_of_its_own.sql", 1388687629));
+			new Applied("108", "V108__a_league_carries_a_mark_of_its_own.sql", 1388687629),
+
+			/* V109. A league may highlight its events in the calendar (owner, PDL 24.11.2026, „Istakni događaje"):
+			   `league.highlights_events`, NOT NULL with a default of false, so every league standing comes in not
+			   highlighting (LeagueHighlightCarriedOverTest). No key, index or trigger. 109 and no other: main stood
+			   at V108 when it was written.
+
+			   Pinned LAST, when the file was final, off this very assertion. */
+			new Applied("109", "V109__a_league_may_highlight_its_events.sql", -926804880));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {

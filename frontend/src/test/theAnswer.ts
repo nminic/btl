@@ -216,6 +216,7 @@ export const aLeague = {
   logo: null,
   crop: null,
   smallLogo: null,
+  highlightsEvents: false,
 }
 
 /* Handed to the names the screens read them through, here rather than in the guard, so

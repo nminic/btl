@@ -22,6 +22,7 @@ function edition(id: number, copiedFrom: number | null = null): BtlEvent {
     link: '',
     kind: 'race',
     featured: false,
+    highlighted: false,
     copiedFrom,
   }
 }

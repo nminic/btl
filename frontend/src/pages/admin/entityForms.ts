@@ -197,8 +197,13 @@ export const EVENTS: EntityDef = {
      is worth rather than a screen guessing. */
   /* Nothing, and not an empty string: an event nobody copied has no event
      behind it, which is what `/api/events` answers with (`CalendarApi.Event`,
-     `Long copiedFrom`). */
-  blank: { copiedFrom: null, description: '', link: '' },
+     `Long copiedFrom`).
+
+     And not highlighted: `highlighted` is the server's to work out from the event's own choice and the leagues
+     that count it (owner, PDL 24.11.2026, „Istakni događaje"), and the form asks only the own choice. A record
+     made here is drawn in the administration's list and nowhere gold; the calendar reads the server again,
+     because the save drops `/api/events`. */
+  blank: { copiedFrom: null, description: '', link: '', highlighted: false },
   /* What a new event opens holding, and every one of the three is the answer
      nearly every event gives (owner, 10. and 11.08.2026): it is a race, it is
      not featured, and it is run in Serbia. A required field whose answer is the

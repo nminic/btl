@@ -34,6 +34,7 @@ const event = (id: number, name: string, date: string): BtlEvent => ({
   link: '',
   copiedFrom: null,
   featured: false,
+  highlighted: false,
 })
 
 const race = (id: number, eventId: number, dots: Dot[]): Race => ({

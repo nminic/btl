@@ -1495,6 +1495,7 @@
       "kind": "Vrsta događaja",
       "country": "Država",
       "featured": "Istaknuto",
+      "highlightsEvents": "Istakni događaje",
       "eventDescription": "Opis događaja",
       "eventLink": "Link ka strani organizatora",
       "rowLabel": "Naziv"

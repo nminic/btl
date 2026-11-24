@@ -35,7 +35,18 @@ import { serverThat } from '../test/serverAnswers'
 
 const SAID = sr.calendar.featured
 
-const anEvent = (id: number, name: string, kind: EventKind, featured: boolean): BtlEvent => ({
+/**
+ * HOW AN EVENT COMES TO BE GOLD, and since 24.11.2026 there are two ways that are drawn alike (owner, PDL
+ * 24.11.2026, „Istakni događaje": „svi događaji te lige automatski dobijaju istaknutost u kalendaru").
+ *
+ * `byHand` is the event's own „Istaknuto: Da", which the server serves as `featured` and as `highlighted`;
+ * `byLeague` is a race of it counted by a league that highlights its events, which the server serves as
+ * `highlighted` alone, `featured` staying „Ne" because that is what the event's form shows. So half the gold
+ * tiles below are `byLeague`, and a tile that read `featured` instead of `highlighted` leaves them plain.
+ */
+type Gold = 'plain' | 'byHand' | 'byLeague'
+
+const anEvent = (id: number, name: string, kind: EventKind, gold: Gold): BtlEvent => ({
   id,
   slug: `dogadjaj-${id}`,
   name,
@@ -46,7 +57,8 @@ const anEvent = (id: number, name: string, kind: EventKind, featured: boolean): 
   description: '',
   link: '',
   copiedFrom: null,
-  featured,
+  featured: gold === 'byHand',
+  highlighted: gold !== 'plain',
 })
 
 const aRace = (id: number, eventId: number, date: string): Race => ({
@@ -65,13 +77,13 @@ const aRace = (id: number, eventId: number, date: string): Race => ({
 })
 
 /* Plain first, on purpose: see the note at the head of the file. */
-const PLAIN_RACE = anEvent(1, 'Obična trka', 'race', false)
-const FEATURED_RACE = anEvent(2, 'Istaknuta trka', 'race', true)
-const FEATURED_GATHERING = anEvent(3, 'Istaknut skup', 'gathering', true)
-const PLAIN_GATHERING = anEvent(4, 'Običan skup', 'gathering', false)
-const FEATURED_BAR = anEvent(5, 'Istaknuta dvodnevna', 'race', true)
-const PLAIN_BAR = anEvent(6, 'Obična dvodnevna', 'race', false)
-const FEATURED_TRAINING = anEvent(7, 'Istaknut trening', 'training', true)
+const PLAIN_RACE = anEvent(1, 'Obična trka', 'race', 'plain')
+const FEATURED_RACE = anEvent(2, 'Istaknuta trka', 'race', 'byLeague')
+const FEATURED_GATHERING = anEvent(3, 'Istaknut skup', 'gathering', 'byHand')
+const PLAIN_GATHERING = anEvent(4, 'Običan skup', 'gathering', 'plain')
+const FEATURED_BAR = anEvent(5, 'Istaknuta dvodnevna', 'race', 'byLeague')
+const PLAIN_BAR = anEvent(6, 'Obična dvodnevna', 'race', 'plain')
+const FEATURED_TRAINING = anEvent(7, 'Istaknut trening', 'training', 'byHand')
 
 /* Every one-day event on the 22nd, so the page of that day holds both kinds of tile;
    the two bars over the 17th and the 18th, a Saturday and a Sunday of one row. A

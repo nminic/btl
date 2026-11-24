@@ -189,6 +189,7 @@ function inputs(season: Fixture) {
     country: 'RS',
     kind: 'race',
     featured: false,
+    highlighted: false,
     description: '',
     link: '',
     copiedFrom: null,
@@ -221,6 +222,7 @@ function inputs(season: Fixture) {
     logo: null,
     crop: null,
     smallLogo: null,
+    highlightsEvents: false,
   }))
 
   return { competitors, results, teams, pairs, events, allRaces, leagues }

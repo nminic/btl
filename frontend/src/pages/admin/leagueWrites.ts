@@ -41,6 +41,11 @@ export type Upsert = {
   season: number
   rules: string
   prizes: string
+  /**
+   * The box „Istakni događaje" (V109, owner PDL 24.11.2026). Always sent, ticked or not, so the route never meets
+   * the „not said" that `LeagueWriteApi.change` reads as „leave it as it stands".
+   */
+  highlightsEvents: boolean
 }
 
 /**
@@ -65,6 +70,9 @@ export function upsertFrom(values: Record<string, string | boolean>): Upsert {
     season: Number(text('season')),
     rules: text('rules'),
     prizes: text('prizes'),
+    /* A checkbox writes a flag (`forms/records.ts`), and only `true` is a tick. The form of a league always
+       draws the box, opened with what `GET /api/leagues` answers, so a false here is a box left unticked. */
+    highlightsEvents: values.highlightsEvents === true,
   }
 }
 

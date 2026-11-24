@@ -220,8 +220,13 @@ export function AdminLeagues() {
        rather than left to the two branches below, because both of them count as the
        write this screen exists to close: a made competition and a renamed one are
        equally gone from a remounted screen if only the local overlay is fixed and the
-       cache is not (review, 25.09.2026). */
+       cache is not (review, 25.09.2026).
+
+       AND THE CALENDAR WITH IT, because what the calendar draws gold is worked out from the box „Istakni
+       događaje" that this save may have moved (`CalendarApi`, owner PDL 24.11.2026): an answer of
+       `/api/events` kept from before it is an answer that is now wrong. */
     clearResourceCache('leagues')
+    clearResourceCache('events')
 
     if (id !== null) {
       setWritten((was) => ({
@@ -284,8 +289,10 @@ export function AdminLeagues() {
     /* Cleared for the same reason `saveOne` clears it: a deletion this visit made is
        held below as an overlay over what the cache still carries, and a remounted
        screen reading that same stale array would draw the row back as though the
-       delete had never happened, which is worse than a row that merely vanished. */
+       delete had never happened, which is worse than a row that merely vanished. The calendar is dropped
+       beside it: a league that highlighted its events takes the highlight with it when it goes. */
     clearResourceCache('leagues')
+    clearResourceCache('events')
     setRefused(null)
     setSaid(t('admin.leagueGone'))
     setWritten((was) => ({
@@ -360,6 +367,9 @@ export function AdminLeagues() {
            */
           function nowCounting(id: number, change: (was: number[]) => number[]): void {
             clearResourceCache('leagues')
+            /* A race entering or leaving a league that highlights its events moves what the calendar draws
+               gold („Ako ih izbacim iz lige, istaknutost se gubi", owner PDL 24.11.2026). */
+            clearResourceCache('events')
             setCounting((was) => ({ ...was, [id]: change(was[id] ?? countedRacesOf(leagues, id)) }))
           }
 

@@ -10,6 +10,7 @@ const EVENT: BtlEvent = {
   country: 'RS',
   kind: 'race',
   featured: true,
+  highlighted: true,
   description: 'Trka kroz gradsko jezgro, sa dva kruga.',
   link: 'https://organizator.example/trka',
   copiedFrom: null,
