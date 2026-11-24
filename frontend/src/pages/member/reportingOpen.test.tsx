@@ -61,7 +61,9 @@ function theServerSays(
     if (path === '/api/me') {
       /* `null` is an answer that does not carry the list at all, which is a read that could not be believed
          (`whatTheServerSaysOfTheSeasonsOpenForAReport`), and `held` is an answer still on its way. */
-      const { seasonsOpenForAReport: _dropped, ...withoutTheList } = whoIAm as Record<string, unknown>
+      const withoutTheList = Object.fromEntries(
+        Object.entries(whoIAm).filter(([name]) => name !== 'seasonsOpenForAReport'),
+      )
       const carried = seasons === null ? withoutTheList : { ...whoIAm, seasonsOpenForAReport: seasons }
 
       return held.then(
