@@ -1111,6 +1111,8 @@
   },
   "newResult": {
     "title": "Entering a result",
+    "notOpen": "Reporting results is not open yet",
+    "notOpenWhy": "Reporting results opens with the league's first season.",
     "submit": "Send result",
     "again": "You are correcting a result that was refused. The reason was: {reason}",
     "fixingCounted": "You are changing a result that is already counted. Until the change is confirmed, the old result stays in the standings. Attach new proof with the change.",

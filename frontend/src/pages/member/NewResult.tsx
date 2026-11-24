@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
+import type { ReactElement } from 'react'
 import { useSend, useSent } from '../sent'
 import { useFilterParams } from '../../app/useFilterParams'
 import { Link } from 'react-router'
@@ -24,6 +25,7 @@ import { useToday } from '../../clock/useClock'
 import { fromBoxes, inBoxes, noTime } from '../../forms/clock'
 import { eventsToOffer, racesOfTheChosenEvent } from './eventsToOffer'
 import { useSeasonsOpenForAReport } from './useSeasonsOpenForAReport'
+import { WhileAReportIsOpen } from './WhileAReportIsOpen'
 import { figuresAsked } from '../admin/amendFields'
 import { useI18n } from '../../i18n/useI18n'
 import { useMemberScreen } from './memberScreen'
@@ -623,6 +625,16 @@ function TheForm({ me }: { me: string }) {
     )
   }
 
+  /* THE FORM IS NOT DRAWN WHILE THE SERVER NAMES NO SEASON OPEN FOR HIS REPORT (PDL P9, owner,
+     24.11.2026, „Sakrij i formu članovima"; `reportingOpen.tsx`), on every road but one: the
+     correction of a counted result of his own, which the owner chose the same day to leave as it was
+     („Izmeni" and `?ispravka=` stay), and of which the server asks no season (`ResultWriteApi.change`).
+     Asked of `fixingOne` and not of the word in the address, and only once what the address names is
+     known (inside `Resource` below): `?ispravka=` naming nothing of his opens the form for a NEW
+     result, so the word alone would be a way in. */
+  const onlyWhereItIsOpen = (form: ReactElement) =>
+    fixingOne === undefined ? <WhileAReportIsOpen asked={me}>{form}</WhileAReportIsOpen> : form
+
   return (
     <div className="member">
       {/* NOT DRAWN UNTIL IT IS KNOWN WHAT THE ADDRESS NAMES, on the two roads that name something.
@@ -635,7 +647,7 @@ function TheForm({ me }: { me: string }) {
           new result has nothing to be filled from, and the file of counted results is the largest
           the portal serves, so that road does not wait at all. */}
       <Resource state={waitFor}>
-        {() => (
+        {() => onlyWhereItIsOpen(
           <FormRenderer
             /* Above the fields and under the heading, so the heading is the first
                thing on the page. Drawn before the form, these notes stood ahead of

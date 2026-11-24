@@ -14,6 +14,7 @@ import { useI18n } from '../../i18n/useI18n'
 import { useSend, useSent } from '../sent'
 import { NotRunYet } from './NotRunYet'
 import { useMemberScreen } from '../member/memberScreen'
+import { WhileAReportIsOpen } from '../member/WhileAReportIsOpen'
 import type { Answer } from '../account/askTheServer'
 import { ServerSaid } from '../account/ServerSaid'
 import { theRunWasSentIn, WHEN_A_RESULT_IS_WRITTEN } from '../member/resultWrites'
@@ -100,190 +101,194 @@ export function ReportResult() {
     )
   }
 
+  /* Not drawn while the server names no season open for his report (PDL P9, 24.11.2026,
+     `member/reportingOpen.tsx`), and here at the screen for the reason `NotRunYet` gives. */
   return (
     <div className="member">
-      <Resource state={state}>
-        {([events, races]) => {
-          const found = events.find((one) => one.slug === slug)
+      <WhileAReportIsOpen asked={who.memberNumber}>
+        <Resource state={state}>
+          {([events, races]) => {
+            const found = events.find((one) => one.slug === slug)
 
-          if (found === undefined) {
-            return <h1>{t('event.notFound')}</h1>
-          }
+            if (found === undefined) {
+              return <h1>{t('event.notFound')}</h1>
+            }
 
-          /* Narrowed once, because the handler below is written inside a
-             callback the compiler cannot see runs after the check. */
-          const event = found
+            /* Narrowed once, because the handler below is written inside a
+               callback the compiler cannot see runs after the check. */
+            const event = found
 
-          /* The same rule the rating keeps, and for the same reason: PDL P9
-             refuses a date in the future, and a form that is merely not offered
-             still answers when the address is typed. */
-          if (event.date > today) {
-            return <NotRunYet />
-          }
+            /* The same rule the rating keeps, and for the same reason: PDL P9
+               refuses a date in the future, and a form that is merely not offered
+               still answers when the address is typed. */
+            if (event.date > today) {
+              return <NotRunYet />
+            }
 
-          /* The races of this event that have been run, which is not the same as
-             the races of an event that has begun (owner, 11.08.2026): a race
-             carries its own day, and an event may run over two mornings. On the
-             Saturday of a weekend the two Saturday races can be reported; on the
-             Sunday all three.
+            /* The races of this event that have been run, which is not the same as
+               the races of an event that has begun (owner, 11.08.2026): a race
+               carries its own day, and an event may run over two mornings. On the
+               Saturday of a weekend the two Saturday races can be reported; on the
+               Sunday all three.
 
-             A race has no time of day, so the day it is on counts from its own
-             morning: „rezultat na trku moguće uneti na kalendarski dan te trke
-             ili kasnije". */
-          const here = races.filter((race) => race.eventId === event.id)
-          const mineHere = here.filter((race) => race.date <= today)
-          /* Which of them, decided by the row the reader pressed rather than by a
-             field at the top of this form (owner, 23.08.2026: „ne treba onda ni
-             dropdown na vrhu za izbor trke nego to zavisi od reda iz kog je
-             kliknuto"). The address carries it, so the form opens knowing.
+               A race has no time of day, so the day it is on counts from its own
+               morning: „rezultat na trku moguće uneti na kalendarski dan te trke
+               ili kasnije". */
+            const here = races.filter((race) => race.eventId === event.id)
+            const mineHere = here.filter((race) => race.date <= today)
+            /* Which of them, decided by the row the reader pressed rather than by a
+               field at the top of this form (owner, 23.08.2026: „ne treba onda ni
+               dropdown na vrhu za izbor trke nego to zavisi od reda iz kog je
+               kliknuto"). The address carries it, so the form opens knowing.
 
-             Nothing is guessed where the address names none or names one this
-             event has not run. The one way in writes it (EventDetail.tsx), so an
-             address without it was typed by hand, and a form that quietly picked
-             a race would file somebody's time against a distance they never ran. */
-          const chosen = mineHere.find((race) => String(race.id) === params.get('trka'))
+               Nothing is guessed where the address names none or names one this
+               event has not run. The one way in writes it (EventDetail.tsx), so an
+               address without it was typed by hand, and a form that quietly picked
+               a race would file somebody's time against a distance they never ran. */
+            const chosen = mineHere.find((race) => String(race.id) === params.get('trka'))
 
-          if (chosen === undefined) {
+            if (chosen === undefined) {
+              return (
+                <>
+                  <h1>{event.name}</h1>
+                  <p className="profile__empty">
+                    {t(mineHere.length === 0 ? 'report.noRaces' : 'report.noRace')}
+                  </p>
+                </>
+              )
+            }
+
+            /* Narrowed once, for the same reason the event is: the handler below
+               runs after the check above and the compiler cannot see that. */
+            const race = chosen
+            /* Read through the one function that knows the three words, and not off
+               the record. The type says `RaceKind`, but the record comes out of a
+               file nothing checks, and both of the things chosen by it below are
+               written one per kind: a word that is not one of the three gives
+               `undefined` from either, and `undefined` handed to the translator or to
+               the renderer takes this screen down to the error boundary. Measured
+               30.08.2026, and the same reading is what the table of races in the
+               administration does (`admin/AdminEvents.tsx`). */
+            const kind = raceKind(race.kind)
+
+            /**
+             * SENDS THE RUN, AND DECIDES WHAT THE READER SEES BY WHAT CAME BACK.
+             *
+             * <p><b>THE CONFIRMATION IS DRAWN ONLY AFTER 201.</b> Until 28.09.2026 this
+             * screen wrote the run into the browser's own overlay and confirmed it on the
+             * spot, so a member was told his result was in the queue when nothing had left
+             * the machine. `POST /api/results` is what really puts it there, together with
+             * the row a moderator reads and the line in his inbox; the letter waits for the
+             * approval (since 09.10.2026, `ResultWriteApi`).
+             *
+             * <p><b>Refused, nothing moves.</b> Every box stays exactly as it was and the
+             * sentence appears beneath the form, so a member who mistyped a link corrects
+             * that one field rather than typing the whole race again.
+             *
+             * <p><b>Nothing is written into the browser after it went through</b>, since R2 of
+             * the results flows. Until then the run was written into the session's own list,
+             * because no route served a member his own runs and „Poslato" on `MyResults` drew
+             * that copy; `GET /api/me/result-submissions` serves them now, and
+             * `resultWrites.ts` drops it after the server agreed, so the list reads the row the
+             * server holds.
+             */
+            async function send(run: ReturnType<typeof reportedResult>, values: FormValues) {
+              outstanding.current = true
+              setSending(true)
+              /* And the last refusal goes while this one is out, so a reader who presses
+                 again is not left reading the old sentence over a request in flight. */
+              setRefusal(null)
+
+              const answer = await theRunWasSentIn({
+                /* THE RACE AND NOTHING ELSE ABOUT IT. This road always starts from a row of
+                   the calendar, so it is always the first of the two bodies:
+                   `ResultWriteApi.fromTheCalendar` refuses `theRaceIsNamedTwice` if a name, a
+                   kind or a town arrives beside the id, and the race answers for all three. */
+                raceId: race.id,
+                /* What was run, and which of these the race fixes rather than the member is
+                   `reportedResult.ts`'s answer here and `figuresOf`'s answer there. Both are
+                   sent; the server decides, which is the one home for that question. */
+                distanceKm: run.distanceKm,
+                ascentM: run.ascentM,
+                descentM: run.descentM,
+                seconds: run.seconds,
+                link: String(values.link),
+                comment: String(values.comment),
+              })
+
+              outstanding.current = false
+              setSending(false)
+
+              if (answer.got !== 'done') {
+                setRefusal(answer)
+
+                return
+              }
+
+              /* That it went, and nothing about what it was worth. `true` rather than a
+                 figure since 28.09.2026, which is the shape `RateEvent.tsx` has always
+                 used for the same question. */
+              confirm(`/${locale}/moji-rezultati`, true)
+            }
+
+            function onSubmit(values: FormValues) {
+              const run = reportedResult(race, values)
+
+              /* Silently, the same way the rating next door refuses a second press: the first
+                 one is still out and the reader has already been told so. */
+              if (outstanding.current) {
+                return
+              }
+
+              void send(run, values)
+            }
+
             return (
               <>
-                <h1>{event.name}</h1>
-                <p className="profile__empty">
-                  {t(mineHere.length === 0 ? 'report.noRaces' : 'report.noRace')}
-                </p>
+                <FormRenderer
+                  form={reportForm(kind, event.kind !== 'unscored')}
+                  /* NOTHING ABOVE THE FIELDS since 16.10.2026. The sentence that stood here told
+                     the member which race this was and what the portal already knew about it;
+                     the owner took it off the page: „Ceo disclaimer sa vrha strane obriši". What
+                     the portal asks for is now said by the rows themselves (`reportForm.ts`): the
+                     length, the climb and the fall in one, the hours, minutes and seconds in
+                     another, and on each kind the row it does not ask for is not drawn. */
+                  /* The third road a time reaches a submission by, and the one that
+                     was left out when the rule was written: a race run in no time is
+                     not a result (owner, 31.08.2026), and no single box can refuse
+                     it because each of the three is right to take nought on its own.
+                     Measured in review: 0 / 0 / 0 went through here and reached the
+                     queue while the form away from the calendar and the panel in it
+                     both turned it away.
+                   *
+                     **On a timed race there is nothing to ask, because there are no
+                     boxes.** This form drops the three of them for that kind
+                     (`reportForm.ts`), since the race answers for the time itself, so
+                     `fromBoxes` reads nothing at all and `noTime` is true of every
+                     such report. Without this half, no result from a timed race
+                     could be sent at all. The locking of filled boxes is the other
+                     form, the one away from the calendar (`racesToOffer.ts`); it is
+                     named here because an earlier note put it on this screen, where
+                     it does not happen. */
+                  alsoRefuses={(values) =>
+                    kind === 'time' || !noTime(values) ? undefined : 'newResult.needsTime'
+                  }
+                  onSubmit={onSubmit}
+                />
+
+                {/* Said out loud rather than left to a button that looks unpressed, the same
+                    reasoning `RateEvent.tsx` keeps beside its own `role="status"`
+                    (WCAG 2.2, 4.1.3). */}
+                {sending && <p role="status">{t('results.sending')}</p>}
+
+                {refusal !== null && (
+                  <ServerSaid answer={refusal} refusals={WHEN_A_RESULT_IS_WRITTEN} />
+                )}
               </>
             )
-          }
-
-          /* Narrowed once, for the same reason the event is: the handler below
-             runs after the check above and the compiler cannot see that. */
-          const race = chosen
-          /* Read through the one function that knows the three words, and not off
-             the record. The type says `RaceKind`, but the record comes out of a
-             file nothing checks, and both of the things chosen by it below are
-             written one per kind: a word that is not one of the three gives
-             `undefined` from either, and `undefined` handed to the translator or to
-             the renderer takes this screen down to the error boundary. Measured
-             30.08.2026, and the same reading is what the table of races in the
-             administration does (`admin/AdminEvents.tsx`). */
-          const kind = raceKind(race.kind)
-
-          /**
-           * SENDS THE RUN, AND DECIDES WHAT THE READER SEES BY WHAT CAME BACK.
-           *
-           * <p><b>THE CONFIRMATION IS DRAWN ONLY AFTER 201.</b> Until 28.09.2026 this
-           * screen wrote the run into the browser's own overlay and confirmed it on the
-           * spot, so a member was told his result was in the queue when nothing had left
-           * the machine. `POST /api/results` is what really puts it there, together with
-           * the row a moderator reads and the line in his inbox; the letter waits for the
-           * approval (since 09.10.2026, `ResultWriteApi`).
-           *
-           * <p><b>Refused, nothing moves.</b> Every box stays exactly as it was and the
-           * sentence appears beneath the form, so a member who mistyped a link corrects
-           * that one field rather than typing the whole race again.
-           *
-           * <p><b>Nothing is written into the browser after it went through</b>, since R2 of
-           * the results flows. Until then the run was written into the session's own list,
-           * because no route served a member his own runs and „Poslato" on `MyResults` drew
-           * that copy; `GET /api/me/result-submissions` serves them now, and
-           * `resultWrites.ts` drops it after the server agreed, so the list reads the row the
-           * server holds.
-           */
-          async function send(run: ReturnType<typeof reportedResult>, values: FormValues) {
-            outstanding.current = true
-            setSending(true)
-            /* And the last refusal goes while this one is out, so a reader who presses
-               again is not left reading the old sentence over a request in flight. */
-            setRefusal(null)
-
-            const answer = await theRunWasSentIn({
-              /* THE RACE AND NOTHING ELSE ABOUT IT. This road always starts from a row of
-                 the calendar, so it is always the first of the two bodies:
-                 `ResultWriteApi.fromTheCalendar` refuses `theRaceIsNamedTwice` if a name, a
-                 kind or a town arrives beside the id, and the race answers for all three. */
-              raceId: race.id,
-              /* What was run, and which of these the race fixes rather than the member is
-                 `reportedResult.ts`'s answer here and `figuresOf`'s answer there. Both are
-                 sent; the server decides, which is the one home for that question. */
-              distanceKm: run.distanceKm,
-              ascentM: run.ascentM,
-              descentM: run.descentM,
-              seconds: run.seconds,
-              link: String(values.link),
-              comment: String(values.comment),
-            })
-
-            outstanding.current = false
-            setSending(false)
-
-            if (answer.got !== 'done') {
-              setRefusal(answer)
-
-              return
-            }
-
-            /* That it went, and nothing about what it was worth. `true` rather than a
-               figure since 28.09.2026, which is the shape `RateEvent.tsx` has always
-               used for the same question. */
-            confirm(`/${locale}/moji-rezultati`, true)
-          }
-
-          function onSubmit(values: FormValues) {
-            const run = reportedResult(race, values)
-
-            /* Silently, the same way the rating next door refuses a second press: the first
-               one is still out and the reader has already been told so. */
-            if (outstanding.current) {
-              return
-            }
-
-            void send(run, values)
-          }
-
-          return (
-            <>
-              <FormRenderer
-                form={reportForm(kind, event.kind !== 'unscored')}
-                /* NOTHING ABOVE THE FIELDS since 16.10.2026. The sentence that stood here told
-                   the member which race this was and what the portal already knew about it;
-                   the owner took it off the page: „Ceo disclaimer sa vrha strane obriši". What
-                   the portal asks for is now said by the rows themselves (`reportForm.ts`): the
-                   length, the climb and the fall in one, the hours, minutes and seconds in
-                   another, and on each kind the row it does not ask for is not drawn. */
-                /* The third road a time reaches a submission by, and the one that
-                   was left out when the rule was written: a race run in no time is
-                   not a result (owner, 31.08.2026), and no single box can refuse
-                   it because each of the three is right to take nought on its own.
-                   Measured in review: 0 / 0 / 0 went through here and reached the
-                   queue while the form away from the calendar and the panel in it
-                   both turned it away.
-                 *
-                   **On a timed race there is nothing to ask, because there are no
-                   boxes.** This form drops the three of them for that kind
-                   (`reportForm.ts`), since the race answers for the time itself, so
-                   `fromBoxes` reads nothing at all and `noTime` is true of every
-                   such report. Without this half, no result from a timed race
-                   could be sent at all. The locking of filled boxes is the other
-                   form, the one away from the calendar (`racesToOffer.ts`); it is
-                   named here because an earlier note put it on this screen, where
-                   it does not happen. */
-                alsoRefuses={(values) =>
-                  kind === 'time' || !noTime(values) ? undefined : 'newResult.needsTime'
-                }
-                onSubmit={onSubmit}
-              />
-
-              {/* Said out loud rather than left to a button that looks unpressed, the same
-                  reasoning `RateEvent.tsx` keeps beside its own `role="status"`
-                  (WCAG 2.2, 4.1.3). */}
-              {sending && <p role="status">{t('results.sending')}</p>}
-
-              {refusal !== null && (
-                <ServerSaid answer={refusal} refusals={WHEN_A_RESULT_IS_WRITTEN} />
-              )}
-            </>
-          )
-        }}
-      </Resource>
+          }}
+        </Resource>
+      </WhileAReportIsOpen>
     </div>
   )
 }

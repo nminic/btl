@@ -1111,6 +1111,8 @@
   },
   "newResult": {
     "title": "Unos rezultata",
+    "notOpen": "Prijava rezultata još nije otvorena",
+    "notOpenWhy": "Prijava rezultata se otvara sa prvom sezonom lige.",
     "submit": "Pošalji rezultat",
     "again": "Ispravljaš rezultat koji je odbijen. Razlog je bio: {reason}",
     "fixingCounted": "Menjaš rezultat koji je već uračunat. Dok izmena ne bude potvrđena, u poretku ostaje stari rezultat. Uz izmenu priloži nov dokaz.",

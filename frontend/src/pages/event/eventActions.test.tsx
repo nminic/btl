@@ -142,6 +142,8 @@ describe('who is offered what on an event', () => {
        Every row and not merely one: a column drawn with a button in the first
        row alone reads as a table where only the first race can be reported. */
     await openEvent('competitor', '000007')
+    /* His way in is drawn once the server has named a season open for his report (PDL P9, 24.11.2026). */
+    await within(races()).findAllByRole('link', { name: /^Unesi rezultat/ })
 
     const rows = within(races()).getAllByRole('row').slice(1)
 
@@ -224,6 +226,7 @@ describe('who is offered what on an event', () => {
     renderAt(TWO_DAYS, 'competitor', '000007', undefined, '2021-09-17')
 
     await screen.findByRole('heading', { level: 1 })
+    await within(races()).findAllByRole('link', { name: /^Unesi rezultat/ })
 
     const rows = within(races()).getAllByRole('row').slice(1)
     const offered = rows.map((row) => within(row).queryByRole('link', { name: /^Unesi rezultat/ }))
@@ -266,8 +269,7 @@ describe('reporting a result from the event', () => {
 
     await screen.findByRole('heading', { level: 1 })
 
-    const named = within(races())
-      .getAllByRole('link', { name: /^Unesi rezultat/ })
+    const named = (await within(races()).findAllByRole('link', { name: /^Unesi rezultat/ }))
       .map((link) => must(link.getAttribute('aria-label'), 'what the row calls the race'))
 
     expect(named.length, 'the file no longer holds the event this is about').toBe(12)
@@ -280,7 +282,7 @@ describe('reporting a result from the event', () => {
 
     const row = must(within(races()).getAllByRole('row')[1], 'the first race')
 
-    await user.click(within(row).getByRole('link', { name: /^Unesi rezultat/ }))
+    await user.click(await within(row).findByRole('link', { name: /^Unesi rezultat/ }))
 
     expect(router.state.location.pathname).toBe(`${EVENT}/prijava`)
     expect(router.state.location.search).toMatch(/^[?]trka=/)
