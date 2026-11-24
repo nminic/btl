@@ -538,10 +538,39 @@ class MePhotoApiTest {
 	private MockHttpServletResponse sendingOnlyTheCircle(String memberNumber, String x, String y,
 			String size) throws Exception {
 
-		return http.perform(multipart("/api/me/photo").with(csrf())
+		return sendingOnlyTheCircleOver(memberNumber, theWaitingAddressOf(memberNumber), x, y, size);
+	}
+
+	/**
+	 * THE CIRCLE ALONE, OVER THE PICTURE A SCREEN NAMES (owner, 24.11.2026, PDL „Podešavanje kruga na slici
+	 * radi identično na svakom mestu portala" and „posle recenzije PR-a 825"). The address is a parameter so
+	 * that a case can name a picture that is not the one that waits, and {@code null} names none.
+	 */
+	private MockHttpServletResponse sendingOnlyTheCircleOver(String memberNumber, String over, String x,
+			String y, String size) throws Exception {
+
+		MockMultipartHttpServletRequestBuilder asking = multipart("/api/me/photo");
+
+		if (over != null) {
+			asking.param("over", over);
+		}
+
+		return http.perform(asking.with(csrf())
 						.param("cropX", x).param("cropY", y).param("cropSize", size)
 						.cookie(new Cookie(SessionCookie.NAME, cookieOf(memberNumber))))
 				.andReturn().getResponse();
+	}
+
+	/**
+	 * THE ADDRESS THE PICTURE THAT WAITS IS ASKED FOR AT, as a member's screen is served it: written out here
+	 * and not taken from the route, so a prefix the route moved is a red case.
+	 */
+	private static String theWaitingAddressOfDigest(String digest) {
+		return "/api/me/photo/" + digest;
+	}
+
+	private String theWaitingAddressOf(String memberNumber) {
+		return theWaitingAddressOfDigest(theWaitingRowOf(memberNumber).get(6));
 	}
 
 	/** What PDL 21b's screen asks on load, which is the read that did not exist before. */
@@ -1022,7 +1051,9 @@ class MePhotoApiTest {
 	void movingTheCircleWithNothingWaitingIsRefused() throws Exception {
 		long rowsBefore = howManyPhotoRows();
 
-		MockHttpServletResponse answer = sendingOnlyTheCircle(ME, "0.125", "0.875", "0.625");
+		/* NAMING NO PICTURE, which is the form not filled in; a circle that names one is the 409 of a picture that
+		   has changed, and `aCircleOverAPictureThatWasDecidedInTheMeantime...` holds that. */
+		MockHttpServletResponse answer = sendingOnlyTheCircleOver(ME, null, "0.125", "0.875", "0.625");
 
 		assertThat(answer.getStatus()).isEqualTo(400);
 		assertThat(reasonIn(answer)).isEqualTo(MePhotoApi.THE_FORM_IS_NOT_COMPLETE);
@@ -1059,6 +1090,135 @@ class MePhotoApiTest {
 		assertThat(theWaitingRowOf(WHOSE_PICTURE_WAITS).subList(7, 10))
 				.as("one fraction was written before the broken one was noticed")
 				.containsExactly("0.30000000", "0.70000000", "0.45000000");
+	}
+
+	/**
+	 * A CIRCLE DRAWN OVER ANOTHER PICTURE THAN THE ONE THAT WAITS IS REFUSED, AND NOTHING IS WRITTEN (owner,
+	 * 24.11.2026, PDL „Podešavanje kruga na slici radi identično na svakom mestu portala": „Zelim da ovo za sliku
+	 * radi identično kao za bilo koje prilagođavanje kruga na slici na portalu", and „posle recenzije PR-a 825":
+	 * the sentence „Slika je u međuvremenu promenjena. Otvori je ponovo pa namesti krug." at every place that
+	 * sets a circle).
+	 *
+	 * <p><b>Every address here is one a route that compares less than the whole address would take.</b> The
+	 * digest of another picture; the digest of the picture that STANDS on his profile, with the address it is
+	 * public at; the digest of the picture that waits, with the PUBLIC prefix and with none; the address of
+	 * somebody else's waiting picture; an empty text and a zero. The row is read whole before and after, so a
+	 * circle written to the wrong place shows.
+	 */
+	@Test
+	void aCircleDrawnOverAnotherPictureThanTheOneThatWaitsIsRefusedAndWritesNothing() throws Exception {
+		List<String> before = theWaitingRowOf(WHOSE_PICTURE_WAITS);
+		List<String> hers = theWaitingRowOf(SOMEONE_ELSE);
+		String waits = before.get(6);
+		long rowsBefore = howManyPhotoRows();
+
+		for (String over : List.of(
+				theWaitingAddressOfDigest(String.format("%064x", 4_000_001)),
+				theWaitingAddressOfDigest(digestStandingOn(WHOSE_PICTURE_WAITS)),
+				"/api/photos/" + digestStandingOn(WHOSE_PICTURE_WAITS),
+				"/api/photos/" + waits,
+				waits,
+				theWaitingAddressOf(SOMEONE_ELSE),
+				"",
+				"0")) {
+
+			MockHttpServletResponse answer =
+					sendingOnlyTheCircleOver(WHOSE_PICTURE_WAITS, over, "0.125", "0.875", "0.625");
+
+			assertThat(answer.getStatus()).as("over [%s]: %s", over, answer.getContentAsString()).isEqualTo(409);
+			assertThat(reasonIn(answer)).as(over).isEqualTo(MePhotoApi.THE_PICTURE_HAS_CHANGED);
+		}
+
+		assertThat(theWaitingRowOf(WHOSE_PICTURE_WAITS))
+				.as("a circle drawn over another picture was written onto the one that waits")
+				.isEqualTo(before);
+		assertThat(theWaitingRowOf(SOMEONE_ELSE)).isEqualTo(hers);
+		assertThat(howManyPhotoRows()).isEqualTo(rowsBefore);
+	}
+
+	/**
+	 * AND A CIRCLE THAT NAMES THE PICTURE THAT WAITS, AS A SCREEN IS SERVED IT, IS TAKEN.
+	 *
+	 * <p>The other half of the case above, without which a route that refuses every circle passes it. The
+	 * answer to a read of his own pictures names the address, and that is the one the circle is sent over, so
+	 * the case asks the route and does not build the address from the row.
+	 */
+	@Test
+	void aCircleDrawnOverThePictureThatWaitsAsTheScreenWasServedItIsTaken() throws Exception {
+		String served = answerIn(askingForMine(WHOSE_PICTURE_WAITS)).path("waiting").path("photo").asString();
+
+		assertThat(served).isEqualTo(theWaitingAddressOf(WHOSE_PICTURE_WAITS));
+		assertThat(sendingOnlyTheCircleOver(WHOSE_PICTURE_WAITS, served, "0.125", "0.875", "0.625").getStatus())
+				.isEqualTo(200);
+		assertThat(theWaitingRowOf(WHOSE_PICTURE_WAITS).subList(7, 10))
+				.containsExactly("0.12500000", "0.87500000", "0.62500000");
+	}
+
+	/**
+	 * A CIRCLE OVER A PICTURE THAT WAS DECIDED IN THE MEANTIME IS THE SAME SENTENCE, NOT A FORM THAT WAS NOT FILLED
+	 * IN: the picture arrived, and it is no longer the one that waits.
+	 *
+	 * <p>Until 24.11.2026 this was the 400 „Slika nije stigla do servera. Izaberi je ponovo i pošalji." for a
+	 * picture a moderator had refused while the member's screen was open. The row is decided in the middle of
+	 * the case, after the address was read, which is the order the member lives it in. A request that names no
+	 * picture stays the form not filled in, and `movingTheCircleWithNothingWaitingIsRefused` holds that.
+	 */
+	@Test
+	void aCircleOverAPictureThatWasDecidedInTheMeantimeIsTheSentenceOfAPictureThatHasChanged() throws Exception {
+		String served = theWaitingAddressOf(WHOSE_PICTURE_WAITS);
+
+		db.sql("update verification set state = 'rejected', photo_id = null,"
+						+ " decided_at = timestamptz '2026-09-02 10:00:00+00', decided_by_name = 'Moderator Bezimeni',"
+						+ " reason = 'Lice nije u fokusu.' where state = 'waiting' and photo_id is not null"
+						+ " and competitor_id = (select id from competitor where member_number = ?)")
+				.param(WHOSE_PICTURE_WAITS).update();
+
+		MockHttpServletResponse answer =
+				sendingOnlyTheCircleOver(WHOSE_PICTURE_WAITS, served, "0.125", "0.875", "0.625");
+
+		assertThat(answer.getStatus()).as(answer.getContentAsString()).isEqualTo(409);
+		assertThat(reasonIn(answer)).isEqualTo(MePhotoApi.THE_PICTURE_HAS_CHANGED);
+
+		/* A member who never had one waiting, and has one standing, is told the same of any picture he names. */
+		MockHttpServletResponse never = sendingOnlyTheCircleOver(ME, theWaitingAddressOfDigest(
+				String.format("%064x", 4_000_002)), "0.125", "0.875", "0.625");
+
+		assertThat(never.getStatus()).isEqualTo(409);
+		assertThat(reasonIn(never)).isEqualTo(MePhotoApi.THE_PICTURE_HAS_CHANGED);
+		assertThat(howManyPicturesWaitFor(ME)).isZero();
+	}
+
+	/**
+	 * A CIRCLE OVER THE PICTURE JUST SENT IN THE SAME WINDOW IS TAKEN, AND OVER THE ONE IT REPLACED IS NOT.
+	 *
+	 * <p>The address a screen names after a send is the one the ANSWER of the send gave it ({@code digest}),
+	 * and a second send puts another picture in the same row, so this is the pair „picture A against picture
+	 * B" with real addresses: the circle over A is taken before B and refused once B waits, over B it is
+	 * taken. A route that compared the address with the row's key, or with the picture that stands, or never
+	 * asked, gets one of the three wrong.
+	 */
+	@Test
+	void aCircleOverThePictureJustSentIsTakenAndOverTheOneItReplacedIsNot() throws Exception {
+		String a = answerIn(sending(ME, aJpeg("slika A"))).path("digest").asString();
+
+		assertThat(sendingOnlyTheCircleOver(ME, theWaitingAddressOfDigest(a), "0.2", "0.4", "0.6").getStatus())
+				.as("a circle over the picture just sent was refused").isEqualTo(200);
+		assertThat(theWaitingRowOf(ME).subList(6, 10)).containsExactly(a, "0.20000000", "0.40000000", "0.60000000");
+
+		String b = answerIn(sending(ME, aJpeg("slika B"))).path("digest").asString();
+
+		assertThat(b).isNotEqualTo(a);
+
+		MockHttpServletResponse overA = sendingOnlyTheCircleOver(ME, theWaitingAddressOfDigest(a), "0.1", "0.3", "0.5");
+
+		assertThat(overA.getStatus()).as(overA.getContentAsString()).isEqualTo(409);
+		assertThat(reasonIn(overA)).isEqualTo(MePhotoApi.THE_PICTURE_HAS_CHANGED);
+		assertThat(theWaitingRowOf(ME).subList(6, 10)).as("a circle over A was written onto B")
+				.containsExactly(b, "0.25000000", "0.75000000", "0.50000000");
+
+		assertThat(sendingOnlyTheCircleOver(ME, theWaitingAddressOfDigest(b), "0.1", "0.3", "0.5").getStatus())
+				.isEqualTo(200);
+		assertThat(theWaitingRowOf(ME).subList(6, 10)).containsExactly(b, "0.10000000", "0.30000000", "0.50000000");
 	}
 
 	/**

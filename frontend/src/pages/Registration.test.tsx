@@ -1,6 +1,6 @@
 import { SLOW } from '../test/slow'
 import { theCookieNames } from '../test/setup'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { configure, getConfig, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { ClockProvider } from '../clock/ClockProvider'
 import { registracija } from '../forms/definitions'
@@ -24,6 +24,14 @@ import { NewResult } from './member/NewResult'
 import { SessionProvider } from '../session/SessionProvider'
 import { Registration } from './Registration'
 import { typeATownTheCodebookKnows } from '../test/town'
+
+/* EVERY WAIT OF THIS FILE IS GIVEN HALF OF THE TIME A CASE HAS, the shape of `pages/admin/saveWhileSaving.test.tsx`
+   (review of PR 814, finding on the cases that go through without a telephone). The global is `SLOW` for both
+   (`test/setup.ts`), so a wait that never succeeds and the case that is waiting for it had the same twenty
+   seconds, and the clock of the case ended it: under a mutation that asked for a telephone of everybody the two
+   cases below failed by `Test timed out in 20000ms` and by nothing they assert, which a series of mutations
+   counts as caught. Set here, and so for this file alone. */
+configure({ asyncUtilTimeout: SLOW / 2 })
 
 /** After registration opens, so the form itself is on screen. */
 const OPEN = '2026-10-02'
@@ -1214,6 +1222,9 @@ describe('the telephone', () => {
     await user.type(screen.getByLabelText(/Datum rođenja/), '12041985')
     await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
 
+    /* Asked at once, before the wait: what the form says about the telephone is on the screen when the press
+       returns, so a form that asked for it fails here with these words and not by the clock of the case. */
+    expect(phone).not.toHaveAccessibleDescription(/Za Viber zajednicu upišite broj telefona\./)
     expect(await screen.findByRole('heading', { name: 'Prijava je zabeležena' })).toBeVisible()
   }, SLOW)
 })
@@ -1312,7 +1323,14 @@ describe('the box for the community on Viber', () => {
     await fillEverythingExceptBirthDate(user, { phone: '' })
     await user.type(screen.getByLabelText(/Datum rođenja/), '12041985')
     await user.click(screen.getByRole('checkbox', { name: THE_BOX }))
+    /* Taken before the press: a form that goes through is gone from the screen when the press returns. */
+    const phone = screen.getByLabelText(/^Telefon/)
+
     await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
+
+    /* At once, as in the walk above: the refusal of a form that wants the number is on the screen when the press
+       returns, and is told by its own words and not by the clock of the case. */
+    expect(phone).not.toHaveAccessibleDescription(/Za Viber zajednicu upišite broj telefona\./)
 
     await waitFor(() => {
       expect(whatWasSent()).toHaveLength(1)
@@ -2044,4 +2062,13 @@ describe('the category on the registration', () => {
       server.stop()
     }
   }, SLOW)
+})
+
+describe('what a case of this file may end in', () => {
+  it('is an assertion and never its own clock: every wait is given less time than a case has', () => {
+    /* The floor under the paragraph at the head of the file. Every long case is given `SLOW`, and every wait is
+       given half of it by the `configure` there. Take that line away and both are `SLOW` again
+       (`test/setup.ts`). Asked of the number that decides and not of the text of the file. */
+    expect(getConfig().asyncUtilTimeout).toBeLessThan(SLOW)
+  })
 })

@@ -13,8 +13,9 @@ import {
   asTheColumnHolds,
   pictureToSend,
   theRowIn,
+  theWaitingAddressIn,
   THE_PICTURE_GOES_TO,
-  WHEN_SENDING_A_PICTURE,
+  WHEN_MOVING_THE_CIRCLE_OF_A_PICTURE,
 } from './photoWrites'
 import { useTellTheHeadABoxWasSent } from '../profile/finishTheProfile'
 import { useMyPictures } from './useMyPictures'
@@ -133,16 +134,23 @@ export function ProfilePicture({ me }: { me: Competitor }) {
  */
 const NO_FILE = new File([], 'the-picture-that-is-already-there')
 
-/** What the server says is on the screen: which of the two it is, where to fetch it, and its circle. */
-type Origin = { kind: 'waiting' | 'standing'; photo: string; crop: Crop }
+/**
+ * What the server says is on the screen: which of the two it is, where to fetch it, and its circle.
+ *
+ * <p>`named` is the address the route knows the picture that WAITS by (`/api/me/photo/<digest>`), which is
+ * what a circle moved over it is sent over (`over`; owner, 24.11.2026). It is not `photo`: after a send in
+ * this window `photo` is the browser's own copy of the file, and what names the picture is the digest the
+ * server answered with. Nothing for the picture that stands, whose circle goes with its bytes as a file.
+ */
+type Origin = { kind: 'waiting' | 'standing'; photo: string; crop: Crop; named: string | null }
 
 /** The picture that waits if one does, because that is the one a member sent last. */
 function originOf(pictures: MyPictures): Origin | null {
   if (pictures.waiting !== null) {
-    return { kind: 'waiting', ...pictures.waiting }
+    return { kind: 'waiting', ...pictures.waiting, named: pictures.waiting.photo }
   }
 
-  return pictures.standing === null ? null : { kind: 'standing', ...pictures.standing }
+  return pictures.standing === null ? null : { kind: 'standing', ...pictures.standing, named: null }
 }
 
 /** Whether two circles are the same one AS THE COLUMN HOLDS THEM, which is what would be sent. */
@@ -165,7 +173,8 @@ function sameCircle(a: Crop, b: Crop): boolean {
  */
 type Plan =
   | { how: 'file'; file: File; crop: Crop; drawn: string }
-  | { how: 'circle' | 'again'; crop: Crop; drawn: string }
+  | { how: 'circle'; crop: Crop; drawn: string; over: string | null }
+  | { how: 'again'; crop: Crop; drawn: string }
 
 function planOf(picked: Chosen | null, there: Origin | null, circle: Crop | null): Plan | null {
   if (picked !== null) {
@@ -176,7 +185,9 @@ function planOf(picked: Chosen | null, there: Origin | null, circle: Crop | null
     return null
   }
 
-  return { how: there.kind === 'waiting' ? 'circle' : 'again', crop: circle, drawn: there.photo }
+  return there.kind === 'waiting'
+    ? { how: 'circle', crop: circle, drawn: there.photo, over: there.named }
+    : { how: 'again', crop: circle, drawn: there.photo }
 }
 
 /**
@@ -301,7 +312,10 @@ function ThePicture({ me, pictures }: { me: Competitor; pictures: MyPictures }) 
     if (what.how === 'file') {
       body = pictureToSend(what.file, what.crop)
     } else if (what.how === 'circle') {
-      body = pictureToSend(null, what.crop)
+      /* AND OVER WHICH PICTURE (owner, 24.11.2026, „Podešavanje kruga na slici radi identično na svakom mestu
+         portala"): the one the screen was served, or the one the last send answered with. The route asks it of the
+         picture that waits now, and a picture that was decided or replaced since is `thePictureHasChanged`. */
+      body = pictureToSend(null, what.crop, what.over)
     } else {
       const bytes = await theBytesAt(what.drawn)
 
@@ -344,7 +358,12 @@ function ThePicture({ me, pictures }: { me: Competitor; pictures: MyPictures }) 
     /* AND WHAT STANDS ON THIS SCREEN IS NOW WHAT THE SERVER ACCEPTED: the picture waits, with the
        circle that was sent. The next press measures against that and not against what the screen was
        drawn with. */
-    setOrigin({ kind: 'waiting', photo: what.drawn, crop: what.crop })
+    setOrigin({
+      kind: 'waiting',
+      photo: what.drawn,
+      crop: what.crop,
+      named: theWaitingAddressIn(answer.body),
+    })
     setPicked(null)
     setCircle(null)
     setJustSent(true)
@@ -431,7 +450,7 @@ function ThePicture({ me, pictures }: { me: Competitor; pictures: MyPictures }) 
       {/* What the server said, in its own reason's words. Under the control it
           answers, so the sentence and the button a member presses again are in
           one place. */}
-      {refusal !== null && <ServerSaid answer={refusal} refusals={WHEN_SENDING_A_PICTURE} />}
+      {refusal !== null && <ServerSaid answer={refusal} refusals={WHEN_MOVING_THE_CIRCLE_OF_A_PICTURE} />}
     </>
   )
 }
