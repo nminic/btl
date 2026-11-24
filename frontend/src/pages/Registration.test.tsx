@@ -9,15 +9,16 @@ import { renderAt } from '../test/render'
 import sr from '../i18n/sr.json'
 import {
   answeredWith,
+  answeringCategory,
   did,
   forgetEveryCookie,
   refused,
   serverThat,
   type Asked,
+  type CategoryAnswered,
 } from '../test/serverAnswers'
 import { setupUser } from '../test/user'
 import { clearResourceCache } from '../data/client'
-import { answeringCategory, serverThat, type CategoryAnswered } from '../test/serverAnswers'
 import { NewResult } from './member/NewResult'
 import { SessionProvider } from '../session/SessionProvider'
 import { Registration } from './Registration'
