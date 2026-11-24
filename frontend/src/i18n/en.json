@@ -216,6 +216,10 @@
     "unnumberedMemberData": {
       "title": "Details of a member with no member number",
       "description": "The details of a member who has no member number yet, seen only by the administration."
+    },
+    "adminSponsors": {
+      "title": "Sponsors (administration)",
+      "description": "The sponsors of the League: who takes a turn in the box \"Sponsor of the day\", who stands in the strip at the foot of the front page, and in what order."
     }
   },
   "shell": {
@@ -1436,7 +1440,8 @@
         "teams": "A new team",
         "leagues": "A new competition",
         "pages": "A new page",
-        "moderators": "A new moderator"
+        "moderators": "A new moderator",
+        "sponsors": "A new sponsor"
       },
       "copying": "Copying an event",
       "edit": {
@@ -1447,7 +1452,8 @@
         "leagues": "Changing a competition",
         "pricing": "Changing a price list row",
         "pages": "Changing a page",
-        "moderators": "Changing a moderator"
+        "moderators": "Changing a moderator",
+        "sponsors": "Changing a sponsor"
       },
       "delete": "Delete",
       "removeRow": "Delete race {which}",
@@ -1498,7 +1504,14 @@
       "highlightsEvents": "Highlight events",
       "eventDescription": "Event description",
       "eventLink": "Link to the organiser’s page",
-      "rowLabel": "Name"
+      "rowLabel": "Name",
+      "sponsorName": "Sponsor name",
+      "sponsorLink": "Link to the sponsor's page",
+      "sponsorDescriptionSr": "Description in Serbian",
+      "sponsorDescriptionEn": "Description in English",
+      "sponsorMain": "Main sponsor",
+      "sponsorInRotation": "Takes its turn in the box \"Sponsor of the day\"",
+      "sponsorInStrip": "Stands in the strip of sponsors at the foot of the front page"
     },
     "value": {
       "genderM": "Male",
@@ -1701,7 +1714,29 @@
       "theSeasonIsNotOffered": "This season can't be changed now."
     },
     "editMember": "Edit the details",
-    "editMemberNamed": "Edit the details: {name}"
+    "editMemberNamed": "Edit the details: {name}",
+    "sponsors": "Sponsors",
+    "sponsorLogo": "Logo",
+    "sponsorMain": "Main",
+    "sponsorInRotation": "Sponsor of the day",
+    "sponsorInStrip": "Strip",
+    "sponsorOrder": "Order",
+    "sponsorMainFirst": "Always first",
+    "sponsorNoLogo": "No logo, so it is not shown",
+    "sponsorUp": "Move up",
+    "sponsorUpNamed": "Move up: {name}",
+    "sponsorDown": "Move down",
+    "sponsorDownNamed": "Move down: {name}",
+    "sponsorDeleteAsk": "Delete the sponsor?",
+    "sponsorDeleteWith": "The sponsor leaves the front page, and its logo is deleted along with it.",
+    "sponsorGone": "The sponsor has been deleted.",
+    "sponsorSavedUnseen": "The sponsor was saved. Refresh the page.",
+    "sponsorSaveRefused": {
+      "theFormIsNotComplete": "A name, a link or the description in Serbian is missing.",
+      "theNameIsTooLong": "A name may have at most 80 characters.",
+      "theLinkIsNotALink": "The link is not a valid web address. It must begin with http:// or https://.",
+      "theDescriptionIsTooLong": "A description may have at most 80 characters."
+    }
   },
   "ducats": {
     "title": "Ducats",
@@ -1771,7 +1806,8 @@
         "teams": "Teams",
         "leagues": "Competitions",
         "pricing": "Price list",
-        "pages": "Pages"
+        "pages": "Pages",
+        "sponsors": "Sponsors"
       },
       "queue": {
         "results": "Results",
@@ -1788,7 +1824,8 @@
         "teams": "editing teams",
         "leagues": "editing competitions",
         "pricing": "editing the price list",
-        "pages": "editing the written pages"
+        "pages": "editing the written pages",
+        "sponsors": "editing sponsors"
       },
       "queue": {
         "results": "deciding on results",
@@ -2088,5 +2125,19 @@
   "frozen": {
     "deletedMan": "<Deleted member>",
     "deletedWoman": "<Deleted member>"
+  },
+  "sponsorLogo": {
+    "title": "Sponsor logo",
+    "none": "The sponsor has no logo yet, so it is shown neither in the box \"Sponsor of the day\" nor in the strip at the foot of the front page.",
+    "standing": "This is how the logo stands on the front page now, in the box \"Sponsor of the day\" and in the strip.",
+    "chosen": "This is how the chosen logo will stand on the front page once you save it.",
+    "atOnce": "The logo stands on the front page at once, with no approval. Send it as PNG, WebP or JPEG, with a transparent background, because it stands on a dark ground.",
+    "alt": "Logo of the sponsor {name}",
+    "choose": "Choose a logo",
+    "save": "Save the logo",
+    "remove": "Remove the logo",
+    "removeAsks": "Remove the sponsor logo? Until it gets a new one, the sponsor is not shown on the front page.",
+    "saved": "The logo is saved.",
+    "removed": "The logo is removed, so the sponsor is no longer shown on the front page."
   }
 }

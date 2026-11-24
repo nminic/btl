@@ -156,6 +156,24 @@ const SCREENS: Screen[] = [
     words: { open: sr.leagueMark.remove, asks: sr.leagueMark.removeAsks },
   },
   {
+    /* The logo of a sponsor, taken down in its form (owner, PDL 24.11.2026, „Strana za upravljanje sponzorima").
+       The first sponsor of the served file has one, and the form is opened off its row; once it is down there
+       is no second to take, so the page is as good as left (`leaves`). */
+    name: 'a sponsor\'s logo, taken down by the administration',
+    asks: sr.sponsorLogo.removeAsks,
+    gone: sr.sponsorLogo.removed,
+    leaves: true,
+    source: 'admin/SponsorLogo.tsx',
+    at: '/sr/administracija/sponzori',
+    role: 'superadmin',
+    ask: async () => {
+      await setupUser().click(await screen.findByRole('button', { name: 'Otvori: Volt' }))
+
+      return screen.findByRole('button', { name: sr.sponsorLogo.remove })
+    },
+    words: { open: sr.sponsorLogo.remove, asks: sr.sponsorLogo.removeAsks },
+  },
+  {
     name: 'a member\'s own counted result',
     asks: sr.results.deleteAsk,
     gone: sr.results.deleted,

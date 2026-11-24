@@ -9,6 +9,7 @@
       "entity:events",
       "entity:teams",
       "entity:leagues",
+      "entity:sponsors",
       "entity:pages",
       "entity:pricing",
       "queue:results",

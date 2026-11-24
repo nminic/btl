@@ -4,6 +4,7 @@ import writtenClan from './admin-clan.form.json'
 import writtenDogadjaj from './admin-dogadjaj.form.json'
 import writtenLiga from './admin-liga.form.json'
 import writtenModerator from './admin-moderator.form.json'
+import writtenSponzor from './admin-sponzor.form.json'
 import writtenStrana from './admin-strana.form.json'
 import writtenTim from './admin-tim.form.json'
 import writtenTrka from './admin-trka.form.json'
@@ -98,6 +99,7 @@ export const clan = formDef(writtenClan)
 export const dogadjaj = formDef(writtenDogadjaj)
 export const liga = formDef(writtenLiga)
 export const moderator = formDef(writtenModerator)
+export const sponzor = formDef(writtenSponzor)
 export const strana = formDef(writtenStrana)
 export const tim = formDef(writtenTim)
 export const trka = formDef(writtenTrka)
@@ -129,6 +131,7 @@ export const FORMS: Record<string, FormDef> = {
   'admin-dogadjaj.form.json': dogadjaj,
   'admin-liga.form.json': liga,
   'admin-moderator.form.json': moderator,
+  'admin-sponzor.form.json': sponzor,
   'admin-strana.form.json': strana,
   'admin-tim.form.json': tim,
   'admin-trka.form.json': trka,

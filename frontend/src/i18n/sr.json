@@ -216,6 +216,10 @@
     "unnumberedMemberData": {
       "title": "Podaci člana bez članskog broja",
       "description": "Podaci člana koji još nema članski broj, koje vidi samo administracija."
+    },
+    "adminSponsors": {
+      "title": "Sponzori (administracija)",
+      "description": "Sponzori lige: ko se smenjuje u boksu \"Sponzor dana\", ko stoji u traci na dnu naslovne strane, i kojim redom."
     }
   },
   "shell": {
@@ -1436,7 +1440,8 @@
         "teams": "Novi tim",
         "leagues": "Nova liga",
         "pages": "Nova strana",
-        "moderators": "Nov moderator"
+        "moderators": "Nov moderator",
+        "sponsors": "Novi sponzor"
       },
       "copying": "Kopiranje događaja",
       "edit": {
@@ -1447,7 +1452,8 @@
         "leagues": "Izmena lige",
         "pricing": "Izmena reda cenovnika",
         "pages": "Izmena strane",
-        "moderators": "Izmena moderatora"
+        "moderators": "Izmena moderatora",
+        "sponsors": "Izmena sponzora"
       },
       "delete": "Obriši",
       "removeRow": "Obriši {which}. trku",
@@ -1498,7 +1504,14 @@
       "highlightsEvents": "Istakni događaje",
       "eventDescription": "Opis događaja",
       "eventLink": "Link ka strani organizatora",
-      "rowLabel": "Naziv"
+      "rowLabel": "Naziv",
+      "sponsorName": "Naziv sponzora",
+      "sponsorLink": "Link ka strani sponzora",
+      "sponsorDescriptionSr": "Opis na srpskom",
+      "sponsorDescriptionEn": "Opis na engleskom",
+      "sponsorMain": "Glavni sponzor",
+      "sponsorInRotation": "Smenjuje se u boksu \"Sponzor dana\"",
+      "sponsorInStrip": "Stoji u traci sponzora na dnu naslovne"
     },
     "value": {
       "genderM": "Muški",
@@ -1701,7 +1714,29 @@
       "theSeasonIsNotOffered": "Ova sezona se sada ne može menjati."
     },
     "editMember": "Izmeni podatke",
-    "editMemberNamed": "Izmeni podatke: {name}"
+    "editMemberNamed": "Izmeni podatke: {name}",
+    "sponsors": "Sponzori",
+    "sponsorLogo": "Logo",
+    "sponsorMain": "Glavni",
+    "sponsorInRotation": "Sponzor dana",
+    "sponsorInStrip": "Traka",
+    "sponsorOrder": "Redosled",
+    "sponsorMainFirst": "Uvek prvi",
+    "sponsorNoLogo": "Nema logo, pa se ne prikazuje",
+    "sponsorUp": "Pomeri gore",
+    "sponsorUpNamed": "Pomeri gore: {name}",
+    "sponsorDown": "Pomeri dole",
+    "sponsorDownNamed": "Pomeri dole: {name}",
+    "sponsorDeleteAsk": "Obriši sponzora?",
+    "sponsorDeleteWith": "Sponzor nestaje sa naslovne strane, a zajedno sa njim briše se i njegov logo.",
+    "sponsorGone": "Sponzor je obrisan.",
+    "sponsorSavedUnseen": "Sponzor je sačuvan. Osveži stranu.",
+    "sponsorSaveRefused": {
+      "theFormIsNotComplete": "Nedostaje naziv, link ili opis na srpskom.",
+      "theNameIsTooLong": "Naziv sme da ima najviše 80 karaktera.",
+      "theLinkIsNotALink": "Link nije ispravna veb adresa. Mora da počinje sa http:// ili https://.",
+      "theDescriptionIsTooLong": "Opis sme da ima najviše 80 karaktera."
+    }
   },
   "ducats": {
     "title": "Dukati",
@@ -1771,7 +1806,8 @@
         "teams": "Timovi",
         "leagues": "Lige",
         "pricing": "Cenovnik",
-        "pages": "Strane"
+        "pages": "Strane",
+        "sponsors": "Sponzori"
       },
       "queue": {
         "results": "Rezultati",
@@ -1788,7 +1824,8 @@
         "teams": "uređivanje timova",
         "leagues": "uređivanje liga",
         "pricing": "uređivanje cenovnika",
-        "pages": "uređivanje statičnih strana"
+        "pages": "uređivanje statičnih strana",
+        "sponsors": "uređivanje sponzora"
       },
       "queue": {
         "results": "odlučivanje o rezultatima",
@@ -2088,5 +2125,19 @@
   "frozen": {
     "deletedMan": "<Obrisani član>",
     "deletedWoman": "<Obrisana članica>"
+  },
+  "sponsorLogo": {
+    "title": "Logo sponzora",
+    "none": "Sponzor još nema logo, pa se ne prikazuje ni u boksu \"Sponzor dana\" ni u traci na dnu naslovne.",
+    "standing": "Ovako logo sada stoji na naslovnoj strani, u boksu \"Sponzor dana\" i u traci.",
+    "chosen": "Ovako će izabrani logo stajati na naslovnoj strani kad ga sačuvaš.",
+    "atOnce": "Logo odmah stoji na naslovnoj strani, bez odobravanja. Pošalji ga kao PNG, WebP ili JPEG, sa providnom pozadinom, jer stoji na tamnoj podlozi.",
+    "alt": "Logo sponzora {name}",
+    "choose": "Izaberi logo",
+    "save": "Sačuvaj logo",
+    "remove": "Ukloni logo",
+    "removeAsks": "Ukloni logo sponzora? Dok ne dobije nov, sponzor se ne prikazuje na naslovnoj strani.",
+    "saved": "Logo je sačuvan.",
+    "removed": "Logo je uklonjen, pa se sponzor više ne prikazuje na naslovnoj strani."
   }
 }

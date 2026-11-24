@@ -1978,6 +1978,7 @@ describe('what a form hands over beside what it sends', () => {
       'admin-dogadjaj.form.json': [],
       'admin-liga.form.json': [],
       'admin-moderator.form.json': [],
+      'admin-sponzor.form.json': [],
       'admin-strana.form.json': [],
       'admin-tim.form.json': [],
       'admin-trka.form.json': [],

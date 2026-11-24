@@ -1,5 +1,5 @@
+import type { SponsorShown } from '../../data/types'
 import { useI18n } from '../../i18n/useI18n'
-import type { SponsorEntry } from './content'
 
 /**
  * „Sponzor dana", in the right column between the calendar and the calculator (PDL P24, variant A,
@@ -16,10 +16,18 @@ import type { SponsorEntry } from './content'
  * logo is therefore decoration inside the link (`alt=""`); the name of the link is the name of the
  * sponsor, and the sentence that it opens in a new window.
  *
- * Drawn only for a sponsor there is. Whether there is one is decided once, on the front page, which
- * also decides the strip and the number of races in the calendar by the same answer (`Home.tsx`).
+ * Drawn only for a sponsor there is. Which one, and whether there is one at all, is the server's
+ * answer (`SponsorApi`, „„Sponzor dana” se smenjuje po danu, a glavni sponzor ide duplo češće od bilo
+ * kog drugog", PDL 24.11.2026), read once on the front page, which also decides the number of races in
+ * the calendar and the shape of the grid by it (`Home.tsx`).
+ *
+ * **The description carries the language it is really written in** (`SponsorShown.language`): on `/en`
+ * a sponsor with no English description is answered in Serbian („ako engleska nije upisana, engleska
+ * naslovna pokazuje srpsku"), and `lang="sr"` is what keeps a screen reader from reading Serbian words
+ * with English phonetics (WCAG 3.1.2), the reason `PageSectionBody` marks a written page the same way.
+ * The name carries none: it is a name, the same in both.
  */
-export function Sponsor({ sponsor }: { sponsor: SponsorEntry }) {
+export function Sponsor({ sponsor }: { sponsor: SponsorShown }) {
   const { t } = useI18n()
 
   return (
@@ -34,7 +42,9 @@ export function Sponsor({ sponsor }: { sponsor: SponsorEntry }) {
           <span className="visually-hidden">{t('home.opensInNewWindow')}</span>
         </a>
       </div>
-      <p className="sponsor-day__text">{sponsor.description}</p>
+      <p className="sponsor-day__text" lang={sponsor.language}>
+        {sponsor.description}
+      </p>
     </section>
   )
 }
@@ -50,10 +60,13 @@ export function Sponsor({ sponsor }: { sponsor: SponsorEntry }) {
  * and not as the seven the width would hold.
  *
  * The name of each link is the logo's own `alt`, which is the sponsor's name, and the sentence that it
- * opens in a new window. Which level of sponsor it is („glavni sponzor", „partner") arrives with the
- * screen on which the sponsors are entered.
+ * opens in a new window.
+ *
+ * **In the order the server gives, and never sorted again here**: „Redosled u traci: glavni sponzor
+ * prvi, pa ručni redosled koji se podešava u administraciji" (PDL 24.11.2026), and the manual order is
+ * a number this page is never handed.
  */
-export function SponsorStrip({ sponsors }: { sponsors: SponsorEntry[] }) {
+export function SponsorStrip({ sponsors }: { sponsors: SponsorShown[] }) {
   const { t } = useI18n()
 
   return (

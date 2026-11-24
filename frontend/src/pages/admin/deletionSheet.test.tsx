@@ -82,6 +82,16 @@ const SCREENS: Screen[] = [
     gone: sr.admin.leagueGone,
   },
   {
+    /* Since 24.11.2026 (PDL, „Strana za upravljanje sponzorima"): the sheet says what goes with the sponsor,
+       its logo (the plan approved that day, „brisanje sponzora briše i njegov logo"). */
+    name: 'the sponsors',
+    source: 'admin/AdminSponsors.tsx',
+    at: '/sr/administracija/sponzori',
+    asks: sr.admin.sponsorDeleteAsk,
+    gone: sr.admin.sponsorGone,
+    under: new RegExp(sr.admin.sponsorDeleteWith.replace(/[.]/g, '\\.')),
+  },
+  {
     name: 'the moderators',
     source: 'admin/AdminModerators.tsx',
     at: '/sr/administracija/moderatori',

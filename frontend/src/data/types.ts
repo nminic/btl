@@ -2069,3 +2069,66 @@ export type SentRun = {
    *  he sent a described run under. A run of an unscored race is listed with no points. */
   eventKind: string
 }
+
+/**
+ * ONE SPONSOR AS THE FRONT PAGE DRAWS IT (`SponsorApi.Shown`, PDL 24.11.2026, „Strana za upravljanje
+ * sponzorima"): in the box „Sponzor dana" and as a tile of the strip, and nowhere else on the portal
+ * („Sponzori stoje samo na naslovnoj strani", 17.11.2026). A link to the sponsor's own page, and no
+ * address of the portal names one („Sponzor nema podstranu na portalu").
+ */
+export type SponsorShown = {
+  /** The key of a list, and nothing a reader is shown. */
+  id: number
+  /** The name, which is the link on the box of the day and the name of the tile in the strip. */
+  name: string
+  /** Where both of those lead, in a new window. Never written out on the page: „Domen sponzora se ne
+   *  ispisuje" (PDL P24, 18.11.2026). */
+  url: string
+  /** The public address of the logo, the whole picture and never a cut, drawn 64px tall on the box of
+   *  the day and inside a 120×48 tile on the strip, never distorted (PDL P24). A sponsor with no logo
+   *  is not answered here at all (`SponsorApi`; derived, not a sentence of the owner's). */
+  logo: string
+  /** Two lines on the box of the day, at most 80 characters (PDL P24, 18.11.2026), in `language`. */
+  description: string
+  /**
+   * THE LANGUAGE THE DESCRIPTION IS REALLY WRITTEN IN, `sr` or `en`. On `/en` a sponsor with no
+   * English description is answered in Serbian („ako engleska nije upisana, engleska naslovna pokazuje
+   * srpsku", PDL 24.11.2026), and its words are then marked as Serbian for a screen reader, which is
+   * the reason `StaticPage.language` exists too.
+   */
+  language: string
+}
+
+/** What the front page reads (`SponsorApi.FrontPage`): the sponsor of the day, worked out by the
+ *  server in the league's time zone, and the strip, the main sponsor first and then the manual order. */
+export type FrontPageSponsors = {
+  /** Nobody where nobody is in the rotation, and then there is no box and the calendar runs to the
+   *  bottom („kad nijedan sponzor nije u rotaciji, boksa nema i kalendar ide do dna, kao danas"). */
+  ofTheDay: SponsorShown | null
+  strip: SponsorShown[]
+}
+
+/**
+ * ONE SPONSOR AS THE ADMINISTRATION'S LIST DRAWS IT (`SponsorWriteApi.Entered`), in the order of the
+ * strip: the main one first, then the manual order („Redosled u traci: glavni sponzor prvi, pa ručni
+ * redosled koji se podešava u administraciji", PDL 24.11.2026). The list keeps the server's order and
+ * never sorts again.
+ */
+export type SponsorEntered = {
+  id: number
+  name: string
+  url: string
+  descriptionSr: string
+  /** Nothing where no English is written; the English front page then shows the Serbian one. */
+  descriptionEn: string | null
+  /** At most one sponsor is the main one, and none need be („Glavni sponzor je najviše jedan"). */
+  main: boolean
+  /** Whether it takes its turn in the box „Sponzor dana". */
+  inRotation: boolean
+  /** Whether it stands in the strip at the foot of the front page. */
+  inStrip: boolean
+  /** The manual order, which only the arrows of the list move. */
+  position: number
+  /** The public address of the logo, or nothing where none has been sent yet. */
+  logo: string | null
+}
