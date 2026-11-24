@@ -58,7 +58,16 @@ const focused = (page: Page) =>
       : (now.getAttribute('href') ?? now.getAttribute('aria-controls') ?? now.getAttribute('aria-label') ?? now.tagName)
   })
 
-async function settleAfterTheTurn(page: Page): Promise<void> {
+/** Waits for the header to be the shape the window now asks for, which only the new state has (a window turned
+ *  is read by the page a moment later, and a read taken before that is a read of the old header, which holds the
+ *  focus it always held), and then for it to stop moving. */
+async function settleAfterTheTurn(page: Page, to: { width: number }): Promise<void> {
+  const phone = to.width < 700
+
+  await page.waitForFunction(
+    (wanted) => document.querySelector('header.shell__header')?.classList.contains('shell__header--phone') === wanted,
+    phone,
+  )
   await page.waitForFunction(() => document.getAnimations().length === 0)
   /* Two frames, so a header that was redrawn for the new width has been. */
   await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))))
@@ -76,7 +85,7 @@ for (const one of TURNS) {
     expect(await focused(page)).toBe(address)
 
     await page.setViewportSize(one.to)
-    await settleAfterTheTurn(page)
+    await settleAfterTheTurn(page, one.to)
 
     expect(await focused(page)).toBe(address)
   })
@@ -101,7 +110,7 @@ for (const one of TURNS) {
       expect(controls, 'the panel has an id').not.toBeNull()
 
       await page.setViewportSize(one.to)
-      await settleAfterTheTurn(page)
+      await settleAfterTheTurn(page, one.to)
 
       const after = page.getByRole('button', { name: button })
 
@@ -129,7 +138,7 @@ for (const one of TURNS) {
     expect(await focused(page)).toBe(address)
 
     await page.setViewportSize(one.to)
-    await settleAfterTheTurn(page)
+    await settleAfterTheTurn(page, one.to)
 
     await expect(page.locator('#account-menu')).toBeVisible()
     expect(await focused(page)).toBe(address)
@@ -141,7 +150,7 @@ for (const one of TURNS.slice(0, 1)) {
     const { page } = await open(at(one.from), '/sr/kalendar', 'header .brand', ANSWERS)
 
     await page.setViewportSize(one.to)
-    await settleAfterTheTurn(page)
+    await settleAfterTheTurn(page, one.to)
 
     await expect(page.getByRole('button', { name: 'Otvori nalog' })).toHaveAttribute('aria-expanded', 'false')
     expect(await focused(page)).toBe('the body')
