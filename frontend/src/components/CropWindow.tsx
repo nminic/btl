@@ -136,7 +136,9 @@ export function CropWindow({ picture, crop, alt, children, onChange, onLoaded, o
    * as long as the pointer is down, and let go of a moment after it comes up, which is after the click
    * has been delivered (a click is dispatched with the release, a timer waits for the next turn). Asked
    * only of a focus that leaves BECAUSE OF A PRESS: a keyboard that tabs away folds the strip at once, as
-   * before, because no click is waiting for the layout to hold still.
+   * before, because no click is waiting for the layout to hold still. The one exception is a tab inside the
+   * third of a second after a press ended (the timer below): `pressed` is still true then, so the strip is
+   * kept for that long and folds with the timer (independent review of PR 825, round 2, 24.11.2026).
    */
   const [keptOpen, setKeptOpen] = useState(false)
   const pressed = useRef(false)

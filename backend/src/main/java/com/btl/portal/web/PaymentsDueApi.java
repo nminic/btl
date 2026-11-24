@@ -313,9 +313,10 @@ class PaymentsDueApi {
 	 *                     član, isti skup kao kod dugmeta „Obriši nalog” od 20.11.2026". The same question
 	 *                     {@code DELETE /api/members/unnumbered/{competitorId}} asks again under its holds
 	 *                     ({@link ARegistrationIsDeletedApi}), so the screen draws „Obriši" only where the
-	 *                     route would let it through. Served to whoever may read this list; the screen
-	 *                     draws the button only to whoever holds the right over the members, as it draws
-	 *                     the pencil
+	 *                     route would let it through. Served to whoever may read this list, and
+	 *                     {@code false} on every row for a reader who holds no right over the members:
+	 *                     the server decides that since PR 825 (24.11.2026), and the screen's own check of
+	 *                     the right is the second line of the same sentence, as it is for the pencil
 	 */
 	record Due(long competitorId, String memberNumber, String firstName, String lastName,
 			String city, String currency, BigDecimal expected, BigDecimal price, BigDecimal balance,

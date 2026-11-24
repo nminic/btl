@@ -162,6 +162,10 @@ class SponsorLogoApi {
 	 * inserted for it held by nothing, which V54's rule leaves standing on purpose.
 	 */
 	private boolean theSponsorUnderALock(long id) {
+		/* THE TABLE BEFORE THE ROW, as every write of a sponsor takes them (`SponsorWriteApi#lock`): a row first
+		   and the table after is the order that deadlocks with a change or a deletion of the same sponsor. */
+		SponsorWriteApi.lock(db);
+
 		return db.sql("select id from sponsor where id = ? for update").param(id).query(Long.class).optional()
 				.isPresent();
 	}

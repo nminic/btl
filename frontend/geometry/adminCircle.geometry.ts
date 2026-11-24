@@ -385,7 +385,9 @@ for (const at of WIDTHS) {
     expect(await page.evaluate(() => Reflect.get(window, 'pressesOfTheCase')), 'the click never reached the button').toBe(1)
   })
 
-  /* THE SAME WITH A FINGER, at the two widths a finger is used at (owner, 24.11.2026, the second decision). The
+  /* THE SAME WITH A FINGER, at the two widths a finger is used at (owner, 24.11.2026, the second decision). Only
+     360 can fail it: the button moves 37px there and 0,6px at 768, so 768 is the check that the tap path still
+     reaches the button and the claim is carried by 360 (independent review of PR 825, round 2, 24.11.2026). The
      browser moves the focus of a tap on the mouse-down it imitates AFTER the finger is lifted, so the strip folded
      between the release and the click: a review measured the button from y 459,9 to 422,5 on the card at 360px and
      none of two taps reached it. */

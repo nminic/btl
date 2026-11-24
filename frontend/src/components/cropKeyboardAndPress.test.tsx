@@ -154,11 +154,86 @@ describe('a press that takes the focus off a slider', () => {
 
     fireEvent.pointerDown(button)
     fireEvent.pointerUp(button)
+    /* A turn of the loop between the release and the focus, as a browser has (independent review of PR 825, round 2,
+       24.11.2026): the focus of a finger does not arrive in the very call of the release, so a delay of nothing
+       before the press is let go of passes a case that has no such turn. */
+    await new Promise((resolve) => setTimeout(resolve, 20))
     act(() => {
       button.focus()
     })
     expect(theBox(), 'the focus came after the release and the strip was not kept').toHaveClass('crop--held')
     await waitFor(() => expect(theBox()).not.toHaveClass('crop--held'))
+  })
+
+  /* The two `clearTimeout`s of the press (independent review of PR 825, round 2, 24.11.2026, low B): a second press
+     inside the room of the first must not be let go of by the first one's timer, and a second end must not be cut
+     short by it either. Held by what the reader of the page sees, the strip still kept when the old timer has run. */
+  it('is not let go of by the timer of an earlier release while another press is down', async () => {
+    const user = setupUser()
+
+    renderWithI18n(<Choosing />)
+    await user.upload(screen.getByLabelText(/Izaberi sliku/), anImage())
+    ;(await opened()).getByLabelText('Veličina isečka').focus()
+
+    const button = screen.getByRole('button', { name: 'Sačuvaj' })
+
+    fireEvent.pointerDown(button)
+    fireEvent.pointerUp(button)
+    await new Promise((resolve) => setTimeout(resolve, 150))
+    fireEvent.pointerDown(button)
+    /* Past 300 ms from the FIRST release, inside the second press. */
+    await new Promise((resolve) => setTimeout(resolve, 250))
+    act(() => {
+      button.focus()
+    })
+    expect(theBox(), 'the timer of the first release let go of the second press').toHaveClass('crop--held')
+    fireEvent.pointerUp(button)
+    await waitFor(() => expect(theBox()).not.toHaveClass('crop--held'))
+  })
+
+  it('is not let go of early by the timer of a first end when a second end follows it', async () => {
+    const user = setupUser()
+
+    renderWithI18n(<Choosing />)
+    await user.upload(screen.getByLabelText(/Izaberi sliku/), anImage())
+    ;(await opened()).getByLabelText('Veličina isečka').focus()
+
+    const button = screen.getByRole('button', { name: 'Sačuvaj' })
+
+    fireEvent.pointerDown(button)
+    fireEvent.pointerUp(button)
+    await new Promise((resolve) => setTimeout(resolve, 150))
+    fireEvent.pointerCancel(button)
+    /* 400 ms from the first end and 250 from the second: only the second one's timer is still running. */
+    await new Promise((resolve) => setTimeout(resolve, 250))
+    act(() => {
+      button.focus()
+    })
+    expect(theBox(), 'the first end cut short the room of the second').toHaveClass('crop--held')
+    await waitFor(() => expect(theBox()).not.toHaveClass('crop--held'))
+  })
+
+  it('takes its timer away with it when the window is gone', async () => {
+    const user = setupUser()
+    const cleared = vi.spyOn(globalThis, 'clearTimeout')
+
+    const { unmount } = renderWithI18n(<Choosing />)
+    await user.upload(screen.getByLabelText(/Izaberi sliku/), anImage())
+    await opened()
+
+    const button = screen.getByRole('button', { name: 'Sačuvaj' })
+
+    fireEvent.pointerDown(button)
+    fireEvent.pointerUp(button)
+
+    const before = cleared.mock.calls.length
+
+    unmount()
+
+    /* The cleanup of the effect asks for the timer it left running to be cleared; a timer left running past the
+       window would fold a strip that is not there. */
+    expect(cleared.mock.calls.length).toBeGreaterThan(before)
+    cleared.mockRestore()
   })
 
   it('is let go of by a press that is taken away, as by one that ends', async () => {

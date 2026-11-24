@@ -317,6 +317,26 @@ class SponsorLogoApiTest {
 	}
 
 	@Test
+	void aSponsorDeletedLeavesItsLogoAnAddressThatAnswersNothingAnyMore() throws Exception {
+		/* End to end, as the front page meets it (independent security review of PR 826, 24.11.2026, low N3): the
+		   address the logo was handed out under answers the picture while the sponsor stands, and a 404 once the
+		   sponsor is deleted, and not only a row that is gone from the table. */
+		MockHttpServletResponse answer = logo(this1, aLogoOnNothing(), OVER_THE_SPONSORS);
+
+		assertThat(answer.getStatus()).as(answer.getContentAsString()).isEqualTo(200);
+
+		String address = mapper.readTree(answer.getContentAsString(StandardCharsets.UTF_8)).path("logo").asString();
+
+		assertThat(address).startsWith("/api/photos/");
+		assertThat(http.perform(get(address)).andReturn().getResponse().getStatus()).isEqualTo(200);
+		assertThat(sent(delete("/api/sponsors/" + this1).with(csrf()), OVER_THE_SPONSORS).getStatus()).isEqualTo(204);
+
+		TheEndOfTheTransaction.broughtForward(db);
+
+		assertThat(http.perform(get(address)).andReturn().getResponse().getStatus()).isEqualTo(404);
+	}
+
+	@Test
 	void anSvgIsRefusedAsSomethingThatIsNotAPicture() throws Exception {
 		/* „ne SVG” (SVG može da nosi skriptu). Sent under a picture's name and type, which decide nothing. */
 		byte[] svg = ("<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"10\" height=\"10\">"

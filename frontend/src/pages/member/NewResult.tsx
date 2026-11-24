@@ -24,6 +24,7 @@ import { Resource } from '../../components/Resource'
 import { useToday } from '../../clock/useClock'
 import { fromBoxes, inBoxes, noTime } from '../../forms/clock'
 import { eventsToOffer, racesOfTheChosenEvent } from './eventsToOffer'
+import { aReportIsOpen } from './reportingOpen'
 import { useSeasonsOpenForAReport } from './useSeasonsOpenForAReport'
 import { WhileAReportIsOpen } from './WhileAReportIsOpen'
 import { figuresAsked } from '../admin/amendFields'
@@ -617,9 +618,15 @@ function TheForm({ me }: { me: string }) {
           <Link className="button button--primary" to={`/${locale}/moji-rezultati`}>
             {t('newResult.toMine')}
           </Link>{' '}
-          <Link className="button button--secondary" to={`/${locale}/rezultat/novi`}>
-            {t('newResult.another')}
-          </Link>
+          {/* „UNESI JOŠ JEDAN" LEADS TO THE FORM FOR A NEW RESULT, so it stands on the same condition as the three
+              other ways to it (PDL P9, 24.11.2026; independent review of PR 828, 24.11.2026): after the correction
+              of a counted result, which stays open to a member while no season is, the link would lead him to
+              „Prijava rezultata još nije otvorena". Not drawn until the server has said a season is open. */}
+          {seasons !== null && aReportIsOpen(seasons) && (
+            <Link className="button button--secondary" to={`/${locale}/rezultat/novi`}>
+              {t('newResult.another')}
+            </Link>
+          )}
         </p>
       </div>
     )

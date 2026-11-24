@@ -110,6 +110,11 @@ function serving(deleting: { status: number; held?: Promise<void> } = { status: 
     return (async () => {
       await deleting.held
 
+      /* STATUS 0 IS THE CONNECTION THAT WAS CUT: no answer at all, which `askTheServer` reads as `nothing`. */
+      if (deleting.status === 0) {
+        throw new TypeError('Failed to fetch')
+      }
+
       if (deleting.status === 204) {
         accounts = accounts.filter((one) => one.competitorId !== Number(key[1]))
       } else if (deleting.status === 404) {
@@ -415,11 +420,17 @@ describe('„Obriši" on the screen Uplate', () => {
     expect(within(rows[1] ?? document.body).queryByRole('button', { name: 'Obriši: Borko Olar' })).toBeNull()
   }, SLOW)
 
-  it('says „Ništa nije sačuvano" beside the row after any failure but a 404, and reads the list no more than once', async () => {
-    /* Owner, 24.11.2026: only the 404 (already deleted, or become a member) re-reads the list; a 500 says nothing
-       about the row, so the old sentence stands and the list is not asked again. The other source of the
+  /* The three failures that are not the 404 (independent review of PR 825, round 2, 24.11.2026: only the 500 was held,
+     and a mutation that re-read the list for the other two passed): a 500, a 401 and a connection cut (status 0). */
+  it.each([
+    ['a 500', 500, sr.server.wrong.replace('{status}', '500')],
+    ['a 401', 401, sr.server.wrong.replace('{status}', '401')],
+    ['a connection that was cut', 0, sr.server.nothing],
+  ])('says what went wrong beside the row after %s, and reads the list no more than once', async (_name, status, said) => {
+    /* Owner, 24.11.2026: only the 404 (already deleted, or become a member) re-reads the list; any other failure says
+       nothing about the row, so the old sentence stands and the list is not asked again. The other source of the
        refusal is the 404 case above, which says no sentence and asks twice. */
-    const { asked, deletions } = serving({ status: 500 })
+    const { asked, deletions } = serving({ status })
     const user = setupUser()
 
     renderAt(ADDRESS, 'superadmin')
@@ -438,7 +449,7 @@ describe('„Obriši" on the screen Uplate', () => {
 
     const stillSecond = await rowAt('Borko Olar', 1)
 
-    expect(within(stillSecond).getByText(/Ništa nije sačuvano/)).toBeVisible()
+    expect(within(stillSecond).getByText(said)).toBeVisible()
     expect(within(stillSecond).getByRole('button', { name: 'Obriši: Borko Olar' })).toBeInTheDocument()
     expect(asked.filter((one) => one.path === '/api/payments' && (one.init?.method ?? 'GET') === 'GET')).toHaveLength(1)
     expect(screen.queryByText(sr.admin.registrationGone)).toBeNull()

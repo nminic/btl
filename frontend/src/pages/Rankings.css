@@ -296,6 +296,21 @@
   padding: var(--space-8);
 }
 
+/* A SENTENCE ABOUT THE FIELD, standing inside a field whose own shell is written in capitals.
+   `.rankings__field` sets uppercase and tracking for its LABEL, and the error under a box sits
+   inside it, so without this the refusal of a password box read as SHOUTING while the same sentence
+   in `forms/FormRenderer` is in sentence case (independent review of PR 822, 24.11.2026). The
+   reddened frame is the second half of the same finding: these boxes are not `.field__control`,
+   so `.field__control[aria-invalid='true']` never reached them. */
+.rankings__field .field__error {
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.rankings__field input[aria-invalid='true'] {
+  border-color: var(--down);
+}
+
 /* The field that takes what is left of a row, on the six screens whose one
    control is a box: the competitors, three administration lists, the way back
    on a queue, and the picture on a profile. Not this screen any more, whose

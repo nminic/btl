@@ -6,6 +6,8 @@ import com.btl.portal.domain.sponsor.SponsorOfTheDay;
 import com.btl.portal.domain.sponsor.SponsorOfTheDay.InRotation;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -21,6 +23,10 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -244,6 +250,76 @@ class SponsorApiTest {
 				"src", "test", "mock", "sponsors.json"))))).containsExactly("ofTheDay", "strip");
 	}
 
+	/**
+	 * THE NAMES THE FRONT PAGE'S TYPE READS ARE THE NAMES THE ROUTE ANSWERS (independent review of PR 826, 24.11.2026,
+	 * SREDNJI 1). The served file is empty (`nobody`), so no case on either side meets a sponsor of the day: the
+	 * frontend's sample is checked against its own type, this class against its own record, and a field renamed on one
+	 * side and not on the other, `language` into `lang`, passed both. The seam is the NAME of each field, read from the
+	 * two places that write it: the record the route builds and the type the front page is drawn from.
+	 */
+	@Test
+	void theFieldsOfASponsorTheFrontPageReadsAreTheOnesTheRouteAnswers() throws Exception {
+		sponsor("Prvi", 0, false, true, true, null, true);
+
+		JsonNode answer = read("");
+
+		assertThat(Answers.fieldsOf(answer.get("ofTheDay")))
+				.as("the route answers other fields than the type `SponsorShown` names")
+				.containsExactlyInAnyOrderElementsOf(namesOfTheFieldsOf("SponsorShown"));
+		assertThat(Answers.fieldsOf(answer)).containsExactlyInAnyOrderElementsOf(namesOfTheFieldsOf("FrontPageSponsors"));
+	}
+
+	/** The fields of one exported type of the front end, as it writes them: a name at the first indent, then a colon. */
+	private static List<String> namesOfTheFieldsOf(String type) throws Exception {
+		String source = Files.readString(Path.of("..", "frontend", "src", "data", "types.ts"));
+		Matcher body = Pattern.compile("export type " + type + " = \\{\\R(.*?)\\R\\}", Pattern.DOTALL).matcher(source);
+
+		assertThat(body.find()).as("the type " + type + " is not written as an object type in types.ts").isTrue();
+
+		List<String> names = new ArrayList<>();
+		Matcher field = Pattern.compile("^  (\\w+)\\??: ", Pattern.MULTILINE).matcher(body.group(1));
+
+		while (field.find()) {
+			names.add(field.group(1));
+		}
+
+		assertThat(names).as("no field was found in the type " + type).isNotEmpty();
+
+		return names;
+	}
+
+	/**
+	 * THE MAIN SPONSOR STANDS TWICE FOR EVERY ONCE OF ANOTHER WHATEVER THE NUMBER OF THE OTHERS, as the route serves it
+	 * (independent review of PR 826, 24.11.2026, low): the case above holds three others, an odd number, and a rule that
+	 * doubled the main sponsor only then was told from the right one by the unit test alone, never by the route. The
+	 * cycle is {@code others + 2} days, so five whole cycles are walked for each count.
+	 */
+	@ParameterizedTest
+	@ValueSource(ints = {0, 1, 2, 4})
+	void theMainSponsorStandsTwiceForEveryOnceOfAnotherForAnyNumberOfOthers(int others) throws Exception {
+		long main = sponsor("Glavni", 90, true, true, true, null, true);
+		List<Long> theOthers = new ArrayList<>();
+
+		for (int one = 0; one < others; one++) {
+			theOthers.add(sponsor("Drugi" + "x".repeat(one + 1), one, false, true, false, null, true));
+		}
+
+		List<Long> seen = new ArrayList<>();
+
+		for (int day = 0; day < 5 * (others + 2); day++) {
+			clock.moveTo(LATE_ON_THE_14TH.plusSeconds(86_400L * day));
+			seen.add(read("").get("ofTheDay").path("id").asLong());
+		}
+
+		Map<Long, Long> counted = seen.stream().collect(Collectors.groupingBy(one -> one, Collectors.counting()));
+
+		assertThat(counted.get(main)).as("days of the main sponsor").isEqualTo(10L);
+
+		for (long other : theOthers) {
+			assertThat(counted.get(other)).as("days of sponsor " + other).isEqualTo(5L);
+		}
+	}
+
 	// THE SPONSOR OF THE DAY ------------------------------------------------------------------------------
 
 	/** The rotation as the route hands it to the rule, in the same order. */
@@ -365,5 +441,6 @@ class SponsorApiTest {
 		assertThat(asked("?lang=EN").getStatus()).isEqualTo(400);
 		assertThat(asked("?lang=e").getStatus()).isEqualTo(400);
 		assertThat(asked("?lang=engl").getStatus()).isEqualTo(400);
+		assertThat(asked("?lang=").getStatus()).isEqualTo(400);
 	}
 }
