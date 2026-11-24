@@ -73,8 +73,10 @@ class TheWrittenPagesLoseTheRowAboutTheThemeTest extends DatabaseTest {
 			"Pored kolačića, u tvom pregledaču se čuva i još nešto: izbor svetle ili tamne teme, pod imenom `btl-theme`, u lokalnom skladištu. Postavlja se tek kad temu izabereš. Za njega se pristanak ne traži, jer je to podešavanje prikaza koje zatražiš. Brišeš ga brisanjem podataka sajta u pregledaču, a portal će te onda otvoriti u tamnoj temi, koja je podrazumevana.";
 	static final String THE_PARAGRAPH_IN_ENGLISH =
 			"Besides the cookies, something else is kept in your browser: the choice of light or dark theme, under the name `btl-theme`, in local storage. It is set only once you choose a theme yourself. No consent is asked for it, because it is a display setting you requested yourself. You delete it by clearing the site's data in your browser, and the portal will then open you in the dark theme, which is the default.";
-	static final String WHAT_FOLLOWS_IN_SERBIAN = "Drugog skladišta, niti analitike, nema.";
-	static final String WHAT_FOLLOWS_IN_ENGLISH = "There is no other storage, nor analytics.";
+	static final String WHAT_FOLLOWED_IN_SERBIAN = "Drugog skladišta, niti analitike, nema.";
+	static final String WHAT_FOLLOWS_IN_SERBIAN = "U pregledaču se ništa drugo ne čuva, niti ima analitike.";
+	static final String WHAT_FOLLOWED_IN_ENGLISH = "There is no other storage, nor analytics.";
+	static final String WHAT_FOLLOWS_IN_ENGLISH = "Nothing else is kept in your browser, and there is no analytics.";
 
 	/**
 	 * THE PARAGRAPH ABOUT THE THEME IS NOT IN SECTION 4 IN EITHER LANGUAGE, and nothing about the store is said anywhere in the policy
@@ -88,8 +90,10 @@ class TheWrittenPagesLoseTheRowAboutTheThemeTest extends DatabaseTest {
 			String paragraph = language.equals("sr") ? THE_PARAGRAPH_IN_SERBIAN : THE_PARAGRAPH_IN_ENGLISH;
 			String follows = language.equals("sr") ? WHAT_FOLLOWS_IN_SERBIAN : WHAT_FOLLOWS_IN_ENGLISH;
 
+			String followed = language.equals("sr") ? WHAT_FOLLOWED_IN_SERBIAN : WHAT_FOLLOWED_IN_ENGLISH;
+
 			assertThat(body).as("section 4 in %s", language).doesNotContain(paragraph).doesNotContain("btl-theme")
-					.containsOnlyOnce(follows);
+					.containsOnlyOnce(follows).doesNotContain(followed);
 			assertThat(body.split("\n\n")).as("the paragraphs of section 4 in %s", language).hasSize(3);
 			assertThat(body.split("\n\n")[1]).as("the paragraph that now follows the cookies in %s", language).isEqualTo(follows);
 
@@ -170,10 +174,10 @@ class TheWrittenPagesLoseTheRowAboutTheThemeTest extends DatabaseTest {
 
 		assertThat(undone.get(POLICY + " #4 sr")).contains(THE_PARAGRAPH_IN_SERBIAN)
 				.isEqualTo(applied.get(POLICY + " #4 sr").replace(WHAT_FOLLOWS_IN_SERBIAN,
-						THE_PARAGRAPH_IN_SERBIAN + "\n\n" + WHAT_FOLLOWS_IN_SERBIAN));
+						THE_PARAGRAPH_IN_SERBIAN + "\n\n" + WHAT_FOLLOWED_IN_SERBIAN));
 		assertThat(undone.get(POLICY + " #4 en")).contains(THE_PARAGRAPH_IN_ENGLISH)
 				.isEqualTo(applied.get(POLICY + " #4 en").replace(WHAT_FOLLOWS_IN_ENGLISH,
-						THE_PARAGRAPH_IN_ENGLISH + "\n\n" + WHAT_FOLLOWS_IN_ENGLISH));
+						THE_PARAGRAPH_IN_ENGLISH + "\n\n" + WHAT_FOLLOWED_IN_ENGLISH));
 
 		assertThat(undone.get(POLICY + " #2 sr")).contains(THE_ROW_IN_SERBIAN)
 				.isEqualTo(applied.get(POLICY + " #2 sr").replace(THE_ROWS_THAT_STAY_IN_SERBIAN.get(0),

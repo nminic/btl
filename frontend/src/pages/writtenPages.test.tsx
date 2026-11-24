@@ -908,8 +908,10 @@ describe('the privacy policy', () => {
     /* And it says there is no other store and no analytics. Until 10.11.2026 it also said why
        there was no bar („Nema analitike, ni naše ni tuđe, pa nema ni trake za pristanak.");
        the owner's words since are „Drugog skladišta, niti analitike, nema." and give no reason,
-       so the case holds the two facts and no longer holds the explanation. */
-    expect(policy).toContain('Drugog skladišta, niti analitike, nema.')
+       so the case holds the two facts and no longer holds the explanation. On 24.11.2026 the paragraph
+       about the theme left section 4 and the owner chose the sentence that stands in its place (PDL,
+       „Rečenica posle obrisanog pasusa glasi"): „U pregledaču se ništa drugo ne čuva, niti ima analitike." */
+    expect(policy).toContain('U pregledaču se ništa drugo ne čuva, niti ima analitike.')
   })
 
   it('says what a network shows of a shared profile, right after what is public', () => {

@@ -15,9 +15,12 @@
    skladište", had a paragraph of its own that said the same thing in sentences, „Pored kolačića, u tvom pregledaču se čuva i još nešto:
    izbor svetle ili tamne teme, pod imenom `btl-theme`, u lokalnom skladištu. [...]" and its English twin „Besides the cookies, something
    else is kept in your browser: [...]". The whole paragraph is about the theme, so the whole paragraph goes, in both languages, and no
-   word is added. The paragraph that follows it, „Drugog skladišta, niti analitike, nema." / „There is no other storage, nor analytics.",
-   stands as it was and its words are not touched; that it now has no store before it for „other" to refer to is for the owner, who alone
-   changes a legal text.
+   word is added. The paragraph that follows it,
+   „Drugog skladišta, niti analitike, nema." / „There is no other storage, nor analytics.", would then have no store before it for „other" to
+   refer to, so the owner chose the sentence that takes its place (PDL, anchor „Rečenica posle obrisanog pasusa glasi", 24.11.2026, chose
+   between the offered, with the assistant's recommendation; THE WORDS ARE THE ASSISTANT'S AND THE CHOICE APPROVED THEM): „U pregledaču se ništa drugo ne čuva, niti ima analitike." /
+   „Nothing else is kept in your browser, and there is no analytics." The edit THEME-04 does it, by name, as a second edit of the
+   same section after THEME-03, and it touches no other word.
 
    THE SIGN-OFF MOVES, AND ONLY THE POLICY'S. PDL, „Datum Poslednja izmena na pravnom tekstu pomera se uvek kad se reči tog teksta
    promene, na dan kad izmena stiže na QA" (owner, 07.11.2026), with the addition of 14.11.2026 that the day moves in both languages.
@@ -41,7 +44,7 @@
    and a section that already lost the row does not hold the pair, so a second run is refused by name and not reported as a success.
 
    WHAT IT DOES NOT TOUCH: no schema, no constraint, no key, no index, no row of a table added or removed; sections 2, 4 and 7 of the
-   policy in two languages, and in them only the one row of the table, the one paragraph and the date. The terms, the rulebook and the president's word are
+   policy in two languages, and in them only the one row of the table, the one paragraph, the one sentence after it and the date. The terms, the rulebook and the president's word are
    not touched, and the terms and the rulebook keep their sign-off of 21.11.2026.
 
    WHY A NEW FILE AND NOT AN EDIT OF V44 OR V107: ADL A2. They have been applied, their checksums are in flyway_schema_history, and
@@ -86,6 +89,14 @@ Drugog skladišta, niti analitike, nema.$old$,
 
 There is no other storage, nor analytics.$old$,
              $new$There is no other storage, nor analytics.$new$),
+
+            ('THEME-04 section 4, the sentence after it', 'politika-privatnosti', 4, 'sr',
+             $old$Drugog skladišta, niti analitike, nema.$old$,
+             $new$U pregledaču se ništa drugo ne čuva, niti ima analitike.$new$),
+
+            ('THEME-04 section 4, the sentence after it', 'politika-privatnosti', 4, 'en',
+             $old$There is no other storage, nor analytics.$old$,
+             $new$Nothing else is kept in your browser, and there is no analytics.$new$),
 
             ('THEME-02 sign-off', 'politika-privatnosti', 7, 'sr',
              $old$Poslednja izmena: 21.11.2026.$old$,

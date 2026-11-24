@@ -37,7 +37,7 @@ class TheWrittenPagesLoseTheRowAboutTheThemeCarriedOverTest extends DatabaseTest
 	private static final String POLICY = TheWrittenPagesLoseTheRowAboutTheThemeTest.POLICY;
 
 	private static int theNumberOfEditsV110Makes() {
-		return 6;
+		return 8;
 	}
 
 	/** Every heading and body of both tables, by page, place and language, so two readings compare row by row. */
@@ -183,8 +183,10 @@ class TheWrittenPagesLoseTheRowAboutTheThemeCarriedOverTest extends DatabaseTest
 				.hasSize(theNumberOfEditsV110Makes())
 				.contains("THEME-01 section 2 @ politika-privatnosti #2 sr: found 0 times, and its new text is already there",
 						"THEME-01 section 2 @ politika-privatnosti #2 en: found 0 times, and its new text is already there",
-						"THEME-03 section 4 @ politika-privatnosti #4 sr: found 0 times, and its new text is already there",
-						"THEME-03 section 4 @ politika-privatnosti #4 en: found 0 times, and its new text is already there",
+						"THEME-03 section 4 @ politika-privatnosti #4 sr: found 0 times",
+						"THEME-03 section 4 @ politika-privatnosti #4 en: found 0 times",
+						"THEME-04 section 4, the sentence after it @ politika-privatnosti #4 sr: found 0 times, and its new text is already there",
+						"THEME-04 section 4, the sentence after it @ politika-privatnosti #4 en: found 0 times, and its new text is already there",
 						"THEME-02 sign-off @ politika-privatnosti #7 sr: found 0 times, and its new text is already there",
 						"THEME-02 sign-off @ politika-privatnosti #7 en: found 0 times, and its new text is already there");
 		assertThat(everyText()).as("a refused V110 changed a page").isEqualTo(finished);
@@ -234,6 +236,41 @@ class TheWrittenPagesLoseTheRowAboutTheThemeCarriedOverTest extends DatabaseTest
 		assertThat(error.getServerErrorMessage().getMessage()).contains("1 of " + theNumberOfEditsV110Makes() + " edits");
 		assertThat(error.getServerErrorMessage().getDetail())
 				.contains("THEME-01 section 2 @ politika-privatnosti #2 en: found once, and its new text is already there");
+	}
+
+	/**
+	 * THE SENTENCE AFTER THE PARAGRAPH IS ITS OWN EDIT, AND BOTH LANGUAGES ARE ASKED: over the text before V110 it becomes the
+	 * owner's sentence, and a section that already carries the new sentence beside the old one is refused by name, in each language.
+	 */
+	@Test
+	void theSentenceAfterTheParagraphIsGivenInBothLanguagesAndANewOneAlreadyThereStopsV110() {
+		theTextAsItStoodBeforeV110();
+
+		v110();
+
+		assertThat(bodyOf(POLICY, 4, "sr")).containsOnlyOnce("U pregledaču se ništa drugo ne čuva, niti ima analitike.")
+				.doesNotContain("Drugog skladišta");
+		assertThat(bodyOf(POLICY, 4, "en")).containsOnlyOnce("Nothing else is kept in your browser, and there is no analytics.")
+				.doesNotContain("There is no other storage");
+
+		for (String language : List.of("sr", "en")) {
+			theTextAsItStoodBeforeV110();
+
+			TheWrittenPagesBeforeV71.Edit sentence = edit("THEME-04 section 4, the sentence after it", language);
+
+			setBody(POLICY, 4, language, bodyOf(POLICY, 4, language) + "\n\n" + sentence.newText());
+
+			jdbc.execute("savepoint before_the_refusal");
+
+			PSQLException error = v110Refused();
+
+			jdbc.execute("rollback to savepoint before_the_refusal");
+
+			assertThat(error.getServerErrorMessage().getMessage()).contains("1 of " + theNumberOfEditsV110Makes() + " edits");
+			assertThat(error.getServerErrorMessage().getDetail())
+					.contains("THEME-04 section 4, the sentence after it @ politika-privatnosti #4 " + language
+							+ ": found once, and its new text is already there");
+		}
 	}
 
 	/**
