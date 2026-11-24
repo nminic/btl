@@ -64,19 +64,18 @@
      same `ch` as the rows are read in. */
   font-size: 1rem;
   inline-size: calc(var(--member-choice-widest) * 1.2ch + var(--member-choice-arrow));
-  /* NEVER WIDER THAN THE VISIBLE FRAME OF THE TABLE IT STANDS IN, which is the width of a container and not a width of
-     the window or of the text (owner's decision, PDL „Na telefonu polje nikad nije šire od vidljivog okvira tabele”,
-     24.11.2026). Two ceilings were written before this one and both were measured wrong in Chrome (review of PR 813):
-     `100vw - 4.5rem` is in a unit that grows with the text, 216px at 200 % on 360px, under the first word of a name
-     and the number that ends it; and `100%` alone is the field, which is as wide as the TABLE, wider than the screen
-     on a telephone, so at 100 % on 360px the box ended 36px past the frame and its arrow was never seen. `cqi` is the
-     inline size of the nearest container, the frame (`.table-scroll--measured`, `Leagues.css`), and the three
-     `--space-8` are the cell's padding at both ends and the room of the focus ring, which grow with the text as the
-     padding does. The list is kept in the window by `MemberChoice.tsx` (`seatOf`) and wraps its rows
-     (`.member-choice__list--fitted`), so a name too long for the box is read whole in the list, and the box may show
-     the chosen one shortened where the text is large. A percentage as the width itself would be measured against a
-     field that is as wide as the box (a circle), so the ceiling is a ceiling and the width is the count. */
-  max-inline-size: min(100%, calc(100cqi - 3 * var(--space-8)));
+  /* NEVER WIDER THAN THE FIELD IT IS IN, and the field is held to what the frame of the table shows by the panel it
+     stands in (`.team-members--in-the-frame`, `Leagues.css`, owner's decision, PDL „Na telefonu polje nikad nije
+     šire od vidljivog okvira tabele”, 24.11.2026): that one rule is where the width of the frame is asked, in `cqi`,
+     so there is one place to get it wrong and not two. Two ceilings were written here before and both were measured
+     wrong in Chrome (review of PR 813): `100vw - 4.5rem` is in a unit that grows with the text, 216px at 200 % on
+     360px, under the first word of a name and the number that ends it; and `100%` with nothing holding the panel is
+     as wide as the TABLE, wider than the screen on a telephone, so at 100 % on 360px the box ended 36px past the
+     frame and its arrow was never seen. The list is kept in the window by `MemberChoice.tsx` (`seatOf`) and wraps
+     its rows (`.member-choice__list--fitted`), so a name too long for the box is read whole in the list, and the box
+     may show the chosen one shortened where the text is large. A percentage as the width itself would be measured
+     against a field that is as wide as the box (a circle), so the ceiling is a ceiling and the width is the count. */
+  max-inline-size: 100%;
 }
 
 /* THE ROWS OF A FITTED LIST ARE NEVER CUT: where the window is narrower than a name (a telephone at 150 % and 200 %
