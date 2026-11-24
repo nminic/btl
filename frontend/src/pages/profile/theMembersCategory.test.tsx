@@ -151,6 +151,23 @@ describe('the choice of a member’s category on his card', () => {
     expect(within(box).getByText(sr.memberData.categoryClosed.replace('{points}', '12'))).toBeVisible()
   }, SLOW)
 
+  /* THE RADIO STANDS ON THE WISH, NOT ON THE CATEGORY IT TURNS INTO (PDL P7, 26.09.2026, „Ono što se čuva je
+     ŽELJA, ne kategorija"), as on his own page: a beginner's wish with no right behind it stays ticked, and the
+     sentence under it says the age band he runs in. */
+  it('keeps the beginners’ option ticked for a wish the right no longer stands behind', async () => {
+    theServer({ ...AGE_BAND, firstSeason: true, firstSeasonAllowed: false, category: 'M40-54' })
+
+    asTheAdministration()
+
+    const box = await theBox()
+    const beginners = within(box).getByRole('radio', { name: sr.registration.categoryFirstSeason })
+
+    expect(beginners).toBeChecked()
+    expect(beginners).toBeDisabled()
+    expect(within(box).getByRole('radio', { name: sr.registration.categoryByAge })).not.toBeChecked()
+    expect(within(box).getByText(/član se takmiči u kategoriji/)).not.toHaveTextContent(sr.category.rookieMale)
+  }, SLOW)
+
   it('holds both once the deadline has passed', async () => {
     theServer({ ...AGE_BAND, open: false })
 

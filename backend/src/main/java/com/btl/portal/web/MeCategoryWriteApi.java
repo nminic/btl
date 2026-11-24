@@ -173,13 +173,13 @@ class MeCategoryWriteApi {
 		   route calls too, so the two cannot come to disagree about any of them. What comes back is worked
 		   out again rather than echoed: an answer built from what arrived would tell a member over twelve
 		   points that he is in the beginners' category. */
-		ACategoryIsChosen.Chosen done = chosen.choose(me, typed.firstSeason());
+		MeCategoryApi.Choice done = chosen.choose(me, typed.firstSeason());
 
 		if (done == null) {
 			return ResponseEntity.status(HttpStatus.CONFLICT).body(new Refused(THE_CHOICE_IS_SHUT));
 		}
 
-		return ResponseEntity.ok(done.after());
+		return ResponseEntity.ok(done);
 	}
 
 	/**

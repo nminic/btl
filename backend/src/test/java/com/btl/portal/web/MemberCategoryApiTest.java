@@ -2,8 +2,6 @@ package com.btl.portal.web;
 
 import com.btl.portal.TestcontainersConfiguration;
 import com.btl.portal.domain.account.SessionLife;
-import com.btl.portal.domain.registration.WhatADataCorrectionSays;
-import com.btl.portal.domain.registration.WhatADataCorrectionSays.Field;
 import com.btl.portal.domain.token.SecretToken;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
@@ -266,7 +264,7 @@ class MemberCategoryApiTest {
 		assertThat(body(shut).path("reason").asString()).isEqualTo(MeCategoryWriteApi.THE_CHOICE_IS_SHUT);
 		assertThat(body(read(HE, OVER_THE_MEMBERS)).path("open").asBoolean()).isFalse();
 		assertThat(wishes()).contains(HE + " 2029 true");
-		assertThat(messages()).hasSize(1);
+		assertThat(messageCount()).isZero();
 	}
 
 	@Test
@@ -287,24 +285,28 @@ class MemberCategoryApiTest {
 		assertThat(wishes()).doesNotContain(HE + " 2029 true", HE + " 2029 false");
 	}
 
-	/* ------------------------------------------------------------------- the message */
+	/* ------------------------------------------------------------------- no message */
 
+	/**
+	 * NO MESSAGE, TO HIM OR TO ANYBODY. Owner, 24.11.2026, doslovno: „Neka idu bez poruke.” Counted over the
+	 * whole table and not over his inbox, so a message to the wrong member or to the whole league fails here
+	 * too; and the table already holds one, so „unchanged" is a number and not an empty list.
+	 */
 	@Test
-	void hisInboxIsToldThatHisCategoryWasChangedAndOnlyWhenTheWishMoved() throws Exception {
-		chosen(HE, false, OVER_THE_MEMBERS);
+	void aChangeOfHisCategoryWritesNothingIntoAnyInbox() throws Exception {
+		db.sql("insert into message (to_id, from_id, from_name, subject, body)"
+						+ " values ((select id from competitor where member_number = ?), null, 'Liga', 'Ranije', 'Ranije')")
+				.param(FIRST_BY_KEY).update();
 
-		assertThat(messages()).isEmpty();
-
-		chosen(HE, true, OVER_THE_MEMBERS);
-
-		String said = WhatADataCorrectionSays.corrected(List.of(Field.CATEGORY)).body();
-
-		assertThat(messages()).containsExactly(HE + " | " + PairWriteApi.THE_LEAGUE + " | " + said);
-		assertThat(said).contains("kategorija");
+		assertThat(messageCount()).isEqualTo(1);
 
 		chosen(HE, true, OVER_THE_MEMBERS);
+		chosen(HE, false, THE_SUPERADMIN);
+		/* And a member without the right whose wish moves all the same. */
+		chosen(OVER_THE_LINE, true, OVER_THE_MEMBERS);
 
-		assertThat(messages()).hasSize(1);
+		assertThat(wishes()).contains(HE + " 2029 false", OVER_THE_LINE + " 2029 true");
+		assertThat(messageCount()).isEqualTo(1);
 	}
 
 	/* ------------------------------------------------------------------- the fixture */
@@ -408,10 +410,8 @@ class MemberCategoryApiTest {
 				.query(String.class).list());
 	}
 
-	/** Every message, as „to | from | body", so one to the wrong member shows. */
-	private List<String> messages() {
-		return db.sql("select coalesce(c.member_number, 'everybody') || ' | ' || m.from_name || ' | ' || m.body"
-						+ " from message m left join competitor c on c.id = m.to_id order by m.id")
-				.query(String.class).list();
+	/** How many messages the whole table holds, to anybody. */
+	private long messageCount() {
+		return db.sql("select count(*) from message").query(Long.class).single();
 	}
 }

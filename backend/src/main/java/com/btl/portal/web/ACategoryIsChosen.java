@@ -32,17 +32,6 @@ class ACategoryIsChosen {
 	}
 
 	/**
-	 * The choice before the write and after it, both read whole, so a caller can tell whether the wish
-	 * moved without reading it a second way.
-	 */
-	record Chosen(MeCategoryApi.Choice before, MeCategoryApi.Choice after) {
-
-		boolean theWishMoved() {
-			return before.firstSeason() != after.firstSeason();
-		}
-	}
-
-	/**
 	 * Writes the wish for the season the box is for, or nothing at all once the deadline has passed.
 	 *
 	 * <p><b>The deadline is asked of {@link TheChoiceAsItStands} as a whole answer</b>, which works out
@@ -52,9 +41,10 @@ class ACategoryIsChosen {
 	 *
 	 * @param member {@code competitor.id}, which each route has resolved for itself: off the session for
 	 *               the member, off the member number in the address for the administration
-	 * @return null where the choice is shut, which each route answers as {@link MeCategoryWriteApi#THE_CHOICE_IS_SHUT}
+	 * @return the choice as it stands after the write, or null where the choice is shut, which each route
+	 *         answers as {@link MeCategoryWriteApi#THE_CHOICE_IS_SHUT}
 	 */
-	Chosen choose(long member, boolean firstSeason) {
+	MeCategoryApi.Choice choose(long member, boolean firstSeason) {
 		MeCategoryApi.Choice before = theChoice.of(member);
 
 		if (!before.open()) {
@@ -65,7 +55,7 @@ class ACategoryIsChosen {
 
 		/* AND THE ANSWER IS WORKED OUT AGAIN RATHER THAN ECHOED: `firstSeasonAllowed` is a sum over his
 		   results and `category` is the wish AND that right, and neither is in the request. */
-		return new Chosen(before, theChoice.of(member));
+		return theChoice.of(member);
 	}
 
 	/**

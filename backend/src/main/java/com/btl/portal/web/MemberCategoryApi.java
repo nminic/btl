@@ -1,16 +1,11 @@
 package com.btl.portal.web;
 
-import com.btl.portal.domain.registration.WhatADataCorrectionSays;
-import com.btl.portal.domain.registration.WhatADataCorrectionSays.Field;
-import com.btl.portal.domain.mail.WhatTheMessageSays.Said;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -45,11 +40,11 @@ import java.util.List;
  * the door, so a moderator without it and anybody signed in without it is answered 404 (ADL A8), and a
  * moderator over his own record is answered 404 too, the superadmin not
  * ({@link MemberDataWriteApi#hisOwnAndHeIsNotTheSuperadmin}, „moderator ne ispravlja svoj zapis").</li>
- * <li><b>The message is the precedent of the card's other fields</b>: when the administration changes any
- * of them the member gets one message in his inbox, from the league, naming which data and not what they
- * are ({@link WhatADataCorrectionSays}, PDL M7). So a choice that moved his wish names „kategorija" there,
- * and a press that left it as it was tells him nothing. [IZVEDENO] „Moved" is read off the WISH and not off
- * the category it turns into, because the wish is what his own box on „Moja članarina" shows ticked.</li>
+ * <li><b>AND IT SENDS NO MESSAGE, to him or to anybody.</b> Owner, 24.11.2026, doslovno: „Neka idu bez
+ * poruke.” That struck the assistant's derivation „po presedanu ostalih polja te forme": the other fields of
+ * the card still tell him in his inbox ({@code WhatADataCorrectionSays}, PDL M7), and the category does not.
+ * It is the same shape as the owner's own corrections of 12.11, 14.11 and 24.11.2026, each written „tiho,
+ * bez poruke".</li>
  * </ul>
  *
  * <p><b>Only the member with a number</b>: the card „Podaci" of a profile is reached by it, from the pencil
@@ -59,8 +54,6 @@ import java.util.List;
  */
 @RestController
 class MemberCategoryApi {
-
-	private final JdbcClient db;
 
 	private final MemberDataApi data;
 
@@ -74,20 +67,15 @@ class MemberCategoryApi {
 
 	private final ObjectMapper json;
 
-	private final TransactionTemplate inOneTransaction;
+	MemberCategoryApi(MemberDataApi data, TheChoiceAsItStands theChoice, ACategoryIsChosen chosen,
+			MemberOfAccount memberOfAccount, WhatHeMayDo mayHe, ObjectMapper json) {
 
-	MemberCategoryApi(JdbcClient db, MemberDataApi data, TheChoiceAsItStands theChoice, ACategoryIsChosen chosen,
-			MemberOfAccount memberOfAccount, WhatHeMayDo mayHe, ObjectMapper json,
-			TransactionTemplate inOneTransaction) {
-
-		this.db = db;
 		this.data = data;
 		this.theChoice = theChoice;
 		this.chosen = chosen;
 		this.memberOfAccount = memberOfAccount;
 		this.mayHe = mayHe;
 		this.json = json;
-		this.inOneTransaction = inOneTransaction;
 	}
 
 	/** The choice as it stands for him, the answer {@code GET /api/me/category} gives him. */
@@ -127,24 +115,15 @@ class MemberCategoryApi {
 					MeCategoryWriteApi.THE_FORM_IS_NOT_COMPLETE, List.of("firstSeason")));
 		}
 
-		/* THE WRITE AND ITS MESSAGE IN ONE TRANSACTION, so a member is never told of a choice a rollback took
-		   back, nor left with a choice nobody told him of. */
-		ACategoryIsChosen.Chosen done = inOneTransaction.execute(committing -> {
-			ACategoryIsChosen.Chosen written = chosen.choose(member, typed.firstSeason());
-
-			if (written != null && written.theWishMoved()) {
-				tell(member, WhatADataCorrectionSays.corrected(List.of(Field.CATEGORY)));
-			}
-
-			return written;
-		});
+		/* ONE STATEMENT AND NOTHING BESIDE IT: no message, by the owner's word of 24.11.2026 (see the head). */
+		MeCategoryApi.Choice done = chosen.choose(member, typed.firstSeason());
 
 		if (done == null) {
 			return ResponseEntity.status(HttpStatus.CONFLICT)
 					.body(new MeCategoryWriteApi.Refused(MeCategoryWriteApi.THE_CHOICE_IS_SHUT));
 		}
 
-		return ResponseEntity.ok(done.after());
+		return ResponseEntity.ok(done);
 	}
 
 	/** Absent, empty and unreadable are one answer, the member's own route's principle. */
@@ -155,12 +134,5 @@ class MemberCategoryApi {
 		catch (JacksonException cannot) {
 			return null;
 		}
-	}
-
-	/** The statement {@link MemberDataWriteApi} tells him with: from the league, to his inbox alone. */
-	private void tell(long member, Said said) {
-		db.sql("insert into message (to_id, from_id, from_name, subject, body) values (?, null, ?, ?, ?)")
-				.params(member, PairWriteApi.THE_LEAGUE, said.subject(), said.body())
-				.update();
 	}
 }
