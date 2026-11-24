@@ -929,33 +929,39 @@ class WhatFacebookHasReadTest {
 	@Test
 	void whatWasAskedSinceAPointCanBeReadWhileMoreIsStillArriving() throws Exception {
 		ExecutorService arriving = Executors.newSingleThreadExecutor();
-		int arrivals = 3000;
 		CountDownLatch started = new CountDownLatch(1);
+		java.util.concurrent.atomic.AtomicBoolean enough = new java.util.concurrent.atomic.AtomicBoolean();
 
 		try {
-			java.util.concurrent.Future<?> done = arriving.submit(() -> {
+			/* Arrivals for as long as the reader reads, and not a fixed number of them: a fixed number can be over
+			   before the reader has begun, and then the case measures nothing, which it was caught doing. */
+			java.util.concurrent.Future<Integer> done = arriving.submit(() -> {
+				int arrived = 0;
+
 				started.countDown();
 
-				for (int one = 0; one < arrivals; one++) {
-					FACEBOOK.asked.add(new Asked("a request " + one, true));
+				while (!enough.get()) {
+					FACEBOOK.asked.add(new Asked("a request " + arrived++, true));
 				}
+
+				return arrived;
 			});
 
 			assertThat(started.await(10, TimeUnit.SECONDS)).isTrue();
 
-			long reads = 0;
-
-			while (!done.isDone()) {
+			for (int read = 0; read < 2000; read++) {
 				assertThat(FACEBOOK.since(0).stream().map(Asked::id).toList()).isNotNull();
-				reads++;
 			}
 
-			done.get(10, TimeUnit.SECONDS);
+			enough.set(true);
 
-			assertThat(reads).as("the reader never overlapped the arrivals, so this case measured nothing").isPositive();
-			assertThat(FACEBOOK.since(arrivals - 10)).extracting(Asked::id).hasSize(10);
-			assertThat(FACEBOOK.since(arrivals)).isEmpty();
+			int arrived = done.get(10, TimeUnit.SECONDS);
+
+			assertThat(arrived).as("nothing arrived while the reader read, so this case measured nothing").isPositive();
+			assertThat(FACEBOOK.since(arrived - 10)).extracting(Asked::id).hasSize(10);
+			assertThat(FACEBOOK.since(arrived)).isEmpty();
 		} finally {
+			enough.set(true);
 			arriving.shutdownNow();
 		}
 	}

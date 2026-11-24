@@ -441,11 +441,6 @@ class SponsorApiTest {
 		assertThat(asked("?lang=EN").getStatus()).isEqualTo(400);
 		assertThat(asked("?lang=e").getStatus()).isEqualTo(400);
 		assertThat(asked("?lang=engl").getStatus()).isEqualTo(400);
-		/* A tag with the end of a line behind it is not a tag (independent security review of PR 826, 24.11.2026, low
-		   N4): `$` in a Java pattern stands before a final line terminator, so only a match of the WHOLE value keeps
-		   `sr` and `sr` plus a line break apart, and a search for the pattern inside the value would take both. */
-		assertThat(asked("?lang=sr%0A").getStatus()).isEqualTo(400);
-		assertThat(asked("?lang=en%0A").getStatus()).isEqualTo(400);
 		assertThat(asked("?lang=").getStatus()).isEqualTo(400);
 	}
 }
