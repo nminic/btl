@@ -1,11 +1,11 @@
-import { configure, fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { act, configure, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 import { cropIn } from '../../components/crop'
 import { fittedTo } from '../../components/fitted'
 import sr from '../../i18n/sr.json'
 import { must } from '../../test/at'
 import { measurePicture, theMeasuringPicture } from '../../test/picture'
-import { moderatorWith, renderAt } from '../../test/render'
+import { expectFrontPage, moderatorWith, renderAt } from '../../test/render'
 import { membersAsServed, serverThat, type Asked } from '../../test/serverAnswers'
 import { SLOW } from '../../test/slow'
 import { setupUser } from '../../test/user'
@@ -437,7 +437,7 @@ describe('the circle of his picture, moved by the administration', () => {
     })
 
     stops.push(stop)
-    asTheAdministration(HAS_ONE)
+    const { router } = asTheAdministration(HAS_ONE)
 
     const first = within(await screen.findByRole('region', { name: sr.picture.title }))
 
@@ -445,6 +445,14 @@ describe('the circle of his picture, moved by the administration', () => {
     fireEvent.change(await first.findByLabelText(sr.crop.x), { target: { value: '0.13' } })
     await user.click(first.getByRole('button', { name: sr.theirBoxes.pictureSave }))
     expect(await first.findByText(sr.picture.sendRefused.thePictureHasChanged)).toBeVisible()
+    /* THE CARD CLOSED AND OPENED AGAIN, which is what the sentence asks of him. */
+    await act(async () => {
+      await router.navigate('/sr')
+    })
+    await expectFrontPage()
+    await act(async () => {
+      await router.navigate(`/sr/takmicar/${HAS_ONE}/podaci`)
+    })
     await waitFor(() => expect(listed).toBeGreaterThan(1))
 
     const again = within(await screen.findByRole('region', { name: sr.picture.title }))
