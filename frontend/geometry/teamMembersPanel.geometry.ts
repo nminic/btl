@@ -79,6 +79,17 @@ const SIZES: At[] = [
   { width: 1280, text: 100, height: 600 },
 ]
 
+/** A telephone with the text enlarged (WCAG 2.2 SC 1.4.4): at 150 % and 200 % a name is wider than the window, so the
+ *  rows go on to a second line and the box is read by scrolling the table (review of PR 813, high: a ceiling of
+ *  `100vw - 4.5rem` was 216px at 200 % on 360px and cut every row and the chosen name). One theme, which is all this
+ *  question depends on. */
+const LARGE_TEXT: At[] = [
+  { width: 360, text: 150 },
+  { width: 360, text: 200 },
+  { width: 390, text: 200 },
+  { width: 412, text: 200 },
+]
+
 const AT: At[] = SIZES.flatMap((one) => (['light', 'dark'] as const).map((theme): At => ({ ...one, theme })))
 
 for (const [which, answers, pick, phoneOnly] of [
@@ -86,7 +97,7 @@ for (const [which, answers, pick, phoneOnly] of [
   ['the last row of a table', ADMINISTRATION, 'last', false],
   ['short names', SHORT_NAMES, 'first', true],
 ] as const) {
-  for (const at of phoneOnly ? AT.filter((one) => one.width < 768) : AT) {
+  for (const at of phoneOnly ? AT.filter((one) => one.width < 768) : [...AT, ...LARGE_TEXT]) {
     test(`the list of members of a team opens whole and no scroll bar comes of it, ${which}, ${label(at)}`, async ({
       open,
     }) => {
@@ -176,20 +187,45 @@ for (const [which, answers, pick, phoneOnly] of [
         throw notMeasured('the panel, its list or its button was not drawn')
       }
 
+      /* THE NAME CHOSEN IS WHOLE IN THE BOX: the longest of the list is pressed (a row is chosen on the press), and
+         the box neither runs out of itself nor holds another name than the one pressed. A name that is cut loses the
+         number that ends it, and the administrator adds the wrong member (review of PR 813, high). */
+      const longest = await page.evaluate(
+        (id) => [...(document.getElementById(`${id}-list`)?.children ?? [])]
+          .map((one) => (one.textContent ?? '').trim())
+          .reduce((most, one) => (one.length > most.length ? one : most), ''),
+        `team-${team}-member`,
+      )
+
+      await page.locator(`#team-${team}-member-list`).getByRole('option', { name: longest, exact: true }).click()
+
+      const chosen = await box.evaluate((one) => {
+        const input = one as HTMLInputElement
+
+        return { value: input.value, runsOut: input.scrollWidth - input.clientWidth }
+      })
+
+      expect(chosen.value, 'the box holds another name than the one pressed').toBe(longest)
+      expect(chosen.runsOut, 'the name chosen runs out of the box, and its number with it').toBeLessThanOrEqual(0.5)
+
       expect(seen.rows, 'the list offers the members of no team').toBeGreaterThan(1)
       expect(seen.top, 'the list starts inside the window').toBeGreaterThanOrEqual(-SLACK)
       expect(seen.bottom, 'the list ends inside the window').toBeLessThanOrEqual(seen.window + SLACK)
       expect(seen.left, 'the list starts inside the page').toBeGreaterThanOrEqual(-SLACK)
       expect(seen.right, 'the list ends inside the page').toBeLessThanOrEqual(seen.across + SLACK)
-      expect(seen.shown, 'the list shows no more than a row or two').toBeGreaterThan(2)
+      /* At 100 % a few rows; at 150 % and 200 % a name takes two or three lines, and the list the window leaves under
+         the box (`roomFor`, 144px at the least, in pixels) shows one or two of them and scrolls inside itself. */
+      expect(seen.shown, 'the list shows no row at all').toBeGreaterThan(at.text === 100 ? 2 : 0)
       expect(seen.unreached, 'rows of the list that something covers or cuts').toBe(0)
       expect(seen.frameTall, 'the table gained a vertical scroll bar').toBeLessThanOrEqual(1)
       expect(seen.frameWide, 'the list made the table scroll sideways further').toBeLessThanOrEqual(frameWideBefore + 1)
       expect(seen.pageWide, 'the page scrolls sideways').toBeLessThanOrEqual(0)
 
+      /* No row is cut, at any width and any text size: a name that does not fit goes on to a second line. */
+      expect(seen.cut, `a name is cut (by ${String(seen.cutBy)}px), the box is narrower than the longest`).toBe(0)
+
       if (at.width >= 768) {
         /* A desktop and a tablet: the box is as wide as its longest name and no wider, and the button is at its side. */
-        expect(seen.cut, `a name is cut with an ellipsis (by ${String(seen.cutBy)}px), the box is narrower than the longest`).toBe(0)
         expect(seen.field.right - seen.field.left, 'the box takes the whole row').toBeLessThan(seen.cell * 0.6)
         expect(seen.button.left, 'the button starts before the box ends').toBeGreaterThanOrEqual(seen.field.right - SLACK)
         expect(seen.button.left - seen.field.right, 'the button is not at the side of the box').toBeLessThanOrEqual(40)

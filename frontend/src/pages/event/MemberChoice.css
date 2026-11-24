@@ -64,11 +64,25 @@
      same `ch` as the rows are read in. */
   font-size: 1rem;
   inline-size: calc(var(--member-choice-widest) * 1.2ch + var(--member-choice-arrow));
-  /* Never wider than the field it is in, and never wider than the window can show: the row of the panel is as wide
-     as the table, which on a telephone is wider than the screen, and a box as wide as that row would be, and its
-     list with it, off the right edge of the window. A percentage as the width itself would be measured against a
-     field that is as wide as the box (a circle), so the ceiling is a ceiling and the width is the count. */
-  max-inline-size: min(100%, calc(100vw - 4.5rem));
+  /* Never wider than the field it is in. It was also never wider than `100vw - 4.5rem`, to keep the LIST in the window,
+     and that ceiling is in a unit that grows with the text: at 200 % on 360px it was 216px, under the first word of a
+     name and the number that ends it, so every row was cut and the chosen name ran out of the box by 235px (review of
+     PR 813, high; measured in Chrome at 150 % and 200 % on 360, 390 and 412px). The window is kept by the list now
+     (`MemberChoice.tsx`, `seatOf`: never wider than the window, and put inside it) and the box is its own length;
+     on a telephone the table is wider than the screen and the box is read by scrolling it, as it always was. A
+     percentage as the width itself would be measured against a field that is as wide as the box (a circle), so the
+     ceiling is a ceiling and the width is the count. */
+  max-inline-size: 100%;
+}
+
+/* THE ROWS OF A FITTED LIST ARE NEVER CUT: where the window is narrower than a name (a telephone at 150 % and 200 %
+   text) the name goes on to a second line, and the number that ends it is read (review of PR 813, high). The other
+   list, the row of results, keeps its one line and its ellipsis. */
+.member-choice__list--fitted .member-choice__one {
+  overflow: visible;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  white-space: normal;
 }
 
 .member-choice__one {

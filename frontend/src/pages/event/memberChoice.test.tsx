@@ -428,6 +428,45 @@ describe('where the list of members stands', () => {
     vi.restoreAllMocks()
   })
 
+  it('is never wider than the window and never put outside it, where the box is wider than the window or runs past its edge', async () => {
+    /* Review of PR 813, high: the box of a telephone is read inside a table that is wider than the screen, and its list
+       is drawn in the body, so the window is what keeps it in. */
+    const user = setupUser()
+    const { box } = drawn()
+
+    box.getBoundingClientRect = () => DOMRect.fromRect({ x: 40, y: 100, width: window.innerWidth * 2, height: 48 })
+    await user.click(box)
+
+    let list = screen.getByRole('listbox')
+
+    expect(list.style.getPropertyValue('--member-choice-width')).toBe(`${String(window.innerWidth)}px`)
+    expect(list.style.getPropertyValue('--member-choice-left')).toBe('0px')
+
+    await user.click(box)
+    box.getBoundingClientRect = () => DOMRect.fromRect({ x: window.innerWidth - 100, y: 100, width: 300, height: 48 })
+    await user.click(box)
+    list = screen.getByRole('listbox')
+
+    expect(list.style.getPropertyValue('--member-choice-width')).toBe('300px')
+    expect(list.style.getPropertyValue('--member-choice-left')).toBe(`${String(window.innerWidth - 300)}px`)
+  })
+
+  it('lets the rows of a fitted list go on to a second line and keeps the one line of the other', async () => {
+    const user = setupUser()
+
+    render(<Harness onChoose={vi.fn()} onSubmit={vi.fn()} fitted />)
+    await user.click(screen.getByRole('combobox'))
+    expect(screen.getByRole('listbox')).toHaveClass('member-choice__list--fitted')
+  })
+
+  it('has no fitted list unless the box is fitted', async () => {
+    const user = setupUser()
+    const { box } = drawn()
+
+    await user.click(box)
+    expect(screen.getByRole('listbox')).not.toHaveClass('member-choice__list--fitted')
+  })
+
   it('goes with the box when the page or a table scrolls, or the window changes size, while it is open', async () => {
     const user = setupUser()
     const { box } = drawn()
