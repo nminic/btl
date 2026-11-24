@@ -385,10 +385,10 @@ export function Shell() {
 
         {/* ONE WRAPPER IN BOTH SHAPES, so that the navigation is the same element when the window crosses 700px
             and keeps the focus a reader had on one of its words (PENDING, review of PR 755, 17.11.2026). On a
-            telephone it is the row of cells; on a desktop it takes no box of its own (`.shell__nav-holder`,
-            `app/Shell.css`). The envelope and the picture change places with the shape, and keep what they had
-            by another way (`app/Dropdown.tsx`). */}
-        <div className={phone ? 'shell__cells' : 'shell__nav-holder'}>
+            telephone it is the row of cells; on a desktop it is a plain block, which measured the same as no
+            wrapper at every width of `geometry/phoneHeader.geometry.ts`. The envelope and the picture change
+            places with the shape, and keep what they had by another way (`app/Dropdown.tsx`). */}
+        <div className={phone ? 'shell__cells' : undefined}>
           {navigation}
           {phone && personal}
         </div>
