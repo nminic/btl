@@ -183,6 +183,21 @@ class WhatFacebookHasReadTest {
 			return "http://127.0.0.1:" + server.getAddress().getPort();
 		}
 
+		/**
+		 * WHAT WAS ASKED FROM THE {@code before}TH REQUEST ON, AS A SNAPSHOT. {@code asked} is a
+		 * {@link CopyOnWriteArrayList}, and the {@code subList} of one is a view that throws
+		 * {@link java.util.ConcurrentModificationException} on any read after the list has grown, which a request of
+		 * this fake Facebook's own threads does at any moment. Four cases read a view of it while the portal's threads
+		 * were still asking, and one of them failed on CI with exactly that on 24.11.2026 (a run of
+		 * {@code noOrderLosesAnAddressFacebookRead}, on a pull request that does not touch this class). The copy is
+		 * taken in one step, and the view is of the copy.
+		 */
+		List<Asked> since(int before) {
+			List<Asked> all = List.copyOf(asked);
+
+			return all.subList(before, all.size());
+		}
+
 		void reset() {
 			asked.clear();
 			status = 200;
@@ -836,7 +851,7 @@ class WhatFacebookHasReadTest {
 					assertThat(sent).as("%s: a pass sent more than its limit", step).hasSizeLessThanOrEqualTo(limit);
 
 					if (said[0].equals("pass")) {
-						FACEBOOK.asked.subList(before, FACEBOOK.asked.size()).forEach(one -> readAgain(facebook, one));
+						FACEBOOK.since(before).forEach(one -> readAgain(facebook, one));
 					}
 				}
 				case "rename" -> {
@@ -865,7 +880,7 @@ class WhatFacebookHasReadTest {
 
 				CompletableFuture.allOf(sent.toArray(CompletableFuture[]::new)).get(10, TimeUnit.SECONDS);
 				assertThat(sent).as("a pass sent more than its limit").hasSizeLessThanOrEqualTo(limit);
-				FACEBOOK.asked.subList(before, FACEBOOK.asked.size()).forEach(one -> readAgain(facebook, one));
+				FACEBOOK.since(before).forEach(one -> readAgain(facebook, one));
 				noAddressIsLost(facebook, order + ", settling");
 
 				if (sent.isEmpty()) {
@@ -889,12 +904,12 @@ class WhatFacebookHasReadTest {
 
 		long until = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
 
-		while (!FACEBOOK.asked.subList(before, FACEBOOK.asked.size()).stream().map(Asked::id).toList()
+		while (!FACEBOOK.since(before).stream().map(Asked::id).toList()
 				.containsAll(his.stream().map(address -> portal + address).toList()) && System.nanoTime() < until) {
 			Thread.sleep(20);
 		}
 
-		List<Asked> afterTheDeletion = List.copyOf(FACEBOOK.asked.subList(before, FACEBOOK.asked.size()));
+		List<Asked> afterTheDeletion = List.copyOf(FACEBOOK.since(before));
 
 		afterTheDeletion.forEach(one -> readAgain(facebook, one));
 		assertThat(afterTheDeletion).as("%s: a deletion asked before its commit", order)
@@ -902,6 +917,47 @@ class WhatFacebookHasReadTest {
 		assertThat(facebook).as("%s: after the deletion Facebook keeps his card at an address", order)
 				.allSatisfy((address, holds) -> assertThat(holds == null || !holds.contains("/competitor/" + GOES + "-"))
 						.as(address).isTrue());
+	}
+
+	/**
+	 * THE FAKE FACEBOOK'S LIST OF REQUESTS CAN BE READ WHILE ITS OWN THREADS ARE ADDING TO IT. The cases that settle
+	 * the addresses read what was asked since a point while the crawler's requests still arrive, and a view of the
+	 * list itself (a {@code subList} of a copy-on-write list) fails on the first read after an arrival. Here the
+	 * arrivals are made by a thread of this case, as hard as it can, and the reader asks again and again; nothing may
+	 * be thrown and nothing may be lost.
+	 */
+	@Test
+	void whatWasAskedSinceAPointCanBeReadWhileMoreIsStillArriving() throws Exception {
+		ExecutorService arriving = Executors.newSingleThreadExecutor();
+		int arrivals = 3000;
+		CountDownLatch started = new CountDownLatch(1);
+
+		try {
+			java.util.concurrent.Future<?> done = arriving.submit(() -> {
+				started.countDown();
+
+				for (int one = 0; one < arrivals; one++) {
+					FACEBOOK.asked.add(new Asked("a request " + one, true));
+				}
+			});
+
+			assertThat(started.await(10, TimeUnit.SECONDS)).isTrue();
+
+			long reads = 0;
+
+			while (!done.isDone()) {
+				assertThat(FACEBOOK.since(0).stream().map(Asked::id).toList()).isNotNull();
+				reads++;
+			}
+
+			done.get(10, TimeUnit.SECONDS);
+
+			assertThat(reads).as("the reader never overlapped the arrivals, so this case measured nothing").isPositive();
+			assertThat(FACEBOOK.since(arrivals - 10)).extracting(Asked::id).hasSize(10);
+			assertThat(FACEBOOK.since(arrivals)).isEmpty();
+		} finally {
+			arriving.shutdownNow();
+		}
 	}
 
 	/**

@@ -171,7 +171,7 @@ class MemberPictureAndWordsApi {
 				return no(MePhotoApi.THE_FORM_IS_NOT_COMPLETE);
 			}
 
-			standing = theDigestStandingOn(member);
+			standing = theDigestStandingOnUnderALock(member);
 
 			if (!standing.map(digest -> over.equals(A_PICTURE_IS_NAMED_BY + digest)).orElse(false)) {
 				return ResponseEntity.status(HttpStatus.CONFLICT).body(new Refused(MePhotoApi.THE_PICTURE_HAS_CHANGED));
@@ -351,6 +351,26 @@ class MemberPictureAndWordsApi {
 	/** The digest of the picture that stands on his profile, or nothing where none does. */
 	private Optional<String> theDigestStandingOn(long member) {
 		return db.sql("select p.digest from competitor c join photo p on p.id = c.photo_id where c.id = ?")
+				.param(member)
+				.query(String.class)
+				.optional();
+	}
+
+	/**
+	 * THE SAME QUESTION, ASKED UNDER A LOCK ON THE MEMBER'S ROW, for the circle that is written on the picture the
+	 * answer names (independent security review of PR 825, 24.11.2026, medium). His turn
+	 * ({@link MePhotoApi#oneSendOfAMemberAtATime}) keeps out the sends of his own and this administration's, and a
+	 * moderator's approval of a new picture takes no such turn: it sets {@code competitor.photo_id} and nothing else
+	 * here would see it. Read without a lock, the answer could be true when it was read and false by the time the
+	 * circle was written, and a circle drawn over the old picture would be written onto the one the moderator had just
+	 * approved, over the circle he had set, with a 200. Read {@code for update of c}, the approval's own write to that
+	 * row waits behind this request until it has written, or, where the approval was first, this read waits for it and
+	 * is then answered with the row as the approval left it, which names a picture the request did not. The precedent
+	 * is {@code VerificationWriteApi#publishTheComment}, which takes the same row for the same reason.
+	 */
+	private Optional<String> theDigestStandingOnUnderALock(long member) {
+		return db.sql("select p.digest from competitor c join photo p on p.id = c.photo_id where c.id = ?"
+						+ " for update of c")
 				.param(member)
 				.query(String.class)
 				.optional();

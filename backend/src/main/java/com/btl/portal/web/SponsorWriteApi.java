@@ -88,7 +88,13 @@ class SponsorWriteApi {
 	/** The ceiling on a link, which nobody types and V111 holds as a floor. */
 	static final int A_LINK_AT_MOST = 2000;
 
-	private static final Pattern A_LINK = Pattern.compile("^https?://\\S+$");
+	/*
+	 * White space in the sense of UNICODE and not of ASCII: {@code sponsor_url_shape} (V111) refuses {@code [[:space:]]},
+	 * which takes in U+2028, so a pattern that knew only the ASCII kind let such a link through to the table and
+	 * answered it with a 500 (independent security review of PR 826, 24.11.2026). A no-break space is refused too;
+	 * the table would take it, and a link with one in it is not a link.
+	 */
+	private static final Pattern A_LINK = Pattern.compile("^https?://\\S+$", Pattern.UNICODE_CHARACTER_CLASS);
 
 	private final JdbcClient db;
 
@@ -315,6 +321,18 @@ class SponsorWriteApi {
 	}
 
 	private void lock() {
+		lock(db);
+	}
+
+	/**
+	 * THE TABLE LOCK EVERY WRITE OF A SPONSOR TAKES FIRST, and so does the write of a logo
+	 * ({@link SponsorLogoApi}): the table, and only then a row of it. Taken in the other order by the one route, a
+	 * request that held a row of a sponsor and wanted the table met a request that held the table and wanted that
+	 * row, and the database ended one of them with {@code deadlock detected}, an answer of 500 (independent review of
+	 * PR 826, round 2, 24.11.2026; the two were measured in two {@code psql} sessions). One order for both is the
+	 * whole of the cure.
+	 */
+	static void lock(JdbcClient db) {
 		db.sql("lock table sponsor in share row exclusive mode").update();
 	}
 

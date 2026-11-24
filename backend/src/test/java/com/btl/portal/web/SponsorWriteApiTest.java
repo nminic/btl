@@ -409,10 +409,29 @@ class SponsorWriteApiTest {
 
 	@ParameterizedTest
 	@ValueSource(strings = {"primer.rs", "www.primer.rs", "ftp://primer.rs", "javascript:alert(1)", "https://",
-			"https://primer .rs", "mailto:info@primer.rs", "//primer.rs"})
+			"https://primer .rs", "mailto:info@primer.rs", "//primer.rs", "data:text/html,x", "JAVASCRIPT:alert(1)"})
 	void aLinkThatIsNotAWebAddressIsRefused(String url) throws Exception {
 		assertThat(refused(form("Ime", url, "Opis", null, false, false, false)))
 				.isEqualTo(SponsorWriteApi.THE_LINK_IS_NOT_A_LINK);
+	}
+
+	/**
+	 * White space of the kind Unicode knows and ASCII does not (independent security review of PR 826, 24.11.2026,
+	 * low N1): {@code sponsor_url_shape} refuses U+2028, so a link carrying one, which the ASCII-only pattern let
+	 * through, was answered with a 500; and a no-break space is not a link either. The characters are made here and
+	 * not written in the source, where an editor or a tool turns them into the invisible thing itself.
+	 */
+	@ParameterizedTest
+	@ValueSource(ints = {0x2028, 0x2029, 0x0085, 0x00a0, 0x3000})
+	void aLinkWithWhiteSpaceOfUnicodeInItIsRefusedAndNotAnswered500(int space) throws Exception {
+		String mark = String.valueOf((char) space);
+
+		/* In the middle, and not at the end: a space at either end is taken off before the link is judged (`strip`),
+		   which is a different thing and a right one. */
+		for (String url : List.of("https://primer" + mark + ".rs", "https://primer.rs/a" + mark + "b")) {
+			assertThat(refused(form("Ime", url, "Opis", null, false, false, false)))
+					.as("U+%04X in %s", space, url).isEqualTo(SponsorWriteApi.THE_LINK_IS_NOT_A_LINK);
+		}
 	}
 
 	@Test
@@ -462,6 +481,10 @@ class SponsorWriteApiTest {
 
 		assertThat(db.sql("select description_en from sponsor where id = ?").param(volt).query(String.class)
 				.optional()).isEmpty();
+		/* AND A CHANGE THAT DOES NOT ASK FOR THE MARK LEAVES IT WHERE IT WAS (independent review of PR 826, round 2,
+		   24.11.2026): a write that took the mark off every other sponsor whenever it ran, and not only when it asked
+		   for the mark, passed every case but this one. */
+		assertThat(db.sql("select id from sponsor where main").query(Long.class).list()).containsExactly(main);
 	}
 
 	@Test
