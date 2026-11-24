@@ -145,6 +145,8 @@ function renderForm(today = OPEN, address = '/sr/registracija') {
   )
 }
 
+const A_PHONE = '+381 64 765 4321'
+
 async function fillEverythingExceptBirthDate(
   user: ReturnType<typeof setupUser>,
   {
@@ -155,12 +157,17 @@ async function fillEverythingExceptBirthDate(
      *  still trim. Without that pair nothing tells „leave the password alone" apart from
      *  „leave everything alone". */
     firstName = 'Vladan',
+    /** The telephone, typed unless it is left empty. The box for the Viber community starts ticked on
+     *  this form (owner, PDL P36, 24.11.2026), which makes the telephone obligatory, so a walk that is
+     *  not about the telephone has to carry one to get through at all. The cases about the box hand in
+     *  `''` and say what they do with it. */
+    phone = A_PHONE,
   }: /** ~~`picture`, left out where the case was about the picture being missing.~~ It
    *  went on 28.09.2026 with the field: the owner took the profile section out of the
    *  registration („Profilna sekcija se sa slikom i svojim recima izbacuje iz
    *  registracione forme - to ce clan popunjavati naknadno kad bude odobren"), so there
    *  is no picture here to leave out. */
-  { password?: string; firstName?: string } = {},
+  { password?: string; firstName?: string; phone?: string } = {},
 ) {
   await user.type(screen.getByLabelText(/^Ime$/), firstName)
   await user.type(screen.getByLabelText(/^Prezime$/), 'Đurišić')
@@ -177,9 +184,12 @@ async function fillEverythingExceptBirthDate(
   /* Required since 31.07.2026: the shirt and the finisher medal are posted
      together once a member reaches twelve points, and a parcel needs an address.
      The same field is the address of residence in the register of members
-     (owner, 20.08.2026). The telephone stands beside it and is optional, so
-     nothing here fills it. */
+     (owner, 20.08.2026). The telephone stands beside it; it is typed below unless
+     the case hands in `phone: ''`. */
   await user.type(screen.getByLabelText(/^Poštanska adresa za slanje$/), 'Bulevar oslobođenja 12')
+  if (phone !== '') {
+    await user.type(screen.getByLabelText(/^Telefon/), phone)
+  }
   /* The town carries the country: picked out of the codebook, which is what
      fills the one beside it (forms/PlaceField.tsx). */
   await user.type(screen.getByLabelText(/^Mesto$/), 'Beograd')
@@ -981,6 +991,8 @@ describe('the country a member lives in', () => {
     /* A hamlet of two hundred people that no codebook of the world has heard
        of, which is exactly what the field is allowed to take. */
     await user.type(screen.getByLabelText(/^Mesto$/), 'Zaseok pod brdom')
+    /* The Viber box opens ticked, so the telephone is typed (owner, PDL P36, 24.11.2026). */
+    await user.type(screen.getByLabelText(/^Telefon/), A_PHONE)
     await user.click(screen.getByRole('radio', { name: 'Starosna' }))
     await user.selectOptions(screen.getByLabelText(/Veličina majice/), 'XXXL')
     await user.click(screen.getByLabelText(/zdravstveno stanje/))
@@ -1174,7 +1186,7 @@ describe('the telephone', () => {
     expect(screen.queryByText(/Milan/)).toBeNull()
   }, SLOW)
 
-  it('is asked for, optional, and the form goes through without it', async () => {
+  it('is asked for, optional once the Viber box is unticked, and the form goes through without it', async () => {
     /* Obligatory on 01.08.2026, optional on 03.08, gone on 11.08, and back as
        something optional on 20.08. What holds it here is that it is genuinely
        optional: the walk below never touches the field and the form still goes
@@ -1185,12 +1197,14 @@ describe('the telephone', () => {
 
     /* The word beside the name is what makes it optional to a reader, and every
        field on the portal that may be left alone carries it (FormRenderer). */
+    await user.click(screen.getByRole('checkbox', { name: 'Želim u BTL zajednicu na Viberu (obaveštenja, novosti)' }))
+
     const phone = screen.getByLabelText(/^Telefon \(neobavezno\)$/)
 
     expect(phone).toBeVisible()
     expect(phone).not.toBeRequired()
 
-    await fillEverythingExceptBirthDate(user)
+    await fillEverythingExceptBirthDate(user, { phone: '' })
     await user.type(screen.getByLabelText(/Datum rođenja/), '12041985')
     await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
 
@@ -1205,36 +1219,56 @@ describe('the telephone', () => {
 describe('the box for the community on Viber', () => {
   const THE_BOX = 'Želim u BTL zajednicu na Viberu (obaveštenja, novosti)'
 
-  it('stands in the row of the telephone, empty, and is ticked by its words and by the keyboard', async () => {
-    /* Empty until he ticks it, and the whole sentence is its name, so a press on the words ticks it and
-       Space does too (the assistant's reading of WCAG 2.2 AA, ADL A7, written into PDL P36). */
+  it('stands in the row of the telephone, TICKED, and is unticked by its words and ticked again by the keyboard', async () => {
+    /* Ticked from the start (owner, PDL P36, 24.11.2026, „Hoću da kvadratić bude default štikliran i telefon
+       obavezan"); it was empty until 24.11.2026. The whole sentence is its name, so a press on the words
+       flips it and Space does too (ADL A7, written into PDL P36). */
     const user = setupUser()
     renderForm()
 
     const box = screen.getByRole('checkbox', { name: THE_BOX })
 
-    expect(box).not.toBeChecked()
+    expect(box).toBeChecked()
     expect(box).not.toBeRequired()
     /* In the group of the telephone, and the row after the address and the telephone. */
     expect(box.closest('fieldset')).toBe(screen.getByLabelText(/^Telefon/).closest('fieldset'))
 
     await user.click(screen.getByText(THE_BOX))
-    expect(box).toBeChecked()
+    expect(box).not.toBeChecked()
 
     await user.keyboard(' ')
     expect(box).toHaveFocus()
-    expect(box).not.toBeChecked()
+    expect(box).toBeChecked()
   }, SLOW)
 
-  it('ticked, will not let the form through without a telephone, and says why under the telephone', async () => {
-    /* „Kad je kvadratić štikliran, telefon je obavezan: ispod telefona piše „Za Viber zajednicu upišite
-       broj telefona.” i prijava ne ide dok broja nema." */
+  it('opens with the telephone obligatory and named so, and is optional and named so once unticked, and again once ticked', async () => {
+    /* „Kad je kvadratić štikliran, natpis telefona postaje „Telefon” sa zvezdicom ... kad nije, ostaje
+       „Telefon (neobavezno)”." Both halves, and the way back: a rule that stayed once it was lifted would
+       ask for a number from somebody who unticked the box. */
     const user = setupUser()
     renderForm()
 
-    await fillEverythingExceptBirthDate(user)
-    await user.type(screen.getByLabelText(/Datum rođenja/), '12041985')
+    expect(screen.getByLabelText(/^Telefon$/)).toBeRequired()
+    expect(screen.queryByLabelText(/^Telefon \(neobavezno\)$/)).toBeNull()
+
     await user.click(screen.getByRole('checkbox', { name: THE_BOX }))
+
+    expect(screen.getByLabelText(/^Telefon \(neobavezno\)$/)).not.toBeRequired()
+
+    await user.click(screen.getByRole('checkbox', { name: THE_BOX }))
+
+    expect(screen.getByLabelText(/^Telefon$/)).toBeRequired()
+    expect(screen.queryByLabelText(/^Telefon \(neobavezno\)$/)).toBeNull()
+  }, SLOW)
+
+  it('as it opens, will not let the form through without a telephone, and says why under the telephone', async () => {
+    /* „Kad je kvadratić štikliran, telefon je obavezan: ispod telefona piše „Za Viber zajednicu upišite
+       broj telefona.” i prijava ne ide dok broja nema." Nothing is ticked here: the box is already. */
+    const user = setupUser()
+    renderForm()
+
+    await fillEverythingExceptBirthDate(user, { phone: '' })
+    await user.type(screen.getByLabelText(/Datum rođenja/), '12041985')
     await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
 
     const phone = screen.getByLabelText(/^Telefon/)
@@ -1256,26 +1290,21 @@ describe('the box for the community on Viber', () => {
 
     await fillEverythingExceptBirthDate(user)
     await user.type(screen.getByLabelText(/Datum rođenja/), '12041985')
-    await user.type(screen.getByLabelText(/^Telefon/), '+381 64 765 4321')
-    await user.click(screen.getByRole('checkbox', { name: THE_BOX }))
     await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
 
     await waitFor(() => {
       expect(whatWasSent()).toHaveLength(1)
     })
 
-    expect(theBodySent()).toMatchObject({ phone: '+381 64 765 4321', viberCommunity: true })
+    expect(theBodySent()).toMatchObject({ phone: A_PHONE, viberCommunity: true })
   }, SLOW)
 
-  it('untick it again, and the telephone is optional again', async () => {
-    /* The other half: a rule that stayed once it was raised would ask everybody who ever touched the box
-       for a number. */
+  it('unticked, goes through without a telephone and says so', async () => {
     const user = setupUser()
     renderForm()
 
-    await fillEverythingExceptBirthDate(user)
+    await fillEverythingExceptBirthDate(user, { phone: '' })
     await user.type(screen.getByLabelText(/Datum rođenja/), '12041985')
-    await user.click(screen.getByRole('checkbox', { name: THE_BOX }))
     await user.click(screen.getByRole('checkbox', { name: THE_BOX }))
     await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
 
@@ -1372,8 +1401,8 @@ describe('what the registration sends', () => {
       city: 'Beograd',
       country: 'RS',
       idNumber: '123456789',
-      phone: '',
-      viberCommunity: false,
+      phone: A_PHONE,
+      viberCommunity: true,
       shirtSize: 'XXXL',
       healthStatement: true,
       parentConsent: '',
@@ -1569,6 +1598,8 @@ describe('what the registration sends', () => {
     await user.click(screen.getByRole('radio', { name: 'Male' }))
     await user.type(screen.getByLabelText(/^Postal address$/), 'Bulevar oslobođenja 12')
     await user.type(screen.getByLabelText(/^Town$/), 'Beograd')
+    /* The Viber box opens ticked, so the telephone is typed (owner, PDL P36, 24.11.2026). */
+    await user.type(screen.getByLabelText(/^Telephone/), A_PHONE)
     await user.click(screen.getByRole('radio', { name: 'By age' }))
     await user.selectOptions(screen.getByLabelText(/Shirt size/), 'XXXL')
     await user.click(screen.getByLabelText(/medically fit/))

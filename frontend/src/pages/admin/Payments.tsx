@@ -41,9 +41,20 @@ import { ActionButton, ActionLink } from '../../components/ActionButton'
 import { OVER_THE_MEMBERS, THE_DATA } from '../profile/whoReadsTheData'
 import { useMay } from './rights'
 import { unnumberedDataPath } from '../../app/routes'
+import { clearResourceCache } from '../../data/client'
+import { DeletionSaid } from './DeletionSaid'
 
 /** Where the search box is, so its label points at it. */
 const SEARCH_ID = 'payments-search'
+
+/**
+ * WHERE A REGISTRATION IS DELETED: by `competitor.id`, the key this row already holds and the pencil
+ * beside it already leads by (`ARegistrationIsDeletedApi`, the address of the data without its last
+ * segment). A key the server served, never typed, so nothing in it is anybody's to spell.
+ */
+function registrationAt(competitorId: number): string {
+  return `/api/members/unnumbered/${competitorId}`
+}
 
 /**
  * WHAT THE STATEMENT BOX LAST SAID, held by the screen and not by the box, because a statement that
@@ -491,6 +502,7 @@ function Row({
   one,
   season,
   onActivated,
+  onDeleted,
   fromTheLine = null,
 }: {
   one: MembershipDue
@@ -498,6 +510,8 @@ function Row({
    *  the moderator to look for it behind the sheet. Off the answer, never off a clock. */
   season: number
   onActivated: () => void
+  /** The registration on this row was deleted; the screen says so and reads the list again. */
+  onDeleted: () => void
   /** The line of a bank statement this row was opened from by „Potvrdi" (owner, 25.10.2026): its
    *  amount is written into the field and the booking names it. Null for a row nobody opened. */
   fromTheLine?: StatementLine | null
@@ -555,6 +569,8 @@ function Row({
    *  switched off - `PendingQueue.tsx`'s „Odobri" keeps the same shape for the same reason: a
    *  control that leaves the row takes the keyboard with it). */
   const [activating, setActivating] = useState(false)
+  /** Whether the sheet „Obriši prijavu?" is open over this row. */
+  const [deleting, setDeleting] = useState(false)
 
   const read = typedIn(typed)
   /* DECIDED ONCE, HERE, and the button's disabling, its press and the question all read this one
@@ -643,6 +659,48 @@ function Row({
       /* Read at both doors before either starts a request (below, and `onChoose` where this is
          handed to `Asking`), so the next press is let through the moment this one has actually
          finished, whether it returned an answer or the route rejected it outright. */
+      outstanding.current = false
+      setActivating(false)
+    }
+  }
+
+  /**
+   * „OBRIŠI" ON THE SHEET: THE REGISTRATION GOES, AND WITH IT EVERYTHING OF HIS ON THE PORTAL (owner,
+   * 23.11.2026, „Tom akcijom svi njegovi podaci nestaju sa portala").
+   *
+   * <p><b>THE SAME GUARD AS AN ACTIVATION, AND ON PURPOSE THE SAME REF</b>: a request this row started is
+   * out, whichever of the two it was, and a second one may not follow it. Two presses of „Obriši" fired
+   * before the render the first would cause are what a double press is, and the sheet's own refusal
+   * (`Prompt`'s `working`) is state, which the second press does not see yet. The precedent is
+   * `MemberRow.tsx#send`, the deletion of a member on the screen of the members.
+   *
+   * <p><b>A REFUSAL STAYS BESIDE THE ROW</b>, in the region the activation's refusals use. The route
+   * names no reason (every refusal is one 404, `ARegistrationIsDeletedApi`), so there is no map of
+   * reasons: the button is drawn only where the server would let it through, and the one way to be
+   * refused from here is that something changed in between.
+   */
+  async function remove() {
+    if (outstanding.current) {
+      return
+    }
+
+    outstanding.current = true
+    setActivating(true)
+
+    try {
+      const answer = await askTheServer(registrationAt(one.competitorId), {}, 'DELETE')
+
+      setDeleting(false)
+
+      /* THE ROW GOES WITH THE LIST, which the screen reads again, so nothing of this row is set. */
+      if (answer.got === 'done') {
+        onDeleted()
+
+        return
+      }
+
+      setRefused({ answer, refusals: {} })
+    } finally {
       outstanding.current = false
       setActivating(false)
     }
@@ -837,6 +895,33 @@ function Row({
               setAsking(question)
             }}
           />
+          {/* „OBRIŠI", LAST AND HELD APART FROM THE TWO BEFORE IT (owner, 23.11.2026: „Dodaj mi dugme za
+              brisanje prijavljenih članova u listi uplata"). Its symbol, its word and its name are the
+              members' row's (`MemberRow.tsx`), and so is the distance that keeps a press meant for the tick
+              off it (`Activation.css`). Last, so on a row without it the pencil and the tick stand where they
+              stand on every other row.
+
+              DRAWN ONLY WHERE THE SERVER SAYS THE ROUTE WOULD LET IT THROUGH (`mayBeDeleted`), and only for
+              whoever may delete a member on his row of the table of members (PDL 23.11.2026, derived from
+              that precedent): the right over the members, the pencil's own condition. A moderator holding
+              only the payments is shown nothing rather than a control that would be turned away (ADL A8). */}
+          {mayCorrect && one.mayBeDeleted ? (
+            <ActionButton
+              symbol={SYMBOL.cross}
+              word={t('admin.form.delete')}
+              name={t('admin.form.deleteNamed', { name: `${one.firstName} ${one.lastName}` })}
+              className="entity-open entity-delete activate__delete"
+              /* TOLD OFF WHILE A REQUEST OF THIS ROW IS OUT, the tick's own shape beside it. */
+              aria-disabled={activating ? true : undefined}
+              onClick={() => {
+                if (outstanding.current) {
+                  return
+                }
+
+                setDeleting(true)
+              }}
+            />
+          ) : null}
         </span>
 
         {/* A LIVE REGION ALWAYS ON THE PAGE, with only its content changing. The shape is
@@ -879,6 +964,22 @@ function Row({
             onDecline={() => setAsking(null)}
           />
         )}
+
+        {/* „Obriši prijavu?", under it „Ovo ne može da se vrati.", and „Obriši" and „Odustani" (PDL
+            23.11.2026, derived from „Obriši nalog" of 20.11.2026 and „Obriši člana?" of 22.10.2026). Busy in
+            the portal's own words while the request is out, so „Odustani" and Escape cannot put it away
+            once something has been sent. */}
+        {deleting ? (
+          <Prompt
+            title={t('admin.registrationDeleteAsk')}
+            choices={[{ label: t('admin.form.delete'), onChoose: () => void remove() }]}
+            decline={t('admin.form.keep')}
+            onDecline={() => setDeleting(false)}
+            working={activating ? t('results.sending') : undefined}
+          >
+            <p>{t('admin.registrationDeleteFinal')}</p>
+          </Prompt>
+        ) : null}
       </td>
     </tr>
   )
@@ -1086,6 +1187,7 @@ function Asking({
  * submission was handed back" about a submission he never made.
  */
 export function Payments() {
+  const { t } = useI18n()
   /* WHAT MAKES THE LIST BE READ AGAIN, and it is a remount rather than a refetch because
      `useResource` reads once as it mounts and never again while it is mounted - which is the
      right shape for everything else and the one thing an activation has to get past.
@@ -1095,35 +1197,55 @@ export function Payments() {
   /* WHAT THE STATEMENT BOX LAST SAID, held here because a statement that booked a payment remounts
      the list below, and the sentence about what it booked has to be there when it comes back. */
   const [statementSaid, setStatementSaid] = useState<StatementSaid | null>(null)
+  /* „PRIJAVA JE OBRISANA.", held and drawn HERE, outside the list the key remounts: a live region that
+     is remounted with its words already in it is often not read, and a deletion is exactly what
+     remounts the list (`DeletionSaid.tsx`). Put away by the next activation, which is not about it. */
+  const [deleted, setDeleted] = useState('')
 
   return (
-    <TheList
-      key={readAgain}
-      statementSaid={statementSaid}
-      onStatementSaid={setStatementSaid}
-      /* WHETHER THIS DRAWING IS THE ONE AFTER AN ACTIVATION, and it is the count that says so:
-         every remount but the first is one, because nothing else moves it. Read by the search box
-         below, which is where the focus goes when a row has left the list. */
-      afterAnActivation={readAgain > 0}
-      onActivated={() => {
-        /* EIGHT NAMES, ONE LIST (`whatActiveMoves.ts`, shared with `admin/AdminMembers.tsx`), and the
-           five after the first three were left off until the class of PENDING 29656 was measured here: an
-           activation books a season, so `attendance`, `comments`, `pairs`, `teams` and
-           `results` (every route that asks whether a member is active) say the man is still outside the league. The
-           first three are not tidiness either. An activation draws a member
-           number and books a season, and the moderation of the members
-           (`admin/AdminMembers.tsx`) reads that fact twice: the rows are `members`, which carry
-           `active`, the seasons he holds and the basis of the one on sale, and the link to a
-           profile is `competitors`, the public list that answers only the members whose fee
-           stands. Leaving either cached would show the man still outside the league on the next
-           screen the moderator opens - under all three values of the filter for a new member, and
-           with the basis and the list of seasons as they were for a renewal. Both doors of
-           this screen end here (`POST /api/payments` and `POST /api/memberships`), so one place
-           clears for both. */
-        dropWhatActiveMoves()
-        setReadAgain((was) => was + 1)
-      }}
-    />
+    <>
+      <DeletionSaid said={deleted} clear={setDeleted} />
+      <TheList
+        key={readAgain}
+        statementSaid={statementSaid}
+        onStatementSaid={setStatementSaid}
+        /* WHETHER THIS DRAWING IS THE ONE AFTER AN ACTIVATION, and it is the count that says so:
+           every remount but the first is one, because nothing else moves it. Read by the search box
+           below, which is where the focus goes when a row has left the list. */
+        afterAnActivation={readAgain > 0}
+        onActivated={() => {
+          /* EIGHT NAMES, ONE LIST (`whatActiveMoves.ts`, shared with `admin/AdminMembers.tsx`), and the
+             five after the first three were left off until the class of PENDING 29656 was measured here: an
+             activation books a season, so `attendance`, `comments`, `pairs`, `teams` and
+             `results` (every route that asks whether a member is active) say the man is still outside the league. The
+             first three are not tidiness either. An activation draws a member
+             number and books a season, and the moderation of the members
+             (`admin/AdminMembers.tsx`) reads that fact twice: the rows are `members`, which carry
+             `active`, the seasons he holds and the basis of the one on sale, and the link to a
+             profile is `competitors`, the public list that answers only the members whose fee
+             stands. Leaving either cached would show the man still outside the league on the next
+             screen the moderator opens - under all three values of the filter for a new member, and
+             with the basis and the list of seasons as they were for a renewal. Both doors of
+             this screen end here (`POST /api/payments` and `POST /api/memberships`), so one place
+             clears for both. */
+          dropWhatActiveMoves()
+          setDeleted('')
+          setReadAgain((was) => was + 1)
+        }}
+        onDeleted={() => {
+          /* TWO NAMES AND NOT THE EIGHT OF AN ACTIVATION. He never became a member, which is the whole
+             condition of the button, so nothing that lists members, results, teams, pairs, who is going or
+             comments ever held him. What did: this list (`payments`), which the remount reads again, and
+             the queue of verification, where a picture or words of his may wait and go with him by cascade
+             (`verification.competitor_id`, V9), the same reason `AdminMembers.tsx#deleteOne` drops it. The
+             focus goes to the search box, as after an activation (`afterAnActivation` below). */
+          clearResourceCache('payments')
+          clearResourceCache('verification')
+          setDeleted(t('admin.registrationGone'))
+          setReadAgain((was) => was + 1)
+        }}
+      />
+    </>
   )
 }
 
@@ -1137,11 +1259,13 @@ export function Payments() {
  */
 function TheList({
   onActivated,
+  onDeleted,
   afterAnActivation,
   statementSaid,
   onStatementSaid,
 }: {
   onActivated: () => void
+  onDeleted: () => void
   afterAnActivation: boolean
   statementSaid: StatementSaid | null
   onStatementSaid: (said: StatementSaid) => void
@@ -1276,6 +1400,7 @@ function TheList({
                           one={one}
                           season={outstanding.season}
                           onActivated={onActivated}
+                          onDeleted={onDeleted}
                           fromTheLine={opened === null ? null : opened.line}
                         />
                       ))}

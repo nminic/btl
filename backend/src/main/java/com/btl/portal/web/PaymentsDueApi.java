@@ -19,6 +19,7 @@ import java.time.LocalDate;
 import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -256,11 +257,19 @@ class PaymentsDueApi {
 	 */
 	private final BalanceBook book;
 
-	PaymentsDueApi(JdbcClient db, Clock clock, PriceRows priceRows, BalanceBook book) {
+	/**
+	 * Who of the list may be deleted from it as never having become a member, asked of the one home of
+	 * that set and over the whole list at once ({@link LeavingBeforeBecomingAMember#whoOf}).
+	 */
+	private final LeavingBeforeBecomingAMember neverMembers;
+
+	PaymentsDueApi(JdbcClient db, Clock clock, PriceRows priceRows, BalanceBook book,
+			LeavingBeforeBecomingAMember neverMembers) {
 		this.db = db;
 		this.clock = clock;
 		this.priceRows = priceRows;
 		this.book = book;
+		this.neverMembers = neverMembers;
 	}
 
 	/**
@@ -295,9 +304,18 @@ class PaymentsDueApi {
 	 * @param balance      what his book adds up to TODAY in that same currency, which is the
 	 *                     number the tick box carries in its label, and never what a payment code
 	 *                     once promised him (PDL 23a)
+	 * @param mayBeDeleted whether the administration may delete this registration from the row, which
+	 *                     is the owner's of 23.11.2026: „Dugme je samo za prijavu koja nikad nije postala
+	 *                     član, isti skup kao kod dugmeta „Obriši nalog” od 20.11.2026". The same question
+	 *                     {@code DELETE /api/members/unnumbered/{competitorId}} asks again under its holds
+	 *                     ({@link ARegistrationIsDeletedApi}), so the screen draws „Obriši" only where the
+	 *                     route would let it through. Served to whoever may read this list; the screen
+	 *                     draws the button only to whoever holds the right over the members, as it draws
+	 *                     the pencil
 	 */
 	record Due(long competitorId, String memberNumber, String firstName, String lastName,
-			String city, String currency, BigDecimal expected, BigDecimal price, BigDecimal balance) {
+			String city, String currency, BigDecimal expected, BigDecimal price, BigDecimal balance,
+			boolean mayBeDeleted) {
 	}
 
 	/**
@@ -441,6 +459,9 @@ class PaymentsDueApi {
 		Map<Long, Balance.Money> books = book.forEveryOneOf(monies);
 		List<MembershipPrice.Row> priceList = priceRows.all();
 
+		/* AND WHO OF THEM MAY BE DELETED, one reading for the whole answer for the same reason. */
+		Set<Long> deletable = neverMembers.whoOf(monies.keySet());
+
 		LocalDate today = LocalDate.ofInstant(clock.instant(), SeasonClock.ZONE);
 
 		return rows.stream().map(one -> {
@@ -461,7 +482,8 @@ class PaymentsDueApi {
 			   against the sum (PDL, „Članarina plaćena iz balansa ne nosi taksu"), and two readings
 			   of one price list in one answer could part by a day or a junior's birth year. */
 			return new Due(one.id(), one.memberNumber(), one.firstName(), one.lastName(), one.city(),
-					his.name(), expected, price.amount(), books.get(one.id()).amount());
+					his.name(), expected, price.amount(), books.get(one.id()).amount(),
+					deletable.contains(one.id()));
 		}).toList();
 	}
 

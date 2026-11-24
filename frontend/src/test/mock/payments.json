@@ -10,7 +10,8 @@
       "currency": "RSD",
       "expected": 4800,
       "price": 4800,
-      "balance": 0
+      "balance": 0,
+      "mayBeDeleted": true
     },
     {
       "competitorId": 23,
@@ -21,7 +22,8 @@
       "currency": "RSD",
       "expected": 4800,
       "price": 4800,
-      "balance": 6000
+      "balance": 6000,
+      "mayBeDeleted": false
     },
     {
       "competitorId": 58,
@@ -32,7 +34,8 @@
       "currency": "EUR",
       "expected": 43,
       "price": 40,
-      "balance": 12.75
+      "balance": 12.75,
+      "mayBeDeleted": false
     },
     {
       "competitorId": 17,
@@ -43,7 +46,8 @@
       "currency": "RSD",
       "expected": 4800,
       "price": 4800,
-      "balance": 1500
+      "balance": 1500,
+      "mayBeDeleted": false
     }
   ]
 }
