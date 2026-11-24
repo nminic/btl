@@ -18,7 +18,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.List;
-import java.util.zip.CRC32;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -146,7 +145,7 @@ class SmallPictureTest {
 			+ "AABWUDggYgAAANQGAJ0BKmQAZAA+0WCmUwIKAAGglpbt/kC8AfoB+/4nQAHZWL4lF1mdRe8iTT5Ik0+SJNPkiTT5"
 			+ "Ik0+SJM2AAD+6zj//oTY9qK///Qk/+Js/4mz4QX/rBdmHoEGOChLCAAA";
 
-	private static byte[] resource(String name) {
+	static byte[] resource(String name) {
 		return Base64.getDecoder().decode(switch (name) {
 			case "marked.webp" -> MARKED_WEBP;
 			case "see-through.webp" -> SEE_THROUGH_WEBP;
@@ -526,14 +525,79 @@ class SmallPictureTest {
 				.hasMessageContaining("2001 by 2000");
 	}
 
+	/**
+	 * THE DOORS ASK THE SAME CEILING THE CUT HAS, ON EACH SIDE OF IT AND FOR EACH TYPE (PDL 23.11.2026,
+	 * „Administracija sama podešava krug na članovoj slici", the assistant's derivation recorded as such:
+	 * „Slika veća od granica koje sečenje već ima (25 MP, a za WebP 4 MP) odbija se pri otpremanju").
+	 *
+	 * <p>Exactly at a ceiling is taken and one row over it is not, for a JPEG and for a PNG, and a WebP
+	 * one row over four million is larger than the cut takes while a PNG of the same size is not. A
+	 * WebP whose frame claims more than its canvas is larger too, which is the reader's canvas alone
+	 * would not say.
+	 */
+	@Test
+	void theDoorsAskTheCeilingTheCutHasOnEachSideOfItForEachType() {
+		assertThat(SmallPicture.isLargerThanItCuts(PicturesOfASize.png(5_000, 5_000), "image/png")).isFalse();
+		assertThat(SmallPicture.isLargerThanItCuts(PicturesOfASize.png(5_000, 5_001), "image/png")).isTrue();
+		assertThat(SmallPicture.isLargerThanItCuts(PicturesOfASize.jpeg(5_000, 5_000), "image/jpeg")).isFalse();
+		assertThat(SmallPicture.isLargerThanItCuts(PicturesOfASize.jpeg(5_001, 5_000), "image/jpeg")).isTrue();
+		assertThat(SmallPicture.isLargerThanItCuts(PicturesOfASize.webpOverItsCeiling(), "image/webp")).isTrue();
+		assertThat(SmallPicture.isLargerThanItCuts(PicturesOfASize.png(2_001, 2_000), "image/png"))
+				.as("the WebP's ceiling was asked of a PNG").isFalse();
+		assertThat(SmallPicture.isLargerThanItCuts(PicturesOfASize.webpUnderItsCeiling(), "image/webp")).isFalse();
+		assertThat(SmallPicture.isLargerThanItCuts(resource("bomb.webp"), "image/webp"))
+				.as("a frame larger than its canvas was let through on the canvas").isTrue();
+	}
+
+	/**
+	 * AND A HEADER THE READER CANNOT READ IS NOT „LARGER": the boundary {@link SmallPicture#isLargerThanItCuts}
+	 * writes down, so the doors take what they took before and the cut refuses it on its own.
+	 */
+	@Test
+	void aHeaderTheReaderCannotReadIsNotLarger() {
+		assertThat(SmallPicture.isLargerThanItCuts(new byte[] { (byte) 0xFF, (byte) 0xD8, (byte) 0xFF, 'n', 'o' },
+				"image/jpeg")).isFalse();
+		assertThat(SmallPicture.isLargerThanItCuts(new byte[] { 'R', 'I', 'F', 'F' }, "image/webp")).isFalse();
+	}
+
+	/**
+	 * ONE CEILING AND NOT TWO: for every picture here, „larger than the cut takes" is exactly „the cut
+	 * refuses it as more than it cuts". A ceiling copied into the doors and then moved in one place only
+	 * would part the two on the pictures between the old number and the new one, which is why the set
+	 * holds sizes between the ceilings and not only at them.
+	 */
+	@Test
+	void whatTheDoorsCallLargerIsWhatTheCutRefuses() {
+		List<Object[]> pictures = List.of(
+				new Object[] { PicturesOfASize.png(5_000, 4_500), "image/png" },
+				new Object[] { PicturesOfASize.png(5_000, 5_000), "image/png" },
+				new Object[] { PicturesOfASize.png(5_001, 5_000), "image/png" },
+				new Object[] { PicturesOfASize.png(4_000, 3_000), "image/png" },
+				new Object[] { PicturesOfASize.jpeg(5_000, 4_800), "image/jpeg" },
+				new Object[] { PicturesOfASize.jpeg(5_001, 5_000), "image/jpeg" },
+				new Object[] { PicturesOfASize.webpOverItsCeiling(), "image/webp" },
+				new Object[] { resource("bomb.webp"), "image/webp" });
+
+		for (Object[] one : pictures) {
+			byte[] bytes = (byte[]) one[0];
+			String type = (String) one[1];
+			boolean refusedByTheCut;
+
+			try {
+				SmallPicture.of(bytes, type, share("0.5"), share("0.5"), share("1"));
+				refusedByTheCut = false;
+			} catch (IOException refused) {
+				refusedByTheCut = refused.getMessage() != null
+						&& refused.getMessage().contains("is more than this cuts");
+			}
+
+			assertThat(SmallPicture.isLargerThanItCuts(bytes, type))
+					.as("the door and the cut disagree about a %s of %d bytes", type, bytes.length)
+					.isEqualTo(refusedByTheCut);
+		}
+	}
+
 	private static byte[] pngHeaderOf(int width, int height) {
-		byte[] header = ByteBuffer.allocate(17).put("IHDR".getBytes(StandardCharsets.ISO_8859_1))
-				.putInt(width).putInt(height).put((byte) 8).put((byte) 2).put((byte) 0)
-				.put((byte) 0).put((byte) 0).array();
-		CRC32 crc = new CRC32();
-		crc.update(header);
-		return ByteBuffer.allocate(8 + 4 + 17 + 4)
-				.put(new byte[] { (byte) 0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A })
-				.putInt(13).put(header).putInt((int) crc.getValue()).array();
+		return PicturesOfASize.png(width, height);
 	}
 }

@@ -1258,6 +1258,51 @@ class MePhotoApiTest {
 	}
 
 	/**
+	 * A PICTURE OF MORE PIXELS THAN THE CUT TAKES IS REFUSED WHEN IT IS SENT, with the sentence of a picture
+	 * too big, and not taken to fall back to its whole original in every circle later (PDL 23.11.2026,
+	 * „Administracija sama podešava krug na članovoj slici", the assistant's derivation recorded as such:
+	 * „Slika veća od granica koje sečenje već ima (25 MP, a za WebP 4 MP) odbija se pri otpremanju").
+	 *
+	 * <p>Each ceiling from both sides: a PNG of exactly twenty five million pixels is taken and one row more
+	 * is not; a WebP one row over four million is not, and a small one is. Nothing is queued for a refusal.
+	 */
+	@Test
+	void aPictureOfMorePixelsThanTheCutTakesIsRefusedOnEachCeiling() throws Exception {
+		for (byte[] over : List.of(com.btl.portal.domain.photo.PicturesOfASize.png(5_000, 5_001),
+				com.btl.portal.domain.photo.PicturesOfASize.webpOverItsCeiling())) {
+			MockHttpServletResponse refused = sending(ME, over);
+
+			assertThat(refused.getStatus()).isEqualTo(400);
+			assertThat(reasonIn(refused)).isEqualTo(MePhotoApi.THE_PICTURE_IS_TOO_BIG);
+		}
+
+		assertThat(db.sql("select count(*) from verification where state = 'waiting' and photo_id is not null"
+						+ " and competitor_id = (select id from competitor where member_number = ?)")
+				.param(ME).query(Long.class).single())
+				.as("a picture over the ceiling was queued").isZero();
+
+		List<Long> taken = new java.util.ArrayList<>();
+
+		for (byte[] under : List.of(com.btl.portal.domain.photo.PicturesOfASize.png(5_000, 5_000),
+				com.btl.portal.domain.photo.PicturesOfASize.webpUnderItsCeiling())) {
+			assertThat(sending(ME, under).getStatus()).isEqualTo(200);
+
+			long photo = db.sql("select photo_id from verification where state = 'waiting'"
+							+ " and photo_id is not null and competitor_id ="
+							+ " (select id from competitor where member_number = ?)")
+					.param(ME).query(Long.class).single();
+
+			assertThat(Files.readAllBytes(fileOf(photo))).isEqualTo(WithoutMetadata.of(under,
+					WhatAPictureIs.sniff(under)));
+			taken.add(photo);
+		}
+
+		for (long photo : taken) {
+			Files.deleteIfExists(fileOf(photo));
+		}
+	}
+
+	/**
 	 * AND THE CONTAINER'S OWN LIMIT IS ABOVE THE PORTAL'S, READ OFF THE SETTINGS.
 	 *
 	 * <p>The floor under the paragraph in {@code application.properties}: written the other

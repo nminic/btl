@@ -1993,7 +1993,9 @@
     "atOnce": "A change stands on the member's profile at once, without approval, and the member gets a message in the inbox.",
     "pictureSave": "Save the picture",
     "wordsSave": "Save the text",
-    "saved": "Saved. The change already stands on the profile and the member has been sent a message."
+    "saved": "Saved. The change already stands on the profile and the member has been sent a message.",
+    "circleAlt": "The member's picture, with a circle that can be moved",
+    "circleSaved": "Saved."
   },
   "leagueMark": {
     "title": "League mark",

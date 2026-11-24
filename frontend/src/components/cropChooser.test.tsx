@@ -1031,9 +1031,10 @@ describe('what the picture is dressed as while it can be dragged', () => {
   })
 
   it('takes none of them where there is nothing to drag', async () => {
-    /* A moderator reading a member's choice has nothing to move, so the picture
-       must not swallow their scrolling either. The window is the same component
-       on both screens and this is the one thing that differs. */
+    /* A window that is only looked at must not swallow the scrolling either. (It
+       was the moderator's card until 24.11.2026, when the owner gave him the circle
+       to drag: „Na kartici slike koja čeka administrator krug vuče po slici". The
+       rule here is the window's own and still holds wherever nothing is dragged.) */
     const { container } = renderWithI18n(
       <CropWindow picture="data:image/jpeg;base64,x" crop={WHOLE} alt="Proba" />,
     )

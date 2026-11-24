@@ -1519,6 +1519,136 @@ class VerificationWriteApiTest {
 		}
 	}
 
+	// ----- the circle the moderator sets (PDL 23.11.2026) -------------------------------------
+
+	/** The circle a moderator sets in these cases: unlike every circle `photograph` makes (two decimals). */
+	private static final String HIS_CIRCLE = "{\"x\":0.125,\"y\":0.875,\"size\":0.625}";
+
+	/** A decision about Vera's picture that names what she sent and the circle the moderator set over it. */
+	private MockHttpServletResponse decideSetting(String email, boolean approved, String reason, String circle)
+			throws Exception {
+
+		return decideWith(email, verasPicture, "{\"approved\":" + approved
+				+ (reason == null ? "" : ",\"reason\":\"" + reason + "\"")
+				+ ",\"seenPhotoId\":" + verasPhoto + ",\"seenCrop\":" + verasCircle
+				+ (circle == null ? "" : ",\"crop\":" + circle) + "}");
+	}
+
+	/** Every picture there is, as „key: x/y/diameter", so a circle written onto the wrong one shows. */
+	private List<String> everyCircle() {
+		return db.sql("select id || ': ' || crop_x || '/' || crop_y || '/' || crop_diameter from photo order by id")
+				.query(String.class).list();
+	}
+
+	/**
+	 * AN APPROVAL PUBLISHES THE PICTURE WITH THE CIRCLE THE MODERATOR SET, AND TELLS NOBODY (owner,
+	 * 23.11.2026, PDL „Administracija sama podešava krug na članovoj slici": „kad takmičar pošalje sliku na
+	 * validaciju, ja kao Admin hoću da mogu da se poigram krugom pre nego što mu je odobrim.", and „Član ne
+	 * dobija poruku kad administracija pomeri krug.").
+	 *
+	 * <p>The circle he sets is unlike Vera's and unlike every other picture's in the fixture, so a circle
+	 * written from the print ({@code seenCrop}) or from the row cannot pass, and every other picture is read
+	 * whole, so a circle written onto the wrong one shows. The messages are counted whole, so a line to her,
+	 * to the league or to anybody fails it.
+	 */
+	@Test
+	void anApprovalPublishesThePictureWithTheCircleTheModeratorSetAndTellsNobody() throws Exception {
+		List<String> before = everyCircle();
+		int messages = db.sql("select count(*) from message").query(Integer.class).single();
+
+		MockHttpServletResponse answered = decideSetting(PROFILES_MODERATOR, true, null, HIS_CIRCLE);
+
+		assertThat(answered.getStatus()).as(answered.getContentAsString()).isEqualTo(200);
+		assertThat(db.sql("select photo_id from competitor where member_number = ?")
+				.param(VERA).query(Long.class).optional()).contains(verasPhoto);
+		assertThat(everyCircle()).as("the circle he set is not the one that stands, or landed elsewhere")
+				.containsExactlyElementsOf(before.stream()
+						.map(one -> one.startsWith(verasPhoto + ": ")
+								? verasPhoto + ": 0.12500000/0.87500000/0.62500000" : one)
+						.toList());
+		assertThat(db.sql("select count(*) from message").query(Integer.class).single())
+				.as("a circle he set told somebody").isEqualTo(messages);
+	}
+
+	/** And an approval that sets none publishes the circle the member chose, as it always did. */
+	@Test
+	void anApprovalThatSetsNoCirclePublishesTheMembersOwn() throws Exception {
+		List<String> before = everyCircle();
+
+		assertThat(decideSetting(PROFILES_MODERATOR, true, null, null).getStatus()).isEqualTo(200);
+		assertThat(everyCircle()).containsExactlyElementsOf(before);
+	}
+
+	/**
+	 * A CIRCLE BESIDE A REFUSAL, OR BESIDE A ROW WITH NO PICTURE, IS A FORM FAULT, and so is a circle that is
+	 * not one the column holds. Nothing is decided, and the picture's circle stays the member's.
+	 */
+	@Test
+	void aCircleBesideAnythingButAnApprovalOfAPictureIsRefusedAndDecidesNothing() throws Exception {
+		List<String> before = everyCircle();
+
+		MockHttpServletResponse besideARefusal = decideSetting(PROFILES_MODERATOR, false, THE_REASON, HIS_CIRCLE);
+
+		assertThat(besideARefusal.getStatus()).isEqualTo(400);
+		assertThat(reasonIn(besideARefusal)).isEqualTo("Krug se zadaje samo uz odobravanje slike.");
+		nothingWasDecided(verasPicture, verasPhoto);
+
+		MockHttpServletResponse besideAText = decideWith(PROFILES_MODERATOR, anasText, "{\"approved\":true,"
+				+ "\"seenText\":" + new ObjectMapper().writeValueAsString(ANAS_WORDS) + ",\"crop\":" + HIS_CIRCLE + "}");
+
+		assertThat(besideAText.getStatus()).isEqualTo(400);
+		assertThat(reasonIn(besideAText)).isEqualTo("Krug se zadaje samo uz odobravanje slike.");
+		assertThat(stateOf(anasText)).isEqualTo("waiting");
+
+		for (String notACircle : List.of("{\"x\":0.125,\"y\":0.875}", "{\"x\":0.125,\"y\":0.875,\"size\":0}",
+				"{\"x\":-0.1,\"y\":0.875,\"size\":0.5}", "{\"x\":0.125,\"y\":1.5,\"size\":0.5}",
+				"{\"x\":0.123456789,\"y\":0.875,\"size\":0.5}")) {
+			MockHttpServletResponse answered = decideSetting(PROFILES_MODERATOR, true, null, notACircle);
+
+			assertThat(answered.getStatus()).as(notACircle).isEqualTo(400);
+			assertThat(reasonIn(answered)).as(notACircle).isEqualTo(THE_FORM_IS_NOT_COMPLETE);
+			nothingWasDecided(verasPicture, verasPhoto);
+		}
+
+		assertThat(everyCircle()).containsExactlyElementsOf(before);
+	}
+
+	/**
+	 * WHO MAY SET THE CIRCLE IS WHO MAY APPROVE THE PICTURE (the assistant's derivation, PDL 23.11.2026:
+	 * „Pravo da pomera krug: u verifikaciji ko sme da odobri sliku (pomeranje je deo odobravanja)"): signed
+	 * out is 401, a moderator without the right over profiles and a competitor are 404, and nothing moves.
+	 */
+	@Test
+	void whoMaySetTheCircleIsWhoMayApproveThePicture() throws Exception {
+		List<String> before = everyCircle();
+
+		assertThat(decideSetting(null, true, null, HIS_CIRCLE).getStatus()).isEqualTo(401);
+		assertThat(decideSetting(COMMENTS_MODERATOR, true, null, HIS_CIRCLE).getStatus()).isEqualTo(404);
+		assertThat(decideSetting(A_COMPETITOR, true, null, HIS_CIRCLE).getStatus()).isEqualTo(404);
+
+		nothingWasDecided(verasPicture, verasPhoto);
+		assertThat(everyCircle()).containsExactlyElementsOf(before);
+
+		assertThat(decideSetting(THE_SUPERADMIN, true, null, HIS_CIRCLE).getStatus()).isEqualTo(200);
+		assertThat(circleOn(verasPhoto)).isEqualTo("0.12500000/0.87500000/0.62500000");
+	}
+
+	/**
+	 * AND THE CIRCLE HE SETS IS NOT THE PRINT: a member who moves hers while he moves his has the decision
+	 * refused as any change under his hand is, and the row keeps the circle she moved it to.
+	 */
+	@Test
+	void theCircleHeSetsIsNotThePrintAndAMemberWhoMovesHersRefusesIt() throws Exception {
+		db.sql("update photo set crop_x = 0.2, crop_y = 0.4, crop_diameter = 0.6 where id = ?")
+				.param(verasPhoto).update();
+
+		MockHttpServletResponse answered = decideSetting(PROFILES_MODERATOR, true, null, HIS_CIRCLE);
+
+		assertThat(answered.getStatus()).isEqualTo(409);
+		nothingWasDecided(verasPicture, verasPhoto);
+		assertThat(circleOn(verasPhoto)).isEqualTo("0.20000000/0.40000000/0.60000000");
+	}
+
 	/**
 	 * A ROW SOMEBODY ELSE DECIDED IS ANSWERED AS DECIDED, and not as a picture that changed or as
 	 * a request that named a picture where the row now holds none.

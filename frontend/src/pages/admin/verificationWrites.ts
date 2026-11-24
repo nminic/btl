@@ -39,6 +39,7 @@ import type { RaceKind } from '../../data/types'
  */
 
 import type { Crop } from '../../data/types'
+import { asTheColumnHolds } from '../member/photoWrites'
 
 /**
  * WHAT `POST /api/verification/{id}/decision` TAKES, which is
@@ -94,6 +95,17 @@ export type Answered = {
    * without its key.
    */
   seenCrop?: Crop
+  /**
+   * THE CIRCLE AS THE MODERATOR LEFT IT, on an approval of a picture whose circle he moved and nowhere
+   * else (`VerificationWriteApi.Answered.crop`; owner, 23.11.2026, PDL „Administracija sama podešava krug
+   * na članovoj slici": „hoću da mogu da se poigram krugom pre nego što mu je odobrim"). What the
+   * approval writes onto the picture in place of the member's circle. <b>Never the print</b>: `seenCrop`
+   * stays what the queue served, so a member who moves hers meanwhile still refuses the decision.
+   * Left out where he did not move it, and the member's circle is then what is published. Beside a
+   * refusal or a card without a picture the route answers 400, so only {@link anApprovalOfThePicture}
+   * writes it, and as finely as the column holds (`asTheColumnHolds`).
+   */
+  crop?: Crop
   /**
    * The words of the text the card DREW, on a decision about a biography and nowhere else
    * (`VerificationWriteApi.Answered.seenText`; PDL P11, 18.10.2026, derived from „isto kao za sliku"
@@ -306,8 +318,22 @@ export function anApprovalOfTheText(seenText: string): Answered {
  * without it - the route answers that a form not filled in - or write it where there is no
  * picture to name.
  */
-export function anApprovalOfThePicture(seenPhotoId: number, seenCrop: Crop): Answered {
-  return { approved: true, reason: '', seenPhotoId, seenCrop }
+export function anApprovalOfThePicture(seenPhotoId: number, seenCrop: Crop, moved?: Crop): Answered {
+  return moved === undefined
+    ? { approved: true, reason: '', seenPhotoId, seenCrop }
+    : {
+        approved: true,
+        reason: '',
+        seenPhotoId,
+        seenCrop,
+        /* As finely as the column holds, for the reason `photoWrites.ts` gives: a slider's floor is
+           `240 / shorter edge`, which is a fraction of more places than the route takes. */
+        crop: {
+          x: Number(asTheColumnHolds(moved.x)),
+          y: Number(asTheColumnHolds(moved.y)),
+          size: Number(asTheColumnHolds(moved.size)),
+        },
+      }
 }
 
 /**

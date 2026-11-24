@@ -26,8 +26,10 @@ import { QUEUE } from './queues'
  * has the circle cut out of it, and the picture under it is still drawn.
  * <li><b>A circle moved and the list read again is drawn where it now is</b>, in the element that
  * was already there: the picture did not change, so nothing about it is waited for a second time.
- * <li><b>The window is given nothing to drag</b>, so the height is not capped (PDL.md, 28.08.2026:
- * „Moderatoru se ne ograničava").
+ * <li><b>The window takes a drag and is capped in height as the member's is</b> (owner, 24.11.2026: „Na
+ * kartici slike koja čeka administrator krug vuče po slici (prstom ili mišem), kao član; slika se tada
+ * ograničava po visini kao kod člana."), which overturned for this card „Moderatoru se ne ograničava"
+ * (PDL.md, 28.08.2026).
  * <li><b>A picture that never came has no circle</b>, only the sentence; a biography has neither.
  * </ul>
  *
@@ -295,12 +297,14 @@ describe('the circle on a card the moderator is deciding about', () => {
     }
   }, SLOW)
 
-  it('is given nothing to drag and no cap on its height, because he has nothing to move and his job is to see all of what is thrown away', async () => {
-    /* PDL.md, 28.08.2026: „Moderatoru se ne ograničava". The cap is `CropWindow`'s own and it
-       applies only where there is an `onChange`, so a window handed one here would answer a
-       pointer (a press on the picture would move the circle of a decision) and would cap a
-       tall photograph at 60 per cent of the screen. A 1080 by 2400 file is the one the member's
-       screen was measured with. */
+  it('takes a drag and is capped in height as the member’s is, since the owner gave him the circle to move', async () => {
+    /* Owner, 24.11.2026, chosen between the outcomes offered: „Na kartici slike koja čeka administrator krug
+       vuče po slici (prstom ili mišem), kao član; slika se tada ograničava po visini kao kod člana." That
+       overturned, for this card, PDL.md 28.08.2026 „Moderatoru se ne ograničava", which this case held until
+       then the other way round. The cap is `CropWindow`'s own and comes with its `onChange`, so both are read
+       here: a box that takes a drag and is not capped is a wall on a telephone, and one that is capped and
+       takes no drag gives him nothing to move. A 1080 by 2400 file is the one the member's screen was
+       measured with. */
     const { stop } = serverThat((path) => (path === '/api/verification' ? asTheList([neda()]) : null))
 
     try {
@@ -310,10 +314,9 @@ describe('the circle on a card the moderator is deciding about', () => {
 
       const box = must(pictureOn(cardOf('Neda Nedić')).parentElement, 'the box')
 
-      expect(box.style.maxBlockSize).toBe('')
-      expect(box.style.inlineSize).toBe('')
-      expect(box).not.toHaveClass('crop__picture--dragged')
-      expect(box.style.cursor).toBe('')
+      expect(box.style.maxBlockSize).toBe('60svh')
+      expect(box.style.inlineSize).toBe('min(100%, calc(60svh * 1080 / 2400))')
+      expect(box).toHaveClass('crop__picture--dragged')
     } finally {
       stop()
     }

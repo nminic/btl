@@ -1,10 +1,10 @@
-import { configure, screen, waitFor, within } from '@testing-library/react'
+import { configure, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 import { cropIn } from '../../components/crop'
 import { fittedTo } from '../../components/fitted'
 import sr from '../../i18n/sr.json'
 import { must } from '../../test/at'
-import { measurePicture } from '../../test/picture'
+import { measurePicture, theMeasuringPicture } from '../../test/picture'
 import { moderatorWith, renderAt } from '../../test/render'
 import { membersAsServed, serverThat, type Asked } from '../../test/serverAnswers'
 import { SLOW } from '../../test/slow'
@@ -269,6 +269,124 @@ describe('what each box opens with, and a press that cannot send', () => {
     answer(json({ bio: 'x' }))
 
     expect(await panel.findByText(sr.theirBoxes.saved)).toBeVisible()
+  }, SLOW)
+})
+
+/**
+ * THE CIRCLE OF THE PICTURE THAT STANDS, MOVED BY THE ADMINISTRATION AND SAVED (owner, 23.11.2026, PDL
+ * „Administracija sama podešava krug na članovoj slici": „Čak i kad mu uđem u podatke, želim da mogu da se
+ * poigram krugom pa da je sačuvam.", and „Član ne dobija poruku kad administracija pomeri krug.").
+ *
+ * <p>000003 stands with the circle 0,3 0,15 0,55 (`test/mock/competitors.json`); the circle moved to is
+ * unlike it in the two numbers moved, so a request carrying the served circle is another request.
+ */
+describe('the circle of his picture, moved by the administration', () => {
+  const HAS_ONE = '000003'
+  const SERVED = { x: 0.3, y: 0.15, size: 0.55 }
+
+  it('is drawn over the picture that stands, sent alone to his address, and says he is not told', async () => {
+    const user = setupUser()
+    const { asked, stop } = serverThat((path, init) =>
+      init?.method === 'POST' && path === `/api/members/${HAS_ONE}/photo`
+        ? json({ photo: '/mock/photo/andjelija.svg', crop: { x: 0.13, y: 0.15, size: 0.42 } })
+        : null,
+    )
+
+    stops.push(stop)
+    asTheAdministration(HAS_ONE)
+
+    const panel = within(await screen.findByRole('region', { name: sr.picture.title }))
+    const save = panel.getByRole('button', { name: sr.theirBoxes.pictureSave })
+
+    expect(save, 'nothing has moved yet').toHaveAttribute('aria-disabled', 'true')
+
+    await measurePicture()
+    fireEvent.change(await panel.findByLabelText(sr.crop.x), { target: { value: '0.13' } })
+    fireEvent.change(panel.getByLabelText(sr.crop.size), { target: { value: '0.42' } })
+    await user.click(save)
+
+    expect(await panel.findByText(sr.theirBoxes.circleSaved)).toHaveAttribute('role', 'status')
+    expect(panel.queryByText(sr.theirBoxes.saved), 'the sentence says he was told').toBeNull()
+
+    const sent = writes(asked)
+
+    expect(sent.map((one) => one.path)).toEqual([`/api/members/${HAS_ONE}/photo`])
+
+    const body = must(sent[0], 'the write').init?.body
+
+    expect(body).toBeInstanceOf(FormData)
+    expect(body instanceof FormData ? body.get('picture') : 'no form', 'a circle moved sent a file').toBeNull()
+    expect(body instanceof FormData ? [body.get('cropX'), body.get('cropY'), body.get('cropSize')] : []).toEqual([
+      '0.13000000',
+      '0.15000000',
+      '0.42000000',
+    ])
+
+    /* AND WHAT STANDS IS DRAWN IN THE NEW CIRCLE, not the one served. */
+    expect(panel.getByRole('img', { name: sr.theirBoxes.currentAlt }).style.transform).toBe(
+      fittedTo(cropIn({ x: 0.13, y: 0.15, size: 0.42 })).transform,
+    )
+    expect(fittedTo(cropIn(SERVED)).transform, 'the served circle is the moved one, so this measures nothing').not.toBe(
+      fittedTo(cropIn({ x: 0.13, y: 0.15, size: 0.42 })).transform,
+    )
+    await waitFor(() => expect(save).toHaveAttribute('aria-disabled', 'true'))
+  }, SLOW)
+
+  it('draws the picture that stands again, in the circle it stands in, when a file chosen over it cannot be opened', async () => {
+    /* The branch of `onChange` that hears „nothing": the chooser refuses a file the browser cannot read
+       (`CropChooser`, „unreadable") and hands up nothing. What stands comes back under the sentence, in the
+       circle it stands in: a moved circle was put aside the moment a file arrived, which is the shape
+       `member/ProfilePicture.tsx` gives the member („The circle was already put aside when the file
+       arrived"). So nothing is left to send, and nothing is sent: the file that could not be opened least of
+       all. */
+    const user = setupUser()
+    const { asked, stop } = serverThat(() => null)
+
+    stops.push(stop)
+    asTheAdministration(HAS_ONE)
+
+    const panel = within(await screen.findByRole('region', { name: sr.picture.title }))
+
+    await measurePicture()
+    fireEvent.change(await panel.findByLabelText(sr.crop.x), { target: { value: '0.13' } })
+
+    await user.upload(panel.getByLabelText(sr.picture.choose), new File(['nije slika'], 'nova.heic', { type: 'image/heic' }))
+    await waitFor(() => expect(theMeasuringPicture().getAttribute('src')).not.toBe('/mock/photo/andjelija.svg'))
+    fireEvent.error(theMeasuringPicture())
+
+    expect(await panel.findByText(sr.crop.unreadable)).toBeVisible()
+    await waitFor(() => expect(theMeasuringPicture().getAttribute('src')).toBe('/mock/photo/andjelija.svg'))
+    await measurePicture()
+    expect(await panel.findByLabelText(sr.crop.x), 'the picture that stands is not drawn in its own circle').toHaveValue(
+      String(SERVED.x),
+    )
+    expect(panel.getByRole('img', { name: sr.theirBoxes.circleAlt })).toBeVisible()
+
+    const save = panel.getByRole('button', { name: sr.theirBoxes.pictureSave })
+
+    expect(save).toHaveAttribute('aria-disabled', 'true')
+    await user.click(save)
+    expect(writes(asked), 'something was sent for a file that could not be opened').toHaveLength(0)
+  }, SLOW)
+
+  it('sends nothing for a circle moved back to where it stood', async () => {
+    const user = setupUser()
+    const { asked, stop } = serverThat(() => null)
+
+    stops.push(stop)
+    asTheAdministration(HAS_ONE)
+
+    const panel = within(await screen.findByRole('region', { name: sr.picture.title }))
+
+    await measurePicture()
+
+    const across = await panel.findByLabelText(sr.crop.x)
+
+    fireEvent.change(across, { target: { value: '0.13' } })
+    fireEvent.change(across, { target: { value: String(SERVED.x) } })
+    await user.click(panel.getByRole('button', { name: sr.theirBoxes.pictureSave }))
+
+    expect(writes(asked)).toHaveLength(0)
   }, SLOW)
 })
 

@@ -1993,7 +1993,9 @@
     "atOnce": "Izmena odmah stoji na profilu člana, bez odobrenja, a član dobija poruku u sanduče.",
     "pictureSave": "Sačuvaj sliku",
     "wordsSave": "Sačuvaj tekst",
-    "saved": "Sačuvano. Izmena već stoji na profilu i član je dobio poruku."
+    "saved": "Sačuvano. Izmena već stoji na profilu i član je dobio poruku.",
+    "circleAlt": "Slika člana, sa krugom koji može da se pomeri",
+    "circleSaved": "Sačuvano."
   },
   "leagueMark": {
     "title": "Znak lige",

@@ -36,8 +36,10 @@ export function CropWindow({ picture, crop, alt, children, onChange, onLoaded, o
    *  the caller is the only one who knows whose face this is. */
   alt: string
   /** The sliders, on the screen where the crop is being chosen rather than
-   *  looked at. They sit under the picture inside the same group so that what
-   *  moves and what is moved are one thing to a screen reader. */
+   *  looked at, and since 23.11.2026 on the moderator's card too, where he may
+   *  move the circle before he approves (`admin/PendingQueue.tsx`). They sit
+   *  under the picture inside the same group so that what moves and what is
+   *  moved are one thing to a screen reader. */
   children?: ReactNode
   /**
    * Where a drag on the picture is sent, on the screen where the crop is being
@@ -56,8 +58,10 @@ export function CropWindow({ picture, crop, alt, children, onChange, onLoaded, o
    * numbers.
    *
    * Missing where the crop is only being looked at, and then nothing on the
-   * picture listens at all: a moderator reading a member's choice has nothing to
-   * drag.
+   * picture listens at all. Since 24.11.2026 the moderator's card is not such a
+   * place: he drags the circle of a waiting picture as the member does (owner:
+   * „Na kartici slike koja čeka administrator krug vuče po slici (prstom ili
+   * mišem), kao član"), so `admin/PendingQueue.tsx` hands this too.
    */
   onChange?: (crop: Crop) => void
   /**
@@ -76,7 +80,10 @@ export function CropWindow({ picture, crop, alt, children, onChange, onLoaded, o
    * "did it arrive" would be a second picture that could disagree with the
    * first (ADL A31).
    */
-  onLoaded?: () => void
+  /** With the shape the element measured, or `UNKNOWN` where it measured nothing: the moderator's
+   *  sliders need it for the smallest circle the picture allows (`closestIn`), and this element is the
+   *  one that has read the file, so it is asked rather than a second `<img>`. */
+  onLoaded?: (shape: Shape) => void
   onFailed?: () => void
 }) {
   const { t } = useI18n()
@@ -157,9 +164,10 @@ export function CropWindow({ picture, crop, alt, children, onChange, onLoaded, o
              either side of it.
 
              And only where there is something to drag. The reason above is that
-             the picture takes every touch, which is true of this screen and of no
-             other: a moderator reading a member's choice has nothing to drag and
-             can scroll past a tall picture like any other. Measured by a review on
+             the picture takes every touch, which is true wherever a circle is
+             dragged, and since 24.11.2026 that is the moderator's card too (owner:
+             „slika se tada ograničava po visini kao kod člana"). Where nothing is
+             dragged a tall picture is scrolled past like any other. Measured by a review on
              28.08.2026 in a window 805 pixels high: capped, a 1080 by 2400
              photograph draws 217 by 483 instead of 320 by 711, so the part that
              will be thrown away is at 68 per cent of its linear size on the one
@@ -331,12 +339,13 @@ export function CropWindow({ picture, crop, alt, children, onChange, onLoaded, o
                for each, and a box of nought height collapses to a line with a
                frame drawn over nothing. */
             const { naturalWidth, naturalHeight } = event.currentTarget
+            const read = naturalWidth > 0 && naturalHeight > 0
 
-            if (naturalWidth > 0 && naturalHeight > 0) {
+            if (read) {
               setShape({ width: naturalWidth, height: naturalHeight })
             }
 
-            onLoaded?.()
+            onLoaded?.(read ? { width: naturalWidth, height: naturalHeight } : UNKNOWN)
           }}
           onError={onFailed}
         />

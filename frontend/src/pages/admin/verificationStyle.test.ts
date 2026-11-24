@@ -17,7 +17,12 @@ const css = readFileSync(join(process.cwd(), 'src/pages/admin/Verification.css')
 
 describe('the picture a moderator is deciding about', () => {
   it('stands in a place with no cap on its height, which is the other half of a decision `CropWindow.tsx` already guards for the member', () => {
-    /* PDL.md, ODLUKA 28.08.2026 (derived from measurement, not a new owner
+    /* SINCE 24.11.2026 THE CARD'S PICTURE IS CAPPED, BY `CropWindow` AND BY NOTHING ELSE (owner: „Na kartici
+       slike koja čeka administrator krug vuče po slici (prstom ili mišem), kao član; slika se tada ograničava
+       po visini kao kod člana."), so this sheet still caps nothing: the cap has one home, the window's
+       `onChange`, and a second one written here would cap the card in a way the member's is not.
+       What follows is the reasoning of the decision it overturned, kept because the guard still stands.
+       PDL.md, ODLUKA 28.08.2026 (derived from measurement, not a new owner
        sentence): "Moderatoru se ne ograničava, jer on nema šta da povlači i
        njegov je posao da vidi ceo ostatak." `CropWindow.tsx` guards its half of
        that split - `maxBlockSize: '60svh'` only where `onChange !== undefined` -

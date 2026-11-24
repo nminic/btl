@@ -1,5 +1,6 @@
 package com.btl.portal.web;
 
+import com.btl.portal.domain.photo.SmallPicture;
 import com.btl.portal.domain.photo.WhatAPictureIs;
 import com.btl.portal.domain.photo.WithoutMetadata;
 import jakarta.servlet.http.HttpServletResponse;
@@ -363,7 +364,7 @@ class MePhotoApi {
 	 */
 	static final String THE_FORM_IS_NOT_COMPLETE = "theFormIsNotComplete";
 
-	/** More bytes than {@link WhatAPictureIs#AT_MOST_BYTES}. */
+	/** More bytes than {@link WhatAPictureIs#AT_MOST_BYTES}, or more pixels than the cut takes ({@link SmallPicture#isLargerThanItCuts}). */
 	static final String THE_PICTURE_IS_TOO_BIG = "thePictureIsTooBig";
 
 	/**
@@ -677,6 +678,18 @@ class MePhotoApi {
 		   V8 refuses to let near a path, and the type is what an attacker chooses. */
 		if (mediaType == null) {
 			return no(HttpStatus.BAD_REQUEST, THIS_IS_NOT_A_PICTURE);
+		}
+
+		/* AND NO LARGER THAN THE CUT TAKES, read off the picture's header and never by decoding it. PDL
+		   23.11.2026, „Administracija sama podešava krug na članovoj slici", derived by the assistant from
+		   the security review of PR 806 and recorded as such: „Slika veća od granica koje sečenje već ima
+		   (25 MP, a za WebP 4 MP) odbija se pri otpremanju postojećom rečenicom „Slika je prevelika za
+		   portal. Izaberi manju ili je smanji pre slanja.", pa nova rečenica ne treba." Taken, such a
+		   picture was never cut, and every circle that drew it fell back to the whole original. The
+		   ceiling is the cut's own (`SmallPicture.isLargerThanItCuts`), not a copy of it, and the two
+		   other doors a picture comes in by (`MemberPictureAndWordsApi`, `LeagueMarkApi`) ask the same. */
+		if (SmallPicture.isLargerThanItCuts(bytes, mediaType)) {
+			return no(HttpStatus.BAD_REQUEST, THE_PICTURE_IS_TOO_BIG);
 		}
 
 		/* AND WHAT THE CAMERA WROTE ABOUT IT IS TAKEN OFF BEFORE ANYTHING IS COUNTED, HASHED OR WRITTEN
@@ -1201,6 +1214,19 @@ class MePhotoApi {
 			value = new BigDecimal(written.strip());
 		}
 		catch (NumberFormatException notANumber) {
+			return null;
+		}
+
+		return fractionOf(value, mayBeNought);
+	}
+
+	/**
+	 * THE SAME TEST OVER A NUMBER ALREADY READ, for a circle that arrives in JSON rather than as a form
+	 * field (the moderator's at an approval, {@code VerificationWriteApi.Answered#crop}): one test of what a
+	 * circle is, not two. Nothing where nothing arrived.
+	 */
+	static BigDecimal fractionOf(BigDecimal value, boolean mayBeNought) {
+		if (value == null) {
 			return null;
 		}
 
