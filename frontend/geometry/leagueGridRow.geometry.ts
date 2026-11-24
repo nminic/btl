@@ -23,7 +23,7 @@ import type { Answers, At } from './support/harness.ts'
  * cell at the top stands on the middle anyway and the width cannot see it (the review of the top boards
  * measured that for the race name there), so the case is built that the telephone sees it too.
  *
- * **Three widths, 360, 768 and 1280, in both themes.**
+ * **Three widths, 360, 768 and 1280.**
  */
 
 const MOCK = fileURLToPath(new URL('../src/test/mock/', import.meta.url))
@@ -107,10 +107,7 @@ const LONG: Answers = {
  */
 const AGREE = 2
 
-const WIDTHS: At[] = [360, 768, 1280].flatMap((width): At[] => [
-  { width, text: 100, theme: 'light' },
-  { width, text: 100, theme: 'dark' },
-])
+const WIDTHS: At[] = [360, 768, 1280].map((width): At => ({ width, text: 100 }))
 
 for (const at of WIDTHS) {
   for (const [what, answers] of [

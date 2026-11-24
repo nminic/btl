@@ -9,16 +9,14 @@ import sr from '../i18n/sr.json'
  * can see.
  *
  * Two widgets on the front page put their title on a block of gold: the top ten
- * and the column chart. The block is painted straight on the gold scale rather
- * than through a token that flips, so it is the same gold in both themes. Its
- * ink therefore has to be one value too.
+ * and the column chart. The block is painted straight on the gold scale, and its
+ * ink is a token of its own.
  *
  * It was briefly not. A tidy-up replaced the literal ink with the token that
- * inks the gold disc, which is white on the light theme because the disc under
- * it is the deep gold-600. Over this band, on the light theme, that put white on
- * gold-400: 2,14:1, against the 4,5:1 that normal text owes (WCAG 2.2 SC 1.4.3).
- * It read as a tidy-up and it shipped as a defect, because nothing here fails
- * when a colour is merely wrong.
+ * inks the gold disc, which was white on the light theme the portal had until
+ * 24.11.2026, and over this band that put white on gold-400: 2,14:1, against the
+ * 4,5:1 that normal text owes (WCAG 2.2 SC 1.4.3). It read as a tidy-up and it
+ * shipped as a defect, because nothing here fails when a colour is merely wrong.
  *
  * jsdom computes no custom properties and paints no gradient, so the rules are
  * read as text and the arithmetic is done here. The gradient is measured at both
@@ -181,9 +179,8 @@ describe('the ink on the gold band', () => {
   /** The one value a token carries, and proof that it carries only one. */
   function value(name: string): string {
     const found = tokens.match(new RegExp(`${name}: (#[0-9a-f]{6});`, 'g')) ?? []
-    /* Declared once, so the band is the same colour in both themes. A second
-       declaration means somebody gave it a dark variant, and then the pairs
-       below stop being the whole story and this test has to grow a theme. */
+    /* Declared once. A second declaration is a second palette, and then the
+       pairs below stop being the whole story. */
     expect(found, `${name} should be declared exactly once`).toHaveLength(1)
     return at(found, 0).slice(-8, -1)
   }
@@ -241,26 +238,22 @@ describe('the ink on the gold band', () => {
  * still be read on it, and the first tint chosen measured 4,40:1, which is under
  * the 4,5:1 a number owes as text (WCAG 2.2 SC 1.4.3).
  *
- * Both themes, and the dark one twice, because it is declared once for the
- * system setting and once for the switch on the page.
+ * One palette, since the portal has one theme (PDL „Portal ima samo tamnu temu;
+ * svetla se izbacuje", 24.11.2026).
  */
 describe('the gold on a row that belongs to the reader', () => {
-  it('clears 4,5:1 in both themes', () => {
+  it('clears 4,5:1', () => {
     const tokens = read('src/styles/tokens.css')
 
-    /* Every value a token is given, in the order the file gives them: the light
-       theme, then the dark one the system asks for, then the dark one the switch
-       on the page sets. A token with one value has one, and the same one answers
-       for every theme. */
+    /* Every value a token is given in the sheet: one, and a second is a second
+       palette this case would not measure. */
     const given = (name: string) =>
       [...tokens.matchAll(new RegExp(`${name}: ([^;]+);`, 'g'))].map((one) => at(one, 1))
 
     /* Followed to a colour, because half of these are written as the name of
-       another token. Read as text, `--accent: var(--blue-700)` is not a colour
-       and a regex looking for a hex quietly skips it, so the light theme falls
-       out of the check and the first hex it does find answers for it: written
-       out by hand, the dark link was measured against the dark tint here while
-       the value the portal actually draws was somewhere else entirely. */
+       another token. Read as text, `--heading: var(--white)` is not a colour
+       and a regex looking for a hex quietly skips it, and the first hex it does
+       find answers for it. */
     const colour = (value: string, seen: string[] = []): string => {
       const named = value.trim().match(/^var\((--[a-z0-9-]+)\)$/)
 
@@ -275,19 +268,18 @@ describe('the gold on a row that belongs to the reader', () => {
       return colour(must(given(next)[0], `${next} has no value`), [...seen, next])
     }
 
-    /** That token as the theme at `index` draws it, or as the light theme does. */
-    const inTheme = (name: string, index: number) => {
+    /** That token as the palette draws it. */
+    const inTheme = (name: string) => {
       const values = given(name)
 
-      return colour(must(values[index] ?? values[0], `${name} has no value`))
+      expect(values, `${name} is given more than one value`).toHaveLength(1)
+
+      return colour(must(values[0], `${name} has no value`))
     }
 
     const tints = given('--mine-surface').map((one) => colour(one))
 
-    /* One for the light theme and two for the dark, which is how every token
-       with a value per theme is written here. Fewer means a theme has quietly
-       lost its own value and is drawing another one instead. */
-    expect(tints).toHaveLength(3)
+    expect(tints).toHaveLength(1)
 
     /* Every ink a marked row carries, not the gold alone. A row is a name that
        leads somewhere, so the accent is on it as often as the gold is, and the
@@ -295,7 +287,7 @@ describe('the gold on a row that belongs to the reader', () => {
        8,41:1 and said nothing about it. */
     const inks = ['--gold-text', '--accent', '--text', '--text-muted']
     const pairs = inks.flatMap((ink) =>
-      tints.map((on, index) => ({ ink: inTheme(ink, index), on, theme: `${ink}, theme ${index}` })),
+      tints.map((on) => ({ ink: inTheme(ink), on, theme: ink })),
     )
 
     for (const pair of pairs) {
@@ -854,10 +846,11 @@ describe('the marks on a day of the calendar', () => {
     expect(css()).not.toContain('.day--today .day__number')
   })
 
-  it('draws the gold that flips with the theme, not the one that does not', () => {
-    /* `--gold-text` is a token with a value per theme; gold-500 is a step of the
-       scale and measures 2,98:1 against a white card, which is under the 4,5:1
-       a number owes as text (WCAG 2.2 SC 1.4.3). */
+  it('draws the gold of the text, not a step of the scale', () => {
+    /* `--gold-text` is the gold the palette gives text; a step of the scale is
+       chosen for what it is painted on, and gold-500 measured 2,98:1 against the
+       white card of the light theme the portal had until 24.11.2026, which is
+       under the 4,5:1 a number owes as text (WCAG 2.2 SC 1.4.3). */
     expect(bodyOf(css(), '.day--weekend .day__number')).not.toMatch(/gold-[0-9]/)
   })
 })

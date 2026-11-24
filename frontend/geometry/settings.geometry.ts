@@ -12,16 +12,20 @@ import type { Answers, At } from './support/harness.ts'
  * panel then LANDS, and this is what the owner looked at:
  *
  * <ol>
- * <li><b>Two tall rows of two since 06.11.2026: the password beside the privacy, the theme beside the
- * language of the mail</b> (PDL, „Strana Podešavanja u tri visoka reda sa dve kolone": „lozinka prelazi
- * levo na njeno mesto, a Privatnost tekst iz priloga ide u desni stubac pored boksa za lozinku"; the row
- * of the picture beside the words about himself moved to the card „Podaci" on 06.11.2026, PDL „Boksovi
- * „Profilna slika" i „Tekst o sebi" prelaze sa Podešavanja", and is asked there,
- * `dataCard.geometry.ts`), <b>the two of a row as tall as each other, and on a telephone one under the other</b>
- * (the UI standard of the repository, `CLAUDE.md`). Beside is asked as the same top, the same bottom,
- * and the first's right edge not past the second's left; under is asked as the same left edge and the
- * second's top not above the first's bottom. Asked for a member whose fee stands. Somebody who has not
- * paid is not drawn the settings since 23.10.2026 (PDL 22.10.2026), so his arrangement is not asked.
+ * <li><b>One tall row since 24.11.2026: the password on the left, and on the right the privacy with the
+ * language of the mail right under it</b> (owner, PDL „Portal ima samo tamnu temu; svetla se izbacuje": „boks
+ * iz priloga prebaci odmah ispod sekcije Privatnosti (a desno od promene šifre)"; before it, PDL „Strana
+ * Podešavanja u tri visoka reda sa dve kolone": „Privatnost tekst iz priloga ide u desni stubac pored boksa za
+ * lozinku"; the picture and the words about himself are asked on the card „Podaci", `dataCard.geometry.ts`),
+ * <b>the two columns as tall as each other, and on a telephone one box under the other, in the order the
+ * password, the privacy, the mail</b> (the UI standard of the repository, `CLAUDE.md`). Beside is asked as the
+ * same top and the first's right edge not past the second's left; under as the same left edge and the second's
+ * top not above the first's bottom; as tall as each other as the same bottom.
+ * <li><b>The three readers this screen has, each in his own arrangement</b>: a member whose fee stands (the
+ * three boxes); an administration account with no member (no privacy, so the mail stands beside the password);
+ * and a member whose fee has lapsed (no password either, so the mail is alone and takes the whole row).
+ * Somebody who has not paid is not drawn the settings since 23.10.2026 (PDL 22.10.2026), so his arrangement is
+ * not asked.
  * <li><b>No empty space under the field for choosing a picture, and none between the box for the words
  * about himself and the button</b> (his words: „veliki prazan prostor"): asked on the card „Podaci" since
  * 06.11.2026, where the two boxes now stand (`dataCard.geometry.ts`).
@@ -86,23 +90,39 @@ const A_MEMBER: Answers = {
   '/api/me/photo': { waiting: null, standing: null },
 }
 
+/** An administration account with no member: the password and the mail, and no profile to hide. */
+const AN_ACCOUNT: Answers = {
+  '/api/me': { role: 'moderator', account: 11, mailLanguage: 'sr' },
+  '/api/competitors': [ROW],
+}
+
+/** A member whose fee has lapsed: the mail and the sentence about the renewal, and no password. */
+const A_LAPSED_MEMBER: Answers = {
+  ...A_MEMBER,
+  '/api/me': { role: 'competitor', account: 1, member: { ...MEMBER, active: false }, mailLanguage: 'sr' },
+}
+
 const PANELS = {
   password: 'section[aria-labelledby="account-password"]',
   privacy: 'section[aria-labelledby="settings-privacy"]',
-  theme: 'section[aria-labelledby="settings-appearance"]',
   mail: 'section[aria-labelledby="settings-mail"]',
   picture: 'section[aria-labelledby="settings-picture"]',
   bio: 'section[aria-labelledby="settings-bio"]',
 } as const
 
-/** Only the screen of the settings, drawn with its panels, has the password with the theme. */
-const READY = PANELS.password
+/** The box of the theme, which no reader is drawn since 24.11.2026. */
+const THE_THEME = 'section[aria-labelledby="settings-appearance"]'
 
-/** Where the panels stand two to a row: from 51.25em, which is 820px at the browser's own text. */
+/** Only the screen of the settings, drawn with its panels, has the mail, and every reader of it does. */
+const READY = PANELS.mail
+
+/** Where the panels stand two to a row: from 51.25em, which is 820px at the browser's own text.
+ *  The desktops ask for a window 500px tall: since 24.11.2026 the screen is one row and no longer
+ *  scrolls in a window of 900, and a desktop that draws no scrollbar is not measured (the harness). */
 const BESIDE: At[] = [
   { width: 820, text: 100 },
-  { width: 1024, text: 100 },
-  { width: 1280, text: 100 },
+  { width: 1024, text: 100, height: 500 },
+  { width: 1280, text: 100, height: 500 },
   { width: 1920, text: 200 },
 ]
 
@@ -151,8 +171,8 @@ const pairsAreTwoColumns = (page: Page) =>
     return pair === null ? 0 : getComputedStyle(pair).gridTemplateColumns.split(' ').length
   })
 
-/** Two panels, one against the other, in the arrangement the width asks for. */
-const expectPair = async (page: Page, first: string, second: string, columns: 1 | 2, why: string) => {
+/** Two boxes read off the page, and proof that both were drawn with a width. */
+const twoBoxes = async (page: Page, first: string, second: string, why: string): Promise<[Box, Box]> => {
   const found = await boxesOf(page, { first, second })
   const a = found['first']
   const b = found['second']
@@ -164,14 +184,38 @@ const expectPair = async (page: Page, first: string, second: string, columns: 1 
   expect(a.right - a.left, `${why}: the first panel has a width`).toBeGreaterThan(0)
   expect(b.right - b.left, `${why}: the second panel has a width`).toBeGreaterThan(0)
 
-  if (columns === 2) {
-    expect(Math.abs(a.top - b.top), `${why}: they stand in one row`).toBeLessThanOrEqual(SLACK)
-    expect(Math.abs(a.bottom - b.bottom), `${why}: the two of a row are as tall as each other`).toBeLessThanOrEqual(SLACK)
-    expect(a.right, `${why}: the first ends before the second begins`).toBeLessThanOrEqual(b.left + SLACK)
-  } else {
-    expect(Math.abs(a.left - b.left), `${why}: they stand against one left edge`).toBeLessThanOrEqual(SLACK)
-    expect(b.top, `${why}: the second is under the first`).toBeGreaterThanOrEqual(a.bottom - SLACK)
-  }
+  return [a, b]
+}
+
+/** The second box beside the first, in the same row, starting at its top. */
+const expectBeside = async (page: Page, first: string, second: string, why: string) => {
+  const [a, b] = await twoBoxes(page, first, second, why)
+
+  expect(Math.abs(a.top - b.top), `${why}: they stand in one row`).toBeLessThanOrEqual(SLACK)
+  expect(a.right, `${why}: the first ends before the second begins`).toBeLessThanOrEqual(b.left + SLACK)
+}
+
+/** The second box under the first, against the same left edge. */
+const expectUnder = async (page: Page, first: string, second: string, why: string) => {
+  const [a, b] = await twoBoxes(page, first, second, why)
+
+  expect(Math.abs(a.left - b.left), `${why}: they stand against one left edge`).toBeLessThanOrEqual(SLACK)
+  expect(b.top, `${why}: the second is under the first`).toBeGreaterThanOrEqual(a.bottom - SLACK)
+}
+
+/** The two boxes end on one line: the columns of the row are as tall as each other. */
+const expectSameBottom = async (page: Page, first: string, second: string, why: string) => {
+  const [a, b] = await twoBoxes(page, first, second, why)
+
+  expect(Math.abs(a.bottom - b.bottom), `${why}: the two columns are as tall as each other`).toBeLessThanOrEqual(SLACK)
+}
+
+/** The box as wide as the screen's own column, which is what a box with no neighbour is given. */
+const expectWholeRow = async (page: Page, box: string, why: string) => {
+  const [screen, alone] = await twoBoxes(page, 'main .member', box, why)
+
+  expect(Math.abs(alone.left - screen.left), `${why}: it starts where the screen starts`).toBeLessThanOrEqual(SLACK)
+  expect(Math.abs(alone.right - screen.right), `${why}: it ends where the screen ends`).toBeLessThanOrEqual(SLACK)
 }
 
 /** The settings of one kind of reader, at one width. */
@@ -186,20 +230,59 @@ for (const [columns, widths] of [
   [1, UNDER],
 ] as const) {
   for (const at of widths) {
-    test(`two rows, the two of each ${columns === 2 ? 'beside' : 'under'} each other, for a member whose fee stands, ${label(at)}`, async ({ open: opener }) => {
+    test(`the password, and the privacy with the mail under it, ${columns === 2 ? 'beside' : 'under'} it, for a member whose fee stands, ${label(at)}`, async ({ open: opener }) => {
       const { page, probe } = await open(opener, at, A_MEMBER)
 
-      await page.locator(PANELS.mail).waitFor({ state: 'visible' })
       await page.locator(PANELS.privacy).waitFor({ state: 'visible' })
 
       expect(await pairsAreTwoColumns(page), 'the width reads the arrangement it was chosen for').toBe(columns)
 
-      await expectPair(page, PANELS.password, PANELS.privacy, columns, 'the password and the privacy')
-      await expectPair(page, PANELS.theme, PANELS.mail, columns, 'the theme and the language of the mail')
-      /* AND NOT THE PICTURE OR THE WORDS, which stand on the card „Podaci" since 06.11.2026. Asked once the
-         privacy is drawn, which comes off the same list the two were drawn from. */
+      if (columns === 2) {
+        await expectBeside(page, PANELS.password, PANELS.privacy, 'the password and the privacy')
+        await expectUnder(page, PANELS.privacy, PANELS.mail, 'the mail right under the privacy')
+        await expectSameBottom(page, PANELS.password, PANELS.mail, 'the password and the column of the privacy and the mail')
+      } else {
+        await expectUnder(page, PANELS.password, PANELS.privacy, 'the privacy under the password')
+        await expectUnder(page, PANELS.privacy, PANELS.mail, 'the mail under the privacy')
+      }
+
+      /* AND NOT THE THEME, which left the portal on 24.11.2026, NOR THE PICTURE OR THE WORDS, which stand on the
+         card „Podaci" since 06.11.2026. Asked once the privacy is drawn, which comes off the same list the two
+         were drawn from. */
+      expect(await page.locator(THE_THEME).count(), 'the theme is not on the settings').toBe(0)
       expect(await page.locator(PANELS.picture).count(), 'the picture is not on the settings').toBe(0)
       expect(await page.locator(PANELS.bio).count(), 'the words are not on the settings').toBe(0)
+
+      expect(probe.widened, 'the page was widened by something running off its right edge').toBe(0)
+      expect(probe.sideways, 'the page scrolls sideways').toBe(0)
+    })
+
+    test(`the mail ${columns === 2 ? 'beside' : 'under'} the password, for an administration account with no member, ${label(at)}`, async ({ open: opener }) => {
+      const { page, probe } = await open(opener, at, AN_ACCOUNT)
+
+      await page.locator(PANELS.password).waitFor({ state: 'visible' })
+
+      expect(await pairsAreTwoColumns(page), 'the width reads the arrangement it was chosen for').toBe(columns)
+      expect(await page.locator(PANELS.privacy).count(), 'an account with no member has no profile to hide').toBe(0)
+
+      if (columns === 2) {
+        await expectBeside(page, PANELS.password, PANELS.mail, 'the password and the mail')
+        await expectSameBottom(page, PANELS.password, PANELS.mail, 'the password and the column of the mail')
+      } else {
+        await expectUnder(page, PANELS.password, PANELS.mail, 'the mail under the password')
+      }
+
+      expect(probe.widened, 'the page was widened by something running off its right edge').toBe(0)
+      expect(probe.sideways, 'the page scrolls sideways').toBe(0)
+    })
+
+    test(`the mail alone, across the whole row, for a member whose fee has lapsed, ${label(at)}`, async ({ open: opener }) => {
+      const { page, probe } = await open(opener, at, A_LAPSED_MEMBER)
+
+      expect(await page.locator(PANELS.password).count(), 'a member whose fee has lapsed is drawn no password').toBe(0)
+      expect(await page.locator(PANELS.privacy).count(), 'a member whose fee has lapsed is drawn no privacy').toBe(0)
+
+      await expectWholeRow(page, PANELS.mail, 'the mail with no neighbour')
 
       expect(probe.widened, 'the page was widened by something running off its right edge').toBe(0)
       expect(probe.sideways, 'the page scrolls sideways').toBe(0)

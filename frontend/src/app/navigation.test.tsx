@@ -278,8 +278,9 @@ describe('navigation', () => {
     const user = setupUser()
     renderAt('/sr', 'competitor', '000007')
 
-    // The switch moved to the settings screen (PDL P28a); the header only leads
-    // there now, from behind the account picture.
+    // The switch left the header (PDL P28a), and since 24.11.2026 the portal has
+    // one theme and no switch at all; the header only leads to the settings,
+    // from behind the account picture.
     await user.click(await screen.findByRole('button', { name: 'Otvori nalog' }))
     expect(screen.getByRole('link', { name: 'Podešavanja' })).toHaveAttribute(
       'href',

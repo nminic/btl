@@ -9,7 +9,7 @@ import type { Answers, At } from './support/harness.ts'
  * THE RING AROUND THE MARK OF A LEAGUE IS WHITE, ASKED OF CHROME FOR ITS COMPUTED COLOUR (owner, 24.11.2026, PDL
  * „Okvir oko znaka lige je beo”: „Okvir oko znaka Lige (i tima jednog dana), treba da bude beo”), for the mark drawn
  * from a picture and for the one drawn from the initials, in every place a league's mark is drawn (the head of the
- * sheet of the leagues, a tile of the showcase, the heading of a league's own page), in both themes, on a telephone,
+ * sheet of the leagues, a tile of the showcase, the heading of a league's own page), on a telephone,
  * a tablet and a desktop. The mark of a team is not asked, it is not changed.
  *
  * <p>It reads `getComputedStyle`, which the browser has resolved from the cascade, and not the text of
@@ -50,7 +50,7 @@ const SIZES: At[] = [
   { width: 768, text: 100 },
   { width: 1280, text: 100, height: 300 },
 ]
-const AT: At[] = SIZES.flatMap((one) => (['light', 'dark'] as const).map((theme): At => ({ ...one, theme })))
+const AT: At[] = SIZES
 
 for (const place of PLACES) {
   for (const at of AT) {

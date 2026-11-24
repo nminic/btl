@@ -741,8 +741,8 @@ vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
   }
 })
 
-/* jsdom has no matchMedia. The theme reads the system preference through it on
- * the first visit, so a stub is needed; tests that care override .matches. */
+/* jsdom has no matchMedia, and the shell asks it about widths and movement, so a
+ * stub is needed; tests that care override .matches. */
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
   value: (query: string) => ({
