@@ -73,11 +73,11 @@ const answers = (inbox: unknown) => ({
 })
 
 const WHERE: At[] = [
-  { width: 360, text: 100, theme: 'dark' },
-  { width: 360, text: 200, theme: 'dark' },
-  { width: 390, text: 200, theme: 'dark' },
-  { width: 768, text: 100, theme: 'dark' },
-  { width: 1280, text: 100, theme: 'dark', height: 300 },
+  { width: 360, text: 100 },
+  { width: 360, text: 200 },
+  { width: 390, text: 200 },
+  { width: 768, text: 100 },
+  { width: 1280, text: 100, height: 300 },
 ]
 
 type Row = {

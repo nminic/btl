@@ -44,7 +44,7 @@ const TURNS: { from: { width: number; height: number }; to: { width: number; hei
   { from: { width: 740, height: 360 }, to: { width: 360, height: 740 } },
 ]
 
-const at = (size: { width: number; height: number }): At => ({ ...size, text: 100, theme: 'dark' })
+const at = (size: { width: number; height: number }): At => ({ ...size, text: 100 })
 
 const turn = (one: (typeof TURNS)[number]) => `${one.from.width}x${one.from.height} to ${one.to.width}x${one.to.height}`
 
