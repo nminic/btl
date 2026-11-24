@@ -131,6 +131,33 @@ for (const [which, answers, pick, phoneOnly] of [
          otvorenim panelom članova na 768 px nije mereno"). */
       expect(before.page, 'the open panel makes the page scroll sideways').toBeLessThanOrEqual(0)
 
+      /* **THE BOX AND ITS WHOLE ARROW STAND INSIDE THE VISIBLE PART OF THE FRAME OF THE TABLE**, asked before anything
+         is pressed in the panel (review of PR 813, high; owner's decision, PDL „Na telefonu polje nikad nije šire od
+         vidljivog okvira tabele”). The frame scrolls the wide table inside itself and clips what is past it, so a box
+         that runs out of it has no arrow to be seen and a focus ring that is cut. The right edge of the box, with the
+         ring's room, is not past where the frame shows (`left + clientWidth`), at every text size. */
+      const standing = await box.evaluate((one) => {
+        const frame = one.closest('.table-scroll')
+
+        if (frame === null) {
+          return null
+        }
+
+        const framed = frame.getBoundingClientRect()
+        const inside = one.getBoundingClientRect()
+
+        return { shownRight: framed.left + frame.clientWidth, shownLeft: framed.left, left: inside.left, right: inside.right }
+      })
+
+      if (standing === null) {
+        throw notMeasured('the box stands in no frame of a table')
+      }
+
+      expect(standing.right + 4, 'the box and its arrow run out of the visible frame of the table').toBeLessThanOrEqual(
+        standing.shownRight,
+      )
+      expect(standing.left, 'the box starts before the visible frame of the table').toBeGreaterThanOrEqual(standing.shownLeft)
+
       /* From the first character the box offers every member whose label holds it, and every label holds a nought. */
       await box.fill('0')
       await page.locator(`#team-${team}-member-list`).waitFor({ state: 'visible' })
@@ -187,34 +214,17 @@ for (const [which, answers, pick, phoneOnly] of [
         throw notMeasured('the panel, its list or its button was not drawn')
       }
 
-      /* THE NAME CHOSEN IS WHOLE IN THE BOX: the longest of the list is pressed (a row is chosen on the press), and
-         the box neither runs out of itself nor holds another name than the one pressed. A name that is cut loses the
-         number that ends it, and the administrator adds the wrong member (review of PR 813, high). */
-      const longest = await page.evaluate(
-        (id) => [...(document.getElementById(`${id}-list`)?.children ?? [])]
-          .map((one) => (one.textContent ?? '').trim())
-          .reduce((most, one) => (one.length > most.length ? one : most), ''),
-        `team-${team}-member`,
-      )
-
-      await page.locator(`#team-${team}-member-list`).getByRole('option', { name: longest, exact: true }).click()
-
-      const chosen = await box.evaluate((one) => ({
-        value: one instanceof HTMLInputElement ? one.value : null,
-        runsOut: one.scrollWidth - one.clientWidth,
-      }))
-
-      expect(chosen.value, 'the box holds another name than the one pressed').toBe(longest)
-      expect(chosen.runsOut, 'the name chosen runs out of the box, and its number with it').toBeLessThanOrEqual(0.5)
-
       expect(seen.rows, 'the list offers the members of no team').toBeGreaterThan(1)
       expect(seen.top, 'the list starts inside the window').toBeGreaterThanOrEqual(-SLACK)
       expect(seen.bottom, 'the list ends inside the window').toBeLessThanOrEqual(seen.window + SLACK)
       expect(seen.left, 'the list starts inside the page').toBeGreaterThanOrEqual(-SLACK)
       expect(seen.right, 'the list ends inside the page').toBeLessThanOrEqual(seen.across + SLACK)
-      /* At 100 % a few rows; at 150 % and 200 % a name takes two or three lines, and the list the window leaves under
-         the box (`roomFor`, 144px at the least, in pixels) shows one or two of them and scrolls inside itself. */
-      expect(seen.shown, 'the list shows no row at all').toBeGreaterThan(at.text === 100 ? 2 : 0)
+      /* At 100 % a few rows. At 150 % and 200 % a name takes two or three lines in a list no wider than the frame, and
+         the list the window leaves under the box (`roomFor`, 144px at the least, in pixels) may show none of them
+         whole: it scrolls inside itself, and the rows reached are asked about below. */
+      if (at.text === 100) {
+        expect(seen.shown, 'the list shows no more than a row or two').toBeGreaterThan(2)
+      }
       expect(seen.unreached, 'rows of the list that something covers or cuts').toBe(0)
       expect(seen.frameTall, 'the table gained a vertical scroll bar').toBeLessThanOrEqual(1)
       expect(seen.frameWide, 'the list made the table scroll sideways further').toBeLessThanOrEqual(frameWideBefore + 1)
@@ -232,6 +242,32 @@ for (const [which, answers, pick, phoneOnly] of [
       } else {
         /* A telephone: the box in one row and the button in the next. */
         expect(seen.button.top, 'the button is not under the box').toBeGreaterThanOrEqual(seen.field.bottom - SLACK)
+      }
+
+      /* THE NAME CHOSEN IS THE ONE PRESSED, AND WHOLE IN THE BOX where the box can hold it. The longest of the list is
+         pressed (a row is chosen on the press), after every assertion above, so a position that is wrong fails on its
+         own sentence and not on the time of a press that cannot be made. On a telephone with the text enlarged the box
+         may show the chosen name shortened: the member is chosen from rows that carry the whole name and number, and
+         that is what is asked of them (owner's decision, PDL „Na telefonu polje nikad nije šire od vidljivog okvira
+         tabele”, 24.11.2026). Everywhere else the name stays whole in the box (review of PR 813, high). */
+      const longest = await page.evaluate(
+        (id) => [...(document.getElementById(`${id}-list`)?.children ?? [])]
+          .map((one) => (one.textContent ?? '').trim())
+          .reduce((most, one) => (one.length > most.length ? one : most), ''),
+        `team-${team}-member`,
+      )
+
+      await page.locator(`#team-${team}-member-list`).getByRole('option', { name: longest, exact: true }).click()
+
+      const chosen = await box.evaluate((one) => ({
+        value: one instanceof HTMLInputElement ? one.value : null,
+        runsOut: one.scrollWidth - one.clientWidth,
+      }))
+
+      expect(chosen.value, 'the box holds another name than the one pressed').toBe(longest)
+
+      if (at.width >= 768 || at.text === 100) {
+        expect(chosen.runsOut, 'the name chosen runs out of the box, and its number with it').toBeLessThanOrEqual(0.5)
       }
     })
   }

@@ -155,7 +155,7 @@ export function TeamMembers({
   }
 
   return (
-    <section aria-label={t('admin.teamMembersOf', { team: team.name })}>
+    <section className="team-members--in-the-frame" aria-label={t('admin.teamMembersOf', { team: team.name })}>
       {members.length === 0 ? (
         <p className="profile__empty">{t('admin.teamNoMembers')}</p>
       ) : (
