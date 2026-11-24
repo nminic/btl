@@ -331,6 +331,60 @@ for (const at of WIDTHS) {
     await behavesTheSame(page, box, "the league's mark")
   })
 
+  test(`the first click of a mouse after the arrow keys is not lost: the button does not move under it, ${label(at)}`, async ({ open }) => {
+    /* Owner, 24.11.2026 (PDL „Sitnice iz recenzije PR-a 815 i 811 i panela tima"): moved with the keyboard, then
+       „Odobri" pressed with the mouse, and the first click went nowhere. The strip of sliders is on the screen only
+       while the focus is in it, the mouse-down takes the focus out, and the strip folded away under the pointer: the
+       button went up by the height of three sliders before the mouse-up, which then landed on what was under it.
+       Asked of Chrome because jsdom lays nothing out: the button stands where it stood at the mouse-down, and the
+       click is delivered to it. A listener of this case stands in the place of the approval, so nothing is sent. */
+    const card = `[id="${CARD}-card"]`
+    const { page } = await open(at, '/sr/administracija/verifikacija/trkacki-profil', '.submissions', THE_QUEUE)
+
+    await servedAPictureAt(page, '**/api/verification/*/photo*', '.submissions')
+
+    const toggle = page.locator(`button[aria-controls="${CARD}-card"]`)
+
+    if (await toggle.isVisible()) {
+      await toggle.click()
+    }
+
+    const button = page.locator(card).getByRole('button', { name: 'Odobri', exact: true })
+
+    await button.evaluate((one) => {
+      Reflect.set(window, 'pressesOfTheCase', 0)
+      one.addEventListener(
+        'click',
+        (event) => {
+          Reflect.set(window, 'pressesOfTheCase', Number(Reflect.get(window, 'pressesOfTheCase')) + 1)
+          event.stopImmediatePropagation()
+        },
+        true,
+      )
+    })
+
+    /* THE KEYBOARD: the focus is in a slider, which is what the arrow keys act on. */
+    await page.locator(`${card} .crop__slider input`).first().focus()
+    await button.scrollIntoViewIfNeeded()
+
+    const before = await button.boundingBox()
+
+    if (before === null) {
+      throw notMeasured('the button of the card has no box')
+    }
+
+    await page.mouse.move(before.x + before.width / 2, before.y + before.height / 2)
+    await page.mouse.down()
+
+    const during = await button.boundingBox()
+
+    expect(during, 'the button has no box in the middle of the press').not.toBeNull()
+    expect(Math.abs((during?.y ?? 0) - before.y), 'the button moved while the mouse button was still down').toBeLessThanOrEqual(0.5)
+
+    await page.mouse.up()
+    expect(await page.evaluate(() => Reflect.get(window, 'pressesOfTheCase')), 'the click never reached the button').toBe(1)
+  })
+
   test(`the moderator drags the circle of a waiting picture and reaches both buttons past it, ${label(at)}`, async ({ open }) => {
     const card = `[id="${CARD}-card"]`
     const { page } = await open(at, '/sr/administracija/verifikacija/trkacki-profil', '.submissions', THE_QUEUE)
