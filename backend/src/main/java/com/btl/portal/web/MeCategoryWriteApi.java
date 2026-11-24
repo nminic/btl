@@ -5,7 +5,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -44,7 +43,8 @@ import java.util.List;
  *
  * <p><b>WHERE IT IS STORED: one row per member and season ({@code category_wish}, V81)</b>, and
  * the season is the one the box is for, which {@link TheChoiceAsItStands} names off the same
- * reading of the clock its deadline is asked of. A wish written for next season changes next
+ * reading of the clock its deadline is asked of. The write itself is {@link ACategoryIsChosen}'s, the
+ * one home {@link MemberCategoryApi} calls too (owner, 24.11.2026). A wish written for next season changes next
  * season alone: the running one keeps its own row, or the row it inherits.
  *
  * <p><b>What an omitted field means here, which ADL A54 requires every write route to say:</b>
@@ -78,21 +78,17 @@ class MeCategoryWriteApi {
 	 */
 	static final String THE_CHOICE_IS_SHUT = "theChoiceIsShut";
 
-	private final JdbcClient db;
-
 	private final MemberOfAccount memberOfAccount;
 
-	private final TheChoiceAsItStands theChoice;
+	/** The one home of the write, which the administration's route on the card „Podaci" calls too. */
+	private final ACategoryIsChosen chosen;
 
 	/** The one the rest of this application reads bodies with, asked for rather than made. */
 	private final ObjectMapper json;
 
-	MeCategoryWriteApi(JdbcClient db, MemberOfAccount memberOfAccount,
-			TheChoiceAsItStands theChoice, ObjectMapper json) {
-
-		this.db = db;
+	MeCategoryWriteApi(MemberOfAccount memberOfAccount, ACategoryIsChosen chosen, ObjectMapper json) {
 		this.memberOfAccount = memberOfAccount;
-		this.theChoice = theChoice;
+		this.chosen = chosen;
 		this.json = json;
 	}
 
@@ -173,26 +169,17 @@ class MeCategoryWriteApi {
 					.body(new NotComplete(THE_FORM_IS_NOT_COMPLETE, List.of("firstSeason")));
 		}
 
-		/* THE DEADLINE, ASKED OF THE ONE PLACE THAT ANSWERS IT, and asked as a whole answer
-		   rather than as a second reading of the clock. `TheChoiceAsItStands` works out which
-		   season is being chosen and whether it is still open from ONE moment; spelt here as
-		   two more SeasonClock calls, this route would be free to disagree with the GET beside
-		   it about which season the member is even looking at. */
-		MeCategoryApi.Choice asItStands = theChoice.of(me);
+		/* THE DEADLINE, THE SEASON AND THE WRITE ARE `ACategoryIsChosen`'s, the one home the administration's
+		   route calls too, so the two cannot come to disagree about any of them. What comes back is worked
+		   out again rather than echoed: an answer built from what arrived would tell a member over twelve
+		   points that he is in the beginners' category. */
+		MeCategoryApi.Choice done = chosen.choose(me, typed.firstSeason());
 
-		if (!asItStands.open()) {
+		if (done == null) {
 			return ResponseEntity.status(HttpStatus.CONFLICT).body(new Refused(THE_CHOICE_IS_SHUT));
 		}
 
-		write(me, asItStands.season(), typed.firstSeason());
-
-		/* AND THE ANSWER IS WORKED OUT AGAIN RATHER THAN ECHOED, which is load-bearing here and
-		   not a habit. Two of the five fields are DERIVED and neither is in the request:
-		   `firstSeasonAllowed` is a sum over his results, and `category` is the wish AND that
-		   right. An answer built from what arrived would tell a member over twelve points that
-		   he is in the beginners' category, which is the one thing this whole resource exists
-		   to get right. */
-		return ResponseEntity.ok(theChoice.of(me));
+		return ResponseEntity.ok(done);
 	}
 
 	/**
@@ -213,28 +200,6 @@ class MeCategoryWriteApi {
 		catch (JacksonException cannot) {
 			return null;
 		}
-	}
-
-	/**
-	 * THE WRITING, WHICH TOUCHES ONE ROW: HIS, FOR THE SEASON THE BOX IS FOR.
-	 *
-	 * <p><b>{@code competitor_id} is the one parameter that does not come out of the form</b>,
-	 * so this writes the row of the member whose session this is and of nobody else. There is
-	 * no path variable on this route to carry somebody else's identifier, which is the whole
-	 * reason the resource is under {@code /api/me} rather than at
-	 * {@code /api/competitors/{number}/category}.
-	 *
-	 * <p><b>An insert that becomes an update</b>, because a season may have no row of its own
-	 * yet: it reads the last one before it until he ticks the box (PDL, 30.10.2026), and the
-	 * first tick for a new season is the moment that season gets one.
-	 *
-	 * @param season the season the deadline was just asked of, never read again here
-	 */
-	private void write(long me, int season, boolean beginner) {
-		db.sql("insert into category_wish (competitor_id, season, beginner) values (?, ?, ?)"
-						+ " on conflict (competitor_id, season) do update set beginner = excluded.beginner")
-				.params(me, season, beginner)
-				.update();
 	}
 
 	/**

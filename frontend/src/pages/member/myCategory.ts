@@ -55,10 +55,20 @@ export type MyCategory = {
  * `undefined`.
  */
 export async function whatCategoryTheServerSaysIChose(): Promise<MyCategory | null> {
+  return whatTheServerSaysAt(MY_CATEGORY)
+}
+
+/**
+ * THE SAME READ AT ANY ADDRESS THAT ANSWERS THE SAME FIVE FIELDS: the member's own, and since 24.11.2026
+ * the administration's on a member's card „Podaci" (`/api/members/{memberNumber}/category`,
+ * `MemberCategoryApi`), which answers exactly what the member's own page would say (owner, 24.11.2026,
+ * PDL „Administracija bira kategoriju članu u njegovim podacima").
+ */
+export async function whatTheServerSaysAt(address: string): Promise<MyCategory | null> {
   let answer: Response
 
   try {
-    answer = await fetch(MY_CATEGORY)
+    answer = await fetch(address)
   } catch {
     return null
   }
@@ -119,5 +129,15 @@ export function categoryIn(body: unknown): MyCategory | null {
  * rather than being shown a control that quietly did nothing.
  */
 export async function tellTheServerMyCategory(firstSeason: boolean): Promise<Answer> {
-  return askTheServer(MY_CATEGORY, { firstSeason }, 'PUT')
+  return tellTheServerAt(MY_CATEGORY, firstSeason)
+}
+
+/** The same write at any address that takes the same body (see `whatTheServerSaysAt`). */
+export async function tellTheServerAt(address: string, firstSeason: boolean): Promise<Answer> {
+  return askTheServer(address, { firstSeason }, 'PUT')
+}
+
+/** Where the administration reads and chooses a member's category, on his card „Podaci" (`MemberCategoryApi`). */
+export function addressOfTheCategory(memberNumber: string): string {
+  return `/api/members/${memberNumber}/category`
 }

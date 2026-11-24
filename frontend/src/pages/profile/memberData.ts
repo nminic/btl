@@ -15,7 +15,7 @@ import type { FormDef, FormValues } from '../../forms/types'
  * is a record that something was given at one moment and not a fact about the member: V8 keeps the
  * consent as evidence, and evidence that could be edited would no longer be evidence. And the beginners'
  * category, which has a screen and a route of its own (`MeCategoryWriteApi`) and rules about when it may
- * move. Those three are the assistant's reasoning, told to the coordinator as such on 22.10.2026 and
+ * move; on this card it is a section of its own under the form since 24.11.2026 (`TheMembersCategory.tsx`). Those three are the assistant's reasoning, told to the coordinator as such on 22.10.2026 and
  * taken; they are the same list `MemberDataWriteApiTest` holds the route to.
  *
  * <p><b>The route that reads it is `PUT /api/members/{memberNumber}/data`</b> (PR 633), which takes
