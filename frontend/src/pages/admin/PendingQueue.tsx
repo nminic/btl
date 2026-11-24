@@ -6,6 +6,8 @@ import { Resource } from '../../components/Resource'
 import { combinePair, dataOr, failed, useCompetitors, useTeams } from '../../data/useResource'
 import { Stars } from '../../components/Stars'
 import { CropWindow } from '../../components/CropWindow'
+import { CropSliders } from '../../components/CropChooser'
+import { closestIn, type Crop, type Shape } from '../../components/crop'
 import { RATING_MARKS } from '../../data/types'
 import type { EventRating } from '../../data/types'
 import { formatNumber, formatShortDate } from '../../i18n/format'
@@ -87,6 +89,11 @@ import { ActionButton } from '../../components/ActionButton'
  * a biography of three and a half thousand characters has no column it fits in.
  */
 
+/** Where a moved circle is kept: the card, its picture and the circle the queue served over it. */
+function circleKeyOf(one: PendingItem): string {
+  return `${one.id}/${String(one.photoId)}/${String(one.crop.x)},${String(one.crop.y)},${String(one.crop.size)}`
+}
+
 /**
  * THE DECISIONS A CARD SENDS, each naming the picture the card drew where it drew one, and the
  * circle that came with it.
@@ -104,9 +111,12 @@ import { ActionButton } from '../../components/ActionButton'
  * decision is only about what the moderator saw. It is read where `photoId` is, off the same card,
  * and for the same reason: two facts about one picture that came in one answer.
  */
-function approvalOf(one: PendingItem, made: Proposed | null): Answered {
+function approvalOf(one: PendingItem, made: Proposed | null, moved: Crop | undefined): Answered {
   if (one.photoId !== null) {
-    return anApprovalOfThePicture(one.photoId, one.crop)
+    /* AND THE CIRCLE THE MODERATOR MOVED, where he moved it (owner, 23.11.2026, PDL „Administracija sama
+       podešava krug na članovoj slici": „hoću da mogu da se poigram krugom pre nego što mu je odobrim"),
+       beside the print and never in its place: `one.crop` stays what the queue served. */
+    return anApprovalOfThePicture(one.photoId, one.crop, moved)
   }
 
   /* A TEAM AS THE CARD SHOWS IT, the moderator's corrections included (PDL P13, 03.08.2026 and
@@ -326,8 +336,15 @@ function WaitingPicture({
   item,
   broken,
   onOutcome,
+  moved,
+  onMove,
 }: {
   item: PendingItem
+  /** The circle the moderator has moved over this picture, or nothing where he has not
+   *  (`PendingQueue`'s `circles`). Drawn in place of the member's, and sent with the approval. */
+  moved: Crop | null
+  /** Where a slider sends the circle he moves. */
+  onMove: (crop: Crop) => void
   /** Whether this picture has already failed to load, read off `PendingQueue`'s own
    *  `pictureOutcomes` rather than kept here. */
   broken: boolean
@@ -342,6 +359,10 @@ function WaitingPicture({
   /* Taken out of the item once and narrowed here, because the two handlers below are
      closures and a narrowing of `item.photoId` does not reach into a closure. */
   const { photoId } = item
+  /* WHAT THE PICTURE MEASURED, by the picture it measured, so the smallest circle the sliders allow is
+     this picture's (`closestIn`) and a picture replaced under the card has no sliders until its own
+     pixels have arrived. */
+  const [measured, setMeasured] = useState<{ photoId: number; shape: Shape } | null>(null)
 
   if (photoId === null) {
     return null
@@ -355,19 +376,43 @@ function WaitingPicture({
     )
   }
 
+  const circle = moved ?? item.crop
+  const sliders = measured !== null && measured.photoId === photoId ? measured.shape : null
+
   return (
-    <div className="pending__picture">
+    /* Named as a group where there are sliders in it, as the member's chooser names his
+       (`CropChooser`): a picture and three controls that only mean anything together. */
+    <div
+      className="pending__picture"
+      role={sliders === null ? undefined : 'group'}
+      aria-label={sliders === null ? undefined : t('crop.choosing')}
+    >
       {/* Keyed by the picture, so that a replaced one is a component of its own with an
           `<img>` of its own, which draws nothing until its own pixels arrive and reports
           for itself. The circle is not in the key (see above). */}
       <CropWindow
         key={photoId}
         picture={photoPath(item.id, photoId)}
-        crop={item.crop}
+        crop={circle}
         alt={t('verification.pictureAlt', { who: item.who })}
-        onLoaded={() => onOutcome('loaded', photoId)}
+        onLoaded={(shape) => {
+          setMeasured({ photoId, shape })
+          onOutcome('loaded', photoId)
+        }}
         onFailed={() => onOutcome('failed', photoId)}
-      />
+      >
+        {/* THE CIRCLE IS HIS TO MOVE BEFORE HE APPROVES (owner, 23.11.2026, PDL „Administracija sama
+            podešava krug na članovoj slici"), with the member's own three sliders (`CropSliders`) and NOT
+            by dragging the picture. That is a choice of the assistant's, made to keep a recorded decision
+            standing: „Visina se moderatoru ne ograničava (zapis od 28.08.2026: „Moderatoru se ne
+            ograničava"), i to ostaje na punoj snazi" (PDL 27.09.2026). A picture that takes a drag must
+            take every touch (`touch-action: none`), and then it has to be capped to 60 per cent of the
+            window or a tall photograph is a wall on a telephone (`CropWindow`, measured 27.08.2026); the
+            sliders take the arrows, Home and End, and leave the picture whole and scrollable. */}
+        {sliders !== null && (
+          <CropSliders id={`${item.id}-circle`} crop={circle} least={closestIn(sliders)} onChange={onMove} />
+        )}
+      </CropWindow>
     </div>
   )
 }
@@ -683,6 +728,24 @@ export function PendingQueue({ queue }: { queue: Queue }) {
     setPictureOutcomes(next)
   }
   /**
+   * THE CIRCLES THE MODERATOR HAS MOVED, by the picture AND the circle it was served with (`circleKeyOf`).
+   *
+   * <p>Owner, 23.11.2026, PDL „Administracija sama podešava krug na članovoj slici": „kad takmičar pošalje
+   * sliku na validaciju, ja kao Admin hoću da mogu da se poigram krugom pre nego što mu je odobrim." The
+   * approval sends what is here beside the print (`approvalOf`), and a card he has not touched sends
+   * nothing of the kind, so the member's circle is what is published.
+   *
+   * <p><b>Keyed by the served circle too, and that is what a member moving hers does to his.</b> The route
+   * refuses his decision then („Slika je promenjena, pogledaj je ponovo."), the list is read again, and the
+   * card comes back with her new circle: under a key nothing here holds, so it draws HER circle for him to
+   * look at again rather than his over it, and a circle he moved over the old one is never sent over the
+   * new one. A new picture is a new key for the same reason.
+   */
+  const [circles, setCircles] = useState<ReadonlyMap<string, Crop>>(new Map())
+  const moveTheCircle = (one: PendingItem, crop: Crop): void => {
+    setCircles((now) => new Map(now).set(circleKeyOf(one), crop))
+  }
+  /**
    * How many times the list has been read again because the route refused a decision about a
    * picture (`readTheQueueAgain`); bumping it is what reads it again while the screen stays.
    */
@@ -912,7 +975,7 @@ export function PendingQueue({ queue }: { queue: Queue }) {
          * card made up in this visit any more (`propose` and the `prop-` cards of the session went on
          * 23.11.2026, the last that made one being the change of a team, which is a card of the
          * server's now), so every row on this screen has a route to decide it at. */
-        const answer = await askTheServer(decisionPath(one.id), approvalOf(one, made))
+        const answer = await askTheServer(decisionPath(one.id), approvalOf(one, made, circles.get(circleKeyOf(one))))
 
         if (answer.got !== 'done') {
           refusals.push({ id: one.id, answer })
@@ -1611,6 +1674,8 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                             next reader to repeat. */}
                         <WaitingPicture
                           item={one}
+                          moved={circles.get(circleKeyOf(one)) ?? null}
+                          onMove={(crop) => moveTheCircle(one, crop)}
                           broken={picture === 'failed'}
                           /* Both homes of the fact are written at one place
                              (`settlePicture`, which also says why there is no

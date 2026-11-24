@@ -10,7 +10,8 @@ import { useI18n } from '../../i18n/useI18n'
 import { askTheServer, type Answer } from '../account/askTheServer'
 import { ServerSaid } from '../account/ServerSaid'
 import { WHEN_CHANGING_MY_DATA } from '../member/myAccount'
-import { pictureToSend, WHEN_SENDING_A_PICTURE } from '../member/photoWrites'
+import { asTheColumnHolds, pictureToSend, WHEN_SENDING_A_PICTURE } from '../member/photoWrites'
+import { cropIn, type Crop } from '../../components/crop'
 import { DeleteSheet } from '../admin/DeleteSheet'
 import { Resource } from '../../components/Resource'
 import { useHeldRead } from '../member/useHeldRead'
@@ -81,22 +82,67 @@ export function TheirBoxesOffTheirData({ memberNumber }: { memberNumber: string 
   )
 }
 
-type Shown = { photo: string; crop: unknown }
+type Shown = { photo: string; crop: Crop }
+
+/**
+ * The placeholder for "the picture that stands", handed to the chooser in the place of a file, the shape
+ * `member/ProfilePicture.tsx` gives the member's own screen: recognised by identity and never sent.
+ */
+const NO_FILE = new File([], 'the-picture-that-stands')
+
+/**
+ * WHAT A PRESS OF „SAČUVAJ SLIKU" SENDS, or nothing where nothing has changed: a file the administration
+ * chose, with its circle; or the circle alone, moved over the picture that stands (owner, 23.11.2026, PDL
+ * „Administracija sama podešava krug na članovoj slici": „Čak i kad mu uđem u podatke, želim da mogu da se
+ * poigram krugom pa da je sačuvam."), which the route moves on the row that stands and tells him nothing
+ * about („Član ne dobija poruku kad administracija pomeri krug.").
+ */
+type Plan = { how: 'file'; file: File; crop: Crop; drawn: string } | { how: 'circle'; crop: Crop; drawn: string }
+
+function planOf(picked: Chosen | null, shown: Shown | null, circle: Crop | null): Plan | null {
+  if (picked !== null) {
+    return { how: 'file', file: picked.file, crop: picked.crop, drawn: picked.picture }
+  }
+
+  return shown === null || circle === null || sameCircle(circle, shown.crop)
+    ? null
+    : { how: 'circle', crop: circle, drawn: shown.photo }
+}
+
+/** Whether two circles are the same one AS THE COLUMN HOLDS THEM, which is what would be sent. */
+function sameCircle(a: Crop, b: Crop): boolean {
+  return (
+    asTheColumnHolds(a.x) === asTheColumnHolds(b.x) &&
+    asTheColumnHolds(a.y) === asTheColumnHolds(b.y) &&
+    asTheColumnHolds(a.size) === asTheColumnHolds(b.size)
+  )
+}
 
 function HisPicture({ competitor }: { competitor: WhatStands }) {
   const { t } = useI18n()
   /* The picture that stands on his profile, drawn in its circle; after a save, the one just saved, as the
-     browser holds it. The chooser draws only the one the administration has picked: moving his own circle
-     over his own picture is his (that goes to the queue), and the administration sets a picture. */
+     browser holds it. Since 23.11.2026 the chooser draws it too, with its circle, so the administration
+     moves that circle as the member moves his own (`member/ProfilePicture.tsx`): „Čak i kad mu uđem u
+     podatke, želim da mogu da se poigram krugom pa da je sačuvam." (owner, PDL „Administracija sama
+     podešava krug na članovoj slici"). */
   const [shown, setShown] = useState<Shown | null>(
-    competitor.photo === null ? null : { photo: competitor.photo, crop: competitor.crop },
+    competitor.photo === null ? null : { photo: competitor.photo, crop: cropIn(competitor.crop) },
   )
   const [picked, setPicked] = useState<Chosen | null>(null)
+  /* THE CIRCLE MOVED OVER THE PICTURE THAT STANDS, or nothing where it has not been touched. */
+  const [circle, setCircle] = useState<Crop | null>(null)
   const [sending, setSending] = useState(false)
   const outstanding = useRef(false)
   const [answer, setAnswer] = useState<Answer | null>(null)
+  /* WHICH OF THE TWO WAS SAVED, because the sentence after it is not the same: a new picture tells him,
+     a moved circle does not. */
+  const [savedWhat, setSavedWhat] = useState<Plan['how'] | null>(null)
   const said = useRef<HTMLParagraphElement>(null)
   const saved = answer?.got === 'done'
+  const plan = planOf(picked, shown, circle)
+  const chosen: Chosen | null =
+    picked ??
+    (shown === null ? null : { name: shown.photo, picture: shown.photo, crop: circle ?? shown.crop, file: NO_FILE })
 
   useEffect(() => {
     if (saved) {
@@ -104,12 +150,15 @@ function HisPicture({ competitor }: { competitor: WhatStands }) {
     }
   }, [saved])
 
-  async function save(chosen: Chosen): Promise<void> {
+  async function save(what: Plan): Promise<void> {
     outstanding.current = true
     setSending(true)
     setAnswer(null)
 
-    const answered = await askTheServer(addressOfHis(competitor.memberNumber, 'photo'), pictureToSend(chosen.file, chosen.crop))
+    const answered = await askTheServer(
+      addressOfHis(competitor.memberNumber, 'photo'),
+      pictureToSend(what.how === 'file' ? what.file : null, what.crop),
+    )
 
     outstanding.current = false
     setSending(false)
@@ -120,10 +169,12 @@ function HisPicture({ competitor }: { competitor: WhatStands }) {
     }
 
     /* WHAT STANDS IS NOW WHAT WAS SAVED, and the list every circle of his is drawn from is no longer
-       true: it carries `photo` on his row. */
+       true: it carries `photo` and `crop` on his row. */
     clearResourceCache('competitors')
-    setShown({ photo: chosen.picture, crop: chosen.crop })
+    setShown({ photo: what.drawn, crop: what.crop })
     setPicked(null)
+    setCircle(null)
+    setSavedWhat(what.how)
   }
 
   /* TAKEN DOWN AT ONCE, and the sheet waits for the answer (`DeleteSheet`). */
@@ -164,11 +215,22 @@ function HisPicture({ competitor }: { competitor: WhatStands }) {
         label={t('picture.choose')}
         asked={false}
         unmarked
-        alt={t('picture.chosenAlt')}
-        chosen={picked}
+        alt={picked === null ? t('theirBoxes.circleAlt') : t('picture.chosenAlt')}
+        chosen={chosen}
         onChange={(next) => {
           setAnswer(null)
-          setPicked(next)
+
+          /* The picture that stands, with the circle moved; a file chosen, which puts the moved circle
+             aside; or nothing, a file that could not be opened, which leaves the picture that stands
+             drawn with the circle left on it. The shape `member/ProfilePicture.tsx` gives `choose`. */
+          if (next === null) {
+            setPicked(null)
+          } else if (next.file === NO_FILE) {
+            setCircle(next.crop)
+          } else {
+            setPicked(next)
+            setCircle(null)
+          }
         }}
       />
 
@@ -176,13 +238,13 @@ function HisPicture({ competitor }: { competitor: WhatStands }) {
         <button
           type="button"
           className="button button--primary"
-          aria-disabled={picked === null || sending}
+          aria-disabled={plan === null || sending}
           onClick={() => {
-            if (picked === null || outstanding.current) {
+            if (plan === null || outstanding.current) {
               return
             }
 
-            void save(picked)
+            void save(plan)
           }}
         >
           {t('theirBoxes.pictureSave')}
@@ -200,7 +262,7 @@ function HisPicture({ competitor }: { competitor: WhatStands }) {
 
       {saved && (
         <p className="member__note" ref={said} tabIndex={-1} role="status">
-          {t('theirBoxes.saved')}
+          {t(savedWhat === 'circle' ? 'theirBoxes.circleSaved' : 'theirBoxes.saved')}
         </p>
       )}
       {answer !== null && answer.got !== 'done' && <ServerSaid answer={answer} refusals={WHEN_SENDING_A_PICTURE} />}

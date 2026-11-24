@@ -1,4 +1,5 @@
-import { configure, getConfig, screen, waitFor, within } from '@testing-library/react'
+import { configure, fireEvent, getConfig, screen, waitFor, within } from '@testing-library/react'
+import sr from '../../i18n/sr.json'
 import { must } from '../../test/at'
 import { renderAt } from '../../test/render'
 import { did, refused, serverThat } from '../../test/serverAnswers'
@@ -667,6 +668,187 @@ describe('when the route says the picture is not the one the card drew', () => {
       await new Promise((resolve) => setTimeout(resolve, 50))
 
       expect(reads).toBe(1)
+    } finally {
+      stop()
+    }
+  }, SLOW)
+})
+
+/**
+ * THE CIRCLE THE MODERATOR MOVES BEFORE HE APPROVES (owner, 23.11.2026, PDL „Administracija sama podešava
+ * krug na članovoj slici": „kad takmičar pošalje sliku na validaciju, ja kao Admin hoću da mogu da se
+ * poigram krugom pre nego što mu je odobrim.").
+ *
+ * <p>What it moves to is unlike both cards' circles in every number, so a request carrying the print, the
+ * other card's circle or the placeholder is another request. And the print stays beside it: `seenCrop` is
+ * still what the queue served.
+ */
+describe('the circle the moderator moves', () => {
+  /** The browser tells the page the picture arrived, with a size, so the sliders know their floor. */
+  const thePictureArrivesAt = (name: string, width: number, height: number) => {
+    const picture = cardOf(name).getByRole('img', { name: /Slika koju je poslao/ })
+
+    Object.defineProperty(picture, 'naturalWidth', { value: width, configurable: true })
+    Object.defineProperty(picture, 'naturalHeight', { value: height, configurable: true })
+    fireEvent.load(picture)
+  }
+
+  const slide = (name: string, label: string, value: number) => {
+    fireEvent.change(cardOf(name).getByLabelText(label), { target: { value: String(value) } })
+  }
+
+  it('is sent with the approval beside the print, on the card it was moved on and on no other', async () => {
+    const { asked, stop } = serverThat((path) =>
+      path === '/api/verification'
+        ? asTheList([neda(), mira()])
+        : path === decisionPath('23') || path === decisionPath('21')
+          ? did()
+          : null,
+    )
+
+    try {
+      const user = setupUser()
+
+      openQueue()
+      await screen.findByRole('list', { name: /Čeka/ })
+      thePictureArrivesAt('Mira Mirić', 1200, 1000)
+      thePictureArrivesAt('Neda Nedić', 1200, 1000)
+
+      /* THE FLOOR IS THIS PICTURE'S: 240 pixels of its shorter edge of 1000. */
+      expect(cardOf('Mira Mirić').getByLabelText(sr.crop.size)).toHaveAttribute('min', '0.24')
+
+      slide('Mira Mirić', sr.crop.x, 0.6)
+      slide('Mira Mirić', sr.crop.size, 0.5)
+
+      await user.click(cardOf('Mira Mirić').getByRole('button', { name: 'Odobri' }))
+
+      const sent = asked.filter((one) => one.path.endsWith('/decision'))
+
+      expect(sent.map((one) => one.path)).toEqual([decisionPath('23')])
+      expect(JSON.parse(String(sent[0]?.init?.body))).toEqual({
+        approved: true,
+        reason: '',
+        seenPhotoId: 12,
+        seenCrop: MIRA_CROP,
+        crop: { x: 0.6, y: MIRA_CROP.y, size: 0.5 },
+      })
+
+      /* AND THE CARD HE DID NOT TOUCH SENDS THE MEMBER'S OWN, with nothing beside the print. */
+      await user.click(cardOf('Neda Nedić').getByRole('button', { name: 'Odobri' }))
+
+      expect(JSON.parse(String(asked.find((one) => one.path === decisionPath('21'))?.init?.body))).toEqual({
+        approved: true,
+        reason: '',
+        seenPhotoId: 9,
+        seenCrop: NEDA_CROP,
+      })
+    } finally {
+      stop()
+    }
+  }, SLOW)
+
+  it('is drawn where he moved it, and the rest of the picture is still there', async () => {
+    const { stop } = serverThat((path) => (path === '/api/verification' ? asTheList([mira()]) : null))
+
+    try {
+      openQueue()
+      await screen.findByRole('list', { name: /Čeka/ })
+      thePictureArrivesAt('Mira Mirić', 1000, 1000)
+
+      const frame = must(
+        cardOf('Mira Mirić').getByRole('img', { name: /Slika koju je poslao/ }).parentElement?.querySelector<HTMLElement>(
+          '.crop__frame',
+        ),
+        'the frame of the circle',
+      )
+      const before = frame.style.insetInlineStart
+
+      slide('Mira Mirić', sr.crop.x, 0.9)
+
+      expect(frame.style.insetInlineStart).not.toBe(before)
+      expect(cardOf('Mira Mirić').getByLabelText(sr.crop.x)).toHaveValue('0.9')
+      expect(cardOf('Mira Mirić').getByRole('group', { name: sr.crop.choosing })).toBeVisible()
+    } finally {
+      stop()
+    }
+  }, SLOW)
+
+  it('is never sent with a refusal', async () => {
+    const { asked, stop } = serverThat((path) =>
+      path === '/api/verification' ? asTheList([mira()]) : path === decisionPath('23') ? did() : null,
+    )
+
+    try {
+      const user = setupUser()
+
+      openQueue()
+      await screen.findByRole('list', { name: /Čeka/ })
+      thePictureArrivesAt('Mira Mirić', 1200, 1000)
+      slide('Mira Mirić', sr.crop.x, 0.6)
+
+      await user.click(cardOf('Mira Mirić').getByRole('button', { name: 'Odbij' }))
+      await user.type(screen.getByLabelText('Razlog odbijanja'), 'Lice se ne vidi.')
+      await user.click(screen.getByRole('button', { name: 'Odbij uz ovaj razlog' }))
+
+      await waitFor(() => expect(asked.some((one) => one.path === decisionPath('23'))).toBe(true))
+      expect(JSON.parse(String(asked.find((one) => one.path === decisionPath('23'))?.init?.body))).toEqual({
+        approved: false,
+        reason: 'Lice se ne vidi.',
+        seenPhotoId: 12,
+        seenCrop: MIRA_CROP,
+      })
+    } finally {
+      stop()
+    }
+  }, SLOW)
+
+  it('is put aside when the member moves hers under it, so the card draws hers and the next press sends hers', async () => {
+    /* SHE MOVES HER CIRCLE WHILE HE MOVES HIS: the route refuses his decision, the list comes back with
+       her new circle, and what he moved over the old one must not ride on the next press over the new. */
+    let read = 0
+    let pressed = 0
+    const { asked, stop } = serverThat((path) => {
+      if (path === '/api/verification') {
+        read += 1
+
+        return asTheList([read === 1 ? neda(9) : neda(9, NEDA_DRAGGED)])
+      }
+
+      if (path === decisionPath('21')) {
+        pressed += 1
+
+        return pressed === 1 ? refused(THE_PICTURE_WAS_CHANGED, 409) : did()
+      }
+
+      return null
+    })
+
+    try {
+      const user = setupUser()
+
+      openQueue()
+      await screen.findByRole('list', { name: /Čeka/ })
+      thePictureArrivesAt('Neda Nedić', 1200, 1000)
+      slide('Neda Nedić', sr.crop.x, 0.9)
+
+      await user.click(cardOf('Neda Nedić').getByRole('button', { name: 'Odobri' }))
+
+      await waitFor(() => expect(cardOf('Neda Nedić').getByLabelText(sr.crop.x)).toHaveValue(String(NEDA_DRAGGED.x)))
+
+      await user.click(cardOf('Neda Nedić').getByRole('button', { name: 'Odobri' }))
+
+      const bodies = asked
+        .filter((one) => one.path === decisionPath('21'))
+        .map((one) => JSON.parse(String(one.init?.body)))
+
+      expect(bodies[0]).toEqual({
+        approved: true,
+        reason: '',
+        seenPhotoId: 9,
+        seenCrop: NEDA_CROP,
+        crop: { x: 0.9, y: NEDA_CROP.y, size: NEDA_CROP.size },
+      })
+      expect(bodies[1]).toEqual({ approved: true, reason: '', seenPhotoId: 9, seenCrop: NEDA_DRAGGED })
     } finally {
       stop()
     }

@@ -55,7 +55,7 @@ export function CropChooser({ id, label, alt, asked = true, unmarked = false, ch
   chosen: Chosen | null
   onChange: (chosen: Chosen | null) => void
 }) {
-  const { locale, t } = useI18n()
+  const { t } = useI18n()
   /* Why the last file was not taken, where it was not. Held here rather than
      handed up, because it is about the choosing and goes the moment another file
      is chosen; the screen above only ever hears about pictures it can use. */
@@ -71,43 +71,6 @@ export function CropChooser({ id, label, alt, asked = true, unmarked = false, ch
   /* The shape only once it is one the portal will take. Anything else has already
      been refused above, and a `null` here is what keeps the cropper shut. */
   const measured = shape !== null && bigEnough(shape) ? shape : null
-
-  /* One slider, three times over. Written out three times it drifted within a
-     day of being written: the zoom kept the label of the axis above it.
-   *
-     Handed the picture rather than reading it from around itself, because there
-     are no sliders until there is one: written the other way it needed a guard
-     against a case that cannot happen, which is a line nothing can ever run. */
-  const slider = (picture: Chosen, which: 'x' | 'y' | 'size', least: number) => {
-    const value = picture.crop[which]
-
-    return (
-      <p className="crop__slider">
-        {/* A plain label, and not the one that carries the star. That helper
-            marks a field as wanted or as „(neobavezno)", and a slider is
-            neither: it always has a value, nobody can leave it empty, and
-            calling it optional puts the word inside the name a screen reader
-            reads out. The rule about stars is about fields somebody fills in
-            (forms/AskedLabel.tsx); the picture above is one and this is not. */}
-        <label htmlFor={`${id}-${which}`}>{t(`crop.${which}`)}</label>
-        <input
-          id={`${id}-${which}`}
-          type="range"
-          min={least}
-          max={1}
-          step={0.01}
-          value={value}
-          /* Read out as a share and not as „0,42". The number itself means
-             nothing to anybody: what a member wants to hear is how far across
-             they have moved, and how much of the photograph is left. */
-          aria-valuetext={t('crop.share', { share: formatNumber(100 * value, locale) })}
-          onChange={(event) => {
-            onChange({ ...picture, crop: { ...picture.crop, [which]: Number(event.target.value) } })
-          }}
-        />
-      </p>
-    )
-  }
 
   return (
     <>
@@ -229,12 +192,78 @@ export function CropChooser({ id, label, alt, asked = true, unmarked = false, ch
               onChange({ ...chosen, crop })
             }}
           >
-            {slider(chosen, 'x', 0)}
-            {slider(chosen, 'y', 0)}
-            {slider(chosen, 'size', closestIn(measured))}
+            <CropSliders
+              id={id}
+              crop={chosen.crop}
+              least={closestIn(measured)}
+              onChange={(crop) => {
+                onChange({ ...chosen, crop })
+              }}
+            />
           </CropWindow>
         </div>
       )}
+    </>
+  )
+}
+
+/**
+ * THE THREE SLIDERS A CIRCLE IS MOVED AND SIZED WITH, wherever one is: under a file just chosen
+ * (`CropChooser`, above) and over a picture a moderator is approving (`admin/PendingQueue.tsx`, owner,
+ * 23.11.2026: „hoću da mogu da se poigram krugom pre nego što mu je odobrim").
+ *
+ * One component and not a second copy, because the sliders are where the rules of a circle live for
+ * everybody who cannot use a pointer: the smallest circle (`least`, from `closestIn`), the step, the
+ * share read out aloud, and the plain label. Written twice they would drift, as the three of them once
+ * drifted within a day when each was written out by hand: the zoom kept the label of the axis above it.
+ *
+ * @param id where the three ids start, so two of these can stand on one page
+ * @param least the smallest diameter the picture allows (`closestIn`), the floor of the third slider
+ */
+export function CropSliders({ id, crop, least, onChange }: {
+  id: string
+  crop: Crop
+  least: number
+  onChange: (crop: Crop) => void
+}) {
+  const { locale, t } = useI18n()
+
+  const slider = (which: 'x' | 'y' | 'size', floor: number) => {
+    const value = crop[which]
+
+    return (
+      <p className="crop__slider">
+        {/* A plain label, and not the one that carries the star. That helper
+            marks a field as wanted or as „(neobavezno)", and a slider is
+            neither: it always has a value, nobody can leave it empty, and
+            calling it optional puts the word inside the name a screen reader
+            reads out. The rule about stars is about fields somebody fills in
+            (forms/AskedLabel.tsx); the picture above is one and this is not. */}
+        <label htmlFor={`${id}-${which}`}>{t(`crop.${which}`)}</label>
+        <input
+          id={`${id}-${which}`}
+          type="range"
+          min={floor}
+          max={1}
+          step={0.01}
+          value={value}
+          /* Read out as a share and not as „0,42". The number itself means
+             nothing to anybody: what a member wants to hear is how far across
+             they have moved, and how much of the photograph is left. */
+          aria-valuetext={t('crop.share', { share: formatNumber(100 * value, locale) })}
+          onChange={(event) => {
+            onChange({ ...crop, [which]: Number(event.target.value) })
+          }}
+        />
+      </p>
+    )
+  }
+
+  return (
+    <>
+      {slider('x', 0)}
+      {slider('y', 0)}
+      {slider('size', least)}
     </>
   )
 }

@@ -1,4 +1,4 @@
-import { configure, screen, waitFor, within } from '@testing-library/react'
+import { configure, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 import { cropIn } from '../../components/crop'
 import { fittedTo } from '../../components/fitted'
@@ -269,6 +269,87 @@ describe('what each box opens with, and a press that cannot send', () => {
     answer(json({ bio: 'x' }))
 
     expect(await panel.findByText(sr.theirBoxes.saved)).toBeVisible()
+  }, SLOW)
+})
+
+/**
+ * THE CIRCLE OF THE PICTURE THAT STANDS, MOVED BY THE ADMINISTRATION AND SAVED (owner, 23.11.2026, PDL
+ * „Administracija sama podešava krug na članovoj slici": „Čak i kad mu uđem u podatke, želim da mogu da se
+ * poigram krugom pa da je sačuvam.", and „Član ne dobija poruku kad administracija pomeri krug.").
+ *
+ * <p>000003 stands with the circle 0,3 0,15 0,55 (`test/mock/competitors.json`); the circle moved to is
+ * unlike it in the two numbers moved, so a request carrying the served circle is another request.
+ */
+describe('the circle of his picture, moved by the administration', () => {
+  const HAS_ONE = '000003'
+  const SERVED = { x: 0.3, y: 0.15, size: 0.55 }
+
+  it('is drawn over the picture that stands, sent alone to his address, and says he is not told', async () => {
+    const user = setupUser()
+    const { asked, stop } = serverThat((path, init) =>
+      init?.method === 'POST' && path === `/api/members/${HAS_ONE}/photo`
+        ? json({ photo: '/mock/photo/andjelija.svg', crop: { x: 0.13, y: 0.15, size: 0.42 } })
+        : null,
+    )
+
+    stops.push(stop)
+    asTheAdministration(HAS_ONE)
+
+    const panel = within(await screen.findByRole('region', { name: sr.picture.title }))
+    const save = panel.getByRole('button', { name: sr.theirBoxes.pictureSave })
+
+    expect(save, 'nothing has moved yet').toHaveAttribute('aria-disabled', 'true')
+
+    await measurePicture()
+    fireEvent.change(await panel.findByLabelText(sr.crop.x), { target: { value: '0.13' } })
+    fireEvent.change(panel.getByLabelText(sr.crop.size), { target: { value: '0.42' } })
+    await user.click(save)
+
+    expect(await panel.findByText(sr.theirBoxes.circleSaved)).toHaveAttribute('role', 'status')
+    expect(panel.queryByText(sr.theirBoxes.saved), 'the sentence says he was told').toBeNull()
+
+    const sent = writes(asked)
+
+    expect(sent.map((one) => one.path)).toEqual([`/api/members/${HAS_ONE}/photo`])
+
+    const body = must(sent[0], 'the write').init?.body
+
+    expect(body).toBeInstanceOf(FormData)
+    expect(body instanceof FormData ? body.get('picture') : 'no form', 'a circle moved sent a file').toBeNull()
+    expect(body instanceof FormData ? [body.get('cropX'), body.get('cropY'), body.get('cropSize')] : []).toEqual([
+      '0.13000000',
+      '0.15000000',
+      '0.42000000',
+    ])
+
+    /* AND WHAT STANDS IS DRAWN IN THE NEW CIRCLE, not the one served. */
+    expect(panel.getByRole('img', { name: sr.theirBoxes.currentAlt }).style.transform).toBe(
+      fittedTo(cropIn({ x: 0.13, y: 0.15, size: 0.42 })).transform,
+    )
+    expect(fittedTo(cropIn(SERVED)).transform, 'the served circle is the moved one, so this measures nothing').not.toBe(
+      fittedTo(cropIn({ x: 0.13, y: 0.15, size: 0.42 })).transform,
+    )
+    await waitFor(() => expect(save).toHaveAttribute('aria-disabled', 'true'))
+  }, SLOW)
+
+  it('sends nothing for a circle moved back to where it stood', async () => {
+    const user = setupUser()
+    const { asked, stop } = serverThat(() => null)
+
+    stops.push(stop)
+    asTheAdministration(HAS_ONE)
+
+    const panel = within(await screen.findByRole('region', { name: sr.picture.title }))
+
+    await measurePicture()
+
+    const across = await panel.findByLabelText(sr.crop.x)
+
+    fireEvent.change(across, { target: { value: '0.13' } })
+    fireEvent.change(across, { target: { value: String(SERVED.x) } })
+    await user.click(panel.getByRole('button', { name: sr.theirBoxes.pictureSave }))
+
+    expect(writes(asked)).toHaveLength(0)
   }, SLOW)
 })
 

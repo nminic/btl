@@ -76,7 +76,10 @@ export function CropWindow({ picture, crop, alt, children, onChange, onLoaded, o
    * "did it arrive" would be a second picture that could disagree with the
    * first (ADL A31).
    */
-  onLoaded?: () => void
+  /** With the shape the element measured, or `UNKNOWN` where it measured nothing: the moderator's
+   *  sliders need it for the smallest circle the picture allows (`closestIn`), and this element is the
+   *  one that has read the file, so it is asked rather than a second `<img>`. */
+  onLoaded?: (shape: Shape) => void
   onFailed?: () => void
 }) {
   const { t } = useI18n()
@@ -331,12 +334,13 @@ export function CropWindow({ picture, crop, alt, children, onChange, onLoaded, o
                for each, and a box of nought height collapses to a line with a
                frame drawn over nothing. */
             const { naturalWidth, naturalHeight } = event.currentTarget
+            const read = naturalWidth > 0 && naturalHeight > 0
 
-            if (naturalWidth > 0 && naturalHeight > 0) {
+            if (read) {
               setShape({ width: naturalWidth, height: naturalHeight })
             }
 
-            onLoaded?.()
+            onLoaded?.(read ? { width: naturalWidth, height: naturalHeight } : UNKNOWN)
           }}
           onError={onFailed}
         />
