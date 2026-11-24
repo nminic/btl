@@ -1,4 +1,4 @@
-import { configure, screen, waitFor, within } from '@testing-library/react'
+import { act, configure, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { clearResourceCache } from '../../data/client'
 import { renderAt } from '../../test/render'
 import { did, refused, serverThat, type Asked } from '../../test/serverAnswers'
@@ -118,7 +118,7 @@ describe('members of a team moved by the administration', () => {
 
       await user.click(within(panel).getByRole('combobox', { name: 'Član koga dodaješ' }))
 
-      expect(within(panel).getAllByRole('option').map((one) => one.textContent)).toEqual([
+      expect(within(screen.getByRole('listbox', { name: 'Ponuđeni članovi' })).getAllByRole('option').map((one) => one.textContent)).toEqual([
         'Časlav Radenković (000005)',
         'Milica Ranković (000008)',
       ])
@@ -158,7 +158,7 @@ describe('members of a team moved by the administration', () => {
     const before = reads(server.asked, '/api/competitors')
 
     await user.type(within(panel).getByRole('combobox', { name: 'Član koga dodaješ' }), 'Milica')
-    await user.click(within(panel).getByRole('option', { name: 'Milica Ranković (000008)' }))
+    await user.click(screen.getByRole('option', { name: 'Milica Ranković (000008)' }))
     await user.click(within(panel).getByRole('button', { name: 'Dodaj člana' }))
 
     await waitFor(() => {
@@ -170,6 +170,36 @@ describe('members of a team moved by the administration', () => {
       expect(reads(server.asked, '/api/competitors')).toBeGreaterThan(before)
     })
     expect(await screen.findByText('Član je dodat u tim.')).toBeInTheDocument()
+
+    server.stop()
+  }, SLOW)
+
+  it('sends one POST for „Dodaj člana” pressed twice while the first request is out, and says the first answer', async () => {
+    /* Review of PR 810, medium 1: the second press met the box again and sent a second POST, whose refusal
+       (`heIsAlreadyInATeam`) overwrote „Član je dodat u tim.”. Two presses of ONE event, so that neither sees the
+       render the other caused. */
+    const server = serving()
+    const user = setupUser()
+    renderAt('/sr/administracija/timovi', 'superadmin', null, undefined, IN_WINDOW)
+
+    const panel = await openTheTeam(user)
+
+    await user.type(within(panel).getByRole('combobox', { name: 'Član koga dodaješ' }), 'Milica')
+    await user.click(screen.getByRole('option', { name: 'Milica Ranković (000008)' }))
+
+    const add = within(panel).getByRole('button', { name: 'Dodaj člana' })
+
+    act(() => {
+      fireEvent.click(add)
+      fireEvent.click(add)
+    })
+
+    /* While the request is out the reader is told so, in the place the answer will be said. */
+    expect(screen.getByText('Šalje se')).toHaveAttribute('aria-live', 'polite')
+    expect(await screen.findByText('Član je dodat u tim.')).toBeInTheDocument()
+    expect(writes(server.asked)).toEqual([
+      { path: `/api/teams/${String(ACTED)}/members`, how: 'POST', body: { memberNumber: '000008' } },
+    ])
 
     server.stop()
   }, SLOW)
@@ -224,7 +254,7 @@ describe('members of a team moved by the administration', () => {
     const box = within(panel).getByRole('combobox', { name: 'Član koga dodaješ' })
 
     await user.type(box, 'Časlav')
-    await user.click(within(panel).getByRole('option', { name: 'Časlav Radenković (000005)' }))
+    await user.click(screen.getByRole('option', { name: 'Časlav Radenković (000005)' }))
     await user.click(within(panel).getByRole('button', { name: 'Dodaj člana' }))
 
     expect(await within(panel).findByRole('alert')).toHaveTextContent(sentence)

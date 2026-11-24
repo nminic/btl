@@ -773,7 +773,7 @@ describe('a sentence with a value put into it', () => {
          a subject, so there is nothing to format and no case to get wrong
          (`pages/admin/PendingQueue.tsx`, `refusedElsewhere`). */
       'verification.refusedCardNamed',
-      'verification.sentBy',
+      'verification.sentBy',
       'verification.teamChangeOf',
     ])
   })

@@ -315,8 +315,20 @@ for (const [reader, answers] of READERS) {
         }
 
         const box = element.getBoundingClientRect()
+        /* `--space-16`, as the browser resolves it at this text size: a probe that is as wide as it, read off its box. */
+        const probe = document.createElement('div')
+
+        probe.style.inlineSize = 'var(--space-16)'
+        probe.style.position = 'absolute'
+        document.body.append(probe)
+
+        const sixteen = probe.getBoundingClientRect().width
+
+        probe.remove()
 
         return {
+          gap: box.top - table.getBoundingClientRect().bottom,
+          sixteen,
           underTheTable: box.top >= table.getBoundingClientRect().bottom,
           left: box.left,
           right: box.right,
@@ -327,6 +339,11 @@ for (const [reader, answers] of READERS) {
       })
 
       expect(where.underTheTable, 'it is not under the table').toBe(true)
+      /* **The gap above it is `--space-16` and not only „not nothing”** (review of PR 804, medium 1: `box.top >=
+         table.bottom` is met by 0px as well, the gap the sentence stood with when two rules argued over it). The
+         button and the sentence are asked alike, since the sentence is the button's box (`.rankings__propose`). */
+      expect(where.sixteen, 'the probe resolved no space').toBeGreaterThan(0)
+      expect(where.gap, 'the gap under the table is not --space-16').toBeCloseTo(where.sixteen, 0)
       expect(where.left, 'it starts left of the screen').toBeGreaterThanOrEqual(0)
       expect(where.right, 'it runs off the right edge of the screen').toBeLessThanOrEqual(where.width)
 

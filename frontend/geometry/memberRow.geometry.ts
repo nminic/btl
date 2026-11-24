@@ -228,7 +228,7 @@ for (const at of WIDTHS) {
      „Sigurno?”, kao brisanje”), in the sheet and the words of 18.10.2026 („Storniraj uplatu za sezonu {season}?”,
      „Da” / „Ne”). Asked here what the case above asks of the deletion's sheet: it fits the window, the page does not
      move sideways, nothing is written until „Da”, and „Ne” writes nothing. */
-  test(`the sheet about cancelling a membership fits and writes nothing on „Ne”, at ${label(at)}`, async ({ open }) => {
+  test(`the sheet about cancelling a membership fits and writes nothing until „Da”, at ${label(at)}`, async ({ open }) => {
     const { page } = await open(at, '/sr/administracija/clanovi', 'table.members-table tbody tr', ANSWERS)
     const writes = await writesOf(page)
 
@@ -268,7 +268,11 @@ for (const at of WIDTHS) {
     await sheet.getByRole('button', { name: 'Ne' }).click()
     await expect(page.getByRole('dialog')).toHaveCount(0)
 
-    expect(writes, '„Ne” wrote something').toHaveLength(0)
+    /* WHAT „NE” SENDS IS NOT ASKED HERE (review of PR 805, low 2): an empty list read the instant the sheet is gone
+       does not wait for a request that would be sent a moment later, so it holds on a quick machine and says nothing
+       on a slow one. It is held by `pages/admin/rowMembership.test.tsx`, „asks before cancelling %s in the words of
+       its basis, sends nothing on „Ne” and the basis it showed on „Da”", which reads the requests of the server it
+       stood in front of and not a clock. */
   })
 }
 

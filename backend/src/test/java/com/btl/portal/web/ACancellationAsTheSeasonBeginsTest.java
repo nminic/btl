@@ -312,7 +312,7 @@ class ACancellationAsTheSeasonBeginsTest {
 		return http.perform(delete("/api/members/" + HIS_NUMBER + "/membership").with(csrf())
 						.cookie(new Cookie(SessionCookie.NAME, cookie))
 						.contentType(MediaType.APPLICATION_JSON)
-						.content("{\"basis\": \"feeExempt\"}"))
+						.content("{\"basis\": \"feeExempt\", \"season\": 2028}"))
 				.andReturn().getResponse();
 	}
 

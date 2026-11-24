@@ -180,7 +180,8 @@
    its own. It was `rankings__propose rankings__empty`, and `.rankings__empty` (the sentence of an empty list,
    `margin: 0 0 var(--space-8)`) is written further down at the same weight, so it won and the sentence stood
    against the table with no gap. The words are the muted ones of the empty lists; the margin is not. A second
-   rule that sets a margin on this class is what `pages/member/proposeTeam.test.tsx` fails on. */
+   rule that sets a margin on this class moves the sentence, which `geometry/tableCards.geometry.ts` holds to
+   `--space-16` under the table, the button's gap, as the browser resolves it. */
 .rankings__propose--sentence {
   color: var(--text-muted);
   font-size: 0.85rem;

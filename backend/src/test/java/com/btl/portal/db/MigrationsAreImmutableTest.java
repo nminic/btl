@@ -911,14 +911,14 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   was written.
 
 			   Pinned LAST, when the file was final, off this very assertion. */
-			new Applied("107", "V107__the_legal_pages_speak_to_the_reader_as_ti.sql", -1819520597),
-
-			/* V108. A league carries a mark of its own (owner, PDL 23.11.2026, „Pravi logo lige"): `league.logo_id`
-			   with its key and index, and V54's rule taught the fifth holder (both functions replaced whole, one
-			   more deferred trigger). Every league standing comes in NULL (LeagueMarkCarriedOverTest). 108 and no
-			   other: main stood at V107 when it was written.
-
-			   Pinned LAST, when the file was final, off this very assertion. */
+			new Applied("107", "V107__the_legal_pages_speak_to_the_reader_as_ti.sql", -1819520597),
+
+			/* V108. A league carries a mark of its own (owner, PDL 23.11.2026, „Pravi logo lige"): `league.logo_id`
+			   with its key and index, and V54's rule taught the fifth holder (both functions replaced whole, one
+			   more deferred trigger). Every league standing comes in NULL (LeagueMarkCarriedOverTest). 108 and no
+			   other: main stood at V107 when it was written.
+
+			   Pinned LAST, when the file was final, off this very assertion. */
 			new Applied("108", "V108__a_league_carries_a_mark_of_its_own.sql", 1388687629),
 
 			/* V109. A league may highlight its events in the calendar (owner, PDL 24.11.2026, „Istakni događaje"):

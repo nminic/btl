@@ -502,7 +502,7 @@ class ABeginnersCategoryAMembershipMovesTest {
 					"{\"competitorId\": " + id + ", \"ground\": \"balance\"}", THE_SUPERADMIN);
 			case HIS_OWN_ACTIVATION -> sent(post("/api/me/membership"), "{}", number + "@primer.rs");
 			case AN_EXEMPTION_ON_HIS_ROW -> sent(post("/api/members/" + number + "/membership"),
-					"{\"basis\": \"feeExempt\"}", THE_SUPERADMIN);
+					"{\"basis\": \"feeExempt\", \"season\": " + onSale() + "}", THE_SUPERADMIN);
 			case A_BANK_STATEMENT -> aStatementPaying(number);
 		};
 	}
@@ -543,8 +543,13 @@ class ABeginnersCategoryAMembershipMovesTest {
 	}
 
 	private MockHttpServletResponse cancelled(String number, String basis) throws Exception {
-		return sent(delete("/api/members/" + number + "/membership"), "{\"basis\": \"" + basis + "\"}",
-				THE_SUPERADMIN);
+		return sent(delete("/api/members/" + number + "/membership"),
+				"{\"basis\": \"" + basis + "\", \"season\": " + onSale() + "}", THE_SUPERADMIN);
+	}
+
+	/** The box of the row's season on sale, the one the screen sends at this case's clock. */
+	private int onSale() {
+		return SeasonClock.seasonBeingPaidFor(clock.instant().atZone(SeasonClock.ZONE));
 	}
 
 	private MockHttpServletResponse changed(String number, String json) throws Exception {

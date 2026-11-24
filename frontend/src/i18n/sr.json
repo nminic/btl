@@ -1696,7 +1696,8 @@
       "theFormIsNotComplete": "Zahtev nije uspeo. Osveži stranicu i pokušaj ponovo.",
       "theBasisIsNotKnown": "Portal ne poznaje osnov članstva koji je poslat, pa ništa nije urađeno. Osveži stranicu i pokušaj ponovo.",
       "thisChangeIsNotOffered": "Aktivacija iz balansa se prvo stornira, pa se upisuje nova.",
-      "theBasisHasChanged": "Osnov za ovu sezonu se u međuvremenu promenio, pa ništa nije urađeno. Osveži stranicu."
+      "theBasisHasChanged": "Osnov za ovu sezonu se u međuvremenu promenio, pa ništa nije urađeno. Osveži stranicu.",
+      "theSeasonIsNotOffered": "Ova sezona se sada ne može menjati."
     },
     "editMember": "Izmeni podatke",
     "editMemberNamed": "Izmeni podatke: {name}"

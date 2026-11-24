@@ -17,7 +17,7 @@ import {
   askingToCancel,
   basisWordOf,
   cancelling,
-  GRANTING,
+  granting,
   membershipOnTheRow,
   offeredFor,
   overTheExemption,
@@ -192,31 +192,34 @@ export function MemberRow({
     )
   }
 
-  const forTheSeason = <p>{t('verification.askExemptionWhose', { whose, season })}</p>
+  /* The member and the season the question is about: the box's for a grant and a cancellation, which may
+     be a frozen season (`MemberSeasons.tsx`), and the season on sale for the change of basis. */
+  const forThe = (said: number) => <p>{t('verification.askExemptionWhose', { whose, season: said })}</p>
 
   function question(open: Asking): ReactNode {
     switch (open.act) {
       case 'grant':
         return yesOrNo(
-          t('admin.askGrantExemption', { season }),
+          t('admin.askGrantExemption', { season: open.season }),
           () =>
             void send(
-              () => askTheServer(membershipOnTheRow(one.memberNumber), GRANTING, 'POST'),
+              () => askTheServer(membershipOnTheRow(one.memberNumber), granting(open.season), 'POST'),
               WHEN_GRANTING_AN_EXEMPTION,
               () => onChanged(t('admin.exemptionGranted')),
             ),
-          forTheSeason,
+          forThe(open.season),
         )
       case 'cancel':
         return yesOrNo(
-          t(askingToCancel(open.basis), { season }),
+          t(askingToCancel(open.basis), { season: open.season }),
           () =>
             void send(
-              () => askTheServer(membershipOnTheRow(one.memberNumber), cancelling(open.basis), 'DELETE'),
+              () =>
+                askTheServer(membershipOnTheRow(one.memberNumber), cancelling(open.basis, open.season), 'DELETE'),
               WHEN_CANCELLING,
               () => onChanged(t('admin.membershipCancelled')),
             ),
-          forTheSeason,
+          forThe(open.season),
         )
       case 'toTheExemption':
         return yesOrNo(
@@ -227,7 +230,7 @@ export function MemberRow({
               WHEN_CHANGING_TO_THE_EXEMPTION,
               () => onChanged(t('admin.basisChanged')),
             ),
-          forTheSeason,
+          forThe(season),
         )
       case 'pay':
         return (
@@ -372,7 +375,7 @@ export function MemberRow({
             aria-disabled={basis === undefined ? true : undefined}
             onClick={() => {
               if (basis !== undefined) {
-                setAsking({ act: 'cancel', basis })
+                setAsking({ act: 'cancel', basis, season })
               }
             }}
           />

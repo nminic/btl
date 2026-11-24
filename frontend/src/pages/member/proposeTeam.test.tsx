@@ -1,5 +1,3 @@
-import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
 import { configure, screen, waitFor, within } from '@testing-library/react'
 import sr from '../../i18n/sr.json'
 import { must } from '../../test/at'
@@ -10,7 +8,6 @@ import { answeredWith, refused, serverThat } from '../../test/serverAnswers'
 import { SLOW } from '../../test/slow'
 import { Saved } from '../../test/saved'
 import { typeATownTheCodebookKnows } from '../../test/town'
-import { everyRule } from '../../test/stylesheet'
 import { setupUser } from '../../test/user'
 import type { Asked } from '../../test/serverAnswers'
 
@@ -100,31 +97,12 @@ describe('the way to propose a team', () => {
     expect(cards.compareDocumentPosition(offered) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
-  /* THE SENTENCE STANDS AT THE SAME DISTANCE FROM THE TABLE AS THE BUTTON DOES. It was drawn with the class of
-     the empty lists beside the class of the button, both of the same weight, and the later rule won: the button
-     had 16px above it and the sentence none. jsdom computes no cascade (ADL A33), so what is asked is the
-     sheet: of every rule that names one class of the sentence, alone or in a list, one - the button's - sets a
-     margin. */
-  it('has the gap of the button above it, from one rule and not from two that argue', async () => {
-    renderAt('/sr/timovi', 'competitor', '000002', undefined, '2027-06-01')
-
-    await screen.findByRole('table', { name: 'Timovi' })
-
-    const sentence = screen.getByText(/^Tim se osniva u prelaznom roku/)
-    const sheet = readFileSync(join(process.cwd(), 'src', 'pages', 'Rankings.css'), 'utf-8')
-    const margins = everyRule(sheet, 'Rankings.css').filter(
-      (rule) =>
-        [...sentence.classList].some((one) =>
-          rule.selectorText.split(',').some((selector) => selector.trim() === `.${one}`),
-        ) &&
-        ['margin', 'margin-block', 'margin-block-start', 'margin-top'].some(
-          (property) => rule.style.getPropertyValue(property) !== '',
-        ),
-    )
-
-    expect(margins.map((rule) => rule.selectorText)).toEqual(['.rankings__propose'])
-    expect(margins[0]?.style.getPropertyValue('margin-block')).toBe('var(--space-16) 0')
-  })
+  /* THE GAP ABOVE THE SENTENCE IS THE BUTTON'S, and it is asked of Chrome, not of the sheet: `geometry/tableCards.geometry.ts`
+     reads the gap under the table of the button and of the sentence and holds both to `--space-16` as the browser
+     resolves it (review of PR 804, medium 1). It stood here as a reading of `Rankings.css` for „one rule that sets a
+     margin on the class", which a second rule of another weight, a descendant or another sheet slipped past, and
+     which said nothing about where the sentence stood; the mutations it held (a second margin on the class, the
+     class of the empty lists put back) fall on the geometry. */
 
   /* And only on the teams: the men and the women offer neither, to the same member on the same day. */
   it.each(['/sr/tabela', '/sr/tabela?pol=z'])('is offered nowhere on %s', async (address) => {

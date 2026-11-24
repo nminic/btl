@@ -291,6 +291,12 @@ const OPENING: { file: string; how: How; why: string; calls?: { shape: Shape; ca
     why: 'THE FILE\'S OWN, and held by `pages/adminEventKind.test.tsx`: the sheet that asks before an event is saved in a way that takes its races away says the number of results is not known for a file that failed and for one on its way, the sentence the sheet over a deletion already says (owner, 28.09.2026 and 07.11.2026); it neither waits for the file nor refuses the save, which until 07.11.2026 it did (`admin.waitingForResults`, `admin.resultsFailed`).',
   },
   {
+    file: 'pages/admin/MemberSeasons.tsx',
+    how: 'boundary',
+    why: 'MY REASONING, and not a list: which boxes of the column „Sezone" ACT, not which seasons are drawn. Every season of the league is drawn from the member\'s own read whatever `/api/frozen-seasons` answers; a read of it that failed or is on its way leaves the box of every season but the one on sale switched off, which is the side the route refuses on anyway (`MemberMembershipApi.whyNot`, the row of the freeze and never the clock), so nothing is offered that the server would not do. Written 24.11.2026 with the branch `b-clanstvo-po-sezoni`.',
+    calls: [{ shape: 'dataOr', call: 'dataOr(useFrozenSeasons(), [])' }],
+  },
+  {
     file: 'pages/admin/PendingQueue.tsx',
     how: 'says',
     why: 'THE FILE\'S OWN: the queue of teams says `verification.membersFailed` and refuses the decision while the list of members failed, two states and not one. HELD since 07.11.2026 by `pages/member/proposeTeam.test.tsx` ("the queue of teams without the members"): the sentence is asked by its words from the dictionary, once, as the description of every button that would decide, with a press that takes nothing, and the state on its way is asked not to say it. No case held it before (a search of the tests for its key and its words found none).',

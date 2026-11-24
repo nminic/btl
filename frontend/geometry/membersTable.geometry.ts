@@ -85,8 +85,16 @@ const FOUR_SEASONS = [
   { season: 2030, basis: 'feeExempt' },
 ]
 
+/**
+ * 2027 and 2028 FROZEN, 2029 ENDED AND NOT, 2030 ON SALE: the three states of a box in one open list (owner,
+ * 24.11.2026, „posle zamrzavanja se sme štiklirati i odštiklirati", and the box of a season that ended is
+ * switched off until its freeze).
+ */
+const FROZEN = [{ season: 2027 }, { season: 2028 }]
+
 const LONG: Answers = {
   ...SAMPLE,
+  '/api/frozen-seasons': FROZEN,
   '/api/members': MEMBERS.map((one, index) => {
     const [firstName, lastName] = REAL_NAMES[index % REAL_NAMES.length] ?? REAL_NAMES[0]
 
@@ -101,6 +109,7 @@ const LONG: Answers = {
  */
 const WORST: Answers = {
   ...SAMPLE,
+  '/api/frozen-seasons': FROZEN,
   '/api/members': MEMBERS.map((one, index) => {
     const [firstName, lastName] = REAL_NAMES[index % REAL_NAMES.length] ?? REAL_NAMES[0]
 
@@ -170,6 +179,11 @@ async function readTheTable(open: Geometry['open'], at: At, answers: Answers) {
   }
 
   await page.getByText('Promeni osnov u oslobođenje').filter({ visible: true }).first().waitFor({ state: 'visible' })
+
+  /* The list is read once every answer has arrived, `/api/frozen-seasons` among them: a frozen box acts only
+     then. Waited on the network and not on a box that acts, so a box that never acts fails the assertion below
+     and not a wait that runs out. */
+  await page.waitForLoadState('networkidle')
   /* The pointer is parked off the table again: the last press left it over a control. */
   await page.mouse.move(1, 1)
 
@@ -274,7 +288,41 @@ async function readTheTable(open: Geometry['open'], at: At, answers: Answers) {
       return wrong
     })
 
+    /* EVERY OPENED LIST OF SEASONS IS SEEN WHOLE (the coordinator's measurement of 24.11.2026, „spisak se vidi
+       ceo, bez klizača i bez bočnog klizanja"): it scrolls in neither direction inside itself, and each of its
+       seasons stands inside the list and inside the table's box, side to side. And which of its boxes ACT,
+       by season, which is what the browser draws off `/api/frozen-seasons` (`pages/admin/MemberSeasons.tsx`). */
+    const outer = box.getBoundingClientRect()
+    const lists = [...table.querySelectorAll('.members-seasons__list')].filter(drawn)
+    const clipped = lists.flatMap((list, index) => {
+      const own = list.getBoundingClientRect()
+      const wrong: string[] = []
+
+      if (list.scrollHeight > list.clientHeight || list.scrollWidth > list.clientWidth) {
+        wrong.push(`list ${String(index)} scrolls inside itself`)
+      }
+
+      for (const item of list.querySelectorAll('li')) {
+        const at = item.getBoundingClientRect()
+
+        if (at.top < own.top - 0.5 || at.bottom > own.bottom + 0.5 || at.left < outer.left - 0.5 || at.right > outer.right + 0.5) {
+          wrong.push(`list ${String(index)}: „${(item.textContent ?? '').trim()}" is not seen whole`)
+        }
+      }
+
+      return wrong
+    })
+    const acting = lists.map((list) =>
+      [...list.querySelectorAll('input[type="checkbox"]')]
+        .filter((one) => one instanceof HTMLInputElement && !one.disabled)
+        .map((one) => (one.closest('label')?.textContent ?? '').trim())
+        .join(' '),
+    )
+
     return {
+      lists: lists.length,
+      clipped: clipped.slice(0, 6),
+      acting: [...new Set(acting)],
       misplaced: misplaced.slice(0, 6),
       inside: box.scrollWidth,
       outside: box.clientWidth,
@@ -319,6 +367,15 @@ for (const width of WIDTHS) {
       }
 
       expect(seen.broken, 'words broken inside the word').toEqual([])
+
+      /* Every list this width draws was opened and is seen whole; with four seasons, 2027 and 2028 frozen,
+         2029 ended and not frozen and 2030 on sale, exactly the frozen two and the one on sale act. */
+      expect(seen.lists).toBe(MEMBERS.length)
+      expect(seen.clipped, 'opened lists of seasons not seen whole').toEqual([])
+
+      if (what !== 'the members of the sample') {
+        expect(seen.acting).toEqual(['2027 2028 2030'])
+      }
 
       expect(seen.inside, `the table's box scrolls: ${String(seen.inside)} inside ${String(seen.outside)}`).toBeLessThanOrEqual(
         seen.outside,
