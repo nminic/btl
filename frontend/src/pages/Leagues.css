@@ -386,12 +386,13 @@
    was 58px, in which „PROPRATNA” of the line above the name is 150px, so the head was wider than its sheet and
    the page scrolled sideways, measured 23.11.2026 in `geometry/largeLettersSideways.geometry.ts`). Asked of the
    sheet and in em, as the rule above is, so it is a container and not a width at which the portal changes
-   shape (`styles/scale.test.ts`); 10.5em is 168px at the browser's own text and 336px at 200%, so no window the
+   shape (`styles/scale.test.ts`); 11em is 176px at the browser's own text and 352px at 200%, so no window the
    portal draws at the browser's own text meets it (the narrowest sheet is 288px, 18em). It was 10em until
    23.11.2026 and the head of a visitor at 390px and 200% (a sheet of 10.19em, a column of 128px for the name, the
-   line above it 22px out of it) was left outside; the sheet of 412px (10.875em) has 150px for the name and keeps
-   the two side by side. */
-@container league-sheet (max-width: 10.5em) {
+   line above it 22px out of it) was left outside. It was 10.5em until 24.11.2026: the sheet of 412px (10.875em)
+   kept the two side by side, and with the fonts of CI the name and the line above it ran 5px out of the head
+   (`largeLettersSideways.geometry.ts`, a visitor at 412px and 200%, both days), so 412px stacks them too. */
+@container league-sheet (max-width: 11em) {
   .leagues__score {
     grid-template-columns: minmax(0, 1fr);
   }
