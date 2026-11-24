@@ -1,4 +1,5 @@
 import { SLOW } from '../test/slow'
+import { theCookieNames } from '../test/setup'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { ClockProvider } from '../clock/ClockProvider'
@@ -572,6 +573,9 @@ describe('Registration once it is open', () => {
 
   it('takes a photograph as proof, and lets it be taken back', async () => {
     const user = setupUser()
+    /* The form for a result is drawn only where the server names a season open for a report, and the
+       server answers that of a signed-in member only (PDL P9, 24.11.2026). */
+    theCookieNames({ role: 'competitor', memberNumber: '000007' })
     render(
       <ClockProvider>
         <I18nProvider locale="sr">
@@ -584,7 +588,7 @@ describe('Registration once it is open', () => {
       </ClockProvider>,
     )
 
-    const field = inputElement(screen.getByLabelText(/Slika kao dokaz/))
+    const field = inputElement(await screen.findByLabelText(/Slika kao dokaz/))
     const file = new File(['sadržaj'], 'sat.jpg', { type: 'image/jpeg' })
 
     await user.upload(field, file)
