@@ -117,6 +117,25 @@ class LeagueApiTest {
 						+ " (select id from place where rank = 1), null, null, ?, 2027, null)")
 				.param(aPicture("c1", "0.11000000", "0.12000000", "0.13000000"))
 				.update();
+
+		/* AND THE BOX „ISTAKNI DOGAĐAJE" (V109) ticked on one league of three, the second written, so the
+		   field is not the same in every record and „the first league's box" is somebody else's. */
+		db.sql("update league set highlights_events = true where slug = 'liga-2027'").update();
+	}
+
+	/**
+	 * THE BOX IS ANSWERED AS EACH LEAGUE HOLDS IT, ticked and unticked, so the form of a league opens with it as
+	 * it stands (owner, PDL 24.11.2026, „Istakni događaje").
+	 */
+	@Test
+	void eachLeagueAnswersWithItsOwnBox() throws Exception {
+		List<String> boxes = new java.util.ArrayList<>();
+
+		for (JsonNode one : answer()) {
+			boxes.add(one.path("slug").asString() + " " + one.path("highlightsEvents").asBoolean());
+		}
+
+		assertThat(boxes).containsExactly("liga-2027 true", "liga-2028 false", "liga-2029 false");
 	}
 
 	/** A picture row with this digest (the two characters said 32 times) and this circle. */

@@ -38,6 +38,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 
@@ -1197,6 +1198,151 @@ class LeagueWriteApiTest {
 
 		assertThat(countRace(acted, run).getStatus()).isEqualTo(204);
 		assertThat(counted(acted)).contains(run).doesNotContain(itsRace);
+	}
+
+	/**
+	 * THE BOX „ISTAKNI DOGAĐAJE" IS WRITTEN BY THE ROUTE THAT WRITES THE LEAGUE, BOTH WAYS (owner, PDL 24.11.2026).
+	 *
+	 * <p>Ticked on a new league and on one that stands, unticked after it was ticked, and a new league whose form
+	 * says nothing does not highlight. The league acted on is not the first and not the only of its season, so a
+	 * statement that wrote the box onto the wrong row is told apart by {@link #neighbour} keeping false.
+	 */
+	@Test
+	void theBoxIsTickedAndUntickedByTheRouteThatWritesTheLeague() throws Exception {
+		assertThat(add(new LeagueWriteApi.Upsert("Istaknuta", "istaknuta-2028", RUNNING, "", "", true))
+				.getStatus()).isEqualTo(201);
+		assertThat(add(new LeagueWriteApi.Upsert("Neoznacena", "neoznacena-2028", RUNNING, "", ""))
+				.getStatus()).isEqualTo(201);
+		assertThat(highlights("istaknuta-2028")).as("a new league ticked on its form does not highlight").isTrue();
+		assertThat(highlights("neoznacena-2028")).as("a new league whose form said nothing highlights").isFalse();
+
+		assertThat(change(acted, new LeagueWriteApi.Upsert("Druga liga 2028", "druga-2028", RUNNING, "", "", true))
+				.getStatus()).isEqualTo(200);
+		assertThat(highlights("druga-2028")).isTrue();
+		assertThat(highlights("prva-2028")).as("the box was written onto another league").isFalse();
+
+		assertThat(change(acted, new LeagueWriteApi.Upsert("Druga liga 2028", "druga-2028", RUNNING, "", "", false))
+				.getStatus()).isEqualTo(200);
+		assertThat(highlights("druga-2028")).as("a ticked box could not be unticked").isFalse();
+	}
+
+	/**
+	 * A CHANGE THAT SAYS NOTHING ABOUT THE BOX LEAVES IT AS IT STANDS, in both of its states: ADL A54, „sme da
+	 * znači „ne diraj", nikad „vrati na podrazumevano"". A change that reset it to false would pass on the
+	 * unticked league and fail on the ticked one; one that ticked it would do the opposite.
+	 */
+	@Test
+	void aChangeThatSaysNothingAboutTheBoxLeavesItAsItStandsTickedOrNot() throws Exception {
+		db.sql("update league set highlights_events = true where id = ?").param(acted).update();
+
+		assertThat(change(acted, new LeagueWriteApi.Upsert("Druga liga 2028", "druga-2028", RUNNING, "", ""))
+				.getStatus()).isEqualTo(200);
+		assertThat(change(neighbour, new LeagueWriteApi.Upsert("Prva liga 2028", "prva-2028", RUNNING, "", ""))
+				.getStatus()).isEqualTo(200);
+
+		assertThat(highlights("druga-2028")).as("a change that did not name the box unticked it").isTrue();
+		assertThat(highlights("prva-2028")).as("a change that did not name the box ticked it").isFalse();
+	}
+
+	/**
+	 * A FROZEN LEAGUE DOES NOT MOVE ITS BOX, and is refused with the sentence every other change of it meets. The
+	 * plan approved on 24.11.2026 carries it as the assistant's derivation told to the owner: „zamrznuta liga ne
+	 * menja ni ovu kućicu".
+	 */
+	@Test
+	void theBoxOfAFrozenLeagueDoesNotMove() throws Exception {
+		MockHttpServletResponse answer = change(frozen,
+				new LeagueWriteApi.Upsert("Zimska liga 2027", "zimska-2027", FROZEN, "", "", true));
+
+		assertThat(answer.getStatus()).isEqualTo(409);
+		assertThat(answer.getContentAsString()).contains(LeagueWriteApi.THE_SEASON_IS_FROZEN);
+		assertThat(highlights("zimska-2027")).isFalse();
+	}
+
+	/**
+	 * WHO MAY TICK IT: the superadministrator and the moderator of the leagues, and nobody else (owner, PDL
+	 * 24.11.2026, chosen against the recommendation: „Kućicu sme da štiklira i moderator te lige, ne samo
+	 * administrator"). A moderator without {@code entity:leagues} meets 404, the answer of a route that is not
+	 * there (ADL A8), and nobody signed in meets 401; in neither case is anything written.
+	 *
+	 * <p><b>„The moderator of that league" is the moderator with the right over the leagues</b>, because a league
+	 * has no moderator of its own („NE POSTOJI ADMINISTRATOR PROPRATNE LIGE!!!!", owner 12.09.2026, and V19
+	 * dropped the column that named one). So the moderator of ANOTHER league does not exist to be refused; the
+	 * refused moderator here is the one without the tick.
+	 */
+	@Test
+	void theSuperadministratorAndTheModeratorOfTheLeaguesTickTheBoxAndNobodyElseDoes() throws Exception {
+		LeagueWriteApi.Upsert ticked = new LeagueWriteApi.Upsert("Druga liga 2028", "druga-2028", RUNNING, "", "",
+				true);
+		String bareModerator = account("bez-prava@primer.rs");
+
+		assertThat(changeAs(bareModerator, acted, ticked).getStatus()).isEqualTo(404);
+		assertThat(http.perform(put("/api/leagues/" + acted).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON).content(json(ticked)))
+				.andReturn().getResponse().getStatus()).isEqualTo(401);
+		assertThat(highlights("druga-2028")).as("a refused request ticked the box").isFalse();
+
+		assertThat(changeAs(session, acted, ticked).getStatus()).as("the moderator of the leagues").isEqualTo(200);
+		assertThat(highlights("druga-2028")).isTrue();
+
+		String superadmin = account("glavni@primer.rs");
+		db.sql("update account set role_id = (select id from role where code = 'superadmin') where email = ?")
+				.param("glavni@primer.rs").update();
+
+		assertThat(changeAs(superadmin, neighbour,
+				new LeagueWriteApi.Upsert("Prva liga 2028", "prva-2028", RUNNING, "", "", true)).getStatus())
+				.as("the superadministrator").isEqualTo(200);
+		assertThat(highlights("prva-2028")).isTrue();
+	}
+
+	/**
+	 * AND WHAT THE CALENDAR DRAWS FOLLOWS, THROUGH THE ROUTES AND NOT THROUGH SQL.
+	 *
+	 * <p>The spring event holds a race of {@link #acted} and a race of {@link #neighbour}: two leagues, one ticked.
+	 * Ticked through the form, the calendar highlights it; the race taken out of the ticked league through the
+	 * panel, the highlight is gone, although the race of the other league still stands („Ako ih izbacim iz lige,
+	 * istaknutost se gubi"). And {@code featured}, which is what the event's form reads, says „Ne" the whole time
+	 * (owner: „Polje „Istaknuto” na formi događaja se ne menja: pokazuje samo ručni izbor").
+	 */
+	@Test
+	void theCalendarHighlightsTheEventOfATickedLeagueUntilItsRaceIsTakenOut() throws Exception {
+		assertThat(theCalendarSays("prolecni-2028")).isEqualTo("featured false, highlighted false");
+
+		assertThat(change(acted, new LeagueWriteApi.Upsert("Druga liga 2028", "druga-2028", RUNNING, "", "", true))
+				.getStatus()).isEqualTo(200);
+
+		assertThat(theCalendarSays("prolecni-2028")).isEqualTo("featured false, highlighted true");
+		assertThat(theCalendarSays("nevezani-2028")).as("an event no league counts was highlighted")
+				.isEqualTo("featured false, highlighted false");
+
+		assertThat(stopCounting(acted, theThirdOfThree).getStatus()).isEqualTo(204);
+
+		assertThat(theCalendarSays("prolecni-2028")).as("the event kept the highlight after leaving the league")
+				.isEqualTo("featured false, highlighted false");
+	}
+
+	private boolean highlights(String slug) {
+		return db.sql("select highlights_events from league where slug = ?").param(slug)
+				.query(Boolean.class).single();
+	}
+
+	private String theCalendarSays(String slug) throws Exception {
+		for (var one : new ObjectMapper().readTree(http.perform(get("/api/events")).andReturn().getResponse()
+				.getContentAsString())) {
+			if (one.path("slug").asString().equals(slug)) {
+				return "featured " + one.path("featured").asBoolean() + ", highlighted "
+						+ one.path("highlighted").asBoolean();
+			}
+		}
+
+		return "not on the calendar";
+	}
+
+	private MockHttpServletResponse changeAs(String who, long id, LeagueWriteApi.Upsert typed) throws Exception {
+		return http.perform(put("/api/leagues/" + id).with(csrf())
+						.contentType(MediaType.APPLICATION_JSON).content(json(typed))
+						.cookie(new Cookie(SessionCookie.NAME, who)))
+				.andReturn().getResponse();
 	}
 
 	/** A key no row holds, asked of the table rather than written out as a big number. */

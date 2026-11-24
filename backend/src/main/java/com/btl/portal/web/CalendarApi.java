@@ -54,13 +54,52 @@ class CalendarApi {
 	}
 
 	/**
-	 * @param copiedFrom the event this one was copied from when the year turned,
-	 *                   or null. A calendar is built by copying the year before it
-	 *                   and the link back is what says which
+	 * @param featured    the event's OWN choice, „Istaknuto: Da" or „Ne" on its form, and
+	 *                    nothing besides. The form of the event reads this and only this
+	 *                    (owner, PDL 24.11.2026: „Polje „Istaknuto” na formi događaja se ne
+	 *                    menja: pokazuje samo ručni izbor, a istaknutost iz lige se vidi u
+	 *                    kalendaru"), so it is never the field {@code highlighted} is
+	 * @param highlighted whether the calendar draws the event as highlighted: its own
+	 *                    choice, or a race of it counted by a league whose box „Istakni
+	 *                    događaje" is ticked ({@link #HIGHLIGHTED})
+	 * @param copiedFrom  the event this one was copied from when the year turned,
+	 *                    or null. A calendar is built by copying the year before it
+	 *                    and the link back is what says which
 	 */
 	record Event(long id, String slug, String name, LocalDate date, String city, String country,
-			String kind, boolean featured, String description, String link, Long copiedFrom) {
+			String kind, boolean featured, boolean highlighted, String description, String link,
+			Long copiedFrom) {
 	}
+
+	/**
+	 * WHETHER THE CALENDAR DRAWS AN EVENT HIGHLIGHTED, and the one place that decides it.
+	 *
+	 * <p><b>Owner, PDL 24.11.2026:</b> „Ukoliko je to štiklirano, svi događaji te lige
+	 * automatski dobijaju istaknutost u kalendaru. Ako ih izbacim iz lige, istaknutost se
+	 * gubi." And of the event's own choice, chosen among the outcomes offered: „Ručno
+	 * „Istaknuto: Da” na događaju je zaseban izbor i ostaje kad se događaj izbaci iz lige;
+	 * događaj bez ručnog „Da” gubi istaknutost čim izađe iz lige."
+	 *
+	 * <p><b>Worked out on every read and written nowhere</b>, which is the plan he approved
+	 * („istaknutost se računa pri čitanju kalendara iz ručnog izbora ili iz lige, bez
+	 * prepisivanja na događaj"). So taking a race out of a league, unticking the box or
+	 * deleting the league ends the highlight with nothing to undo, and the event's own
+	 * {@code featured} is never touched by any of them.
+	 *
+	 * <p><b>An event of a league is an event with at least one race that league counts</b>,
+	 * because from V19 a league counts races and not days; another race of the same day
+	 * that the league does not count does not take the highlight away. <b>And one ticked
+	 * league is enough</b> where an event's races count towards several. Both of those are
+	 * the assistant's reading of „svi događaji te lige", not the owner's words.
+	 *
+	 * <p>The highlight is the CALENDAR'S and nobody else reads it: the copy of an event is
+	 * never featured (owner, 11.08.2026), which is about {@code featured}, and a copy counts
+	 * no race of any league until somebody puts one in.
+	 */
+	private static final String HIGHLIGHTED = "(e.featured or exists (select 1 from race r"
+			+ " join league_race lr on lr.race_id = r.id"
+			+ " join league l on l.id = lr.league_id"
+			+ " where r.event_id = e.id and l.highlights_events))";
 
 	/**
 	 * @param renamed whether the name was changed after the event was created,
@@ -117,7 +156,8 @@ class CalendarApi {
 		return db.sql("select e.id, e.slug, e.name, e.date,"
 						+ " coalesce(town.name, e.city) as city,"
 						+ " coalesce(town_country.code, typed_country.code) as country,"
-						+ " e.kind, e.featured, e.description, e.link, e.copied_from"
+						+ " e.kind, e.featured, " + HIGHLIGHTED + " as highlighted,"
+						+ " e.description, e.link, e.copied_from"
 						+ " from btl_event e"
 						+ " left join place town on town.id = e.place_id"
 						+ " left join country town_country on town_country.id = town.country_id"
@@ -125,8 +165,8 @@ class CalendarApi {
 						+ " order by e.date, e.id")
 				.query((row, one) -> new Event(row.getLong(1), row.getString(2), row.getString(3),
 						row.getDate(4).toLocalDate(), row.getString(5), row.getString(6),
-						row.getString(7), row.getBoolean(8), row.getString(9), row.getString(10),
-						row.getObject(11) == null ? null : row.getLong(11)))
+						row.getString(7), row.getBoolean(8), row.getBoolean(9), row.getString(10),
+						row.getString(11), row.getObject(12) == null ? null : row.getLong(12)))
 				.list();
 	}
 
