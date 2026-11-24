@@ -709,8 +709,18 @@ function Row({
          dugme nestaje"). Every refusal of this route is one 404 and none names a reason, so the row on the
          screen is the one thing that is certainly out of date: the registration was deleted by somebody
          else, or the person became a member, and either way the list the server serves now no longer offers
-         „Obriši" on it. The row remounts with the list, so nothing is set on it first. */
-      onNotDeleted()
+         „Obriši" on it. The row remounts with the list, so nothing is set on it first.
+
+         ONLY FOR THAT 404 (owner, 24.11.2026, second decision): any other failure (a 500, a connection that was
+         cut, a 401) says nothing about the row, so the list is not read again for it and the old sentence
+         stands beside the row, „Ništa nije sačuvano (greška …)". */
+      if (answer.got === 'wrong' && answer.status === 404) {
+        onNotDeleted()
+
+        return
+      }
+
+      setRefused({ answer, refusals: {} })
     } finally {
       outstanding.current = false
       setActivating(false)

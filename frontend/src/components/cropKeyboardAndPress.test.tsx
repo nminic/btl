@@ -139,6 +139,28 @@ describe('a press that takes the focus off a slider', () => {
     await waitFor(() => expect(theBox()).not.toHaveClass('crop--held'))
   })
 
+  it('is kept for a finger, whose focus moves after the release and not before it', async () => {
+    /* Owner, 24.11.2026, the second decision. A touch is `pointerdown`, `pointerup`, and THEN the mouse events the
+       browser imitates, the focus leaving the slider with the imitated mouse-down. A press that ended at
+       `pointerup` is over by then and the strip is not kept: measured by a review on a card of verification at 360px,
+       the button went from y 459,9 to 422,5 and no tap of two reached it. */
+    const user = setupUser()
+
+    renderWithI18n(<Choosing />)
+    await user.upload(screen.getByLabelText(/Izaberi sliku/), anImage())
+    ;(await opened()).getByLabelText('Veličina isečka').focus()
+
+    const button = screen.getByRole('button', { name: 'Sačuvaj' })
+
+    fireEvent.pointerDown(button)
+    fireEvent.pointerUp(button)
+    act(() => {
+      button.focus()
+    })
+    expect(theBox(), 'the focus came after the release and the strip was not kept').toHaveClass('crop--held')
+    await waitFor(() => expect(theBox()).not.toHaveClass('crop--held'))
+  })
+
   it('is let go of by a press that is taken away, as by one that ends', async () => {
     const user = setupUser()
 

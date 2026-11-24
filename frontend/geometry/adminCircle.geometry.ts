@@ -385,6 +385,54 @@ for (const at of WIDTHS) {
     expect(await page.evaluate(() => Reflect.get(window, 'pressesOfTheCase')), 'the click never reached the button').toBe(1)
   })
 
+  /* THE SAME WITH A FINGER, at the two widths a finger is used at (owner, 24.11.2026, the second decision). The
+     browser moves the focus of a tap on the mouse-down it imitates AFTER the finger is lifted, so the strip folded
+     between the release and the click: a review measured the button from y 459,9 to 422,5 on the card at 360px and
+     none of two taps reached it. */
+  if (at.width < 1000) {
+    test(`the first tap of a finger after the arrow keys is not lost, ${label(at)}`, async ({ open }) => {
+      const card = `[id="${CARD}-card"]`
+      const { page } = await open({ ...at, touch: true }, '/sr/administracija/verifikacija/trkacki-profil', '.submissions', THE_QUEUE)
+
+      await servedAPictureAt(page, '**/api/verification/*/photo*', '.submissions')
+
+      const toggle = page.locator(`button[aria-controls="${CARD}-card"]`)
+
+      if (await toggle.isVisible()) {
+        await toggle.click()
+      }
+
+      const button = page.locator(card).getByRole('button', { name: 'Odobri', exact: true })
+
+      await button.evaluate((one) => {
+        Reflect.set(window, 'tapsOfTheCase', 0)
+        one.addEventListener(
+          'click',
+          (event) => {
+            Reflect.set(window, 'tapsOfTheCase', Number(Reflect.get(window, 'tapsOfTheCase')) + 1)
+            event.stopImmediatePropagation()
+          },
+          true,
+        )
+      })
+
+      await page.locator(`${card} .crop__slider input`).first().focus()
+      await button.scrollIntoViewIfNeeded()
+
+      const before = await button.boundingBox()
+
+      if (before === null) {
+        throw notMeasured('the button of the card has no box')
+      }
+
+      await page.touchscreen.tap(before.x + before.width / 2, before.y + before.height / 2)
+      /* Past the third of a second the strip is kept for, so what is read is where it settled. */
+      await page.waitForTimeout(500)
+
+      expect(await page.evaluate(() => Reflect.get(window, 'tapsOfTheCase')), 'the tap never reached the button').toBe(1)
+    })
+  }
+
   test(`the moderator drags the circle of a waiting picture and reaches both buttons past it, ${label(at)}`, async ({ open }) => {
     const card = `[id="${CARD}-card"]`
     const { page } = await open(at, '/sr/administracija/verifikacija/trkacki-profil', '.submissions', THE_QUEUE)

@@ -142,12 +142,23 @@ export function CropWindow({ picture, crop, alt, children, onChange, onLoaded, o
   const pressed = useRef(false)
 
   useEffect(() => {
+    let letGo: ReturnType<typeof setTimeout> | undefined
     const down = () => {
+      clearTimeout(letGo)
       pressed.current = true
     }
+    /* THE PRESS IS OVER A MOMENT AFTER THE RELEASE AND NOT AT IT (owner, 24.11.2026, the second decision: a touch
+       too). A finger moves the focus where a mouse does not: the browser takes it to the button on the mouse-down
+       it IMITATES after the finger is lifted, so the focus leaves the slider after `pointerup`. A press that ended
+       at the release would be over by then, the strip would not be kept, and the tap would be lost as the click was.
+       The imitated events and the click follow the release at once, so a third of a second is the room they
+       need; the strip folds after it. */
     const up = () => {
-      pressed.current = false
-      setTimeout(() => setKeptOpen(false), 0)
+      clearTimeout(letGo)
+      letGo = setTimeout(() => {
+        pressed.current = false
+        setKeptOpen(false)
+      }, 300)
     }
 
     document.addEventListener('pointerdown', down, true)
@@ -155,6 +166,7 @@ export function CropWindow({ picture, crop, alt, children, onChange, onLoaded, o
     document.addEventListener('pointercancel', up, true)
 
     return () => {
+      clearTimeout(letGo)
       document.removeEventListener('pointerdown', down, true)
       document.removeEventListener('pointerup', up, true)
       document.removeEventListener('pointercancel', up, true)
