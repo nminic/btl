@@ -97,6 +97,7 @@ class TheWrittenPagesDropTheirExplanationsCarriedOverTest extends DatabaseTest {
 	private void theTextAsItStoodBeforeV77() {
 		/* V78 (29.10.2026) edited two of the sections V77 edits, so it is undone first, read out of V78 itself, and V80
 		   (30.10.2026) moved the rulebook's sign-off on from the day V77 gave it, so it is undone before that. */
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "110");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "107");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "102");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "100");
@@ -158,6 +159,7 @@ class TheWrittenPagesDropTheirExplanationsCarriedOverTest extends DatabaseTest {
 		/* The text the portal serves carries V78 on top (29.10.2026), which edits two of the sections V77 edits, so V78 is
 		   undone first and what V77 is compared to is the text V77 itself left (V80 of 30.10.2026 first of all, since it
 		   moved the sign-off V77 wrote). */
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "110");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "107");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "102");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "100");
@@ -203,6 +205,7 @@ class TheWrittenPagesDropTheirExplanationsCarriedOverTest extends DatabaseTest {
 	@Test
 	void v77RunAgainOverTheFinishedTextStopsAndListsEveryEdit() {
 		/* The text as V94 left it: V95 (owner, 11.11.2026) moved the sign-offs of all three pages and took sentences out of them, which is held by TheWrittenPagesStateTheFactCarriedOverTest. */
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "110");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "107");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "102");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "100");

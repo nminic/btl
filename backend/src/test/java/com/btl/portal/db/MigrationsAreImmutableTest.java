@@ -927,7 +927,18 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   at V108 when it was written.
 
 			   Pinned LAST, when the file was final, off this very assertion. */
-			new Applied("109", "V109__a_league_may_highlight_its_events.sql", -926804880));
+			new Applied("109", "V109__a_league_may_highlight_its_events.sql", -926804880),
+
+			/* V110. The privacy policy loses the row about the choice of theme from the table of section 2, in both
+			   languages, with no new text (owner, PDL 24.11.2026, „Tema": „Red o izboru teme (`btl-theme`, lokalno
+			   skladište) se briše iz Politike privatnosti, srpske i engleske, bez ikakvog novog teksta."), and the policy's
+			   sign-off moves to 24.11.2026 in both languages (owner, 07.11.2026, „Datum Poslednja izmena [...] pomera se
+			   uvek kad se reči tog teksta promene"). The paragraph of section 4 that names the store is NOT touched and is
+			   put to the owner. No schema, row, key or index touched. 110 and no other: main stood at V109 when it was
+			   written.
+
+			   Pinned LAST, when the file was final, off this very assertion. */
+			new Applied("110", "V110__the_privacy_policy_loses_the_row_about_the_choice_of_theme.sql", 54364820));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {

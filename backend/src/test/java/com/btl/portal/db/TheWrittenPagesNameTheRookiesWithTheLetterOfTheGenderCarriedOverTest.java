@@ -38,6 +38,7 @@ class TheWrittenPagesNameTheRookiesWithTheLetterOfTheGenderCarriedOverTest exten
 	/** The text as V98 left it: V100 (owner, 14.11.2026) moves the rulebook's sign-off on, which is held by TheWrittenPagesSayThatAnUnscoredRaceIsAPersonalRecordCarriedOverTest. */
 	@BeforeEach
 	void theTextAsV98LeftIt() {
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "110");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "107");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "100");
 	}

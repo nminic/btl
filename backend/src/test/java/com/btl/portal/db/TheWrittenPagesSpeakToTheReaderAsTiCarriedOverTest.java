@@ -1,5 +1,6 @@
 package com.btl.portal.db;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.postgresql.util.PSQLException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,6 +39,15 @@ class TheWrittenPagesSpeakToTheReaderAsTiCarriedOverTest extends DatabaseTest {
 	private static final String POLICY = TheWrittenPagesSpeakToTheReaderAsTiTest.POLICY;
 	private static final String TERMS = TheWrittenPagesSpeakToTheReaderAsTiTest.TERMS;
 	private static final String RULEBOOK = TheWrittenPagesSpeakToTheReaderAsTiTest.RULEBOOK;
+
+	/**
+	 * V110 (24.11.2026) later took a row out of the policy and moved its sign-off, so what is asked here is asked of the text as
+	 * V109 left it: the text V107 is run over, and the text it is compared with, are the ones V107 itself gave.
+	 */
+	@BeforeEach
+	void theTextAsV109LeftIt() {
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "110");
+	}
 
 	/** 119 sentences and 3 sign-offs in each of two languages. */
 	private static int theNumberOfEditsV107Makes() {

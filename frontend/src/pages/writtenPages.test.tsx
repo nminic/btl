@@ -3034,13 +3034,15 @@ describe('what the written pages say the fee buys', () => {
        owner, 14.11.2026, the day it reaches QA), by the same rule. The policy moved on to
        16.11.2026 with the sentence that says what a network shows of a shared profile (V102;
        owner, 16.11.2026), and all three to 21.11.2026 with the Serbian legal texts speaking to the
-       reader as „ti” (V107; owner, 21.11.2026, the day it is expected on QA), by the same rule. Written per
+       reader as „ti” (V107; owner, 21.11.2026, the day it is expected on QA), by the same rule. The policy alone moved on
+      to 24.11.2026 with the row about the choice of theme taken out of it (V110; owner, 24.11.2026, the day it is expected on QA),
+      by the same rule, and the terms and the rulebook kept 21.11.2026. Written per
        document and not as one day for all three, so a date moved on one of them,
        or left behind on one, is a failure that names the document. */
     const SIGNED_OFF = {
       pravilnik: '21.11.2026',
       'uslovi-koriscenja': '21.11.2026',
-      'politika-privatnosti': '21.11.2026',
+      'politika-privatnosti': '24.11.2026',
     } as const
 
     for (const slug of ['pravilnik', 'uslovi-koriscenja', 'politika-privatnosti'] as const) {

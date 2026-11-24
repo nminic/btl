@@ -152,6 +152,7 @@ class TheCycleOf21NovemberCarriedOverTest extends DatabaseTest {
 
 	@Test
 	void theRulebookMovesOverTheTextThatWasAlreadyThere() {
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "110");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "107");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "102");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "100");
