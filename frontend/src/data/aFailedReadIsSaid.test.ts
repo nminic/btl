@@ -393,7 +393,7 @@ const OPENING: { file: string; how: How; why: string; calls?: { shape: Shape; ca
   {
     file: 'pages/member/reportingOpen.ts',
     how: 'says',
-    why: 'THE FILE'S OWN, and held by `pages/member/newResult.test.tsx` („says the seasons cannot be read, with a way to ask again, and draws no form"): `useAReportIsOpen` draws the links into the form only once `/api/me` answered and named a season, so while the read is on its way or failed it draws no link, which is not a list that looks empty. The screen the links lead to (`WhileAReportIsOpen`, through `Resource`) says the failure, with the button that asks again, and never draws the form. MY REASONING: the links say nothing themselves, because a link that is absent is not a claim, and the one place that says it is the form's own.',
+    why: 'THE FILE\'S OWN, and held by `pages/member/newResult.test.tsx` („says the seasons cannot be read, with a way to ask again, and draws no form"): `useAReportIsOpen` draws the links into the form only once `/api/me` answered and named a season, so while the read is on its way or failed it draws no link, which is not a list that looks empty. The screen the links lead to (`WhileAReportIsOpen`, through `Resource`) says the failure, with the button that asks again, and never draws the form. MY REASONING: the links say nothing themselves, because a link that is absent is not a claim, and the one place that says it is the form\'s own.',
   },
   {
     file: 'pages/profile/InviteToPair.tsx',
