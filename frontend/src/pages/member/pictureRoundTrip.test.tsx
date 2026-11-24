@@ -50,7 +50,9 @@ function json(body: object): Response {
  * circle; `/api/me/photo/<digest>` and `/api/photos/<digest>` serve the bytes; `POST /api/me/photo`
  * keeps what it is sent exactly as `MePhotoApi.send` does: a request with a `picture` part makes a
  * new waiting picture (over the one that waits, never beside it), and one with none moves the circle
- * of the picture that waits and keeps its bytes and its digest.
+ * of the picture that waits and keeps its bytes and its digest, <b>where it names that picture</b>
+ * (`over`, owner, 24.11.2026): a request that names none is the form not filled in (400), and one that
+ * names a picture that does not wait any more is `thePictureHasChanged` (409), as `MePhotoApi.send` has it.
  *
  * @param standing what stands on the profile, or nothing
  * @param waiting  what waits for a moderator, or nothing
@@ -61,6 +63,8 @@ function aServerThatKeepsThePictures(initial: { standing?: Held; waiting?: Held 
   pictures: () => { standing: Held | null; waiting: Held | null }
   rows: () => number
   failToServeStanding: (how: 'refuses' | 'throws') => void
+  /** ANOTHER WINDOW, a decision or the administration put another picture in the place of the one that waited. */
+  replaceWaiting: (digest: string) => void
 } {
   let standing: Held | null = initial.standing ?? null
   let waiting: Held | null = initial.waiting ?? null
@@ -104,8 +108,14 @@ function aServerThatKeepsThePictures(initial: { standing?: Held; waiting?: Held 
       }
 
       if (body.get('picture') === null) {
-        if (waiting === null) {
+        const over = body.get('over')
+
+        if (over === null) {
           return new Response(JSON.stringify({ reason: 'theFormIsNotComplete' }), { status: 400 })
+        }
+
+        if (waiting === null || over !== `/api/me/photo/${waiting.digest}`) {
+          return new Response(JSON.stringify({ reason: 'thePictureHasChanged' }), { status: 409 })
         }
 
         waiting = { digest: waiting.digest, crop }
@@ -128,6 +138,9 @@ function aServerThatKeepsThePictures(initial: { standing?: Held; waiting?: Held 
     rows: () => rows,
     failToServeStanding: (how) => {
       standingFails = how
+    },
+    replaceWaiting: (digest) => {
+      waiting = { digest, crop: waiting?.crop ?? THE_WAITING_ONE.crop }
     },
   }
 }
@@ -254,6 +267,9 @@ describe('a picture that waits for a moderator', () => {
     const parts = partsOf(must(sends(server.asked)[0], 'the send'))
 
     expect(parts.get('picture'), 'the picture was sent again for a circle that moved').toBeNull()
+    expect(parts.get('over'), 'the circle did not name the picture it was drawn over').toBe(
+      `/api/me/photo/${THE_WAITING_ONE.digest}`,
+    )
     expect(Number(parts.get('cropSize'))).toBeCloseTo(0.9, 8)
     expect(Number(parts.get('cropX'))).toBeCloseTo(0.3, 8)
     expect(Number(parts.get('cropY'))).toBeCloseTo(THE_WAITING_ONE.crop.y, 8)
@@ -291,6 +307,74 @@ describe('a picture that waits for a moderator', () => {
     await user.click(panel.getByRole('button', { name: sr.picture.send }))
 
     expect(sends(server.asked)).toEqual([])
+  }, SLOW)
+
+  /**
+   * <p><b>A circle over the picture just sent in THIS window names the picture the server answered with.</b>
+   * What the screen draws after a send is the browser's own copy of the file (a data URL), which is not a
+   * name the route has heard of; the address is the digest in the answer (`theWaitingAddressIn`). The case
+   * sends a file, moves the circle, and sends again: the second request is the circle alone, over
+   * `/api/me/photo/sent-1`, and the server (which refuses any other name) took it. Over the standing
+   * picture's address, over the loaded picture's, or over nothing, it would have been refused.
+   */
+  it('names the picture it has just sent when the circle is moved over it in the same window', async () => {
+    const user = setupUser()
+    const server = aServerThatKeepsThePictures({ waiting: THE_WAITING_ONE, standing: THE_STANDING_ONE })
+
+    stop = server.stop
+    renderAt(`/sr/takmicar/${'000007'}/podaci`, 'competitor', '000007')
+
+    const panel = await panelFor()
+
+    await theCircleOn(panel)
+    await chooseAFile(user, panel, new File(['nova'], 'nova-slika.jpg', { type: 'image/jpeg' }))
+    fireEvent.change(await panel.findByLabelText(sr.crop.size), { target: { value: '0.8' } })
+    await user.click(panel.getByRole('button', { name: sr.picture.send }))
+
+    await waitFor(() => {
+      expect(sends(server.asked)).toHaveLength(1)
+    })
+    await panel.findByText(sr.picture.waitingNote)
+
+    fireEvent.change(await panel.findByLabelText(sr.crop.size), { target: { value: '0.7' } })
+    await user.click(panel.getByRole('button', { name: sr.picture.send }))
+
+    await waitFor(() => {
+      expect(sends(server.asked)).toHaveLength(2)
+    })
+
+    const second = partsOf(must(sends(server.asked)[1], 'the second send'))
+
+    expect(second.get('picture'), 'the picture was sent again for a circle that moved').toBeNull()
+    expect(second.get('over')).toBe('/api/me/photo/sent-1')
+    await waitFor(() => {
+      expect(server.pictures().waiting?.crop.size).toBeCloseTo(0.7, 8)
+    })
+    expect(panel.queryByRole('alert')).not.toBeInTheDocument()
+  }, SLOW)
+
+  /**
+   * <p><b>A picture that is not the one drawn over any more is the owner's sentence, and nothing is
+   * written</b> (owner, 24.11.2026: „Slika je u međuvremenu promenjena. Otvori je ponovo pa namesti krug.").
+   * The server is told, after the screen was drawn, that another picture waits; the circle is moved and
+   * sent over the one the screen was served, and the sentence of the dictionary stands under the button.
+   */
+  it('says the picture has changed, and writes nothing, when another waits by the time the circle is sent', async () => {
+    const user = setupUser()
+    const server = aServerThatKeepsThePictures({ waiting: THE_WAITING_ONE, standing: THE_STANDING_ONE })
+
+    stop = server.stop
+    renderAt(`/sr/takmicar/${'000007'}/podaci`, 'competitor', '000007')
+
+    const panel = await panelFor()
+
+    await theCircleOn(panel)
+    server.replaceWaiting('another-window')
+    fireEvent.change(panel.getByLabelText(sr.crop.size), { target: { value: '0.9' } })
+    await user.click(panel.getByRole('button', { name: sr.picture.send }))
+
+    expect(await panel.findByText(sr.picture.sendRefused.thePictureHasChanged)).toBeVisible()
+    expect(server.pictures().waiting).toEqual({ digest: 'another-window', crop: THE_WAITING_ONE.crop })
   }, SLOW)
 
   it('sends nothing for a press while nothing has changed', async () => {
