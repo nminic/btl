@@ -416,6 +416,7 @@ const anOutstandingAnswer = {
       expected: 4800,
       price: 4800,
       balance: 0,
+      mayBeDeleted: true,
     },
   ],
 }
@@ -432,6 +433,7 @@ const anAccountNotYetAMember = {
   expected: 4800,
   price: 4800,
   balance: 0,
+  mayBeDeleted: true,
 }
 
 const readAsOutstanding: Outstanding = anOutstandingAnswer

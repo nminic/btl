@@ -1675,6 +1675,19 @@ export type MembershipDue = {
    * than by predicting it here.
    */
   balance: number
+  /**
+   * WHETHER „OBRIŠI" STANDS ON HIS ROW: a registration that never became a member, which the owner's
+   * decision of 23.11.2026 names as the only one the button is for („Dugme je samo za prijavu koja nikad
+   * nije postala član, isti skup kao kod dugmeta „Obriši nalog” od 20.11.2026").
+   *
+   * **The server answers it and the screen never works it out**, because the set has a dozen clauses and
+   * one of them is about his account administering the portal, which nothing on this row says. It is the
+   * question `DELETE /api/members/unnumbered/{competitorId}` asks again under its holds
+   * (`ARegistrationIsDeletedApi`), so the button is drawn only where the route would let it through.
+   * A blank member number is not the same thing: a registration with a payment waiting or a balance has
+   * one too.
+   */
+  mayBeDeleted: boolean
 }
 
 /**

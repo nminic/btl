@@ -33,6 +33,7 @@ describe('finding one man on the list', () => {
     expected: 4800,
     price: 4800,
     balance: 0,
+    mayBeDeleted: false,
   })
 
   /**
