@@ -39,10 +39,12 @@ import java.util.regex.Pattern;
  * <li>a link that is not {@code http://} or {@code https://} with no white space ({@link #THE_LINK_IS_NOT_A_LINK}),
  * since it is opened in a new window from the front page, and anything else there is an address a visitor's
  * browser would be asked to run;</li>
- * <li>a description, Serbian or English, over 80 characters ({@link #THE_DESCRIPTION_IS_TOO_LONG}) or written
- * in capitals only ({@link #THE_DESCRIPTION_IS_IN_CAPITALS}): „Ograničenje od 80 znakova i zabrana pisanja svim
- * velikim slovima (18.11.2026) važe za obe.”</li>
+ * <li>a description, Serbian or English, over 80 characters ({@link #THE_DESCRIPTION_IS_TOO_LONG}): „Ograničenje
+ * od 80 znakova važi za obe”.</li>
  * </ul>
+ * <b>A description written in capitals is NOT refused</b>, and that is the owner's own word on the question
+ * which sentence the portal should say: „Kako napiše neka napiše. Ovo uređuje osoba koja zna šta radi.” (PDL,
+ * 24.11.2026), which overturns the rule of 18.11.2026 for capitals and keeps the 80 characters.
  * The characters are counted as a reader counts them, one per letter whatever its encoding, which is what
  * {@code char_length} counts in V111's checks: „č” is one, as „c” is.
  *
@@ -78,8 +80,6 @@ class SponsorWriteApi {
 	static final String THE_LINK_IS_NOT_A_LINK = "theLinkIsNotALink";
 
 	static final String THE_DESCRIPTION_IS_TOO_LONG = "theDescriptionIsTooLong";
-
-	static final String THE_DESCRIPTION_IS_IN_CAPITALS = "theDescriptionIsInCapitals";
 
 	/** The ceiling the owner set on the description (PDL, 18.11.2026), and the one the name is held to. */
 	static final int AT_MOST = 80;
@@ -284,37 +284,9 @@ class SponsorWriteApi {
 			if (length(description.strip()) > AT_MOST) {
 				return THE_DESCRIPTION_IS_TOO_LONG;
 			}
-
-			if (inCapitalsOnly(description)) {
-				return THE_DESCRIPTION_IS_IN_CAPITALS;
-			}
 		}
 
 		return null;
-	}
-
-	/**
-	 * WHETHER A TEXT IS WRITTEN IN CAPITALS ONLY: it holds at least one letter that has a small form, and none
-	 * of its letters is small. So „VOLT za duge treninge” is not, „ENERGETSKO PIĆE” is, and „3 x 10 km” is not,
-	 * because a text with no such letter at all is not written in capitals. Asked of each letter by Java, which
-	 * knows „Č” and „č” on every machine; the database is not asked, for the reason V111 gives.
-	 */
-	static boolean inCapitalsOnly(String text) {
-		boolean capital = false;
-
-		for (int at = 0; at < text.length(); at = text.offsetByCodePoints(at, 1)) {
-			int letter = text.codePointAt(at);
-
-			if (Character.isLowerCase(letter)) {
-				return false;
-			}
-
-			if (Character.isUpperCase(letter) || Character.isTitleCase(letter)) {
-				capital = true;
-			}
-		}
-
-		return capital;
 	}
 
 	/** The English description as it is stored: none where nothing but white space was sent. */

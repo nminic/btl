@@ -9,19 +9,18 @@
  *     no row or one row hold it, never two;
  *   - „Dva prekidača po sponzoru: jedan za rotaciju u boksu „Sponzor dana”, drugi za traku na dnu.”:
  *     `in_rotation` and `in_strip`, each on its own;
- *   - „Opis ima srpsku i englesku verziju; ako engleska nije upisana, engleska naslovna pokazuje srpsku.
- *     … Ograničenje od 80 znakova … važe za obe.”: `description_sr`, required, and `description_en`,
- *     NULL where none is written, both at most 80 characters;
+ *   - „Opis ima srpsku i englesku verziju; ako engleska nije upisana, engleska naslovna pokazuje srpsku.”:
+ *     `description_sr`, required, and `description_en`, NULL where none is written, both at most 80
+ *     characters („Ograničenje od 80 znakova važi za obe”);
  *   - „Redosled u traci: glavni sponzor prvi, pa ručni redosled koji se podešava u administraciji.”:
  *     `position`, one per row, unique, and DEFERRABLE so that two rows can trade places in one transaction;
  *   - „Sponzore uređuje i moderator sa pravom (novo pravo „Sponzori”, kao ostala prava)”: the row
  *     ('entity', 'sponsors') in `admin_right`, which V5's generated column spells `entity:sponsors`.
  *
  * What is NOT here, named rather than left out silently:
- *   - the refusal of a description written in capitals only („zabrana pisanja svim velikim slovima”,
- *     18.11.2026). It lives in `SponsorWriteApi` and nowhere else, because `upper()` and `lower()` follow
- *     the database's collation, and a check that refused „ČEVAPI” on one server and let it through on
- *     another would be a second home of the rule that disagrees with the first;
+ *   - any rule about capitals in a description. The rule of 18.11.2026 was overturned for capitals by the
+ *     owner on 24.11.2026: „Kako napiše neka napiše. Ovo uređuje osoba koja zna šta radi.” The 80 characters
+ *     stay, and they are below;
  *   - the shape of the link beyond „http:// or https:// and no white space”, which is the route's
  *     refusal too; the check below is the floor under it, not a second sentence of it.
  *
