@@ -146,7 +146,24 @@ for (const [which, answers, pick, phoneOnly] of [
         const framed = frame.getBoundingClientRect()
         const inside = one.getBoundingClientRect()
 
-        return { shownRight: framed.left + frame.clientWidth, shownLeft: framed.left, left: inside.left, right: inside.right }
+        /* `--space-8`, the padding of a cell, as the browser resolves it at this text size. */
+        const probe = document.createElement('div')
+
+        probe.style.inlineSize = 'var(--space-8)'
+        probe.style.position = 'absolute'
+        document.body.append(probe)
+
+        const pad = probe.getBoundingClientRect().width
+
+        probe.remove()
+
+        return {
+          shownRight: framed.left + frame.clientWidth,
+          shownLeft: framed.left,
+          left: inside.left,
+          right: inside.right,
+          pad,
+        }
       })
 
       if (standing === null) {
@@ -157,6 +174,17 @@ for (const [which, answers, pick, phoneOnly] of [
         standing.shownRight,
       )
       expect(standing.left, 'the box starts before the visible frame of the table').toBeGreaterThanOrEqual(standing.shownLeft)
+
+      if (at.width < 768 && !phoneOnly) {
+        /* AND IT TAKES WHAT THE FRAME SHOWS where the names are wider than that (every one of these: 360px at 100 %
+           is already narrower than the longest name, and the larger text only more): not narrower than the frame by
+           more than the cell's padding at both ends and the room of the ring. A ceiling in a unit that grows with
+           the text (`100vw - 4.5rem`) leaves the box well short of it, and cuts the name for nothing. */
+        expect(
+          standing.shownRight - standing.right,
+          'the box stops well short of what the frame shows, so the names are cut for nothing',
+        ).toBeLessThanOrEqual(standing.pad * 5)
+      }
 
       /* From the first character the box offers every member whose label holds it, and every label holds a nought. */
       await box.fill('0')
