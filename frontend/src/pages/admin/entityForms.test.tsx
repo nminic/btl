@@ -868,6 +868,10 @@ describe('the words the seven forms need', () => {
        holds the `null` and this writes nothing over it, so the walk of editions
        reads „not copied" rather than `undefined` (data/editions.ts). */
     expect(made.copiedFrom).toBeNull()
+    /* And not gold: `highlighted` is the server's to work out (PDL 24.11.2026, „Istakni događaje"), the form
+       asks only the event's own choice, and a record made here is drawn gold nowhere until the calendar reads
+       the server again. `EVENTS.blank` is the only thing that says so; nothing else reads it. */
+    expect(made.highlighted).toBe(false)
   })
 
   it('offer no choice at all where the value is read off another one', () => {

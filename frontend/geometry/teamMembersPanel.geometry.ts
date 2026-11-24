@@ -173,7 +173,13 @@ for (const [which, answers, pick, phoneOnly] of [
       expect(standing.right + 4, 'the box and its arrow run out of the visible frame of the table').toBeLessThanOrEqual(
         standing.shownRight,
       )
-      expect(standing.left, 'the box starts before the visible frame of the table').toBeGreaterThanOrEqual(standing.shownLeft)
+      /* AND ITS FOCUS RING HAS ITS ROOM AT THE LEFT, the four pixels the right edge is given above: the panel is held
+         `--space-8` in from what the frame shows (`.team-members--in-the-frame`), and a rule that put it at the very
+         edge cut the ring by four pixels at 360 and 768 with the text enlarged while this asked only for „not before
+         the edge" (PENDING, review of PR 813, round 3). */
+      expect(standing.left - 4, 'the box starts before the visible frame of the table, or leaves its ring no room').toBeGreaterThanOrEqual(
+        standing.shownLeft,
+      )
 
       if (at.width < 768 && !phoneOnly) {
         /* AND IT TAKES WHAT THE FRAME SHOWS where the names are wider than that (every one of these: 360px at 100 %
