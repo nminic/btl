@@ -2378,8 +2378,9 @@ describe('how a written page is set', () => {
        page carries no inline script at all (`test/contentSecurityPolicy.test.ts`), and
        the theme is no longer kept: there is one theme (PDL „Portal ima samo tamnu
        temu; svetla se izbacuje"), and the choice a browser kept from before is taken
-       out of it (`app/forgetTheTheme.ts`). The policy still names `btl-theme`, and its
-       words are the owner's to change. */
+       out of it (`app/forgetTheTheme.ts`). The policy no longer names `btl-theme`
+       (V110); the one store left, the strip's `btl-notice-closed`, is left out on purpose
+       (`NOT_DISCLOSED` above). */
     const everywhere = [
       ...sources().map(({ code }) => code),
       readFileSync(join(process.cwd(), 'index.html'), 'utf-8'),
@@ -2483,7 +2484,8 @@ describe('how a written page is set', () => {
     }
 
     /* What the reader was owed about the one store there was, where it is kept and why no consent is
-       asked for it, is not asked any more: the portal keeps no store since 24.11.2026 and the owner took
+       asked for it, is not asked any more: the portal keeps no theme store since 24.11.2026 (the one store left is
+       the strip's `btl-notice-closed`, left out on purpose above) and the owner took
        the theme out of the policy altogether (PDL, „Briše se i rečenica o temi u odeljku 4"). */
     /* The claim the document used to make, and must not make again while any
        store is there. */

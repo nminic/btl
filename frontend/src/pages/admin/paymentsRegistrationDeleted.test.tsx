@@ -1,6 +1,6 @@
 import { act, configure, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
-import { clearResourceCache } from '../../data/client'
+import { clearResourceCache, timesDropped } from '../../data/client'
 import type { MembershipDue, Outstanding } from '../../data/types'
 import sr from '../../i18n/sr.json'
 import { moderatorWith, renderAt } from '../../test/render'
@@ -94,6 +94,11 @@ function serving(deleting: { status: number; held?: Promise<void> } = { status: 
       const answer: Outstanding = { season: 2031, accounts }
 
       return json(answer)
+    }
+
+    /* A BOOKING, answered at once: the case that books a payment after a deletion needs the row to be let through. */
+    if (path === '/api/payments' && how === 'POST') {
+      return json({})
     }
 
     const key = /^\/api\/members\/unnumbered\/(\d+)$/.exec(path)
@@ -229,6 +234,7 @@ describe('„Obriši" on the screen Uplate', () => {
     renderAt(ADDRESS, 'superadmin')
 
     const second = await rowAt('Borko Olar', 1)
+    const queueDropped = timesDropped('verification')
 
     await user.click(deleteOn(second, 'Borko Olar'))
     await user.click(
@@ -244,6 +250,12 @@ describe('„Obriši" on the screen Uplate', () => {
 
     /* BY HIS KEY, the second row's and not the first's, and once. */
     expect(deletions()).toEqual([`/api/members/unnumbered/${THE_SECOND_BORKO.competitorId}`])
+
+    /* THE QUEUE OF VERIFICATION IS READ AGAIN BY THE NEXT SCREEN that asks for it, because a picture or words of
+       his may have waited there and have gone with him (`verification.competitor_id`, V9): its cache is dropped
+       by the deletion, once, and by nothing else on this screen. Asked of the counter of drops, which is what
+       the header's own counter of the queue reads (`timesDropped`). */
+    expect(timesDropped('verification')).toBe(queueDropped + 1)
 
     /* THE OTHER BORKO IS STILL OFFERED, and the keyboard is on the search, the row it was on being gone. */
     const left = await rowAt('Borko Olar', 0)
@@ -364,6 +376,7 @@ describe('„Obriši" on the screen Uplate', () => {
     renderAt(ADDRESS, 'superadmin')
 
     const second = await rowAt('Borko Olar', 1)
+    const queueDropped = timesDropped('verification')
 
     await user.click(deleteOn(second, 'Borko Olar'))
     await user.click(
@@ -375,11 +388,43 @@ describe('„Obriši" on the screen Uplate', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
     expect(deletions()).toHaveLength(1)
     expect(screen.queryByText(sr.admin.registrationGone)).toBeNull()
+    /* A deletion the server refused took nobody out of the queue. */
+    expect(timesDropped('verification')).toBe(queueDropped)
 
     const stillSecond = await rowAt('Borko Olar', 1)
     const said = stillSecond.querySelector('.activate__said')
 
     expect(said?.textContent).not.toBe('')
     expect(await rowsOf('Borko Olar')).toHaveLength(2)
+  }, SLOW)
+
+  it('puts „Prijava je obrisana." away when the next thing done on the screen is a booking, which is not about it', async () => {
+    /* THE SECOND SOURCE of the sentence's absence: a sentence that was never said and one that was said and put
+       away look the same, so the case says it first (the deletion), and only then books the other Borko in full
+       (his case 1, which books at once with no question). Without the line that puts it away on an activation
+       the sentence would stand under a list that has gone on to be about somebody else (PENDING, review of PR
+       811: `setDeleted('')` of `onActivated` had no guard). */
+    serving()
+    const user = setupUser()
+
+    renderAt(ADDRESS, 'superadmin')
+
+    const second = await rowAt('Borko Olar', 1)
+
+    await user.click(deleteOn(second, 'Borko Olar'))
+    await user.click(
+      within(await screen.findByRole('dialog', { name: sr.admin.registrationDeleteAsk })).getByRole('button', {
+        name: sr.admin.form.delete,
+      }),
+    )
+    await waitFor(() => expect(screen.getByText(sr.admin.registrationGone)).toBeInTheDocument())
+    await waitFor(() => expect(screen.getAllByText('Borko Olar')).toHaveLength(1))
+
+    const left = await rowAt('Borko Olar', 0)
+
+    await user.type(within(left).getByRole('textbox', { name: 'Uplaćeno (RSD)' }), '4800')
+    await user.click(within(left).getByRole('button', { name: sr.verification.activate }))
+
+    await waitFor(() => expect(screen.queryByText(sr.admin.registrationGone)).toBeNull())
   }, SLOW)
 })
