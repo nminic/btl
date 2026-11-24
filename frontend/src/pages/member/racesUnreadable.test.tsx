@@ -144,6 +144,7 @@ describe('the list of races under the name of a race, on the form a result is en
   it('says the races cannot be read beside the name of the race and after it, with a button named after the list', async () => {
     theServerAnswers({ '/api/races': failing })
     renderAt(NEW, 'competitor', ME, undefined, TODAY)
+    await screen.findByRole('form', undefined, SOON)
 
     const box = nameBox()
     const field = within(fieldOf(box))
@@ -165,6 +166,7 @@ describe('the list of races under the name of a race, on the form a result is en
        so a calendar that could not be read is said where an event is chosen, with its own button. */
     theServerAnswers({ '/api/events': failing })
     renderAt(NEW, 'competitor', ME, undefined, TODAY)
+    await screen.findByRole('form', undefined, SOON)
 
     const field = within(fieldOf(eventBox()))
     const said = await field.findByRole('alert', undefined, SOON)
@@ -178,6 +180,7 @@ describe('the list of races under the name of a race, on the form a result is en
   it('says each of the two beside its own box when both could not be read', async () => {
     theServerAnswers({ '/api/races': failing, '/api/events': failing })
     renderAt(NEW, 'competitor', ME, undefined, TODAY)
+    await screen.findByRole('form', undefined, SOON)
 
     expect(await within(fieldOf(eventBox())).findByRole('alert', undefined, SOON)).toHaveTextContent(sr.data.error)
     expect(await within(fieldOf(nameBox())).findByRole('alert', undefined, SOON)).toHaveTextContent(sr.data.error)
@@ -187,6 +190,7 @@ describe('the list of races under the name of a race, on the form a result is en
   it('says nothing, and offers nothing to ask again, when both files were read, and the list works', async () => {
     theServerAnswers({})
     renderAt(NEW, 'competitor', ME, undefined, TODAY)
+    await screen.findByRole('form', undefined, SOON)
 
     const user = setupUser()
 
@@ -201,6 +205,7 @@ describe('the list of races under the name of a race, on the form a result is en
   it('goes on taking what is typed, offers no race, and sends the name as a race the calendar does not hold', async () => {
     theServerAnswers({ '/api/races': failing })
     renderAt(NEW, 'competitor', ME, undefined, TODAY)
+    await screen.findByRole('form', undefined, SOON)
 
     const user = setupUser()
     const box = nameBox()
@@ -246,6 +251,7 @@ describe('the list of races, asked for again', () => {
   it('asks again for the file that failed and not for the one that was read, and offers the races when it comes', async () => {
     theServerAnswers({ '/api/races': failing })
     renderAt(NEW, 'competitor', ME, undefined, TODAY)
+    await screen.findByRole('form', undefined, SOON)
 
     const user = setupUser()
     const field = within(fieldOf(nameBox()))
@@ -278,6 +284,7 @@ describe('the list of races, asked for again', () => {
        asks again for that read and leaves the other one standing until its own box is pressed. */
     theServerAnswers({ '/api/races': failing, '/api/events': failing })
     renderAt(NEW, 'competitor', ME, undefined, TODAY)
+    await screen.findByRole('form', undefined, SOON)
 
     const user = setupUser()
     const theEvents = within(fieldOf(eventBox()))
@@ -306,6 +313,7 @@ describe('the list of races, asked for again', () => {
   it('says it is asking while the request is out, and says it again as a NEW alert if it still cannot be read', async () => {
     theServerAnswers({ '/api/races': failing })
     renderAt(NEW, 'competitor', ME, undefined, TODAY)
+    await screen.findByRole('form', undefined, SOON)
 
     const user = setupUser()
     const field = within(fieldOf(nameBox()))
@@ -363,6 +371,7 @@ describe('where the keyboard is when the list that could not be read has been re
   it('goes back to the name box when the button had it, which is where the reader was working', async () => {
     theServerAnswers({ '/api/races': failing })
     renderAt(NEW, 'competitor', ME, undefined, TODAY)
+    await screen.findByRole('form', undefined, SOON)
 
     const user = setupUser()
     const field = within(fieldOf(nameBox()))
@@ -381,6 +390,7 @@ describe('where the keyboard is when the list that could not be read has been re
   it('does not take it from a reader who had moved on to another box', async () => {
     theServerAnswers({ '/api/races': failing })
     renderAt(NEW, 'competitor', ME, undefined, TODAY)
+    await screen.findByRole('form', undefined, SOON)
 
     const field = within(fieldOf(nameBox()))
     const button = await field.findByRole('button', { name: RETRY }, SOON)
@@ -399,6 +409,7 @@ describe('where the keyboard is when the list that could not be read has been re
   it('does not take it for a press that never had the keyboard on the button', async () => {
     theServerAnswers({ '/api/races': failing })
     renderAt(NEW, 'competitor', ME, undefined, TODAY)
+    await screen.findByRole('form', undefined, SOON)
 
     const field = within(fieldOf(nameBox()))
     const button = await field.findByRole('button', { name: RETRY }, SOON)
@@ -476,6 +487,7 @@ describe('the town on the form a result is entered on, which is the boundary of 
   it('stays a plain box that takes the town typed into it, and says nothing, when the codebook cannot be fetched', async () => {
     theServerAnswers({ '/api/places': failing })
     renderAt(NEW, 'competitor', ME, undefined, TODAY)
+    await screen.findByRole('form', undefined, SOON)
 
     const user = setupUser()
 
@@ -520,6 +532,7 @@ describe('the town on the form a result is entered on, which is the boundary of 
   it('is not given the sentence of the races when both could not be read: one sentence, in the field of the name', async () => {
     theServerAnswers({ '/api/places': failing, '/api/races': failing })
     renderAt(NEW, 'competitor', ME, undefined, TODAY)
+    await screen.findByRole('form', undefined, SOON)
 
     const user = setupUser()
     const nameField = within(fieldOf(nameBox()))

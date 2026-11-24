@@ -210,7 +210,9 @@ function aSignedInAccount(role = 'competitor', account = 107): void {
  * the two could not be told apart if the case let one number play both parts.
  */
 function aSignedInMember(memberNumber = '000001', role = 'competitor', account = 107): void {
-  aServerAnswering({ role, account, member: { memberNumber } })
+  /* With the seasons open for a report, which `MeApi.WhoIAm` carries for every account: the form for a
+     result is drawn only where the server names one (PDL P9, 24.11.2026). */
+  aServerAnswering({ role, account, member: { memberNumber }, seasonsOpenForAReport: [2027] })
 }
 
 function aServerAnswering(said: object): void {
@@ -819,6 +821,7 @@ describe('every screen of the member area, to a member whose fee has lapsed', ()
         role: 'competitor',
         account: 107,
         member: { memberNumber: '000032', active: false },
+        seasonsOpenForAReport: [2027],
       })
       renderAt(at, 'visitor', null)
 
