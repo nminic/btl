@@ -337,6 +337,36 @@ class TeamDecisionsCarryWhatTheCardShowsTest {
 		assertThat(theTeam().get(2)).as("the team did not take the words he saw").isEqualTo("Drugi opis");
 	}
 
+	/**
+	 * A PROPOSAL SENT BEFORE 23.11.2026 HAS NO DESCRIPTION OF ITS OWN: its note is in {@code verification.body} and
+	 * {@code team_proposal.bio} is empty (review of PR 807, medium 2). The card shows that note as the description, so
+	 * it is what the moderator saw, and the comparison has to read it where the card reads it
+	 * ({@code case when p.bio <> '' then p.bio else v.body end} in {@code VerificationWriteApi}). Every other case of
+	 * this class puts the description on {@code bio}, where reading {@code p.bio} alone is as right as reading both.
+	 */
+	@Test
+	void aProposalWithItsNoteInTheBodyIsComparedAtTheNoteTheCardShowsAndNotAtAnEmptyDescription() throws Exception {
+		long proposal = db.sql("insert into team_proposal (competitor_id, team_id, name, bio, link, city, country_id)"
+						+ " values (?, ?, 'Dunavski trkači Zemun', '', 'https://prvi.example', 'Zemun',"
+						+ " (select id from country where code = 'RS')) returning id")
+				.params(id(THE_LEADER), teamKey(THE_TEAM)).query(Long.class).single();
+		long item = db.sql("insert into verification (queue, competitor_id, subject, body, team_proposal_id)"
+						+ " values ('teams', ?, 'Dunavski trkači Zemun', 'Stara beleška', ?) returning id")
+				.params(id(THE_LEADER), proposal).query(Long.class).single();
+
+		MockHttpServletResponse sawNothing = decideAsSent(item, "{\"approved\":true,\"seenTeam\":"
+				+ words("Dunavski trkači Zemun", "Zemun", "RS", "", "https://prvi.example") + "}");
+
+		assertThat(sawNothing.getStatus()).as("an empty description was taken for the note the card shows")
+				.isEqualTo(409);
+		assertThat(stateOf(item)).isEqualTo("waiting");
+
+		MockHttpServletResponse sawTheNote = decideAsSent(item, "{\"approved\":true,\"seenTeam\":"
+				+ words("Dunavski trkači Zemun", "Zemun", "RS", "Stara beleška", "https://prvi.example") + "}");
+
+		assertThat(sawTheNote.getStatus()).as(sawTheNote.getContentAsString()).isEqualTo(200);
+	}
+
 	@Test
 	void whatTheModeratorTypedOverTheCardIsTheCorrectionAndNeverWhatHeSaw() throws Exception {
 		long item = aChangeWaiting("Dunavski trkači Zemun", "Prvi opis", "https://prvi.example");

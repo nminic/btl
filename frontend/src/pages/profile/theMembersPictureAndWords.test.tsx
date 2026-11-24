@@ -1,5 +1,7 @@
 import { configure, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
+import { cropIn } from '../../components/crop'
+import { fittedTo } from '../../components/fitted'
 import sr from '../../i18n/sr.json'
 import { must } from '../../test/at'
 import { measurePicture } from '../../test/picture'
@@ -388,7 +390,17 @@ describe('a member the public list does not carry', () => {
     const picture = within(await screen.findByRole('region', { name: sr.picture.title }))
     const words = within(await screen.findByRole('region', { name: sr.bio.title }))
 
-    expect(await picture.findByRole('img', { name: sr.theirBoxes.currentAlt })).toHaveAttribute('src', '/api/photos/abc')
+    const standing = await picture.findByRole('img', { name: sr.theirBoxes.currentAlt })
+
+    expect(standing).toHaveAttribute('src', '/api/photos/abc')
+    /* THE CIRCLE HE STANDS IN IS THE ONE THE SERVER SAYS (review of PR 809, low 1): a picture drawn with no circle is
+       the whole of it, which is what `crop={null}` draws, and the served square is not the whole (0,3 0,7 0,45). */
+    expect(standing.style.transform, 'the picture is drawn whole and not in its circle').toBe(
+      fittedTo(cropIn(HIS_DATA.crop)).transform,
+    )
+    expect(fittedTo(cropIn(null)).transform, 'the circle served is the whole picture, so this measures nothing').not.toBe(
+      fittedTo(cropIn(HIS_DATA.crop)).transform,
+    )
     expect(await words.findByRole('textbox')).toHaveValue('Njegove reči.')
 
     await user.upload(

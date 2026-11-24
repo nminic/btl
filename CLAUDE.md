@@ -850,6 +850,8 @@ nad onim sto je nova vrsta stvari:
 | nov atribut u nacrtanom izvoru (`aria-*`, `data-*`) | `src/styles/writtenInCode.test.ts` |
 | nov kljuc recnika | `src/i18n/` i oba snimka recnika |
 | nova mapa odbijanja sa ekrana | `src/pages/account/refusals.test.ts` |
+| nov ili uklonjen simbol radnje | `geometry/actionTip.geometry.ts` |
+| premešten blok ili promenjen tekst ekrana | `pages/publicScreens.test.tsx` i njegovi snimci |
 | **izmena u `test/mock` ili u recniku koji DRUGA STRANA cita** | **podove te druge strane** (`backend` `Answers`, i obrnuto `refusals.test.ts`) |
 
 **Tri fajla vise, ne 208.** Cena je nekoliko sekundi, a hvata tacno onu klasu koju usko merenje ne

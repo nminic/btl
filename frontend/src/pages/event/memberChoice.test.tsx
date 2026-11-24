@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import { useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import type { Suggestion } from '../../forms/types'
@@ -42,10 +42,12 @@ function Harness({
   onChoose,
   onSubmit,
   members = MEMBERS,
+  fitted = false,
 }: {
   onChoose: (one: Suggestion) => void
   onSubmit: () => void
   members?: Suggestion[]
+  fitted?: boolean
 }) {
   const [value, setValue] = useState('')
 
@@ -70,6 +72,7 @@ function Harness({
           suggestions={members}
           invalid={false}
           describedBy={undefined}
+          fitted={fitted}
           onType={setValue}
           onChoose={(one) => {
             setValue(one.value)
@@ -325,6 +328,30 @@ describe('the box of a member', () => {
   })
 })
 
+describe('the width of the box', () => {
+  it('is the whole width it is given, unless the box is fitted to the longest name it offers', () => {
+    render(<Harness onChoose={vi.fn()} onSubmit={vi.fn()} />)
+
+    expect(screen.getByRole('combobox').closest('.member-choice')).not.toHaveClass('member-choice--fitted')
+    expect(screen.getByRole('combobox').closest('.member-choice')).not.toHaveAttribute('style')
+  })
+
+  it('counts the longest label it offers, in characters, when it is fitted', () => {
+    render(<Harness onChoose={vi.fn()} onSubmit={vi.fn()} fitted />)
+
+    const wrapper = screen.getByRole('combobox').closest('.member-choice')
+
+    expect(wrapper).toHaveClass('member-choice--fitted')
+    expect(wrapper).toHaveStyle({ '--member-choice-widest': String('Anđelija Vukotić (000003)'.length) })
+  })
+
+  it('counts nothing for a list that offers nobody', () => {
+    render(<Harness onChoose={vi.fn()} onSubmit={vi.fn()} members={[]} fitted />)
+
+    expect(screen.getByRole('combobox').closest('.member-choice')).toHaveStyle({ '--member-choice-widest': '0' })
+  })
+})
+
 describe('where the list of members stands', () => {
   it('opens under the box, no taller than the room under it, while there is room for a few rows there', async () => {
     const user = setupUser()
@@ -336,6 +363,24 @@ describe('where the list of members stands', () => {
     const list = screen.getByRole('listbox')
 
     expect(list.style.getPropertyValue('--member-choice-room')).toBe(`${String(window.innerHeight - 148 - 12)}px`)
+  })
+
+  it('is given its room and its place when it is opened by typing, as when it is opened by a press', async () => {
+    /* Review of PR 803, low 3: the road by typing to the room was held by Chrome only (`memberChoice.geometry.ts`). */
+    const user = setupUser()
+    const { box } = drawn()
+
+    box.getBoundingClientRect = () => DOMRect.fromRect({ x: 40, y: 100, width: 300, height: 48 })
+    /* Focused and typed into without a press, which would have opened it by the other road. */
+    act(() => box.focus())
+    await user.keyboard('Rel')
+
+    const list = screen.getByRole('listbox')
+
+    expect(list.style.getPropertyValue('--member-choice-room')).toBe(`${String(window.innerHeight - 148 - 12)}px`)
+    expect(list.style.getPropertyValue('--member-choice-bottom')).toBe('148px')
+    expect(list.style.getPropertyValue('--member-choice-left')).toBe('40px')
+    expect(list.style.getPropertyValue('--member-choice-width')).toBe('300px')
   })
 
   it('is worked out again where the box stands when it opens the next time', async () => {
@@ -351,6 +396,121 @@ describe('where the list of members stands', () => {
     expect(screen.getByRole('listbox').style.getPropertyValue('--member-choice-room')).toBe(
       `${String(window.innerHeight - 348 - 12)}px`,
     )
+  })
+
+  it('stands where the box stands, in the window and not in the box (a table that clips cannot cut it)', async () => {
+    const user = setupUser()
+    const { box } = drawn()
+
+    box.getBoundingClientRect = () => DOMRect.fromRect({ x: 40, y: 100, width: 300, height: 48 })
+    await user.click(box)
+
+    const list = screen.getByRole('listbox')
+
+    expect(list.style.getPropertyValue('--member-choice-bottom')).toBe('148px')
+    expect(list.style.getPropertyValue('--member-choice-left')).toBe('40px')
+    expect(list.style.getPropertyValue('--member-choice-width')).toBe('300px')
+  })
+
+  it('stands at the place of the box in the DOCUMENT, so a page scrolled down and to the side has the list under the box', async () => {
+    const user = setupUser()
+    const { box } = drawn()
+
+    vi.spyOn(window, 'scrollY', 'get').mockReturnValue(300)
+    vi.spyOn(window, 'scrollX', 'get').mockReturnValue(20)
+    box.getBoundingClientRect = () => DOMRect.fromRect({ x: 40, y: 100, width: 300, height: 48 })
+    await user.click(box)
+
+    const list = screen.getByRole('listbox')
+
+    expect(list.style.getPropertyValue('--member-choice-bottom')).toBe('448px')
+    expect(list.style.getPropertyValue('--member-choice-left')).toBe('60px')
+    vi.restoreAllMocks()
+  })
+
+  it('is never wider than the window and never put outside it, where the box is wider than the window or runs past its edge', async () => {
+    /* Review of PR 813, high: the box of a telephone is read inside a table that is wider than the screen, and its list
+       is drawn in the body, so the window is what keeps it in. */
+    const user = setupUser()
+    const { box } = drawn()
+
+    box.getBoundingClientRect = () => DOMRect.fromRect({ x: 40, y: 100, width: window.innerWidth * 2, height: 48 })
+    await user.click(box)
+
+    let list = screen.getByRole('listbox')
+
+    expect(list.style.getPropertyValue('--member-choice-width')).toBe(`${String(window.innerWidth)}px`)
+    expect(list.style.getPropertyValue('--member-choice-left')).toBe('0px')
+
+    await user.click(box)
+    box.getBoundingClientRect = () => DOMRect.fromRect({ x: window.innerWidth - 100, y: 100, width: 300, height: 48 })
+    await user.click(box)
+    list = screen.getByRole('listbox')
+
+    expect(list.style.getPropertyValue('--member-choice-width')).toBe('300px')
+    expect(list.style.getPropertyValue('--member-choice-left')).toBe(`${String(window.innerWidth - 300)}px`)
+  })
+
+  it('lets the rows of a fitted list go on to a second line and keeps the one line of the other', async () => {
+    const user = setupUser()
+
+    render(<Harness onChoose={vi.fn()} onSubmit={vi.fn()} fitted />)
+    await user.click(screen.getByRole('combobox'))
+    expect(screen.getByRole('listbox')).toHaveClass('member-choice__list--fitted')
+  })
+
+  it('has no fitted list unless the box is fitted', async () => {
+    const user = setupUser()
+    const { box } = drawn()
+
+    await user.click(box)
+    expect(screen.getByRole('listbox')).not.toHaveClass('member-choice__list--fitted')
+  })
+
+  it('goes with the box when the page or a table scrolls, or the window changes size, while it is open', async () => {
+    const user = setupUser()
+    const { box } = drawn()
+
+    box.getBoundingClientRect = () => DOMRect.fromRect({ x: 40, y: 100, width: 300, height: 48 })
+    await user.click(box)
+    box.getBoundingClientRect = () => DOMRect.fromRect({ x: 40, y: 60, width: 300, height: 48 })
+    act(() => {
+      box.closest('.member-choice')?.dispatchEvent(new Event('scroll'))
+      window.dispatchEvent(new Event('scroll'))
+    })
+
+    expect(screen.getByRole('listbox').style.getPropertyValue('--member-choice-bottom')).toBe('108px')
+
+    box.getBoundingClientRect = () => DOMRect.fromRect({ x: 10, y: 60, width: 200, height: 48 })
+    act(() => {
+      window.dispatchEvent(new Event('resize'))
+    })
+
+    expect(screen.getByRole('listbox').style.getPropertyValue('--member-choice-left')).toBe('10px')
+    expect(screen.getByRole('listbox').style.getPropertyValue('--member-choice-width')).toBe('200px')
+  })
+
+  it('does not draw again for a scroll that did not move the box, and stops listening once shut', async () => {
+    const user = setupUser()
+    const { box } = drawn()
+    const listened = vi.spyOn(window, 'removeEventListener')
+
+    box.getBoundingClientRect = () => DOMRect.fromRect({ x: 40, y: 100, width: 300, height: 48 })
+    await user.click(box)
+
+    const before = screen.getByRole('listbox')
+
+    act(() => {
+      before.dispatchEvent(new Event('scroll'))
+    })
+
+    expect(screen.getByRole('listbox').style.getPropertyValue('--member-choice-bottom')).toBe('148px')
+
+    await user.keyboard('{Escape}')
+
+    expect(listened).toHaveBeenCalledWith('scroll', expect.any(Function), true)
+    expect(listened).toHaveBeenCalledWith('resize', expect.any(Function))
+    listened.mockRestore()
   })
 
   it('scrolls itself to keep the row walked to with the keys in sight', async () => {
@@ -372,6 +532,31 @@ describe('where the list of members stands', () => {
     await user.keyboard('{ArrowDown}'.repeat(9))
     expect(box).toHaveAttribute('aria-activedescendant', screen.getAllByRole('option')[8]?.id)
     expect(list.scrollTop, 'the ninth row was left under the edge').toBe(30)
+  })
+
+  it('is not drawn again, and so not put back on the row walked to, by a scroll of its own that moved nothing', async () => {
+    const user = setupUser()
+    const { box } = drawn(MANY)
+
+    await user.click(box)
+
+    const list = screen.getByRole('listbox')
+
+    screen.getAllByRole('option').forEach((row, index) => {
+      Object.defineProperty(row, 'offsetTop', { configurable: true, value: index * 30 })
+      Object.defineProperty(row, 'offsetHeight', { configurable: true, value: 30 })
+    })
+    Object.defineProperty(list, 'clientHeight', { configurable: true, value: 240 })
+    await user.keyboard('{ArrowDown}'.repeat(9))
+
+    /* The reader turns the wheel over the list and takes it to the top, away from the row walked to. A list that
+       was drawn again by that scroll would put itself back on the ninth row under his hand. */
+    list.scrollTop = 0
+    act(() => {
+      list.dispatchEvent(new Event('scroll'))
+    })
+
+    expect(list.scrollTop).toBe(0)
   })
 })
 

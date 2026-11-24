@@ -2652,4 +2652,23 @@ class ResultWriteApiTest {
 
 		assertThat(theMost.getStatus()).as(theMost.getContentAsString()).isBetween(200, 299);
 	}
+
+	/**
+	 * A CORRECTION ON A RACE OF A LENGTH IS JUDGED AT THE RACE'S LENGTH, and not at the one typed beside the time
+	 * (review of PR 805, medium 1): 2000 seconds over the 42,2035 km of the race and its climb are worth far more
+	 * than any run, while the one kilometre typed beside them is not. The result stays as it was.
+	 */
+	@Test
+	void aCorrectionOnARaceOfALengthIsJudgedAtTheRacesLengthAndNotAtTheOneTyped() throws Exception {
+		MockHttpServletResponse answered = correctedAs(ME, myResult, form(Map.of(
+				"distanceKm", "1.00",
+				"ascentM", 0,
+				"descentM", 0,
+				"seconds", 2000,
+				"link", "https://rezultati.rs/prebrzo")));
+
+		assertThat(reasonIn(answered)).isEqualTo(ResultWriteApi.THE_RUN_IS_IMPOSSIBLE);
+		assertThat(db.sql("select seconds from result where id = ?").param(myResult).query(Integer.class).single())
+				.isEqualTo(12000);
+	}
 }

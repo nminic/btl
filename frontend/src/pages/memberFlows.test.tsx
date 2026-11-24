@@ -398,6 +398,9 @@ describe('my profile', () => {
        (`app/Dropdown.tsx`, `onBlur`). Under load the table is drawn a turn before the last move, which is how this case
        found its panel still `hidden` (CI of `main`, 23.11.2026). */
     await waitFor(() => expect(router.state.location.pathname).toBe('/sr/takmicar/000007-strahinja-vukicevic'))
+    /* The address is the go-between and the focus is the cause: it is the page that takes the focus after the last
+       move (`app/useNewScreen.ts`, `main.current?.focus`), and a menu is opened only after that. */
+    await waitFor(() => expect(screen.getByRole('main')).toHaveFocus())
 
     const menu = within(await openAccount(user))
     /* By where each leads, because the name of „Moji podaci" (second, owner 07.11.2026) is his profile's to
@@ -412,7 +415,7 @@ describe('my profile', () => {
       '/sr/podesavanja',
     ])
     expect(menu.getByRole('button', { name: 'Odjavi se' })).toBeVisible()
-  })
+  }, SEVERAL_SCREENS)
 
   it('signs out from behind the picture, which is the only place that can', async () => {
     const user = setupUser()

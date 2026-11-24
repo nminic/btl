@@ -130,14 +130,18 @@
 }
 
 /* The sign of a competition, out of the initials of its name for now (owner, 21.11.2026), drawn in
-   the colours of the portal's own sign. */
+   the colours of the portal's own sign, **in a white ring** (owner, 24.11.2026, PDL „Okvir oko znaka lige je beo”).
+   This is the one rule that draws the ring of a league's mark, for the mark from a picture and the one from the
+   initials, in every place (the head of the sheet, the tile, the heading of the league's page, the moderation); the
+   ground behind the ring is dark blue in all of them in both themes, so the white is seen (measured in Chrome,
+   `geometry/leagueMarkRing.geometry.ts` holds the computed colour). The mark of a team is another rule. */
 .leagues__mark {
   flex: none;
   display: inline-grid;
   place-items: center;
   inline-size: 2.5rem;
   block-size: 2.5rem;
-  border: 2px solid var(--gold-400);
+  border: 2px solid var(--white);
   border-radius: 50%;
   background: radial-gradient(circle at 35% 30%, var(--blue-600), var(--blue-900));
   color: var(--white);
@@ -382,19 +386,48 @@
    was 58px, in which „PROPRATNA” of the line above the name is 150px, so the head was wider than its sheet and
    the page scrolled sideways, measured 23.11.2026 in `geometry/largeLettersSideways.geometry.ts`). Asked of the
    sheet and in em, as the rule above is, so it is a container and not a width at which the portal changes
-   shape (`styles/scale.test.ts`); 10em is 160px at the browser's own text and 320px at 200%, so no window the
-   portal draws at the browser's own text meets it (the narrowest sheet is 288px, 18em). */
-@container league-sheet (max-width: 10em) {
-  .leagues__score,
-  .leagues__score--changes {
+   shape (`styles/scale.test.ts`); 11em is 176px at the browser's own text and 352px at 200%, so no window the
+   portal draws at the browser's own text meets it (the narrowest sheet is 288px, 18em). It was 10em until
+   23.11.2026 and the head of a visitor at 390px and 200% (a sheet of 10.19em, a column of 128px for the name, the
+   line above it 22px out of it) was left outside. It was 10.5em until 24.11.2026: the sheet of 412px (10.875em)
+   kept the two side by side, and with the fonts of CI the name and the line above it ran 5px out of the head
+   (`largeLettersSideways.geometry.ts`, a visitor at 412px and 200%, both days), so 412px stacks them too. */
+@container league-sheet (max-width: 11em) {
+  .leagues__score {
     grid-template-columns: minmax(0, 1fr);
   }
+}
 
-  .leagues__score .leagues__edit {
-    grid-column: 1;
-    grid-row: auto;
-    justify-self: start;
+/* THE SAME FOR THE HEAD THAT CARRIES THE PENCIL, WHICH NEEDS MORE ROOM FOR IT (owner, 23.11.2026, PDL „Olovka za
+   izmenu stoji u gornjem redu uz naziv lige i kad je tekst uvećan na 200 %"; review of PR 801, medium 1 and 2).
+   Three columns, the mark, the name and the square of the pencil, leave the name nothing at 390px and 412px at
+   200% (36px and 58px, measured 23.11.2026), and the rule above does not ask for them. So where the three do not
+   leave the name room for the longest word of the line above it (`PROPRATNA`, 150px at 200%), the NAME goes under
+   the mark and the pencil STAYS in the top row, at the far end of the row of the mark: it is never sent under the
+   statistics. 15em is 240px at the browser's own text and 480px at 200%; the narrowest sheet at 100% is 288px, 18em,
+   so no window the portal draws at the browser's own text meets it (`geometry/largeLettersSideways.geometry.ts`: the
+   head at 200% on four widths, and the pencil beside the name at the browser's own text on three). */
+@container league-sheet (max-width: 15em) {
+  .leagues__score--changes {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .leagues__score--changes .leagues__score-name {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .leagues__score--changes .leagues__edit {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
     margin-block-start: 0;
+  }
+
+  .leagues__score--changes .leagues__pills,
+  .leagues__score--changes .leagues__cta {
+    grid-column: 1 / -1;
+    grid-row: auto;
   }
 }
 
@@ -911,6 +944,39 @@
 .leagues__adding .rankings__field {
   flex: 1 1 12rem;
   min-width: 0;
+}
+
+/* The chooser of a member beside the button that adds him (the panel of a team in the administration). On a telephone
+   the field is a row of its own and the button is the next one (owner, 23.11.2026: „Na telefonu može jedan red
+   dropdown, a drugi dugme"); from the width where a telephone stops being one (`35em`, as the query at the top of
+   this sheet) the field takes the width of the box in it, which is as wide as the longest name
+   (`MemberChoice.css`, `fitted`), and not what is left of the row, and the button stands next to it, at the start. */
+.leagues__adding .leagues__adding-member {
+  flex: 1 1 100%;
+}
+
+@media (min-width: 35em) {
+  .leagues__adding .leagues__adding-member {
+    flex: 0 1 auto;
+  }
+}
+
+/* THE FRAME OF THE TABLE OF TEAMS IS A CONTAINER, so the box of a member in the panel under a row can be no wider than
+   what the frame shows (`MemberChoice.css`, `cqi`). Only this frame: containment on `.table-scroll` itself would take
+   every table of the portal out of the width its content gives it. */
+.table-scroll--measured {
+  container-type: inline-size;
+}
+
+/* THE PANEL OF A TEAM'S MEMBERS STAYS IN THE VISIBLE PART OF THE FRAME, however far the frame has been scrolled: its row
+   is one cell as wide as the whole table, which on a telephone is wider than the screen, so a frame scrolled to the
+   button that opened the panel took the panel's box off to the left (measured in Chrome at 150 % and 200 % on 360,
+   390 and 412px, review of PR 813). Held at the left of what the frame shows, no wider than it
+   (`geometry/teamMembersPanel.geometry.ts`). */
+.team-members--in-the-frame {
+  position: sticky;
+  inset-inline-start: var(--space-8);
+  inline-size: min(100%, calc(100cqi - 2 * var(--space-8)));
 }
 
 .leagues__adding .rankings__field select {

@@ -241,7 +241,7 @@ export function AdminTeams() {
                   answers as the member's row does, `DeletionSaid.tsx`). */}
               <DeletionSaid said={said} clear={setSaid} />
 
-              <div className="table-scroll">
+              <div className="table-scroll table-scroll--measured">
                 <table className="table">
                   <caption className="visually-hidden">{t('admin.teams')}</caption>
                   <thead>

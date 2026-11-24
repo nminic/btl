@@ -1,8 +1,15 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { screen } from '@testing-library/react'
+import { configure, screen } from '@testing-library/react'
 import { renderAt } from '../test/render'
 import { serverThat } from '../test/serverAnswers'
+import { SLOW } from '../test/slow'
+
+/* Every wait is given half of what a case is given (`btl/CLAUDE.md`, section 25; the precedent is
+   `admin/saveWhileSaving.test.tsx`): a wait that is stuck fails on its own assertion and says what was
+   missing, and not on the clock of the case, which says nothing. The first case below had no clock of its own,
+   so a link that never came failed by a timeout of the case (review of PR 807, low 5). */
+configure({ asyncUtilTimeout: SLOW / 2 })
 
 /**
  * THE TEAM'S OWN PAGE UNDER ITS WORDS, ONLY WHERE IT HAS ONE (PDL P13, 11.08.2026: „neobavezni link"; on
@@ -25,7 +32,7 @@ describe('the link of a team', () => {
 
     expect(link).toHaveAttribute('href', 'https://dunavski-trkaci.example')
     expect(link).toHaveAttribute('target', '_blank')
-  })
+  }, SLOW)
 
   it('is not drawn for a team served without one', async () => {
     const server = serverThat((path, init) =>
@@ -48,5 +55,5 @@ describe('the link of a team', () => {
     } finally {
       server.stop()
     }
-  })
+  }, SLOW)
 })

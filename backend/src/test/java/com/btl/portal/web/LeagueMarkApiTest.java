@@ -320,6 +320,13 @@ class LeagueMarkApiTest {
 
 		assertThat(db.sql("select digest from photo where id = ?").param(now).query(String.class).single())
 				.isEqualTo(digest);
+		/* THE CIRCLE IS WRITTEN AS IT WAS SENT (review of PR 806, medium 1): the answer below is built from the numbers
+		   the route was given and not from the row, so a row written with the two of them swapped answers the same
+		   and is read back wrong by every page that draws the league (`LeagueMarkApi`, the insert of `photo`). */
+		for (String[] column : new String[][] {{"crop_x", "0.25"}, {"crop_y", "0.75"}, {"crop_diameter", "0.5"}}) {
+			assertThat(db.sql("select " + column[0] + " from photo where id = ?").param(now)
+					.query(java.math.BigDecimal.class).single()).as(column[0]).isEqualByComparingTo(column[1]);
+		}
 		assertThat(body(answer).get("photo").asString()).isEqualTo("/api/photos/" + digest);
 		assertThat(body(answer).get("crop").get("x").decimalValue()).isEqualByComparingTo("0.25");
 		assertThat(body(answer).get("crop").get("y").decimalValue()).isEqualByComparingTo("0.75");

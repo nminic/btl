@@ -39,8 +39,9 @@ import java.util.Optional;
  *
  * <p><b>What is NOT here: the founder's own message.</b> The approval tells him his proposal was
  * accepted (owner, 03.08.2026), and that sentence is the approval's and stays in
- * {@link VerificationWriteApi}. Nothing decided what a founder is told when the administration
- * makes the team for him, so nothing is written for it.
+ * {@link VerificationWriteApi}. What he is told when the administration makes the team for him is
+ * that door's own sentence (PDL P13, [ODLUKA 23.11.2026]), written by {@link TeamAdministrationWriteApi}
+ * and not here, because it is not a thing every founding says.
  */
 @Component
 class FoundingATeam {

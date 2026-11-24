@@ -61,6 +61,13 @@ import { sources, WHOLE_PORTAL } from '../test/sources'
  * which has to enumerate never converges, and each round of it costs a review. What closes
  * this boundary instead is the review question the two cases below put in front of a reader:
  * a new screen with a face on it either reaches `Portrait` or it fails one of these.
+ *
+ * **THE BOUNDARY OF THE LAST CASE, written here the way the one above is (review of PR 809, low 2).** It asks which
+ * modules reach the arithmetic of the cut (`components/fitted.ts`), and that is all it asks. A screen that cut a
+ * picture with arithmetic of its own, an `object-position` and a `transform` written out, would reach no module and
+ * would pass, exactly as a circle with a colour written out passes the questions above. What the pixels of the two
+ * kinds of circle show is held by Chrome (`geometry/memberPicture.geometry.ts`), and that every circle that is
+ * drawn goes through `CutPicture` at all is a review question and not one this file can ask.
  */
 
 /** Where the portal's own modules live, so one can be named by its place under it. */
@@ -164,7 +171,7 @@ describe('the circle a member is drawn in', () => {
       'app/AccountMenu.tsx',
     )
   })
-  it('is cut by one component, so no circle can cut the picture another way', () => {
+  it('has the arithmetic of the cut reached by one component only, which is not the same as no circle cutting it another way', () => {
     /* Owner, 23.11.2026: „Zašto se drugačije seče i prikazuje u malom i velikom krugu?????" and
        „Veliki krug je rezprezentativan, tako treba da bude svuda." The profile drew the original
        and cut it in a box of its own, which was not square, and so cut a different part of the

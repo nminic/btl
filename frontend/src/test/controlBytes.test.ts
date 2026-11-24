@@ -198,12 +198,23 @@ describe('the source of the portal', () => {
       expect(files.some((path) => path.endsWith(kind)), kind).toBe(true)
     }
 
-    const carrying = files.flatMap((path) =>
-      [...readFileSync(path, 'utf-8')]
-        .map((one, at) => ({ one, at }))
-        .filter(({ one }) => !canBeSeen(one))
-        .map(({ one, at }) => `${path}: ${JSON.stringify(one)} at ${String(at)}`),
-    )
+    const carrying = files.flatMap((path) => {
+      const text = readFileSync(path, 'utf-8')
+
+      return [
+        ...[...text]
+          .map((one, at) => ({ one, at }))
+          .filter(({ one }) => !canBeSeen(one))
+          .map(({ one, at }) => `${path}: ${JSON.stringify(one)} at ${String(at)}`),
+        /* A CARRIAGE RETURN THAT ENDS NO LINE (review of PR 807, low: `valueInSentence.test.ts` was committed with 895 of
+           them, and four of those stood in a row, `\r\r\r\r\n`). A carriage return before a line feed is how a
+           Windows checkout writes every line (`core.autocrlf`), so it is not asked about here: asked of it, every
+           file of this machine would fail. One that is followed by anything else is a byte nobody wrote on purpose,
+           on any machine. The whole-file question „does any committed blob carry a CR” cannot be asked of a working
+           copy and is written down as a finding instead. */
+        ...[...text.matchAll(/\r(?!\n)/g)].map((one) => `${path}: a carriage return that ends no line at ${String(one.index)}`),
+      ]
+    })
 
     expect(carrying).toEqual([])
   }, SLOW)

@@ -2566,6 +2566,25 @@ class ResultsByTheLeagueApiTest {
 		assertThat(pointsOf(VERA, theHill)).isEqualTo("999.99");
 	}
 
+	/**
+	 * ON A RACE OF A LENGTH THE PENCIL JUDGES THE RUN AT THE RACE'S LENGTH, and not at the one typed beside the time
+	 * (review of PR 805, medium 1; the first source of the length is {@code WhatARaceCarries}, the second is the
+	 * body): 280 seconds over the ten kilometres of {@link #theTen} and its climb are worth more than any run, while
+	 * the one kilometre typed beside them is worth well under one point, so only the first is refused.
+	 */
+	@Test
+	void thePencilOnARaceOfALengthJudgesTheRunAtTheRacesLengthAndNotAtTheOneTyped() throws Exception {
+		long veras = resultAlreadyCounted(VERA, theTen, LocalDate.of(2027, 5, 8), AN_HOUR, "5.00",
+				"10.00", 100, 80);
+
+		MockHttpServletResponse refused = changed(RESULTS_MODERATOR, theTen, veras,
+				figuresBody("1.00", 0, 0, 280));
+
+		assertThat(refused.getStatus()).as(refused.getContentAsString()).isEqualTo(400);
+		assertThat(reasonIn(refused)).isEqualTo(ResultsByTheLeagueApi.THE_RUN_IS_IMPOSSIBLE);
+		assertThat(pointsOf(VERA, theTen)).isEqualTo("5.00");
+	}
+
 	/** At an unscored race a run keeps nought, so the same figures are entered and changed there. */
 	@Test
 	void atAnUnscoredRaceFiguresWorthAnyNumberAreEnteredAndChanged() throws Exception {
