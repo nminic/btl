@@ -96,6 +96,34 @@ export function theAddressIn(body: unknown): string | null {
 }
 
 /**
+ * WHERE THE PICTURE THAT WAITS IS ASKED FOR, which is the beginning of the address `MePhotoApi` serves it at
+ * and the one a member's circle is sent over (`over`). It is the route's own (`MY_WAITING_PICTURE_IS_ASKED_FOR_AT`),
+ * and `MePhotoApiTest` writes it out on its own side, so a prefix that moved is red on both.
+ */
+const A_WAITING_PICTURE_IS_NAMED_BY = '/api/me/photo/'
+
+/**
+ * THE ADDRESS THE PICTURE THAT WAITS IS ASKED FOR AT, off the answer of a send that took, or nothing where
+ * the answer did not name one (owner, 24.11.2026, PDL „Podešavanje kruga na slici radi identično na svakom
+ * mestu portala" and „posle recenzije PR-a 825").
+ *
+ * <p>`MePhotoApi.send` answers `{ waiting, digest, standing }`, and the digest is the picture that waits NOW.
+ * The screen keeps the address built from it, because a circle moved over a picture sent in this same window
+ * names that picture, and what the screen draws it over (the browser's own copy of the file, a data URL) is
+ * not an address the route has heard of. Without an assertion (ADL A14): `Reflect.get` asks the object, and
+ * only a text that is not empty is taken.
+ */
+export function theWaitingAddressIn(body: unknown): string | null {
+  if (typeof body !== 'object' || body === null) {
+    return null
+  }
+
+  const digest: unknown = Reflect.get(body, 'digest')
+
+  return typeof digest === 'string' && digest !== '' ? A_WAITING_PICTURE_IS_NAMED_BY + digest : null
+}
+
+/**
  * HOW MANY DECIMAL PLACES THE COLUMN HOLDS, and it is V21's number rather than a choice
  * made here.
  *
@@ -170,12 +198,14 @@ export function asTheColumnHolds(fraction: number): string {
  * slika, portal odbija upis kruga"). `POST /api/members/{memberNumber}/photo` moves a circle on the picture
  * that stands, and a circle is three fractions of one particular picture, so the screen names the one it
  * drew the circle over, by the address it was served it at, and the route refuses (`thePictureHasChanged`)
- * where another stands now. Left out everywhere else: the member's own door moves the circle of the row that
- * waits and has nothing to name.
+ * where another stands now. <b>The member's own door names it too</b> (24.11.2026, „identično na svakom
+ * mestu portala"): `POST /api/me/photo` moves the circle of the row that waits, and the picture it names is
+ * the one that waits, by `/api/me/photo/<digest>`. Left out wherever a file goes with the circle: a file
+ * carries its own circle and there is no other picture it could be drawn over.
  *
  * @param file the file itself, off `Chosen`, or nothing to move the circle of the picture that waits
  * @param crop the three fractions, each written as fine as the column and no finer
- * @param over the address of the picture the circle was drawn over, or nothing where the route does not ask
+ * @param over the address of the picture the circle was drawn over, or nothing where a file goes with it
  */
 export function pictureToSend(file: File | null, crop: Crop, over: string | null = null): FormData {
   const body = new FormData()
@@ -203,8 +233,8 @@ export function pictureToSend(file: File | null, crop: Crop, over: string | null
 /**
  * THE FOUR REFUSALS `MePhotoApi` CAN NAME OF A PICTURE SENT, each to a sentence in the dictionary (a fifth,
  * `thePictureHasChanged`, arrived 24.11.2026 with the circle that names the picture it is drawn over
- * (`pictureToSend`, `over`); it is answered by `MemberPictureAndWordsApi` and its map is
- * `WHEN_MOVING_THE_CIRCLE_OF_A_PICTURE`, below).
+ * (`pictureToSend`, `over`); it is answered by `MemberPictureAndWordsApi` and by the member's own circle
+ * (`MePhotoApi.send` with no file), and its map is `WHEN_MOVING_THE_CIRCLE_OF_A_PICTURE`, below).
  *
  * <p>`refusals.test.ts` reads the `static final String` reasons the class declares and
  * fails when one of them is not here, or when one here is not there. The class declares
@@ -257,10 +287,12 @@ export const WHEN_SENDING_A_PICTURE: Record<string, string> = {
 }
 
 /**
- * THE FIVE OF THEM FOR A CIRCLE MOVED OVER THE PICTURE THAT STANDS, which is the administration's door on a member's
- * card (`POST /api/members/{memberNumber}/photo`, `MemberPictureAndWordsApi`): the four a picture is refused with
- * and the one that door adds, `thePictureHasChanged` (owner, 24.11.2026, PDL „Sitnice iz recenzije PR-a 815 i 811 i
- * panela tima": „ako je u međuvremenu odobrena nova slika, portal odbija upis kruga").
+ * THE FIVE OF THEM FOR A CIRCLE MOVED OVER A PICTURE THAT IS ALREADY THERE: the administration's door on a member's
+ * card (`POST /api/members/{memberNumber}/photo`, `MemberPictureAndWordsApi`, over the picture that stands) and the
+ * member's own (`POST /api/me/photo`, `MePhotoApi.send`, over the picture that waits, `member/ProfilePicture.tsx`): the
+ * four a picture is refused with and the one those doors add, `thePictureHasChanged` (owner, 24.11.2026, PDL
+ * „Sitnice iz recenzije PR-a 815 i 811 i panela tima": „ako je u međuvremenu odobrena nova slika, portal odbija upis
+ * kruga", and „posle recenzije PR-a 825": the sentence at every place that sets a circle).
  *
  * <p>A map of its own and not a fifth key of the four, because the four are also the words a league's mark is
  * refused with (`admin/leagueMarkWrites.ts`) and that door cannot name a circle drawn over another picture, and

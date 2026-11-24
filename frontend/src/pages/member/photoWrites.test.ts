@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { closestIn, WHOLE } from '../../components/crop'
-import { AS_FINE_AS_THE_COLUMN, asTheColumnHolds, pictureToSend, theAddressIn, theRowIn } from './photoWrites'
+import {
+  AS_FINE_AS_THE_COLUMN,
+  asTheColumnHolds,
+  pictureToSend,
+  theAddressIn,
+  theRowIn,
+  theWaitingAddressIn,
+} from './photoWrites'
 
 /**
  * WHAT GOES ON THE WIRE WHEN A MEMBER SENDS HIS PORTRAIT.
@@ -165,9 +172,10 @@ describe('a send with no file', () => {
 })
 
 describe('the picture a circle is drawn over', () => {
-  /* Owner, 24.11.2026: a circle is three fractions of one particular picture, so a send that moves it names the
-     picture (`over`), and a send that does not move one alone names nothing, because the route that takes the
-     other kind has nothing to compare it with. */
+  /* Owner, 24.11.2026: a circle is three fractions of one particular picture, so a send that moves one alone
+     names the picture (`over`), at both doors that do (the administration's and the member's own), and a send
+     that carries a file names nothing, because the file brings its own circle and there is no other picture
+     it could be drawn over. */
   it('is named in the body where the route asks for it, beside the three fractions', () => {
     const body = pictureToSend(null, { x: 0.25, y: 0.5, size: 0.75 }, '/api/photos/abc')
 
@@ -188,6 +196,21 @@ describe('the picture a circle is drawn over', () => {
     expect(theAddressIn({ crop: WHOLE })).toBeNull()
     expect(theAddressIn({ photo: 7 })).toBeNull()
     expect(theAddressIn({ photo: '' })).toBeNull()
+  })
+
+  /* The member's own door answers `{ waiting, digest, standing }`, and the picture that waits is named by the
+     digest under the address `MePhotoApi` serves it at. The prefix is written out here and not imported, so
+     a prefix that moved on one side is red. */
+  it('is built from the digest the member\'s own send answered with, and from nothing else', () => {
+    expect(theWaitingAddressIn({ waiting: 2, digest: 'abc', standing: null })).toBe('/api/me/photo/abc')
+    expect(theWaitingAddressIn({ waiting: 2, digest: 'abc', standing: 'zzz' })).toBe('/api/me/photo/abc')
+    expect(theWaitingAddressIn(undefined)).toBeNull()
+    expect(theWaitingAddressIn(null)).toBeNull()
+    expect(theWaitingAddressIn('abc')).toBeNull()
+    expect(theWaitingAddressIn({ waiting: 2 })).toBeNull()
+    expect(theWaitingAddressIn({ digest: 7 })).toBeNull()
+    expect(theWaitingAddressIn({ digest: '' })).toBeNull()
+    expect(theWaitingAddressIn({ photo: '/api/photos/abc' }), 'the standing picture is not the one that waits').toBeNull()
   })
 })
 

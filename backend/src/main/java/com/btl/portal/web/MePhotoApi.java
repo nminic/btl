@@ -123,9 +123,13 @@ import java.util.Optional;
  * overwrites the text that waits too, on the same row, as this class overwrites the picture
  * (PDL P11, the entry struck as OBORENO 18.10.2026).
  * <li><b>Did a picture arrive at all?</b> If not, this is 21c's second half - „ili da
- * pomerim krug da gadja drugi deo slike" - and it is legal exactly when something is
- * waiting to be re-cropped. With nothing waiting there is no picture to move a circle over,
- * so it is {@link #THE_FORM_IS_NOT_COMPLETE} as before.
+ * pomerim krug da gadja drugi deo slike" - and it names the picture the circle was drawn over
+ * ({@code over}), which is what the member's screen was served it at. A request that names none is
+ * {@link #THE_FORM_IS_NOT_COMPLETE}. One that names one is asked of the picture that waits NOW,
+ * after his turn is taken, and where it is another or none, it is {@link #THE_PICTURE_HAS_CHANGED}
+ * and nothing is written (owner, 24.11.2026, PDL „Podešavanje kruga na slici radi identično na svakom
+ * mestu portala" and „posle recenzije PR-a 825": the same sentence and the same check at every place
+ * that sets a circle).
  * <li><b>Is the crop three fractions between nought and one?</b> V21 bounds all three and
  * bounds the diameter above nought; a crop outside that is refused here rather than by the
  * constraint, because a constraint violation aborts the transaction and answers 500 where
@@ -356,11 +360,12 @@ class MePhotoApi {
 	private static final Logger LOG = LoggerFactory.getLogger(MePhotoApi.class);
 
 	/**
-	 * Nothing arrived where the picture should have been, AND there was nothing to re-crop.
+	 * Nothing arrived where the picture should have been, AND the circle named no picture to be moved over.
 	 *
 	 * <p>Since PDL 21c a send with no file is how „ili da pomerim krug da gadja drugi deo
 	 * slike" is said, so this answer narrowed rather than stayed: it is the state where a
-	 * circle arrived over nothing at all.
+	 * circle arrived naming no picture (`over`). Until 24.11.2026 it was also the answer to a circle
+	 * sent when nothing waited any more, which is now {@link #THE_PICTURE_HAS_CHANGED}.
 	 */
 	static final String THE_FORM_IS_NOT_COMPLETE = "theFormIsNotComplete";
 
@@ -379,8 +384,12 @@ class MePhotoApi {
 	static final String THE_CROP_IS_NOT_A_CIRCLE = "theCropIsNotACircle";
 
 	/**
-	 * A circle was sent over a picture that no longer stands: the one it was drawn over has been replaced or
-	 * taken down since the screen was served (owner, 24.11.2026). Answered 409, and nothing is written.
+	 * A circle was sent over a picture that is no longer the one that stands, or no longer the one that waits:
+	 * the one it was drawn over has been replaced, decided or taken down since the screen was served (owner,
+	 * 24.11.2026). Answered 409, and nothing is written. It is answered by both doors that move a circle over
+	 * a picture that is already there: the administration's on a member's card
+	 * ({@code MemberPictureAndWordsApi}) and the member's own over the picture that waits
+	 * ({@link #send}).
 	 */
 	static final String THE_PICTURE_HAS_CHANGED = "thePictureHasChanged";
 
@@ -590,6 +599,7 @@ class MePhotoApi {
 			@RequestParam(name = "cropX", required = false) String cropX,
 			@RequestParam(name = "cropY", required = false) String cropY,
 			@RequestParam(name = "cropSize", required = false) String cropSize,
+			@RequestParam(name = "over", required = false) String over,
 			HttpServletResponse response) throws IOException {
 
 		/* AN ACCOUNT THAT NAMES NO MEMBER OR A MEMBER WHOSE FEE DOES NOT STAND (see the class
@@ -633,11 +643,16 @@ class MePhotoApi {
 		/* A SEND WITH NO FILE IS 21c'S SECOND HALF, and it is legal exactly when there is
 		   something to move a circle over. „Ako hocu da pregazim novom ILI DA POMERIM KRUG da
 		   gadja drugi deo slike, opet se salje na verifikaciju." With nothing waiting there is no
-		   picture here to re-cut, so the sentence this class already had goes on being the right
-		   one. */
+		   picture here to re-cut, and what the member is told depends on whether his circle named
+		   a picture (below): one that named none is a form not filled in, one that named a picture
+		   that waits no longer is a picture that has changed. */
 		boolean onlyTheCircle = picture == null || picture.isEmpty();
 
-		if (onlyTheCircle && waits.isEmpty()) {
+		/* A CIRCLE NAMES THE PICTURE IT WAS DRAWN OVER (owner, 24.11.2026, PDL „Podešavanje kruga na slici
+		   radi identično na svakom mestu portala" and „posle recenzije PR-a 825"), the shape
+		   `MemberPictureAndWordsApi.setThePicture` has for the administration's door: a request that names
+		   none is a form not filled in, never „the picture that waits", which is what it used to mean. */
+		if (onlyTheCircle && over == null) {
 			return no(HttpStatus.BAD_REQUEST, THE_FORM_IS_NOT_COMPLETE);
 		}
 
@@ -657,6 +672,18 @@ class MePhotoApi {
 		   reason (`VerificationWriteApi.Answered#seenCrop`): the key alone would not say that what the
 		   moderator saw has changed. */
 		if (onlyTheCircle) {
+			/* AND OVER WHICH PICTURE: the one that waits NOW, read above after his turn was taken, so a decision
+			   or a send of his own that landed in between is what it is asked of. Nothing waiting is the same
+			   answer as another waiting, because to the member both are „the picture is not the one I drew the
+			   circle over": it was approved or refused since the screen was served, or he sent another from a
+			   second window, or the administration set or took down his picture. That used to be the 400
+			   „Slika nije stigla do servera" for a picture that had arrived and been decided. Compared whole, and
+			   never put into a statement. */
+			if (!waits.map(held -> over.equals(MY_WAITING_PICTURE_IS_ASKED_FOR_AT + theDigestOf(held.photo())))
+					.orElse(false)) {
+				return no(HttpStatus.CONFLICT, THE_PICTURE_HAS_CHANGED);
+			}
+
 			Waits standing = waits.orElseThrow();
 
 			db.sql("update photo set crop_x = ?, crop_y = ?, crop_diameter = ? where id = ?")
