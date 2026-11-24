@@ -47,6 +47,7 @@ const AN_EVENT: BtlEvent = {
   country: 'RS',
   kind: 'race',
   featured: false,
+  highlighted: false,
   description: '',
   link: '',
   copiedFrom: null,

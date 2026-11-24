@@ -31,6 +31,7 @@ const event = (id: number): BtlEvent => ({
   link: '',
   copiedFrom: null,
   featured: false,
+  highlighted: false,
 })
 
 const TWELVE = Array.from({ length: 12 }, (_, index) => event(index + 1))

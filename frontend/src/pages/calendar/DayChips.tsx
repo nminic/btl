@@ -28,12 +28,16 @@ import '../../styles/table.css'
  * „Kad su istaknuti događaji prikazani u kalendaru, neka cela pločica bude zlatna").
  * On top of the kind and not instead of it: the kind still decides the edge, its colour
  * and how wide it is (owner, the same evening; `pages/Calendar.css`, `.chip--featured`).
+ *
+ * **Gold is read off `highlighted` and never off `featured`** (owner, PDL 24.11.2026, „Istakni događaje"):
+ * an event is highlighted by its own choice or by a league that highlights its events, the server works out
+ * which, and both are drawn alike. `featured` is the event's own choice alone, which is what its form shows.
  */
 function tileClass(event: BtlEvent): string {
   return [
     'chip',
     event.kind === 'race' ? '' : `chip--${event.kind}`,
-    event.featured ? 'chip--featured' : '',
+    event.highlighted ? 'chip--featured' : '',
   ]
     .filter(Boolean)
     .join(' ')
@@ -79,7 +83,7 @@ function ChipBody({
           SC 1.4.1). Spoken and not shown, which is the shape the tile's kind and the
           weekend of a day already take: a tile a seventh of the page wide has no room
           for a visible word, and the gold says it to whoever can see it. */}
-      {event.featured && <span className="visually-hidden">, {t('calendar.featured')}</span>}
+      {event.highlighted && <span className="visually-hidden">, {t('calendar.featured')}</span>}
       {/* And the word beside the colour, for whoever cannot separate two of them
           (WCAG 2.2 SC 1.4.1). Only where the tile is not a race: a race is what
           the calendar is made of, and saying so on every one of them would be

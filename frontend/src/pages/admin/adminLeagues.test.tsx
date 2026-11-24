@@ -1,5 +1,5 @@
-import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
-import { clearResourceCache } from '../../data/client'
+import { act, configure, fireEvent, getConfig, screen, waitFor, within } from '@testing-library/react'
+import { clearResourceCache, timesDropped } from '../../data/client'
 import { moderatorWith, renderAt } from '../../test/render'
 import {
   answeredWith,
@@ -38,6 +38,14 @@ import { seasonsALeagueMayBeMadeFor } from './leagueSeasons'
  * **Nothing is read out of what was sent in.** Every assertion about a write reads the
  * request the screen really made, off the recording server.
  */
+/* EVERY WAIT IS GIVEN HALF OF WHAT A CASE HAS (CLAUDE.md, section 25), since the cases of the box „Istakni
+   događaje" were added (24.11.2026): a save that never comes back fails on its own query, not on the clock. */
+configure({ asyncUtilTimeout: SLOW / 2 })
+
+it('waits less than a case has, so a miss is an assertion and never the clock', () => {
+  expect(getConfig().asyncUtilTimeout).toBeLessThan(SLOW)
+})
+
 describe('a competition made, changed and taken away', () => {
   /** The competition every case acts on. Written second of four and keyed third of four. */
   const ACTED = 9
@@ -57,15 +65,17 @@ describe('a competition made, changed and taken away', () => {
   /** And one of a season the FORM accepts, for the refusals that have to reach the route. */
   const CHANGEABLE_NAME = 'Buduća liga 2028'
 
+  /* The box „Istakni događaje" (V109) is ticked on the competition acted on and on no other, so a form that
+     opened another competition's box, or the first one's, sends a different answer. */
   const LEAGUES = [
     { id: COUNTS_NOTHING, slug: 'prva-2027', name: 'Prva liga 2027', season: 2027, rules: '',
-      prizes: '', eventIds: [], raceIds: [] },
+      prizes: '', eventIds: [], raceIds: [], highlightsEvents: false },
     { id: ACTED, slug: ITS_ADDRESS, name: ITS_NAME, season: 2027, rules: 'Propozicije druge',
-      prizes: 'Nagrade druge', eventIds: [1133], raceIds: [125] },
+      prizes: 'Nagrade druge', eventIds: [1133], raceIds: [125], highlightsEvents: true },
     { id: FROZEN, slug: 'stara-2019', name: FROZEN_NAME, season: 2019, rules: '', prizes: '',
-      eventIds: [], raceIds: [] },
+      eventIds: [], raceIds: [], highlightsEvents: false },
     { id: 13, slug: 'buduca-2028', name: 'Buduća liga 2028', season: 2028, rules: '', prizes: '',
-      eventIds: [], raceIds: [] },
+      eventIds: [], raceIds: [], highlightsEvents: false },
   ]
 
   /**
@@ -172,6 +182,7 @@ describe('a competition made, changed and taken away', () => {
           season: 2027,
           rules: '',
           prizes: '',
+          highlightsEvents: false,
         },
       },
     ])
@@ -390,12 +401,117 @@ describe('a competition made, changed and taken away', () => {
             season: 2027,
             rules: 'Propozicije druge',
             prizes: 'Nagrade druge',
+            highlightsEvents: true,
           },
         },
       ])
 
       server.stop()
     }, SLOW)
+
+  /**
+   * THE BOX „ISTAKNI DOGAĐAJE" (owner, PDL 24.11.2026): opened as each competition holds it, sent as it is left,
+   * and the calendar's answer dropped once the route has taken the write, because the calendar's gold is worked
+   * out from it.
+   *
+   * **Both of its states and both directions.** The competition acted on opens ticked and the one beside it
+   * unticked, and each is changed into the other: a form that opened every box ticked, or every box unticked,
+   * or the first competition's box, fails one of the two. And the moderator of the leagues does it as well as
+   * the superadministrator („Kućicu sme da štiklira i moderator te lige, ne samo administrator").
+   */
+  describe('the box that highlights the events of a competition', () => {
+    const BOX = /^Istakni događaje/
+
+    it('opens ticked on a competition that highlights, is sent unticked, and drops the calendar after', async () => {
+      const server = serving()
+      const user = setupUser()
+
+      renderAt('/sr/administracija/lige', 'superadmin')
+
+      await openIt(user)
+
+      const box = await screen.findByRole('checkbox', { name: BOX })
+
+      expect(box).toBeChecked()
+
+      const dropped = timesDropped('events')
+
+      await user.click(box)
+      await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+      await screen.findByRole('status', { name: 'Sačuvano' })
+
+      expect(writes(server.asked).map((one) => [one.path, Reflect.get(Object(one.body), 'highlightsEvents')]))
+        .toEqual([[`/api/leagues/${ACTED}`, false]])
+      expect(timesDropped('events'), 'the calendar was not dropped after the save').toBe(dropped + 1)
+
+      server.stop()
+    }, SLOW)
+
+    it('opens unticked on one that does not, and the moderator of the leagues ticks it', async () => {
+      const server = serving()
+      const user = setupUser()
+
+      renderAt('/sr/administracija/lige', 'moderator', null, moderatorWith(['entity:leagues']))
+
+      const rows = within(await screen.findByRole('table', { name: 'Lige' }))
+      const row = must(
+        rows.getAllByRole('row').find((one) => one.textContent?.includes('Prva liga 2027')),
+        'the row of the competition that does not highlight',
+      )
+
+      await user.click(within(row).getByRole('button', { name: 'Otvori: Prva liga 2027' }))
+
+      const box = await screen.findByRole('checkbox', { name: BOX })
+
+      expect(box).not.toBeChecked()
+
+      await user.click(box)
+      await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+      await screen.findByRole('status', { name: 'Sačuvano' })
+
+      expect(writes(server.asked).map((one) => [one.path, Reflect.get(Object(one.body), 'highlightsEvents')]))
+        .toEqual([[`/api/leagues/${COUNTS_NOTHING}`, true]])
+
+      server.stop()
+    }, SLOW)
+
+    it('drops the calendar on a refused save not at all, after a race leaves once, and after a deletion once',
+      async () => {
+        const server = serving((_path, init) =>
+          init?.method === 'PUT' ? refused('theSeasonIsFrozen', 409) : did(),
+        )
+        const user = setupUser()
+
+        renderAt('/sr/administracija/lige', 'superadmin')
+
+        await openIt(user)
+
+        const before = timesDropped('events')
+
+        await user.click(await screen.findByRole('checkbox', { name: BOX }))
+        await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+        expect(await screen.findByRole('alert')).toHaveTextContent(
+          'Sezona ove lige je zamrznuta. Liga se može samo obrisati.',
+        )
+        expect(timesDropped('events'), 'a refused save dropped the calendar').toBe(before)
+
+        /* A race taken out of a competition that highlights („Ako ih izbacim iz lige, istaknutost se gubi"). */
+        await user.click(await screen.findByRole('button', { name: `Trke u ligi ${ITS_NAME}` }))
+        await user.click(await screen.findByRole('button', { name: /^Izbaci trku/ }))
+        await waitFor(() => {
+          expect(timesDropped('events'), 'the calendar was not dropped after a race left').toBe(before + 1)
+        })
+
+        await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
+        await deleteNamed(user, ITS_NAME)
+        await waitFor(() => {
+          expect(timesDropped('events'), 'the calendar was not dropped after the deletion').toBe(before + 2)
+        })
+
+        server.stop()
+      }, SLOW)
+  })
 
   it('shows the new name in the list afterwards, without asking the server again', async () => {
     const server = serving()
@@ -709,6 +825,7 @@ describe('a competition made, changed and taken away', () => {
             prizes: String(sent.prizes ?? ''),
             eventIds: [],
             raceIds: [],
+            highlightsEvents: sent.highlightsEvents === true,
           })
 
           return new Response(JSON.stringify({ id, slug: sent.slug }), {

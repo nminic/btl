@@ -787,13 +787,18 @@ describe('the words the seven forms need', () => {
        setting that works.
 
        The other five are named too, so the guard fails on a field going missing
-       as well as on one coming back. */
+       as well as on one coming back.
+
+       The sixth since 24.11.2026 is the box „Istakni događaje" (owner, PDL: „da imam na
+       nivou lige checkbox u podešavanjima"), which the record has room for: V109's
+       `league.highlights_events`, served as `League.highlightsEvents`. */
     expect(LEAGUES.form.fields.map((one) => one.name)).toEqual([
       'name',
       'slug',
       'season',
       'rules',
       'prizes',
+      'highlightsEvents',
     ])
 
     /* And the words each of them is asked under. A field carries its label by a name in
@@ -810,6 +815,7 @@ describe('the words the seven forms need', () => {
       'rankings.season',
       'leagues.rules',
       'leagues.prizes',
+      'admin.field.highlightsEvents',
     ])
 
     /* **And the words behind those names**, which the names alone do not hold: the value
@@ -835,6 +841,7 @@ describe('the words the seven forms need', () => {
       'Sezona',
       'Propozicije',
       'Nagrade',
+      'Istakni događaje',
     ])
   })
 

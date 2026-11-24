@@ -19,6 +19,7 @@ const event = (id: number, date: string): BtlEvent => ({
   link: '',
   copiedFrom: null,
   featured: false,
+  highlighted: false,
 })
 
 const race = (id: number, eventId: number, date: string, over: Partial<Race> = {}): Race => ({

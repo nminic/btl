@@ -164,6 +164,7 @@ const anEvent = {
   country: 'RS',
   kind: 'race' as const,
   featured: false,
+  highlighted: false,
   description: '',
   link: '',
   copiedFrom: null,

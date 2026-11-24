@@ -14,6 +14,7 @@ const event = (id: number, date: string, name = `Događaj ${String(id)}`): BtlEv
   link: '',
   copiedFrom: null,
   featured: false,
+  highlighted: false,
 })
 
 const race = (id: number, eventId: number, distanceKm = 10, date = '2019-05-01'): Race => ({
@@ -58,6 +59,7 @@ const league: League = {
   logo: null,
   crop: null,
   smallLogo: null,
+  highlightsEvents: false,
 }
 
 const events = [

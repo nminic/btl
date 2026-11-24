@@ -37,6 +37,11 @@
       "formatted": true,
       "labelKey": "leagues.prizes",
       "maxLength": 4000
+    },
+    {
+      "name": "highlightsEvents",
+      "type": "checkbox",
+      "labelKey": "admin.field.highlightsEvents"
     }
   ]
 }
