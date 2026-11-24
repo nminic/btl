@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { ruleFor, ruleInMedia } from '../test/stylesheet'
+import { ruleFor } from '../test/stylesheet'
 import { DOTS } from '../data/types'
 
 /* The dots a calendar tile carries, as colours.
@@ -74,35 +74,17 @@ import { DOTS } from '../data/types'
 const tokens = readFileSync(join(process.cwd(), 'src/styles/tokens.css'), 'utf-8')
 const table = readFileSync(join(process.cwd(), 'src/styles/table.css'), 'utf-8')
 
-/** The three rules a colour is written in: the light theme, the dark one behind
- *  the media query, and the dark one behind the switch. */
+/** The rule a colour is written in: the portal's one palette (PDL „Portal ima samo
+ *  tamnu temu; svetla se izbacuje", 24.11.2026). */
 function themes(): { where: string; style: CSSStyleDeclaration }[] {
-  return [
-    { where: 'the light theme', style: ruleFor(tokens, ':root', 'tokens.css') },
-    {
-      where: 'the dark theme, behind the media query',
-      style: ruleInMedia(
-        tokens,
-        '(prefers-color-scheme: dark)',
-        ":root:not([data-theme='light'])",
-        'tokens.css',
-      ),
-    },
-    {
-      where: 'the dark theme, behind the switch',
-      style: ruleFor(tokens, ":root[data-theme='dark']", 'tokens.css'),
-    },
-  ]
+  return [{ where: 'the palette', style: ruleFor(tokens, ':root', 'tokens.css') }]
 }
 
 describe('every dot a calendar tile can carry', () => {
-  it('is given a colour in each of the three theme blocks', () => {
-    /* Each theme asked on its own, because the fault this is written for is a
-       colour that reaches one of them and not another: the sixth was written
-       into the media query and left out of the switch, so a reader using the
-       toggle kept the light violet on a dark ground (measured 30.08.2026, in
-       this branch, before the review). A count over the sheet as a whole passed
-       on that, since the sheet did hold three of them. */
+  it('is given a colour in the palette', () => {
+    /* Asked of the rule the palette is written in rather than of the sheet as a
+       whole: on 30.08.2026 the sixth dot was written into one of three theme
+       blocks and left out of another, and a count over the sheet passed on it. */
     for (const one of DOTS) {
       for (const { where, style } of themes()) {
         expect(style.getPropertyValue(`--length-${one}`), `${one} in ${where}`).not.toBe('')

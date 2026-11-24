@@ -69,7 +69,7 @@ import { SignedOut } from './SignedOut'
  * platio: bez reči nalog, samo Članarina": „Sve opcije koje mu nisu dostupne privremeno (dakle sve
  * osim Članarine) ne treba da mu uopšte budu dostupne. [...] Kad kažem dostupne, mislim vidljive
  * niti deep linkom dostupne."). That includes the settings, which he used to be drawn the password
- * and the theme on: they open with the fee, like the rest.
+ * on: they open with the fee, like the rest.
  *
  * <p><b>The member whose fee has LAPSED is a member here, not a fifth answer, and that is
  * deliberate.</b> PDL P8, 11.10.2026 (the addition to „Šta sme neplaćen član", the owner's choice
@@ -311,7 +311,7 @@ export function useScreenForEveryAccount(): ScreenForEveryAccount {
   const who = useScreenForTheUnpaidToo()
   const { signedIn } = useSession()
 
-  /* SOMEBODY WHO HAS NOT PAID HAS NO SETTINGS YET (PDL 22.10.2026): the password, the theme and the
+  /* SOMEBODY WHO HAS NOT PAID HAS NO SETTINGS YET (PDL 22.10.2026): the password and the
      language of his mail open with the fee, like the rest, and the address sends him to the page he
      pays on. Said here and not in the screen, so the screen cannot draw him anything. */
   if (who.standing === 'neverPaid') {

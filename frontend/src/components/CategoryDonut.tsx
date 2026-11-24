@@ -57,9 +57,9 @@ type SliceKind = RaceCategory | typeof UNSCORED
 /** The five lengths and then the unscored ones, in the order the ring goes round. */
 const KINDS: SliceKind[] = [...CATEGORIES, UNSCORED]
 
-/** One colour per length, named rather than written: the values are per theme
- *  and live in styles/tokens.css. The unscored ones take the muted text colour, which both themes
- *  already define and which holds 3:1 against the card in both of them (WCAG 2.2 SC 1.4.11), so
+/** One colour per length, named rather than written: the values live in styles/tokens.css. The
+ *  unscored ones take the muted text colour, which the palette already defines and which holds 3:1
+ *  against the card (WCAG 2.2 SC 1.4.11), so
  *  the ring adds no colour to a palette of five hues somebody may not be able to tell apart. */
 const COLOURS: Record<SliceKind, string> = {
   short: 'var(--length-short)',

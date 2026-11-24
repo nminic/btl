@@ -54,9 +54,9 @@ describe('Home', () => {
        passes just as happily when the target is 32. With less motion asked for,
        the row is nought and then its target and nothing in between. */
     const previous = window.matchMedia
-    /* The whole shape, not just `matches`: the theme in the shell subscribes to
-       the system preference, and a stub without `addEventListener` throws inside
-       an effect and takes the effects after it down with it. `matchingMedia` is
+    /* The whole shape, not just `matches`: the shell subscribes to the queries it
+       asks, and a stub without `addEventListener` throws inside an effect and takes
+       the effects after it down with it. `matchingMedia` is
        where that whole shape is written out (test/media.ts). */
     window.matchMedia = matchingMedia((query) => query.includes('reduced-motion'))
 

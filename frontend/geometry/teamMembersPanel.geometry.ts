@@ -13,8 +13,8 @@ import type { Answers, At } from './support/harness.ts'
  *
  * <p>The panel of a team stands in a row of a table inside `.table-scroll`, which clips (`overflow-x: auto` makes the
  * vertical overflow clip too). A list that is `absolute` inside its box was cut to the height of the row, and the
- * table grew a scroll bar beside it. Asked of Chrome, **with the list open**, on a telephone, a tablet and a desktop, in
- * both themes, and **in the two places the list was cut**: a table with ONE team, and the LAST row of a table with
+ * table grew a scroll bar beside it. Asked of Chrome, **with the list open**, on a telephone, a tablet and a desktop,
+ * and **in the two places the list was cut**: a table with ONE team, and the LAST row of a table with
  * several. What is held:
  *
  * - the list is whole in the window (`top >= 0`, `bottom <= the window`, inside it sideways);
@@ -90,7 +90,7 @@ const LARGE_TEXT: At[] = [
   { width: 412, text: 200 },
 ]
 
-const AT: At[] = SIZES.flatMap((one) => (['light', 'dark'] as const).map((theme): At => ({ ...one, theme })))
+const AT: At[] = SIZES
 
 for (const [which, answers, pick, phoneOnly] of [
   ['the table of one team', ONE_TEAM, 'first', false],

@@ -6,19 +6,21 @@ import { describe, expect, it } from 'vitest'
 /**
  * THE POLICY IN `nginx.conf` AND THE PAGE IT GOVERNS, HELD TOGETHER.
  *
- * <p>The one inline script of `index.html` (the theme before the first paint) is allowed by its
- * digest, and a digest is of the exact bytes: change one character of that script, a comment
- * included, and every browser refuses it while every test of the screens stays green, because no test
- * runs a policy. This is the only thing that reads both files.
+ * <p>`index.html` carries no inline script since 24.11.2026: the one it had set the theme before the
+ * first paint, and it left with the light theme (PDL „Portal ima samo tamnu temu; svetla se
+ * izbacuje"), and its digest left `script-src` with it. A script put back into the page would be refused
+ * by every browser while every test of the screens stayed green, because no test runs a policy. This is
+ * the only thing that reads both files.
  *
- * <p><b>The digest is taken with the lines ending in LF</b>, which is how the image is built (on
- * Linux, out of git) and not how a Windows checkout holds the file. Measured 21.11.2026: the script
- * production serves is 760 bytes and the one on this disk 772, twelve carriage returns apart, and only
+ * <p><b>The digest of a script is taken with the lines ending in LF</b>, which is how the image is built
+ * (on Linux, out of git) and not how a Windows checkout holds the file. Measured 21.11.2026: the script
+ * production served was 760 bytes and the one on this disk 772, twelve carriage returns apart, and only
  * the first digest is the one a browser compares.
  *
  * <p><b>Both directions</b>: every inline script has its digest in `script-src`, and every digest in
  * `script-src` belongs to a script that is still there, so a script taken out does not leave a
- * permission behind it.
+ * permission behind it. Today both sets are empty, and the floor below says so, so that a pattern which
+ * stopped matching is not read as „no inline script".
  */
 const conf = readFileSync(join(process.cwd(), 'nginx.conf'), 'utf8')
   .split(/\r?\n/)
@@ -55,8 +57,11 @@ describe('the content security policy', () => {
   it('allows the inline scripts of index.html by their digest, and nothing else inline', () => {
     const scripts = inlineScripts()
 
-    /* A floor, so that a pattern which stopped matching cannot pass as „no inline script". */
-    expect(scripts, 'index.html carries the theme script and nothing else inline').toHaveLength(1)
+    /* A floor, so that a pattern which stopped matching cannot pass as „no inline script": the page
+       has exactly one script, the module, and the pattern has to see it as one that is not inline. */
+    expect([...page.matchAll(/<script\b/g)], 'index.html carries one script, the module').toHaveLength(1)
+    expect(page, 'the one script is the module of the portal').toMatch(/<script type="module" src="\/src\/main\.tsx"><\/script>/)
+    expect(scripts, 'index.html carries a script inline').toEqual([])
 
     const digests = scripts.map(
       (text) => `'sha256-${createHash('sha256').update(text, 'utf8').digest('base64')}'`,

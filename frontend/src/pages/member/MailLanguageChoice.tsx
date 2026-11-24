@@ -32,7 +32,7 @@ import { useMyMailLanguage } from './useMyMailLanguage'
  * hook that parts those four (`memberScreen.tsx`): it is drawn to all of them.
  *
  * <p><b>THE GROUP IS TWO RADIOS</b> and not a list, the shape the portal already uses for a choice
- * of exactly one among few (the theme beside it, the category on `Membership.tsx`, and the owner's
+ * of exactly one among few (the theme on the same screen until 24.11.2026, the category on `Membership.tsx`, and the owner's
  * „Pol i kategorija su dugmad" of 11.08.2026, PDL P8, which this copies in the one respect that
  * applies: a radio group so the keyboard works as everywhere else). It differs from that decision
  * in one more respect, said rather than left to be found: that one opens with nothing chosen, and

@@ -4,7 +4,6 @@ import { DEFAULT_LOCALE, isLocale, loadDictionary, loadedDictionary, type Locale
 import { I18nProvider } from '../i18n/I18nProvider'
 import { BoxesSentProvider } from '../pages/profile/BoxesSentProvider'
 import { Shell } from './Shell'
-import { ThemeProvider } from './ThemeProvider'
 
 /* Every address carries the language
  * (PDL P18, „Adrese nose **jezički prefiks za sve jezike, uključujući srpski**").
@@ -29,11 +28,9 @@ export function LocaleLayout() {
   return (
     <OnceItsBookIsHere locale={locale}>
       <I18nProvider locale={locale}>
-        <ThemeProvider>
-          <BoxesSentProvider>
-            <Shell />
-          </BoxesSentProvider>
-        </ThemeProvider>
+        <BoxesSentProvider>
+          <Shell />
+        </BoxesSentProvider>
       </I18nProvider>
     </OnceItsBookIsHere>
   )

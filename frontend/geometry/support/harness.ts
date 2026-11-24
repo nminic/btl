@@ -67,8 +67,13 @@ export const SLACK = 0.5
  *  guard asks for where a width turns over with the text (`tableCards.geometry.ts`). */
 export type Text = 100 | 125 | 150 | 175 | 200
 
-/** One screen to measure: how wide, at what text size, in which theme, and for a reader who asks for what
- *  movement.
+/** One screen to measure: how wide, at what text size, and for a reader who asks for what movement.
+ *
+ *  **No theme.** The portal has one, the dark one (PDL „Portal ima samo tamnu temu; svetla se izbacuje",
+ *  24.11.2026), and asks the system nothing about the scheme it prefers (`app/oneTheme.test.ts`), so every
+ *  screen is opened with the system in its light scheme and draws dark all the same. Until that day a case
+ *  could say `theme: 'dark'`, and what it set was the system's scheme: the page was dark in both, because
+ *  the portal opened dark for everybody who had not chosen otherwise and no case ever chose.
  *
  *  **`motion` is `'reduce'` unless a case says otherwise** (20.11.2026, review of PR 760). `settle` waits for
  *  every animation on the page to end, and the dot that runs the route on every screen from 560px up takes five
@@ -80,7 +85,6 @@ export type Text = 100 | 125 | 150 | 175 | 200
 export type At = {
   width: number
   text: Text
-  theme?: 'light' | 'dark'
   motion?: 'reduce' | 'no-preference'
   /** The window's height, 900 unless a case says otherwise: a screen shorter than the window draws no scrollbar
    *  and the harness refuses to measure a desktop without one, so a short screen (the sign in form) asks for a
@@ -116,7 +120,7 @@ type Worker = {
 export const notMeasured = (why: string) => new Error(`NOT MEASURED: ${why}`)
 
 /** A name for a screen, in the title of every case read on it. */
-export const label = (at: At) => `${at.width}px, text ${at.text}%${at.theme === 'dark' ? ', dark' : ''}`
+export const label = (at: At) => `${at.width}px, text ${at.text}%`
 
 const TYPES: Readonly<Record<string, string>> = {
   '.html': 'text/html; charset=utf-8',
@@ -212,7 +216,7 @@ export const test = base.extend<Geometry, Worker>({
         viewport: { width: at.width, height: at.height ?? 900 },
         deviceScaleFactor: 1,
         isMobile: at.width < 1000,
-        colorScheme: at.theme ?? 'light',
+        colorScheme: 'light',
         reducedMotion: at.motion ?? 'reduce',
       })
 
@@ -274,7 +278,6 @@ export const test = base.extend<Geometry, Worker>({
           emUnder: matchMedia(`(min-width: ${width / (em * 1.1)}em)`).matches,
           emOver: matchMedia(`(min-width: ${width / (em * 0.9)}em)`).matches,
           day: new Date().toISOString().slice(0, 10),
-          dark: matchMedia('(prefers-color-scheme: dark)').matches,
         }
       }, { width: at.width, text: at.text })
 
@@ -295,10 +298,6 @@ export const test = base.extend<Geometry, Worker>({
 
       if (seen.day !== theDay) {
         throw notMeasured(`the page reads the day as ${seen.day} and not as ${theDay}: the clock is not pinned`)
-      }
-
-      if (seen.dark !== (at.theme === 'dark')) {
-        throw notMeasured(`asked for the ${at.theme ?? 'light'} theme and the page answers dark: ${seen.dark}`)
       }
 
       if (at.width >= 1000 && seen.innerWidth - seen.clientWidth <= 0) {

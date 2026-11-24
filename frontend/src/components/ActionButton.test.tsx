@@ -8,7 +8,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { SYMBOL } from '../app/actionSymbol'
 import { must } from '../test/at'
 import { contrast } from '../test/contrast'
-import { bodyOf, ruleFor, ruleInMedia, unremarked } from '../test/stylesheet'
+import { bodyOf, ruleFor, unremarked } from '../test/stylesheet'
 import { ActionButton, ActionLink } from './ActionButton'
 
 /**
@@ -243,26 +243,11 @@ describe('how it is laid out', () => {
 
 describe('the colours it is drawn in', () => {
   const tokens = sheet('styles/tokens.css')
-  const light = ruleFor(tokens, ':root', 'tokens.css')
-  const themes = [
-    { where: 'the light theme', style: light },
-    {
-      where: 'the dark theme, behind the media query',
-      style: ruleInMedia(
-        tokens,
-        '(prefers-color-scheme: dark)',
-        ":root:not([data-theme='light'])",
-        'tokens.css',
-      ),
-    },
-    {
-      where: 'the dark theme, behind the switch',
-      style: ruleFor(tokens, ":root[data-theme='dark']", 'tokens.css'),
-    },
-  ]
+  const root = ruleFor(tokens, ':root', 'tokens.css')
+  /* The portal's one palette (PDL „Portal ima samo tamnu temu; svetla se izbacuje", 24.11.2026). */
+  const themes = [{ where: 'the palette', style: root }]
 
-  /** A value down to its colour, in the theme first and in the light root after,
-   *  since a dark theme only writes what it changes. */
+  /** A value down to its colour, through every token it names. */
   function colour(value: string, theme: CSSStyleDeclaration): string {
     const named = /^var\((--[\w-]+)\)$/.exec(value.trim())
 
@@ -275,7 +260,9 @@ describe('the colours it is drawn in', () => {
     const name = must(named[1], 'the name of the property')
     const own = theme.getPropertyValue(name)
 
-    return colour(own === '' ? light.getPropertyValue(name) : own, theme)
+    expect(own, `${name} has no value in the palette`).not.toBe('')
+
+    return colour(own, theme)
   }
 
   /** What a rule of a sheet paints with, read from the sheet that paints it. */
@@ -283,7 +270,7 @@ describe('the colours it is drawn in', () => {
     return ruleFor(sheet(path), selector, path).getPropertyValue(property)
   }
 
-  it('puts the drawing at 3:1 against everything it stands on, in every theme', () => {
+  it('puts the drawing at 3:1 against everything it stands on', () => {
     const ink = painted('pages/Home.css', '.button--secondary', 'color')
     const filledInk = painted('pages/Home.css', '.button--primary', 'color')
     const filled = painted('pages/Home.css', '.button--primary', 'background')
@@ -305,7 +292,7 @@ describe('the colours it is drawn in', () => {
     }
   })
 
-  it('puts the word in the box at 4.5:1, in every theme', () => {
+  it('puts the word in the box at 4.5:1', () => {
     const ink = painted('components/ActionButton.css', '.action-tip__words', 'color')
     const ground = painted('components/ActionButton.css', '.action-tip__words', 'background')
 

@@ -10,9 +10,9 @@ import { unremarked } from '../test/stylesheet'
  * estetski lepše?”, and on the question where: every dropdown, the forms, the filters such as SEZONA, and the box
  * of a member).
  *
- * WHY NO LIST OF SELECTS IS KEPT HERE. The arrow is one rule in `index.css`, `select, .dropdown`, with the same
- * picture in the dark palette under the two selectors that palette is applied by, and every declaration of the
- * three is important. In the cascade only another important declaration can beat an important one: no class,
+ * WHY NO LIST OF SELECTS IS KEPT HERE. The arrow is one rule in `index.css`, `select, .dropdown`, in the portal's
+ * one palette (PDL „Portal ima samo tamnu temu; svetla se izbacuje", 24.11.2026), and every declaration of it is
+ * important. In the cascade only another important declaration can beat an important one: no class,
  * however heavy, no order of sheets, and no `style` attribute React writes. So the question „does every select
  * wear it” is not asked select by select, which would be a list somebody has to keep (sixteen of them in thirteen
  * files on 23.11.2026, and more to come); it is asked of the cascade, which answers it for every select there is
@@ -21,7 +21,7 @@ import { unremarked } from '../test/stylesheet'
  * and every source that could set a priority on an element's style.
  *
  * What jsdom cannot say, that the rule really lands on the selects of real screens and draws an arrow a reader
- * can see in each theme, Chrome says (`geometry/dropdownArrow.geometry.ts`).
+ * can see, Chrome says (`geometry/dropdownArrow.geometry.ts`).
  */
 
 const SRC = join(process.cwd(), 'src')
@@ -72,17 +72,12 @@ function important(css: string): { property: string; value: string; selector: st
   })
 }
 
-/** The three rules that draw the arrow, as `index.css` writes them, and nothing else that is important there. */
-const LIGHT = { selector: 'select, .dropdown', inside: '' }
-const DARK_BY_THE_SYSTEM = {
-  selector: ":root:not([data-theme='light']) :is(select, .dropdown)",
-  inside: '@media (prefers-color-scheme: dark)',
-}
-const DARK_BY_CHOICE = { selector: ":root[data-theme='dark'] :is(select, .dropdown)", inside: '' }
-/** The fourth, for the reader who has asked the system for its own colours (review of PR 803, medium 1). */
+/** The rule that draws the arrow, as `index.css` writes it. */
+const ARROW = { selector: 'select, .dropdown', inside: '' }
+/** The second, for the reader who has asked the system for its own colours (review of PR 803, medium 1). */
 const FORCED = { selector: ':root:root :is(select, .dropdown)', inside: '@media (forced-colors: active)' }
-/** The three palettes, one rule each; the fourth is no palette and is read on its own. */
-const DRAWING = [LIGHT, DARK_BY_THE_SYSTEM, DARK_BY_CHOICE]
+/** The one palette's rule; the second is no palette and is read on its own. */
+const DRAWING = [ARROW]
 
 function draws(one: { selector: string; inside: string }): boolean {
   return [...DRAWING, FORCED].some((rule) => rule.selector === one.selector && rule.inside === one.inside)
@@ -94,7 +89,7 @@ function ruleOf(rule: { selector: string; inside: string }) {
 
 describe('the rule that draws the arrow', () => {
   it('takes the browser arrow away from every select and the box one types into, paints the arrow at the right, and keeps the text clear of it', () => {
-    expect(ruleOf(LIGHT).map((one) => `${one.property}: ${one.value}`)).toEqual([
+    expect(ruleOf(ARROW).map((one) => `${one.property}: ${one.value}`)).toEqual([
       'appearance: none',
       expect.stringMatching(/^background-image: url\("data:image\/svg\+xml,[^"]+"\)$/),
       'background-repeat: no-repeat',
@@ -107,16 +102,15 @@ describe('the rule that draws the arrow', () => {
     ])
   })
 
-  it('gives the dark palette the same arrow by the two selectors that palette is applied by, and nothing else', () => {
-    for (const rule of [DARK_BY_THE_SYSTEM, DARK_BY_CHOICE]) {
-      expect(ruleOf(rule).map((one) => one.property), rule.selector).toEqual(['background-image'])
-    }
+  it('is the one picture of the arrow there is: no other rule of the sheet draws one', () => {
+    /* Until 24.11.2026 the dark palette drew the same arrow again under the two selectors it was applied by. A
+       second picture of the arrow is a second palette, and the colour in it is held by nothing below. */
+    const pictures = important(read(INDEX)).filter((one) => one.property === 'background-image')
 
-    /* The same selectors `tokens.css` turns the palette with, so the arrow cannot turn without it. */
-    const tokens = unremarked(read('styles/tokens.css'))
-
-    expect(tokens).toContain("@media (prefers-color-scheme: dark) {\n  :root:not([data-theme='light']) {")
-    expect(tokens).toContain(":root[data-theme='dark'] {")
+    expect(pictures.map((one) => `${one.inside} ${one.selector}`.trim())).toEqual([
+      ARROW.selector,
+      `${FORCED.inside} ${FORCED.selector}`,
+    ])
   })
 })
 
@@ -128,8 +122,8 @@ describe('the rule for the reader who has asked the system for its own colours',
     expect(drawn).toMatch(/^background-image: url\("data:image\/svg\+xml,/)
 
     /* The path is the one of the rule for every palette (the same shape, the portal's one arrow), twice: the edge, then the line. */
-    const light = ruleOf(LIGHT).find((one) => one.property === 'background-image')?.value ?? ''
-    const path = /d='([^']+)'/.exec(decodeURIComponent(light))?.[1]
+    const arrow = ruleOf(ARROW).find((one) => one.property === 'background-image')?.value ?? ''
+    const path = /d='([^']+)'/.exec(decodeURIComponent(arrow))?.[1]
     const picture = decodeURIComponent(drawn ?? '')
 
     expect(path).toBe('M4 8.5l8 8 8-8')
@@ -153,11 +147,11 @@ describe('nothing else in the portal can take the arrow away', () => {
     expect(sheets.map((one) => one.path)).toEqual(expect.arrayContaining([INDEX, 'pages/Rankings.css', 'roles/RoleSwitch.css']))
   })
 
-  it('reads the important declarations it says it reads, the ones of the three rules among them', () => {
-    expect(important(read(INDEX)).filter(draws)).toHaveLength(9)
+  it('reads the important declarations it says it reads, the ones of the two rules among them', () => {
+    expect(important(read(INDEX)).filter(draws)).toHaveLength(7)
   })
 
-  it('has no important declaration of what dresses a dropdown outside those three rules', () => {
+  it('has no important declaration of what dresses a dropdown outside those two rules', () => {
     const offenders = sheets.flatMap(({ path, css }) =>
       important(css)
         .filter((one) => DRESS.test(one.property))
@@ -179,21 +173,20 @@ describe('nothing else in the portal can take the arrow away', () => {
   })
 })
 
-describe('the arrow of each theme', () => {
+describe('the colour of the arrow', () => {
   /* The arrow is the MUTED tone of the text (owner, 23.11.2026, PDL „Strelica padajućeg izbora je manja i
-     suptilnija”), `--text-muted` of its palette, and not the full `--text` it wore before. */
+     suptilnija”), `--text-muted` of the palette, and not the full `--text` it wore before. */
   const tokens = unremarked(read('styles/tokens.css'))
-  /* Every block of `tokens.css` that gives `--text` a value is a palette: the light one, the dark one the system
-     asks for, and the dark one a member chose, in that order. */
+  /* Every block of `tokens.css` that gives `--text` a value is a palette, and there is one since 24.11.2026. */
   const palettes = [...tokens.matchAll(/\{[^{}]*\s--text:[^{}]*\}/g)].map((one) => one[0])
 
   function valueIn(block: string, name: string): string | undefined {
     return new RegExp(`\\s${name}: ([^;]+);`).exec(block)?.[1]?.trim()
   }
 
-  /** A colour of a palette followed through `var()` to its hex, looked up in the palette and then in the light one. */
+  /** A colour of the palette followed through `var()` to its hex. */
   function hex(block: string, name: string): string {
-    const value = must(valueIn(block, name) ?? valueIn(must(palettes[0], 'the light palette'), name), `${name} has no value`)
+    const value = must(valueIn(block, name), `${name} has no value`)
     const named = /^var\((--[a-z0-9-]+)\)$/.exec(value)
 
     if (named === null) {
@@ -214,7 +207,7 @@ describe('the arrow of each theme', () => {
     return `#${must(/stroke='%23([0-9a-f]{6})'/.exec(image.value)?.[1], 'the arrow has no stroke colour')}`
   }
 
-  it('reads three palettes, one for each rule that draws the arrow, each with a muted tone of its own that is not the full one', () => {
+  it('reads one palette, for the one rule that draws the arrow, with a muted tone that is not the full one', () => {
     for (const palette of palettes) {
       expect(hex(palette, '--text-muted')).not.toBe(hex(palette, '--text'))
     }
@@ -222,7 +215,7 @@ describe('the arrow of each theme', () => {
     expect(palettes).toHaveLength(DRAWING.length)
   })
 
-  it('is drawn in the stroke of the portal symbols, in the muted colour of the text of its palette', () => {
+  it('is drawn in the stroke of the portal symbols, in the muted colour of the text', () => {
     DRAWING.forEach((rule, index) => {
       expect(strokeOf(rule), rule.selector).toBe(hex(must(palettes[index], 'a palette'), '--text-muted'))
     })
@@ -237,22 +230,12 @@ describe('the arrow of each theme', () => {
     })
   })
 
-  it('draws the same chevron in every palette, so only its colour turns', () => {
-    const shapes = DRAWING.map((rule) =>
-      ruleOf(rule)
-        .find((one) => one.property === 'background-image')
-        ?.value.replace(/stroke='%23[0-9a-f]{6}'/, ''),
-    )
-
-    expect(shapes.every((one) => one !== undefined)).toBe(true)
-    expect(new Set(shapes).size).toBe(1)
-  })
 })
 
 describe('the arrow of the language box of the header is the same arrow', () => {
   const menu = read('app/LanguageMenu.tsx')
   const caret = must(/<svg\s+className="lang__caret"[\s\S]*?<\/svg>/.exec(menu)?.[0], 'the caret of the language box')
-  const dropdown = must(ruleOf(LIGHT).find((one) => one.property === 'background-image'), 'the arrow of the dropdowns').value
+  const dropdown = must(ruleOf(ARROW).find((one) => one.property === 'background-image'), 'the arrow of the dropdowns').value
 
   it('draws the chevron of the dropdowns, in the stroke they have, in the muted tone of its text', () => {
     expect(caret).toContain('viewBox="0 0 24 24"')
