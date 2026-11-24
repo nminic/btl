@@ -215,6 +215,7 @@ export const BEHIND: [string, Role, string | null, string][] = [
   ['/sr/administracija/dogadjaji', 'superadmin', ADMIN, 'Događaji'],
   ['/sr/administracija/timovi', 'superadmin', ADMIN, 'Timovi'],
   ['/sr/administracija/lige', 'superadmin', ADMIN, 'Lige'],
+  ['/sr/administracija/sponzori', 'superadmin', ADMIN, 'Sponzori'],
   ['/sr/administracija/strane', 'superadmin', ADMIN, 'Statične strane'],
   ['/sr/administracija/moderatori', 'superadmin', ADMIN, 'Moderatori'],
   /* The moderator's own screen, „Unos rezultata za događaj” (PDL P9, 19.10.2026). */

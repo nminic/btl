@@ -1,0 +1,81 @@
+/* THE LOGO OF A SPONSOR AS THE FRONT PAGE WILL DRAW IT, on the screen where it is sent (owner, PDL
+   24.11.2026: „Logo stoji providno na tamnoj pozadini, bez svetle pločice"). Two frames side by side, the
+   box of the day and a tile of the strip, each on the surface the front page lays them on and with no
+   plate of its own behind the logo: what the administration sees here is what a visitor will see, so a
+   logo made for a light page shows here that it cannot be read before it reaches the front page.
+
+   The sizes are the front page's own (`Home.css`, `.sponsor-day__logo` and `.sponsor-strip__tile`): 64px
+   tall in the box, inside 120×48 in the strip, never distorted. The two wrap under each other where the
+   column is narrow, so nothing here asks for a width the telephone has not got. */
+.sponsor-logo__previews {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-16);
+  margin: 0;
+}
+
+.sponsor-logo__box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-inline-size: 0;
+  max-inline-size: 100%;
+  padding: var(--space-16);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-10);
+  background: var(--surface);
+}
+
+.sponsor-logo__box img {
+  display: block;
+  block-size: 64px;
+  inline-size: auto;
+  max-inline-size: 100%;
+  object-fit: contain;
+}
+
+.sponsor-logo__tile {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  inline-size: 120px;
+  block-size: 48px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-6);
+  background: var(--surface);
+}
+
+.sponsor-logo__tile img {
+  display: block;
+  max-inline-size: 100%;
+  max-block-size: 100%;
+  object-fit: contain;
+}
+
+/* The logo in a row of the list: the height of a line of text, on the same surface, so a row with a
+   logo is not taller than a row without one. */
+.sponsor-row__logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 5rem;
+  block-size: 2rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-6);
+  background: var(--surface);
+}
+
+.sponsor-row__logo img {
+  display: block;
+  max-inline-size: 100%;
+  max-block-size: 100%;
+  object-fit: contain;
+}
+
+/* The two arrows of the manual order, side by side in their cell. */
+.sponsor-row__order {
+  display: inline-flex;
+  gap: var(--space-4);
+}

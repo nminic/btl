@@ -170,6 +170,10 @@
       "title": "Lige (administracija)",
       "description": "Koji događaji ulaze u koje takmičenje, i pod kojim propozicijama."
     },
+    "adminSponsors": {
+      "title": "Sponzori (administracija)",
+      "description": "Sponzori lige: ko se smenjuje u boksu \"Sponzor dana\", ko stoji u traci na dnu naslovne strane, i kojim redom."
+    },
     "adminPricing": {
       "title": "Cenovnik (administracija)",
       "description": "Redovi cenovnika članarine, svaki sa periodom važenja, iznosom i valutom."
