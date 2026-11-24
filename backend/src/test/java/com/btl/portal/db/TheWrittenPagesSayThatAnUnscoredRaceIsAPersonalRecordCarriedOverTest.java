@@ -39,6 +39,7 @@ class TheWrittenPagesSayThatAnUnscoredRaceIsAPersonalRecordCarriedOverTest exten
 	 */
 	@BeforeEach
 	void theTextAsV106LeftIt() {
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "110");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "107");
 	}
 

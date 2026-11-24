@@ -91,9 +91,22 @@ final class TheWrittenPagesBeforeV71 {
 					+ "\\$old\\$(.*?)\\$old\\$,\\s*\\$new\\$(.*?)\\$new\\$\\)",
 			Pattern.DOTALL);
 
+	/** Every edit of a migration whose table has no field column (V73, and V110), in the order it makes them: the body is always the one. */
+	static List<Edit> bodyEditsOf(String sql) {
+		List<Edit> edits = new ArrayList<>();
+		Matcher each = A_BODY_EDIT.matcher(sql);
+
+		while (each.find()) {
+			edits.add(new Edit(each.group(1).replace("''", "'"), each.group(2), Integer.parseInt(each.group(3)),
+					each.group(4), "body", each.group(5), each.group(6)));
+		}
+
+		return edits;
+	}
+
 	/**
 	 * A MIGRATION AFTER V71 UNDONE, so that what is put back is the text V71 left, whatever the later ones have written
-	 * since: V73 (24.10.2026), V76 (27.10.2026), V77 and V78 (both 29.10.2026), V80 (30.10.2026), V89 (07.11.2026), V90 (08.11.2026), V93, V94 and V95 (all 10.11.2026), V96 (12.11.2026), V98 (14.11.2026), V100 (14.11.2026, Article 15 says an unscored race is a personal record), V102 (16.11.2026, the policy says what a shared profile shows), V107 (21.11.2026, the Serbian legal texts speak to the reader as ti), the latest first.
+	 * since: V73 (24.10.2026), V76 (27.10.2026), V77 and V78 (both 29.10.2026), V80 (30.10.2026), V89 (07.11.2026), V90 (08.11.2026), V93, V94 and V95 (all 10.11.2026), V96 (12.11.2026), V98 (14.11.2026), V100 (14.11.2026, Article 15 says an unscored race is a personal record), V102 (16.11.2026, the policy says what a shared profile shows), V107 (21.11.2026, the Serbian legal texts speak to the reader as ti), V110 (24.11.2026, the policy loses the row about the choice of theme and its sign-off moves), the latest first.
 	 *
 	 * <p>Every guard that calls {@link #putBack(JdbcClient, String)} puts the pages back to how they stood before an older
 	 * migration and runs it again, and each of them is written against the text V71 left. V73 added the word "drugima"
@@ -151,6 +164,7 @@ final class TheWrittenPagesBeforeV71 {
 	}
 
 	static void putBack(JdbcClient db, String v71) {
+		undoBodyEdits(db, "110");
 		undoBodyEdits(db, "107");
 		undoBodyEdits(db, "102");
 		undoBodyEdits(db, "100");

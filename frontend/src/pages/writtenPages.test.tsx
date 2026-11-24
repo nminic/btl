@@ -908,8 +908,10 @@ describe('the privacy policy', () => {
     /* And it says there is no other store and no analytics. Until 10.11.2026 it also said why
        there was no bar („Nema analitike, ni naše ni tuđe, pa nema ni trake za pristanak.");
        the owner's words since are „Drugog skladišta, niti analitike, nema." and give no reason,
-       so the case holds the two facts and no longer holds the explanation. */
-    expect(policy).toContain('Drugog skladišta, niti analitike, nema.')
+       so the case holds the two facts and no longer holds the explanation. On 24.11.2026 the paragraph
+       about the theme left section 4 and the owner chose the sentence that stands in its place (PDL,
+       „Rečenica posle obrisanog pasusa glasi"): „U pregledaču se ništa drugo ne čuva, niti ima analitike." */
+    expect(policy).toContain('U pregledaču se ništa drugo ne čuva, niti ima analitike.')
   })
 
   it('says what a network shows of a shared profile, right after what is public', () => {
@@ -2480,12 +2482,9 @@ describe('how a written page is set', () => {
       )
     }
 
-    /* And what the reader is owed about it: where it is kept, and why no consent is asked
-       for it. It was owed a third thing until 10.11.2026, that it never reaches the
-       association („pa ga naš server ne vidi"); the owner's words for that sentence are
-       „Postavlja se tek kad temu sami izaberete." and the page no longer says it. */
-    expect(policy).toContain('lokalnom skladištu')
-    expect(policy).toMatch(/pristanak se ne traži|Za njega se pristanak ne traži/)
+    /* What the reader was owed about the one store there was, where it is kept and why no consent is
+       asked for it, is not asked any more: the portal keeps no store since 24.11.2026 and the owner took
+       the theme out of the policy altogether (PDL, „Briše se i rečenica o temi u odeljku 4"). */
     /* The claim the document used to make, and must not make again while any
        store is there. */
     expect(policy).not.toContain('Drugih kolačića nema')
@@ -3034,13 +3033,15 @@ describe('what the written pages say the fee buys', () => {
        owner, 14.11.2026, the day it reaches QA), by the same rule. The policy moved on to
        16.11.2026 with the sentence that says what a network shows of a shared profile (V102;
        owner, 16.11.2026), and all three to 21.11.2026 with the Serbian legal texts speaking to the
-       reader as „ti” (V107; owner, 21.11.2026, the day it is expected on QA), by the same rule. Written per
+       reader as „ti” (V107; owner, 21.11.2026, the day it is expected on QA), by the same rule. The policy alone moved on
+      to 24.11.2026 with the row about the choice of theme taken out of it (V110; owner, 24.11.2026, the day it is expected on QA),
+      by the same rule, and the terms and the rulebook kept 21.11.2026. Written per
        document and not as one day for all three, so a date moved on one of them,
        or left behind on one, is a failure that names the document. */
     const SIGNED_OFF = {
       pravilnik: '21.11.2026',
       'uslovi-koriscenja': '21.11.2026',
-      'politika-privatnosti': '21.11.2026',
+      'politika-privatnosti': '24.11.2026',
     } as const
 
     for (const slug of ['pravilnik', 'uslovi-koriscenja', 'politika-privatnosti'] as const) {

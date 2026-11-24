@@ -39,6 +39,7 @@ class TheWrittenPagesSayThatADucatStaysWhileItsResultsStandCarriedOverTest exten
 	/** The text as V96 left it: V98 (owner, 13.11.2026) moved the rulebook's sign-off on, which is held by TheWrittenPagesNameTheRookiesWithTheLetterOfTheGenderCarriedOverTest. */
 	@BeforeEach
 	void theTextAsV96LeftIt() {
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "110");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "107");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "100");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "98");

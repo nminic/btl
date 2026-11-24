@@ -1682,6 +1682,7 @@
     "cancelMembership": "Storniraj",
     "changeToExemption": "Promeni osnov u oslobođenje",
     "withoutTheRightToRank": "bez prava rangiranja",
+    "pastSeasonsCannotBeChanged": "Prošle sezone se trenutno ne mogu menjati. Pokušaj ponovo za koji minut.",
     "askCancel": {
       "payment": "Storniraj uplatu za sezonu {season}?",
       "feeExempt": "Storniraj oslobođenje za sezonu {season}?",

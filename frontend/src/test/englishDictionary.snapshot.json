@@ -1682,6 +1682,7 @@
     "cancelMembership": "Cancel",
     "changeToExemption": "Change the basis to an exemption",
     "withoutTheRightToRank": "without the right to rank",
+    "pastSeasonsCannotBeChanged": "Past seasons can't be changed right now. Try again in a minute.",
     "askCancel": {
       "payment": "Cancel the payment for the {season} season?",
       "feeExempt": "Cancel the exemption for the {season} season?",

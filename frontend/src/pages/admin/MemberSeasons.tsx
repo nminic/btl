@@ -1,7 +1,7 @@
 import { useId, useState } from 'react'
 import { FIRST_SEASON } from '../../data/season'
 import type { Member } from '../../data/types'
-import { dataOr, useFrozenSeasons } from '../../data/useResource'
+import { dataOr, failed, useFrozenSeasons } from '../../data/useResource'
 import { useI18n } from '../../i18n/useI18n'
 import { actsOn, heldIn, offeredFor, type SeasonAsk } from './memberMembership'
 
@@ -22,6 +22,9 @@ import { actsOn, heldIn, offeredFor, type SeasonAsk } from './memberMembership'
  *   other. The season that ended and has not frozen is drawn and does not act (owner, 24.11.2026: „njena
  *   kućica je u tom prozoru neaktivna"). Which seasons have frozen is `GET /api/frozen-seasons`; while it
  *   is on its way, or where it failed, no earlier box acts, which is the side the route refuses on anyway.
+ *   Where it failed, and only there, the list says so under itself (owner, 24.11.2026, PDL: „Kad ekran ne
+ *   uspe da pročita koje su sezone zamrznute, ispod spiska sezona piše rečenica."); while it is on its way
+ *   it says nothing, and once a read after a failure comes back the sentence goes.
  * - **„Promeni osnov u oslobođenje" stands beside the season on sale where it is held on a payment**
  *   (the coordinator's answer of 22.10.2026, P4): it is a change of that season's basis, and it keeps its
  *   word (PDL 20.10.2026, „Ostaju reči").
@@ -41,7 +44,8 @@ export function MemberSeasons({ one, onAsk }: { one: Member; onAsk: (ask: Season
   const whose = `${one.firstName} ${one.lastName}`
   const onSale = one.membershipBasis
   const seasons = Array.from({ length: one.seasonOnSale - FIRST_SEASON + 1 }, (_, step) => FIRST_SEASON + step)
-  const frozen = dataOr(useFrozenSeasons(), []).map((each) => each.season)
+  const frozenRead = useFrozenSeasons()
+  const frozen = dataOr(frozenRead, []).map((each) => each.season)
 
   return (
     <div className="members-seasons">
@@ -91,6 +95,14 @@ export function MemberSeasons({ one, onAsk }: { one: Member; onAsk: (ask: Season
           )
         })}
       </ul>
+      {/* Said under the list and only while it is open, because it is about the boxes in it: where the
+          freeze could not be read the boxes of the past seasons stay switched off (owner, 24.11.2026,
+          PDL: „Kad ekran ne uspe da pročita koje su sezone zamrznute, ispod spiska sezona piše rečenica."). */}
+      {failed(frozenRead) && (
+        <p className="members-seasons__unreadable" hidden={!open}>
+          {t('admin.pastSeasonsCannotBeChanged')}
+        </p>
+      )}
     </div>
   )
 }
