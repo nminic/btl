@@ -116,11 +116,13 @@ const THE_THEME = 'section[aria-labelledby="settings-appearance"]'
 /** Only the screen of the settings, drawn with its panels, has the mail, and every reader of it does. */
 const READY = PANELS.mail
 
-/** Where the panels stand two to a row: from 51.25em, which is 820px at the browser's own text. */
+/** Where the panels stand two to a row: from 51.25em, which is 820px at the browser's own text.
+ *  The desktops ask for a window 500px tall: since 24.11.2026 the screen is one row and no longer
+ *  scrolls in a window of 900, and a desktop that draws no scrollbar is not measured (the harness). */
 const BESIDE: At[] = [
   { width: 820, text: 100 },
-  { width: 1024, text: 100 },
-  { width: 1280, text: 100 },
+  { width: 1024, text: 100, height: 500 },
+  { width: 1280, text: 100, height: 500 },
   { width: 1920, text: 200 },
 ]
 
