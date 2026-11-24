@@ -1,8 +1,9 @@
 import { useId, useState } from 'react'
 import { FIRST_SEASON } from '../../data/season'
 import type { Member } from '../../data/types'
+import { dataOr, useFrozenSeasons } from '../../data/useResource'
 import { useI18n } from '../../i18n/useI18n'
-import { heldIn, offeredFor, type SeasonAsk } from './memberMembership'
+import { actsOn, heldIn, offeredFor, type SeasonAsk } from './memberMembership'
 
 /**
  * THE COLUMN „SEZONE" OF A MEMBER'S ROW (owner, 22.10.2026, PDL „Red na ekranu članova ima pet kolona":
@@ -13,12 +14,14 @@ import { heldIn, offeredFor, type SeasonAsk } from './memberMembership'
  *   the season the column „Osnov" is the basis of („Osnov je osnov sezone prikazane u koloni Sezone").
  * - **Opened, it lists every season of the league to that one**, from {@link FIRST_SEASON} (PDL
  *   [IZVEDENO] „Sezone nude samo sezone lige (od 2027)"), each ticked where he holds it.
- * - **Only the season on sale can be ticked or cleared.** Ticking it is „Odobri oslobođenje", clearing it
- *   is the cancellation by its basis; both ask first, and the row puts the question (`MemberRow.tsx`). An
- *   earlier season is drawn and cannot be changed: the routes act on the season on sale alone, read off
- *   the clock and never off the request (`MemberMembershipApi`), so a box of 2027 that sent anything
- *   would change 2028. Recorded as a debt before 15.10.2027 (PDL, the coordinator's addition of
- *   22.10.2026, and PENDING, „Dug pre 15.10.2027").
+ * - **The season on sale and every frozen season can be ticked or cleared** (`actsOn`). Ticking a box is
+ *   the exemption of that season, clearing it is the cancellation of that season by the basis it stands
+ *   on (owner, 22.10.2026, chosen with the recommendation: „Štikliranje sezone unazad upisuje oslobođenje
+ *   (ime i vreme odluke); odštikliranje je storno te sezone"); both ask first, and the row puts the
+ *   question (`MemberRow.tsx`). The ask carries the season of the box, and the route acts on it and on no
+ *   other. The season that ended and has not frozen is drawn and does not act (owner, 24.11.2026: „njena
+ *   kućica je u tom prozoru neaktivna"). Which seasons have frozen is `GET /api/frozen-seasons`; while it
+ *   is on its way, or where it failed, no earlier box acts, which is the side the route refuses on anyway.
  * - **„Promeni osnov u oslobođenje" stands beside the season on sale where it is held on a payment**
  *   (the coordinator's answer of 22.10.2026, P4): it is a change of that season's basis, and it keeps its
  *   word (PDL 20.10.2026, „Ostaju reči").
@@ -38,6 +41,7 @@ export function MemberSeasons({ one, onAsk }: { one: Member; onAsk: (ask: Season
   const whose = `${one.firstName} ${one.lastName}`
   const onSale = one.membershipBasis
   const seasons = Array.from({ length: one.seasonOnSale - FIRST_SEASON + 1 }, (_, step) => FIRST_SEASON + step)
+  const frozen = dataOr(useFrozenSeasons(), []).map((each) => each.season)
 
   return (
     <div className="members-seasons">
@@ -65,8 +69,10 @@ export function MemberSeasons({ one, onAsk }: { one: Member; onAsk: (ask: Season
                 <input
                   type="checkbox"
                   checked={held !== undefined}
-                  disabled={!onSaleNow}
-                  onChange={() => onAsk(onSale === undefined ? { act: 'grant' } : { act: 'cancel', basis: onSale })}
+                  disabled={!actsOn(one.seasonOnSale, season, frozen)}
+                  onChange={() =>
+                    onAsk(held === undefined ? { act: 'grant', season } : { act: 'cancel', basis: held, season })
+                  }
                 />
                 {season}
               </label>

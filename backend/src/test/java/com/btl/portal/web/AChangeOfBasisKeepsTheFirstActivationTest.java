@@ -2,6 +2,7 @@ package com.btl.portal.web;
 
 import com.btl.portal.TestcontainersConfiguration;
 import com.btl.portal.domain.account.SessionLife;
+import com.btl.portal.domain.season.SeasonClock;
 import com.btl.portal.domain.token.SecretToken;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
@@ -185,10 +186,13 @@ class AChangeOfBasisKeepsTheFirstActivationTest {
 	private void cancelledAndGrantedAgain(String number, String basis, Instant when) throws Exception {
 		clock.moveTo(when);
 
-		assertThat(sent(delete("/api/members/" + number + "/membership"), "{\"basis\": \"" + basis + "\"}")
-				.getStatus()).isEqualTo(200);
-		assertThat(sent(post("/api/members/" + number + "/membership"), "{\"basis\": \"feeExempt\"}")
-				.getStatus()).isEqualTo(201);
+		/* The box of the season on sale that day, which is what the screen sends. */
+		int season = SeasonClock.seasonBeingPaidFor(when.atZone(SeasonClock.ZONE));
+
+		assertThat(sent(delete("/api/members/" + number + "/membership"),
+				"{\"basis\": \"" + basis + "\", \"season\": " + season + "}").getStatus()).isEqualTo(200);
+		assertThat(sent(post("/api/members/" + number + "/membership"),
+				"{\"basis\": \"feeExempt\", \"season\": " + season + "}").getStatus()).isEqualTo(201);
 	}
 
 	/** The moment the season is read as activated at, as every reader of the right reads it. */

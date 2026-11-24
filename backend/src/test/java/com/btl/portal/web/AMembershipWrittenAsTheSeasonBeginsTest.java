@@ -543,7 +543,8 @@ class AMembershipWrittenAsTheSeasonBeginsTest {
 					"{\"competitorId\": " + him + ", \"ground\": \"balance\"}", cookie);
 			case HIS_OWN_ACTIVATION -> () -> sent(post("/api/me/membership"), "{}", hisCookie);
 			case AN_EXEMPTION_ON_HIS_ROW -> () -> sent(post("/api/members/" + HIS_NUMBER + "/membership"),
-					"{\"basis\": \"feeExempt\"}", cookie);
+					"{\"basis\": \"feeExempt\", \"season\": "
+							+ SeasonClock.seasonBeingPaidFor(clock.instant().atZone(SeasonClock.ZONE)) + "}", cookie);
 			case A_BANK_STATEMENT -> aStatementPaying();
 		};
 	}

@@ -507,10 +507,13 @@ describe('the reasons the server can name', () => {
 
        A FOURTH ACT SINCE 20.10.2026 AND THE SAME FOUR CONSTANTS: the exemption granted on a row that
        holds no season on sale (`POST`), which can meet all four, so its map is registered here and the
-       count does not move. */
+       count does not move.
+
+       FIVE SINCE THE BOXES NAMED THEIR SEASON (owner, 22.10.2026 and 24.11.2026): `theSeasonIsNotOffered`,
+       which only `DELETE` and `POST` meet, since only they name a season. */
     ['MemberMembershipApi.java',
       [WHEN_CANCELLING, WHEN_CHANGING_TO_THE_EXEMPTION, WHEN_PAYING_OVER_THE_EXEMPTION,
-        WHEN_GRANTING_AN_EXEMPTION], 4],
+        WHEN_GRANTING_AN_EXEMPTION], 5],
     /* ADDED 22.10.2026, AND ANSWERED SINCE 23.10.2026 BY THE CARD „PODACI" (`profile/TheMembersData.tsx`):
        the administration correcting a member's data. Seven constants and seven reasons; the sentences it
        shares with the member's own route are that route's constants (`MeWriteApi`), held by
