@@ -493,6 +493,15 @@ describe('how tall a control in a form is', () => {
          here: the tick is 18,39 square, which is the 1,15rem it is given and not the
          height of a text box, so the way out above already reaches it. */
       'pages/member/ProfileVisibility.tsx',
+      /* THE ADMINISTRATION'S CHOICE OF A MEMBER'S CATEGORY UNDER THE FORM OF HIS CARD „PODACI" (owner,
+         24.11.2026, PDL „Administracija bira kategoriju članu u njegovim podacima"), the two radios of
+         „Moja članarina" written the same way (`.field--checkbox`, `.field__confirm`, `.field__control`).
+         Measured in Chrome over the built package at 360, 768 and 1280 on 24.11.2026: each radio is
+         18,0px square beside a text box of the form above 48,0px tall, and 36 square beside 96 at 200 %
+         text, so the way out above reaches it and the size of a mark is paid by the shared rule; nothing
+         scrolls sideways. Held there by `geometry/dataCard.geometry.ts`, which fails the day a radio of
+         this box is not square or is given half the height of a text box. */
+      'pages/profile/TheMembersCategory.tsx',
     ])
   })
 

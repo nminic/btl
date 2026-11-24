@@ -9,13 +9,16 @@ import { renderAt } from '../test/render'
 import sr from '../i18n/sr.json'
 import {
   answeredWith,
+  answeringCategory,
   did,
   forgetEveryCookie,
   refused,
   serverThat,
   type Asked,
+  type CategoryAnswered,
 } from '../test/serverAnswers'
 import { setupUser } from '../test/user'
+import { clearResourceCache } from '../data/client'
 import { NewResult } from './member/NewResult'
 import { SessionProvider } from '../session/SessionProvider'
 import { Registration } from './Registration'
@@ -193,9 +196,8 @@ async function fillEverythingExceptBirthDate(
   /* The town carries the country: picked out of the codebook, which is what
      fills the one beside it (forms/PlaceField.tsx). */
   await user.type(screen.getByLabelText(/^Mesto$/), 'Beograd')
-  /* Either the beginners' category or the one for their age, and the portal
-     asks rather than assumes (PDL P7). */
-  await user.click(screen.getByRole('radio', { name: 'Starosna' }))
+  /* The category is NOT touched here: the form opens on the one for the member's age (owner, PDL
+     24.11.2026), so every case that sends without choosing sends the age category. */
   /* ~~The picture stood here, to the left of the box below.~~ The owner took it out of
      the registration on 28.09.2026; it is given to `POST /api/me/photo` once the account
      is live, and `member/ProfilePicture.tsx` is the screen that sends it. */
@@ -1994,4 +1996,48 @@ describe('the town of the registration, once it stops being a town the codebook 
     expect(country).toHaveValue('')
     expect(country).toBeEnabled()
   })
+})
+
+/**
+ * THE CATEGORY OPENS ON THE ONE FOR THE MEMBER'S AGE (owner, PDL 24.11.2026, „Neka to svakako bude default u
+ * prijavi").
+ *
+ * <p>Axes: the opening state; pressed to the beginners' category (`beginner: true` is sent, asked in the case
+ * further up); left untouched (`beginner: false`, asked by the case that writes every answer); and a member
+ * who already chose the beginners' category, whose own screen must still show it, so the default of the
+ * registration cannot have leaked into the box on „Moja članarina".
+ */
+const BEGINNER_MEMBER: CategoryAnswered = {
+  season: 2027,
+  firstSeason: true,
+  firstSeasonAllowed: true,
+  category: 'M R',
+  open: true,
+}
+
+describe('the category on the registration', () => {
+  it('opens on the one for the age, with the beginners one not chosen', () => {
+    renderForm()
+
+    expect(screen.getByRole('radio', { name: 'Starosna' })).toBeChecked()
+    expect(screen.getByRole('radio', { name: 'Početnička' })).not.toBeChecked()
+  }, SLOW)
+
+  it('shows a member who chose the beginners category as one, and not the default of the registration', async () => {
+    clearResourceCache()
+    const server = serverThat((path) => (path === '/api/me/category' ? answeringCategory(BEGINNER_MEMBER) : null))
+
+    try {
+      renderAt('/sr/moja-clanarina', 'competitor', '000013', undefined, '2026-10-20')
+
+      const box = await screen.findByRole('group', { name: /U kojoj kategoriji se takmičiš 2027/ })
+
+      await waitFor(() => {
+        expect(within(box).getByRole('radio', { name: 'U početničkoj kategoriji' })).toBeChecked()
+      })
+      expect(within(box).getByRole('radio', { name: 'U svojoj starosnoj kategoriji' })).not.toBeChecked()
+    } finally {
+      server.stop()
+    }
+  }, SLOW)
 })

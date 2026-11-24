@@ -4,12 +4,7 @@ import { recordKey } from '../../session/context'
 import { useSession } from '../../session/useSession'
 import { MEMBERS } from '../admin/entityForms'
 import type { Answer } from '../account/askTheServer'
-import {
-  categoryIn,
-  tellTheServerMyCategory,
-  whatCategoryTheServerSaysIChose,
-  type MyCategory,
-} from './myCategory'
+import { MY_CATEGORY, categoryIn, tellTheServerAt, whatTheServerSaysAt, type MyCategory } from './myCategory'
 
 /**
  * WHAT THE SCREEN NEEDS TO DRAW THE BOX, AND WHAT HAPPENS WHEN SOMEBODY TICKS IT.
@@ -41,16 +36,32 @@ export type TheCategoryIChoose = {
 }
 
 export function useMyCategory(): TheCategoryIChoose {
+  const { memberNumber } = useSession()
+
+  return useTheCategoryAt(MY_CATEGORY, memberNumber)
+}
+
+/**
+ * THE SAME BOX AT ANY ADDRESS THAT ANSWERS AND TAKES THE SAME FIVE FIELDS, about the member whose number is
+ * given: the member's own (above), and since 24.11.2026 the administration's on his card „Podaci"
+ * (`profile/TheMembersCategory.tsx`). One hook for both, so the two boxes cannot come to behave differently:
+ * owner, 24.11.2026 (PDL „Administracija bira kategoriju članu u njegovim podacima"), and the rule derived
+ * beside it, „radi po istim pravilima kao članov izbor na „Mojoj članarini”".
+ *
+ * @param memberNumber the member the choice is about, whose row every screen of this visit redraws; null
+ *                     for a reader with no member number, who is on no list
+ */
+export function useTheCategoryAt(address: string, memberNumber: string | null): TheCategoryIChoose {
   const [standing, setStanding] = useState<MyCategory | null>(null)
   const [choosing, setChoosing] = useState(false)
   const [refusal, setRefusal] = useState<string | null>(null)
   const [failure, setFailure] = useState<TheCategoryIChoose['failure']>(null)
-  const { memberNumber, editRecord } = useSession()
+  const { editRecord } = useSession()
 
   useEffect(() => {
     let stillHere = true
 
-    void whatCategoryTheServerSaysIChose().then((said) => {
+    void whatTheServerSaysAt(address).then((said) => {
       /* Dropped where the screen has gone, because setting state on a screen nobody is
          looking at is a warning in the console and a promise nobody awaited. The same
          shape every other read on this side uses. */
@@ -62,14 +73,14 @@ export function useMyCategory(): TheCategoryIChoose {
     return () => {
       stillHere = false
     }
-  }, [])
+  }, [address])
 
   const choose = useCallback(async (firstSeason: boolean): Promise<void> => {
     setChoosing(true)
     setRefusal(null)
     setFailure(null)
 
-    const answered = await tellTheServerMyCategory(firstSeason)
+    const answered = await tellTheServerAt(address, firstSeason)
 
     /* WHAT STANDS AFTERWARDS IS WHAT THE ROUTE ANSWERED, not what was sent. Two of the
        five fields are derived on the server - the right and the category it makes - so a
@@ -117,7 +128,7 @@ export function useMyCategory(): TheCategoryIChoose {
     }
 
     setChoosing(false)
-  }, [memberNumber, editRecord])
+  }, [address, memberNumber, editRecord])
 
   return { standing, choosing, refusal, failure, choose }
 }

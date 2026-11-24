@@ -380,6 +380,17 @@ class MemberDataWriteApi {
 	 * („superadmin sme"), so he is asked about first and the question ends there for him.
 	 */
 	private boolean hisOwnAndHeIsNotTheSuperadmin(long member, WhoIsAsking.Member asking) {
+		return hisOwnAndHeIsNotTheSuperadmin(mayHe, memberOfAccount, member, asking);
+	}
+
+	/**
+	 * „Moderator ne ispravlja svoj zapis, superadmin sme" (M7, see the head of this class), asked in one
+	 * place for every route of the card „Podaci" that writes: this one, and the choice of category on the
+	 * same card ({@link MemberCategoryApi}), whose right is „isto ono što važi za ostala polja te forme".
+	 */
+	static boolean hisOwnAndHeIsNotTheSuperadmin(WhatHeMayDo mayHe, MemberOfAccount memberOfAccount,
+			long member, WhoIsAsking.Member asking) {
+
 		return !mayHe.holdsEveryRightThereIs()
 				&& Objects.equals(memberOfAccount.competitorId(asking.account()), member);
 	}

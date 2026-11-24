@@ -97,6 +97,8 @@ const THE_ADMINISTRATION: Answers = {
     country: 'RS',
     shirtSize: 'L',
   },
+  /* And his category, which the administration chooses under the form since 24.11.2026 (`TheMembersCategory.tsx`). */
+  [`/api/members/${NUMBER}/category`]: { season: 2027, firstSeason: false, firstSeasonAllowed: false, category: 'M40-54', open: true },
 }
 
 const ADDRESS = `/sr/takmicar/${NUMBER}-vladan-durisic/podaci`
@@ -158,6 +160,63 @@ for (const [who, answers, card] of [
  * one column on a telephone and a tablet in portrait, where the registration is one column too
  * (`forms/FormRenderer.css`, 51.25em).
  */
+/* THE CHOICE OF HIS CATEGORY UNDER THE FORM (24.11.2026), with the longest sentence it can say: the beginners'
+   category closed to him. Every control inside the page, and the page never scrolling sideways. */
+const THE_CATEGORY = 'fieldset:has(input[name="members-category"])'
+
+for (const at of WIDTHS) {
+  test(`the administration's choice of his category stands inside the page, ${label(at)}`, async ({ open }) => {
+    const { page, probe } = await open(at, ADDRESS, THE_CATEGORY, THE_ADMINISTRATION)
+    const controls = await controlsOf(page, THE_CATEGORY)
+    const viewport = await page.evaluate(() => document.documentElement.clientWidth)
+
+    if (controls === null || controls.length !== 2) {
+      throw notMeasured('the choice of his category drew no two options')
+    }
+
+    for (const one of controls) {
+      expect(one.width, `${one.name} has a width`).toBeGreaterThan(0)
+      expect(one.left, `${one.name} starts inside the page`).toBeGreaterThanOrEqual(-SLACK)
+      expect(one.right, `${one.name} ends inside the page`).toBeLessThanOrEqual(viewport + SLACK)
+    }
+
+    /* THE RADIOS ARE MARKS AND NOT TEXT BOXES (`forms/controlHeight.test.tsx`, the list of screens that write a
+       field by hand): each is square, and well under the height the shared rule gives a box of the form above. */
+    const heights = await page.evaluate((selector) => {
+      const box = document.querySelector('section[aria-labelledby="form-podaci-clana-title"] input[type="text"]')
+      const radios = [...(document.querySelector(selector)?.querySelectorAll('input[type="radio"]') ?? [])]
+
+      return {
+        box: box?.getBoundingClientRect().height ?? 0,
+        radios: radios.map((one) => ({ width: one.getBoundingClientRect().width, height: one.getBoundingClientRect().height })),
+      }
+    }, THE_CATEGORY)
+
+    expect(heights.box, 'the form above drew a text box to compare with').toBeGreaterThan(0)
+    expect(heights.radios).toHaveLength(2)
+
+    for (const one of heights.radios) {
+      expect(Math.abs(one.width - one.height), 'a radio is square').toBeLessThanOrEqual(SLACK)
+      expect(one.height, 'a radio is not given the height of a text box').toBeLessThan(heights.box / 2)
+    }
+
+    const sentences = await page.evaluate((selector) =>
+      [...(document.querySelector(selector)?.querySelectorAll('p, legend, label') ?? [])].map((one) => {
+        const box = one.getBoundingClientRect()
+
+        return { text: one.textContent ?? '', left: box.left, right: box.right }
+      }), THE_CATEGORY)
+
+    for (const one of sentences) {
+      expect(one.left, `„${one.text}” starts inside the page`).toBeGreaterThanOrEqual(-SLACK)
+      expect(one.right, `„${one.text}” ends inside the page`).toBeLessThanOrEqual(viewport + SLACK)
+    }
+
+    expect(probe.widened, 'the page was widened by something running off its right edge').toBe(0)
+    expect(probe.sideways, 'the page scrolls sideways').toBe(0)
+  })
+}
+
 const HIS_CARD = 'section[aria-labelledby="form-licni-podaci-title"]'
 
 test('the member’s own form stands in the registration’s rows on a desktop, 1280px, text 100%', async ({ open }) => {
