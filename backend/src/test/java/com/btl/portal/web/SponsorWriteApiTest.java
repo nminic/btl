@@ -524,7 +524,9 @@ class SponsorWriteApiTest {
 
 	@Test
 	void theMainSponsorIsNotMovedBecauseTheStripDrawsItFirstWhereverItStands() throws Exception {
+		/* Asked after each press and not after both: an „up” and a „down” that both moved it would put it back. */
 		assertThat(moved(main, "up", OVER_THE_SPONSORS).getStatus()).isEqualTo(204);
+		assertThat(everySponsor()).containsExactlyElementsOf(asItWas());
 		assertThat(moved(main, "down", OVER_THE_SPONSORS).getStatus()).isEqualTo(204);
 		assertThat(everySponsor()).containsExactlyElementsOf(asItWas());
 	}
