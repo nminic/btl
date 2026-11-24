@@ -41,7 +41,8 @@
     {
       "name": "highlightsEvents",
       "type": "checkbox",
-      "labelKey": "admin.field.highlightsEvents"
+      "labelKey": "admin.field.highlightsEvents",
+      "noOptionalWord": true
     }
   ]
 }
