@@ -839,10 +839,10 @@ describe('the event a result is run at, which the form asks first', () => {
     }
   })
 
-  it('offers nothing in a season that is not open, which before 2027 is every season', async () => {
-    /* „NIŠTA! NE POSTOJI LIGA PRE 2027 GODINE" (owner, 19.10.2026): the server answers no season
-       open, and the box offers nothing although the calendar has the event. */
-    const user = setupUser()
+  it('draws no form at all in a season that is not open, which before 2027 is every season', async () => {
+    /* „NIŠTA! NE POSTOJI LIGA PRE 2027 GODINE" (owner, 19.10.2026), and since 24.11.2026 the form is
+       not drawn either (PDL P9, „Sakrij i formu članovima"): the server answers no season open, and the
+       screen says reporting is not open instead of offering a calendar with nothing in it. */
     const held = calendar()
     const none = serverThat((path) =>
       path === '/api/me'
@@ -855,19 +855,20 @@ describe('the event a result is run at, which the form asks first', () => {
 
     try {
       renderAt(NEW, 'competitor', ME, undefined, TODAY)
-      await user.type(await screen.findByLabelText(/^Događaj/), 'grad')
 
-      expect(offered()).toEqual([])
+      expect(await screen.findByRole('heading', { level: 1 }, SOON)).toHaveTextContent('Prijava rezultata još nije otvorena')
+      expect(screen.queryByRole('form')).toBeNull()
+      expect(screen.queryByLabelText(/^Događaj/)).toBeNull()
     } finally {
       none.stop()
       held.stop()
     }
   })
 
-  it('says beside the box that it cannot offer the events when the seasons could not be read', async () => {
-    /* The seasons are half of what the list is made of, so a read of them that cannot be believed is
-       said where the list would be, with its button, and is not drawn as a calendar with nothing in
-       it (decision of 03.10.2026, carried to the second list). */
+  it('says the seasons cannot be read, with a way to ask again, and draws no form', async () => {
+    /* A read of the seasons that cannot be believed is not taken for an open season: the form is
+       drawn only where the server named one (PDL P9, 24.11.2026), so the screen says the read failed,
+       the way every read says it (decision of 03.10.2026). */
     const held = calendar()
     const unreadable = serverThat((path) =>
       path === '/api/me'
@@ -885,9 +886,9 @@ describe('the event a result is run at, which the form asks first', () => {
     try {
       renderAt(NEW, 'competitor', ME, undefined, TODAY)
 
-      const field = within(htmlElement(must((await screen.findByLabelText(/^Događaj/)).closest('.field'), 'the field')))
-
-      expect(await field.findByRole('alert', undefined, SOON)).toHaveTextContent('Podaci se ne mogu učitati')
+      expect(await screen.findByRole('alert', undefined, SOON)).toHaveTextContent('Podaci se ne mogu učitati')
+      expect(screen.getByRole('button', { name: /Pokušaj ponovo/ })).toBeVisible()
+      expect(screen.queryByRole('form')).toBeNull()
     } finally {
       unreadable.stop()
       held.stop()

@@ -54,6 +54,20 @@ export function CropSliders({ id, crop, least, onChange }: {
           onChange={(event) => {
             onChange({ ...crop, [which]: Number(event.target.value) })
           }}
+          /* END IS THE WHOLE, and not the last step before it (owner, 24.11.2026, PDL „Sitnice iz recenzije
+             PR-a 815 i 811 i panela tima": „taster End na klizaču veličine daje celu sliku"). A range counts
+             its steps from its own floor, and the floor of the size is `closestIn` of THIS picture, which
+             is almost never a round number (0,2133 for a photograph 1125 pixels across), so the last step
+             a hundredth apart from it lands on 0,9933 and the browser, asked to go to the end, stops
+             there: 99 per cent of the picture where the keyboard promised all of it. Written here and not
+             in the step, because a step that fits every floor is a step of nothing (`any`), which takes
+             the arrows away from the slider with it. */
+          onKeyDown={(event) => {
+            if (event.key === 'End') {
+              event.preventDefault()
+              onChange({ ...crop, [which]: 1 })
+            }
+          }}
         />
       </p>
     )

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { closestIn, WHOLE } from '../../components/crop'
-import { AS_FINE_AS_THE_COLUMN, asTheColumnHolds, pictureToSend, theRowIn } from './photoWrites'
+import { AS_FINE_AS_THE_COLUMN, asTheColumnHolds, pictureToSend, theAddressIn, theRowIn } from './photoWrites'
 
 /**
  * WHAT GOES ON THE WIRE WHEN A MEMBER SENDS HIS PORTRAIT.
@@ -161,6 +161,33 @@ describe('a send with no file', () => {
     expect(Number(body.get('cropX'))).toBe(0.25)
     expect(Number(body.get('cropY'))).toBe(0.5)
     expect(Number(body.get('cropSize'))).toBe(0.75)
+  })
+})
+
+describe('the picture a circle is drawn over', () => {
+  /* Owner, 24.11.2026: a circle is three fractions of one particular picture, so a send that moves it names the
+     picture (`over`), and a send that does not move one alone names nothing, because the route that takes the
+     other kind has nothing to compare it with. */
+  it('is named in the body where the route asks for it, beside the three fractions', () => {
+    const body = pictureToSend(null, { x: 0.25, y: 0.5, size: 0.75 }, '/api/photos/abc')
+
+    expect(body.get('over')).toBe('/api/photos/abc')
+    expect([...body.keys()].sort()).toEqual(['cropSize', 'cropX', 'cropY', 'over'])
+  })
+
+  it('is left out of a body that names none, and not sent as an empty part', () => {
+    expect(pictureToSend(null, WHOLE).has('over')).toBe(false)
+    expect(pictureToSend(null, WHOLE, null).has('over')).toBe(false)
+  })
+
+  it('is read off the answer of a send that took, as a text and never as anything else', () => {
+    expect(theAddressIn({ photo: '/api/photos/abc', crop: WHOLE })).toBe('/api/photos/abc')
+    expect(theAddressIn(undefined)).toBeNull()
+    expect(theAddressIn(null)).toBeNull()
+    expect(theAddressIn('/api/photos/abc')).toBeNull()
+    expect(theAddressIn({ crop: WHOLE })).toBeNull()
+    expect(theAddressIn({ photo: 7 })).toBeNull()
+    expect(theAddressIn({ photo: '' })).toBeNull()
   })
 })
 

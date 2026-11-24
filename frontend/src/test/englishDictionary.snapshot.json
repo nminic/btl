@@ -1116,6 +1116,8 @@
     "fixingCounted": "You are changing a result that is already counted. Until the change is confirmed, the old result stays in the standings. Attach new proof with the change.",
     "needsProof": "A change to a counted result must carry a link to the official results or a picture as proof.",
     "needsTime": "A time must be entered. Hours, minutes and seconds cannot all be zero.",
+    "notOpen": "Reporting results is not open yet",
+    "notOpenWhy": "Reporting results opens with the league's first season.",
     "pointsNotFinal": "Points are final once the League confirms the result.",
     "againDone": "The result has been sent again.",
     "eventName": "Event",
@@ -2018,7 +2020,8 @@
       "theFormIsNotComplete": "The picture did not reach the server. Choose it again and send it.",
       "thePictureIsTooBig": "The picture is too big for the portal. Choose a smaller one, or reduce it before sending.",
       "thisIsNotAPicture": "This file is not a picture. Send a photograph, in JPG or PNG form for instance.",
-      "theCropIsNotACircle": "The crop is not right. Set the circle again and send it."
+      "theCropIsNotACircle": "The crop is not right. Set the circle again and send it.",
+      "thePictureHasChanged": "The picture has changed in the meantime. Open it again and then set the circle."
     }
   },
   "theirBoxes": {

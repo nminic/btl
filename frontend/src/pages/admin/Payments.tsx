@@ -503,6 +503,7 @@ function Row({
   season,
   onActivated,
   onDeleted,
+  onNotDeleted,
   fromTheLine = null,
 }: {
   one: MembershipDue
@@ -512,6 +513,9 @@ function Row({
   onActivated: () => void
   /** The registration on this row was deleted; the screen says so and reads the list again. */
   onDeleted: () => void
+  /** The server refused the deletion of this row (owner, 24.11.2026): the list is read again at once, and
+   *  says nothing of a deletion, because none happened. */
+  onNotDeleted: () => void
   /** The line of a bank statement this row was opened from by „Potvrdi" (owner, 25.10.2026): its
    *  amount is written into the field and the booking names it. Null for a row nobody opened. */
   fromTheLine?: StatementLine | null
@@ -674,10 +678,11 @@ function Row({
    * (`Prompt`'s `working`) is state, which the second press does not see yet. The precedent is
    * `MemberRow.tsx#send`, the deletion of a member on the screen of the members.
    *
-   * <p><b>A REFUSAL STAYS BESIDE THE ROW</b>, in the region the activation's refusals use. The route
-   * names no reason (every refusal is one 404, `ARegistrationIsDeletedApi`), so there is no map of
-   * reasons: the button is drawn only where the server would let it through, and the one way to be
-   * refused from here is that something changed in between.
+   * <p><b>A REFUSAL READS THE LIST AGAIN</b> (owner, 24.11.2026; it used to be said beside the row, in the
+   * region the activation's refusals use). The route names no reason (every refusal is one 404,
+   * `ARegistrationIsDeletedApi`), so there was no sentence to say that helped: the button is drawn only
+   * where the server would let it through, and the one way to be refused from here is that something
+   * changed in between, which a list read again shows by itself, with the button gone.
    */
   async function remove() {
     if (outstanding.current) {
@@ -695,6 +700,22 @@ function Row({
       /* THE ROW GOES WITH THE LIST, which the screen reads again, so nothing of this row is set. */
       if (answer.got === 'done') {
         onDeleted()
+
+        return
+      }
+
+      /* AND THE LIST IS READ AGAIN AT ONCE (owner, 24.11.2026, PDL „Sitnice iz recenzije PR-a 815 i 811 i
+         panela tima": „posle greške (prijava već obrisana ili postala član) lista uplata se odmah osvežava i
+         dugme nestaje"). Every refusal of this route is one 404 and none names a reason, so the row on the
+         screen is the one thing that is certainly out of date: the registration was deleted by somebody
+         else, or the person became a member, and either way the list the server serves now no longer offers
+         „Obriši" on it. The row remounts with the list, so nothing is set on it first.
+
+         ONLY FOR THAT 404 (owner, 24.11.2026, second decision): any other failure (a 500, a connection that was
+         cut, a 401) says nothing about the row, so the list is not read again for it and the old sentence
+         stands beside the row, „Ništa nije sačuvano (greška …)". */
+      if (answer.got === 'wrong' && answer.status === 404) {
+        onNotDeleted()
 
         return
       }
@@ -1232,6 +1253,14 @@ export function Payments() {
           setDeleted('')
           setReadAgain((was) => was + 1)
         }}
+        onNotDeleted={() => {
+          /* ONE NAME: the list, which the remount reads again. Nothing was deleted, so the queue of
+             verification is as it was, and no sentence about a deletion is said (`setDeleted('')` puts
+             away one a moment ago). */
+          clearResourceCache('payments')
+          setDeleted('')
+          setReadAgain((was) => was + 1)
+        }}
         onDeleted={() => {
           /* TWO NAMES AND NOT THE EIGHT OF AN ACTIVATION. He never became a member, which is the whole
              condition of the button, so nothing that lists members, results, teams, pairs, who is going or
@@ -1260,12 +1289,14 @@ export function Payments() {
 function TheList({
   onActivated,
   onDeleted,
+  onNotDeleted,
   afterAnActivation,
   statementSaid,
   onStatementSaid,
 }: {
   onActivated: () => void
   onDeleted: () => void
+  onNotDeleted: () => void
   afterAnActivation: boolean
   statementSaid: StatementSaid | null
   onStatementSaid: (said: StatementSaid) => void
@@ -1401,6 +1432,7 @@ function TheList({
                           season={outstanding.season}
                           onActivated={onActivated}
                           onDeleted={onDeleted}
+                          onNotDeleted={onNotDeleted}
                           fromTheLine={opened === null ? null : opened.line}
                         />
                       ))}

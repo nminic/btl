@@ -610,7 +610,7 @@ describe('a race that fixes no length', () => {
       expect(said, 'the cell is not reading the served races').toBe('33,30 km')
       expect(
         must(
-          within(row).getByRole('link', { name: /^Unesi rezultat/ }).getAttribute('aria-label'),
+          (await within(row).findByRole('link', { name: /^Unesi rezultat/ })).getAttribute('aria-label'),
           'the way into the form',
         ),
         'the link names a different measure from the cell beside it',

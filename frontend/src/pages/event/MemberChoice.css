@@ -60,9 +60,15 @@
 .member-choice--fitted > .field__control {
   --member-choice-arrow: 3.5rem;
 
-  /* The size of the rows of the list, which is drawn in the body and so in the text of the page: counted in the
-     same `ch` as the rows are read in. */
-  font-size: 1rem;
+  /* THE SIZE OF EVERY BOX OF A FIELD OF THE PORTAL (0,9rem, `.rankings__field input`, `Rankings.css`), and the size of
+     the rows of the list below it, so that the box and its rows are counted in the same `ch` (owner, 24.11.2026, PDL
+     „Sitnice iz recenzije PR-a 815 i 811 i panela tima": „panel tima vraća sitnija prigušena slova"). It said `1rem`
+     from PR 813 on, and the reason was the count: the list is drawn in the body, so its rows were the size of the page's
+     text and the box had to be that size too for the `ch` below to mean the same on both. The count is what has to
+     agree, not the size; the rows are set to this size in `.member-choice__list--fitted .member-choice__one`, which is
+     where the two meet. It is not 16px for a reason of a telephone: no rule of the portal holds a control to 16px
+     (`.rankings__field input` is 14,4px on every screen), and this box was 14,4px until PR 813. */
+  font-size: 0.9rem;
   inline-size: calc(var(--member-choice-widest) * 1.2ch + var(--member-choice-arrow));
   /* NEVER WIDER THAN THE FIELD IT IS IN, and the field is held to what the frame of the table shows by the panel it
      stands in (`.team-members--in-the-frame`, `Leagues.css`, owner's decision, PDL „Na telefonu polje nikad nije
@@ -78,25 +84,31 @@
   max-inline-size: 100%;
 }
 
-/* THE ROWS OF A FITTED LIST ARE NEVER CUT: where the window is narrower than a name (a telephone at 150 % and 200 %
-   text) the name goes on to a second line, and the number that ends it is read (review of PR 813, high). The other
-   list, the row of results, keeps its one line and its ellipsis. */
+/* THE ROWS OF A FITTED LIST ARE THE SIZE OF ITS BOX AND MUTED, until the pointer or the arrow is on one (owner,
+   24.11.2026: „panel tima vraća sitnija prigušena slova"). The muted colour on the row that is not under the pointer and
+   the text colour on the one that is: the muted one measures 7:1 on the list's ground and on the hover (`--text-muted`
+   on `--surface` and on `--surface-hover`), so the dimming never costs the 4,5:1 (WCAG 2.2 SC 1.4.3). */
 .member-choice__list--fitted .member-choice__one {
-  overflow: visible;
-  overflow-wrap: anywhere;
-  text-overflow: clip;
-  white-space: normal;
+  font-size: 0.9rem;
+  color: var(--text-muted);
 }
 
+.member-choice__list--fitted .member-choice__one:hover,
+.member-choice__list--fitted .member-choice__one--at {
+  color: var(--text);
+}
+
+/* A NAME IS NEVER CUT, in any list of members (owner, 24.11.2026, PDL „Sitnice iz recenzije PR-a 815 i 811 i panela
+   tima": on a row of results at 200 % text on a telephone the list cut the names with three dots and the number of
+   the member that ends each one was not seen; the rows wrap as the panel of a team's members does, review of PR 813,
+   high). Where the window is narrower than a name the name goes on to a second line and the number that ends it is
+   read. It was one line and an ellipsis here until then, so that the row under the pointer would not move while it was
+   being reached for; a row that is not cut is a row that can be read, and that is the more of the two. */
 .member-choice__one {
   padding: var(--space-6) var(--space-8);
   border-radius: var(--radius-8);
   cursor: pointer;
-  /* One row, one member: a long name is cut rather than wrapped, so the row under the pointer does not move
-     while it is being reached for (`.place__one`). */
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .member-choice__one:hover,

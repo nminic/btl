@@ -45,6 +45,7 @@ import { DeleteSheet } from './admin/DeleteSheet'
 import { DeletionSaid } from './admin/DeletionSaid'
 import { QUEUE } from './admin/queues'
 import { queueRight, useMay } from './admin/rights'
+import { useAReportIsOpen } from './member/reportingOpen'
 import './Profile.css'
 
 /**
@@ -68,6 +69,10 @@ function RaceTable({ event }: { event: BtlEvent }) {
      očekivano je da unosim rezultate za takmičare koje potvrđujem automatski"), whether or not he
      races himself; his own run is one of the rows he may fill in. */
   const forOthers = useMay()(ENTERS_RESULTS)
+  /* His own way in, only while the server names a season open for his report (PDL P9, 24.11.2026,
+     `member/reportingOpen.tsx`). The moderator's way in above is not asked this: he enters results
+     for others as before. */
+  const reports = useAReportIsOpen(memberNumber)
 
   return (
     <Resource state={races} inline label={t('event.races')}>
@@ -86,7 +91,7 @@ function RaceTable({ event }: { event: BtlEvent }) {
            a race carries its own day, so on the Saturday of a weekend the two
            Saturday races can be reported and the Sunday one cannot. A column of
            empty cells would say the opposite. */
-        const canEnter = (race: Race) => (memberNumber !== null || forOthers) && race.date <= today
+        const canEnter = (race: Race) => (forOthers || (memberNumber !== null && reports)) && race.date <= today
         const options = mine.some(canEnter)
 
         return (

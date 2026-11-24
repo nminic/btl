@@ -90,6 +90,9 @@ export type At = {
    *  and the harness refuses to measure a desktop without one, so a short screen (the sign in form) asks for a
    *  window short enough to scroll in. */
   height?: number
+  /** A finger and not a mouse: the page is given a touch screen, so a tap is what the browser makes of a finger
+   *  (the pointer events first, the mouse events it imitates after them). */
+  touch?: boolean
 }
 
 /** What `/api` answers with 200, by path. Everything else is a 404, and `/api/me` a 401. */
@@ -216,6 +219,7 @@ export const test = base.extend<Geometry, Worker>({
         viewport: { width: at.width, height: at.height ?? 900 },
         deviceScaleFactor: 1,
         isMobile: at.width < 1000,
+        hasTouch: at.touch === true,
         colorScheme: 'light',
         reducedMotion: at.motion ?? 'reduce',
       })

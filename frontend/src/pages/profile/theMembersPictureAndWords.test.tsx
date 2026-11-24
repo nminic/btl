@@ -1,11 +1,11 @@
-import { configure, fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { act, configure, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 import { cropIn } from '../../components/crop'
 import { fittedTo } from '../../components/fitted'
 import sr from '../../i18n/sr.json'
 import { must } from '../../test/at'
 import { measurePicture, theMeasuringPicture } from '../../test/picture'
-import { moderatorWith, renderAt } from '../../test/render'
+import { expectFrontPage, moderatorWith, renderAt } from '../../test/render'
 import { membersAsServed, serverThat, type Asked } from '../../test/serverAnswers'
 import { SLOW } from '../../test/slow'
 import { setupUser } from '../../test/user'
@@ -316,6 +316,9 @@ describe('the circle of his picture, moved by the administration', () => {
 
     expect(body).toBeInstanceOf(FormData)
     expect(body instanceof FormData ? body.get('picture') : 'no form', 'a circle moved sent a file').toBeNull()
+    /* AND NAMES THE PICTURE IT WAS DRAWN OVER, the address the member's data served it at (owner, 24.11.2026:
+       „ako je u međuvremenu odobrena nova slika, portal odbija upis kruga"). */
+    expect(body instanceof FormData ? body.get('over') : 'no form').toBe('/mock/photo/andjelija.svg')
     expect(body instanceof FormData ? [body.get('cropX'), body.get('cropY'), body.get('cropSize')] : []).toEqual([
       '0.13000000',
       '0.15000000',
@@ -330,6 +333,139 @@ describe('the circle of his picture, moved by the administration', () => {
       fittedTo(cropIn({ x: 0.13, y: 0.15, size: 0.42 })).transform,
     )
     await waitFor(() => expect(save).toHaveAttribute('aria-disabled', 'true'))
+  }, SLOW)
+
+  it('names the picture the server answered for, and not the copy the browser draws, when the circle is moved after a file was saved', async () => {
+    /* THE TWO SOURCES OF ONE ADDRESS: after a file is saved the screen draws the browser's own copy of it (a data
+       URL) until the page is read again, and the server knows the picture by the address it answered with. A
+       circle sent over the data URL is a circle over a picture the route has never heard of, so it would be
+       refused every time; sent over the address of the picture that stood BEFORE the save, it would be written
+       onto a picture that is gone. The save is answered with an address that is neither of those. */
+    const user = setupUser()
+    const { asked, stop } = serverThat((path, init) =>
+      init?.method === 'POST' && path === `/api/members/${HAS_ONE}/photo`
+        ? json({ photo: '/api/photos/the-new-one', crop: { x: 0.5, y: 0.5, size: 1 } })
+        : null,
+    )
+
+    stops.push(stop)
+    asTheAdministration(HAS_ONE)
+
+    const panel = within(await screen.findByRole('region', { name: sr.picture.title }))
+    const save = panel.getByRole('button', { name: sr.theirBoxes.pictureSave })
+
+    await user.upload(
+      await panel.findByLabelText(sr.picture.choose),
+      new File(['slika'], 'nova.jpg', { type: 'image/jpeg' }),
+    )
+    await measurePicture()
+    await panel.findByLabelText('Veličina isečka')
+    await user.click(save)
+    expect(await panel.findByText(sr.theirBoxes.saved)).toBeVisible()
+
+    await measurePicture()
+    fireEvent.change(await panel.findByLabelText(sr.crop.x), { target: { value: '0.13' } })
+    await user.click(save)
+    await waitFor(() => expect(writes(asked)).toHaveLength(2))
+
+    const circle = must(writes(asked)[1], 'the second write').init?.body
+
+    expect(circle instanceof FormData ? circle.get('picture') : 'no form', 'the second write sent a file').toBeNull()
+    expect(circle instanceof FormData ? circle.get('over') : 'no form').toBe('/api/photos/the-new-one')
+  }, SLOW)
+
+  it('says, in the owner\'s own sentence, that the picture changed in the meantime, and sends it once', async () => {
+    /* Owner, 24.11.2026, PDL „Sitnice iz recenzije PR-a 815 i 811 i panela tima": „Slika je u međuvremenu
+       promenjena. Otvori je ponovo pa namesti krug." The sentence is the dictionary's and the words are his, so
+       they are asked of the dictionary AND as written, which is what a rewording of either would fail. */
+    const user = setupUser()
+    const { asked, stop } = serverThat((path, init) =>
+      init?.method === 'POST' && path === `/api/members/${HAS_ONE}/photo`
+        ? json({ reason: 'thePictureHasChanged' }, 409)
+        : null,
+    )
+
+    stops.push(stop)
+    asTheAdministration(HAS_ONE)
+
+    const panel = within(await screen.findByRole('region', { name: sr.picture.title }))
+
+    await measurePicture()
+    fireEvent.change(await panel.findByLabelText(sr.crop.x), { target: { value: '0.13' } })
+    await user.click(panel.getByRole('button', { name: sr.theirBoxes.pictureSave }))
+
+    expect(sr.picture.sendRefused.thePictureHasChanged).toBe(
+      'Slika je u međuvremenu promenjena. Otvori je ponovo pa namesti krug.',
+    )
+    expect(await panel.findByText(sr.picture.sendRefused.thePictureHasChanged)).toBeVisible()
+    expect(writes(asked)).toHaveLength(1)
+  }, SLOW)
+
+  it('reads the list again after the refusal, so that the circle moved next is drawn over the picture that stands now', async () => {
+    /* Review of PR 825, high: the sentence says „Otvori je ponovo", and the list the card is drawn from is kept
+       for the whole visit, so opening it again used to show the picture the refusal was about and every press
+       after it was refused the same way. Two sources told apart: the list says A the first time and B after, and
+       the route refuses the first circle and takes the second. What the second circle names is B, not A. */
+    const user = setupUser()
+    const disc = globalThis.fetch
+    const OLD = '/mock/photo/andjelija.svg'
+    const NEW = '/mock/photo/the-one-that-stands-now.svg'
+    let listed = 0
+    let posted = 0
+    const { asked, stop } = serverThat((path, init) => {
+      if (path === '/api/competitors' && init?.method === undefined) {
+        listed += 1
+
+        return listed === 1
+          ? null
+          : disc(path, init).then(async (answer) => {
+              const rows: Record<string, unknown>[] = await answer.json()
+
+              return json(rows.map((one) => (one.memberNumber === HAS_ONE ? { ...one, photo: NEW } : one)))
+            })
+      }
+
+      if (init?.method === 'POST' && path === `/api/members/${HAS_ONE}/photo`) {
+        posted += 1
+
+        return posted === 1
+          ? json({ reason: 'thePictureHasChanged' }, 409)
+          : json({ photo: NEW, crop: { x: 0.13, y: 0.15, size: 0.42 } })
+      }
+
+      return null
+    })
+
+    stops.push(stop)
+    const { router } = asTheAdministration(HAS_ONE)
+
+    const first = within(await screen.findByRole('region', { name: sr.picture.title }))
+
+    await measurePicture()
+    fireEvent.change(await first.findByLabelText(sr.crop.x), { target: { value: '0.13' } })
+    await user.click(first.getByRole('button', { name: sr.theirBoxes.pictureSave }))
+    expect(await first.findByText(sr.picture.sendRefused.thePictureHasChanged)).toBeVisible()
+    /* THE CARD CLOSED AND OPENED AGAIN, which is what the sentence asks of him. */
+    await act(async () => {
+      await router.navigate('/sr')
+    })
+    await expectFrontPage()
+    await act(async () => {
+      await router.navigate(`/sr/takmicar/${HAS_ONE}/podaci`)
+    })
+    await waitFor(() => expect(listed).toBeGreaterThan(1))
+
+    const again = within(await screen.findByRole('region', { name: sr.picture.title }))
+
+    await measurePicture()
+    fireEvent.change(await again.findByLabelText(sr.crop.x), { target: { value: '0.13' } })
+    await user.click(again.getByRole('button', { name: sr.theirBoxes.pictureSave }))
+    await waitFor(() => expect(writes(asked)).toHaveLength(2))
+
+    const body = must(writes(asked)[1], 'the second write').init?.body
+
+    expect(body instanceof FormData ? body.get('over') : 'no form').toBe(NEW)
+    expect(body instanceof FormData ? body.get('over') : 'no form').not.toBe(OLD)
   }, SLOW)
 
   it('draws the picture that stands again, in the circle it stands in, when a file chosen over it cannot be opened', async () => {
