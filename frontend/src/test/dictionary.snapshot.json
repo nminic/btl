@@ -1112,6 +1112,8 @@
     "fixingCounted": "Menjaš rezultat koji je već uračunat. Dok izmena ne bude potvrđena, u poretku ostaje stari rezultat. Uz izmenu priloži nov dokaz.",
     "needsProof": "Uz izmenu uračunatog rezultata mora da ide link ka zvaničnim rezultatima ili slika kao dokaz.",
     "needsTime": "Vreme mora da bude uneto. Sati, minuti i sekunde ne mogu svi biti nula.",
+    "notOpen": "Prijava rezultata još nije otvorena",
+    "notOpenWhy": "Prijava rezultata se otvara sa prvom sezonom lige.",
     "pointsNotFinal": "Bodovi su konačni kad liga potvrdi rezultat.",
     "againDone": "Rezultat je ponovo poslat.",
     "eventName": "Događaj",

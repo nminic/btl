@@ -151,7 +151,7 @@ describe('a member who is not a tester, at 23:59 on 31.12.2026', () => {
     expect(await screen.findByRole('heading', { level: 1 }, SOON)).toHaveTextContent(
       'Prijava rezultata još nije otvorena',
     )
-    expect(screen.getByText(/od 1\. januara 2027/)).toBeVisible()
+    expect(screen.getByText('Prijava rezultata se otvara sa prvom sezonom lige.')).toBeVisible()
     expect(screen.queryByRole('form')).toBeNull()
   }, SLOW)
 
