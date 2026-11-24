@@ -178,6 +178,14 @@ function HisPicture({ competitor }: { competitor: WhatStands }) {
     setAnswer(answered)
 
     if (answered.got !== 'done') {
+      /* THE PICTURE HAS CHANGED UNDER THE CIRCLE (owner, 24.11.2026, PDL „Sitnice iz recenzije PR-a 815 i 811 i
+         panela tima"): the sentence tells him to open it again, and what he opens it from is the list this card
+         was drawn from, which is kept for the whole visit. Dropped here, as every save of this file drops it,
+         so that opening it again reads the picture that stands and not the one the refusal is about. */
+      if (answered.got === 'refused' && answered.reason === 'thePictureHasChanged') {
+        clearResourceCache('competitors')
+      }
+
       return
     }
 

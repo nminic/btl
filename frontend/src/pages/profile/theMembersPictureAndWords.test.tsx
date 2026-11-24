@@ -401,6 +401,65 @@ describe('the circle of his picture, moved by the administration', () => {
     expect(writes(asked)).toHaveLength(1)
   }, SLOW)
 
+  it('reads the list again after the refusal, so that the circle moved next is drawn over the picture that stands now', async () => {
+    /* Review of PR 825, high: the sentence says „Otvori je ponovo", and the list the card is drawn from is kept
+       for the whole visit, so opening it again used to show the picture the refusal was about and every press
+       after it was refused the same way. Two sources told apart: the list says A the first time and B after, and
+       the route refuses the first circle and takes the second. What the second circle names is B, not A. */
+    const user = setupUser()
+    const disc = globalThis.fetch
+    const OLD = '/mock/photo/andjelija.svg'
+    const NEW = '/mock/photo/the-one-that-stands-now.svg'
+    let listed = 0
+    let posted = 0
+    const { asked, stop } = serverThat((path, init) => {
+      if (path === '/api/competitors' && init?.method === undefined) {
+        listed += 1
+
+        return listed === 1
+          ? null
+          : disc(path, init).then(async (answer) => {
+              const rows: Record<string, unknown>[] = await answer.json()
+
+              return json(rows.map((one) => (one.memberNumber === HAS_ONE ? { ...one, photo: NEW } : one)))
+            })
+      }
+
+      if (init?.method === 'POST' && path === `/api/members/${HAS_ONE}/photo`) {
+        posted += 1
+
+        return posted === 1
+          ? json({ reason: 'thePictureHasChanged' }, 409)
+          : json({ photo: NEW, crop: { x: 0.13, y: 0.15, size: 0.42 } })
+      }
+
+      return null
+    })
+
+    stops.push(stop)
+    asTheAdministration(HAS_ONE)
+
+    const first = within(await screen.findByRole('region', { name: sr.picture.title }))
+
+    await measurePicture()
+    fireEvent.change(await first.findByLabelText(sr.crop.x), { target: { value: '0.13' } })
+    await user.click(first.getByRole('button', { name: sr.theirBoxes.pictureSave }))
+    expect(await first.findByText(sr.picture.sendRefused.thePictureHasChanged)).toBeVisible()
+    await waitFor(() => expect(listed).toBeGreaterThan(1))
+
+    const again = within(await screen.findByRole('region', { name: sr.picture.title }))
+
+    await measurePicture()
+    fireEvent.change(await again.findByLabelText(sr.crop.x), { target: { value: '0.13' } })
+    await user.click(again.getByRole('button', { name: sr.theirBoxes.pictureSave }))
+    await waitFor(() => expect(writes(asked)).toHaveLength(2))
+
+    const body = must(writes(asked)[1], 'the second write').init?.body
+
+    expect(body instanceof FormData ? body.get('over') : 'no form').toBe(NEW)
+    expect(body instanceof FormData ? body.get('over') : 'no form').not.toBe(OLD)
+  }, SLOW)
+
   it('draws the picture that stands again, in the circle it stands in, when a file chosen over it cannot be opened', async () => {
     /* The branch of `onChange` that hears „nothing": the chooser refuses a file the browser cannot read
        (`CropChooser`, „unreadable") and hands up nothing. What stands comes back under the sentence, in the
