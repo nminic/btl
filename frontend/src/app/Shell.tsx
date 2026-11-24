@@ -383,14 +383,15 @@ export function Shell() {
             there nothing moves. */}
         {devControls !== null && <div className="shell__dev">{devControls}</div>}
 
-        {phone ? (
-          <div className="shell__cells">
-            {navigation}
-            {personal}
-          </div>
-        ) : (
-          navigation
-        )}
+        {/* ONE WRAPPER IN BOTH SHAPES, so that the navigation is the same element when the window crosses 700px
+            and keeps the focus a reader had on one of its words (PENDING, review of PR 755, 17.11.2026). On a
+            telephone it is the row of cells; on a desktop it takes no box of its own (`.shell__nav-holder`,
+            `app/Shell.css`). The envelope and the picture change places with the shape, and keep what they had
+            by another way (`app/Dropdown.tsx`). */}
+        <div className={phone ? 'shell__cells' : 'shell__nav-holder'}>
+          {navigation}
+          {phone && personal}
+        </div>
 
         {/* THE GOLD STRIP, THE LAST THING IN THE HEADER, which is where it stands: under the bar and the
             navigation, over the content (owner, 21.11.2026, PDL „Zlatna traka obaveštenja ispod

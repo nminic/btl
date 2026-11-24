@@ -899,6 +899,12 @@
   column-gap: var(--space-4);
 }
 
+/* The holder of the navigation on a desktop: there only so that the navigation is the same element on both sides of
+   700px (`app/Shell.tsx`). It has no box of its own, so the navigation lays out as the header's own child, as it did. */
+.shell__nav-holder {
+  display: contents;
+}
+
 .shell__cells > .shell__nav {
   grid-column: span var(--cells);
   display: grid;
