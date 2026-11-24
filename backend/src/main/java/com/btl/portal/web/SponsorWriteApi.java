@@ -181,22 +181,27 @@ class SponsorWriteApi {
 
 		lock();
 
+		/* BEFORE the mark is taken off the old main sponsor, and not after the update finds no row: an address
+		   that is not there changes nothing (ADL A8), and a write that took the mark off and then answered 404
+		   would commit and leave the league with no main sponsor. Read under a lock on the row, as
+		   SponsorLogoApi does; the table lock above already holds every other write off. */
+		if (db.sql("select id from sponsor where id = ? for update").param(id).query(Long.class).optional()
+				.isEmpty()) {
+			return away(response);
+		}
+
 		boolean main = Boolean.TRUE.equals(typed.main());
 
 		if (main) {
 			db.sql("update sponsor set main = false where main and id <> ?").param(id).update();
 		}
 
-		int changed = db.sql("update sponsor set name = ?, url = ?, description_sr = ?, description_en = ?,"
+		db.sql("update sponsor set name = ?, url = ?, description_sr = ?, description_en = ?,"
 						+ " main = ?, in_rotation = ?, in_strip = ? where id = ?")
 				.params(typed.name().strip(), typed.url().strip(), typed.descriptionSr().strip(),
 						englishOf(typed), main, Boolean.TRUE.equals(typed.inRotation()),
 						Boolean.TRUE.equals(typed.inStrip()), id)
 				.update();
-
-		if (changed == 0) {
-			return away(response);
-		}
 
 		return ResponseEntity.ok(new Written(id));
 	}

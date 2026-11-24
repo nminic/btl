@@ -250,6 +250,19 @@ class SponsorWriteApiTest {
 		assertThat(everySponsor()).containsExactlyElementsOf(asItWas());
 	}
 
+	@Test
+	void aChangeMarkingMainOnASponsorNobodyHasLeavesTheMainSponsorWhereItWas() throws Exception {
+		/* `aSponsorNobodyHasIsNotFoundAtEveryDoorThatNamesOne` sends main = false, which takes no mark off
+		   anybody; here the form asks for the mark and the table has a real main sponsor to lose it. */
+		long nobodys = db.sql("select max(id) + 1000 from sponsor").query(Long.class).single();
+
+		assertThat(everySponsor()).contains("Glavni 2 true");
+		assertThat(changed(nobodys, form("Novi", "https://novi.primer.rs/", "Opis", null, true, true, true),
+				OVER_THE_SPONSORS).getStatus()).isEqualTo(404);
+		assertThat(everySponsor()).containsExactlyElementsOf(asItWas());
+		assertThat(db.sql("select id from sponsor where main").query(Long.class).list()).containsExactly(main);
+	}
+
 	// THE LIST -----------------------------------------------------------------------------------------
 
 	@Test
