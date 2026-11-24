@@ -2482,12 +2482,9 @@ describe('how a written page is set', () => {
       )
     }
 
-    /* And what the reader is owed about it: where it is kept, and why no consent is asked
-       for it. It was owed a third thing until 10.11.2026, that it never reaches the
-       association („pa ga naš server ne vidi"); the owner's words for that sentence are
-       „Postavlja se tek kad temu sami izaberete." and the page no longer says it. */
-    expect(policy).toContain('lokalnom skladištu')
-    expect(policy).toMatch(/pristanak se ne traži|Za njega se pristanak ne traži/)
+    /* What the reader was owed about the one store there was, where it is kept and why no consent is
+       asked for it, is not asked any more: the portal keeps no store since 24.11.2026 and the owner took
+       the theme out of the policy altogether (PDL, „Briše se i rečenica o temi u odeljku 4"). */
     /* The claim the document used to make, and must not make again while any
        store is there. */
     expect(policy).not.toContain('Drugih kolačića nema')
