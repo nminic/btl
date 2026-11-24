@@ -200,6 +200,12 @@ for (const at of WIDTHS) {
        width times 2400 / 1080, and that is taller than the window on a telephone. */
     expect(seen.picture.height / seen.picture.width, 'the waiting picture is not drawn whole').toBeCloseTo(2400 / 1080, 1)
 
+    /* And taller than the cap a dragged picture gets, on every width, so a card that capped it is caught where
+       the ratio alone (kept by a cap too) would not say so. */
+    expect(seen.picture.height, 'the waiting picture is capped like one that takes a drag').toBeGreaterThan(
+      0.6 * seen.innerHeight + 1,
+    )
+
     if (at.width === 360) {
       expect(seen.picture.height, 'the case does not reach the shape the cap was made for').toBeGreaterThan(seen.innerHeight)
     }
