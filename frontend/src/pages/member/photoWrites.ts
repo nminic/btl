@@ -76,6 +76,26 @@ export function theRowIn(body: unknown): number | null {
 }
 
 /**
+ * THE ADDRESS THE PICTURE THAT NOW STANDS IS SERVED AT, off the answer of a send that took, or nothing
+ * where the answer did not name one.
+ *
+ * <p>`MemberPictureAndWordsApi.setThePicture` answers `{ photo: "/api/photos/<digest>", crop }` for a
+ * new picture and for a circle moved alike. The screen keeps it, because a circle moved after a file was
+ * saved is drawn over THAT picture, and what the screen draws it over until the page is read again is
+ * the browser's own copy of the file (a data URL), which the route has never heard of. Without an
+ * assertion (ADL A14): `Reflect.get` asks the object, and only a text is taken.
+ */
+export function theAddressIn(body: unknown): string | null {
+  if (typeof body !== 'object' || body === null) {
+    return null
+  }
+
+  const photo: unknown = Reflect.get(body, 'photo')
+
+  return typeof photo === 'string' && photo !== '' ? photo : null
+}
+
+/**
  * HOW MANY DECIMAL PLACES THE COLUMN HOLDS, and it is V21's number rather than a choice
  * made here.
  *
@@ -145,11 +165,24 @@ export function asTheColumnHolds(fraction: number): string {
  * no `picture` part as "the same picture, the circle somewhere else" and moves it on the row that waits,
  * keeping the bytes, the digest and the member's place in the queue.
  *
+ * <p><b>AND WHICH PICTURE A CIRCLE ALONE IS DRAWN OVER, where the route asks it</b> (`over`; owner,
+ * 24.11.2026, PDL „Sitnice iz recenzije PR-a 815 i 811 i panela tima": „ako je u međuvremenu odobrena nova
+ * slika, portal odbija upis kruga"). `POST /api/members/{memberNumber}/photo` moves a circle on the picture
+ * that stands, and a circle is three fractions of one particular picture, so the screen names the one it
+ * drew the circle over, by the address it was served it at, and the route refuses (`thePictureHasChanged`)
+ * where another stands now. Left out everywhere else: the member's own door moves the circle of the row that
+ * waits and has nothing to name.
+ *
  * @param file the file itself, off `Chosen`, or nothing to move the circle of the picture that waits
  * @param crop the three fractions, each written as fine as the column and no finer
+ * @param over the address of the picture the circle was drawn over, or nothing where the route does not ask
  */
-export function pictureToSend(file: File | null, crop: Crop): FormData {
+export function pictureToSend(file: File | null, crop: Crop, over: string | null = null): FormData {
   const body = new FormData()
+
+  if (over !== null) {
+    body.append('over', over)
+  }
 
   if (file !== null) {
     body.append('picture', file)
@@ -168,7 +201,10 @@ export function pictureToSend(file: File | null, crop: Crop): FormData {
 }
 
 /**
- * THE FOUR REFUSALS `MePhotoApi` CAN NAME, each to a sentence in the dictionary.
+ * THE FOUR REFUSALS `MePhotoApi` CAN NAME OF A PICTURE SENT, each to a sentence in the dictionary (a fifth,
+ * `thePictureHasChanged`, arrived 24.11.2026 with the circle that names the picture it is drawn over
+ * (`pictureToSend`, `over`); it is answered by `MemberPictureAndWordsApi` and its map is
+ * `WHEN_MOVING_THE_CIRCLE_OF_A_PICTURE`, below).
  *
  * <p>`refusals.test.ts` reads the `static final String` reasons the class declares and
  * fails when one of them is not here, or when one here is not there. The class declares
@@ -218,4 +254,21 @@ export const WHEN_SENDING_A_PICTURE: Record<string, string> = {
   thePictureIsTooBig: 'picture.sendRefused.thePictureIsTooBig',
   thisIsNotAPicture: 'picture.sendRefused.thisIsNotAPicture',
   theCropIsNotACircle: 'picture.sendRefused.theCropIsNotACircle',
+}
+
+/**
+ * THE FIVE OF THEM FOR A CIRCLE MOVED OVER THE PICTURE THAT STANDS, which is the administration's door on a member's
+ * card (`POST /api/members/{memberNumber}/photo`, `MemberPictureAndWordsApi`): the four a picture is refused with
+ * and the one that door adds, `thePictureHasChanged` (owner, 24.11.2026, PDL „Sitnice iz recenzije PR-a 815 i 811 i
+ * panela tima": „ako je u međuvremenu odobrena nova slika, portal odbija upis kruga").
+ *
+ * <p>A map of its own and not a fifth key of the four, because the four are also the words a league's mark is
+ * refused with (`admin/leagueMarkWrites.ts`) and that door cannot name a circle drawn over another picture, and
+ * `leagueMarkWrites.test.ts` holds that the map of that door is exactly what the route names. The reason is DECLARED in
+ * `MePhotoApi`, beside the others, so the one class holds every reason the two doors that take a picture can give,
+ * and `refusals.test.ts` reads both maps against it.
+ */
+export const WHEN_MOVING_THE_CIRCLE_OF_A_PICTURE: Record<string, string> = {
+  ...WHEN_SENDING_A_PICTURE,
+  thePictureHasChanged: 'picture.sendRefused.thePictureHasChanged',
 }

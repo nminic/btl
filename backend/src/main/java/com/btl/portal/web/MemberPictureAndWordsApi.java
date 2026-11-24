@@ -81,6 +81,9 @@ import java.util.Optional;
 @RestController
 class MemberPictureAndWordsApi {
 
+	/** The address a picture is named by, which is the one the screen is served and names back in `over`. */
+	private static final String A_PICTURE_IS_NAMED_BY = "/api/photos/";
+
 	private final JdbcClient db;
 
 	private final MemberOfAccount memberOfAccount;
@@ -126,6 +129,7 @@ class MemberPictureAndWordsApi {
 			@RequestParam(name = "cropX", required = false) String cropX,
 			@RequestParam(name = "cropY", required = false) String cropY,
 			@RequestParam(name = "cropSize", required = false) String cropSize,
+			@RequestParam(name = "over", required = false) String over,
 			HttpServletResponse response) throws IOException {
 
 		Long member = hisIfTheAskingMayChangeIt(memberNumber, asking);
@@ -156,12 +160,29 @@ class MemberPictureAndWordsApi {
 		if (onlyTheCircle) {
 			MePhotoApi.oneSendOfAMemberAtATime(db, member);
 
+			/* AND OVER WHICH PICTURE (owner, 24.11.2026, PDL „Sitnice iz recenzije PR-a 815 i 811 i panela tima":
+			   „ako je u međuvremenu odobrena nova slika, portal odbija upis kruga"). A circle is three fractions
+			   of one particular picture, so a request that moves one names the picture it was drawn over
+			   (`over`, the address the screen was served it at) and the route asks it of the picture that stands
+			   NOW, read after his turn is taken: asked of the one read before it, a picture set in between would
+			   still be given a circle meant for the one it replaced. A request that names none is a form not
+			   filled in, never „the picture that stands", which is what it used to mean. */
+			if (over == null) {
+				return no(MePhotoApi.THE_FORM_IS_NOT_COMPLETE);
+			}
+
+			standing = theDigestStandingOn(member);
+
+			if (!standing.map(digest -> over.equals(A_PICTURE_IS_NAMED_BY + digest)).orElse(false)) {
+				return ResponseEntity.status(HttpStatus.CONFLICT).body(new Refused(MePhotoApi.THE_PICTURE_HAS_CHANGED));
+			}
+
 			db.sql("update photo set crop_x = ?, crop_y = ?, crop_diameter = ?"
 							+ " where id = (select photo_id from competitor where id = ?)")
 					.params(x, y, size, member)
 					.update();
 
-			return ResponseEntity.ok(new Picture("/api/photos/" + standing.get(), new Crop(x, y, size)));
+			return ResponseEntity.ok(new Picture(A_PICTURE_IS_NAMED_BY + standing.get(), new Crop(x, y, size)));
 		}
 
 		if (picture.getSize() > WhatAPictureIs.AT_MOST_BYTES) {

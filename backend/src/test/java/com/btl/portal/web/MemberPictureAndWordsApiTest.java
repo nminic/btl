@@ -453,7 +453,14 @@ class MemberPictureAndWordsApiTest {
 	private MockHttpServletResponse circle(String number, String x, String y, String size, String email)
 			throws Exception {
 
-		return sent(multipart("/api/members/" + number + "/photo").with(csrf())
+		return circleOver("/api/photos/" + String.format("%064x", 1), number, x, y, size, email);
+	}
+
+	/** A circle sent over the picture a screen NAMES, which is how the route knows which picture it is for. */
+	private MockHttpServletResponse circleOver(String over, String number, String x, String y, String size,
+			String email) throws Exception {
+
+		return sent(multipart("/api/members/" + number + "/photo").with(csrf()).param("over", over)
 				.param("cropX", x).param("cropY", y).param("cropSize", size), email);
 	}
 
@@ -529,6 +536,42 @@ class MemberPictureAndWordsApiTest {
 
 		assertThat(everyCircle()).containsExactlyElementsOf(before);
 		assertThat(messages()).isEmpty();
+	}
+
+	/**
+	 * A CIRCLE OVER A PICTURE THAT NO LONGER STANDS IS REFUSED, AND NOTHING IS WRITTEN (owner, 24.11.2026, PDL
+	 * „Sitnice iz recenzije PR-a 815 i 811 i panela tima": „ako je u međuvremenu odobrena nova slika, portal
+	 * odbija upis kruga").
+	 *
+	 * <p>The picture the screen names is the address of another digest, so a route that reads the name only
+	 * for its shape and writes the circle onto whatever stands is the mutation this is held against. The
+	 * number is 409, like every other „the thing you saw has changed".
+	 */
+	@Test
+	void aCircleDrawnOverAPictureThatHasBeenReplacedIsRefusedAndWritesNothing() throws Exception {
+		List<String> before = everyCircle();
+
+		MockHttpServletResponse answer = circleOver("/api/photos/" + String.format("%064x", 2), HIS_NUMBER,
+				"0.125", "0.875", "0.625", OVER_THE_MEMBERS);
+
+		assertThat(answer.getStatus()).isEqualTo(409);
+		assertThat(body(answer).get("reason").asString()).isEqualTo(MePhotoApi.THE_PICTURE_HAS_CHANGED);
+		assertThat(everyCircle()).as("a circle drawn over another picture was written onto this one")
+				.containsExactlyElementsOf(before);
+		assertThat(messages()).isEmpty();
+	}
+
+	/** A circle that names no picture is a form not filled in, and is not read as „the one that stands". */
+	@Test
+	void aCircleThatNamesNoPictureIsAFormNotFilledIn() throws Exception {
+		List<String> before = everyCircle();
+
+		MockHttpServletResponse answer = sent(multipart("/api/members/" + HIS_NUMBER + "/photo").with(csrf())
+				.param("cropX", "0.125").param("cropY", "0.875").param("cropSize", "0.625"), OVER_THE_MEMBERS);
+
+		assertThat(answer.getStatus()).isEqualTo(400);
+		assertThat(body(answer).get("reason").asString()).isEqualTo(MePhotoApi.THE_FORM_IS_NOT_COMPLETE);
+		assertThat(everyCircle()).containsExactlyElementsOf(before);
 	}
 
 	@Test

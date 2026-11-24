@@ -974,7 +974,11 @@ class PaymentsDueApiTest {
 			membershipFreeOfTheFee(member, 2027);
 		}
 
-		JsonNode answer = read(booksCookie, null);
+		/* READ BY SOMEBODY WHO HOLDS THE RIGHT OVER THE MEMBERS: only for him does the route ask which of the
+		   rows may be deleted, and with no row left that is the one place the question is asked about nobody
+		   (`LeavingBeforeBecomingAMember.whoOf` answers none without sending a statement). A moderator of the books
+		   alone is never asked it (owner, 24.11.2026), so reading as him leaves that answer unmeasured. */
+		JsonNode answer = read(superadminCookie, null);
 
 		assertThat(answer.get("season").asInt()).isEqualTo(2027);
 		assertThat(answer.get("accounts").isArray()).isTrue();
@@ -1486,7 +1490,11 @@ class PaymentsDueApiTest {
 	 */
 	@Test
 	void nofieldOfTheAnswerIsTheSameInEveryRow() throws Exception {
-		Answers.noFieldIsTheSameInEveryRecord(PATH, read(booksCookie, null).get("accounts"));
+		/* READ BY SOMEBODY WHO HOLDS EVERY RIGHT, and not by the moderator of the books: `mayBeDeleted` is the
+		   server's answer to whoever asks and is `false` on every row for a moderator without the right over the
+		   members (owner, 24.11.2026; `ARegistrationIsDeletedApiTest`), so a reader without it would make the field
+		   a constant for a reason that has nothing to do with this guard. */
+		Answers.noFieldIsTheSameInEveryRecord(PATH, read(superadminCookie, null).get("accounts"));
 	}
 
 	/** One column of one row of the price list, asked of the list rather than written down. */

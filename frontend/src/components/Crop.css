@@ -152,8 +152,14 @@
 
    All three of them and not the one in focus. Tabbing between them would
    otherwise grow and shrink the strip under the reader, and the two they are not
-   in would be a value they cannot see while they are setting the third. */
-.crop:not(:focus-within) .crop__slider {
+   in would be a value they cannot see while they are setting the third.
+
+   And kept while a press that took the focus away is still down (`crop--held`,
+   `CropWindow.tsx`). Folding the strip on the button-down moves every button
+   under it up by the strip's height before the button-up, and the click that
+   was aimed at a button lands on nothing (owner, 24.11.2026). The class is only
+   ever on from the blur of a press until a moment after its release. */
+.crop:not(:focus-within):not(.crop--held) .crop__slider {
   position: absolute;
   inline-size: 1px;
   block-size: 1px;
