@@ -305,6 +305,7 @@ const UNLISTED_ROUTES: RouteDef[] = [
   { path: 'administracija/dogadjaji', labelKey: 'admin.events', seoKey: 'adminEvents' },
   { path: 'administracija/timovi', labelKey: 'admin.teams', seoKey: 'adminTeams' },
   { path: 'administracija/lige', labelKey: 'admin.leagues', seoKey: 'adminLeagues' },
+  { path: 'administracija/sponzori', labelKey: 'admin.sponsors', seoKey: 'adminSponsors' },
   { path: 'administracija/strane', labelKey: 'admin.pages', seoKey: 'adminPages' },
   /* An entity like the six beside it, reached from the same list,
      and shown there to the superadmin alone (PDL P21, P28a). */

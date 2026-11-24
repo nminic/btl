@@ -362,6 +362,22 @@
     "lastName",
     "memberNumber"
   ],
+  "sponsors.json": [
+    "ofTheDay",
+    "strip"
+  ],
+  "sponsors/all.json": [
+    "descriptionEn",
+    "descriptionSr",
+    "id",
+    "inRotation",
+    "inStrip",
+    "logo",
+    "main",
+    "name",
+    "position",
+    "url"
+  ],
   "teams.json": [
     "alsoInTheTeam",
     "bio",

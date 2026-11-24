@@ -750,6 +750,9 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 				"season_team_member.season_team_member_team_fk cascade",
 				/* V103. What Facebook was last asked about a profile carries his name in the address, and goes with him. */
 				"shared_card.shared_card_member_fk cascade",
+				/* V111. A sponsor's logo empties when its picture goes, as a league's mark does (`league_logo_fk`): a
+				   sponsor with no logo is a row the administration still has, and the front page leaves it out. */
+				"sponsor.sponsor_logo_fk set null",
 				/* V24. Both CASCADE: nothing writes to this table yet (no page uses `includes`
 				   today), and a page that takes another in, or is taken in, is not a person -
 				   deleting either side of the relation is the administrator deleting a page,

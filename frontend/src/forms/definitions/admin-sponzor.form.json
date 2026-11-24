@@ -1,0 +1,53 @@
+{
+  "id": "admin-sponzor",
+  "titleKey": "admin.form.new.sponsors",
+  "submitKey": "form.submit",
+  "fields": [
+    {
+      "name": "name",
+      "type": "text",
+      "labelKey": "admin.field.sponsorName",
+      "required": true,
+      "maxLength": 80
+    },
+    {
+      "name": "url",
+      "type": "text",
+      "labelKey": "admin.field.sponsorLink",
+      "required": true,
+      "maxLength": 2000,
+      "pattern": "^https?:\\/\\/[^\\s]+$"
+    },
+    {
+      "name": "descriptionSr",
+      "type": "text",
+      "labelKey": "admin.field.sponsorDescriptionSr",
+      "required": true,
+      "maxLength": 80
+    },
+    {
+      "name": "descriptionEn",
+      "type": "text",
+      "labelKey": "admin.field.sponsorDescriptionEn",
+      "maxLength": 80
+    },
+    {
+      "name": "main",
+      "type": "checkbox",
+      "labelKey": "admin.field.sponsorMain",
+      "noOptionalWord": true
+    },
+    {
+      "name": "inRotation",
+      "type": "checkbox",
+      "labelKey": "admin.field.sponsorInRotation",
+      "noOptionalWord": true
+    },
+    {
+      "name": "inStrip",
+      "type": "checkbox",
+      "labelKey": "admin.field.sponsorInStrip",
+      "noOptionalWord": true
+    }
+  ]
+}

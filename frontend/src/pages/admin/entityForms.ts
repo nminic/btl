@@ -1,6 +1,6 @@
 import { fieldDate } from '../../forms/dateField'
 import { WHOLE } from '../../components/crop'
-import { cena, clan, dogadjaj, liga, moderator, strana, tim, trka } from '../../forms/definitions'
+import { cena, clan, dogadjaj, liga, moderator, sponzor, strana, tim, trka } from '../../forms/definitions'
 import { nextMemberNumber } from '../../data/memberNumber'
 import { nextIdentity } from './raceIds'
 import { isoDate } from '../../forms/dateField'
@@ -464,6 +464,33 @@ export const LEAGUES: EntityDef = {
   blank: { raceIds: [], eventIds: [], logo: null, crop: null, smallLogo: null },
 }
 
+/**
+ * THE SPONSORS OF THE FRONT PAGE (owner, PDL 24.11.2026, „Strana za upravljanje sponzorima u
+ * Administraciji → Podaci → Sponzori": „Zelim da mogu da u sekciji Administracija > Podaci odem na
+ * Sponzori, i da tu dodajem, menjam ili brisem sponzore").
+ *
+ * <p>An entity like the others, so it is in the navigation of „Podaci", behind its own door
+ * (`needs.ts`) and a column of the moderators' matrix, the right `entity:sponsors`: „Sponzore uređuje i
+ * moderator sa pravom (novo pravo „Sponzori”, kao ostala prava), ne samo administrator."
+ *
+ * <p>Filed under the id the database hands out (`SponsorWriteApi.Written`), never typed. The form is the
+ * name, the link, the two descriptions and three boxes; the logo and the place in the order are not on
+ * it, because each writes at once through a route of its own (`admin/SponsorLogo.tsx`, and the arrows of
+ * the list), the arrangement a league's mark has.
+ *
+ * <p>Its screen re-reads the server after every write instead of laying what was typed over the list
+ * (`admin/AdminSponsors.tsx` says why), so nothing makes a record out of `blank` on that screen; the
+ * blank is the record a new sponsor really is, all the same: no English description and no logo.
+ */
+export const SPONSORS: EntityDef = {
+  id: 'sponsors',
+  labelKey: 'admin.sponsors',
+  path: 'administracija/sponzori',
+  form: sponzor,
+  idField: 'id',
+  blank: { descriptionEn: null, logo: null },
+}
+
 /* The one entity whose rows are the year itself: four windows that tile it and
  * repeat, plus the junior price that has none. Nothing is added and nothing is
  * removed (owner, 30.07.2026), so it is not in the section that is about
@@ -533,6 +560,10 @@ export const ENTITY_FORMS: EntityDef[] = [
   EVENTS,
   TEAMS,
   LEAGUES,
+  /* After the competitions and before the written pages (24.11.2026): an entity of the league's own
+     records rather than of its texts. MY CHOICE of place, and not a decision: the owner named the
+     section („Administracija > Podaci") and not the row. */
+  SPONSORS,
   PAGES,
   MODERATORS,
   PRICING,

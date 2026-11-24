@@ -19,6 +19,7 @@ import type {
   BtlEvent,
   Competitor,
   EventComment,
+  FrontPageSponsors,
   InboxLine,
   League,
   Member,
@@ -31,6 +32,7 @@ import type {
   Runner,
   SentRun,
   ServedMessage,
+  SponsorEntered,
   StaticPage,
   Team,
   WhatIsWaiting,
@@ -726,6 +728,32 @@ export function usePages(): ResourceState<StaticPage[]> {
 
   return useResource<StaticPage[]>('pages', { language: locale })
 }
+/**
+ * THE SPONSOR OF THE DAY AND THE STRIP, IN THE LANGUAGE OF THE ADDRESS THE READER IS ON (PDL
+ * 24.11.2026, „Opis ima srpsku i englesku verziju; ako engleska nije upisana, engleska naslovna
+ * pokazuje srpsku").
+ *
+ * <p>The locale of the ADDRESS and not the dictionary's, for the reason `usePages` gives above, which
+ * is the same question asked of a second table: the server decides what it can answer with and says on
+ * every sponsor which language its description really came back in (`SponsorShown.language`), so
+ * nothing here falls back and nothing checks.
+ */
+export function useSponsors(): ResourceState<FrontPageSponsors> {
+  const { locale } = useI18n()
+
+  return useResource<FrontPageSponsors>('sponsors', { language: locale })
+}
+/**
+ * Every sponsor, as the administration's list draws them (`SponsorWriteApi.all`).
+ *
+ * @param revision bumped by the screen that writes them (`admin/AdminSponsors.tsx`,
+ *   `useHowManyTimesDropped('sponsors/all')`) once the server has said yes, so the list it is still
+ *   showing asks again. Asked again rather than laid over with what was typed, because one write moves
+ *   more than its own row: marking a new main sponsor takes the mark off the old one, and an arrow
+ *   moves two places at once. Only the server knows both halves.
+ */
+export const useEnteredSponsors = (revision?: number) =>
+  useResource<SponsorEntered[]>('sponsors/all', { revision })
 /**
  * The price list, in the order the server gave it.
  *

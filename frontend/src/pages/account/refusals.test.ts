@@ -56,6 +56,7 @@ import { WHEN_WRITING_AN_EVENT, WHEN_WRITING_A_RACE } from '../admin/eventWrites
 import { WHEN_THE_LEAGUE_ENTERS_RESULTS } from '../event/leagueResultWrites'
 import { WHEN_CORRECTING_A_MEMBER } from '../profile/memberData'
 import { WHEN_SENDING_AN_INVITATION } from '../admin/memberInvitation'
+import { WHEN_WRITING_A_SPONSOR } from '../admin/sponsorWrites'
 
 /**
  * EVERY REASON THESE TWO ROUTES CAN NAME HAS A SENTENCE ON THE SCREEN THAT MEETS IT.
@@ -404,6 +405,14 @@ describe('the reasons the server can name', () => {
        - so the one dictionary the screen hands in still covers everything the file can
        say. */
     ['MePhotoApi.java', [WHEN_SENDING_A_PICTURE], 7],
+    /* THE SPONSORS, added 24.11.2026 with the screen that writes them (`admin/AdminSponsors.tsx`, PDL
+       „Strana za upravljanje sponzorima"). Four constants, all refusals, all answered. A fifth, about
+       capitals, never reached `main`: the owner overturned that rule the same day („Kako napiše neka
+       napiše. Ovo uređuje osoba koja zna šta radi.", PDL 24.11.2026). Its logo goes through `SponsorLogoApi`, which declares no reason of its own and
+       answers `MePhotoApi`'s three by the same constants, so it is the line above that holds them and the
+       screen answers them in `WHEN_SENDING_A_LOGO`, the same words as `WHEN_SENDING_A_PICTURE` less the
+       circle a logo has not got. */
+    ['SponsorWriteApi.java', [WHEN_WRITING_A_SPONSOR], 4],
     /* THE LANGUAGE OF AN ACCOUNT'S MAIL, added 17.10.2026 with the panel that meets it
        (`member/MailLanguageChoice.tsx`). One constant, `theFormIsNotComplete`, and it is a refusal: a
        body with no language, or one the portal does not write in. Counted over the file like every

@@ -69,7 +69,7 @@ import java.util.regex.Pattern;
  * owner, 13.09.2026: „javno je ono sto Clan 73 nabraja, i nista vise. Sve ostalo ceka
  * resurs koji zna ko pita", and beside it „Kad je sporno, polje se IZOSTAVLJA ... Nikad se
  * ne servira 'za svaki slucaj'." The table {@code photo} is not a table of public pictures:
- * five columns in the schema point at it and three of them belong to something the
+ * six columns in the schema point at it and four of them belong to something the
  * portal publishes.
  *
  * <ul>
@@ -86,6 +86,12 @@ import java.util.regex.Pattern;
  * <b>That makes THREE public holders where ADL A60 of 20.09.2026 names two</b>; the third is the
  * owner's decision of 23.11.2026 read into A60's own rule („Javna je slika koju drži javan
  * nosilac"), since a league is as public as a team.
+ * <li>{@code sponsor.logo_id} (V111) - a sponsor's logo, drawn on the front page in the box „Sponzor
+ * dana” and in the strip (PDL, owner, 24.11.2026, „Strana za upravljanje sponzorima”). Set by the
+ * administration at once, as a league's mark is. <b>Public whether or not the sponsor is in the rotation or
+ * the strip at the moment</b> [IZVEDENO 24.11.2026, my reasoning and not a sentence of the owner's]: a logo is
+ * a company's mark handed to the league to be shown, the two switches decide where it is drawn and not that it
+ * is kept from anybody, and the administration previews it on its list through this same address.
  * <li>{@code verification.photo_id} - a picture WAITING for a moderator. PDL, „Profilnu
  * sliku administrator odobrava pre objave": a picture in that queue is by definition one
  * nobody has published, so serving it HERE is publishing it instead of him. <b>Since
@@ -466,7 +472,8 @@ class PhotoApi {
 				+ "   or (" + AMemberIsActive.of("his.id", at)
 				+ "    and (cast(:readsHiddenProfiles as boolean) or not his.profile_hidden))))"
 				+ " or exists (select 1 from team its where its.logo_id = p.id)"
-				+ " or exists (select 1 from league its where its.logo_id = p.id))";
+				+ " or exists (select 1 from league its where its.logo_id = p.id)"
+				+ " or exists (select 1 from sponsor its where its.logo_id = p.id))";
 	}
 
 	/**
@@ -809,8 +816,8 @@ class PhotoApi {
 	 * is a route of its own.</b> A60 of 20.09.2026 still stands word for word: a picture only a
 	 * queue row holds „nije javna" and „odgovara tacno isto kao slika koje nema". {@link #photo}
 	 * still refuses it and {@code THE_PICTURE_A_DIGEST_NAMES} names no queue row, so „javan nosilac"
-	 * still means exactly {@code competitor.photo_id}, {@code team.logo_id} and, since V108,
-	 * {@code league.logo_id}. A60's own words
+	 * still means exactly {@code competitor.photo_id}, {@code team.logo_id}, since V108
+	 * {@code league.logo_id} and since V111 {@code sponsor.logo_id}. A60's own words
 	 * for why this is cheaper: „cuvar uske rute po konstrukciji sluzi jednom pozivaocu nad jednim
 	 * redom, pa se ne moze slucajno prosiriti."
 	 *

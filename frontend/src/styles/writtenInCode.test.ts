@@ -383,6 +383,11 @@ describe('what a screen says in its own voice', () => {
          word `become` is called with. */
       'value',
       'viewBox',
+      /* WHICH WAY AN ARROW OF THE SPONSORS' MANUAL ORDER MOVES, 24.11.2026, and it is machinery rather
+         than speech. It carries the word „up" or „down" and a reader never meets it: what he meets is the
+         name of the button, „Pomeri gore: Volt", out of the dictionary. `admin/AdminSponsors.tsx` is the
+         only thing that writes it. */
+      'way',
       'why',
       'width',
       'x',

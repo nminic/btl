@@ -213,6 +213,8 @@ class NoTextHoldsAZeroTest {
 			Map.entry("LeagueMarkApi#setTheMark:cropSize (parameter)", "parsed as a number"),
 			Map.entry("PageApi#pages:lang (parameter)",
 					"matched against the shape of a language tag, which has no room for a zero"),
+			Map.entry("SponsorApi#sponsors:lang (parameter)",
+					"matched against the shape of a language tag, which has no room for a zero, as PageApi's is"),
 			Map.entry("PaymentsDueApi#due:search (parameter)",
 					"REFUSED: it asks NoTextHoldsAZero.holdsAZero itself and answers 400"),
 			Map.entry("MePasswordApi#change:" + SessionCookie.NAME + " (cookie)",
