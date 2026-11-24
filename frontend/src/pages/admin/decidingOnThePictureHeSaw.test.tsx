@@ -793,6 +793,26 @@ describe('the circle the moderator moves', () => {
     }
   }, SLOW)
 
+  it('is offered over a picture smaller than a member may choose today, because a picture already taken is not judged again', async () => {
+    /* The control is the member's (`CropChooser`), and a member's new file under 240 pixels is refused; a
+       picture that already waits was taken by the portal, and „nebitne su slike koje su već kropovane" (owner,
+       23.08.2026). So the moderator gets the circle and both buttons over it, the floor of its size being the
+       whole picture. */
+    const { stop } = serverThat((path) => (path === '/api/verification' ? asTheList([mira()]) : null))
+
+    try {
+      openQueue()
+      await screen.findByRole('list', { name: /Čeka/ })
+      thePictureArrivesAt('Mira Mirić', 200, 160)
+
+      expect(cardOf('Mira Mirić').getByLabelText(sr.crop.size)).toHaveAttribute('min', '1')
+      expect(cardOf('Mira Mirić').queryByText(sr.crop.tooSmall.split('{')[0] ?? '', { exact: false })).toBeNull()
+      expect(cardOf('Mira Mirić').getByRole('button', { name: 'Odobri' })).toHaveAttribute('aria-disabled', 'false')
+    } finally {
+      stop()
+    }
+  }, SLOW)
+
   it('is drawn where he moved it, and the rest of the picture is still there', async () => {
     const { stop } = serverThat((path) => (path === '/api/verification' ? asTheList([mira()]) : null))
 

@@ -186,3 +186,26 @@ describe('the circle a member is drawn in', () => {
     expect(reaching, 'a module cuts a picture without CutPicture').toEqual(['components/CutPicture.tsx'])
   })
 })
+
+describe('the control a circle is moved with', () => {
+  it('is one, CropChooser, so no module draws the window or the sliders of a circle around it', () => {
+    /* Owner, 24.11.2026 (PDL „Podešavanje kruga na slici radi identično na svakom mestu portala"): „Zelim da
+       ovo za sliku radi identično kao za bilo koje prilagođavanje kruga na slici na portalu (unos članske,
+       znaka tima i sl.)". Identical by construction is one control: the drag, the cap on the height, the
+       sliders and the keyboard are `CropWindow` and `CropSliders`, and only `CropChooser` may put them
+       together. The moderator's card of a waiting picture did, from 23.11.2026, until this decision; a screen
+       that reaches either part again, under any spelling of the import, is a second control and is caught
+       here. The next place, a team's logo, has to go through `CropChooser` or fail this.
+
+       WHAT THIS DOES NOT HOLD: a screen that drew a circle over a picture with code of its own, reaching
+       neither module, would pass, as a circle with arithmetic of its own passes the case above. That every
+       circle a person moves is moved through `CropChooser` at all is a review question; that the four
+       screens behave the same is measured in Chrome (`geometry/adminCircle.geometry.ts`). */
+    for (const part of ['components/CropWindow.tsx', 'components/CropSliders.tsx']) {
+      const { walked, reaching } = modulesReaching(part)
+
+      expect(walked).toBeGreaterThan(WHOLE_PORTAL)
+      expect(reaching, `a module puts ${part} together without CropChooser`).toEqual(['components/CropChooser.tsx'])
+    }
+  })
+})

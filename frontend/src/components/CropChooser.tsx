@@ -1,9 +1,9 @@
 import { bigEnough, closestIn, SMALLEST_PIXELS, WHOLE } from './crop'
 import type { Crop, Shape } from './crop'
+import { CropSliders } from './CropSliders'
 import { CropWindow } from './CropWindow'
 import { useState } from 'react'
 import { AskedLabel } from '../forms/AskedLabel'
-import { formatNumber } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 import './Crop.css'
 
@@ -30,10 +30,133 @@ import './Crop.css'
  *
  * The two positions are the same two numbers a crop is made of, so nothing is
  * converted between what a member drags and what a record keeps.
+ *
+ * **THE ONE CONTROL OF A CIRCLE ON THE PORTAL** (owner, 24.11.2026, PDL „Podešavanje kruga na slici radi
+ * identično na svakom mestu portala": „Zelim da ovo za sliku radi identično kao za bilo koje prilagođavanje
+ * kruga na slici na portalu (unos članske, znaka tima i sl.)"). Every screen that moves a circle draws this,
+ * the moderator's card of a waiting picture included, so the drag, the cap on the height, the sliders and
+ * the keyboard are one code on all of them; `components/oneFace.test.ts` fails the day a module other than
+ * this one reaches `CropWindow` or `CropSliders`.
  */
-export function CropChooser({ id, label, alt, asked = true, unmarked = false, chosen, onChange }: {
+export function CropChooser(props: Choosing) {
+  const { id, alt, chosen, onChange } = props
+
+  return props.standing === undefined ? (
+    <ChoosingAFile
+      id={id}
+      label={props.label}
+      alt={alt}
+      asked={props.asked}
+      unmarked={props.unmarked}
+      chosen={chosen}
+      onChange={onChange}
+    />
+  ) : (
+    <MovingTheCircleOfOneThatStands id={id} alt={alt} chosen={chosen} onChange={onChange} standing={props.standing} />
+  )
+}
+
+/**
+ * WHAT A SCREEN HANDS THE CONTROL: a file to choose (`label`, and whether the picture is asked for), or a
+ * picture that is already on the portal and only its circle to move (`standing`), never both.
+ */
+type Choosing = {
   /** What the file field is called on this screen, so two of these can stand on
-   *  one page without their labels pointing at each other. */
+   *  one page without their labels pointing at each other. Where there is no
+   *  file field (`standing`), where the three sliders' ids start. */
+  id: string
+  alt: string
+  chosen: Chosen | null
+  onChange: (chosen: Chosen | null) => void
+} & (
+  | {
+      label: string
+      asked?: boolean
+      unmarked?: boolean
+      standing?: undefined
+    }
+  | {
+      label?: undefined
+      asked?: undefined
+      unmarked?: undefined
+      standing: Standing
+    }
+)
+
+/**
+ * A PICTURE THAT IS ALREADY ON THE PORTAL AND HAS ONLY ITS CIRCLE MOVED HERE, which is the moderator's card
+ * of a picture that waits (owner, 23.11.2026: „hoću da mogu da se poigram krugom pre nego što mu je
+ * odobrim", and 24.11.2026: „Na kartici slike koja čeka administrator krug vuče po slici (prstom ili mišem),
+ * kao član").
+ *
+ * Three things differ from choosing a file, and none of them is how the circle is moved:
+ *
+ * - **No file field**, because nothing is chosen.
+ * - **The picture is measured by the window itself** (`CropWindow`'s `onLoaded`), not by a hidden picture
+ *   first: the card's two buttons wait for that very element (PDL, 11.10.2026: „Dok se slika učitava, oba
+ *   dugmeta su neaktivna; kad se učita, oba rade."), and a second element would be a second answer to
+ *   „did it arrive" (ADL A31). So the screen is told what became of it (`onLoaded`, `onFailed`).
+ * - **No picture is refused for its size**: it was taken by the portal already, and a picture already cut
+ *   is not judged again (owner, 23.08.2026: „nebitne su slike koje su već kropovane"). Its floor is still
+ *   `closestIn`, as for any other.
+ */
+export type Standing = {
+  onLoaded: () => void
+  onFailed: () => void
+}
+
+function MovingTheCircleOfOneThatStands({ id, alt, chosen, onChange, standing }: {
+  id: string
+  alt: string
+  chosen: Chosen | null
+  onChange: (chosen: Chosen | null) => void
+  standing: Standing
+}) {
+  const { t } = useI18n()
+  /* WHAT THE WINDOW MEASURED, by the picture it measured, so a picture replaced under the screen has no
+     sliders until its own pixels have arrived. */
+  const [measured, setMeasured] = useState<{ picture: string; shape: Shape } | null>(null)
+
+  if (chosen === null) {
+    return null
+  }
+
+  const shape = measured !== null && measured.picture === chosen.picture ? measured.shape : null
+
+  return (
+    <div className="crop__choosing" role="group" aria-label={t('crop.choosing')}>
+      {/* Keyed by the picture, so that a replaced one is a window of its own with an `<img>` of its own,
+          which draws nothing until its own pixels arrive and reports for itself. */}
+      <CropWindow
+        key={chosen.picture}
+        picture={chosen.picture}
+        crop={chosen.crop}
+        alt={alt}
+        onChange={(crop) => {
+          onChange({ ...chosen, crop })
+        }}
+        onLoaded={(read) => {
+          setMeasured({ picture: chosen.picture, shape: read })
+          standing.onLoaded()
+        }}
+        onFailed={standing.onFailed}
+      >
+        {shape !== null && (
+          <CropSliders
+            id={id}
+            crop={chosen.crop}
+            least={closestIn(shape)}
+            onChange={(crop) => {
+              onChange({ ...chosen, crop })
+            }}
+          />
+        )}
+      </CropWindow>
+    </div>
+  )
+}
+
+function ChoosingAFile({ id, label, alt, asked = true, unmarked = false, chosen, onChange }: {
   id: string
   /** The words asking for the picture, from the screen rather than from here: a
    *  face and a team logo are asked for differently.
@@ -203,67 +326,6 @@ export function CropChooser({ id, label, alt, asked = true, unmarked = false, ch
           </CropWindow>
         </div>
       )}
-    </>
-  )
-}
-
-/**
- * THE THREE SLIDERS A CIRCLE IS MOVED AND SIZED WITH, wherever one is: under a file just chosen
- * (`CropChooser`, above) and over a picture a moderator is approving (`admin/PendingQueue.tsx`, owner,
- * 23.11.2026: „hoću da mogu da se poigram krugom pre nego što mu je odobrim").
- *
- * One component and not a second copy, because the sliders are where the rules of a circle live for
- * everybody who cannot use a pointer: the smallest circle (`least`, from `closestIn`), the step, the
- * share read out aloud, and the plain label. Written twice they would drift, as the three of them once
- * drifted within a day when each was written out by hand: the zoom kept the label of the axis above it.
- *
- * @param id where the three ids start, so two of these can stand on one page
- * @param least the smallest diameter the picture allows (`closestIn`), the floor of the third slider
- */
-export function CropSliders({ id, crop, least, onChange }: {
-  id: string
-  crop: Crop
-  least: number
-  onChange: (crop: Crop) => void
-}) {
-  const { locale, t } = useI18n()
-
-  const slider = (which: 'x' | 'y' | 'size', floor: number) => {
-    const value = crop[which]
-
-    return (
-      <p className="crop__slider">
-        {/* A plain label, and not the one that carries the star. That helper
-            marks a field as wanted or as „(neobavezno)", and a slider is
-            neither: it always has a value, nobody can leave it empty, and
-            calling it optional puts the word inside the name a screen reader
-            reads out. The rule about stars is about fields somebody fills in
-            (forms/AskedLabel.tsx); the picture above is one and this is not. */}
-        <label htmlFor={`${id}-${which}`}>{t(`crop.${which}`)}</label>
-        <input
-          id={`${id}-${which}`}
-          type="range"
-          min={floor}
-          max={1}
-          step={0.01}
-          value={value}
-          /* Read out as a share and not as „0,42". The number itself means
-             nothing to anybody: what a member wants to hear is how far across
-             they have moved, and how much of the photograph is left. */
-          aria-valuetext={t('crop.share', { share: formatNumber(100 * value, locale) })}
-          onChange={(event) => {
-            onChange({ ...crop, [which]: Number(event.target.value) })
-          }}
-        />
-      </p>
-    )
-  }
-
-  return (
-    <>
-      {slider('x', 0)}
-      {slider('y', 0)}
-      {slider('size', least)}
     </>
   )
 }

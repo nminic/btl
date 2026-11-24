@@ -1,33 +1,63 @@
+import { readdirSync, readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { expect } from '@playwright/test'
 import type { Page } from '@playwright/test'
 import { SLACK, label, notMeasured, settle, test } from './support/harness.ts'
 import type { Answers, At } from './support/harness.ts'
 
 /**
- * THE CIRCLE THE ADMINISTRATION MOVES, ASKED OF CHROME (owner, 23.11.2026, PDL „Administracija sama podešava
- * krug na članovoj slici": „kad takmičar pošalje sliku na validaciju, ja kao Admin hoću da mogu da se poigram
- * krugom pre nego što mu je odobrim. Čak i kad mu uđem u podatke, želim da mogu da se poigram krugom pa da je
- * sačuvam.").
+ * THE CIRCLE ON A PICTURE IS MOVED THE SAME WAY ON EVERY SCREEN THAT MOVES ONE, ASKED OF CHROME (owner,
+ * 24.11.2026, PDL „Podešavanje kruga na slici radi identično na svakom mestu portala": „Zelim da ovo za sliku
+ * radi identično kao za bilo koje prilagođavanje kruga na slici na portalu (unos članske, znaka tima i sl.)").
  *
- * <p>Two places, and on each: <b>the page does not move sideways</b> (PDL P24), <b>every slider stands whole
- * inside the page</b>, and <b>the circle moves from the keyboard</b>: a slider takes the arrow key and the
- * frame of the circle moves with it, which jsdom cannot show because it moves nothing on a key.
+ * <p>Four screens: the member's own picture, the administration's box on his data (owner, 23.11.2026, „Čak i
+ * kad mu uđem u podatke, želim da mogu da se poigram krugom pa da je sačuvam."), the mark of a league, and the
+ * moderator's card of a picture that waits (owner, 24.11.2026, „Na kartici slike koja čeka administrator krug
+ * vuče po slici (prstom ili mišem), kao član; slika se tada ograničava po visini kao kod člana."). On every one
+ * of them, at 360 (by 640), 768 and 1280, the same five things are asked by one function (`behavesTheSame`):
  *
- * <p><b>And the height, the same in both.</b> The circle is dragged over the picture in both places, so the
- * picture is capped to the window as it is for the member (`CropWindow`); on the card that is the owner's
- * decision of 24.11.2026: „Na kartici slike koja čeka administrator krug vuče po slici (prstom ili mišem), kao
- * član; slika se tada ograničava po visini kao kod člana." The picture is a tall telephone photograph, 1080 by
- * 2400, which is the shape that made the cap, and on a telephone of 360 by 640 the card's „Odobri" and
- * „Odbij" are reached past it, with page to scroll on beside the picture wherever it stands.
+ * - <b>the height</b>: the picture is capped at 60 per cent of the window, keeps the shape of the picture, and
+ *   takes every touch (`touch-action: none`);
+ * - <b>the sliders</b>: three, each whole inside the page;
+ * - <b>the keyboard</b>: the arrow keys move the size slider and then the slider across, the frame of the
+ *   circle moves with them, and the focus stays;
+ * - <b>the drag</b>: a press in the middle of the circle carried to the right carries the circle with it;
+ * - <b>the page</b> does not move sideways (PDL P24).
+ *
+ * <p>The picture is a tall telephone photograph, 1080 by 2400, the shape that made the cap; and on the card at
+ * 360 by 640 „Odobri" and „Odbij" are reached past it. jsdom draws none of this, which is why it is asked here;
+ * that the four screens draw it with one control is `components/oneFace.test.ts`'s.
  */
 
 const TALL = `<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="2400" viewBox="0 0 1080 2400"><rect width="1080" height="2400" fill="rgb(40,120,200)"/><rect y="1200" width="1080" height="1200" fill="rgb(200,120,40)"/></svg>`
 
 const TALL_AS_DATA = `data:image/svg+xml,${encodeURIComponent(TALL)}`
 
+const MOCK = fileURLToPath(new URL('../src/test/mock/', import.meta.url))
+
+/** Every sample answer the portal reads, by the path it is asked at (the shape `dropdownArrow.geometry.ts` uses). */
+function everyAnswer(dir = MOCK, prefix = ''): Record<string, unknown> {
+  return Object.fromEntries(
+    readdirSync(dir, { withFileTypes: true }).flatMap((entry): [string, unknown][] => {
+      const at = join(dir, entry.name)
+
+      if (entry.isDirectory()) {
+        return Object.entries(everyAnswer(at, `${prefix}${entry.name}/`))
+      }
+
+      return entry.name.endsWith('.json')
+        ? [[`/api/${prefix}${entry.name.slice(0, -'.json'.length)}`, JSON.parse(readFileSync(at, 'utf-8'))]]
+        : []
+    }),
+  )
+}
+
 const SUPERADMIN = { role: 'superadmin', account: 11, mailLanguage: 'sr' }
 
 const NUMBER = '000001'
+
+const CROP = { x: 0.5, y: 0.3, size: 0.6 }
 
 const ROW = {
   memberNumber: NUMBER,
@@ -45,7 +75,7 @@ const ROW = {
   profileHidden: false,
   birthdayShown: 'none',
   photo: TALL_AS_DATA,
-  crop: { x: 0.5, y: 0.3, size: 0.6 },
+  crop: CROP,
 }
 
 const HIS_DATA: Answers = {
@@ -72,8 +102,40 @@ const HIS_DATA: Answers = {
     shirtSize: 'L',
     bio: '',
     photo: TALL_AS_DATA,
-    crop: { x: 0.5, y: 0.3, size: 0.6 },
+    crop: CROP,
   },
+}
+
+/** The member himself (the record `dataCard.geometry.ts` signs him in with), whose picture stands. */
+const HIS_OWN: Answers = {
+  '/api/competitors': [ROW],
+  '/api/teams': [],
+  '/api/pairs': [],
+  '/api/me': {
+    role: 'competitor',
+    account: 1,
+    mailLanguage: 'sr',
+    member: {
+      ...ROW,
+      category: undefined,
+      ageBand: '40-54',
+      beginner: false,
+      categorySeason: 2027,
+      membershipBasis: 'payment',
+      active: true,
+      referralCode: '7f07b38ff7ee7543',
+      referredCount: 4,
+      address: 'Bulevar Pupina 10',
+      phone: '+381 60 123 456',
+      shirtSize: 'L',
+      fatherName: 'Petar',
+      birthDate: '1980-04-02',
+      idNumber: 'AB12345',
+      viberCommunity: false,
+      photo: '/api/photos/abc',
+    },
+  },
+  '/api/me/photo': { waiting: null, standing: { photo: '/api/photos/abc', crop: CROP } },
 }
 
 const CARD = 21
@@ -102,6 +164,12 @@ const THE_QUEUE: Answers = {
   ],
 }
 
+const THE_LEAGUES: Answers = {
+  ...everyAnswer(),
+  '/api/frozen-seasons': [],
+  '/api/me': { role: 'superadmin', account: 41, membershipBasis: null },
+}
+
 const WIDTHS: At[] = [
   /* A telephone of 360 by 640, the window the cap on the member's chooser was measured in. */
   { width: 360, text: 100, height: 640 },
@@ -109,76 +177,165 @@ const WIDTHS: At[] = [
   { width: 1280, text: 100 },
 ]
 
-type Seen = {
-  viewport: number
-  sliders: { left: number; right: number; width: number }[]
-  picture: { width: number; height: number; top: number; bottom: number } | null
-  innerHeight: number
+/** A picture route answered with the tall photograph, then the page read again so the picture is drawn. */
+async function servedAPictureAt(page: Page, pattern: string, ready: string): Promise<void> {
+  await page.route(pattern, (route) => route.fulfill({ status: 200, contentType: 'image/svg+xml', body: TALL }))
+  await page.reload()
+  await settle(page, ready)
 }
 
-/** The sliders and the picture inside `within`, as boxes. */
-const seenIn = (page: Page, within: string) =>
-  page.evaluate((selector): Seen | null => {
-    const root = document.querySelector(selector)
+type Box = { left: number; right: number; top: number; bottom: number; width: number; height: number }
 
-    if (root === null) {
+/** The control inside `within`, as boxes. */
+const seenIn = (page: Page, within: string) =>
+  page.evaluate((selector) => {
+    const root = document.querySelector(selector)
+    const picture = root?.querySelector('.crop__picture')
+
+    if (root === null || root === undefined || picture === null || picture === undefined) {
       return null
     }
 
-    const picture = root.querySelector('.crop__picture')
-    const box = picture?.getBoundingClientRect()
+    const box = (one: Element) => {
+      const found = one.getBoundingClientRect()
+
+      return { left: found.left, right: found.right, top: found.top, bottom: found.bottom, width: found.width, height: found.height }
+    }
 
     return {
       viewport: document.documentElement.clientWidth,
-      sliders: [...root.querySelectorAll('.crop__slider input[type="range"]')].map((one) => {
-        const found = one.getBoundingClientRect()
-
-        return { left: found.left, right: found.right, width: found.width }
-      }),
-      picture: box === undefined ? null : { width: box.width, height: box.height, top: box.top, bottom: box.bottom },
       innerHeight,
+      sliders: [...root.querySelectorAll('.crop__slider input[type="range"]')].map(box),
+      picture: box(picture),
+      touch: getComputedStyle(picture).touchAction,
     }
   }, within)
 
-/** The slider moved across by the arrow key, and the frame of the circle with it. */
-async function movesFromTheKeyboard(page: Page, within: string): Promise<void> {
-  const across = page.locator(`${within} .crop__slider input[type="range"]`).first()
-  const frame = page.locator(`${within} .crop__frame`).first()
-  const before = { value: await across.inputValue(), left: await frame.evaluate((one) => one.getBoundingClientRect().left) }
+const frameOf = (page: Page, within: string) =>
+  page.locator(`${within} .crop__frame`).first().evaluate((one): Box => {
+    const found = one.getBoundingClientRect()
 
-  await across.focus()
-  await page.keyboard.press('ArrowRight')
-  await page.keyboard.press('ArrowRight')
+    return { left: found.left, right: found.right, top: found.top, bottom: found.bottom, width: found.width, height: found.height }
+  })
 
-  const after = { value: await across.inputValue(), left: await frame.evaluate((one) => one.getBoundingClientRect().left) }
+/** The five things every screen that moves a circle must do alike (see the head of this file). */
+async function behavesTheSame(page: Page, within: string, where: string): Promise<void> {
+  await page.locator(`${within} .crop__slider input`).first().waitFor()
 
-  expect(Number(after.value), 'the slider did not take the arrow key').toBeCloseTo(Number(before.value) + 0.02, 5)
-  expect(after.left, 'the frame of the circle did not move with the slider').toBeGreaterThan(before.left)
-  expect(await across.evaluate((one) => one === document.activeElement), 'the slider lost the focus').toBe(true)
-}
+  const seen = await seenIn(page, within)
 
-function inside(seen: Seen, where: string): void {
+  if (seen === null) {
+    throw notMeasured(`${where} drew no picture to move a circle over`)
+  }
+
   if (seen.sliders.length !== 3) {
     throw notMeasured(`${where} drew ${seen.sliders.length} sliders and not three`)
   }
 
+  /* THE HEIGHT. */
+  expect(seen.picture.height, `the picture of ${where} is taller than the cap`).toBeLessThanOrEqual(0.6 * seen.innerHeight + 1)
+  expect(seen.picture.height / seen.picture.width, `the picture of ${where} is not the shape of the picture`).toBeCloseTo(
+    2400 / 1080,
+    1,
+  )
+  expect(seen.touch, `the picture of ${where} does not take a drag`).toBe('none')
+
+  /* THE SLIDERS. */
   for (const one of seen.sliders) {
     expect(one.left, `a slider of ${where} starts off the page`).toBeGreaterThanOrEqual(-SLACK)
     expect(one.right, `a slider of ${where} runs off the page`).toBeLessThanOrEqual(seen.viewport + SLACK)
     expect(one.width, `a slider of ${where} has no width`).toBeGreaterThan(40)
   }
+
+  /* THE KEYBOARD: the circle made smaller first, so there is room across for it on every screen. */
+  const [across, , size] = [0, 1, 2].map((n) => page.locator(`${within} .crop__slider input[type="range"]`).nth(n))
+
+  if (across === undefined || size === undefined) {
+    throw notMeasured(`${where} has no sliders to press`)
+  }
+
+  const before = { size: Number(await size.inputValue()), frame: await frameOf(page, within) }
+
+  await size.focus()
+
+  for (let press = 0; press < 20; press += 1) {
+    await page.keyboard.press('ArrowLeft')
+  }
+
+  const smaller = { size: Number(await size.inputValue()), frame: await frameOf(page, within) }
+
+  expect(smaller.size, `the size slider of ${where} did not take the arrow key`).toBeCloseTo(before.size - 0.2, 5)
+  expect(smaller.frame.width, `the circle of ${where} did not shrink with its slider`).toBeLessThan(before.frame.width)
+
+  const wasAcross = Number(await across.inputValue())
+
+  await across.focus()
+  await page.keyboard.press('ArrowRight')
+  await page.keyboard.press('ArrowRight')
+
+  const moved = await frameOf(page, within)
+
+  expect(Number(await across.inputValue()), `the slider across of ${where} did not take the arrow key`).toBeCloseTo(
+    wasAcross + 0.02,
+    5,
+  )
+  expect(moved.left, `the circle of ${where} did not move with the slider`).toBeGreaterThan(smaller.frame.left)
+  expect(await across.evaluate((one) => one === document.activeElement), `the slider of ${where} lost the focus`).toBe(true)
+
+  /* THE DRAG: pressed in the middle of the circle and carried right. */
+  await page.locator(`${within} .crop__picture`).first().scrollIntoViewIfNeeded()
+
+  const start = await frameOf(page, within)
+  const middle = { x: start.left + start.width / 2, y: start.top + start.height / 2 }
+
+  await page.mouse.move(middle.x, middle.y)
+  await page.mouse.down()
+  await page.mouse.move(middle.x + 10, middle.y, { steps: 2 })
+  await page.mouse.move(middle.x + 20, middle.y, { steps: 2 })
+  await page.mouse.up()
+
+  const dragged = await frameOf(page, within)
+
+  expect(dragged.left, `a drag did not carry the circle of ${where}`).toBeGreaterThan(start.left + 5)
+
+  /* THE PAGE. */
+  const sideways = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
+
+  expect(sideways, `the page of ${where} moves sideways`).toBeLessThanOrEqual(0)
 }
 
 for (const at of WIDTHS) {
-  test(`the moderator drags the circle of a waiting picture, capped, and reaches both buttons past it, ${label(at)}`, async ({ open }) => {
+  test(`the member moves the circle of his own picture, ${label(at)}`, async ({ open }) => {
+    const box = 'section[aria-labelledby="settings-picture"]'
+    const path = `/sr/takmicar/${NUMBER}-vladan-durisic/podaci`
+    const { page } = await open(at, path, box, HIS_OWN)
+
+    await servedAPictureAt(page, '**/api/photos/**', `${box} .crop__slider`)
+    await behavesTheSame(page, box, 'his own picture')
+  })
+
+  test(`the administration moves the circle of the picture on his data, ${label(at)}`, async ({ open }) => {
+    const box = 'section[aria-labelledby="their-picture"]'
+    const { page } = await open(at, `/sr/takmicar/${NUMBER}-vladan-durisic/podaci`, `${box} .crop__slider`, HIS_DATA)
+
+    await behavesTheSame(page, box, 'the box of his data')
+  })
+
+  test(`the administration moves the circle of a league's mark, ${label(at)}`, async ({ open }) => {
+    const box = 'section[aria-labelledby="league-mark-1"]'
+    const { page } = await open(at, '/sr/administracija/lige?izmena=1', box, THE_LEAGUES)
+
+    await page
+      .locator(`${box} input[type="file"]`)
+      .setInputFiles({ name: 'znak.svg', mimeType: 'image/svg+xml', buffer: Buffer.from(TALL) })
+    await behavesTheSame(page, box, "the league's mark")
+  })
+
+  test(`the moderator drags the circle of a waiting picture and reaches both buttons past it, ${label(at)}`, async ({ open }) => {
+    const card = `[id="${CARD}-card"]`
     const { page } = await open(at, '/sr/administracija/verifikacija/trkacki-profil', '.submissions', THE_QUEUE)
 
-    /* THE PICTURE ITSELF, which `/api` answers with JSON in the harness: served here and read again. */
-    await page.route('**/api/verification/*/photo*', (route) =>
-      route.fulfill({ status: 200, contentType: 'image/svg+xml', body: TALL }),
-    )
-    await page.reload()
-    await settle(page, '.submissions')
+    await servedAPictureAt(page, '**/api/verification/*/photo*', '.submissions')
 
     const toggle = page.locator(`button[aria-controls="${CARD}-card"]`)
 
@@ -186,35 +343,17 @@ for (const at of WIDTHS) {
       await toggle.click()
     }
 
-    await page.locator(`[id="${CARD}-card"] .crop__slider input`).first().waitFor()
-    await settle(page, `[id="${CARD}-card"] .crop__slider`)
+    await behavesTheSame(page, card, 'the card of a waiting picture')
 
-    const card = `[id="${CARD}-card"]`
+    /* NO WALL: the picture leaves page to scroll on, and both buttons come into the window and are what stands
+       at their own middle. */
     const seen = await seenIn(page, card)
 
-    if (seen === null || seen.picture === null) {
-      throw notMeasured('the card drew no picture')
+    if (seen === null) {
+      throw notMeasured('the card lost its picture')
     }
 
-    inside(seen, 'the card')
-    /* CAPPED, as the member's is, and still the shape of the picture: the cap takes the width with it. */
-    expect(seen.picture.height, 'the waiting picture that takes a drag is taller than the cap').toBeLessThanOrEqual(
-      0.6 * seen.innerHeight + 1,
-    )
-    expect(seen.picture.height / seen.picture.width, 'the capped picture is not the shape of the picture').toBeCloseTo(
-      2400 / 1080,
-      1,
-    )
-    expect(
-      await page.locator(`${card} .crop__picture`).evaluate((one) => getComputedStyle(one).touchAction),
-      'the picture on the card does not take a drag',
-    ).toBe('none')
-
-    /* NO WALL: wherever the picture stands in the window, there is page above or below it to scroll on, and
-       both buttons of the card come into the window and are what stands at their own middle. */
-    expect(seen.innerHeight - seen.picture.height, 'the picture leaves no page to scroll on').toBeGreaterThan(
-      0.3 * seen.innerHeight,
-    )
+    expect(seen.innerHeight - seen.picture.height, 'the picture leaves no page to scroll on').toBeGreaterThan(0.3 * seen.innerHeight)
 
     for (const name of ['Odobri', 'Odbij']) {
       const button = page.locator(card).getByRole('button', { name, exact: true })
@@ -222,42 +361,15 @@ for (const at of WIDTHS) {
       await button.scrollIntoViewIfNeeded()
 
       const reached = await button.evaluate((one) => {
-        const box = one.getBoundingClientRect()
-        const at = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2)
+        const found = one.getBoundingClientRect()
+        const there = document.elementFromPoint(found.left + found.width / 2, found.top + found.height / 2)
 
-        return { top: box.top, bottom: box.bottom, onTop: at !== null && one.contains(at) }
+        return { top: found.top, bottom: found.bottom, onTop: there !== null && one.contains(there) }
       })
 
       expect(reached.top, `„${name}" stands above the window`).toBeGreaterThanOrEqual(-SLACK)
       expect(reached.bottom, `„${name}" stands below the window`).toBeLessThanOrEqual(seen.innerHeight + SLACK)
       expect(reached.onTop, `something covers „${name}"`).toBe(true)
     }
-
-    await movesFromTheKeyboard(page, card)
-
-    const sideways = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
-
-    expect(sideways, 'the page moves sideways').toBeLessThanOrEqual(0)
-  })
-
-  test(`the administration moves the circle of the picture on his data, ${label(at)}`, async ({ open }) => {
-    const box = 'section[aria-labelledby="their-picture"]'
-    const { page, probe } = await open(at, `/sr/takmicar/${NUMBER}-vladan-durisic/podaci`, `${box} .crop__slider`, HIS_DATA)
-    const seen = await seenIn(page, box)
-
-    if (seen === null || seen.picture === null) {
-      throw notMeasured('the box drew no picture to move the circle over')
-    }
-
-    inside(seen, 'the box of his picture')
-    /* CAPPED, as the member's own chooser is: the picture takes a drag here. */
-    expect(seen.picture.height, 'the picture that takes a drag is taller than the cap').toBeLessThanOrEqual(
-      0.6 * seen.innerHeight + 1,
-    )
-
-    await movesFromTheKeyboard(page, box)
-
-    expect(probe.sideways).toBe(0)
-    expect(probe.widened).toBe(0)
   })
 }

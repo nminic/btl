@@ -5,9 +5,8 @@ import { useToday } from '../../clock/useClock'
 import { Resource } from '../../components/Resource'
 import { combinePair, dataOr, failed, useCompetitors, useTeams } from '../../data/useResource'
 import { Stars } from '../../components/Stars'
-import { CropWindow } from '../../components/CropWindow'
-import { CropSliders } from '../../components/CropChooser'
-import { closestIn, type Crop, type Shape } from '../../components/crop'
+import { CropChooser } from '../../components/CropChooser'
+import type { Crop } from '../../components/crop'
 import { RATING_MARKS } from '../../data/types'
 import type { EventRating } from '../../data/types'
 import { formatNumber, formatShortDate } from '../../i18n/format'
@@ -278,13 +277,13 @@ function RatingGiven({ rating }: { rating: EventRating }) {
  * <p><b>He moves the circle before he approves, by dragging it over the picture as the member does</b>
  * (owner, 23.11.2026, PDL „Administracija sama podešava krug na članovoj slici", and 24.11.2026, chosen
  * between the outcomes offered, against the recommendation: „Na kartici slike koja čeka administrator krug
- * vuče po slici (prstom ili mišem), kao član; slika se tada ograničava po visini kao kod člana."). So
- * `CropWindow` is given `onChange` here, and with it what it gives the member: the picture takes every touch
- * and is capped to the window, so a tall photograph is no wall between the moderator and „Odobri". That
- * overturns, for this card, „Moderatoru se ne ograničava" (PDL 28.08.2026), which until that day kept the
- * picture uncapped and undraggable. The member's three sliders stand under it as they stand under his
- * (`CropSliders`), for the keyboard. What he moves is drawn in place of the member's circle (`moved`) and
- * travels in the approval beside the print (`approvalOf`); the print stays `one.crop`.
+ * vuče po slici (prstom ili mišem), kao član; slika se tada ograničava po visini kao kod člana."). And with
+ * the member's own control, `CropChooser`, not a composition of this card's (owner, 24.11.2026, PDL
+ * „Podešavanje kruga na slici radi identično na svakom mestu portala"), so the picture takes every touch and is
+ * capped to the window by the same code as his, and a tall photograph is no wall between the moderator and
+ * „Odobri". That overturns, for this card, „Moderatoru se ne ograničava" (PDL 28.08.2026), which until that day
+ * kept the picture uncapped and undraggable. What he moves is drawn in place of the member's circle (`moved`)
+ * and travels in the approval beside the print (`approvalOf`); the print stays `one.crop`.
  *
  * <p><b>A failed load says so rather than hiding the picture or drawing a broken
  * image icon, since PDL.md "29. Slika koja ne moze da se ucita" (owner,
@@ -367,10 +366,6 @@ function WaitingPicture({
   /* Taken out of the item once and narrowed here, because the two handlers below are
      closures and a narrowing of `item.photoId` does not reach into a closure. */
   const { photoId } = item
-  /* WHAT THE PICTURE MEASURED, by the picture it measured, so the smallest circle the sliders allow is
-     this picture's (`closestIn`) and a picture replaced under the card has no sliders until its own
-     pixels have arrived. */
-  const [measured, setMeasured] = useState<{ photoId: number; shape: Shape } | null>(null)
 
   if (photoId === null) {
     return null
@@ -384,44 +379,40 @@ function WaitingPicture({
     )
   }
 
-  const circle = moved ?? item.crop
-  const sliders = measured !== null && measured.photoId === photoId ? measured.shape : null
+  const picture = photoPath(item.id, photoId)
 
   return (
-    /* Named as a group where there are sliders in it, as the member's chooser names his
-       (`CropChooser`): a picture and three controls that only mean anything together. */
-    <div
-      className="pending__picture"
-      role={sliders === null ? undefined : 'group'}
-      aria-label={sliders === null ? undefined : t('crop.choosing')}
-    >
-      {/* Keyed by the picture, so that a replaced one is a component of its own with an
-          `<img>` of its own, which draws nothing until its own pixels arrive and reports
-          for itself. The circle is not in the key (see above). */}
-      <CropWindow
-        key={photoId}
-        picture={photoPath(item.id, photoId)}
-        crop={circle}
+    <div className="pending__picture">
+      {/* THE PORTAL'S ONE CONTROL OF A CIRCLE, the member's own (owner, 24.11.2026, PDL „Podešavanje kruga
+          na slici radi identično na svakom mestu portala": „Zelim da ovo za sliku radi identično kao za bilo
+          koje prilagođavanje kruga na slici na portalu"), handed a picture that stands rather than a file to
+          choose (`standing`). So he drags the circle over the picture as the member does (owner, 24.11.2026:
+          „Na kartici slike koja čeka administrator krug vuče po slici (prstom ili mišem), kao član; slika se
+          tada ograničava po visini kao kod člana."), the picture is capped as the member's is, and the three
+          sliders and the keyboard are the member's. What becomes of the picture is reported from the very
+          element that draws it, for the two buttons that wait on it. A picture replaced under the card is a
+          new address (`photoPath` carries the key), and the control keys its window by the address. */}
+      <CropChooser
+        id={`${item.id}-circle`}
         alt={t('verification.pictureAlt', { who: item.who })}
-        onLoaded={(shape) => {
-          setMeasured({ photoId, shape })
-          onOutcome('loaded', photoId)
+        chosen={{ name: picture, picture, crop: moved ?? item.crop, file: NOT_A_FILE }}
+        onChange={(next) => {
+          if (next !== null) {
+            onMove(next.crop)
+          }
         }}
-        onFailed={() => onOutcome('failed', photoId)}
-        /* THE PICTURE ANSWERS A DRAG, as the member's does (owner, 24.11.2026: „Na kartici slike koja
-           čeka administrator krug vuče po slici (prstom ili mišem), kao član"), and is capped by the same
-           code for the same reason (`CropWindow`). */
-        onChange={onMove}
-      >
-        {/* AND THE MEMBER'S OWN THREE SLIDERS UNDER IT, for the keyboard (`CropSliders`), with this
-            picture's floor once it has been measured. */}
-        {sliders !== null && (
-          <CropSliders id={`${item.id}-circle`} crop={circle} least={closestIn(sliders)} onChange={onMove} />
-        )}
-      </CropWindow>
+        standing={{
+          onLoaded: () => onOutcome('loaded', photoId),
+          onFailed: () => onOutcome('failed', photoId),
+        }}
+      />
     </div>
   )
 }
+
+/** What stands in for a file where nothing is chosen: the card hands the control a picture already on the
+ *  portal, and the file is never read or sent (`CropChooser`, `standing`). */
+const NOT_A_FILE = new File([], 'the-picture-that-waits')
 
 /**
  * The three things a team is made of, changeable before it is made.
