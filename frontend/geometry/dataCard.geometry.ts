@@ -180,6 +180,26 @@ for (const at of WIDTHS) {
       expect(one.right, `${one.name} ends inside the page`).toBeLessThanOrEqual(viewport + SLACK)
     }
 
+    /* THE RADIOS ARE MARKS AND NOT TEXT BOXES (`forms/controlHeight.test.tsx`, the list of screens that write a
+       field by hand): each is square, and well under the height the shared rule gives a box of the form above. */
+    const heights = await page.evaluate((selector) => {
+      const box = document.querySelector('section[aria-labelledby="form-podaci-clana-title"] input[type="text"]')
+      const radios = [...(document.querySelector(selector)?.querySelectorAll('input[type="radio"]') ?? [])]
+
+      return {
+        box: box?.getBoundingClientRect().height ?? 0,
+        radios: radios.map((one) => ({ width: one.getBoundingClientRect().width, height: one.getBoundingClientRect().height })),
+      }
+    }, THE_CATEGORY)
+
+    expect(heights.box, 'the form above drew a text box to compare with').toBeGreaterThan(0)
+    expect(heights.radios).toHaveLength(2)
+
+    for (const one of heights.radios) {
+      expect(Math.abs(one.width - one.height), 'a radio is square').toBeLessThanOrEqual(SLACK)
+      expect(one.height, 'a radio is not given the height of a text box').toBeLessThan(heights.box / 2)
+    }
+
     const sentences = await page.evaluate((selector) =>
       [...(document.querySelector(selector)?.querySelectorAll('p, legend, label') ?? [])].map((one) => {
         const box = one.getBoundingClientRect()
