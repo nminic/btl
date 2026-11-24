@@ -1486,7 +1486,11 @@ class PaymentsDueApiTest {
 	 */
 	@Test
 	void nofieldOfTheAnswerIsTheSameInEveryRow() throws Exception {
-		Answers.noFieldIsTheSameInEveryRecord(PATH, read(booksCookie, null).get("accounts"));
+		/* READ BY SOMEBODY WHO HOLDS EVERY RIGHT, and not by the moderator of the books: `mayBeDeleted` is the
+		   server's answer to whoever asks and is `false` on every row for a moderator without the right over the
+		   members (owner, 24.11.2026; `ARegistrationIsDeletedApiTest`), so a reader without it would make the field
+		   a constant for a reason that has nothing to do with this guard. */
+		Answers.noFieldIsTheSameInEveryRecord(PATH, read(superadminCookie, null).get("accounts"));
 	}
 
 	/** One column of one row of the price list, asked of the list rather than written down. */
