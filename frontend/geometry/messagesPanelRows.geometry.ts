@@ -88,6 +88,8 @@ type Row = {
   dateRight: number
   linkRight: number
   overflow: number
+  /** How many words of the subject are laid out across two lines. */
+  broken: number
 }
 
 const rowsOf = (list: Locator): Promise<Row[]> =>
@@ -105,6 +107,19 @@ const rowsOf = (list: Locator): Promise<Row[]> =>
         dateRight: date?.right ?? Number.NaN,
         linkRight: box.right,
         overflow: link.scrollWidth - link.clientWidth,
+        broken: [...(link.querySelector('.inbox__subject')?.textContent ?? '').matchAll(/\S+/g)].filter((word) => {
+          const text = link.querySelector('.inbox__subject')?.firstChild
+          const range = document.createRange()
+
+          if (text === null || text === undefined) {
+            return false
+          }
+
+          range.setStart(text, word.index)
+          range.setEnd(text, word.index + word[0].length)
+
+          return new Set([...range.getClientRects()].map((one) => Math.round(one.top))).size > 1
+        }).length,
       }
     }),
   )
@@ -139,6 +154,11 @@ for (const [what, inbox] of [
         expect(row.overflow, `row ${index} is wider than itself`).toBeLessThanOrEqual(SLACK)
         expect(row.dateRight, `the date of row ${index} ends past the list`).toBeLessThanOrEqual(listBox.right + SLACK)
         expect(row.dateRight, `the date of row ${index} ends past its row`).toBeLessThanOrEqual(row.linkRight + SLACK)
+        if (what === 'two ordinary subjects') {
+          /* A word is kept whole where the date can go under it; only a word wider than the row is broken. */
+          expect(row.broken, `row ${index} breaks a word of its subject in two`).toBe(0)
+        }
+
         /* Beside the date, or above it where the date has gone to a line of its own. */
         expect(
           row.subjectRight <= row.dateLeft + SLACK || row.subjectBottom <= row.dateTop + SLACK,

@@ -590,7 +590,6 @@
 
 .inbox__subject {
   flex: 1 1 6rem;
-  min-width: 0;
   overflow-wrap: anywhere;
 }
 
