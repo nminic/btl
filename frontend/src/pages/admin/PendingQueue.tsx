@@ -397,9 +397,7 @@ function WaitingPicture({
         alt={t('verification.pictureAlt', { who: item.who })}
         chosen={{ name: picture, picture, crop: moved ?? item.crop, file: NOT_A_FILE }}
         onChange={(next) => {
-          if (next !== null) {
-            onMove(next.crop)
-          }
+          onMove(next.crop)
         }}
         standing={{
           onLoaded: () => onOutcome('loaded', photoId),

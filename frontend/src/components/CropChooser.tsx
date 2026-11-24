@@ -39,20 +39,24 @@ import './Crop.css'
  * this one reaches `CropWindow` or `CropSliders`.
  */
 export function CropChooser(props: Choosing) {
-  const { id, alt, chosen, onChange } = props
-
   return props.standing === undefined ? (
     <ChoosingAFile
-      id={id}
+      id={props.id}
       label={props.label}
-      alt={alt}
+      alt={props.alt}
       asked={props.asked}
       unmarked={props.unmarked}
-      chosen={chosen}
-      onChange={onChange}
+      chosen={props.chosen}
+      onChange={props.onChange}
     />
   ) : (
-    <MovingTheCircleOfOneThatStands id={id} alt={alt} chosen={chosen} onChange={onChange} standing={props.standing} />
+    <MovingTheCircleOfOneThatStands
+      id={props.id}
+      alt={props.alt}
+      chosen={props.chosen}
+      onChange={props.onChange}
+      standing={props.standing}
+    />
   )
 }
 
@@ -66,19 +70,23 @@ type Choosing = {
    *  file field (`standing`), where the three sliders' ids start. */
   id: string
   alt: string
-  chosen: Chosen | null
-  onChange: (chosen: Chosen | null) => void
 } & (
   | {
       label: string
       asked?: boolean
       unmarked?: boolean
+      chosen: Chosen | null
+      onChange: (chosen: Chosen | null) => void
       standing?: undefined
     }
   | {
       label?: undefined
       asked?: undefined
       unmarked?: undefined
+      /** Never nothing: the picture already stands, which is what this form is for. */
+      chosen: Chosen
+      /** Never told „nothing": no file is chosen here, so none can be refused. */
+      onChange: (chosen: Chosen) => void
       standing: Standing
     }
 )
@@ -108,18 +116,14 @@ export type Standing = {
 function MovingTheCircleOfOneThatStands({ id, alt, chosen, onChange, standing }: {
   id: string
   alt: string
-  chosen: Chosen | null
-  onChange: (chosen: Chosen | null) => void
+  chosen: Chosen
+  onChange: (chosen: Chosen) => void
   standing: Standing
 }) {
   const { t } = useI18n()
   /* WHAT THE WINDOW MEASURED, by the picture it measured, so a picture replaced under the screen has no
      sliders until its own pixels have arrived. */
   const [measured, setMeasured] = useState<{ picture: string; shape: Shape } | null>(null)
-
-  if (chosen === null) {
-    return null
-  }
 
   const shape = measured !== null && measured.picture === chosen.picture ? measured.shape : null
 

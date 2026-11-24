@@ -221,8 +221,9 @@ function HisPicture({ competitor }: { competitor: WhatStands }) {
           setAnswer(null)
 
           /* The picture that stands, with the circle moved; a file chosen, which puts the moved circle
-             aside; or nothing, a file that could not be opened, which leaves the picture that stands
-             drawn with the circle left on it. The shape `member/ProfilePicture.tsx` gives `choose`. */
+             aside; or nothing, a file that could not be opened, which draws the picture that stands again in
+             the circle it stands in (the moved one went aside when the file arrived). The shape
+             `member/ProfilePicture.tsx` gives `choose`. */
           if (next === null) {
             setPicked(null)
           } else if (next.file === NO_FILE) {

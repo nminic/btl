@@ -4,7 +4,7 @@ import { cropIn } from '../../components/crop'
 import { fittedTo } from '../../components/fitted'
 import sr from '../../i18n/sr.json'
 import { must } from '../../test/at'
-import { measurePicture } from '../../test/picture'
+import { measurePicture, theMeasuringPicture } from '../../test/picture'
 import { moderatorWith, renderAt } from '../../test/render'
 import { membersAsServed, serverThat, type Asked } from '../../test/serverAnswers'
 import { SLOW } from '../../test/slow'
@@ -330,6 +330,43 @@ describe('the circle of his picture, moved by the administration', () => {
       fittedTo(cropIn({ x: 0.13, y: 0.15, size: 0.42 })).transform,
     )
     await waitFor(() => expect(save).toHaveAttribute('aria-disabled', 'true'))
+  }, SLOW)
+
+  it('draws the picture that stands again, in the circle it stands in, when a file chosen over it cannot be opened', async () => {
+    /* The branch of `onChange` that hears „nothing": the chooser refuses a file the browser cannot read
+       (`CropChooser`, „unreadable") and hands up nothing. What stands comes back under the sentence, in the
+       circle it stands in: a moved circle was put aside the moment a file arrived, which is the shape
+       `member/ProfilePicture.tsx` gives the member („The circle was already put aside when the file
+       arrived"). So nothing is left to send, and nothing is sent: the file that could not be opened least of
+       all. */
+    const user = setupUser()
+    const { asked, stop } = serverThat(() => null)
+
+    stops.push(stop)
+    asTheAdministration(HAS_ONE)
+
+    const panel = within(await screen.findByRole('region', { name: sr.picture.title }))
+
+    await measurePicture()
+    fireEvent.change(await panel.findByLabelText(sr.crop.x), { target: { value: '0.13' } })
+
+    await user.upload(panel.getByLabelText(sr.picture.choose), new File(['nije slika'], 'nova.heic', { type: 'image/heic' }))
+    await waitFor(() => expect(theMeasuringPicture().getAttribute('src')).not.toBe('/mock/photo/andjelija.svg'))
+    fireEvent.error(theMeasuringPicture())
+
+    expect(await panel.findByText(sr.crop.unreadable)).toBeVisible()
+    await waitFor(() => expect(theMeasuringPicture().getAttribute('src')).toBe('/mock/photo/andjelija.svg'))
+    await measurePicture()
+    expect(await panel.findByLabelText(sr.crop.x), 'the picture that stands is not drawn in its own circle').toHaveValue(
+      String(SERVED.x),
+    )
+    expect(panel.getByRole('img', { name: sr.theirBoxes.circleAlt })).toBeVisible()
+
+    const save = panel.getByRole('button', { name: sr.theirBoxes.pictureSave })
+
+    expect(save).toHaveAttribute('aria-disabled', 'true')
+    await user.click(save)
+    expect(writes(asked), 'something was sent for a file that could not be opened').toHaveLength(0)
   }, SLOW)
 
   it('sends nothing for a circle moved back to where it stood', async () => {
