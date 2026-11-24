@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { cleanup, configure, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 import sr from '../../i18n/sr.json'
 import { inputElement, must } from '../../test/at'
@@ -29,6 +29,12 @@ import { setupUser } from '../../test/user'
  * server) and drawn again, and what the second screen shows can come from the server and from nowhere
  * else. That is the round trip; the sources it separates are named at each case.
  */
+
+/* A WAIT THAT NEVER ENDS FAILS ON ITS OWN ASSERTION, NOT ON THE CLOCK OF THE CASE: half of the case's time, so a
+   sentence that does not appear is `Unable to find` and not `Test timed out` (the shape `i18n/dictionaries.test.tsx`
+   and `app/noticeBar.test.tsx` give theirs). A case that ends on the clock says nothing about which assertion it
+   was waiting for, and a mutation that only ever ends it there is not measured. */
+configure({ asyncUtilTimeout: SLOW / 2 })
 
 type Circle = { x: number; y: number; size: number }
 type Held = { digest: string; crop: Circle }
