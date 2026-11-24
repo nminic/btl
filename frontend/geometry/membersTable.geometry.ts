@@ -180,15 +180,10 @@ async function readTheTable(open: Geometry['open'], at: At, answers: Answers) {
 
   await page.getByText('Promeni osnov u oslobođenje').filter({ visible: true }).first().waitFor({ state: 'visible' })
 
-  /* Where the sample says which seasons froze, the list is read once that answer has arrived: a frozen box
-     acts only then, and read before it the list would say so of nothing. */
-  if (answers['/api/frozen-seasons'] !== undefined) {
-    await page.waitForFunction(() =>
-      [...document.querySelectorAll('.members-seasons__list label')].some(
-        (one) => (one.textContent ?? '').trim() === '2027' && one.querySelector('input:not([disabled])') !== null,
-      ),
-    )
-  }
+  /* The list is read once every answer has arrived, `/api/frozen-seasons` among them: a frozen box acts only
+     then. Waited on the network and not on a box that acts, so a box that never acts fails the assertion below
+     and not a wait that runs out. */
+  await page.waitForLoadState('networkidle')
   /* The pointer is parked off the table again: the last press left it over a control. */
   await page.mouse.move(1, 1)
 
