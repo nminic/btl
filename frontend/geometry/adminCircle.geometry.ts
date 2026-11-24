@@ -13,11 +13,12 @@ import type { Answers, At } from './support/harness.ts'
  * inside the page</b>, and <b>the circle moves from the keyboard</b>: a slider takes the arrow key and the
  * frame of the circle moves with it, which jsdom cannot show because it moves nothing on a key.
  *
- * <p><b>And the height, which is the difference between the two.</b> On the card of a picture that waits the
- * picture is never capped (PDL 27.09.2026: „Visina se moderatoru ne ograničava ... i to ostaje na punoj
- * snazi"), so the sliders sit under the whole of it; on the member's data the chooser is the member's own and
- * takes a drag, so the picture is capped to the window as it is for him (`CropWindow`). The picture is a tall
- * telephone photograph, 1080 by 2400, which is the shape that made the cap.
+ * <p><b>And the height, the same in both.</b> The circle is dragged over the picture in both places, so the
+ * picture is capped to the window as it is for the member (`CropWindow`); on the card that is the owner's
+ * decision of 24.11.2026: „Na kartici slike koja čeka administrator krug vuče po slici (prstom ili mišem), kao
+ * član; slika se tada ograničava po visini kao kod člana." The picture is a tall telephone photograph, 1080 by
+ * 2400, which is the shape that made the cap, and on a telephone of 360 by 640 the card's „Odobri" and
+ * „Odbij" are reached past it, with page to scroll on beside the picture wherever it stands.
  */
 
 const TALL = `<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="2400" viewBox="0 0 1080 2400"><rect width="1080" height="2400" fill="rgb(40,120,200)"/><rect y="1200" width="1080" height="1200" fill="rgb(200,120,40)"/></svg>`
@@ -169,7 +170,7 @@ function inside(seen: Seen, where: string): void {
 }
 
 for (const at of WIDTHS) {
-  test(`the moderator moves the circle of a waiting picture under the whole of it, ${label(at)}`, async ({ open }) => {
+  test(`the moderator drags the circle of a waiting picture, capped, and reaches both buttons past it, ${label(at)}`, async ({ open }) => {
     const { page } = await open(at, '/sr/administracija/verifikacija/trkacki-profil', '.submissions', THE_QUEUE)
 
     /* THE PICTURE ITSELF, which `/api` answers with JSON in the harness: served here and read again. */
@@ -196,18 +197,40 @@ for (const at of WIDTHS) {
     }
 
     inside(seen, 'the card')
-    /* NOT CAPPED: the box is the shape of the picture at the width of the card, so its height is the
-       width times 2400 / 1080, and that is taller than the window on a telephone. */
-    expect(seen.picture.height / seen.picture.width, 'the waiting picture is not drawn whole').toBeCloseTo(2400 / 1080, 1)
-
-    /* And taller than the cap a dragged picture gets, on every width, so a card that capped it is caught where
-       the ratio alone (kept by a cap too) would not say so. */
-    expect(seen.picture.height, 'the waiting picture is capped like one that takes a drag').toBeGreaterThan(
+    /* CAPPED, as the member's is, and still the shape of the picture: the cap takes the width with it. */
+    expect(seen.picture.height, 'the waiting picture that takes a drag is taller than the cap').toBeLessThanOrEqual(
       0.6 * seen.innerHeight + 1,
     )
+    expect(seen.picture.height / seen.picture.width, 'the capped picture is not the shape of the picture').toBeCloseTo(
+      2400 / 1080,
+      1,
+    )
+    expect(
+      await page.locator(`${card} .crop__picture`).evaluate((one) => getComputedStyle(one).touchAction),
+      'the picture on the card does not take a drag',
+    ).toBe('none')
 
-    if (at.width === 360) {
-      expect(seen.picture.height, 'the case does not reach the shape the cap was made for').toBeGreaterThan(seen.innerHeight)
+    /* NO WALL: wherever the picture stands in the window, there is page above or below it to scroll on, and
+       both buttons of the card come into the window and are what stands at their own middle. */
+    expect(seen.innerHeight - seen.picture.height, 'the picture leaves no page to scroll on').toBeGreaterThan(
+      0.3 * seen.innerHeight,
+    )
+
+    for (const name of ['Odobri', 'Odbij']) {
+      const button = page.locator(card).getByRole('button', { name, exact: true })
+
+      await button.scrollIntoViewIfNeeded()
+
+      const reached = await button.evaluate((one) => {
+        const box = one.getBoundingClientRect()
+        const at = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2)
+
+        return { top: box.top, bottom: box.bottom, onTop: at !== null && one.contains(at) }
+      })
+
+      expect(reached.top, `„${name}" stands above the window`).toBeGreaterThanOrEqual(-SLACK)
+      expect(reached.bottom, `„${name}" stands below the window`).toBeLessThanOrEqual(seen.innerHeight + SLACK)
+      expect(reached.onTop, `something covers „${name}"`).toBe(true)
     }
 
     await movesFromTheKeyboard(page, card)

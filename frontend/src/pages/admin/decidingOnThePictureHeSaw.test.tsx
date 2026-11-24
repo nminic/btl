@@ -747,6 +747,52 @@ describe('the circle the moderator moves', () => {
     }
   }, SLOW)
 
+  it('is dragged over the picture as the member drags his, and what the drag left is what the approval sends', async () => {
+    /* Owner, 24.11.2026: „Na kartici slike koja čeka administrator krug vuče po slici (prstom ili mišem), kao
+       član; slika se tada ograničava po visini kao kod člana." The picture takes the pointer, is capped as the
+       member's is, and a drag from the middle of the circle to the right carries it across. */
+    const { asked, stop } = serverThat((path) =>
+      path === '/api/verification' ? asTheList([mira()]) : path === decisionPath('23') ? did() : null,
+    )
+
+    try {
+      const user = setupUser()
+
+      openQueue()
+      await screen.findByRole('list', { name: /Čeka/ })
+      thePictureArrivesAt('Mira Mirić', 1000, 1000)
+
+      const box = must(
+        cardOf('Mira Mirić').getByRole('img', { name: /Slika koju je poslao/ }).closest<HTMLElement>('.crop__picture'),
+        'the box of the picture',
+      )
+
+      expect(box.className, 'the picture on the card does not take a drag').toContain('crop__picture--dragged')
+      expect(box.style.maxBlockSize, 'the picture that takes a drag is not capped').toBe('60svh')
+
+      box.getBoundingClientRect = () =>
+        ({ left: 0, top: 0, width: 200, height: 200, right: 200, bottom: 200, x: 0, y: 0, toJSON: () => '' })
+
+      /* Mira's circle is 0,8 of the picture, centred at 0,125 across the room left: its middle is at 0,425. */
+      fireEvent.pointerDown(box, { clientX: 0.425 * 200, clientY: 0.24 * 200, pointerId: 1 })
+      fireEvent.pointerMove(box, { clientX: 0.5 * 200, clientY: 0.24 * 200, pointerId: 1 })
+      fireEvent.pointerUp(box, { pointerId: 1 })
+
+      await user.click(cardOf('Mira Mirić').getByRole('button', { name: 'Odobri' }))
+
+      const body = JSON.parse(String(asked.find((one) => one.path === decisionPath('23'))?.init?.body))
+
+      expect(body.seenCrop).toEqual(MIRA_CROP)
+      expect(body.crop?.x, 'the approval did not carry the circle the drag carried across').toBeGreaterThan(
+        MIRA_CROP.x,
+      )
+      expect(body.crop.y).toBe(MIRA_CROP.y)
+      expect(body.crop.size).toBe(MIRA_CROP.size)
+    } finally {
+      stop()
+    }
+  }, SLOW)
+
   it('is drawn where he moved it, and the rest of the picture is still there', async () => {
     const { stop } = serverThat((path) => (path === '/api/verification' ? asTheList([mira()]) : null))
 

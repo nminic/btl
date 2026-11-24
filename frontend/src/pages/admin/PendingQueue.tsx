@@ -272,18 +272,19 @@ function RatingGiven({ rating }: { rating: EventRating }) {
  * and what he decides about are one answer. A circle moved under the moderator's hand therefore
  * refuses his decision (409 „Slika je promenjena, pogledaj je ponovo.") and the card, read again,
  * draws the circle where it now is - the `<img>` is not keyed by it and does not need to be, the
- * pixels did not change. `CropWindow` is given NO `onChange`, so nothing on the picture listens to a
- * pointer and the height is not capped: „Moderatoru se ne ograničava" (PDL.md, 28.08.2026), because he
- * has nothing to drag and his job is to see the whole of what is thrown away. For a row with no
- * picture `one.crop` is `WHOLE`, the portal's own word for „no square of its own" (`./pending.ts`),
- * and nothing is drawn at all.
+ * pixels did not change. For a row with no picture `one.crop` is `WHOLE`, the portal's own word for
+ * „no square of its own" (`./pending.ts`), and nothing is drawn at all.
  *
- * <p><b>Since 23.11.2026 he moves the circle before he approves</b> (owner, PDL „Administracija sama
- * podešava krug na članovoj slici"), with the three sliders the member moves his with (`CropSliders`),
- * under the picture and inside its group, and still with no `onChange` on the picture: the sliders take
- * the keyboard and a touch without the picture taking every touch, so the height stays uncapped and the
- * paragraph above stands. What he moves is drawn in place of the member's circle (`moved`) and travels in
- * the approval beside the print (`approvalOf`); the print stays `one.crop`.
+ * <p><b>He moves the circle before he approves, by dragging it over the picture as the member does</b>
+ * (owner, 23.11.2026, PDL „Administracija sama podešava krug na članovoj slici", and 24.11.2026, chosen
+ * between the outcomes offered, against the recommendation: „Na kartici slike koja čeka administrator krug
+ * vuče po slici (prstom ili mišem), kao član; slika se tada ograničava po visini kao kod člana."). So
+ * `CropWindow` is given `onChange` here, and with it what it gives the member: the picture takes every touch
+ * and is capped to the window, so a tall photograph is no wall between the moderator and „Odobri". That
+ * overturns, for this card, „Moderatoru se ne ograničava" (PDL 28.08.2026), which until that day kept the
+ * picture uncapped and undraggable. The member's three sliders stand under it as they stand under his
+ * (`CropSliders`), for the keyboard. What he moves is drawn in place of the member's circle (`moved`) and
+ * travels in the approval beside the print (`approvalOf`); the print stays `one.crop`.
  *
  * <p><b>A failed load says so rather than hiding the picture or drawing a broken
  * image icon, since PDL.md "29. Slika koja ne moze da se ucita" (owner,
@@ -407,15 +408,13 @@ function WaitingPicture({
           onOutcome('loaded', photoId)
         }}
         onFailed={() => onOutcome('failed', photoId)}
+        /* THE PICTURE ANSWERS A DRAG, as the member's does (owner, 24.11.2026: „Na kartici slike koja
+           čeka administrator krug vuče po slici (prstom ili mišem), kao član"), and is capped by the same
+           code for the same reason (`CropWindow`). */
+        onChange={onMove}
       >
-        {/* THE CIRCLE IS HIS TO MOVE BEFORE HE APPROVES (owner, 23.11.2026, PDL „Administracija sama
-            podešava krug na članovoj slici"), with the member's own three sliders (`CropSliders`) and NOT
-            by dragging the picture. That is a choice of the assistant's, made to keep a recorded decision
-            standing: „Visina se moderatoru ne ograničava (zapis od 28.08.2026: „Moderatoru se ne
-            ograničava"), i to ostaje na punoj snazi" (PDL 27.09.2026). A picture that takes a drag must
-            take every touch (`touch-action: none`), and then it has to be capped to 60 per cent of the
-            window or a tall photograph is a wall on a telephone (`CropWindow`, measured 27.08.2026); the
-            sliders take the arrows, Home and End, and leave the picture whole and scrollable. */}
+        {/* AND THE MEMBER'S OWN THREE SLIDERS UNDER IT, for the keyboard (`CropSliders`), with this
+            picture's floor once it has been measured. */}
         {sliders !== null && (
           <CropSliders id={`${item.id}-circle`} crop={circle} least={closestIn(sliders)} onChange={onMove} />
         )}
