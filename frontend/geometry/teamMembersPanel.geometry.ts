@@ -199,11 +199,10 @@ for (const [which, answers, pick, phoneOnly] of [
 
       await page.locator(`#team-${team}-member-list`).getByRole('option', { name: longest, exact: true }).click()
 
-      const chosen = await box.evaluate((one) => {
-        const input = one as HTMLInputElement
-
-        return { value: input.value, runsOut: input.scrollWidth - input.clientWidth }
-      })
+      const chosen = await box.evaluate((one) => ({
+        value: one instanceof HTMLInputElement ? one.value : null,
+        runsOut: one.scrollWidth - one.clientWidth,
+      }))
 
       expect(chosen.value, 'the box holds another name than the one pressed').toBe(longest)
       expect(chosen.runsOut, 'the name chosen runs out of the box, and its number with it').toBeLessThanOrEqual(0.5)
