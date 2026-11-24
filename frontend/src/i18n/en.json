@@ -69,7 +69,7 @@
     },
     "settings": {
       "title": "Account settings",
-      "description": "Notices, the display theme and the other settings that hold for the account on every device."
+      "description": "Notices and the other settings that hold for the account on every device."
     },
     "privacy": {
       "title": "Privacy policy",
@@ -1739,14 +1739,10 @@
   "settings": {
     "title": "Settings",
     "intro": "The settings hold for your account on every device.",
-    "appearance": "Appearance",
     "privacy": "Privacy",
     "hideProfile": "Hide my profile from anyone who is neither an active member nor the administration",
     "hideProfileNote": "The name stays in the tables and on the boards. The profile page is hidden from visitors who are not signed in and from accounts without an active membership.",
     "opensWhenTheFeeIsRenewed": "Your data and your password open once your fee has been renewed. Renew it here: {renewal}.",
-    "themeLabel": "Theme",
-    "themeDark": "Dark",
-    "themeLight": "Light",
     "mail": "Mail",
     "mailLanguageLegend": "Language of the mail",
     "mailLanguageNotChosen": "No language of the mail was chosen. Choose one of the two offered."

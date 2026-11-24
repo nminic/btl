@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync } from 'node:fs'
 import { join, relative } from 'node:path'
 
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { ClockProvider } from '../clock/ClockProvider'
 import { I18nProvider } from '../i18n/I18nProvider'
@@ -390,11 +390,13 @@ describe('how tall a control in a form is', () => {
     drawEveryForm()
 
     /* A member's settings, because that is where the portal writes a field by hand and
-       puts a radio in it. Awaited on the control itself rather than on the screen
-       around it: a case that renders and reads at once reads a screen still being
-       drawn. */
+       puts a radio in it: the language of his mail, since 24.11.2026 the only group of
+       radios there (the theme beside it left with the light theme). Awaited on the
+       control itself rather than on the screen around it: a case that renders and reads
+       at once reads a screen still being drawn. */
     renderAt('/sr/podesavanja', 'competitor', '000007')
-    expect(await screen.findByRole('radio', { name: 'Tamna' })).toBeInTheDocument()
+    const group = await screen.findByRole('group', { name: 'Jezik pošte' })
+    expect(within(group).getAllByRole('radio')).toHaveLength(2)
 
     /* THE MARKS THE SHARED HEIGHT WOULD OTHERWISE REACH, which is not the same as every
        mark in a field and is not a list of exceptions either: the radio inside a group
@@ -476,8 +478,8 @@ describe('how tall a control in a form is', () => {
       'pages/event/EnterResults.tsx',
       'pages/event/GoingToEvent.tsx',
       /* THE GROUP OF TWO RADIOS FOR THE LANGUAGE OF A MEMBER'S MAIL (JM-B, 17.10.2026), written as
-         the theme beside it on the settings screen is: a `.field--radio` with a `.field__confirm` a
-         radio. Measured in Chrome over the built package at 360, 768 and 1280, for a member whose
+         the choice of the theme on the same screen was until 24.11.2026: a `.field--radio` with a
+         `.field__confirm` a radio. Measured in Chrome over the built package at 360, 768 and 1280, for a member whose
          fee stands, one whose fee has lapsed and an account with no record: each radio is 18,0px
          square, which is the tick of the box beside it and not the height of a text box, so the way
          out above reaches it; the group is 324, 732 and 1064px wide inside the page's own gutter, and
@@ -491,7 +493,6 @@ describe('how tall a control in a form is', () => {
          here: the tick is 18,39 square, which is the 1,15rem it is given and not the
          height of a text box, so the way out above already reaches it. */
       'pages/member/ProfileVisibility.tsx',
-      'pages/member/Settings.tsx',
     ])
   })
 

@@ -26,7 +26,7 @@ import type { Answers, At } from './support/harness.ts'
  * best races are ten rows with two lengths of race name, so the race stands on one line in some rows and
  * on two at 360px in others.
  *
- * **Three widths, 360, 768 and 1280, in both themes.**
+ * **Three widths, 360, 768 and 1280.**
  */
 
 const MOCK = fileURLToPath(new URL('../src/test/mock/', import.meta.url))
@@ -91,10 +91,7 @@ const ANSWERS: Answers = {
  */
 const AGREE = 1
 
-const WIDTHS: At[] = [360, 768, 1280].flatMap((width): At[] => [
-  { width, text: 100, theme: 'light' },
-  { width, text: 100, theme: 'dark' },
-])
+const WIDTHS: At[] = [360, 768, 1280].map((width): At => ({ width, text: 100 }))
 
 for (const at of WIDTHS) {
   test(`every cell of a row of the top boards shares one vertical centre, at ${label(at)}`, async ({ open }) => {

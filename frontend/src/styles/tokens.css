@@ -4,11 +4,15 @@
  * owner. The names there are Serbian; here they are English, because all code
  * is English (ADL A2). The values are unchanged.
  *
- * Two golds on purpose: gold-600 is the only gold that reaches 4.5:1 on white,
- * gold-300 is its counterpart on dark surfaces. Gold means achievement, never
- * decoration, so it is reserved for podium places, medals and ducats, the weekend
- * and today in the calendar, and, since 12.11.2026, a featured event's tile there
- * (owner: „neka cela pločica bude zlatna").
+ * ONE THEME, THE DARK ONE (owner, 24.11.2026, PDL „Portal ima samo tamnu temu; svetla
+ * se izbacuje": „Realno je užasna"). Every colour is written once, in this one rule:
+ * there is no second palette, no attribute that picks one and no question to the
+ * system about the scheme it prefers, and `app/oneTheme.test.ts` refuses all three
+ * anywhere in the portal.
+ *
+ * Gold means achievement, never decoration, so it is reserved for podium places,
+ * medals and ducats, the weekend and today in the calendar, and, since 12.11.2026, a
+ * featured event's tile there (owner: „neka cela pločica bude zlatna").
  */
 :root {
   /* Blue and gold come from the league logo and are the only official colors. */
@@ -16,56 +20,38 @@
   --blue-800: #0b3372;
   --blue-700: #10459a;
   --blue-600: #1657bd;
-  --blue-100: #e7eefb;
 
-  /* A shade deeper than the approved direction drew it. It was #8a6a12, which
-     measured 5,06:1 on white and 4,51:1 on the old hover, so it cleared the
-     threshold by a hundredth. When the hover on a table row was deepened to make
-     it visible at all, gold on a hovered podium row fell to 4,31:1, and the top
-     three rows of every table are gold. At #836412 it is 5,53:1 on a card and
-     4,71:1 on a hovered row, so neither state depends on the other staying
-     still. */
-  --gold-600: #836412;
   --gold-500: #b8901f;
   --gold-400: #d9ab2e;
   --gold-300: #f0c94a;
 
-  --black: #14181f;
-  --gray-700: #4a5364;
-  --gray-400: #8b95a6;
-  --gray-200: #dde2ea;
-  --gray-100: #eff2f7;
   --white: #ffffff;
 
   /* Semantic tokens. Components use only these, never the raw scales. */
 
   /* Two levels of surface, so a card lies on the page instead of dissolving into
-     it. Both were the same white, an odds of 1,00:1, which is why a table, a
-     widget and the page behind them all read as one flat sheet and why the hover
-     on a table row was all but invisible (measured 1,12:1). */
-  --bg: #f4f6fa;
-  --surface: var(--white);
-  --surface-hover: #e9edf4;
+     it. `--bg` is also what the browser paints its own bar in (`theme-color` in
+     `index.html`, held to this value by `app/oneTheme.test.ts`). */
+  --bg: #060b16;
+  --surface: #101a2e;
+  --surface-hover: #17243d;
   /* The row that belongs to whoever is reading. A tint of the accent rather
      than a step of the grey scale, so it reads as "you" and not as "hovered".
-     Light enough that gold survives on it: a reader in the top three has a row
-     that is both, and gold-600 measures 4,40:1 on a deeper tint of this against
-     the 4,5:1 that a number owes as text (WCAG 2.2 SC 1.4.3). This one measures
-     4,80:1, and the guard is in styles/goldBand.test.ts. */
-  --mine-surface: #e9effc;
-  --text: var(--black);
-  --text-muted: var(--gray-700);
+     Gold has to survive on it: a reader in the top three has a row that is both,
+     and a number owes 4,5:1 as text (WCAG 2.2 SC 1.4.3). `--gold-text` measures
+     9,01:1 on it, and the guard is in styles/goldBand.test.ts. */
+  --mine-surface: #142a4a;
+  --text: #eef2f8;
+  --text-muted: #a3b0c4;
   /* The edge of a card, a panel, a row in a table. It divides, it does not tell
      anyone that a thing can be typed into or pressed, so 3:1 is not asked of it
      and holding it to 3:1 would leave every screen looking ruled. */
-  --border: #ccd4e0;
+  --border: #26364f;
   /* The edge of something you can operate: a field, a select, a secondary
      button, a chip. Here the border is the only sign the thing is a control at
-     all, which is exactly what WCAG 2.2 SC 1.4.11 asks 3:1 of. One token used to
-     serve both jobs at #dde2ea, measured at 1,30:1 on white, so the minimum was
-     failing on every screen the portal has. This is 3,63:1 on a card and 3,35:1
-     on the page behind it. */
-  --control-border: #7d8798;
+     all, which is exactly what WCAG 2.2 SC 1.4.11 asks 3:1 of. This is 3,29:1 on
+     a card and 3,73:1 on the page behind it. */
+  --control-border: #5a6c8f;
   /* HOW TALL ANYTHING YOU CAN OPERATE IN A FORM IS, and the reason it is a number
      here rather than whatever each control works out for itself.
    *
@@ -89,7 +75,7 @@
      all of them rather than for some; it also keeps every control at least as
      tall as the 44px a pointer target is usually given. */
   --control-height: 3rem;
-  --accent: var(--blue-700);
+  --accent: #7aa8f0;
 
   /* One colour per race length: blue, green, yellow, orange, red, from the
    * shortest to the longest (owner, 31.07.2026). Five hues rather than five
@@ -97,9 +83,8 @@
    * the same colour has to work as a dot beside a number in a table as well as a
    * slice of a ring.
    *
-   * Per theme, since a colour that reads on a white card disappears on a dark
-   * one. Every one of the ten clears 4,5:1 against its own surface and 4,5:1
-   * against the page behind it.
+   * Every one of the five clears 4,5:1 against the surface and against the page
+   * behind it (the narrowest, short and ultra, 6,17:1 on the card).
    *
    * Two neighbours differ by hue and barely by lightness, which is why nothing is
    * ever left to the colour alone: the ring names the length on hover, and in the
@@ -108,53 +93,37 @@
   /* The lower level of a two-level bar on a chart (owner, 04.08.2026: the
      season before, under this season's gain).
 
-     The loud level is the old portal's blue and is one value in both themes,
-     written where the bar is drawn. This one cannot be: "quieter" is measured
-     against the card behind it, and the card is white on one theme and near
-     black on the other, so one value is quiet on one of them and the loudest
-     thing on the screen on the other. Both clear 3:1 against their own card
-     (3,07:1 each), because how far up this level reaches is what says how much
-     of the column was already there last season.
+     The loud level is the old portal's blue, written where the bar is drawn.
+     This one is "quieter", measured against the card behind it, and on a near
+     black card the way to be quiet is to come nearer to it. It clears 3:1
+     against the card (3,09:1), because how far up this level reaches is what
+     says how much of the column was already there last season.
 
      What it draws is not the only thing that says so: each level carries its own
      number, so a reader who cannot tell two blues apart still has two figures. */
-  --bar-quiet: #5b93ec;
-  --length-short: #1a63c4;
-  --length-half: #127a48;
-  --length-long: #8a6a08;
-  --length-marathon: #b8531a;
-  --length-ultra: #c0362b;
+  --bar-quiet: #2168b8;
+  --length-short: #5b9cf0;
+  --length-half: #3fc27f;
+  --length-long: #e3c04a;
+  --length-marathon: #f0904a;
+  --length-ultra: #f4726a;
   /* And one colour for a race that fixes no length, since 30.08.2026. Free of the
      five, which run cool to warm with the distance; violet belongs to no point on
      that line, which is the whole of what it says.
 
      Measured against all three grounds it is drawn on. On a calendar tile it
-     stands on the tile's face: 6,34:1 on a race, 5,05 on a training and 4,96 on a
-     gathering in this theme, and 6,01 / 4,59 / 5,16 in the dark one. On the front
-     page it stands on the card, which is the surface: 7,38 and 6,43. In the legend
-     under the calendar it stands on the page itself, since neither the legend nor
-     the calendar paints a ground: 6,83 and 7,29. Ten readings, three faces by two
-     themes plus two and two, and WCAG 2.2 SC 1.4.11 asks 3:1 of
-     a thing that is not text, so what counts is the narrowest: **4,59**, a dot on
-     a training in the dark theme.
+     stands on the tile's face: 6,01:1 on a race, 4,59 on a training and 5,16 on a
+     gathering. On the front page it stands on the card, which is the surface:
+     6,43. In the legend under the calendar it stands on the page itself, since
+     neither the legend nor the calendar paints a ground: 7,29. Five readings, and
+     WCAG 2.2 SC 1.4.11 asks 3:1 of a thing that is not text, so what counts is the
+     narrowest: **4,59**, a dot on a training.
 
-     **[ISPRAVLJENO TRI PUTA, 30.08.2026, i to je the point.]** First it said
-     „7,38:1 against the surface", one ground given as the only one, and the widest.
-     Then „the face of a tile, never the surface", which swapped one half for the
-     other, since the front page draws these dots inside `.home .card`. Then „both
-     grounds, because there are two", which counted the two it had learned and
-     stopped: the legend draws the same dot on a third. Each correction was right
-     about the colours it measured and wrong about how many places to look, which
-     is the same fault three times over, not three faults. A number in a note is a
-     claim about the whole portal and is counted the way any other reader of a fact
-     is counted, by search rather than by memory.
-
-     **And the count of the readings was wrong in that same correction**, which
-     said twelve where ten are written: three faces by two themes is six, plus two
-     and two. Found in the next round, which is the point twice over — the
-     sentence about counting by search was itself written with a number counted in
-     the head. */
-  --length-unmeasured: #6b3fa0;
+     A number in a note is a claim about the whole portal and is counted the way
+     any other reader of a fact is counted, by search rather than by memory: three
+     corrections on 30.08.2026 each counted the grounds they had learned and
+     stopped, and the legend draws the same dot on a third. */
+  --length-unmeasured: #b98ae0;
 
   /* How wide a dot is drawn, in one place, because the calendar's ceiling on a
      row of them is written from it: a row may be as wide as five dots and the
@@ -192,47 +161,39 @@
    * the league's own blue. The colour is never the only thing that says which it is:
    * the tile carries the word for a screen reader and the legend under the grid
    * names all three (SC 1.4.1). */
-  --kind-race-ink: var(--blue-800);
-  --kind-race-face: var(--blue-100);
-  --kind-race-edge: var(--blue-700);
-  --kind-gathering-ink: #3b1f70;
-  --kind-gathering-face: #dccdf7;
-  --kind-gathering-edge: #4a2790;
-  --kind-training-ink: #0a4b52;
-  --kind-training-face: #b3dde3;
-  --kind-training-edge: #0d626b;
-  --kind-unscored-ink: #5a0f3b;
-  --kind-unscored-face: #f5cfe3;
-  --kind-unscored-edge: #8f1b5f;
+  --kind-race-ink: #cfe0ff;
+  --kind-race-face: #10203c;
+  --kind-race-edge: #7aa8f0;
+  --kind-gathering-ink: #e3d7fb;
+  --kind-gathering-face: #33244f;
+  --kind-gathering-edge: #a68ce0;
+  --kind-training-ink: #c9eff2;
+  --kind-training-face: #0b3a40;
+  --kind-training-edge: #62c3ce;
+  --kind-unscored-ink: #fbdcec;
+  --kind-unscored-face: #46162f;
+  --kind-unscored-edge: #e48ab8;
 
   /* A featured event, on the tile it gets in the calendar (owner, 12.11.2026: „Kad su
    * istaknuti događaji prikazani u kalendaru, neka cela pločica bude zlatna, a onda
    * prilagodi ostale boje elemenata unutar nje tako da budu vidljivi.").
    *
-   * The face of the tile and everything inside it is gold, and it is the same block of
-   * gold in both themes, which is the shape of the gold band above: painted straight on
-   * the gold scale, so its ink is one value and not a pair. On the dark theme the tile
-   * is the brightest thing in its day, and that is what being singled out means.
+   * The face of the tile and everything inside it is gold, which is the shape of the
+   * gold band below: painted straight on the gold scale. The tile is the brightest
+   * thing in its day, and that is what being singled out means.
    *
    * **The edge keeps the colour of the event's kind** (owner, 12.11.2026, the same
    * evening, choosing between a gold edge and the kind's: race, skup and trening stay
    * told apart on a featured tile as on any other). Only the face and what is inside
    * it are gold.
    *
-   * Because the face does not flip, nothing drawn on it may flip either, and that is
-   * the „adjust the other colours" half of the sentence. The dark theme's dots are
+   * Nothing drawn on the gold can take the colours the rest of the portal is drawn in,
+   * and that is the „adjust the other colours" half of the sentence. The dots are
    * light colours made for a near black card and fall to between 1,11 and 1,76 to 1 on
-   * this gold; the light theme's clear 3:1 here, but marathon by 0,07. The dark theme's
-   * kind edges fall the same way, to 1,51 (race), 1,77 (skup) and 1,29 (trening). So the
-   * tile re-points the six dot colours to the deeper set below, and the edge of each
-   * kind to the light theme's edge of that same kind, held here once so it does not
-   * flip (`pages/Calendar.css`, `.chip--featured`), in both themes alike.
-   *
-   * **The two kind edges written out are the light theme's values copied, and that is
-   * deliberate**: the kind tokens above them flip, so pointing at them would bring the
-   * dark value back with the dark theme. The race edge can name its step of the blue
-   * scale, which does not flip. `styles/featuredTile.test.ts` holds each of the three
-   * equal to the light value of its own kind, so the copies cannot part company.
+   * this gold, and the kind edges the same way, to 1,51 (race), 1,77 (skup) and 1,29
+   * (trening). So the tile re-points the six dot colours to the deeper set below, and
+   * the edge of each kind to a deeper edge of that same kind, held here
+   * (`pages/Calendar.css`, `.chip--featured`).
    *
    * Measured on `--featured-face` (#f0c94a): the ink 8,70:1 against the 4,5 a name
    * owes as text (WCAG 2.2 SC 1.4.3); the edges 5,62:1 (race), 6,63:1 (skup),
@@ -256,48 +217,38 @@
   --featured-length-ultra: #9a2219;
   --featured-length-unmeasured: #5a2f8c;
 
-  --accent-hover: var(--blue-600);
-  --accent-contrast: var(--white);
-  /* The name of a widget or of a card: navy on the light page, white on the
-     dark one (owner, 31.07.2026). Muted grey read as a caption on the thing
-     rather than as the name of it. The navy is the one the scoreboard's own
-     pill is made of, so a heading and the figures under it belong together. */
-  --heading: var(--blue-900);
-  --gold-text: var(--gold-600);
-  /* The gold of a figure written on the page itself (the mark of an event's comments): the step of the scale it was,
-     and in the dark theme the lighter one that clears 4,5:1 where a contour crosses the route
-     (`styles/raceInMotion.test.ts`; owner, 16.11.2026). The step itself stays one colour in both themes, because
-     the gold band is painted from it (`styles/goldBand.test.ts`). */
-  --gold-figure: var(--gold-500);
-  /* A gold disc carrying an icon. Both halves flip with the theme, because the
-     disc is the only edge the control has and it has to clear 3:1 against the
-     card behind it (WCAG 2.2 SC 1.4.11), while the icon inside has to clear 3:1
-     against the disc. Light: gold-600 on white is 5,53:1 and white on it the
-     same. Dark: gold-400 on the card is 8,1:1 and the dark ink on it 6,5:1.
-     Gold-400 on a white card would have been 2,14:1, which is why the light
-     theme takes the deeper one. */
-  --gold-button: var(--gold-600);
-  --gold-button-ink: var(--white);
-  /* Hover moves away from the card, not towards it: deeper on the light theme,
-     brighter on the dark one. Reaching for the next step of the gold scale in
-     both themes would have taken the light one to 3,0:1, which is the threshold
-     and not a margin. */
-  --gold-button-hover: #6b510e;
+  --accent-hover: #93b8f4;
+  --accent-contrast: #06214a;
+  /* The name of a widget or of a card: white (owner, 31.07.2026). Muted grey
+     read as a caption on the thing rather than as the name of it. */
+  --heading: var(--white);
+  --gold-text: var(--gold-300);
+  /* The gold of a figure written on the page itself (the mark of an event's comments): lighter than the
+     step of the scale, so it clears 4,5:1 where a contour crosses the route (`styles/raceInMotion.test.ts`;
+     owner, 16.11.2026). The step itself is not moved, because the gold band is painted from it
+     (`styles/goldBand.test.ts`). */
+  --gold-figure: #c9a23a;
+  /* A gold disc carrying an icon. The disc is the only edge the control has and
+     it has to clear 3:1 against the card behind it (WCAG 2.2 SC 1.4.11), while
+     the icon inside has to clear 3:1 against the disc: gold-400 on the card is
+     8,12:1 and the dark ink on it 6,49:1. */
+  --gold-button: var(--gold-400);
+  --gold-button-ink: #3a2a02;
+  /* Hover moves away from the card, not towards it: brighter. */
+  --gold-button-hover: var(--gold-300);
   /* The gold band that names a board: the title over the top ten and the caption
-     under the turning chart. Unlike the disc above, the band is painted straight
-     on the gold scale, so it is the same block of gold in both themes. That is
-     why its ink is one value and not a pair. Dark ink is 6,49:1 on gold-400 and
-     4,66:1 on gold-500, so both ends of the gradient clear 4,5:1.
-     It must not take the button ink, which flips with the theme because the disc
-     under it flips too. This background does not flip, and white on gold-400 is
-     2,14:1. */
+     under the turning chart. The band is painted straight on the gold scale, and
+     dark ink is 6,49:1 on gold-400 and 4,66:1 on gold-500, so both ends of the
+     gradient clear 4,5:1. A name of its own and not the disc's ink, which has the
+     same value today, because the two are not the same idea and must be free to
+     move apart. */
   --gold-band-ink: #3a2a02;
-  --up: #1a7f4b;
-  --down: #a93b2b;
+  --up: #4ec98a;
+  --down: #ff8a72;
   /* Removing something. The same values as --down, which is a fall in the
      table, and a separate name because the two are not the same idea and must
-     be free to move apart. Both clear 4.5:1 on their own surface. */
-  --danger: #a93b2b;
+     be free to move apart. Both clear 4.5:1 on the surface. */
+  --danger: #ff8a72;
 
   /* What lies over the part of a picture a crop throws away.
      Owner, 12.08.2026: „zatamnjen ali dovoljno vidljiv ostatak". Both halves of
@@ -309,11 +260,10 @@
      Fifty five parts in a hundred leaves a photograph at roughly two fifths of
      its brightness, which is the same shade a dialogue lays over a page and is
      read there as „still there, not the thing in hand".
-     One value in both themes on purpose. It lies on a photograph and not on the
-     page, and a photograph is whatever colour somebody's camera made it; a
-     shade that lightened with the dark theme would leave the square barely
-     distinguishable from the rest of a bright picture. The guard is in
-     styles/circle.test.ts. */
+     It lies on a photograph and not on the page, and a photograph is whatever
+     colour somebody's camera made it, so it is black and not taken from the
+     palette: a lighter shade would leave the square barely distinguishable from
+     the rest of a bright picture. The guard is in styles/circle.test.ts. */
   --crop-shade: rgb(0 0 0 / 55%);
 
   /* Space, on a grid of two pixels.
@@ -415,108 +365,9 @@
   --fast: 160ms cubic-bezier(0.2, 0.7, 0.3, 1);
   --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 
-  color-scheme: light;
-}
-
-/* The dark palette is applied two ways: by system preference, and by the
- * explicit toggle. The toggle has to win in both directions, so it is written
- * as its own selector rather than nested inside the media query. */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) {
-    --bg: #060b16;
-    --surface: #101a2e;
-    --surface-hover: #17243d;
-    --mine-surface: #142a4a;
-    --text: #eef2f8;
-    --text-muted: #a3b0c4;
-    --border: #26364f;
-    --control-border: #5a6c8f;
-    --accent: #7aa8f0;
-    /* See the light theme above. Darker rather than lighter here, because on a
-       near black card the way to be quiet is to come nearer to it. */
-    --bar-quiet: #2168b8;
-    --length-short: #5b9cf0;
-    --length-half: #3fc27f;
-    --length-long: #e3c04a;
-    --length-marathon: #f0904a;
-    --length-ultra: #f4726a;
-    --length-unmeasured: #b98ae0;
-    /* On a near black card the tint becomes the deep end of the same hue and the
-       word the light end. The race tile flips here as well, so the calendar sheet
-       says only which of the three a tile takes and the theme is decided once. */
-    --kind-race-ink: #cfe0ff;
-    --kind-race-face: #10203c;
-    --kind-race-edge: #7aa8f0;
-    --kind-gathering-ink: #e3d7fb;
-    --kind-gathering-face: #33244f;
-    --kind-gathering-edge: #a68ce0;
-    --kind-training-ink: #c9eff2;
-    --kind-training-face: #0b3a40;
-    --kind-training-edge: #62c3ce;
-    --kind-unscored-ink: #fbdcec;
-    --kind-unscored-face: #46162f;
-    --kind-unscored-edge: #e48ab8;
-    --accent-hover: #93b8f4;
-    --gold-figure: #c9a23a;
-    --accent-contrast: #06214a;
-    --heading: var(--white);
-    --gold-text: var(--gold-300);
-    --gold-button: var(--gold-400);
-    --gold-button-ink: #3a2a02;
-    --gold-button-hover: var(--gold-300);
-    --up: #4ec98a;
-    --down: #ff8a72;
-    --danger: #ff8a72;
-
-    color-scheme: dark;
-  }
-}
-
-:root[data-theme='dark'] {
-  --bg: #060b16;
-  --surface: #101a2e;
-  --surface-hover: #17243d;
-  --mine-surface: #142a4a;
-  --text: #eef2f8;
-  --text-muted: #a3b0c4;
-  --border: #26364f;
-  --control-border: #5a6c8f;
-  --accent: #7aa8f0;
-  /* See the light theme above. Darker rather than lighter here, because on a
-     near black card the way to be quiet is to come nearer to it. */
-  --bar-quiet: #2168b8;
-  --length-short: #5b9cf0;
-  --length-half: #3fc27f;
-  --length-long: #e3c04a;
-  --length-marathon: #f0904a;
-  --length-ultra: #f4726a;
-  --length-unmeasured: #b98ae0;
-  /* On a near black card the tint becomes the deep end of the same hue and the
-     word the light end. The race tile flips here as well, so the calendar sheet
-     says only which of the three a tile takes and the theme is decided once. */
-  --kind-race-ink: #cfe0ff;
-  --kind-race-face: #10203c;
-  --kind-race-edge: #7aa8f0;
-  --kind-gathering-ink: #e3d7fb;
-  --kind-gathering-face: #33244f;
-  --kind-gathering-edge: #a68ce0;
-  --kind-training-ink: #c9eff2;
-  --kind-training-face: #0b3a40;
-  --kind-training-edge: #62c3ce;
-  --kind-unscored-ink: #fbdcec;
-  --kind-unscored-face: #46162f;
-  --kind-unscored-edge: #e48ab8;
-  --accent-hover: #93b8f4;
-  --gold-figure: #c9a23a;
-  --accent-contrast: #06214a;
-  --heading: var(--white);
-  --gold-text: var(--gold-300);
-  --gold-button: var(--gold-400);
-  --gold-button-ink: #3a2a02;
-  --gold-button-hover: var(--gold-300);
-  --up: #4ec98a;
-  --down: #ff8a72;
-  --danger: #ff8a72;
-
+  /* And the browser's own parts (a scrollbar, a date picker, an autofilled field) in the dark scheme,
+     whatever scheme the system prefers. */
   color-scheme: dark;
 }
+
+

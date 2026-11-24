@@ -1899,11 +1899,14 @@ describe('membership', () => {
 })
 
 describe('settings', () => {
-  it('says what it is for, and opens on the theme', async () => {
+  it('says what it is for, and opens on the password', async () => {
     renderAt('/sr/podesavanja', 'competitor', '000007')
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Podešavanja' })).toBeVisible()
-    expect(screen.getByRole('heading', { name: 'Izgled' })).toBeVisible()
+    /* The first box since 24.11.2026, when the box of the theme left (PDL „Portal ima samo tamnu temu;
+       svetla se izbacuje"). */
+    expect(within(screen.getByRole('main')).getAllByRole('heading', { level: 2 })[0]).toHaveTextContent('Lozinka')
+    expect(screen.queryByRole('heading', { name: 'Izgled' })).not.toBeInTheDocument()
   })
 
   /* TWO CASES ABOUT NOTIFICATIONS STOOD HERE UNTIL 28.09.2026 - one pressed „Kad mi rezultat

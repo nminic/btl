@@ -68,7 +68,7 @@
  * not caught here, and this file does not pretend they are.
  *
  * **What is measured:** the built stylesheet, over the ancestor chain each control is
- * given by the screen it stands on, in both themes, at **one width inside every band the
+ * given by the screen it stands on, in the portal's one theme, at **one width inside every band the
  * built sheet can tell apart** (`widthsOf`, from 360px up), on **every screen its preludes
  * ask about** (`askedIn` and `screensOf`: the browser as it comes, and one pass with each
  * setting the sheet names emulated, `prefers-reduced-motion: reduce` among them today), in
@@ -358,7 +358,7 @@ const CONTROLS = [
 ]
 
 const FIXTURE = (styles, markup) => `<!doctype html>
-<html lang="sr" data-theme="dark"><head><meta charset="utf-8">${styles}</head>
+<html lang="sr"><head><meta charset="utf-8">${styles}</head>
 <body>${markup}</body></html>`
 
 /** Every pseudo-element the specification gives these controls, and not the two that were
@@ -630,26 +630,20 @@ function differences(left, right) {
     .sort()
 }
 
-/** One control, one screen, one theme, four states. The theme is pinned twice, on the root
- *  the way the portal writes it and as the emulated media feature, so which theme gets
- *  measured is decided here and not by the settings of whoever runs this. The screen is
- *  pinned in the same call, and not before it: `setEmulatedMedia` replaces the features it
- *  is given rather than adding to them, so a screen set in one call and a theme in the
- *  next is a screen that lasted until the next line. */
+/** One control, one screen, four states, in the portal's one theme (PDL „Portal ima samo
+ *  tamnu temu; svetla se izbacuje", 24.11.2026), which `theme` names in every sentence this
+ *  says. The screen is pinned here: `setEmulatedMedia` replaces the features it is given
+ *  rather than adding to them. */
 async function measure(socket, theme, control, screen) {
   const READ = readFor(tokensOf(control))
 
   await send(socket, 'Emulation.setEmulatedMedia', {
-    features: [{ name: 'prefers-color-scheme', value: theme }, ...screen.features],
+    features: [...screen.features],
   })
-  await evaluate(
-    socket,
-    `(() => { document.documentElement.dataset.theme = '${theme}'; return JSON.stringify(document.documentElement.dataset.theme) })()`,
-  )
 
-  /* Both hands off before anything is read. The second theme used to be measured with
-     the control still focused from the first, so all three of its states were the focus
-     state and a fault written for the light theme walked straight past: measured. */
+  /* Both hands off before anything is read. A second theme used to be measured with the
+     control still focused from the first, so all three of its states were the focus state
+     and a fault walked straight past: measured. */
   await moveTo(socket, 4, 4)
   await evaluate(socket, CLEAR)
   await still(socket)
@@ -954,9 +948,8 @@ const BOUND = /^\(\s*(min|max)-width\s*:\s*([\d.]+)(px|em|rem)\s*\)$/
 const FEATURE = /^\(\s*(?:(?:min|max)-)?([a-z-]+)\s*:\s*([^()]+?)\s*\)$/
 const FEATURE_RANGE = /^\(\s*([a-z-]+)\s*(?:<=|>=|<|>|=)\s*([^()<>=]+?)\s*\)$/
 
-/** The themes every measurement is taken in. A prelude asking for one of them is a prelude
- *  already visited from both sides, and not an axis of its own. */
-const THEMES = ['dark', 'light']
+/** The theme every measurement is taken in: the portal's one, since 24.11.2026. */
+const THEMES = ['dark']
 
 const HOLDS = {
   '<=': (width, at) => width <= at,
@@ -1051,18 +1044,6 @@ function askedIn(css) {
         )
       }
 
-      /* The theme is pinned by hand in every measurement and both of them are visited, so
-         a prelude asking for one is already asked from both sides. A value neither of them
-         is, is a screen nobody here ever shows. */
-      if (name === 'prefers-color-scheme') {
-        if (!THEMES.includes(value)) {
-          throw new Error(
-            `the sheet paints a ${value} theme and only ${THEMES.join(' and ')} are measured`,
-          )
-        }
-        continue
-      }
-
       features.push({ name, value, text: one })
     }
 
@@ -1111,7 +1092,7 @@ function scaleOf(value) {
 }
 
 /** The screens this run shows each control: the one the browser comes with, and one for
- *  every setting the sheet asks about. Every width and both themes are visited on each of
+ *  every setting the sheet asks about. Every width is visited on each of
  *  them, because a prelude may name a setting and a width together and the rule inside it
  *  is reached only where both hold.
  *
@@ -1335,7 +1316,7 @@ async function main() {
           mobile: false,
         })
         await send(socket, 'Emulation.setEmulatedMedia', {
-          features: [{ name: 'prefers-color-scheme', value: THEMES[0] }, ...screen.features],
+          features: [...screen.features],
         })
 
         const said = await evaluate(socket, asksFor(everyAsk))
@@ -1376,7 +1357,7 @@ async function main() {
              for each width because the size override is a good place for a browser to
              forget things, and read back on the next line either way. */
           await send(socket, 'Emulation.setEmulatedMedia', {
-            features: [{ name: 'prefers-color-scheme', value: THEMES[0] }, ...screen.features],
+            features: [...screen.features],
           })
 
           /* And the size landed, and the sheet reads here the way this file read it off
@@ -1430,7 +1411,7 @@ async function main() {
        held the second control in `CONTROLS`, so taking it out left this sentence saying
        both about one. */
     console.log(
-      `all ${CONTROLS.length} refused controls still look refused in both themes, at ${widths.length} widths (${widths.join(', ')}) on ${screens.length} screens (${screens.map((one) => one.name).join('; ')}), measured in Chrome (${CONTROLS.map((one) => one.name).join('; ')})`,
+      `all ${CONTROLS.length} refused controls still look refused, at ${widths.length} widths (${widths.join(', ')}) on ${screens.length} screens (${screens.map((one) => one.name).join('; ')}), measured in Chrome (${CONTROLS.map((one) => one.name).join('; ')})`,
     )
   } finally {
     chrome.kill()

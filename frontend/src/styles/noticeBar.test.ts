@@ -10,7 +10,7 @@ import { bodyOf, ruleFor, unremarked } from '../test/stylesheet'
  * for the decoration the strip borrows its gold from.
  *
  * What the owner's condition on the decoration is, the strip keeps: its sentence is held at 4,5:1 against
- * its own face in both themes (WCAG 2.2 SC 1.4.3), and its line, which carries nothing but is meant to be
+ * its own face (WCAG 2.2 SC 1.4.3), and its line, which carries nothing but is meant to be
  * seen, at 3:1 (SC 1.4.11). The face is laid under the line's FULL strength, the weakest ground there is.
  */
 
@@ -25,20 +25,21 @@ const strip = read('src/app/NoticeBar.css')
 const decoration = read('src/app/RaceInMotion.css')
 const tokens = read('src/styles/tokens.css')
 
-type Theme = 'light' | 'dark'
-
-/** Every value a sheet gives a custom property, in the order written: the light block, the dark one the
- *  system asks for, and the dark one a member chose. */
+/** Every value a sheet gives a custom property: one, since the portal has one palette (PDL „Portal ima samo
+ *  tamnu temu; svetla se izbacuje", 24.11.2026). */
 function given(css: string, name: string): string[] {
   return [...unremarked(css).matchAll(new RegExp(`\\s${name}: ([^;]+);`, 'g'))].map((one) => at(one, 1).trim())
 }
 
-/** A colour of one theme, followed through `var()` to the value it ends at. */
-function colour(css: string, name: string, theme: Theme, seen: string[] = []): string {
+/** A colour of the palette, followed through `var()` to the value it ends at. */
+function colour(css: string, name: string, seen: string[] = []): string {
   expect(seen, `${name} is defined in terms of itself`).not.toContain(name)
 
   const values = given(css, name)
-  const value = must(theme === 'dark' ? values.at(-1) : values[0], `${name} has no value`)
+
+  expect(values, `${name} is given more than one value`).toHaveLength(1)
+
+  const value = must(values[0], `${name} has no value`)
   const named = /^var\((--[a-z0-9-]+)\)$/.exec(value)
 
   if (named === null) {
@@ -46,33 +47,29 @@ function colour(css: string, name: string, theme: Theme, seen: string[] = []): s
     return value
   }
 
-  return colour(css, must(named[1], 'the name inside var()'), theme, [...seen, name])
+  return colour(css, must(named[1], 'the name inside var()'), [...seen, name])
 }
 
 describe('the face of the strip', () => {
-  it('is given once per theme block, and the two dark blocks agree', () => {
-    const values = given(strip, '--notice-face')
-
-    expect(values, 'light, dark by the system, dark by choice').toHaveLength(3)
-    expect(values[1]).toBe(values[2])
+  it('is given once, in the one rule of the palette', () => {
+    expect(given(strip, '--notice-face')).toEqual(['#262a2e'])
+    expect(ruleFor(strip, ':root', 'NoticeBar.css').getPropertyValue('--notice-face')).toBe('#262a2e')
   })
 
-  it('is the only custom property the sheet declares, so a new one cannot skip the blocks above', () => {
+  it('is the only custom property the sheet declares', () => {
     const declared = new Set([...unremarked(strip).matchAll(/\s(--[a-z0-9-]+):/g)].map((one) => at(one, 1)))
 
     expect([...declared]).toEqual(['--notice-face'])
   })
 
-  for (const theme of ['light', 'dark'] as const) {
-    it(`keeps 4,5:1 for the sentence, and 3:1 for the gold line at its strongest, ${theme}`, () => {
-      const face = colour(strip, '--notice-face', theme)
-      const ink = colour(tokens, '--text', theme)
-      const line = colour(decoration, '--race-gold', theme)
+  it('keeps 4,5:1 for the sentence, and 3:1 for the gold line at its strongest', () => {
+    const face = colour(strip, '--notice-face')
+    const ink = colour(tokens, '--text')
+    const line = colour(decoration, '--race-gold')
 
-      expect(contrast(ink, face), `--text on ${face}, ${theme}`).toBeGreaterThanOrEqual(FLOOR)
-      expect(contrast(line, face), `--race-gold on ${face}, ${theme}`).toBeGreaterThanOrEqual(MARK)
-    })
-  }
+    expect(contrast(ink, face), `--text on ${face}`).toBeGreaterThanOrEqual(FLOOR)
+    expect(contrast(line, face), `--race-gold on ${face}`).toBeGreaterThanOrEqual(MARK)
+  })
 
   it('is painted by the strip, and its ink is the portal\'s own text', () => {
     const rule = ruleFor(strip, '.notice', 'NoticeBar.css')

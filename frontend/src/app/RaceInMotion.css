@@ -2,11 +2,9 @@
  * osveženje „Race in Motion""), and the colours they are drawn in.
  *
  * A sheet of its own, so the work beside it on `styles/tokens.css` and on the screens never meets
- * this in one file. The colours are tokens with a value per theme in the same three blocks
- * `styles/tokens.css` writes (light, dark by the system, dark by choice), so the theme is decided
- * once and the components below know nothing about it. Both themes are drawn: the portal has a
- * light theme a member can choose (`app/themeContext.ts`), and in it the same lines are a deep
- * blue and a deep gold on white.
+ * this in one file. The colours are tokens in one rule, as `styles/tokens.css` writes its own, so the
+ * components below know nothing about them. The portal has one theme, the dark one (owner,
+ * 24.11.2026, PDL „Portal ima samo tamnu temu; svetla se izbacuje").
  *
  * THE HEADER IS A COPY OF THE OWNER'S REFERENCE (15.11.2026: „Moze li da se iskopira verno ovo sto
  * sam ti dao kao primer?"). The dark colours are measured off that picture: the gold is the colour
@@ -18,53 +16,26 @@
  * GOLD AS DECORATION, AND ONLY HERE. The head of `styles/tokens.css` says gold means achievement
  * and never decoration. The gold line and the runner in the header and the waypoints of the page
  * are the one exception, asked for by the owner in the same task that asked for the rest of this
- * sheet. Where the header's line is strongest it stands at least 3:1 against the header in both
- * themes (WCAG 2.2 SC 1.4.11, the measure of a mark meant to be seen), as the reference's does.
+ * sheet. Where the header's line is strongest it stands at least 3:1 against the header (WCAG 2.2
+ * SC 1.4.11, the measure of a mark meant to be seen), as the reference's does.
  *
  * Every colour here is a picture under the words and never the ground they are measured against.
  * Two kinds, and both are held: what may lie under text (the lanes, the glow, the contours, the
  * route) is faint enough that the text keeps 4,5:1 against the strongest of it at full strength
  * (`styles/raceInMotion.test.ts`, which measures every ink the portal's tokens name as readable on
- * the page, among them the red star of a required field, held down in the light theme by how faint
- * `--race-contour` and `--race-route` are). The grounds measured are the page under its glow, a
+ * the page, among them the red star of a required field). The grounds measured are the page under its glow, a
  * contour, the route, and the place where a contour crosses the route with both at full strength; the
- * last is the weakest, and it is why `--accent`, `--accent-hover` and `--gold-500` in the dark theme and
- * `--down` and `--danger` in the light one are the colours they are (owner, 16.11.2026: the lines stay
+ * last is the weakest, and it is why `--accent`, `--accent-hover` and `--gold-figure` are the colours
+ * they are (owner, 16.11.2026: the lines stay
  * as they were and the text moves). The dot that runs the route (20.11.2026, owner: „Jaka tačka,
  * nikad ispod teksta”) is the gold of the header's line (`--race-gold`) and is meant to be seen: at
- * least 3:1 against the page in both themes (WCAG 2.2 SC 1.4.11, `MARK` in the guard). That is why no
+ * least 3:1 against the page (WCAG 2.2 SC 1.4.11, `MARK` in the guard). That is why no
  * word is measured against it: a word never stands on the dot or on the route, and that is asked of
  * Chrome (`geometry/raceInMotion.geometry.ts`, „the route and the dot touch no word").
  * The gold line and the runner are drawn only where no text stands, which Chrome is asked about
  * (`geometry/raceInMotion.geometry.ts`).
  */
 :root {
-  --race-header-top: #ffffff;
-  --race-header-bottom: #f2f5fb;
-  --race-header-glow: #1657bd0f;
-  --race-track: #1657bd2e;
-  --race-gold: #9a7b3a;
-  --race-runner: #9a7b3a73;
-  --race-page-glow: #1657bd0d;
-  --race-contour: #1657bd0e;
-  --race-route: #b8901f17;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) {
-    --race-header-top: #111b2f;
-    --race-header-bottom: #0c1527;
-    --race-header-glow: #31517b38;
-    --race-track: #8ea4c438;
-    --race-gold: #d8be84;
-    --race-runner: #d8be8442;
-    --race-page-glow: #16346940;
-    --race-contour: #31517b5c;
-    --race-route: #d9ab2e24;
-  }
-}
-
-:root[data-theme='dark'] {
   --race-header-top: #111b2f;
   --race-header-bottom: #0c1527;
   --race-header-glow: #31517b38;

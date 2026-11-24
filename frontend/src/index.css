@@ -86,10 +86,10 @@ a {
    before the text. The arrow is smaller and quieter than it was (owner, 23.11.2026, PDL „Strelica padajućeg izbora
    je manja i suptilnija”: „Strelica na jezicima (a možda i negde drugde, nisam siguran) ipak treba da bude manja i
    suptilnija. […] Desni razmak od ivice boksa je dobar.”): 12px and not 18, and in the muted tone of the text and not
-   its full colour. A picture cannot take `currentColor`, so its colour is written into it, once per theme, and
-   it is `--text-muted` of that theme (`styles/tokens.css`), which keeps the 3:1 WCAG
-   2.2 SC 1.4.11 asks of a graphic on every surface a control stands on (measured in `styles/dropdownArrow.test.ts`). The three themes are the three blocks
-   `tokens.css` writes, by the same selectors, so the arrow turns with the palette.
+   its full colour. A picture cannot take `currentColor`, so its colour is written into it, and it is
+   `--text-muted` (`styles/tokens.css`), which keeps the 3:1 WCAG 2.2 SC 1.4.11 asks of a graphic on every
+   surface a control stands on (measured in `styles/dropdownArrow.test.ts`, which also holds the colour in the
+   picture to the token).
 
    NUMBERS AND NOT TOKENS IN THE PICTURE'S OWN DECLARATIONS, and that is measured: a `var()` in any longhand of
    `background` leaves jsdom unable to say what the shorthand is, and `forms/held.test.tsx` reads the ground of a
@@ -97,28 +97,17 @@ a {
 select,
 .dropdown {
   appearance: none !important;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234a5364' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 8.5l8 8 8-8'/%3E%3C/svg%3E") !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a3b0c4' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 8.5l8 8 8-8'/%3E%3C/svg%3E") !important;
   background-repeat: no-repeat !important;
   background-position: right 0.625rem center !important;
   background-size: 0.75rem 0.75rem !important;
   padding-inline-end: var(--space-32) !important;
 }
 
-/* The same arrow in the dark palette's `--text-muted`, by the two selectors the dark palette is applied by. */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) :is(select, .dropdown) {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a3b0c4' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 8.5l8 8 8-8'/%3E%3C/svg%3E") !important;
-  }
-}
-
-:root[data-theme='dark'] :is(select, .dropdown) {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a3b0c4' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 8.5l8 8 8-8'/%3E%3C/svg%3E") !important;
-}
-
 /* WHERE THE READER HAS ASKED THE SYSTEM FOR ITS OWN COLOURS (forced colors, Windows high contrast; review of PR 803,
    medium 1), THE SAME CHEVRON, EDGED IN WHITE AND DRAWN IN BLACK. The system paints the box in its ground and leaves
    a picture as it was, so the palette's grey was drawn on a ground the palette had not chosen: measured in Chrome,
-   1,92:1 with the system in its light scheme and the portal in its dark one, where 3:1 is what WCAG 2.2 SC 1.4.11
+   1,92:1 with the system in its light scheme, where 3:1 is what WCAG 2.2 SC 1.4.11
    asks. The system's own colour cannot be put into the picture, and both ways to do it were measured the same day
    and drew nothing: `CanvasText` inside an SVG used as a background is resolved by the image and not by the page
    (black on the system's black), and a `linear-gradient` is dropped by Chrome under forced colors. So the picture
@@ -126,8 +115,8 @@ select,
    in white. Of black and of white one is always at least 4,58:1 against any ground (the two contrasts multiply to 21,
    so the greater of them is never under the square root of 21), so this holds for every palette a reader can choose and
    not only for the two the browser's emulation draws (`geometry/dropdownArrowForced.geometry.ts` reads the pixels,
-   both schemes). Same shape, same size, same place; only under forced colors. The selector has the weight of the
-   two palette rules above and stands after them, so it wins in either theme. */
+   both schemes). Same shape, same size, same place; only under forced colors. The selector outweighs the rule
+   above, so it wins whatever order the two are read in. */
 @media (forced-colors: active) {
   :root:root :is(select, .dropdown) {
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 8.5l8 8 8-8' stroke='%23fff' stroke-width='6'/%3E%3Cpath d='M4 8.5l8 8 8-8' stroke='%23000' stroke-width='2'/%3E%3C/svg%3E") !important;

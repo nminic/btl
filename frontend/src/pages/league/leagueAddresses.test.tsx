@@ -315,10 +315,10 @@ describe('an address in the terms or in the prizes of a competition', () => {
  * Where a link in these two boxes keeps its underline.
  *
  * **Measured on 03.10.2026, and it is why this is held at all.** The words of these boxes are the
- * muted grey of `.profile__text` and a link is `--accent`: the two differ by 1,16:1 on the light
- * palette and 1,40:1 on the dark one (computed from `tokens.css`), against the 3:1 that WCAG 2.2
- * SC 1.4.1 asks of a distinction made by colour alone. The accent against the card is 8,97:1 and
- * 5,65:1, so the link can be read; it cannot be told from the words around it except by the line
+ * muted grey of `.profile__text` and a link is `--accent`: the two differ by 1,40:1 (computed from
+ * `tokens.css`; 1,16:1 on the light palette the portal had until 24.11.2026), against the 3:1 that WCAG
+ * 2.2 SC 1.4.1 asks of a distinction made by colour alone. The accent against the card is 5,65:1, so the
+ * link can be read; it cannot be told from the words around it except by the line
  * under it, which nothing here writes and the browser draws by default. So a rule anywhere in the
  * portal that takes it away from a link in this box takes the only thing that tells it from the
  * words.

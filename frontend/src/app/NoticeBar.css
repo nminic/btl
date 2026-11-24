@@ -9,24 +9,13 @@
  * it. Its line is the gold line of the header (`--race-gold`, `app/RaceInMotion.css`), thin, and fading
  * towards both ends as that one does.
  *
- * One colour of its own, the face, written the way every colour of the decoration is: light, dark by the
- * system's preference, dark by the member's choice. The ink is the portal's `--text`, and its ratio
- * against the face is held in both themes by `styles/noticeBar.test.ts`.
+ * One colour of its own, the face, written once in the one rule every colour of the decoration is written
+ * in. The ink is the portal's `--text`, and its ratio against the face is held by `styles/noticeBar.test.ts`.
  *
  * No animation and no transition: it appears with the page and goes without a trace, so there is nothing
  * for `prefers-reduced-motion` to switch off.
  */
 :root {
-  --notice-face: #f8f1dd;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) {
-    --notice-face: #262a2e;
-  }
-}
-
-:root[data-theme='dark'] {
   --notice-face: #262a2e;
 }
 

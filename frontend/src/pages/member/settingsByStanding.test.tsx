@@ -26,8 +26,9 @@ import { SLOW } from '../../test/slow'
  * <li><b>An administration account with no member</b> is drawn „sve troje" since the evening of
  * 17.10.2026 (PDL, the answers of that evening, chosen by the owner between offered outcomes; the
  * sentence is the record's and not his own words: „Nalog administracije bez člana na strani
- * Podešavanja vidi sve troje: jezik pošte, izbor teme i promenu lozinke"): the language of its mail,
- * the theme and the password, and none of the six panels that are a competitor's.</li>
+ * Podešavanja vidi sve troje: jezik pošte, izbor teme i promenu lozinke"): the language of its mail
+ * and the password, and none of the six panels that are a competitor's. The theme of that sentence left
+ * the portal on 24.11.2026 (PDL „Portal ima samo tamnu temu; svetla se izbacuje").</li>
  * <li><b>A member whose fee stands</b> may change all of it, and is the anchor the other two are
  * measured against: a screen that took everything from everybody would pass every absence below
  * and fail every presence.</li>
@@ -64,6 +65,8 @@ const PANELS = {
   picture: 'Profilna slika',
   biography: 'Tekst o sebi',
   password: 'Lozinka',
+  /* The box of the theme, which nobody is drawn since 24.11.2026 (PDL „Portal ima samo tamnu temu;
+     svetla se izbacuje"): kept by its name so its absence is asked of every reader. */
   appearance: 'Izgled',
   mail: 'Pošta',
   privacy: 'Privatnost',
@@ -111,7 +114,8 @@ function expectNoSentenceAboutRenewal(): void {
  */
 async function drawn(): Promise<void> {
   expect(await screen.findByRole('heading', { level: 1, name: 'Podešavanja' })).toBeVisible()
-  expect(await screen.findByRole('heading', { level: 2, name: PANELS.appearance })).toBeVisible()
+  /* The mail, which every reader of this screen is drawn. */
+  expect(await screen.findByRole('heading', { level: 2, name: PANELS.mail })).toBeVisible()
 
   await act(async () => {
     for (let tick = 0; tick < 5; tick += 1) {
@@ -144,7 +148,7 @@ describe('the settings of somebody who registered and has not paid', () => {
 describe('the settings of a member whose fee has lapsed', () => {
   /* 000032 is the member of the generated data whose fee has lapsed: the harness answers
      `GET /api/me` off the file, and his row there is `active: false`. */
-  it('draws the theme and nothing else, because the server answers 404 to everything else', async () => {
+  it('draws the mail and nothing else, because the server answers 404 to everything else', async () => {
     renderAt('/sr/podesavanja', 'competitor', '000032')
 
     await drawn()
@@ -155,6 +159,7 @@ describe('the settings of a member whose fee has lapsed', () => {
       PANELS.biography,
       PANELS.password,
       PANELS.privacy,
+      PANELS.appearance,
     ]) {
       expect(screen.queryByRole('heading', { name: panel }), panel).not.toBeInTheDocument()
     }
@@ -189,7 +194,7 @@ describe('the settings of a member the list still carries and the answer about h
      flag - would draw all five here, and this is the only case that tells the two apart: for every
      other lapsed member the list has no row to draw them from, which makes the gate look redundant
      and is exactly why it needs a case. */
-  it('draws the theme and nothing else, whatever the list holds', async () => {
+  it('draws the mail and nothing else, whatever the list holds', async () => {
     stand(hisPageAsServed({ memberNumber: '000001', active: false }))
     renderAt('/sr/podesavanja', 'visitor', null)
 
@@ -201,6 +206,7 @@ describe('the settings of a member the list still carries and the answer about h
       PANELS.biography,
       PANELS.password,
       PANELS.privacy,
+      PANELS.appearance,
     ]) {
       expect(screen.queryByRole('heading', { name: panel }), panel).not.toBeInTheDocument()
     }
@@ -229,7 +235,7 @@ describe('the settings of an administration account with no member', () => {
   }
 
   it.each(['moderator', 'superadmin'])(
-    'draws a %s the password and the theme and the language of the mail, in that order, and nothing else',
+    'draws a %s the password and the language of the mail, in that order, and nothing else',
     async (role) => {
       administration(role)
       renderAt('/sr/podesavanja', 'visitor', null)
@@ -237,14 +243,13 @@ describe('the settings of an administration account with no member', () => {
       await drawn()
       expect(await screen.findByRole('group', { name: 'Jezik pošte' })).toBeVisible()
 
-      /* Asked of the whole list of headings, so that a panel drawn beyond these three, and one of
-         these three drawn in another place, both fail. */
+      /* Asked of the whole list of headings, so that a panel drawn beyond these two, and one of
+         these two drawn in another place, both fail. */
       expect(
         within(screen.getByRole('main'))
           .getAllByRole('heading', { level: 2 })
           .map((one) => one.textContent),
-      ).toEqual([PANELS.password, PANELS.appearance, PANELS.mail])
-      expect(screen.getByRole('radio', { name: 'Tamna' })).toBeVisible()
+      ).toEqual([PANELS.password, PANELS.mail])
       expect(screen.getByLabelText(/^Trenutna lozinka/)).toBeVisible()
       expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
       /* Nothing is waiting on a renewal for somebody who has no fee: the sentence is a lapsed member's. */
@@ -263,7 +268,7 @@ describe('the settings of an administration account with no member', () => {
  * member (above), and this one, which neither stands in for. PDL P8, 16.10.2026: „Moderator čiji je sopstveni član
  * istekao je istekao član: ne menja svoje podatke ni lozinku kroz portal". So, as the route answers them
  * (`MePasswordApiTest`, the same two cases): with the fee standing he is drawn what a member is, the password and the
- * privacy beside it included, and with the fee lapsed he is drawn the theme and the one sentence, and no password.
+ * privacy beside it included, and with the fee lapsed he is drawn the mail and the one sentence, and no password.
  *
  * <p>The member is the one the sample holds: 000001 stands and 000032 has lapsed, the same two the cases of members
  * use. The ROLE is what changes, and it is handed to the session beside the number, so a screen that read the role to
@@ -282,7 +287,7 @@ describe('the settings of an administration account that is also a member', () =
         within(screen.getByRole('main'))
           .getAllByRole('heading', { level: 2 })
           .map((one) => one.textContent),
-      ).toEqual([PANELS.password, PANELS.privacy, PANELS.appearance, PANELS.mail])
+      ).toEqual([PANELS.password, PANELS.privacy, PANELS.mail])
       expect(screen.getByRole('checkbox')).toBeVisible()
       expectNoSentenceAboutRenewal()
     },
@@ -290,7 +295,7 @@ describe('the settings of an administration account that is also a member', () =
   )
 
   it.each(['moderator', 'superadmin'] as const)(
-    'draws a %s whose own member has lapsed the theme and the sentence about the renewal, and no password',
+    'draws a %s whose own member has lapsed the mail and the sentence about the renewal, and no password',
     async (role) => {
       renderAt('/sr/podesavanja', role, '000032')
 
@@ -299,7 +304,7 @@ describe('the settings of an administration account that is also a member', () =
       expect(screen.queryByRole('heading', { name: PANELS.password })).not.toBeInTheDocument()
       expect(screen.queryByRole('heading', { name: PANELS.privacy })).not.toBeInTheDocument()
       expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
-      expect(screen.getByRole('radio', { name: 'Tamna' })).toBeVisible()
+      expect(screen.getByRole('group', { name: 'Jezik pošte' })).toBeVisible()
       expectTheSentenceAboutRenewal()
     },
     SLOW,
@@ -315,7 +320,7 @@ describe('the settings of a member the list does not hold yet', () => {
     renderAt('/sr/podesavanja', 'competitor', '999999')
 
     expect(await screen.findByRole('heading', { name: 'Podešavanja' })).toBeVisible()
-    expect(await screen.findByRole('group', { name: 'Tema' })).toBeVisible()
+    expect(await screen.findByRole('group', { name: 'Jezik pošte' })).toBeVisible()
     expect(screen.queryByRole('heading', { name: PANELS.privacy })).not.toBeInTheDocument()
   }, SLOW)
 })
@@ -343,13 +348,21 @@ describe('the settings of a member whose fee stands', () => {
     expect(screen.getByRole('checkbox')).toBeVisible()
     /* Nothing to be told: his fee stands, so nothing is waiting on a renewal. */
     expectNoSentenceAboutRenewal()
+    /* And no choice of a theme, for him or anybody (PDL „Portal ima samo tamnu temu; svetla se izbacuje",
+       24.11.2026): the box is gone and so is every radio of it. The one group of radios left is the mail. */
+    expect(screen.queryByRole('heading', { name: PANELS.appearance })).not.toBeInTheDocument()
+    expect(screen.queryByRole('group', { name: 'Tema' })).not.toBeInTheDocument()
+    expect(
+      screen.getAllByRole('radio').map((one) => one.closest('fieldset')?.querySelector('legend')?.textContent),
+    ).toEqual(['Jezik pošte', 'Jezik pošte'])
   }, SLOW)
 
-  /* TWO ROWS OF TWO, IN THE OWNER'S ORDER: the password and who sees the profile, then the theme and the
-     language of the mail. The row of the picture and the words between them (PDL 22.10.2026, „Strana
-     Podešavanja u tri visoka reda sa dve kolone") moved to the card „Podaci" on 06.11.2026, and the personal
-     data are not here either: they are on the same card. */
-  it('draws them in two rows, the password and the privacy, the theme and the mail', async () => {
+  /* IN THE OWNER'S ORDER: the password, who sees the profile, and the language of the mail right under it
+     (24.11.2026, PDL „Portal ima samo tamnu temu; svetla se izbacuje": „boks iz priloga prebaci odmah ispod
+     sekcije Privatnosti (a desno od promene šifre)"), which is also the order on a telephone. The row of the
+     picture and the words (PDL 22.10.2026) moved to the card „Podaci" on 06.11.2026, and the personal data are
+     not here either. */
+  it('draws them in the order the password, the privacy, the mail', async () => {
     renderAt('/sr/podesavanja', 'competitor', '000001')
 
     await drawn()
@@ -359,62 +372,61 @@ describe('the settings of a member whose fee stands', () => {
       within(screen.getByRole('main'))
         .getAllByRole('heading', { level: 2 })
         .map((one) => one.textContent),
-    ).toEqual([PANELS.password, PANELS.privacy, PANELS.appearance, PANELS.mail])
+    ).toEqual([PANELS.password, PANELS.privacy, PANELS.mail])
   }, SLOW)
 })
 
 /**
- * WHICH PANELS STAND BESIDE WHICH (PDL 22.10.2026, „Strana Podešavanja u tri visoka reda sa dve
- * kolone": „lozinka prelazi levo na njeno mesto, a Privatnost tekst iz priloga ide u desni stubac pored
- * boksa za lozinku [...] Profilna slika sa svim opcijama treba da bude u nivou levog stupca, a u desni
- * stubac treba da dođe u njenoj visini Tekst o sebi boks"; and from 18.10.2026 „Boksovi „Tema" i
- * „Jezik pošte" stoje jedan pored drugog u istom redu").
+ * WHICH PANELS STAND BESIDE WHICH (owner, 24.11.2026, PDL „Portal ima samo tamnu temu; svetla se izbacuje":
+ * „boks iz priloga prebaci odmah ispod sekcije Privatnosti (a desno od promene šifre)"; before it, PDL 22.10.2026,
+ * „Privatnost tekst iz priloga ide u desni stubac pored boksa za lozinku").
  *
- * <p>jsdom lays nothing out, so "beside" is asked in the only terms it can answer: two panels share a
- * `.member__pair`, the one element the stylesheet turns into two columns from 51.25em
- * (`styles/settingsLayout.test.ts` holds the rule, and `geometry/settings.geometry.ts` asks Chrome
- * where they then LAND). Asked of each of the three ways of being drawn the screen, because the panels of
- * each are different: the pair a member is drawn is not the pair a member whose fee has lapsed is, and an
- * administration account has its password with no neighbour at all.
+ * <p>jsdom lays nothing out, so "beside" and "under" are asked in the only terms it can answer: the cells of a
+ * `.member__pair`, the one element the stylesheet turns into two columns from 51.25em, and the boxes of each cell
+ * in the order they stand (`styles/settingsLayout.test.ts` holds the rules, and `geometry/settings.geometry.ts`
+ * asks Chrome where they then LAND). Asked of each of the three ways of being drawn the screen, because the
+ * cells of each are different: a member has the password beside the privacy with the mail under it, an
+ * administration account the password beside the mail, and a member whose fee has lapsed the mail alone.
  */
 describe('which panels of the settings stand beside which', () => {
   const pairOf = (name: string): Element | null =>
     screen.getByRole('heading', { level: 2, name }).closest('.member__pair')
 
-  /** The panels in a pair, by their headings, in the order they stand in. */
-  const panelsIn = (pair: Element | null): (string | null)[] =>
-    [...(pair?.querySelectorAll(':scope > section > h2') ?? [])].map((one) => one.textContent)
+  /** The cells of a pair, each as the headings of its boxes, in the order they stand in. */
+  const cellsOf = (pair: Element | null): (string | null)[][] =>
+    [...(pair?.children ?? [])].map((cell) => [...cell.querySelectorAll('h2')].map((one) => one.textContent))
 
-  it('puts the password beside the privacy and the theme beside the mail, for a member whose fee stands', async () => {
+  it('puts the password on the left and the privacy with the mail under it on the right, for a member whose fee stands', async () => {
     renderAt('/sr/podesavanja', 'competitor', '000001')
 
     await drawn()
     await screen.findByRole('heading', { level: 2, name: PANELS.privacy })
 
-    expect(panelsIn(pairOf(PANELS.password))).toEqual([PANELS.password, PANELS.privacy])
-    expect(panelsIn(pairOf(PANELS.appearance))).toEqual([PANELS.appearance, PANELS.mail])
-    expect(new Set([pairOf(PANELS.password), pairOf(PANELS.appearance)]).size, 'the two rows are two').toBe(2)
-
-    /* And every pair is one of the tall rows (`.member__row`), whose two boxes are as tall as each
-       other (`Member.css`). */
-    for (const panel of [PANELS.password, PANELS.appearance]) {
-      expect(pairOf(panel), panel).toHaveClass('member__row')
-      /* Two boxes and nothing else, so nothing a panel draws beside itself takes a cell of the row. */
-      expect(pairOf(panel)?.children, panel).toHaveLength(2)
-    }
+    /* Two cells, the second a column of two: the mail right under the privacy, not a row of its own. */
+    expect(cellsOf(pairOf(PANELS.password))).toEqual([[PANELS.password], [PANELS.privacy, PANELS.mail]])
+    expect(pairOf(PANELS.mail), 'the mail stands in the row of the password').toBe(pairOf(PANELS.password))
+    expect(pairOf(PANELS.password), 'the row is one of the tall rows').toHaveClass('member__row')
+    expect(pairOf(PANELS.password)?.children[1], 'the right cell is the column').toHaveClass('member__column')
+    /* And one row on the screen, so nothing of the settings stands in a second one. */
+    expect(within(screen.getByRole('main')).getAllByRole('heading', { level: 2 }).map((one) => one.closest('.member__pair'))).toEqual([
+      pairOf(PANELS.password),
+      pairOf(PANELS.password),
+      pairOf(PANELS.password),
+    ])
   }, SLOW)
 
-  it('puts the theme beside the language of the mail for a member whose fee has lapsed, who has neither the data nor the password', async () => {
+  it('puts the mail alone in the row for a member whose fee has lapsed, who has neither the data nor the password', async () => {
     renderAt('/sr/podesavanja', 'competitor', '000032')
 
     await drawn()
 
-    expect(panelsIn(pairOf(PANELS.appearance))).toEqual([PANELS.appearance, PANELS.mail])
+    /* One cell, which is the column: alone, it takes the whole row (`.member__pair > :only-child`). */
+    expect(cellsOf(pairOf(PANELS.mail))).toEqual([[PANELS.mail]])
     expect(screen.queryByRole('heading', { level: 2, name: PANELS.data })).toBeNull()
     expect(screen.queryByRole('heading', { level: 2, name: PANELS.password })).toBeNull()
   }, SLOW)
 
-  it('leaves the password alone in its row for an administration account, which has no profile to hide', async () => {
+  it('puts the mail beside the password for an administration account, which has no profile to hide', async () => {
     stand(
       serverThat((path) => {
         if (path === '/api/me') {
@@ -432,8 +444,8 @@ describe('which panels of the settings stand beside which', () => {
     await drawn()
     expect(await screen.findByRole('group', { name: 'Jezik pošte' })).toBeVisible()
 
-    expect(panelsIn(pairOf(PANELS.password))).toEqual([PANELS.password])
-    expect(panelsIn(pairOf(PANELS.appearance))).toEqual([PANELS.appearance, PANELS.mail])
+    /* Where there is no privacy, the mail stands at the top of the right column, beside the password. */
+    expect(cellsOf(pairOf(PANELS.password))).toEqual([[PANELS.password], [PANELS.mail]])
   }, SLOW)
 })
 

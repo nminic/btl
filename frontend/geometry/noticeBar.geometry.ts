@@ -12,7 +12,7 @@ import { THE_DAY_THE_SUITE_IS_READ_AS } from '../src/test/theDay.ts'
  * without covering either, keeps its sentence inside its box, offers a cross of 44px that takes the click,
  * and lets the panels that hang from the header go over it.
  *
- * <p>The widths are the three the owner names (360, 768, 1280) and both themes. On the other day the suite is
+ * <p>The widths are the three the owner names (360, 768, 1280). On the other day the suite is
  * read as (`src/test/theDay.ts`, 2027) the strip is gone from the same address, and that is asked here too,
  * so the project that reads the later day measures the strip's end and not its absence by accident.
  */
@@ -39,9 +39,7 @@ function everyAnswer(dir = MOCK, prefix = ''): Record<string, unknown> {
 /** A visitor: `/api/me` is not among the answers, so it is a 401. */
 const NO_ANSWERS: Answers = everyAnswer()
 
-const WIDTHS: At[] = [360, 768, 1280].flatMap((width) =>
-  (['light', 'dark'] as const).map((theme): At => ({ width, text: 100, theme })),
-)
+const WIDTHS: At[] = [360, 768, 1280].map((width): At => ({ width, text: 100 }))
 
 for (const at of WIDTHS) {
   test(`the strip widens nothing and covers nothing at ${label(at)}`, async ({ open, theDay }) => {

@@ -16,7 +16,7 @@ import { everyRule, ruleFor } from '../test/stylesheet'
  * **Nothing here is a list.** Which colours the tile has to answer for is read out of
  * the rules that draw a tile (every rule of `pages/Calendar.css` whose selector names
  * `.chip`, and every rule of `styles/table.css` that draws a `.length-dot`), and which
- * of those flip with the theme is read out of `styles/tokens.css`. A seventh length,
+ * of those are colours of the palette is read out of `styles/tokens.css`. A seventh length,
  * a fourth kind or a new colour on the tile is therefore asked about on the day it is
  * written, rather than on the day somebody remembers this file.
  */
@@ -32,8 +32,8 @@ const tokens = read('src/styles/tokens.css')
 const calendar = read('src/pages/Calendar.css')
 const table = read('src/styles/table.css')
 
-/** Every value a token is given, in the order the file gives them: the light theme,
- *  then the dark one the system asks for, then the dark one the switch sets. */
+/** Every value a token is given in the sheet of tokens: one, since the portal has one
+ *  palette (PDL „Portal ima samo tamnu temu; svetla se izbacuje", 24.11.2026). */
 const given = (name: string) =>
   [...tokens.matchAll(new RegExp(`\\s${name}: ([^;]+);`, 'g'))].map((one) => at(one, 1).trim())
 
@@ -43,7 +43,7 @@ function colour(name: string, seen: string[] = []): string {
 
   const values = given(name)
 
-  expect(values, `${name} should be declared exactly once, so it does not flip`).toHaveLength(1)
+  expect(values, `${name} should be declared exactly once`).toHaveLength(1)
 
   const value = at(values, 0)
   const named = value.match(/^var\((--[a-z0-9-]+)\)$/)
@@ -68,15 +68,18 @@ function readBy(rules: CSSStyleRule[]): { property: string; token: string }[] {
   )
 }
 
-/** The value the light theme gives a token, followed to a colour. A token with one value
- *  has one, and it answers here as well. */
-function lightColour(name: string, seen: string[] = []): string {
-  expect(seen, `${name} is defined in terms of itself`).not.toContain(name)
+/** Whether a token of the sheet of tokens ends in a colour, asked without failing: a size or
+ *  a duration the tile reads is not a colour of the palette and is left out, not refused. */
+function isAColour(name: string, seen: string[] = []): boolean {
+  const value = given(name)[0]
 
-  const value = must(given(name)[0], `${name} has no value`)
+  if (value === undefined || seen.includes(name)) {
+    return false
+  }
+
   const named = value.match(/^var\((--[a-z0-9-]+)\)$/)
 
-  return named === null ? value : lightColour(must(named[1], 'the name inside var()'), [...seen, name])
+  return named === null ? /^#[0-9a-f]{6}$/.test(value) : isAColour(must(named[1], 'the name inside var()'), [...seen, name])
 }
 
 /* The rules that draw a tile and what is on it. `.chip--featured` itself is left out,
@@ -98,10 +101,12 @@ const grounds = new Set(
     .map((one) => one.token),
 )
 
-/* Read by the tile, and given a value per theme. Those are the ones that would come
-   out of the gold in one theme or the other. */
+/* Read by the tile, and a colour of the portal's palette: made for a near black card, and
+   so the ones that would vanish into the gold. Until 24.11.2026 these were found as the
+   tokens given a value per theme; with one theme, they are found as what they are. The
+   featured set itself is what they are pointed at and is not among them. */
 const flipping = [...new Set(readBy(tileRules).map((one) => one.token))].filter(
-  (token) => given(token).length > 1,
+  (token) => !token.startsWith('--featured-') && isAColour(token),
 )
 
 /* Read by a `color` declaration somewhere on the tile, which makes it ink on text. */
@@ -124,10 +129,9 @@ function pointedAt(token: string): string {
 }
 
 describe('the gold tile of a featured event', () => {
-  it('is gold in both themes alike', () => {
-    /* One value each, so the tile is the same block of gold on both themes and one
-       measurement below answers for both. Every `--featured-*` token the file holds,
-       read out of the file. */
+  it('is gold, and every colour on it is given once', () => {
+    /* One value each, so one measurement below answers for the tile. Every
+       `--featured-*` token the file holds, read out of the file. */
     const names = [...new Set([...tokens.matchAll(/\s(--featured-[a-z0-9-]+):/g)].map((one) => at(one, 1)))]
 
     expect(names.length, 'no featured token found at all').toBeGreaterThan(0)
@@ -138,7 +142,7 @@ describe('the gold tile of a featured event', () => {
     expect(colour('--featured-face')).toBe(colour('--gold-300'))
   })
 
-  it('points every colour the tile reads that flips with the theme at one that does not', () => {
+  it('points every colour of the palette the tile reads at one of its own', () => {
     /* The three tokens of each of the four kinds and the six lengths' today. Fewer means the parse
        found nothing, or that a kind has stopped being read by the tile, and the rest of this file
        measures an empty set. */
@@ -163,24 +167,28 @@ describe('the gold tile of a featured event', () => {
     }
   })
 
-  it('keeps each kind its own edge, the one the light theme gives it', () => {
+  it('keeps each kind its own edge, a deeper one of the same kind', () => {
     /* Owner, 12.11.2026, the same evening: the edge of a featured tile keeps the colour
-       of its kind, race, skup or trening. The light theme's, because the gold under it
-       does not flip and the dark theme's edges vanish into it. Every kind edge the tile
-       reads, by its name; four today. */
+       of its kind, race, skup or trening. The edges of the palette vanish into the gold,
+       so each kind has a deeper edge of its own here: the value the light theme gave that
+       kind until 24.11.2026, written down as it was, because it is what the owner chose
+       between and saw. Held by value, so a retuning is a decision somebody takes. Every
+       kind edge the tile reads, by its name; four today. */
     const edges = flipping.filter((token) => /^--kind-[a-z]+-edge$/.test(token))
 
     expect(edges.length, `found only ${edges.join(', ')}`).toBeGreaterThanOrEqual(4)
 
-    const drawn = edges.map((token) => colour(pointedAt(token)))
+    const drawn = Object.fromEntries(edges.map((token) => [token, colour(pointedAt(token))]))
 
-    for (const [index, token] of edges.entries()) {
-      expect(drawn[index], `${token} on a featured tile is not its own light edge`).toBe(lightColour(token))
-    }
+    expect(drawn).toEqual({
+      '--kind-race-edge': '#10459a',
+      '--kind-gathering-edge': '#4a2790',
+      '--kind-training-edge': '#0d626b',
+      '--kind-unscored-edge': '#8f1b5f',
+    })
 
-    /* And four edges are four colours, so a tile whose kinds all share one edge fails
-       even if that one edge happened to be somebody's light value. */
-    expect(new Set(drawn).size, `the kinds share an edge: ${drawn.join(', ')}`).toBe(edges.length)
+    /* And four edges are four colours, so a tile whose kinds all share one edge fails. */
+    expect(new Set(Object.values(drawn)).size, `the kinds share an edge`).toBe(edges.length)
   })
 
   it('carries every colour on it at the contrast its job owes, against the gold', () => {
@@ -209,13 +217,11 @@ describe('the gold tile of a featured event', () => {
     }
   })
 
-  it('would have lost the dots of the dark theme without it', () => {
+  it('would have lost the dots of the palette without it', () => {
     /* Why the re-pointing exists at all, held as numbers so the reason does not drift
-       away from the sheet. The dark theme's long dot on this gold, and the light
-       theme's marathon dot, which clears 3:1 by seven hundredths. */
-    expect(contrast('#e3c04a', '#f0c94a')).toBeCloseTo(1.11, 2)
-    expect(contrast('#b8531a', '#f0c94a')).toBeCloseTo(3.07, 2)
-    /* And the dark theme's edge of a trening, the narrowest of the three kinds. */
-    expect(contrast('#62c3ce', '#f0c94a')).toBeCloseTo(1.29, 2)
+       away from the sheet: the palette's long dot on this gold, read off the sheet. */
+    expect(contrast(colour('--length-long'), colour('--featured-face'))).toBeCloseTo(1.11, 2)
+    /* And the palette's edge of a trening, the narrowest of the three kinds. */
+    expect(contrast(colour('--kind-training-edge'), colour('--featured-face'))).toBeCloseTo(1.29, 2)
   })
 })
