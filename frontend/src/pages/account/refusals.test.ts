@@ -253,15 +253,6 @@ const NOT_YET_ON_ANY_SCREEN: Record<string, string[]> = {
     'theAddressIsNotShaped',
     'theAddressIsTaken',
   ],
-  /* THE SPONSORS' CAPITALS, WHICH NO SCREEN WILL EVER ANSWER, and the one entry here that waits for the
-     ROUTE rather than for a screen (24.11.2026). `SponsorWriteApi` refuses a description written in
-     capitals only, and the owner overturned that rule the same day, asked which sentence the portal should
-     say for it: „Kako napiše neka napiše. Ovo uređuje osoba koja zna šta radi." (PDL, „[OBORENO za velika
-     slova 24.11.2026, vlasnik ...] Portal ne proverava velika slova; ograničenje od 80 znakova ostaje.").
-     So `admin/sponsorWrites.ts` offers no sentence for it, and the route has to stop declaring it: the day
-     it does, the count on the line of `SponsorWriteApi.java` below drops to four and this entry fails
-     „not declared", which is what makes it go with the constant. */
-  'SponsorWriteApi.java': ['theDescriptionIsInCapitals'],
   /* `MemberDataWriteApi` stood here from 22.10.2026 with all seven of its names, while no screen sent
      `PUT /api/members/{memberNumber}/data`. Since 23.10.2026 the card „Podaci" sends it
      (`profile/TheMembersData.tsx`), so the seven have a dictionary on the line for that file below and
@@ -415,13 +406,13 @@ describe('the reasons the server can name', () => {
        say. */
     ['MePhotoApi.java', [WHEN_SENDING_A_PICTURE], 7],
     /* THE SPONSORS, added 24.11.2026 with the screen that writes them (`admin/AdminSponsors.tsx`, PDL
-       „Strana za upravljanje sponzorima"). Five constants, all refusals, and four answered: the fifth,
-       about capitals, is a rule the owner overturned the same day and waits in `NOT_YET_ON_ANY_SCREEN` for
-       the route to drop it. Its logo goes through `SponsorLogoApi`, which declares no reason of its own and
+       „Strana za upravljanje sponzorima"). Four constants, all refusals, all answered. A fifth, about
+       capitals, never reached `main`: the owner overturned that rule the same day („Kako napiše neka
+       napiše. Ovo uređuje osoba koja zna šta radi.", PDL 24.11.2026). Its logo goes through `SponsorLogoApi`, which declares no reason of its own and
        answers `MePhotoApi`'s three by the same constants, so it is the line above that holds them and the
        screen answers them in `WHEN_SENDING_A_LOGO`, the same words as `WHEN_SENDING_A_PICTURE` less the
        circle a logo has not got. */
-    ['SponsorWriteApi.java', [WHEN_WRITING_A_SPONSOR], 5],
+    ['SponsorWriteApi.java', [WHEN_WRITING_A_SPONSOR], 4],
     /* THE LANGUAGE OF AN ACCOUNT'S MAIL, added 17.10.2026 with the panel that meets it
        (`member/MailLanguageChoice.tsx`). One constant, `theFormIsNotComplete`, and it is a refusal: a
        body with no language, or one the portal does not write in. Counted over the file like every

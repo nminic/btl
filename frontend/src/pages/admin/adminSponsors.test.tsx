@@ -360,7 +360,7 @@ describe('a sponsor entered', () => {
     await user.type(screen.getByLabelText(/^Opis na srpskom/), 'Kratak opis.')
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('Sponzor je sačuvan. Osveži stranu.')
+    expect(await screen.findByRole('alert')).toHaveTextContent(/^Sponzor je sačuvan\.$/)
   }, SLOW)
 
   it.each([

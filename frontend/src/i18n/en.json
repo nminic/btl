@@ -1730,7 +1730,7 @@
     "sponsorDeleteAsk": "Delete the sponsor?",
     "sponsorDeleteWith": "The sponsor leaves the front page, and its logo is deleted along with it.",
     "sponsorGone": "The sponsor has been deleted.",
-    "sponsorSavedUnseen": "The sponsor was saved. Refresh the page.",
+    "sponsorSavedUnseen": "The sponsor was saved.",
     "sponsorSaveRefused": {
       "theFormIsNotComplete": "A name, a link or the description in Serbian is missing.",
       "theNameIsTooLong": "A name may have at most 80 characters.",

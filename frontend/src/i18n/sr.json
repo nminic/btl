@@ -1730,7 +1730,7 @@
     "sponsorDeleteAsk": "Obriši sponzora?",
     "sponsorDeleteWith": "Sponzor nestaje sa naslovne strane, a zajedno sa njim briše se i njegov logo.",
     "sponsorGone": "Sponzor je obrisan.",
-    "sponsorSavedUnseen": "Sponzor je sačuvan. Osveži stranu.",
+    "sponsorSavedUnseen": "Sponzor je sačuvan.",
     "sponsorSaveRefused": {
       "theFormIsNotComplete": "Nedostaje naziv, link ili opis na srpskom.",
       "theNameIsTooLong": "Naziv sme da ima najviše 80 karaktera.",

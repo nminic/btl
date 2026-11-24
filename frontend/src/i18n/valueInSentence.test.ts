@@ -360,6 +360,10 @@ describe('a sentence with a value put into it', () => {
       'admin.seasonsOf',
       'admin.sectionNav',
       'admin.showing',
+      /* „Pomeri gore: {name}" and „Pomeri dole: {name}", the arrows on a sponsor's row (PDL 24.11.2026). The name
+         stands after a colon as the thing named, a company's own name, which is not declined. */
+      'admin.sponsorDownNamed',
+      'admin.sponsorUpNamed',
       /* „Izbaci iz tima: {member}" and „Članovi tima {team}" (PDL P13, 23.11.2026, „Administracija dodaje i
          izbacuje članove tima direktno"), the name of the button on a member's row and of the panel under a
          team. The member stands after a colon as the thing named, as on „Izmeni podatke: {name}"; the team's
@@ -630,6 +634,9 @@ describe('a sentence with a value put into it', () => {
       'shell.accountNumber',
       'shell.unread',
       'shell.waiting',
+      /* „Logo sponzora {name}", the name of a sponsor's logo in its box in the administration: the sponsor's
+         own name after „sponzora", which names it and is not declined. */
+      'sponsorLogo.alt',
       'teams.editDone',
       /* And the four an invitation is written with. Same answer as the ones below and for the
          same reason: every value is either the team's name inside quotation marks, which is
