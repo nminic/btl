@@ -579,6 +579,18 @@
 
 .inbox__link {
   justify-content: space-between;
+  /* THE DATE GOES UNDER THE SUBJECT WHERE THERE IS NO ROOM BESIDE IT. At 360px with the text at 200% the
+     card is 296px and the longest word of a subject plus the date ask for more than the list gives, so the
+     date at the end of the row was cut off inside the list (measured 02.10.2026 and 24.11.2026, `clip 76`
+     in `scripts/header-panels-geometry.mjs`; held by `geometry/messagesPanelRows.geometry.ts`). The
+     subject takes the room the date leaves, and a word wider than the whole row is broken rather than
+     left to push the date out of it. */
+  flex-wrap: wrap;
+}
+
+.inbox__subject {
+  flex: 1 1 6rem;
+  overflow-wrap: anywhere;
 }
 
 .inbox__item--unread .inbox__subject {
@@ -588,6 +600,7 @@
 
 .inbox__date {
   flex: 0 0 auto;
+  margin-inline-start: auto;
   color: var(--text-muted);
   font-size: 0.76rem;
   font-weight: 500;
