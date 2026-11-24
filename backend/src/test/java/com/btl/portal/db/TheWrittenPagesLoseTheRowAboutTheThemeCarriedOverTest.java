@@ -253,7 +253,10 @@ class TheWrittenPagesLoseTheRowAboutTheThemeCarriedOverTest extends DatabaseTest
 		assertThat(bodyOf(POLICY, 4, "en")).containsOnlyOnce("Nothing else is kept in your browser, and there is no analytics.")
 				.doesNotContain("There is no other storage");
 
+		jdbc.execute("savepoint the_finished_text");
+
 		for (String language : List.of("sr", "en")) {
+			jdbc.execute("rollback to savepoint the_finished_text");
 			theTextAsItStoodBeforeV110();
 
 			TheWrittenPagesBeforeV71.Edit sentence = edit("THEME-04 section 4, the sentence after it", language);

@@ -938,7 +938,7 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   written.
 
 			   Pinned LAST, when the file was final, off this very assertion. */
-			new Applied("110", "V110__the_privacy_policy_loses_the_row_about_the_choice_of_theme.sql", 1711778770));
+			new Applied("110", "V110__the_privacy_policy_loses_the_row_about_the_choice_of_theme.sql", -406290229));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {
