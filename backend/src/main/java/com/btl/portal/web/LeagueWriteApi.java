@@ -199,8 +199,26 @@ class LeagueWriteApi {
 	 *               the schema and allowed to be empty, which is a competition announced
 	 *               before its propositions are written
 	 * @param prizes what is won in it, on the same terms
+	 * @param highlightsEvents whether every event of this league is highlighted in the
+	 *               calendar (V109, owner PDL 24.11.2026: „Ukoliko je to štiklirano, svi
+	 *               događaji te lige automatski dobijaju istaknutost u kalendaru"). A
+	 *               {@code Boolean} and not a {@code boolean} ON PURPOSE, so that „not sent"
+	 *               is a state of its own and not a false: what it means on each route is
+	 *               said on {@link #add} and on {@link #change}, which ADL A54 asks of every
+	 *               route („Izostavljeno polje nikad ne sme tiho da promeni vrednost"). Who
+	 *               may tick it is who may change the league, by the same right: the owner
+	 *               chose „Kućicu sme da štiklira i moderator te lige, ne samo
+	 *               administrator", and a league has no moderator of its own („NE POSTOJI
+	 *               ADMINISTRATOR PROPRATNE LIGE", head of this class), so the moderator of
+	 *               a league is the one with {@code entity:leagues} ticked
 	 */
-	record Upsert(String name, String slug, Integer season, String rules, String prizes) {
+	record Upsert(String name, String slug, Integer season, String rules, String prizes,
+			Boolean highlightsEvents) {
+
+		/** The five the form sent before the box existed, which say nothing about it. */
+		Upsert(String name, String slug, Integer season, String rules, String prizes) {
+			this(name, slug, season, rules, prizes, null);
+		}
 	}
 
 	/** Which race, or which whole day of them. Exactly one of the two. */
@@ -231,10 +249,14 @@ class LeagueWriteApi {
 		   taken address and the reason it gives: a `select` and an `insert` are two
 		   moments, and a second request arriving between them reads the same empty answer
 		   and leaves the first to collide with `league_slug_unique`. */
-		Optional<Long> written = db.sql("insert into league (slug, name, season, rules, prizes)"
-						+ " values (?, ?, ?, ?, ?) on conflict (slug) do nothing returning id")
+		/* THE BOX LEFT OUT OF A NEW LEAGUE IS NOT TICKED, which is the column's own default
+		   (V109, „podrazumevano isključena") and changes no value, because there is none yet.
+		   Sent, it is written as sent. */
+		Optional<Long> written = db.sql("insert into league (slug, name, season, rules, prizes,"
+						+ " highlights_events) values (?, ?, ?, ?, ?, coalesce(?, false))"
+						+ " on conflict (slug) do nothing returning id")
 				.params(typed.slug(), typed.name().strip(), typed.season(),
-						orEmpty(typed.rules()), orEmpty(typed.prizes()))
+						orEmpty(typed.rules()), orEmpty(typed.prizes()), typed.highlightsEvents())
 				.query(Long.class).optional();
 
 		return written.<ResponseEntity<?>>map(id -> ResponseEntity.status(HttpStatus.CREATED)
@@ -319,13 +341,22 @@ class LeagueWriteApi {
 			   does not give. `EventWriteApi.change` carries the WIDER version of the same
 			   window and is not this increment's to change; it is written down here so the
 			   next reader finds it named. */
+			/* AND THE BOX LEFT OUT IS LEFT AS IT STANDS, which is the „ne diraj" of ADL A54
+			   („sme da znači „ne diraj", nikad „vrati na podrazumevano""): a request that says
+			   nothing about the highlight neither ticks nor unticks it. The form always sends
+			   it, so this is the answer to a caller that does not know the box exists. A
+			   frozen league never reaches this statement, so the box of a frozen season does
+			   not move either: „zamrznuta liga ne menja ni ovu kućicu", which PDL 24.11.2026
+			   records as the assistant's derivation, told to the owner with the plan he
+			   approved, and not as his own sentence. */
 			int written = db.sql("update league set slug = ?, name = ?, season = ?, rules = ?,"
-							+ " prizes = ? where id = ?"
+							+ " prizes = ?, highlights_events = coalesce(?, highlights_events)"
+							+ " where id = ?"
 							+ " and not exists(select 1 from league other"
 							+ " where other.slug = ? and other.id <> ?)")
 					.params(typed.slug(), typed.name().strip(), typed.season(),
-							orEmpty(typed.rules()), orEmpty(typed.prizes()), id,
-							typed.slug(), id)
+							orEmpty(typed.rules()), orEmpty(typed.prizes()),
+							typed.highlightsEvents(), id, typed.slug(), id)
 					.update();
 
 			/* Nothing written means the address belongs to somebody else, which is what the

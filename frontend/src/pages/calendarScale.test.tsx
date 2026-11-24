@@ -55,6 +55,7 @@ const anEvent = (id: number, name: string, entered: string): BtlEvent => ({
   link: '',
   copiedFrom: null,
   featured: false,
+  highlighted: false,
 })
 
 const aRace = (id: number, eventId: number, date: string): Race => ({

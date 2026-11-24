@@ -33,7 +33,7 @@ const event = (id: number, date: string, name = `Događaj ${String(id)}`): BtlEv
   date,
   city: 'Beograd',
   country: 'RS',
-  kind: 'race', description: '', link: '', copiedFrom: null, featured: false,
+  kind: 'race', description: '', link: '', copiedFrom: null, featured: false, highlighted: false,
 })
 
 const race = (
@@ -96,6 +96,7 @@ const league: League = {
   logo: null,
   crop: null,
   smallLogo: null,
+  highlightsEvents: false,
 }
 
 const events = [event(4, '2019-05-01'), event(5, '2019-03-01'), event(6, '2019-04-01')]
@@ -350,6 +351,7 @@ describe('a competition that counts only some of the races of a day', () => {
     logo: null,
     crop: null,
     smallLogo: null,
+    highlightsEvents: false,
   }
 
   /* **One member on a counted race and on two it does not count, all of one day.** 10 + 7 is 17,

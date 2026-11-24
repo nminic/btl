@@ -362,15 +362,15 @@ describe('categoriesOf', () => {
 describe('calendar helpers', () => {
   const sixthOfMarch: BtlEvent = {
     id: 1, slug: 'a', name: 'A', date: '2027-03-06', city: 'Beograd', country: 'RS',
-    kind: 'race', description: '', link: '', copiedFrom: null, featured: false,
+    kind: 'race', description: '', link: '', copiedFrom: null, featured: false, highlighted: false,
   }
   const secondOfMarch: BtlEvent = {
     id: 2, slug: 'b', name: 'B', date: '2027-03-02', city: 'Niš', country: 'RS',
-    kind: 'race', description: '', link: '', copiedFrom: null, featured: false,
+    kind: 'race', description: '', link: '', copiedFrom: null, featured: false, highlighted: false,
   }
   const tenthOfApril: BtlEvent = {
     id: 3, slug: 'c', name: 'C', date: '2027-04-10', city: 'Niš', country: 'RS',
-    kind: 'gathering', description: '', link: '', copiedFrom: null, featured: false,
+    kind: 'gathering', description: '', link: '', copiedFrom: null, featured: false, highlighted: false,
   }
 
   const events: BtlEvent[] = [sixthOfMarch, secondOfMarch, tenthOfApril]
@@ -393,8 +393,8 @@ describe('calendar helpers', () => {
 
 describe('defaultMonth', () => {
   const events: BtlEvent[] = [
-    { id: 1, slug: 'a', name: 'A', date: '2026-03-06', city: 'x', country: 'RS', kind: 'race', description: '', link: '', copiedFrom: null, featured: false },
-    { id: 2, slug: 'b', name: 'B', date: '2027-05-02', city: 'x', country: 'RS', kind: 'race', description: '', link: '', copiedFrom: null, featured: false },
+    { id: 1, slug: 'a', name: 'A', date: '2026-03-06', city: 'x', country: 'RS', kind: 'race', description: '', link: '', copiedFrom: null, featured: false, highlighted: false },
+    { id: 2, slug: 'b', name: 'B', date: '2027-05-02', city: 'x', country: 'RS', kind: 'race', description: '', link: '', copiedFrom: null, featured: false, highlighted: false },
   ]
 
   it('opens on the first month from today onwards that holds something', () => {
@@ -1556,7 +1556,7 @@ describe('dotsAt', () => {
     date: '2027-05-08',
     city: 'Niš',
     country: 'RS',
-    kind: 'race', description: '', link: '', copiedFrom: null, featured: false,
+    kind: 'race', description: '', link: '', copiedFrom: null, featured: false, highlighted: false,
   })
 
   const race = (id: number, eventId: number, category: RaceCategory): Race => ({
@@ -2151,6 +2151,7 @@ describe('the span of an event', () => {
     link: '',
     copiedFrom: null,
     featured: false,
+    highlighted: false,
   })
 
   const on = (id: number, eventId: number, date: string): Race => ({
@@ -2495,6 +2496,7 @@ describe('upcomingSeries by a length', () => {
     link: '',
     copiedFrom: null,
     featured: false,
+    highlighted: false,
   })
   const held = (eventId: number, ...dots: Race['dots']): Pick<Race, 'eventId' | 'dots'> => ({ eventId, dots })
 

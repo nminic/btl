@@ -644,8 +644,23 @@ export type BtlEvent = {
    * answers with (`CalendarApi.Event`, `featured boolean not null`). The two
    * meet in `forms/records.ts`, which is where every question asked in words and
    * kept as a flag has met since `Competitor.beginner` was written.
+   *
+   * **The event's own choice and nothing besides** (owner, PDL 24.11.2026: „Polje „Istaknuto” na formi
+   * događaja se ne menja: pokazuje samo ručni izbor"), so the form of the event and the copy of it read this,
+   * and the calendar reads `highlighted`.
    */
   featured: boolean
+  /**
+   * WHETHER THE CALENDAR DRAWS THE EVENT GOLD: its own choice, or a race of it counted by a league whose box
+   * „Istakni događaje" is ticked (owner, PDL 24.11.2026: „svi događaji te lige automatski dobijaju istaknutost
+   * u kalendaru. Ako ih izbacim iz lige, istaknutost se gubi").
+   *
+   * Worked out by the server on every read (`CalendarApi.HIGHLIGHTED`) and written nowhere, which is the plan
+   * the owner approved („bez prepisivanja na događaj"). Read by the two tiles of the calendar and by nothing
+   * else: the highlight is seen only in the calendar (PDL, the same day), and every screen that writes an event
+   * writes `featured`.
+   */
+  highlighted: boolean
   /**
    * What the organiser says this race is, and where they say the rest of it.
    *
@@ -946,6 +961,12 @@ export type League = {
   crop: Crop | null
   /** The same mark already cut to that circle and made small, which is what the circles draw. Null exactly when `logo` is. */
   smallLogo: string | null
+  /**
+   * THE BOX „ISTAKNI DOGAĐAJE" ON THE FORM OF THE LEAGUE (V109, owner PDL 24.11.2026: „Ukoliko je to
+   * štiklirano, svi događaji te lige automatski dobijaju istaknutost u kalendaru"). Read here only by that
+   * form; what it does to an event the server works out and serves as `BtlEvent.highlighted`.
+   */
+  highlightsEvents: boolean
 }
 
 /**

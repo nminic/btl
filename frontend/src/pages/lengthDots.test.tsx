@@ -68,6 +68,7 @@ const event: BtlEvent = {
   link: '',
   copiedFrom: null,
   featured: false,
+  highlighted: false,
 }
 
 const race = (id: number, kind: RaceKind, category: RaceCategory, dots: readonly Dot[]): Race => ({
