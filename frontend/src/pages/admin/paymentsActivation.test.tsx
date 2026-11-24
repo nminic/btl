@@ -86,6 +86,7 @@ describe('activating a membership from the payments screen', () => {
       expected: 4800,
       price: 4800,
       balance: 0,
+      mayBeDeleted: false,
     },
     {
       competitorId: 23,
@@ -97,6 +98,7 @@ describe('activating a membership from the payments screen', () => {
       expected: 4500,
       price: 4500,
       balance: 6000,
+      mayBeDeleted: false,
     },
     {
       competitorId: 12,
@@ -108,6 +110,7 @@ describe('activating a membership from the payments screen', () => {
       expected: 4200,
       price: 4200,
       balance: 1500,
+      mayBeDeleted: false,
     },
     /* THE ONE MOST OF THESE CASES WORK ON: fourth of seven, in the other currency, with a balance
        that is real and short of the fee. Every one of those three facts differs from the first
@@ -123,6 +126,7 @@ describe('activating a membership from the payments screen', () => {
       expected: 43,
       price: 40,
       balance: 12.75,
+      mayBeDeleted: false,
     },
     {
       competitorId: 77,
@@ -134,6 +138,7 @@ describe('activating a membership from the payments screen', () => {
       expected: 38,
       price: 35,
       balance: 71.25,
+      mayBeDeleted: false,
     },
     {
       competitorId: 91,
@@ -145,6 +150,7 @@ describe('activating a membership from the payments screen', () => {
       expected: 4000,
       price: 4000,
       balance: 0,
+      mayBeDeleted: false,
     },
     /* THE SEVENTH, LAST SO THAT PETAR STAYS FOURTH, AND THE ONLY ROW WHOSE BALANCE STANDS BETWEEN
        THE FEE AND WHAT HE SENDS: 51.50 against a fee of 50 and an expected 53. A balance covering
@@ -161,6 +167,7 @@ describe('activating a membership from the payments screen', () => {
       expected: 53,
       price: 50,
       balance: 51.5,
+      mayBeDeleted: false,
     },
   ]
 
