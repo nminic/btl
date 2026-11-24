@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { screen, waitFor, within } from '@testing-library/react'
+import { configure, getConfig, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 import type { Competitor } from '../../data/types'
 import { must } from '../../test/at'
@@ -29,6 +29,15 @@ const ME = must(
   members.find((one) => one.memberNumber === '000007'),
   'the seed still has member 000007',
 )
+
+/* EVERY WAIT OF THIS FILE IS GIVEN HALF OF THE TIME A CASE HAS, the shape of `pages/admin/saveWhileSaving.test.tsx`
+   (review of PR 814, finding on „will not save a tick with no telephone"). A case here has what Vitest gives it,
+   five seconds, and the global wait is twenty (`test/setup.ts`), so a wait that never succeeds ended by the clock
+   of the case (`Test timed out in 5012ms`) and by nothing the case asserts. Set here, and so for this file
+   alone. */
+const THE_TIME_A_CASE_HAS = 5000
+
+configure({ asyncUtilTimeout: THE_TIME_A_CASE_HAS / 2 })
 
 const PAGE = '/sr/moji-podaci'
 const THE_BOX = sr.registration.viberCommunity
@@ -202,5 +211,13 @@ describe('the box for the community on Viber on „Moji podaci”', () => {
     }, { timeout: 2000 })
     expect(whatWasPut(asked)).toEqual([{ phone: '', viberCommunity: false }])
     expect(await within(panel).findByText(sr.account.saved)).toBeInTheDocument()
+  })
+})
+
+describe('what a case of this file may end in', () => {
+  it('is an assertion and never its own clock: every wait is given less time than a case has', () => {
+    /* The floor under the paragraph at the head of the file: take the `configure` there away and the wait is
+       twenty seconds again (`test/setup.ts`) against a case of five. Asked of the number that decides. */
+    expect(getConfig().asyncUtilTimeout).toBeLessThan(THE_TIME_A_CASE_HAS)
   })
 })
