@@ -19,9 +19,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * that the row is gone from the English table too, and that the rows beside it are still there word for word; that is what is
  * asked here. What V110 does to a text that is already there is asked by {@link TheWrittenPagesLoseTheRowAboutTheThemeCarriedOverTest}.
  *
- * <p><b>The paragraph of section 4 is NOT asked about, on purpose.</b> It names {@code btl-theme} in a sentence, the decision
- * names a row, and V110 does not touch it (its header says so and the description of the pull request puts the question to the
- * owner). Asserting it either way here would decide for him.
+ * <p><b>SECTION 4 TOO</b> (owner, 24.11.2026, PDL, anchor „Briše se i rečenica o temi u odeljku 4”): the paragraph that said the
+ * theme is kept is gone in both languages, with no new word, and the paragraph after it and the one before it are what they were.
  */
 class TheWrittenPagesLoseTheRowAboutTheThemeTest extends DatabaseTest {
 
@@ -68,6 +67,36 @@ class TheWrittenPagesLoseTheRowAboutTheThemeTest extends DatabaseTest {
 
 		assertThat(serbian).doesNotContain(THE_ROW_IN_SERBIAN).doesNotContain("Izbor svetle ili tamne teme").doesNotContain("btl-theme");
 		assertThat(english).doesNotContain(THE_ROW_IN_ENGLISH).doesNotContain("Choice of light or dark theme").doesNotContain("btl-theme");
+	}
+
+	static final String THE_PARAGRAPH_IN_SERBIAN =
+			"Pored kolačića, u tvom pregledaču se čuva i još nešto: izbor svetle ili tamne teme, pod imenom `btl-theme`, u lokalnom skladištu. Postavlja se tek kad temu izabereš. Za njega se pristanak ne traži, jer je to podešavanje prikaza koje zatražiš. Brišeš ga brisanjem podataka sajta u pregledaču, a portal će te onda otvoriti u tamnoj temi, koja je podrazumevana.";
+	static final String THE_PARAGRAPH_IN_ENGLISH =
+			"Besides the cookies, something else is kept in your browser: the choice of light or dark theme, under the name `btl-theme`, in local storage. It is set only once you choose a theme yourself. No consent is asked for it, because it is a display setting you requested yourself. You delete it by clearing the site's data in your browser, and the portal will then open you in the dark theme, which is the default.";
+	static final String WHAT_FOLLOWS_IN_SERBIAN = "Drugog skladišta, niti analitike, nema.";
+	static final String WHAT_FOLLOWS_IN_ENGLISH = "There is no other storage, nor analytics.";
+
+	/**
+	 * THE PARAGRAPH ABOUT THE THEME IS NOT IN SECTION 4 IN EITHER LANGUAGE, and nothing about the store is said anywhere in the policy
+	 * any more. The paragraphs around it are word for word what they were: the one before it still ends the cookies, the one after it
+	 * still opens with the sentence about other storage, and the section is three paragraphs and not four.
+	 */
+	@Test
+	void theParagraphAboutTheThemeIsNotInSectionFourAndNoWordOfItIsLeftAnywhere() {
+		for (String language : List.of("sr", "en")) {
+			String body = bodyOf(POLICY, 4, language);
+			String paragraph = language.equals("sr") ? THE_PARAGRAPH_IN_SERBIAN : THE_PARAGRAPH_IN_ENGLISH;
+			String follows = language.equals("sr") ? WHAT_FOLLOWS_IN_SERBIAN : WHAT_FOLLOWS_IN_ENGLISH;
+
+			assertThat(body).as("section 4 in %s", language).doesNotContain(paragraph).doesNotContain("btl-theme")
+					.containsOnlyOnce(follows);
+			assertThat(body.split("\n\n")).as("the paragraphs of section 4 in %s", language).hasSize(3);
+			assertThat(body.split("\n\n")[1]).as("the paragraph that now follows the cookies in %s", language).isEqualTo(follows);
+
+			for (int position = 1; position <= 7; position++) {
+				assertThat(bodyOf(POLICY, position, language)).as("section %s in %s", position, language).doesNotContain("btl-theme");
+			}
+		}
 	}
 
 	/**
@@ -121,7 +150,7 @@ class TheWrittenPagesLoseTheRowAboutTheThemeTest extends DatabaseTest {
 
 	/**
 	 * V110 TOUCHES NOTHING ELSE, asked as behaviour: with V110 undone, every heading and body of both tables is what it is with it
-	 * applied, except the two sections of the policy it edits, in both languages, and those differ only by the row and the day.
+	 * applied, except the three sections of the policy it edits, in both languages, and those differ only by the row, the paragraph and the day.
 	 */
 	@Test
 	void everyOtherTextIsTheSameWithV110UndoneAsWithItApplied() {
@@ -136,7 +165,15 @@ class TheWrittenPagesLoseTheRowAboutTheThemeTest extends DatabaseTest {
 
 		List<String> changed = applied.keySet().stream().filter(key -> !applied.get(key).equals(undone.get(key))).toList();
 
-		assertThat(changed).containsExactlyInAnyOrder(POLICY + " #2 sr", POLICY + " #2 en", POLICY + " #7 sr", POLICY + " #7 en");
+		assertThat(changed).containsExactlyInAnyOrder(POLICY + " #2 sr", POLICY + " #2 en", POLICY + " #4 sr", POLICY + " #4 en",
+				POLICY + " #7 sr", POLICY + " #7 en");
+
+		assertThat(undone.get(POLICY + " #4 sr")).contains(THE_PARAGRAPH_IN_SERBIAN)
+				.isEqualTo(applied.get(POLICY + " #4 sr").replace(WHAT_FOLLOWS_IN_SERBIAN,
+						THE_PARAGRAPH_IN_SERBIAN + "\n\n" + WHAT_FOLLOWS_IN_SERBIAN));
+		assertThat(undone.get(POLICY + " #4 en")).contains(THE_PARAGRAPH_IN_ENGLISH)
+				.isEqualTo(applied.get(POLICY + " #4 en").replace(WHAT_FOLLOWS_IN_ENGLISH,
+						THE_PARAGRAPH_IN_ENGLISH + "\n\n" + WHAT_FOLLOWS_IN_ENGLISH));
 
 		assertThat(undone.get(POLICY + " #2 sr")).contains(THE_ROW_IN_SERBIAN)
 				.isEqualTo(applied.get(POLICY + " #2 sr").replace(THE_ROWS_THAT_STAY_IN_SERBIAN.get(0),

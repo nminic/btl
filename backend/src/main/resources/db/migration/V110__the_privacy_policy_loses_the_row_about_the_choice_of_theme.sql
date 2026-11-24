@@ -6,16 +6,18 @@
    svetla se izbacuje", 24.11.2026): the choice is not made and not kept any more, and a choice a browser kept from before is taken out
    of it when the portal starts (`frontend/src/app/forgetTheTheme.ts`).
 
-   WHAT IT DOES. It takes ONE ROW out of the table in section 2 of the policy, „Podaci koji nastaju samim posećivanjem" in Serbian and
+   WHAT IT DOES. First, it takes ONE ROW out of the table in section 2 of the policy, „Podaci koji nastaju samim posećivanjem" in Serbian and
    its English twin, the row that begins „Izbor svetle ili tamne teme (`btl-theme`, lokalno skladište)" and „Choice of light or dark
-   theme (`btl-theme`, local storage)". No word is added and no word of any other row is touched.
+   theme (`btl-theme`, local storage)". No word is added and no word of any other row is touched. Second, it takes the paragraph of section 4 out (below).
 
-   WHAT IT DOES NOT DO, AND THIS IS THE OPEN PART. Section 4 of the policy, „Kolačići i lokalno skladište", has a paragraph of its own that
-   says the same thing in a sentence: „Pored kolačića, u tvom pregledaču se čuva i još nešto: izbor svetle ili tamne teme, pod imenom
-   `btl-theme`, u lokalnom skladištu. [...]" (and its English twin „Besides the cookie, something else is kept in your browser: [...]").
-   The decision names a ROW, and a paragraph is not a row, so it is left exactly as it is, and after this file the policy no longer lists
-   the choice of theme in section 2 while section 4 still says it is kept. That is the owner's to decide and it is written to him in the
-   description of the pull request; nothing here guesses it.
+   THE PARAGRAPH OF SECTION 4 GOES TOO (owner, 24.11.2026, chose between the offered, with the assistant's recommendation, PDL, anchor
+   „Briše se i rečenica o temi u odeljku 4”; offered and not chosen: only the row of the table). Section 4, „Kolačići i lokalno
+   skladište", had a paragraph of its own that said the same thing in sentences, „Pored kolačića, u tvom pregledaču se čuva i još nešto:
+   izbor svetle ili tamne teme, pod imenom `btl-theme`, u lokalnom skladištu. [...]" and its English twin „Besides the cookies, something
+   else is kept in your browser: [...]". The whole paragraph is about the theme, so the whole paragraph goes, in both languages, and no
+   word is added. The paragraph that follows it, „Drugog skladišta, niti analitike, nema." / „There is no other storage, nor analytics.",
+   stands as it was and its words are not touched; that it now has no store before it for „other" to refer to is for the owner, who alone
+   changes a legal text.
 
    THE SIGN-OFF MOVES, AND ONLY THE POLICY'S. PDL, „Datum Poslednja izmena na pravnom tekstu pomera se uvek kad se reči tog teksta
    promene, na dan kad izmena stiže na QA" (owner, 07.11.2026), with the addition of 14.11.2026 that the day moves in both languages.
@@ -38,8 +40,8 @@
    with the row after it, and the new text is that next row alone: it is asked of the section with the pair taken out, where it is not,
    and a section that already lost the row does not hold the pair, so a second run is refused by name and not reported as a success.
 
-   WHAT IT DOES NOT TOUCH: no schema, no constraint, no key, no index, no row of a table added or removed; section 2 and section 7 of the
-   policy in two languages, and in them only the one row of the table and the date. The terms, the rulebook and the president's word are
+   WHAT IT DOES NOT TOUCH: no schema, no constraint, no key, no index, no row of a table added or removed; sections 2, 4 and 7 of the
+   policy in two languages, and in them only the one row of the table, the one paragraph and the date. The terms, the rulebook and the president's word are
    not touched, and the terms and the rulebook keep their sign-off of 21.11.2026.
 
    WHY A NEW FILE AND NOT AN EDIT OF V44 OR V107: ADL A2. They have been applied, their checksums are in flyway_schema_history, and
@@ -72,6 +74,18 @@ begin
              $old$| Choice of light or dark theme (`btl-theme`, local storage) | So the portal opens in the theme you chose | Necessary for the service provided, since you choose it yourself | Until you delete it yourself |
 | Security cookie | Without it, submitting a form cannot work safely | Necessary for the service provided | Until the end of the visit |$old$,
              $new$| Security cookie | Without it, submitting a form cannot work safely | Necessary for the service provided | Until the end of the visit |$new$),
+
+            ('THEME-03 section 4', 'politika-privatnosti', 4, 'sr',
+             $old$Pored kolačića, u tvom pregledaču se čuva i još nešto: izbor svetle ili tamne teme, pod imenom `btl-theme`, u lokalnom skladištu. Postavlja se tek kad temu izabereš. Za njega se pristanak ne traži, jer je to podešavanje prikaza koje zatražiš. Brišeš ga brisanjem podataka sajta u pregledaču, a portal će te onda otvoriti u tamnoj temi, koja je podrazumevana.
+
+Drugog skladišta, niti analitike, nema.$old$,
+             $new$Drugog skladišta, niti analitike, nema.$new$),
+
+            ('THEME-03 section 4', 'politika-privatnosti', 4, 'en',
+             $old$Besides the cookies, something else is kept in your browser: the choice of light or dark theme, under the name `btl-theme`, in local storage. It is set only once you choose a theme yourself. No consent is asked for it, because it is a display setting you requested yourself. You delete it by clearing the site's data in your browser, and the portal will then open you in the dark theme, which is the default.
+
+There is no other storage, nor analytics.$old$,
+             $new$There is no other storage, nor analytics.$new$),
 
             ('THEME-02 sign-off', 'politika-privatnosti', 7, 'sr',
              $old$Poslednja izmena: 21.11.2026.$old$,

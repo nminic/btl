@@ -37,7 +37,7 @@ class TheWrittenPagesLoseTheRowAboutTheThemeCarriedOverTest extends DatabaseTest
 	private static final String POLICY = TheWrittenPagesLoseTheRowAboutTheThemeTest.POLICY;
 
 	private static int theNumberOfEditsV110Makes() {
-		return 4;
+		return 6;
 	}
 
 	/** Every heading and body of both tables, by page, place and language, so two readings compare row by row. */
@@ -101,6 +101,10 @@ class TheWrittenPagesLoseTheRowAboutTheThemeCarriedOverTest extends DatabaseTest
 		assertThat(bodyOf(POLICY, 2, "en"))
 				.as("the fixture did not put the English row back")
 				.containsOnlyOnce(TheWrittenPagesLoseTheRowAboutTheThemeTest.THE_ROW_IN_ENGLISH);
+		assertThat(bodyOf(POLICY, 4, "sr")).as("the fixture did not put the Serbian paragraph back")
+				.containsOnlyOnce(TheWrittenPagesLoseTheRowAboutTheThemeTest.THE_PARAGRAPH_IN_SERBIAN);
+		assertThat(bodyOf(POLICY, 4, "en")).as("the fixture did not put the English paragraph back")
+				.containsOnlyOnce(TheWrittenPagesLoseTheRowAboutTheThemeTest.THE_PARAGRAPH_IN_ENGLISH);
 		assertThat(bodyOf(POLICY, 7, "sr")).endsWith("Poslednja izmena: 21.11.2026.");
 		assertThat(bodyOf(POLICY, 7, "en")).endsWith("Last amended: 21.11.2026.");
 	}
@@ -128,8 +132,8 @@ class TheWrittenPagesLoseTheRowAboutTheThemeCarriedOverTest extends DatabaseTest
 
 	/**
 	 * V110 OVER THE TEXT IT FOUND GIVES THE TEXT THE PORTAL SERVES, character for character, in every heading and body of every
-	 * page in both languages, and changes exactly the sections it names and no other: sections 2 and 7 of the policy, in both
-	 * languages. Section 4, where a paragraph still names the store, the sign-offs of the terms and of the rulebook, the other
+	 * page in both languages, and changes exactly the sections it names and no other: sections 2, 4 and 7 of the policy, in both
+	 * languages. The sign-offs of the terms and of the rulebook, the other
 	 * sections and the other pages are among the ones it leaves alone.
 	 */
 	@Test
@@ -152,7 +156,8 @@ class TheWrittenPagesLoseTheRowAboutTheThemeCarriedOverTest extends DatabaseTest
 
 		assertThat(changed)
 				.as("V110 changed a different set of sections than the ones its edits name")
-				.containsExactlyInAnyOrder(POLICY + " #2 sr", POLICY + " #2 en", POLICY + " #7 sr", POLICY + " #7 en");
+				.containsExactlyInAnyOrder(POLICY + " #2 sr", POLICY + " #2 en", POLICY + " #4 sr", POLICY + " #4 en",
+						POLICY + " #7 sr", POLICY + " #7 en");
 	}
 
 	/**
@@ -178,6 +183,8 @@ class TheWrittenPagesLoseTheRowAboutTheThemeCarriedOverTest extends DatabaseTest
 				.hasSize(theNumberOfEditsV110Makes())
 				.contains("THEME-01 section 2 @ politika-privatnosti #2 sr: found 0 times, and its new text is already there",
 						"THEME-01 section 2 @ politika-privatnosti #2 en: found 0 times, and its new text is already there",
+						"THEME-03 section 4 @ politika-privatnosti #4 sr: found 0 times, and its new text is already there",
+						"THEME-03 section 4 @ politika-privatnosti #4 en: found 0 times, and its new text is already there",
 						"THEME-02 sign-off @ politika-privatnosti #7 sr: found 0 times, and its new text is already there",
 						"THEME-02 sign-off @ politika-privatnosti #7 en: found 0 times, and its new text is already there");
 		assertThat(everyText()).as("a refused V110 changed a page").isEqualTo(finished);
