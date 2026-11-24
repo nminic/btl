@@ -309,6 +309,11 @@ const OPENING: { file: string; how: How; why: string; calls?: { shape: Shape; ca
     calls: [{ shape: 'dataOr', call: 'dataOr(items, [])' }],
   },
   {
+    file: 'pages/home/sponsorsOrNobody.ts',
+    how: 'boundary',
+    why: 'MY REASONING, not the owner\'s sentence, and held by `pages/homeSponsored.test.tsx` („when the sponsors cannot be read") and `pages/home/sponsorsOrNobody.test.ts`: the sponsors of the front page are not a list a reader came for but two boxes the owner said are not drawn when there is nobody („kad nijedan sponzor nije u rotaciji, boksa nema i kalendar ide do dna, kao danas", plan approved 24.11.2026). A read of them that failed is the page of a league with no sponsor, which is the page it was until 24.11.2026, and never a failure of the whole front page: read through the same `Resource` as the boards, it would have drawn „cannot be read" over the boards, the figures, the calendar and the calculator. Nothing is said about a box that is not on the screen, and the next visit asks again.',
+  },
+  {
     file: 'pages/admin/pending.ts',
     how: 'hands on',
     why: 'MY REASONING: `usePending` maps a state that is ready and gives every other state back as it is, with its way to ask again, to the two screens that read it and say it (`PendingQueue.tsx`, `SectionNav.tsx`).',

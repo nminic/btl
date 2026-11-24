@@ -1,0 +1,38 @@
+[
+  {
+    "id": 7,
+    "name": "Volt",
+    "url": "https://volt.primer.rs/",
+    "descriptionSr": "Energetsko piće za duge treninge i noćne trke.",
+    "descriptionEn": "An energy drink for long sessions and night races.",
+    "main": true,
+    "inRotation": true,
+    "inStrip": true,
+    "position": 2,
+    "logo": "/api/photos/5e1f0a9c"
+  },
+  {
+    "id": 3,
+    "name": "Sofra",
+    "url": "https://sofra.primer.rs/",
+    "descriptionSr": "Domaća kuhinja posle svake trke.",
+    "descriptionEn": null,
+    "main": false,
+    "inRotation": false,
+    "inStrip": true,
+    "position": 0,
+    "logo": "/api/photos/b07d42e1"
+  },
+  {
+    "id": 5,
+    "name": "Planinar plus",
+    "url": "http://planinar.primer.rs/oprema",
+    "descriptionSr": "Oprema za staze, od patika do štapova.",
+    "descriptionEn": "Trail gear, from shoes to poles.",
+    "main": false,
+    "inRotation": true,
+    "inStrip": false,
+    "position": 1,
+    "logo": null
+  }
+]

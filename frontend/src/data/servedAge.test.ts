@@ -339,8 +339,16 @@ describe('which fields the portal serves', () => {
        **Twenty four since 14.11.2026: `unscored-results.json`, the races the league does not score
        (`GET /api/unscored-results`, PDL „Ostale discipline kao lična evidencija").** The very row of
        `results.json`, fifteen paths, none nested, with 0 points: what a member swam or rode and in what
-       time, which is what the public profile already shows of a run. Added to the snapshot by hand. */
-    expect(Object.keys(served)).toHaveLength(24)
+       time, which is what the public profile already shows of a run. Added to the snapshot by hand.
+
+       **Twenty six since 24.11.2026: `sponsors.json` and `sponsors/all.json`, the sponsors of the front
+       page and the administration's list of them (`SponsorApi`, `SponsorWriteApi.all`, PDL „Strana za
+       upravljanje sponzorima").** Neither is about a person: a sponsor is a company, its name, its link,
+       its two lines of description and the address of its logo, and the only numbers are a key and a
+       place in the manual order, neither year-shaped. The front page's file answers nobody on purpose
+       (`servedShape.test.ts` says why), so it adds two paths; the list adds ten. Added to the snapshot by
+       hand. */
+    expect(Object.keys(served)).toHaveLength(26)
     expect(Object.values(served).flat().length).toBeGreaterThan(100)
     expect(Object.values(served).flat().filter((one) => one.includes('.')).length).toBeGreaterThan(
       10,
