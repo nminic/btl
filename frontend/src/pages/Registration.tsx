@@ -427,7 +427,10 @@ export function Registration() {
            24.11.2026, „Hoću da kvadratić bude default štikliran i telefon obavezan"). It is handed in as the
            values the form opens with and not written into the definition, because the same box on „Moji
            podaci" shows what a member saved and must open empty for one who never ticked it. */
-        initial={{ viberCommunity: true }}
+        /* The category opens on the one for the member's age, the same way (owner, PDL 24.11.2026, „Neka to
+           svakako bude default u prijavi"): `beginner: 'no'` is the age category and the choice stays the
+           member's to change. */
+        initial={{ viberCommunity: true, beginner: 'no' }}
         onSubmit={(values, agreeing) => {
           /* A second press while the first is still out would write a second account, or
              rather try to and be told the address is taken - by the address this very
