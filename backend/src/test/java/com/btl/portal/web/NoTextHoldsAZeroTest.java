@@ -208,6 +208,10 @@ class NoTextHoldsAZeroTest {
 			Map.entry("MemberPictureAndWordsApi#setThePicture:cropX (parameter)", "parsed as a number"),
 			Map.entry("MemberPictureAndWordsApi#setThePicture:cropY (parameter)", "parsed as a number"),
 			Map.entry("MemberPictureAndWordsApi#setThePicture:cropSize (parameter)", "parsed as a number"),
+			Map.entry("MemberPictureAndWordsApi#setThePicture:over (parameter)",
+					"compared whole with the address of the picture that stands and never put into a statement;"
+							+ " a request that names none is a 400, and a zero or an empty text names no picture that"
+							+ " stands, so it is the 409 of a picture that has changed"),
 			Map.entry("LeagueMarkApi#setTheMark:cropX (parameter)", "parsed as a number"),
 			Map.entry("LeagueMarkApi#setTheMark:cropY (parameter)", "parsed as a number"),
 			Map.entry("LeagueMarkApi#setTheMark:cropSize (parameter)", "parsed as a number"),
