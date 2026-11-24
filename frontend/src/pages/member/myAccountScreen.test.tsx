@@ -869,6 +869,52 @@ describe('changing a password from inside', () => {
     expect(within(panel).getByLabelText(/^Nova lozinka/)).toHaveAttribute('aria-invalid', 'false')
   })
 
+  it('puts the cursor in the repeat box when it is the only one left empty', async () => {
+    const user = setupUser()
+
+    renderAt('/sr/podesavanja', 'competitor', ME.memberNumber)
+
+    const panel = await passwordPanel()
+
+    await user.type(within(panel).getByLabelText(/Trenutna lozinka/), 'the old one')
+    await user.type(within(panel).getByLabelText(/^Nova lozinka/), 'a brand new one')
+    await user.click(within(panel).getByRole('button', { name: sr.account.passwordSubmit }))
+
+    expect(within(panel).getByLabelText(/Ponovi novu lozinku/)).toHaveFocus()
+    expect(within(panel).getAllByText(sr.form.errors.required)).toHaveLength(1)
+  })
+
+  it.each([
+    ['Trenutna lozinka', ['Nova lozinka', 'Ponovi novu lozinku']],
+    ['Ponovi novu lozinku', ['Trenutna lozinka', 'Nova lozinka']],
+  ])(
+    'takes only the error of %s when it is typed into, and leaves the others',
+    async (label, left) => {
+      const user = setupUser()
+
+      renderAt('/sr/podesavanja', 'competitor', ME.memberNumber)
+
+      const panel = await passwordPanel()
+      const box = (name: string) =>
+        inputElement(within(panel).getByLabelText(new RegExp(`^${name}`)))
+
+      await user.click(within(panel).getByRole('button', { name: sr.account.passwordSubmit }))
+      expect(within(panel).getAllByText(sr.form.errors.required)).toHaveLength(3)
+
+      await user.type(box(label), 'x')
+
+      expect(box(label)).toHaveAttribute('aria-invalid', 'false')
+      expect(box(label)).not.toHaveAccessibleDescription(sr.form.errors.required)
+
+      for (const other of left) {
+        expect(box(other)).toHaveAttribute('aria-invalid', 'true')
+        expect(box(other)).toHaveAccessibleDescription(sr.form.errors.required)
+      }
+
+      expect(within(panel).getAllByText(sr.form.errors.required)).toHaveLength(2)
+    },
+  )
+
   /**
    * <p><b>The repeat is sent as itself and never as the new one twice.</b> That is the
    * replacement of the source this case is built around: sending `password` into both would
