@@ -4,6 +4,7 @@ import { act, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 import { must } from '../../test/at'
 import { moderatorWith, renderAt } from '../../test/render'
+import { setupUser } from '../../test/user'
 import { serverThat } from '../../test/serverAnswers'
 import { SLOW } from '../../test/slow'
 import { myOwnRecordFromMe, whoIAm } from '../../test/theAnswer'
@@ -50,17 +51,35 @@ afterEach(() => {
 })
 
 /** `GET /api/me` answering the member with the seasons the server would name for him, and a run sent back. */
-function theServerSays(memberNumber: string, seasons: number[]): void {
-  server = serverThat((path) => {
+function theServerSays(
+  memberNumber: string,
+  seasons: number[] | null,
+  sentBack: object[] = [SENT_BACK],
+  held: Promise<void> = Promise.resolve(),
+): void {
+  server = serverThat((path, init) => {
     if (path === '/api/me') {
-      return new Response(
-        JSON.stringify({ ...whoIAm, member: { ...myOwnRecordFromMe, memberNumber }, seasonsOpenForAReport: seasons }),
-        { status: 200, headers: { 'content-type': 'application/json' } },
+      /* `null` is an answer that does not carry the list at all, which is a read that could not be believed
+         (`whatTheServerSaysOfTheSeasonsOpenForAReport`), and `held` is an answer still on its way. */
+      const { seasonsOpenForAReport: _dropped, ...withoutTheList } = whoIAm as Record<string, unknown>
+      const carried = seasons === null ? withoutTheList : { ...whoIAm, seasonsOpenForAReport: seasons }
+
+      return held.then(
+        () =>
+          new Response(JSON.stringify({ ...carried, member: { ...myOwnRecordFromMe, memberNumber } }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          }),
       )
     }
 
     if (path === '/api/me/result-submissions') {
-      return new Response(JSON.stringify([SENT_BACK]), { status: 200, headers: { 'content-type': 'application/json' } })
+      return new Response(JSON.stringify(sentBack), { status: 200, headers: { 'content-type': 'application/json' } })
+    }
+
+    /* A write to the result routes, agreed to: the correction of a counted result is one of them. */
+    if (path.startsWith('/api/results') && init?.method !== undefined) {
+      return new Response(null, { status: 204 })
     }
 
     return null
@@ -202,6 +221,111 @@ describe('a tester, at 23:59 on 31.12.2026', () => {
 
     expect(await screen.findByRole('form', undefined, SOON)).toBeVisible()
     expect(screen.queryByText('Prijava rezultata još nije otvorena')).toBeNull()
+  }, SLOW)
+})
+
+/**
+ * THE CONFIRMATION AFTER A CORRECTION OF A COUNTED RESULT, which a member keeps while no season is open for him
+ * (independent review of PR 828, 24.11.2026): it is the one road to the confirmation that a member who is not a tester
+ * has, and „Unesi još jedan" on it leads to the form for a NEW result, which says „Prijava rezultata još nije otvorena".
+ */
+describe('the confirmation after a correction of a counted result', () => {
+  async function correctedAndConfirmed(memberNumber: string, seasons: number[]): Promise<void> {
+    const user = setupUser()
+
+    theServerSays(memberNumber, seasons)
+    renderAt(`${NEW}?ispravka=${String(aCountedResult(memberNumber))}`, 'competitor', memberNumber)
+
+    await screen.findByText(/Menjaš rezultat koji je već uračunat/, undefined, SOON)
+    await theAnswerHasArrived()
+    await user.type(screen.getByLabelText(/^Link/), 'https://primer.rs/rezultati')
+    await user.click(screen.getByRole('button', { name: /^Pošalji/ }))
+    await screen.findByText('Rezultat je ponovo poslat.', undefined, SOON)
+  }
+
+  it('does not offer „Unesi još jedan" to a member for whom no season is open, and keeps the way to his results', async () => {
+    await correctedAndConfirmed(MEMBER, BEFORE_THE_LEAGUE)
+
+    expect(screen.getByRole('link', { name: 'Moji rezultati' })).toBeVisible()
+    expect(screen.queryByRole('link', { name: 'Unesi još jedan' })).toBeNull()
+  }, SLOW)
+
+  it('offers it to a tester, where the form for a new result opens', async () => {
+    await correctedAndConfirmed(MEMBER, A_TESTERS_YEAR)
+
+    expect(screen.getByRole('link', { name: 'Unesi još jedan' })).toBeVisible()
+  }, SLOW)
+})
+
+/**
+ * A RUN SENT BACK THAT WAS A CORRECTION of a counted result (independent review of PR 828, 24.11.2026): „Ispravi i pošalji
+ * ponovo" is a way to the form for a result like any other, so it is closed with the rest while no season is open, though
+ * the server asks no season of a correction. Every case before this one sent back a run that amended nothing
+ * (`amendsResultId: null`), so a screen that opened the form for a sent-back correction passed them all.
+ */
+describe('a run sent back that corrected a counted result, for a member who is not a tester', () => {
+  const A_SENT_BACK_CORRECTION = { ...SENT_BACK, amendsResultId: aCountedResult(MEMBER) }
+
+  it('is offered no way to send it again', async () => {
+    theServerSays(MEMBER, BEFORE_THE_LEAGUE, [A_SENT_BACK_CORRECTION])
+    renderAt('/sr/moji-rezultati', 'competitor', MEMBER)
+
+    await screen.findByText('Link ne otvara rezultate.', { exact: false }, SOON)
+    await theAnswerHasArrived()
+
+    expect(theSendingAgain()).toBeNull()
+  }, SLOW)
+
+  it('is told the report is not open when the address of sending it again is typed', async () => {
+    theServerSays(MEMBER, BEFORE_THE_LEAGUE, [A_SENT_BACK_CORRECTION])
+    renderAt(`${NEW}?ponovo=77`, 'competitor', MEMBER)
+
+    expect(await screen.findByRole('heading', { level: 1 }, SOON)).toHaveTextContent('Prijava rezultata još nije otvorena')
+    expect(screen.queryByRole('form')).toBeNull()
+  }, SLOW)
+
+  it('is offered the way to send it again once a season is open for him', async () => {
+    theServerSays(MEMBER, THE_FIRST_SEASON, [A_SENT_BACK_CORRECTION])
+    renderAt('/sr/moji-rezultati', 'competitor', MEMBER)
+
+    expect(await screen.findByRole('link', { name: /^Ispravi i pošalji ponovo/ }, SOON)).toBeVisible()
+  }, SLOW)
+})
+
+/**
+ * WHILE THE ANSWER IS ON ITS WAY, AND WHEN IT COULD NOT BE READ, no way in is drawn either (independent review of PR 828,
+ * 24.11.2026): a link is offered only for an answer that names a season, and a screen that drew it for the two states
+ * that name nothing passed every case above, which all wait for a ready answer.
+ */
+describe('the ways in while the answer about the seasons is not known', () => {
+  it('draws none while it is still on its way, and draws them when it arrives', async () => {
+    let arrive: () => void = () => {}
+    const onItsWay = new Promise<void>((resolve) => {
+      arrive = resolve
+    })
+
+    theServerSays(MEMBER, THE_FIRST_SEASON, [SENT_BACK], onItsWay)
+    renderAt('/sr/moji-rezultati', 'competitor', MEMBER)
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 100))
+    })
+    expect(theNewResult(), 'a way in was drawn before the server had answered').toBeNull()
+    expect(theSendingAgain()).toBeNull()
+
+    arrive()
+    expect(await screen.findByRole('link', { name: 'Unesi rezultat' }, SOON)).toBeVisible()
+  }, SLOW)
+
+  it('draws none when the answer did not carry the list', async () => {
+    theServerSays(MEMBER, null)
+    renderAt('/sr/moji-rezultati', 'competitor', MEMBER)
+
+    await screen.findByText('Link ne otvara rezultate.', { exact: false }, SOON)
+    await theAnswerHasArrived()
+
+    expect(theNewResult()).toBeNull()
+    expect(theSendingAgain()).toBeNull()
   }, SLOW)
 })
 
