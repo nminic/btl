@@ -363,13 +363,15 @@ class NoBodyIsLargerThanOverRealHttpTest {
 		 * (22.10.2026), so it is given the one member there is, whom the superadmin may correct. And so does
 		 * the administration's change of his words about himself (06.11.2026, `MemberPictureAndWordsApi`),
 		 * and the same correction by the key of somebody who has no member number (10.11.2026), which is
-		 * given the one such registrant there is.
+		 * given the one such registrant there is. The administration's choice of his category (24.11.2026,
+		 * `MemberCategoryApi`) is given the same member, for the same reason.
 		 */
 		String address(long theItemWaiting, long theUnnumbered) {
 			String key = pattern.startsWith("/api/verification/{id}/") ? Long.toString(theItemWaiting)
 					: pattern.equals(MemberDataApi.UNNUMBERED) ? Long.toString(theUnnumbered)
 					: pattern.equals("/api/members/{memberNumber}/data")
-							|| pattern.equals("/api/members/{memberNumber}/bio") ? THE_MEMBERS_NUMBER
+							|| pattern.equals("/api/members/{memberNumber}/bio")
+							|| pattern.equals("/api/members/{memberNumber}/category") ? THE_MEMBERS_NUMBER
 					: A_NUMBER_WITH_NO_ROW;
 
 			return A_VARIABLE.matcher(pattern).replaceAll(key);

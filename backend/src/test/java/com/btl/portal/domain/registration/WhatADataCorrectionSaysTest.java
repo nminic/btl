@@ -60,7 +60,7 @@ class WhatADataCorrectionSaysTest {
 
 		assertThat(said.body()).contains("ime, prezime, ime oca, pol, datum rođenja, broj ličnog dokumenta,"
 				+ " adresa elektronske pošte, adresa, telefon, prijava za BTL zajednicu na Viberu, mesto,"
-				+ " veličina majice.");
+				+ " veličina majice, kategorija.");
 	}
 
 	@Test

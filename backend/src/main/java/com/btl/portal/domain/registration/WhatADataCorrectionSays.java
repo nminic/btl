@@ -60,7 +60,13 @@ public final class WhatADataCorrectionSays {
 		/** The box for the league's community on Viber, which the administration changes since 23.11.2026. */
 		VIBER_COMMUNITY("viberCommunity"),
 		TOWN("town"),
-		SHIRT_SIZE("shirtSize");
+		SHIRT_SIZE("shirtSize"),
+		/**
+		 * The category he runs the coming season in, which the administration chooses on the card „Podaci"
+		 * since 24.11.2026 ({@code MemberCategoryApi}), with a request of its own: the box saves when it is
+		 * ticked, as the member's own does, so this word is never named beside the others.
+		 */
+		CATEGORY("category");
 
 		private final String word;
 
