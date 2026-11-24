@@ -118,3 +118,10 @@
   align-items: center;
   gap: var(--space-2);
 }
+
+/* „OBRIŠI" HELD APART FROM THE TICK by the distance the row of the members keeps between „Storniraj" and
+   its own „Obriši" (`AdminMembers.css`, `.members-actions__delete`): a finger's slop, 16px, because PR 632
+   measured a press that deleted a member at 3px from the action beside it. */
+.activate__actions .activate__delete {
+  margin-inline-start: var(--space-16);
+}
