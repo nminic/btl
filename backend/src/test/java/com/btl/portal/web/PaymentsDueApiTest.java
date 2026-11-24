@@ -974,7 +974,11 @@ class PaymentsDueApiTest {
 			membershipFreeOfTheFee(member, 2027);
 		}
 
-		JsonNode answer = read(booksCookie, null);
+		/* READ BY SOMEBODY WHO HOLDS THE RIGHT OVER THE MEMBERS: only for him does the route ask which of the
+		   rows may be deleted, and with no row left that is the one place the question is asked about nobody
+		   (`LeavingBeforeBecomingAMember.whoOf` answers none without sending a statement). A moderator of the books
+		   alone is never asked it (owner, 24.11.2026), so reading as him leaves that answer unmeasured. */
+		JsonNode answer = read(superadminCookie, null);
 
 		assertThat(answer.get("season").asInt()).isEqualTo(2027);
 		assertThat(answer.get("accounts").isArray()).isTrue();
