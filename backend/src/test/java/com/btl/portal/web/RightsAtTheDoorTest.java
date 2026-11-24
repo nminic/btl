@@ -1345,7 +1345,13 @@ class RightsAtTheDoorTest {
 						   sweeps' JSON request is refused by before the door runs. Its door is measured by
 						   `LeagueMarkApiTest`, where a moderator over the teams and a member are answered 404. */
 						"LeagueMarkApi#setTheMark is not the handler the dispatcher gives the request the sweeps send",
-						/* 24.11.2026, V111: a sponsor's logo is sent as multipart for the same reason. Its door is measured
+						/* 24.11.2026: the administration's choice of a member's category on his card „Podaci"
+						   reads its body as bytes, the shape of `MemberDataWriteApi#correct` for the same reason.
+						   Its door is measured by `MemberCategoryApiTest`, where a moderator over the payments
+						   alone and the member himself are answered 404. */
+						"MemberCategoryApi#choose is not the handler the dispatcher gives the request the sweeps send",
+						"MemberCategoryApi#choose is a write with no required body and no typed variable",
+						/* 24.11.2026, V111: a sponsor's logo is sent as multipart, as a league's mark is. Its door is measured
 						   by `SponsorLogoApiTest`, where a moderator over the leagues and a member are answered 404. */
 						"SponsorLogoApi#setTheLogo is not the handler the dispatcher gives the request the sweeps send");
 	}

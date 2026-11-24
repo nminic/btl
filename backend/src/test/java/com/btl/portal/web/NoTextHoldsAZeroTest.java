@@ -98,14 +98,17 @@ class NoTextHoldsAZeroTest {
 	private static final String ZERO = String.valueOf((char) 0);
 
 	/**
-	 * The six routes that read the request by hand, by controller, with the record each one
-	 * reads. The fifth, since 22.10.2026, is the administration's correction of a member's data, and the
-	 * sixth, since 06.11.2026, its change of a member's words about himself. {@code MeCategoryWriteApi.Wish} holds no text at all, and it is here because a text
+	 * The seven routes that read the request by hand, by controller, with the record each one
+	 * reads. The fifth, since 22.10.2026, is the administration's correction of a member's data, the
+	 * sixth, since 06.11.2026, its change of a member's words about himself, and the seventh, since
+	 * 24.11.2026, its choice of his category, which reads the member's own {@code Wish}. {@code MeCategoryWriteApi.Wish} holds no text at all, and it is here because a text
 	 * added to it tomorrow is swept the day it is added.
 	 */
 	private static final Map<String, String> READ_BY_HAND = Map.of(
 			"InboxWriteApi", "Written",
 			"MeCategoryWriteApi", "Wish",
+			/* The member's own record, read by the administration's route: one shape of the body, one home. */
+			"MemberCategoryApi", "MeCategoryWriteApi$Wish",
 			"MeWriteApi", "Change",
 			"MemberDataWriteApi", "Correction",
 			"MemberPictureAndWordsApi", "Words",
@@ -147,6 +150,10 @@ class NoTextHoldsAZeroTest {
 			Map.entry("MemberDataApi#read:memberNumber (path)",
 					"a zero in a path is a 400 before any handler is reached"),
 			Map.entry("MemberDataWriteApi#correct:memberNumber (path)",
+					"a zero in a path is a 400 before any handler is reached"),
+			Map.entry("MemberCategoryApi#read:memberNumber (path)",
+					"a zero in a path is a 400 before any handler is reached"),
+			Map.entry("MemberCategoryApi#choose:memberNumber (path)",
 					"a zero in a path is a 400 before any handler is reached"),
 			Map.entry("MemberDataApi#readUnnumbered:competitorId (path)",
 					"a zero in a path is a 400 before any handler is reached"),
@@ -272,8 +279,9 @@ class NoTextHoldsAZeroTest {
 				Comparator.comparing(NoTextHoldsAZeroTest::nameOf));
 
 		for (Map.Entry<String, String> one : READ_BY_HAND.entrySet()) {
+			/* A record of another controller is named with its owner, `Owner$Record`. */
 			Class<?> type = Class.forName(NoTextHoldsAZeroTest.class.getPackageName() + "."
-					+ one.getKey() + "$" + one.getValue());
+					+ (one.getValue().contains("$") ? one.getValue() : one.getKey() + "$" + one.getValue()));
 
 			found.computeIfAbsent(type, t -> new TreeSet<>()).add(one.getKey() + " (by hand)");
 		}

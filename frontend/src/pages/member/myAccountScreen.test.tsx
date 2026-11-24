@@ -99,7 +99,8 @@ function jsonResponse(body: object, status = 200): Response {
 
 /** A field of a body that came off the wire, as text, or nothing where it was not named. */
 function textIn(body: unknown, name: string): string | undefined {
-  const said: unknown = typeof body === 'object' && body !== null ? Reflect.get(body, name) : undefined
+  const said: unknown =
+    typeof body === 'object' && body !== null ? Reflect.get(body, name) : undefined
 
   return typeof said === 'string' ? said : undefined
 }
@@ -175,7 +176,12 @@ function aServerThatKeepsWhatItIsTold(opening: { address: string; phone?: string
       return jsonResponse({ address: held.address })
     }
 
-    return jsonResponse({ role: 'competitor', account: 1, member: hisRecord(held), mailLanguage: 'sr' })
+    return jsonResponse({
+      role: 'competitor',
+      account: 1,
+      member: hisRecord(held),
+      mailLanguage: 'sr',
+    })
   })
 
   return { asked, stop, held: () => ({ ...held }) }
@@ -251,7 +257,10 @@ describe('a member’s own data', () => {
 
     expect(save).toHaveAttribute('aria-disabled', 'true')
     expect(save).not.toHaveAttribute('aria-describedby')
-    expect(panel.querySelector('[role="status"]'), 'a sentence about the button stands on the panel').toBeNull()
+    expect(
+      panel.querySelector('[role="status"]'),
+      'a sentence about the button stands on the panel',
+    ).toBeNull()
 
     await user.click(save)
 
@@ -490,7 +499,10 @@ describe('a member’s own data', () => {
       'the screen asked the server to remove the telephone',
     )
 
-    expect(JSON.parse(String(sent.init?.body)), 'the request named something besides the telephone').toEqual({
+    expect(
+      JSON.parse(String(sent.init?.body)),
+      'the request named something besides the telephone',
+    ).toEqual({
       phone: '',
     })
     expect(kept.held()).toEqual({ address: 'Vojvode Stepa 5' })
@@ -506,7 +518,18 @@ describe('a member’s own data', () => {
 })
 
 /** Where the server's own source lives, spelled the way `myAccount.test.ts` spells it. */
-const WEB = join(process.cwd(), '..', 'backend', 'src', 'main', 'java', 'com', 'btl', 'portal', 'web')
+const WEB = join(
+  process.cwd(),
+  '..',
+  'backend',
+  'src',
+  'main',
+  'java',
+  'com',
+  'btl',
+  'portal',
+  'web',
+)
 
 /**
  * THE BOXES THE SERVER WILL NOT TAKE EMPTY, read off the Java that refuses them.
@@ -590,7 +613,9 @@ describe('which boxes of a member’s own data are asked for', () => {
     for (const { name, box } of personalBoxes(panel)) {
       const asked = neverEmptied.includes(name)
 
-      expect(box.getAttribute('aria-required'), `aria-required on ${name}`).toBe(asked ? 'true' : null)
+      expect(box.getAttribute('aria-required'), `aria-required on ${name}`).toBe(
+        asked ? 'true' : null,
+      )
       expect(hasTheStar(box), `the star beside ${name}`).toBe(asked)
       expect(saysOptional(box), `the word „${sr.form.optional}" beside ${name}`).toBe(!asked)
     }
@@ -707,12 +732,18 @@ describe('what the owner took off the settings screen', () => {
     expect(screen.queryByRole('heading', { name: sr.account.personalTitle })).toBeNull()
 
     for (const sentence of WHAT_THE_OWNER_TOOK_OFF) {
-      expect(screen.queryByText(new RegExp(sentence.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))), sentence).toBeNull()
+      expect(
+        screen.queryByText(new RegExp(sentence.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))),
+        sentence,
+      ).toBeNull()
     }
 
     expect(screen.queryByRole('heading', { name: 'Podaci koji se ne menjaju ovde' })).toBeNull()
     expect(screen.queryByRole('textbox', { name: /Adresa elektronske pošte/ })).toBeNull()
-    expect(screen.queryByText(`M ${hisCategoryFromMe(ME).ageBand}`), 'the category of the box that is gone').toBeNull()
+    expect(
+      screen.queryByText(`M ${hisCategoryFromMe(ME).ageBand}`),
+      'the category of the box that is gone',
+    ).toBeNull()
   })
 
   it('leaves no control of the screen naming a sentence that is not there', async () => {
@@ -722,7 +753,10 @@ describe('what the owner took off the settings screen', () => {
 
     for (const one of document.querySelectorAll('[aria-describedby]')) {
       for (const id of (one.getAttribute('aria-describedby') ?? '').split(/\s+/).filter(Boolean)) {
-        expect(document.getElementById(id), `${id} is named by a control and is not on the page`).not.toBeNull()
+        expect(
+          document.getElementById(id),
+          `${id} is named by a control and is not on the page`,
+        ).not.toBeNull()
       }
     }
   })
@@ -766,7 +800,76 @@ describe('changing a password from inside', () => {
     expect(button).toHaveAccessibleDescription(new RegExp(sr.account.passwordSignsOthersOut))
   })
 
-  it('has nothing to press until all three boxes are filled', async () => {
+  /* PDL 24.11.2026, „Popuni sva tri polja. Ovo na podešavanjima ne treba da stoji, sumanuto je":
+     the button is live from the start and the sentence is gone. */
+  it('opens with no sentence about filling in and a button that is not held', async () => {
+    renderAt('/sr/podesavanja', 'competitor', ME.memberNumber)
+
+    const panel = await passwordPanel()
+    const button = within(panel).getByRole('button', { name: sr.account.passwordSubmit })
+
+    expect(within(panel).queryByText(/Popuni sva tri polja/)).toBeNull()
+    expect(button).not.toHaveAttribute('aria-disabled', 'true')
+    expect(button).not.toHaveAccessibleDescription(/Popuni sva tri polja/)
+    expect(panel.querySelectorAll('[aria-invalid="true"]')).toHaveLength(0)
+  })
+
+  it.each([
+    ['only the old one is typed', ['Trenutna lozinka'], ['Nova lozinka', 'Ponovi novu lozinku']],
+    ['only the new one is typed', ['Nova lozinka'], ['Trenutna lozinka', 'Ponovi novu lozinku']],
+    ['only the repeat is typed', ['Ponovi novu lozinku'], ['Trenutna lozinka', 'Nova lozinka']],
+    ['nothing is typed', [], ['Trenutna lozinka', 'Nova lozinka', 'Ponovi novu lozinku']],
+  ])('names every empty box and sends nothing when %s', async (_name, typed, empty) => {
+    const user = setupUser()
+    let asked: Asked[] = []
+    ;({ stop, asked } = serverThat((path, init) =>
+      path === '/api/me/password' && init?.method === 'PUT' ? answeredWith(204) : null,
+    ))
+
+    renderAt('/sr/podesavanja', 'competitor', ME.memberNumber)
+
+    const panel = await passwordPanel()
+    const box = (label: string) =>
+      inputElement(within(panel).getByLabelText(new RegExp(`^${label}`)))
+
+    for (const label of typed) {
+      await user.type(box(label), 'something')
+    }
+
+    await user.click(within(panel).getByRole('button', { name: sr.account.passwordSubmit }))
+
+    for (const label of empty) {
+      expect(box(label)).toHaveAttribute('aria-invalid', 'true')
+      expect(box(label)).toHaveAccessibleDescription(sr.form.errors.required)
+    }
+
+    for (const label of typed) {
+      expect(box(label)).toHaveAttribute('aria-invalid', 'false')
+      expect(box(label)).not.toHaveAccessibleDescription(sr.form.errors.required)
+    }
+
+    expect(within(panel).getAllByText(sr.form.errors.required)).toHaveLength(empty.length)
+    expect(box(at(empty, 0))).toHaveFocus()
+    expect(asked.filter((one) => one.path === '/api/me/password')).toHaveLength(0)
+  })
+
+  it('takes the error from a box the moment something is typed into it', async () => {
+    const user = setupUser()
+
+    renderAt('/sr/podesavanja', 'competitor', ME.memberNumber)
+
+    const panel = await passwordPanel()
+
+    await user.click(within(panel).getByRole('button', { name: sr.account.passwordSubmit }))
+    expect(within(panel).getAllByText(sr.form.errors.required)).toHaveLength(3)
+
+    await user.type(within(panel).getByLabelText(/^Nova lozinka/), 'x')
+
+    expect(within(panel).getAllByText(sr.form.errors.required)).toHaveLength(2)
+    expect(within(panel).getByLabelText(/^Nova lozinka/)).toHaveAttribute('aria-invalid', 'false')
+  })
+
+  it('puts the cursor in the repeat box when it is the only one left empty', async () => {
     const user = setupUser()
 
     renderAt('/sr/podesavanja', 'competitor', ME.memberNumber)
@@ -774,12 +877,43 @@ describe('changing a password from inside', () => {
     const panel = await passwordPanel()
 
     await user.type(within(panel).getByLabelText(/Trenutna lozinka/), 'the old one')
+    await user.type(within(panel).getByLabelText(/^Nova lozinka/), 'a brand new one')
+    await user.click(within(panel).getByRole('button', { name: sr.account.passwordSubmit }))
 
-    expect(within(panel).getByRole('button', { name: sr.account.passwordSubmit })).toHaveAttribute(
-      'aria-disabled',
-      'true',
-    )
+    expect(within(panel).getByLabelText(/Ponovi novu lozinku/)).toHaveFocus()
+    expect(within(panel).getAllByText(sr.form.errors.required)).toHaveLength(1)
   })
+
+  it.each([
+    ['Trenutna lozinka', ['Nova lozinka', 'Ponovi novu lozinku']],
+    ['Ponovi novu lozinku', ['Trenutna lozinka', 'Nova lozinka']],
+  ])(
+    'takes only the error of %s when it is typed into, and leaves the others',
+    async (label, left) => {
+      const user = setupUser()
+
+      renderAt('/sr/podesavanja', 'competitor', ME.memberNumber)
+
+      const panel = await passwordPanel()
+      const box = (name: string) =>
+        inputElement(within(panel).getByLabelText(new RegExp(`^${name}`)))
+
+      await user.click(within(panel).getByRole('button', { name: sr.account.passwordSubmit }))
+      expect(within(panel).getAllByText(sr.form.errors.required)).toHaveLength(3)
+
+      await user.type(box(label), 'x')
+
+      expect(box(label)).toHaveAttribute('aria-invalid', 'false')
+      expect(box(label)).not.toHaveAccessibleDescription(sr.form.errors.required)
+
+      for (const other of left) {
+        expect(box(other)).toHaveAttribute('aria-invalid', 'true')
+        expect(box(other)).toHaveAccessibleDescription(sr.form.errors.required)
+      }
+
+      expect(within(panel).getAllByText(sr.form.errors.required)).toHaveLength(2)
+    },
+  )
 
   /**
    * <p><b>The repeat is sent as itself and never as the new one twice.</b> That is the
@@ -964,7 +1098,14 @@ describe('changing a password from inside', () => {
       })
 
       expect(
-        JSON.parse(String(at(asked.filter((one) => one.path === '/api/me/password'), 0).init?.body)),
+        JSON.parse(
+          String(
+            at(
+              asked.filter((one) => one.path === '/api/me/password'),
+              0,
+            ).init?.body,
+          ),
+        ),
         'the passwords were not sent at all, so this sweep measures nothing',
       ).toEqual({ oldPassword: OLD, password: FRESH, passwordRepeat: REPEATED })
 
@@ -986,7 +1127,10 @@ describe('changing a password from inside', () => {
       ]
 
       for (const typed of [OLD, FRESH, REPEATED]) {
-        expect(everywhereElse.filter((one) => one.includes(typed)), typed).toEqual([])
+        expect(
+          everywhereElse.filter((one) => one.includes(typed)),
+          typed,
+        ).toEqual([])
       }
     } finally {
       vi.restoreAllMocks()

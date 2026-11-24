@@ -454,6 +454,11 @@ describe('a sentence with a value put into it', () => {
          the next event in the shape every day of the portal is written, which nothing governs. */
       'leagues.yearHeld',
       'leagues.yearNext <- formatShortDate',
+      /* The administration's choice of a member's category on his card (24.11.2026, `TheMembersCategory.tsx`): the
+         same values as the member's own three sentences, said about him. */
+      'memberData.categoryClosed',
+      'memberData.categoryFor',
+      'memberData.categoryHeRunsIn',
       'membership.active',
       /* The season on sale a member already holds, a bare year after „za" (PDL P8, 18.10.2026). */
       'membership.alreadyPaid',

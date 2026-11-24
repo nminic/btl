@@ -2065,7 +2065,6 @@
     "repeatPassword": "Repeat the new password",
     "passwordSignsOthersOut": "When you change the password, you will be signed out on every other device. This one stays signed in.",
     "passwordSubmit": "Change the password",
-    "passwordFillFirst": "Fill in all three fields.",
     "passwordDone": "The password has been changed. The other devices have been signed out.",
     "passwordFormIsNotComplete": "All three fields must be filled in, and the two new ones the same and at least {count} characters long.",
     "oldPasswordIsWrong": "The current password is not right. Try again.",
@@ -2111,6 +2110,9 @@
     }
   },
   "memberData": {
+    "categoryFor": "Category for the {season} season",
+    "categoryClosed": "The rookie category is not available to this member, because they have an official season with {points} points or more.",
+    "categoryHeRunsIn": "In the {season} season the member competes in the category: {category}",
     "nothingChanged": "No detail was changed.",
     "formNotComplete": "A field is not filled in the way the form asks. Check it and save again.",
     "notTakenHere": "The server does not take one of the fields that were sent. Refresh the page and save again.",

@@ -2065,7 +2065,6 @@
     "repeatPassword": "Ponovi novu lozinku",
     "passwordSignsOthersOut": "Kad promeniš lozinku, bićeš odjavljen sa svih ostalih uređaja. Ovaj ostaje prijavljen.",
     "passwordSubmit": "Promeni lozinku",
-    "passwordFillFirst": "Popuni sva tri polja.",
     "passwordDone": "Lozinka je promenjena. Ostali uređaji su odjavljeni.",
     "passwordFormIsNotComplete": "Sva tri polja moraju da budu popunjena, a dve nove iste i duge najmanje {count} znakova.",
     "oldPasswordIsWrong": "Trenutna lozinka nije tačna. Pokušaj ponovo.",
@@ -2111,6 +2110,9 @@
     }
   },
   "memberData": {
+    "categoryFor": "Kategorija za sezonu {season}",
+    "categoryClosed": "Početnička kategorija ovom članu nije dostupna, jer ima zvaničnu sezonu sa {points} i više bodova.",
+    "categoryHeRunsIn": "U sezoni {season} član se takmiči u kategoriji: {category}",
     "nothingChanged": "Nijedan podatak nije izmenjen.",
     "formNotComplete": "Neko polje nije popunjeno onako kako ga forma traži. Proveri ga pa sačuvaj ponovo.",
     "notTakenHere": "Server ne prima jedno od poslatih polja. Osveži stranu pa sačuvaj ponovo.",

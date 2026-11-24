@@ -26,7 +26,8 @@ import java.util.regex.Pattern;
  * one moment and not a fact about the member: V8 keeps the consent as evidence (PDL, „Uz roditeljski
  * potpis čuvaju se potpis, relacija, datum i vreme, i IP adresa"), and evidence that could be edited
  * would no longer be evidence. And the choice of the beginners' category, which has a screen and a
- * route of its own ({@link MeCategoryWriteApi}) and rules about when it may move. The last three are
+ * route of its own ({@link MeCategoryWriteApi}) and rules about when it may move; on this card the
+ * administration chooses it through a route of its own as well ({@link MemberCategoryApi}, 24.11.2026). The last three are
  * the assistant's reasoning, told to the owner's side as such on 22.10.2026; not his words.
  *
  * <p><b>THE DOCUMENT NUMBER AND THE FATHER'S NAME ARE HERE, AND ONLY HERE.</b> PDL P32, 20.08.2026:
