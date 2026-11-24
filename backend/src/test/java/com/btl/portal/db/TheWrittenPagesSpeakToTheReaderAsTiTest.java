@@ -1,5 +1,6 @@
 package com.btl.portal.db;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -39,6 +40,15 @@ class TheWrittenPagesSpeakToTheReaderAsTiTest extends DatabaseTest {
 	static final String TERMS = "uslovi-koriscenja";
 	static final String RULEBOOK = "pravilnik";
 	static final String PRESIDENT = "rec-predsednika";
+
+	/**
+	 * V110 (24.11.2026) later took a row out of the policy and moved its sign-off, so what is asked here is asked of the text as
+	 * V109 left it: the words V107 edited, and the day it signed the three documents off, are the ones this file is about.
+	 */
+	@BeforeEach
+	void theTextAsV109LeftIt() {
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "110");
+	}
 
 	/**
 	 * The words of address that are plural-you in Serbian, whole words only (a letter on either side means another word):

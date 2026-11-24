@@ -292,9 +292,9 @@ const OPENING: { file: string; how: How; why: string; calls?: { shape: Shape; ca
   },
   {
     file: 'pages/admin/MemberSeasons.tsx',
-    how: 'boundary',
-    why: 'MY REASONING, and not a list: which boxes of the column „Sezone" ACT, not which seasons are drawn. Every season of the league is drawn from the member\'s own read whatever `/api/frozen-seasons` answers; a read of it that failed or is on its way leaves the box of every season but the one on sale switched off, which is the side the route refuses on anyway (`MemberMembershipApi.whyNot`, the row of the freeze and never the clock), so nothing is offered that the server would not do. Written 24.11.2026 with the branch `b-clanstvo-po-sezoni`.',
-    calls: [{ shape: 'dataOr', call: 'dataOr(useFrozenSeasons(), [])' }],
+    how: 'says',
+    why: 'Decision of 24.11.2026 (owner, PDL: „Kad ekran ne uspe da pročita koje su sezone zamrznute, ispod spiska sezona piše rečenica."), held by `pages/admin/frozenSeasonsUnreadable.test.tsx`: where `/api/frozen-seasons` failed, the opened list of seasons says `admin.pastSeasonsCannotBeChanged` under itself, and says nothing while the read is on its way or once it was read after a failure. The boxes of the past seasons stay switched off in all three, which is the side the route refuses on anyway (`MemberMembershipApi.whyNot`, the row of the freeze and never the clock). Every season of the league is still drawn from the member\'s own read, so the empty list below is only what decides which boxes ACT, and the failure is said beside it. MY REASONING for the call: no button that asks again, because the decision names the sentence and nothing else, and the list is read again on every visit to the screen.',
+    calls: [{ shape: 'dataOr', call: 'dataOr(frozenRead, [])' }],
   },
   {
     file: 'pages/admin/PendingQueue.tsx',

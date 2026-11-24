@@ -180,6 +180,14 @@
   text-align: start;
 }
 
+/* The sentence under the list when the frozen seasons could not be read (`MemberSeasons.tsx`). It wraps
+   inside the column like any text, and carries no `display`, so `hidden` is left to the browser. */
+.members-seasons__unreadable {
+  margin: var(--space-8) 0 0;
+  max-inline-size: 28ch;
+  color: var(--text);
+}
+
 .members-seasons__season {
   display: inline-flex;
   align-items: center;
