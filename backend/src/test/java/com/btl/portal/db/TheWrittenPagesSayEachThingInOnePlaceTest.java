@@ -380,8 +380,10 @@ class TheWrittenPagesSayEachThingInOnePlaceTest extends DatabaseTest {
 		jdbc.execute(migrationSql("102"));
 		/* And V107 over that, because the Serbian sections the portal serves speak to the reader as ti (21.11.2026). */
 		jdbc.execute(migrationSql("107"));
+		/* And V110 over that, because the policy the portal serves has lost the row about the theme and carries its sign-off (24.11.2026). */
+		jdbc.execute(migrationSql("110"));
 
-		assertThat(everyText()).as("V71, V73, V76, V77, V78, V80, V89, V90, V93, V94, V95, V96, V98, V100, V102 and V107 over the text V71 found do not give the text the portal serves")
+		assertThat(everyText()).as("V71, V73, V76, V77, V78, V80, V89, V90, V93, V94, V95, V96, V98, V100, V102, V107 and V110 over the text V71 found do not give the text the portal serves")
 				.isEqualTo(finished);
 	}
 
