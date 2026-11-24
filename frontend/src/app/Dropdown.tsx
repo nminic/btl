@@ -1,5 +1,22 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { outsideOf } from '../components/outsideOf'
+
+/* WHAT A PANEL HAD WHEN THE HEADER IS DRAWN AGAIN IN THE OTHER SHAPE (PENDING, review of PR 755, 17.11.2026:
+ * „pri promeni širine preko 700 px u hodu (rotacija telefona) fokus pada na BODY, a otvoren panel naloga se
+ * zatvara"). The envelope and the picture stand after the words on a telephone and after the language on a
+ * desktop, two orders of the document and not one moved by a stylesheet (`app/phoneHeader.ts`), so turning the
+ * window across 700px takes the old panel down and draws a new one somewhere else, and a reader who had it open,
+ * or had the focus on it, met a page that had forgotten both.
+ *
+ * Said by the panel itself and kept here, in one home, by the id the two shapes give it: whether it is open, which
+ * every instance writes as it changes, and where the focus was, which the one that goes writes as it goes. How often
+ * it was opened is not kept: what a panel holds asks again when it is drawn, which a redraw is. The one drawn in its place takes both before it is painted. It is read while it is being
+ * DRAWN, which is before the old one is taken down, so what is kept is deleted only when the old one goes, and
+ * nobody who signs out inherits an open panel: nothing is left to read once the header is gone.
+ *
+ * Where the focus was is a position, not an element: the button, or the n-th control inside the panel. */
+const keptOpenness = new Map<string, boolean>()
+const keptFocus = new Map<string, 'button' | number>()
 
 /* One panel that opens under a button, used by the navigation groups, the
  * account picture and the inbox. Written once because closing on a click
@@ -26,10 +43,53 @@ export function Dropdown({
    */
   children: (close: () => void, opens: number) => ReactNode
 }) {
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(() => keptOpenness.get(id) ?? false)
   const [opens, setOpens] = useState(0)
   const box = useRef<HTMLDivElement>(null)
   const button = useRef<HTMLButtonElement>(null)
+  const panel = useRef<HTMLDivElement>(null)
+
+  useLayoutEffect(() => {
+    keptOpenness.set(id, open)
+  }, [id, open])
+
+  useLayoutEffect(() => {
+    const theButton = button.current
+    const thePanel = panel.current
+    const controls = () => {
+      const found: HTMLElement[] = []
+
+      thePanel?.querySelectorAll<HTMLElement>('a, button').forEach((one) => found.push(one))
+
+      return found
+    }
+    const to = keptFocus.get(id)
+
+    keptFocus.delete(id)
+
+    if (to === 'button') {
+      theButton?.focus()
+    } else if (to !== undefined) {
+      controls()[to]?.focus()
+    }
+
+    return () => {
+      keptOpenness.delete(id)
+
+      const now = document.activeElement
+
+      if (theButton?.contains(now)) {
+        keptFocus.set(id, 'button')
+      } else if (thePanel?.contains(now)) {
+        keptFocus.set(id, controls().findIndex((one) => one === now))
+      }
+
+      /* Taken by the panel that replaces this one within the same commit, and by nobody when the header is
+         gone (somebody signed out), in which case it must not wait for the next reader to sign in. */
+      queueMicrotask(() => keptFocus.delete(id))
+    }
+    /* Once, for the life of this instance: `id` is a constant of the caller. */
+  }, [id])
 
   useEffect(() => {
     if (!open) {
@@ -105,7 +165,7 @@ export function Dropdown({
         {trigger}
       </button>
 
-      <div className={`${className}__panel`} id={id} hidden={!open}>
+      <div className={`${className}__panel`} id={id} hidden={!open} ref={panel}>
         {children(() => setOpen(false), opens)}
       </div>
     </div>

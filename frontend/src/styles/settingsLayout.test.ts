@@ -48,6 +48,21 @@ describe('two panels of the settings, side by side', () => {
     expect(ruleFor(MEMBER_CSS, '.member__row', 'Member.css').getPropertyValue('align-items')).toBe('stretch')
   })
 
+  /* THE RIGHT COLUMN, since 24.11.2026 (owner, PDL „Portal ima samo tamnu temu; svetla se izbacuje": „boks iz
+     priloga prebaci odmah ispod sekcije Privatnosti (a desno od promene šifre)"): the privacy and the mail one
+     under the other in one cell of the pair, the page's own gap between them, and the last box taking what is
+     left so the column ends where the password beside it ends. Where they then land is Chrome's to say
+     (`geometry/settings.geometry.ts`). */
+  it('stacks the privacy and the mail in one cell, and lets the last of them take what is left', () => {
+    const column = ruleFor(MEMBER_CSS, '.member__column', 'Member.css')
+
+    expect(column.getPropertyValue('display')).toBe('flex')
+    expect(column.getPropertyValue('flex-direction')).toBe('column')
+    expect(column.getPropertyValue('gap')).toBe(ruleFor(MEMBER_CSS, '.member', 'Member.css').getPropertyValue('gap'))
+    expect(column.getPropertyValue('min-width')).toBe('0px')
+    expect(ruleFor(MEMBER_CSS, '.member__column > :last-child', 'Member.css').getPropertyValue('flex')).toBe('1 1 auto')
+  })
+
   it('leaves a panel with no neighbour the whole row', () => {
     const rule = ruleInMedia(
       MEMBER_CSS,

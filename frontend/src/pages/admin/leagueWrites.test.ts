@@ -21,6 +21,7 @@ describe('the body a competition is written with', () => {
         season: '2027',
         rules: '',
         prizes: '',
+        highlightsEvents: true,
       }),
     ).toEqual({
       name: 'Vojvođanska liga 2027',
@@ -28,6 +29,7 @@ describe('the body a competition is written with', () => {
       season: 2027,
       rules: '',
       prizes: '',
+      highlightsEvents: true,
     })
   })
 
@@ -41,7 +43,17 @@ describe('the body a competition is written with', () => {
       season: 2027,
       rules: '',
       prizes: '',
+      highlightsEvents: false,
     })
+  })
+
+  it('sends the box „Istakni događaje" as a flag, and only a tick is true', () => {
+    /* A checkbox writes `true` or `false` (`forms/records.ts`); the word „true" or anything else is not a tick,
+       so a value that is not the flag cannot tick the box on a league nobody ticked. */
+    for (const [given, sent] of [[true, true], [false, false], ['true', false]] as const) {
+      expect(upsertFrom({ name: 'Liga', slug: 'liga', season: '2027', highlightsEvents: given }).highlightsEvents)
+        .toBe(sent)
+    }
   })
 })
 

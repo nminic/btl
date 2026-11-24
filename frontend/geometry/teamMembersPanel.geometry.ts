@@ -13,8 +13,8 @@ import type { Answers, At } from './support/harness.ts'
  *
  * <p>The panel of a team stands in a row of a table inside `.table-scroll`, which clips (`overflow-x: auto` makes the
  * vertical overflow clip too). A list that is `absolute` inside its box was cut to the height of the row, and the
- * table grew a scroll bar beside it. Asked of Chrome, **with the list open**, on a telephone, a tablet and a desktop, in
- * both themes, and **in the two places the list was cut**: a table with ONE team, and the LAST row of a table with
+ * table grew a scroll bar beside it. Asked of Chrome, **with the list open**, on a telephone, a tablet and a desktop,
+ * and **in the two places the list was cut**: a table with ONE team, and the LAST row of a table with
  * several. What is held:
  *
  * - the list is whole in the window (`top >= 0`, `bottom <= the window`, inside it sideways);
@@ -79,14 +79,25 @@ const SIZES: At[] = [
   { width: 1280, text: 100, height: 600 },
 ]
 
-const AT: At[] = SIZES.flatMap((one) => (['light', 'dark'] as const).map((theme): At => ({ ...one, theme })))
+/** A telephone with the text enlarged (WCAG 2.2 SC 1.4.4): at 150 % and 200 % a name is wider than the window, so the
+ *  rows go on to a second line and the box is read by scrolling the table (review of PR 813, high: a ceiling of
+ *  `100vw - 4.5rem` was 216px at 200 % on 360px and cut every row and the chosen name). One theme, which is all this
+ *  question depends on. */
+const LARGE_TEXT: At[] = [
+  { width: 360, text: 150 },
+  { width: 360, text: 200 },
+  { width: 390, text: 200 },
+  { width: 412, text: 200 },
+]
+
+const AT: At[] = SIZES
 
 for (const [which, answers, pick, phoneOnly] of [
   ['the table of one team', ONE_TEAM, 'first', false],
   ['the last row of a table', ADMINISTRATION, 'last', false],
   ['short names', SHORT_NAMES, 'first', true],
 ] as const) {
-  for (const at of phoneOnly ? AT.filter((one) => one.width < 768) : AT) {
+  for (const at of phoneOnly ? AT.filter((one) => one.width < 768) : [...AT, ...LARGE_TEXT]) {
     test(`the list of members of a team opens whole and no scroll bar comes of it, ${which}, ${label(at)}`, async ({
       open,
     }) => {
@@ -119,6 +130,61 @@ for (const [which, answers, pick, phoneOnly] of [
       /* The panel itself, with the list shut, does not make the page scroll sideways (PR 810, „bočno klizanje sa
          otvorenim panelom članova na 768 px nije mereno"). */
       expect(before.page, 'the open panel makes the page scroll sideways').toBeLessThanOrEqual(0)
+
+      /* **THE BOX AND ITS WHOLE ARROW STAND INSIDE THE VISIBLE PART OF THE FRAME OF THE TABLE**, asked before anything
+         is pressed in the panel (review of PR 813, high; owner's decision, PDL „Na telefonu polje nikad nije šire od
+         vidljivog okvira tabele”). The frame scrolls the wide table inside itself and clips what is past it, so a box
+         that runs out of it has no arrow to be seen and a focus ring that is cut. The right edge of the box, with the
+         ring's room, is not past where the frame shows (`left + clientWidth`), at every text size. */
+      const standing = await box.evaluate((one) => {
+        const frame = one.closest('.table-scroll')
+
+        if (frame === null) {
+          return null
+        }
+
+        const framed = frame.getBoundingClientRect()
+        const inside = one.getBoundingClientRect()
+
+        /* `--space-8`, the padding of a cell, as the browser resolves it at this text size. */
+        const probe = document.createElement('div')
+
+        probe.style.inlineSize = 'var(--space-8)'
+        probe.style.position = 'absolute'
+        document.body.append(probe)
+
+        const pad = probe.getBoundingClientRect().width
+
+        probe.remove()
+
+        return {
+          shownRight: framed.left + frame.clientWidth,
+          shownLeft: framed.left,
+          left: inside.left,
+          right: inside.right,
+          pad,
+        }
+      })
+
+      if (standing === null) {
+        throw notMeasured('the box stands in no frame of a table')
+      }
+
+      expect(standing.right + 4, 'the box and its arrow run out of the visible frame of the table').toBeLessThanOrEqual(
+        standing.shownRight,
+      )
+      expect(standing.left, 'the box starts before the visible frame of the table').toBeGreaterThanOrEqual(standing.shownLeft)
+
+      if (at.width < 768 && !phoneOnly) {
+        /* AND IT TAKES WHAT THE FRAME SHOWS where the names are wider than that (every one of these: 360px at 100 %
+           is already narrower than the longest name, and the larger text only more): not narrower than the frame by
+           more than the cell's padding at both ends and the room of the ring. A ceiling in a unit that grows with
+           the text (`100vw - 4.5rem`) leaves the box well short of it, and cuts the name for nothing. */
+        expect(
+          standing.shownRight - standing.right,
+          'the box stops well short of what the frame shows, so the names are cut for nothing',
+        ).toBeLessThanOrEqual(standing.pad * 2)
+      }
 
       /* From the first character the box offers every member whose label holds it, and every label holds a nought. */
       await box.fill('0')
@@ -181,15 +247,22 @@ for (const [which, answers, pick, phoneOnly] of [
       expect(seen.bottom, 'the list ends inside the window').toBeLessThanOrEqual(seen.window + SLACK)
       expect(seen.left, 'the list starts inside the page').toBeGreaterThanOrEqual(-SLACK)
       expect(seen.right, 'the list ends inside the page').toBeLessThanOrEqual(seen.across + SLACK)
-      expect(seen.shown, 'the list shows no more than a row or two').toBeGreaterThan(2)
+      /* At 100 % a few rows. At 150 % and 200 % a name takes two or three lines in a list no wider than the frame, and
+         the list the window leaves under the box (`roomFor`, 144px at the least, in pixels) may show none of them
+         whole: it scrolls inside itself, and the rows reached are asked about below. */
+      if (at.text === 100) {
+        expect(seen.shown, 'the list shows no more than a row or two').toBeGreaterThan(2)
+      }
       expect(seen.unreached, 'rows of the list that something covers or cuts').toBe(0)
       expect(seen.frameTall, 'the table gained a vertical scroll bar').toBeLessThanOrEqual(1)
       expect(seen.frameWide, 'the list made the table scroll sideways further').toBeLessThanOrEqual(frameWideBefore + 1)
       expect(seen.pageWide, 'the page scrolls sideways').toBeLessThanOrEqual(0)
 
+      /* No row is cut, at any width and any text size: a name that does not fit goes on to a second line. */
+      expect(seen.cut, `a name is cut (by ${String(seen.cutBy)}px), the box is narrower than the longest`).toBe(0)
+
       if (at.width >= 768) {
         /* A desktop and a tablet: the box is as wide as its longest name and no wider, and the button is at its side. */
-        expect(seen.cut, `a name is cut with an ellipsis (by ${String(seen.cutBy)}px), the box is narrower than the longest`).toBe(0)
         expect(seen.field.right - seen.field.left, 'the box takes the whole row').toBeLessThan(seen.cell * 0.6)
         expect(seen.button.left, 'the button starts before the box ends').toBeGreaterThanOrEqual(seen.field.right - SLACK)
         expect(seen.button.left - seen.field.right, 'the button is not at the side of the box').toBeLessThanOrEqual(40)
@@ -197,6 +270,32 @@ for (const [which, answers, pick, phoneOnly] of [
       } else {
         /* A telephone: the box in one row and the button in the next. */
         expect(seen.button.top, 'the button is not under the box').toBeGreaterThanOrEqual(seen.field.bottom - SLACK)
+      }
+
+      /* THE NAME CHOSEN IS THE ONE PRESSED, AND WHOLE IN THE BOX where the box can hold it. The longest of the list is
+         pressed (a row is chosen on the press), after every assertion above, so a position that is wrong fails on its
+         own sentence and not on the time of a press that cannot be made. On a telephone with the text enlarged the box
+         may show the chosen name shortened: the member is chosen from rows that carry the whole name and number, and
+         that is what is asked of them (owner's decision, PDL „Na telefonu polje nikad nije šire od vidljivog okvira
+         tabele”, 24.11.2026). Everywhere else the name stays whole in the box (review of PR 813, high). */
+      const longest = await page.evaluate(
+        (id) => [...(document.getElementById(`${id}-list`)?.children ?? [])]
+          .map((one) => (one.textContent ?? '').trim())
+          .reduce((most, one) => (one.length > most.length ? one : most), ''),
+        `team-${team}-member`,
+      )
+
+      await page.locator(`#team-${team}-member-list`).getByRole('option', { name: longest, exact: true }).click()
+
+      const chosen = await box.evaluate((one) => ({
+        value: one instanceof HTMLInputElement ? one.value : null,
+        runsOut: one.scrollWidth - one.clientWidth,
+      }))
+
+      expect(chosen.value, 'the box holds another name than the one pressed').toBe(longest)
+
+      if (at.width >= 768 || at.text === 100) {
+        expect(chosen.runsOut, 'the name chosen runs out of the box, and its number with it').toBeLessThanOrEqual(0.5)
       }
     })
   }

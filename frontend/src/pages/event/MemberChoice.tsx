@@ -58,12 +58,16 @@ import './MemberChoice.css'
 /** Where the box stands in the window, and the room the list has under it. */
 function seatOf(box: HTMLInputElement) {
   const found = box.getBoundingClientRect()
+  /* THE LIST IS NEVER WIDER THAN THE WINDOW AND NEVER PUT OUTSIDE IT, whatever the box is: the box of a telephone is
+     read inside a table that is wider than the screen (review of PR 813, high). */
+  const width = Math.min(found.width, window.innerWidth)
+  const left = Math.max(0, Math.min(found.left, window.innerWidth - width))
 
   return {
     room: roomFor(found.bottom, window.innerHeight),
     bottom: found.bottom + window.scrollY,
-    left: found.left + window.scrollX,
-    width: found.width,
+    left: left + window.scrollX,
+    width,
   }
 }
 
@@ -236,7 +240,7 @@ export function MemberChoice({
           sentence about another list. */}
       {drawn && createPortal(
         <ul
-          className="member-choice__list"
+          className={fitted ? 'member-choice__list member-choice__list--fitted' : 'member-choice__list'}
           id={listId}
           role="listbox"
           aria-label={t('form.members')}

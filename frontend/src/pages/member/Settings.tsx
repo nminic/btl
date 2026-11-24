@@ -3,8 +3,6 @@ import { MEMBERSHIP_ADDRESS } from '../../app/routes'
 import { Resource } from '../../components/Resource'
 import type { Competitor } from '../../data/types'
 import { useCompetitors, type ResourceState } from '../../data/useResource'
-import { useTheme } from '../../app/useTheme'
-import type { Theme } from '../../app/themeContext'
 import { Sentence } from '../../i18n/Sentence'
 import { useI18n } from '../../i18n/useI18n'
 import { MEMBERS, recordsOf } from '../admin/entityForms'
@@ -15,12 +13,12 @@ import { ProfileVisibility } from './ProfileVisibility'
 import { useScreenForEveryAccount } from './memberScreen'
 import './Member.css'
 
-const THEMES: Theme[] = ['dark', 'light']
-
-/* Where the cog in the header leads. The theme switch used to sit in the
- * header; it moved here because the header is for getting around the portal,
- * and a control you press once a year does not belong next to the ones you
- * press every visit (PDL P28a).
+/* Where the cog in the header leads.
+ *
+ * **THERE IS NO CHOICE OF THEME HERE, SINCE 24.11.2026** (owner, PDL „Portal ima samo tamnu temu;
+ * svetla se izbacuje": „Da, izbaci, a onda boks iz priloga prebaci odmah ispod sekcije Privatnosti (a
+ * desno od promene šifre)."). The portal has one theme, the dark one, so there is nothing to choose; the
+ * box „Izgled" left, and the box of the mail took its place in the column beside the password.
  *
  * **THERE IS NO NOTIFICATION PANEL HERE, AND THAT IS A DECISION RATHER THAN AN
  * OVERSIGHT** (PDL, owner, 28.09.2026: „Ekran za podesavanja obavestenja se sklanja u
@@ -40,7 +38,7 @@ const THEMES: Theme[] = ['dark', 'light']
  * <p><b>THE SCREEN HAS THREE SHAPES SINCE 23.10.2026, AND WHICH ONE IS DRAWN IS DECIDED BY THE
  * HOOK AND BY NOTHING ON THIS PAGE</b> (`memberScreen.tsx`, `useScreenForEveryAccount`). The fourth
  * of 17.10.2026, somebody who registered and has not paid, is gone: the address sends him to the
- * page he pays on and he is not drawn the password or the theme (PDL 22.10.2026, „Član koji još
+ * page he pays on and he is not drawn the password (PDL 22.10.2026, „Član koji još
  * nije platio: bez reči nalog, samo Članarina": „Sve opcije koje mu nisu dostupne privremeno (dakle
  * sve osim Članarine) ne treba da mu uopšte budu dostupne"). The three that are left are below, and
  * the first two are the ones of 11.10.2026. PDL P8,
@@ -48,13 +46,13 @@ const THEMES: Theme[] = ['dark', 'light']
  * the owner between offered outcomes - the sentences are the record's and not his own words:
  *
  * <ul>
- * <li><b>A member whose fee stands</b> is drawn the password, the switch that hides his profile, the
- * theme and the language of his mail. His picture and his words about himself are not here since
+ * <li><b>A member whose fee stands</b> is drawn the password, the switch that hides his profile and
+ * the language of his mail. His picture and his words about himself are not here since
  * 06.11.2026: they stood at the bottom of the card „Podaci" of his profile, and stand on „Moji podaci"
  * since 07.11.2026 (owner, PDL „Boksovi
  * „Profilna slika" i „Tekst o sebi" prelaze sa Podešavanja": „Podešavanja ostaju podešavanja naloga
  * (lozinka, privatnost, tema, jezik pošte)").</li>
- * <li><b>A member whose fee has lapsed</b> is drawn the theme and one sentence: his data and his
+ * <li><b>A member whose fee has lapsed</b> is drawn the language of his mail and one sentence: his data and his
  * password are answered 404 (the addition of 11.10.2026: „izmena podataka (PUT /api/me) i lozinke
  * (PUT /api/me/password) mu daje 404"), and so is the switch, which this screen did not draw him
  * before either - he is on no row of the public list it is drawn from. That is now said by the shape
@@ -64,20 +62,20 @@ const THEMES: Theme[] = ['dark', 'light']
  * <li><b>An account with no competitor record</b> - a moderator, a superadmin - is drawn the
  * language of its mail since 17.10.2026 (PDL, the answers of 17.10.2026: „Jezik pošte sme da promeni
  * svako ko ima nalog [...] jer je to podešavanje naloga a ne takmičarsko pravo", chosen by the owner
- * between offered outcomes; the sentence is the record's and not his own words), and **the theme and
- * the password with it, since the evening of the same day** (PDL, the answers of 17.10.2026 in the
+ * between offered outcomes; the sentence is the record's and not his own words), and **the password
+ * with it, since the evening of the same day** (PDL, the answers of 17.10.2026 in the
  * evening, chosen by the owner between offered outcomes; the sentence is the
  * record's and not his own words: „Nalog administracije bez člana na strani Podešavanja vidi sve troje: jezik pošte, izbor
  * teme i promenu lozinke"; rejected there: the language and the password without the theme, and the
- * language alone). It was told „Ovaj deo je za takmičare" before, as on every screen of the member area
+ * language alone; the theme of that sentence left the portal on 24.11.2026). It was told „Ovaj deo je za
+ * takmičare" before, as on every screen of the member area
  * (PDL P21: administration is nobody's member), and that stays true of every other screen. The
  * password route takes such an account (`MePasswordApiTest`, the case for both roles), and it is
  * the member whose fee has LAPSED that the route answers 404, which is the third shape and not this
  * one.</li>
  * </ul>
  *
- * <p>The language of the mail (`MailLanguageChoice`) is the one panel drawn in every shape, and the
- * theme is drawn in every shape too.
+ * <p>The language of the mail (`MailLanguageChoice`) is the one panel drawn in every shape.
  *
  * <p><b>The server is the authority in all four and this is only what is worth offering.</b> A
  * control drawn to a reader whose every press is refused does nothing for him, and the owner's
@@ -88,7 +86,6 @@ const THEMES: Theme[] = ['dark', 'light']
 export function Settings() {
   const { t } = useI18n()
   const who = useScreenForEveryAccount()
-  const { theme, choose } = useTheme()
   /* Above the early return, because a hook is: called after it, the order of
      hooks changes between a signed in reader and a signed out one. */
   const competitors = useCompetitors()
@@ -107,23 +104,27 @@ export function Settings() {
       <h1>{t('settings.title')}</h1>
       <p className="member__note">{t('settings.intro')}</p>
 
-      {/* **TWO TALL ROWS OF TWO COLUMNS, since 06.11.2026.** They were three since 23.10.2026 (PDL,
-          „Strana Podešavanja u tri visoka reda sa dve kolone"), and the second, the picture beside the
-          words about oneself, moved to the bottom of the card „Podaci" and from there to „Moji podaci"
-          on 07.11.2026 (owner, 06.11.2026, PDL „Boksovi
-          „Profilna slika" i „Tekst o sebi" prelaze sa Podešavanja": „Podešavanja ostaju podešavanja
-          naloga (lozinka, privatnost, tema, jezik pošte)"; `MyData.tsx`). What stays is the
-          password beside who sees the profile, then the theme beside the language of the mail. On a
-          telephone every row is one column, as the UI standard of this repository asks (`CLAUDE.md`),
-          from the same `.member__pair`; the two boxes of a row are as tall as each other (`.member__row`,
-          `Member.css`).
+      {/* **ONE TALL ROW OF TWO COLUMNS, since 24.11.2026: the password on the left, and on the right the
+          privacy with the mail under it** (owner, PDL „Portal ima samo tamnu temu; svetla se izbacuje":
+          „boks iz priloga prebaci odmah ispod sekcije Privatnosti (a desno od promene šifre)"). Until that
+          day there were two rows, the second the theme beside the mail; three before 06.11.2026, when the
+          picture and the words about oneself moved to „Moji podaci" (PDL „Boksovi „Profilna slika" i „Tekst
+          o sebi" prelaze sa Podešavanja"; `MyData.tsx`). On a telephone the row is one column, as the UI
+          standard of this repository asks (`CLAUDE.md`), from the same `.member__pair`: the password, the
+          privacy, the mail. The two columns are as tall as each other (`.member__row`), and in the right
+          one the last box takes what is left (`.member__column`, `Member.css`).
+
+          **WHERE THERE IS NO PRIVACY, THE MAIL STANDS BESIDE THE PASSWORD**, alone in the right column: an
+          administration account with no member. Where there is no password either, a member whose fee has
+          lapsed, the column is the only thing in the row and takes the whole of it, which is what a panel
+          with no neighbour has always done here (`.member__pair > :only-child`).
 
           **THE PERSONAL DATA ARE NOT ON THIS SCREEN FOR ANYBODY.** A member whose fee stands and
           somebody who has not paid yet change them on the page „Moji podaci" (PDL 07.11.2026, „Član
           svojim podacima pristupa iz glavnog menija”; 22.10.2026, „Neka ima u navigaciji stranu Moji
           Podaci dok nije odobren"), which draws the panel (`PersonalData.tsx`).
 
-          **THE FIRST ROW: THE PASSWORD, AND BESIDE IT WHO SEES THE PROFILE.** The password is drawn to a
+          **THE PASSWORD, AND BESIDE IT WHO SEES THE PROFILE.** The password is drawn to a
           member whose fee stands and to an administration account with no member (PDL, the answers of
           17.10.2026 in the evening: „Nalog administracije bez člana na strani Podešavanja vidi sve
           troje"), named for the two who see it rather than excluded for the one who does not, so a
@@ -132,13 +133,8 @@ export function Settings() {
           is not among them since 23.10.2026: he is not on this screen at all (`memberScreen.tsx`). The
           switch that hides the profile is a member's whose fee stands and nobody else's: hiding a
           profile is one of the three things somebody who has not paid may not do (PDL P8, 10.10.2026).
-          Where it is not drawn the password takes the whole row (`.member__pair > :only-child`). */}
-      {(who.standing === 'standing' || who.standing === 'account') && (
-        <div className="member__pair member__row">
-          <ChangePassword />
-          {who.standing === 'standing' && <HisPrivacy competitors={competitors} memberNumber={memberNumber} />}
-        </div>
-      )}
+          The mail is drawn in every shape: the language of the mail is an account's setting and not a
+          competitor's right (PDL, the answers of 17.10.2026). */}
 
       {/* **THE ONE SENTENCE A MEMBER WHOSE FEE HAS LAPSED IS TOLD**, since 16.10.2026 (PDL P8, the
           entry „Šta sme neplaćen član", the decision of that day, chosen by the owner between
@@ -150,38 +146,12 @@ export function Settings() {
           (`standing === 'lapsed'`) and by nothing else. */}
       {who.standing === 'lapsed' && <WhatOpensWhenTheFeeIsRenewed />}
 
-      {/* **THE SECOND ROW: THE THEME AND THE LANGUAGE OF THE MAIL**, beside each other since 18.10.2026
-          (PDL P11, owner, „Strana Podešavanja, sa snimaka": „Boksovi „Tema" i „Jezik pošte" stoje jedan
-          pored drugog u istom redu"). Drawn in every shape: the language of the mail is an account's
-          setting and not a competitor's right (PDL, the answers of 17.10.2026). */}
       <div className="member__pair member__row">
-        <section className="member__panel" aria-labelledby="settings-appearance">
-          <h2 className="profile__section" id="settings-appearance">
-            {t('settings.appearance')}
-          </h2>
-
-          <fieldset className="field field--radio">
-            <legend className="field__label">{t('settings.themeLabel')}</legend>
-            {THEMES.map((one) => (
-              <div key={one} className="field__confirm">
-                <input
-                  className="field__control"
-                  type="radio"
-                  name="theme"
-                  id={`theme-${one}`}
-                  value={one}
-                  checked={theme === one}
-                  onChange={() => choose(one)}
-                />
-                <label className="field__label" htmlFor={`theme-${one}`}>
-                  {t(one === 'dark' ? 'settings.themeDark' : 'settings.themeLight')}
-                </label>
-              </div>
-            ))}
-          </fieldset>
-        </section>
-
-        <MailLanguageChoice reader={reader} />
+        {(who.standing === 'standing' || who.standing === 'account') && <ChangePassword />}
+        <div className="member__column">
+          {who.standing === 'standing' && <HisPrivacy competitors={competitors} memberNumber={memberNumber} />}
+          <MailLanguageChoice reader={reader} />
+        </div>
       </div>
     </div>
   )

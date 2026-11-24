@@ -80,6 +80,7 @@
     "date",
     "description",
     "featured",
+    "highlighted",
     "id",
     "kind",
     "link",
@@ -201,6 +202,7 @@
     "crop.x",
     "crop.y",
     "eventIds",
+    "highlightsEvents",
     "id",
     "logo",
     "name",
@@ -309,6 +311,7 @@
     "accounts.expected",
     "accounts.firstName",
     "accounts.lastName",
+    "accounts.mayBeDeleted",
     "accounts.memberNumber",
     "accounts.price",
     "season"

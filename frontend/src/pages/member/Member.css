@@ -72,9 +72,9 @@
   margin: var(--space-16) 0 0;
 }
 
-/* TWO PANELS BESIDE EACH OTHER (PDL P11, owner, 18.10.2026, "Strana Podešavanja, sa snimaka", and
-   since 23.10.2026 the three rows of the settings: the password beside the privacy, the picture beside
-   the words about oneself, the theme beside the language of the mail). One column on a
+/* TWO PANELS BESIDE EACH OTHER (PDL P11, owner, 18.10.2026, "Strana Podešavanja, sa snimaka"; on the
+   settings since 24.11.2026 the password beside a column of the privacy and the mail, and on „Moji podaci"
+   the picture beside the words about oneself). One column on a
    telephone and two from 51.25em, the width at which the navigation unfolds (`app/Shell.css`) and
    `forms/FormRenderer.css` lays a row out in columns, so the portal has one width at which it goes
    from one column to several and not one of its own for this.
@@ -97,6 +97,24 @@
    row of the settings keeps the rule above it, each panel as tall as what it holds. */
 .member__row {
   align-items: stretch;
+}
+
+/* THE RIGHT COLUMN OF THE SETTINGS: THE PRIVACY, AND THE MAIL RIGHT UNDER IT (owner, 24.11.2026, PDL „Portal
+   ima samo tamnu temu; svetla se izbacuje": „boks iz priloga prebaci odmah ispod sekcije Privatnosti (a desno
+   od promene šifre)"). One cell of the pair, so the row still holds two boxes and the column stands beside
+   the password from 51.25em and under it on a telephone, by the rule above. The gap between the two is the
+   gap of the page (`.member`), so the mail is as far under the privacy as one box of the page is under the
+   next. The last box takes what is left of the column, so its bottom is the bottom of the password beside
+   it, which is what the two boxes of a row of the settings have done since 23.10.2026 (`.member__row`). */
+.member__column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+  min-width: 0;
+}
+
+.member__column > :last-child {
+  flex: 1 1 auto;
 }
 
 @media (min-width: 51.25em) {

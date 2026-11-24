@@ -277,11 +277,11 @@ async function isDrawn(page: Page, selector: string): Promise<boolean> {
    ground of its own and no route and no dot, from 560px the wide ground is drawn with the route, and the
    dot runs only for a reader who has not asked for less movement. What the sheet says is read there; what
    Chrome draws is read here, at every width the owner listed. */
-for (const at of WIDTHS.flatMap((one): At[] => [one, { ...one, theme: 'dark' }])) {
+for (const at of WIDTHS) {
   test(`the ground draws the drawing of its width, and the dot only where the sheet lets it at ${label(at)}`, async ({ open }) => {
     const { page, probe } = await open(at, '/sr', 'header .brand', ANSWERS)
 
-    /* Neither drawing widens the page, in either theme. */
+    /* Neither drawing widens the page. */
     expect(probe.sideways).toBe(0)
     expect(probe.widened).toBe(0)
 
@@ -426,7 +426,7 @@ async function routeTouches(page: Page): Promise<{ words: number; points: number
 /* The front page has no word on the bare page at all, so it would pass whatever the route did: the rulebook is
    text laid straight on the page (534 words) and the calendar has its heading and its notes there (13). Each
    must hold words, or this asks nothing. */
-for (const at of ([...WIDTHS, { width: 1920, text: 100 }, { width: 1220, text: 100 }] satisfies At[]).flatMap((one): At[] => [one, { ...one, theme: 'dark' }])) {
+for (const at of [...WIDTHS, { width: 1920, text: 100 }, { width: 1220, text: 100 }] satisfies At[]) {
   /* Where the lane is not drawn there is no route to meet a word (the 1920px window is added: it has the most room). */
   if (at.width < LANE_FROM || at.text !== 100) continue
 

@@ -85,6 +85,7 @@ const anEvent = (id: number, slug: string, name: string): BtlEvent => ({
   country: 'RS',
   kind: 'race',
   featured: false,
+  highlighted: false,
   description: '',
   link: '',
   copiedFrom: null,
@@ -169,7 +170,6 @@ const GRID: At[] = [
   { width: 1440, text: 100 },
   { width: 1560, text: 200 },
   { width: 1920, text: 200 },
-  { width: 1024, text: 100, theme: 'dark' },
 ]
 
 /** Where the days stand in one column, and every piece of a bar is a tile of its own. */
@@ -454,7 +454,6 @@ const daysOutOfReach = () => {
 for (const at of [
   ...[360, 390, 768, 779, 780, 1024, 1440].map((width): At => ({ width, text: 100 })),
   ...[360, 1440, 1560, 1920].map((width): At => ({ width, text: 200 })),
-  { width: 1560, text: 200, theme: 'dark' } satisfies At,
 ]) {
   test(`no day of the month is out of reach${at.text === 100 ? ', and the page does not move sideways' : ''}, ${label(at)}`, async ({ open }) => {
     const { page, probe } = await open(at, CALENDAR, READY, ANSWERS)

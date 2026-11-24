@@ -292,24 +292,23 @@ describe('the buttons one answer is chosen from', () => {
       return colour(must(given(next)[0], `${next} has no value`), [...seen, next])
     }
 
-    /** That token as the theme at `index` draws it, or as the light theme does. */
-    const inTheme = (name: string, index: number) =>
-      colour(must(given(name)[index] ?? given(name)[0], `${name} has no value`))
+    /** That token as the portal's one palette draws it. */
+    const inTheme = (name: string) => colour(must(given(name)[0], `${name} has no value`))
 
-    /* One value for the light theme and two for the dark, which is how this file
-       writes a token that flips: the query the system asks with, and the switch
-       on the page. Fewer, and a theme has quietly lost its own value. */
-    expect(given('--accent'), 'the accent no longer carries a value per theme').toHaveLength(3)
-    expect(given('--surface'), 'the surface no longer carries a value per theme').toHaveLength(3)
+    /* One value each, since the portal has one theme (PDL „Portal ima samo tamnu temu;
+       svetla se izbacuje", 24.11.2026). A second would be a second palette, and the
+       case below would measure only the first. */
+    expect(given('--accent'), 'the accent is given more than one value').toHaveLength(1)
+    expect(given('--surface'), 'the surface is given more than one value').toHaveLength(1)
 
-    /* Theme 0 is the light one; 1 and 2 are the dark one twice, so the pair of
-       numbers below is the light theme and the dark. */
-    const states = [0, 1].map((theme) => ({
-      theme,
-      surface: inTheme('--surface', theme),
-      accent: inTheme('--accent', theme),
-      ink: inTheme('--accent-contrast', theme),
-    }))
+    const states = [
+      {
+        theme: 'the palette',
+        surface: inTheme('--surface'),
+        accent: inTheme('--accent'),
+        ink: inTheme('--accent-contrast'),
+      },
+    ]
 
     for (const { theme, surface, accent, ink } of states) {
       /* The two states told apart without a tick. 3:1 is what WCAG 2.2 SC 1.4.11
@@ -328,9 +327,8 @@ describe('the buttons one answer is chosen from', () => {
       ).toBeGreaterThanOrEqual(4.5)
     }
 
-    /* The four numbers as they stand today, so a retuning is a decision somebody
+    /* The two numbers as they stand today, so a retuning is a decision somebody
        takes rather than a drift nobody sees. Measured, not chosen. */
-    expect(contrast('#ffffff', '#10459a')).toBeCloseTo(8.97, 2)
     expect(contrast('#101a2e', '#7aa8f0')).toBeCloseTo(7.18, 2)
     expect(contrast('#06214a', '#7aa8f0')).toBeCloseTo(6.56, 2)
   })

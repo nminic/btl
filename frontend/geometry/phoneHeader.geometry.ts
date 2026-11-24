@@ -248,11 +248,11 @@ for (const reader of READERS) {
 /* THE FLAG AND THE CARET OF THE LANGUAGE BUTTON NEVER OVERLAP (owner, 23.11.2026: the room between them was taken
    back to make the caret of the dropdowns fit, „U redu”, on condition that they never overlap). Asked of the boxes:
    the right edge of the flag is at most the left edge of the caret box, and neither box holds the other. Measured:
-   the drawn chevron is 2px from the flag at 100% text, 4px at 200%. Both themes, every width of a telephone. */
+   the drawn chevron is 2px from the flag at 100% text, 4px at 200%. Every width of a telephone. */
 for (const width of [320, 360, 390, 414]) {
   for (const text of [100, 200] as const) {
-    for (const theme of ['light', 'dark'] as const) {
-      const at: At = { width, text, theme }
+    {
+      const at: At = { width, text }
 
       test(`the flag and the caret of the language never overlap at ${label(at)}`, async ({ open }) => {
         const reader = READERS[0]

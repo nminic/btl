@@ -17,7 +17,7 @@ import type { Answers, At } from './support/harness.ts'
  * `.dropdown` the page draws, read off the DOM and not listed here, has the browser's own arrow taken away, the
  * portal's arrow painted in the muted tone of its text (`--text-muted`, owner, 23.11.2026, PDL „Strelica padajućeg izbora je manja i suptilnija”), a chevron 8px wide in a box of 12px (the browser's was about 9) standing
  * in from the right edge and not in the corner, the text kept clear of it, and a height that is the height of the
- * boxes beside it. Both themes, a telephone and a desktop.
+ * boxes beside it. A telephone and a desktop.
  *
  * <p><b>THE ROOM AT THE EDGE IS THE ROOM THE LANGUAGE BOX HAS</b> (owner, 23.11.2026, PDL „Sve padajuće strelice
  * [...] odmiču se od desne ivice koliko i strelica izbora jezika”: „Ali na jezicima je strelica divno odmaknuta od
@@ -93,7 +93,7 @@ const SCREEN_SIZES: At[] = [
   { width: 360, text: 100 },
   { width: 1280, text: 100, height: 500 },
 ]
-const WIDTHS: At[] = SCREEN_SIZES.flatMap((one) => (['light', 'dark'] as const).map((theme): At => ({ ...one, theme })))
+const WIDTHS: At[] = SCREEN_SIZES
 
 for (const screen of SCREENS) {
   for (const at of WIDTHS) {

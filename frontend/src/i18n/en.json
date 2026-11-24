@@ -69,7 +69,7 @@
     },
     "settings": {
       "title": "Account settings",
-      "description": "Notices, the display theme and the other settings that hold for the account on every device."
+      "description": "Notices and the other settings that hold for the account on every device."
     },
     "privacy": {
       "title": "Privacy policy",
@@ -1495,6 +1495,7 @@
       "kind": "The kind of event",
       "country": "Country",
       "featured": "Featured",
+      "highlightsEvents": "Highlight events",
       "eventDescription": "Event description",
       "eventLink": "Link to the organiser’s page",
       "rowLabel": "Name"
@@ -1667,6 +1668,9 @@
     },
     "memberGone": "The member has been deleted.",
     "memberDeleteAsk": "Delete the member?",
+    "registrationDeleteAsk": "Delete the registration?",
+    "registrationDeleteFinal": "This cannot be undone.",
+    "registrationGone": "The registration has been deleted.",
     "recordPayment": "Record the payment",
     "paymentRecorded": "The payment has been recorded.",
     "sendNewInvitation": "Send a new invitation",
@@ -1692,7 +1696,8 @@
       "theFormIsNotComplete": "The request failed. Refresh the page and try again.",
       "theBasisIsNotKnown": "The portal does not know the basis of membership that was sent, so nothing was done. Refresh the page and try again.",
       "thisChangeIsNotOffered": "An activation from the balance is cancelled first, and a new one is recorded after.",
-      "theBasisHasChanged": "The basis for this season has changed in the meantime, so nothing was done. Refresh the page."
+      "theBasisHasChanged": "The basis for this season has changed in the meantime, so nothing was done. Refresh the page.",
+      "theSeasonIsNotOffered": "This season can't be changed now."
     },
     "editMember": "Edit the details",
     "editMemberNamed": "Edit the details: {name}"
@@ -1735,14 +1740,10 @@
   "settings": {
     "title": "Settings",
     "intro": "The settings hold for your account on every device.",
-    "appearance": "Appearance",
     "privacy": "Privacy",
     "hideProfile": "Hide my profile from anyone who is neither an active member nor the administration",
     "hideProfileNote": "The name stays in the tables and on the boards. The profile page is hidden from visitors who are not signed in and from accounts without an active membership.",
     "opensWhenTheFeeIsRenewed": "Your data and your password open once your fee has been renewed. Renew it here: {renewal}.",
-    "themeLabel": "Theme",
-    "themeDark": "Dark",
-    "themeLight": "Light",
     "mail": "Mail",
     "mailLanguageLegend": "Language of the mail",
     "mailLanguageNotChosen": "No language of the mail was chosen. Choose one of the two offered."

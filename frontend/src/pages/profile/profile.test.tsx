@@ -311,7 +311,7 @@ describe('the length, as one row of six', () => {
 })
 
 describe('the five lengths, as five colours', () => {
-  /* That each length has a colour of its own in each of the three theme blocks
+  /* That each length has a colour of its own in the palette
      moved to `styles/lengthDots.test.ts` on 30.08.2026, where it is asked of
      `DOTS` rather than of five names written out here. The ring on this page
      draws one slice per length and stays at five; the calendar carries a sixth

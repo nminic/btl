@@ -3,7 +3,6 @@ import { bare } from '../test/sources'
 import { join } from 'node:path'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
-import { THEME_STORAGE_KEY } from '../app/themeContext'
 import { NOTICE_STORAGE_KEY } from '../app/noticeBarFacts'
 /* `PRICES` is still read, for the one case that has to name the amount the BUNDLE ships
    so that the served one can be shown to differ from it. `JUNIOR` is not: the junior row is
@@ -2357,8 +2356,8 @@ describe('how a written page is set', () => {
 
   it('names every store the portal actually keeps in a browser, by its own name', () => {
     /* The policy is read as a promise, and „Drugih kolačića nema" was one it did
-       not keep: the portal writes the chosen theme to `localStorage`, read before
-       the first paint for every visitor, member or not. Under the EDPB's
+       not keep: until 24.11.2026 the portal wrote the chosen theme to `localStorage`,
+       read before the first paint for every visitor, member or not. Under the EDPB's
        guidelines 2/2023 and Article 147 of the electronic communications act,
        local storage is the same thing as a cookie; the theme is exempt from
        consent, because it is a display setting the reader asked for, but exempt
@@ -2372,8 +2371,13 @@ describe('how a written page is set', () => {
        name of every store, so that is what is compared: the set of keys the code
        writes against the set of keys the document names.
      *
-       `index.html` is read as well as `src`, because the theme is fetched there
-       before React starts and the sweep over sources does not reach it. */
+       `index.html` is read as well as `src`, because a script there runs before
+       React starts and the sweep over sources does not reach it. Since 24.11.2026 the
+       page carries no inline script at all (`test/contentSecurityPolicy.test.ts`), and
+       the theme is no longer kept: there is one theme (PDL „Portal ima samo tamnu
+       temu; svetla se izbacuje"), and the choice a browser kept from before is taken
+       out of it (`app/forgetTheTheme.ts`). The policy still names `btl-theme`, and its
+       words are the owner's to change. */
     const everywhere = [
       ...sources().map(({ code }) => code),
       readFileSync(join(process.cwd(), 'index.html'), 'utf-8'),
@@ -2440,11 +2444,11 @@ describe('how a written page is set', () => {
     /* The sweep has to have found something, or the whole test passes over
        nothing (app/filterParams.test.ts holds its own sweep the same way). */
     expect(keys.size, 'no store was found at all, so nothing was compared').toBeGreaterThan(0)
-    /* And it has to have found the theme, which is the one every visitor gets.
-       Nought keys is not the only empty answer: one key is too, if the one it
-       found is the wrong one. */
-    expect([...keys]).toContain(THEME_STORAGE_KEY)
-    /* And every store left out on purpose has to still be there to leave out.
+    /* Nought keys is not the only empty answer: one key is too, if the one it
+       found is the wrong one. The floor against that is the loop under this, which
+       asks for every store left out on purpose by its own name.
+     *
+       And every store left out on purpose has to still be there to leave out.
        Without this the map is write-only: the day the developer tools stop keeping
        a store, the entry stays behind as a licence for a name nothing writes, and
        the only thing said about it was that its reason is not the empty string. */
@@ -2617,7 +2621,7 @@ describe('the two pieces the store sweep is made of', () => {
      and a name read out of a file going into a pattern. Reduced to doing nothing,
      both passed the whole file. */
   it('cuts the first argument where the argument ends, not at the first comma', () => {
-    expect(firstArgument("'btl-theme', next)")).toBe("'btl-theme'")
+    expect(firstArgument("'btl-store', next)")).toBe("'btl-store'")
     expect(firstArgument('makeKey(a, b), next)')).toBe('makeKey(a, b)')
     expect(firstArgument('deep(one(a, b), c), next)')).toBe('deep(one(a, b), c)')
     // A call with one argument ends at its own bracket, with no comma anywhere.

@@ -91,11 +91,21 @@ describe('cancelling a season or changing its basis on a member’s row', () => 
 
   type Answering = (path: string, init: RequestInit | undefined) => Response | Promise<Response>
 
-  function serving(toTheRow: Answering = () => Response.json({ season: 2028, basis: null })) {
+  /**
+   * @param frozen the seasons the freeze has written down (`GET /api/frozen-seasons`). None by default:
+   *               with 2028 on sale that is November 2027, when 2027 has ended and not frozen (owner,
+   *               24.11.2026, „njena kućica je u tom prozoru neaktivna"). From 1 January 2028 at 16:00 to
+   *               14 October 2028 2028 is still on sale and 2027 is frozen, which is the second state.
+   */
+  function serving(toTheRow: Answering = () => Response.json({ season: 2028, basis: null }), frozen: number[] = []) {
     clearResourceCache()
 
     return serverThat((path, init) => {
       const how = init?.method ?? 'GET'
+
+      if (path === '/api/frozen-seasons' && how === 'GET') {
+        return Response.json(frozen.map((season) => ({ season })))
+      }
 
       if (path === '/api/competitors' && how === 'GET') {
         return Response.json(COMPETITORS)
@@ -214,7 +224,7 @@ describe('cancelling a season or changing its basis on a member’s row', () => 
 
       await waitFor(() =>
         expect(sent(server.asked)).toEqual([
-          { how: 'DELETE', path: `/api/members/${number}/membership`, body: { basis } },
+          { how: 'DELETE', path: `/api/members/${number}/membership`, body: { basis, season: 2028 } },
         ]),
       )
 
@@ -261,7 +271,7 @@ describe('cancelling a season or changing its basis on a member’s row', () => 
 
     await waitFor(() =>
       expect(sent(server.asked)).toEqual([
-        { how: 'DELETE', path: `/api/members/${EXEMPT}/membership`, body: { basis: 'feeExempt' } },
+        { how: 'DELETE', path: `/api/members/${EXEMPT}/membership`, body: { basis: 'feeExempt', season: 2028 } },
       ]),
     )
     expect(await screen.findByText('Članstvo je stornirano.')).toBeInTheDocument()
@@ -518,6 +528,81 @@ describe('cancelling a season or changing its basis on a member’s row', () => 
   }, SLOW)
 
   /**
+   * A FROZEN SEASON'S BOX ACTS, AND SAYS AND SENDS ITS OWN SEASON (owner, 22.10.2026, „da dodam ili oduzmem
+   * neku štikliranu unazad", and 24.11.2026, „posle zamrzavanja se sme štiklirati i odštiklirati"). 2027 is
+   * frozen and 2028 on sale, and both are on the row, so a question or a body built off the season on sale
+   * says 2028. Ana holds 2027 free of the fee and 2028 on a payment, so a basis read off the season on sale
+   * sends „payment"; Zoran holds nothing of 2027, so clearing and ticking are told apart by the row.
+   */
+  it('clears and ticks the box of a frozen season, in the words and with the season of that box', async () => {
+    const server = serving(
+      (_path, init) =>
+        init?.method === 'POST'
+          ? Response.json({ season: 2027, basis: 'feeExempt' }, { status: 201 })
+          : Response.json({ season: 2027, basis: null }),
+      [2027],
+    )
+    const user = setupUser()
+    renderAt('/sr/administracija/clanovi', 'superadmin')
+
+    const ana = await rowOf(PAID)
+    const cleared = await seasonBox(user, ana, 2027)
+
+    await waitFor(() => expect(cleared).toBeEnabled())
+    expect(cleared).toBeChecked()
+    await user.click(cleared)
+
+    const asked = await screen.findByRole('dialog', { name: 'Storniraj oslobođenje za sezonu 2027?' })
+
+    expect(within(asked).getByText('Ana Držić, sezona 2027.')).toBeInTheDocument()
+    await user.click(within(asked).getByRole('button', { name: 'Da' }))
+
+    await waitFor(() =>
+      expect(sent(server.asked)).toEqual([
+        { how: 'DELETE', path: `/api/members/${PAID}/membership`, body: { basis: 'feeExempt', season: 2027 } },
+      ]),
+    )
+
+    const zoran = await rowOf(EXEMPT)
+    const ticked = await seasonBox(user, zoran, 2027)
+
+    expect(ticked).toBeEnabled()
+    expect(ticked).not.toBeChecked()
+    await user.click(ticked)
+
+    const granting = await screen.findByRole('dialog', { name: 'Odobri oslobođenje od članarine za sezonu 2027?' })
+
+    expect(within(granting).getByText('Zoran Vuković, sezona 2027.')).toBeInTheDocument()
+    await user.click(within(granting).getByRole('button', { name: 'Da' }))
+
+    await waitFor(() =>
+      expect(sent(server.asked).slice(1)).toEqual([
+        { how: 'POST', path: `/api/members/${EXEMPT}/membership`, body: { basis: 'feeExempt', season: 2027 } },
+      ]),
+    )
+
+    server.stop()
+  }, SLOW)
+
+  /** A season the box may not name now is refused in the owner's words of 24.11.2026. */
+  it('says beside the row that the season cannot be changed now', async () => {
+    const server = serving(() => refused('theSeasonIsNotOffered', 409), [2027])
+    const user = setupUser()
+    renderAt('/sr/administracija/clanovi', 'superadmin')
+
+    const row = await rowOf(AN_OLDER_SEASON)
+    const box = await seasonBox(user, row, 2027)
+
+    await waitFor(() => expect(box).toBeEnabled())
+    await user.click(box)
+    await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Da' }))
+
+    expect(await within(row).findByText(sr.admin.membershipRefused.theSeasonIsNotOffered)).toBeInTheDocument()
+
+    server.stop()
+  }, SLOW)
+
+  /**
    * THE EXEMPTION OF A ROW THAT HOLDS NONE, in the window the owner chose on 20.10.2026: the year is the
    * season on sale and not his last season (2027 here), „Ne” sends nothing, „Da” sends the one basis a
    * grant may name, and the six answers are asked again while the inbox of another row is left alone.
@@ -553,7 +638,7 @@ describe('cancelling a season or changing its basis on a member’s row', () => 
 
     await waitFor(() =>
       expect(sent(server.asked)).toEqual([
-        { how: 'POST', path: `/api/members/${AN_OLDER_SEASON}/membership`, body: { basis: 'feeExempt' } },
+        { how: 'POST', path: `/api/members/${AN_OLDER_SEASON}/membership`, body: { basis: 'feeExempt', season: 2028 } },
       ]),
     )
     await waitFor(() => expect(reads(server.asked, '/api/members')).toBe(2))

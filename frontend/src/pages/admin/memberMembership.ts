@@ -53,14 +53,30 @@ export function membershipOnTheRow(memberNumber: string): string {
 /**
  * `MemberMembershipApi.Cancelling`: the basis the screen showed, which the route compares with the
  * season as it stands and refuses when they differ (PDL P8, [IZVEDENO 18.10.2026] „Zahtev za storno ili
- * promenu nosi osnov koji je ekran pokazao”).
+ * promenu nosi osnov koji je ekran pokazao”), and the season of the box, which is the season the route
+ * cancels (owner, 22.10.2026: „da dodam ili oduzmem neku štikliranu unazad”). The route reads no season
+ * off its clock for this, so the body is the only place the season is said.
  */
-export function cancelling(basis: MembershipBasis): { basis: MembershipBasis } {
-  return { basis }
+export function cancelling(basis: MembershipBasis, season: number): { basis: MembershipBasis; season: number } {
+  return { basis, season }
 }
 
-/** `MemberMembershipApi.Granting`: the one basis a row that holds none may be granted. */
-export const GRANTING: { basis: 'feeExempt' } = { basis: 'feeExempt' }
+/** `MemberMembershipApi.Granting`: the one basis a season he holds none of may be granted, and the season. */
+export function granting(season: number): { basis: 'feeExempt'; season: number } {
+  return { basis: 'feeExempt', season }
+}
+
+/**
+ * WHETHER THE BOX OF A SEASON ACTS, which is the route's own answer (`MemberMembershipApi.whyNot`): the
+ * season on sale, and a season the freeze has written down (`GET /api/frozen-seasons`, the row and never
+ * the clock, ADL 08.11.2026). The owner, 24.11.2026, chosen with the recommendation: „Sezona koja se
+ * završila ne dira se od 15.10. do zamrzavanja 1.1. u 16:00: njena kućica je u tom prozoru neaktivna, a
+ * posle zamrzavanja se sme štiklirati i odštiklirati.” So a season between the two is drawn and does not
+ * act, and a season the screen has not yet read as frozen does not act either: the route would refuse it.
+ */
+export function actsOn(seasonOnSale: number, season: number, frozen: readonly number[]): boolean {
+  return season === seasonOnSale || frozen.includes(season)
+}
 
 /** `MemberMembershipApi.Changing` from a payment to the exemption. */
 export const TO_THE_EXEMPTION: { from: 'payment'; to: 'feeExempt' } = { from: 'payment', to: 'feeExempt' }
@@ -79,7 +95,7 @@ export function askingToCancel(basis: MembershipBasis): string {
   return `admin.askCancel.${basis}`
 }
 
-/** The four reasons `MemberMembershipApi` declares, in this screen's words. */
+/** Four of the five reasons `MemberMembershipApi` declares, in this screen's words; the fifth is below. */
 const THE_ROWS_OWN: Record<string, string> = {
   theFormIsNotComplete: 'admin.membershipRefused.theFormIsNotComplete',
   theBasisIsNotKnown: 'admin.membershipRefused.theBasisIsNotKnown',
@@ -88,12 +104,23 @@ const THE_ROWS_OWN: Record<string, string> = {
 }
 
 /**
- * WHAT A CANCELLATION CAN BE REFUSED WITH: three of the four. `thisChangeIsNotOffered` is the change's
- * alone, because `DELETE` names no change.
+ * The fifth reason, which only the two acts that name a season meet: a season the box may not name now
+ * (`MemberMembershipApi.THE_SEASON_IS_NOT_OFFERED`), in the owner's words of 24.11.2026: „Ova sezona se
+ * sada ne može menjati.” `PUT` names no season, so the change and the payment over the exemption never
+ * meet it.
  */
-export const WHEN_CANCELLING: Record<string, string> = Object.fromEntries(
-  Object.entries(THE_ROWS_OWN).filter(([reason]) => reason !== 'thisChangeIsNotOffered'),
-)
+const THE_BOXES_OWN: Record<string, string> = {
+  theSeasonIsNotOffered: 'admin.membershipRefused.theSeasonIsNotOffered',
+}
+
+/**
+ * WHAT A CANCELLATION CAN BE REFUSED WITH: three of the four, and the season's. `thisChangeIsNotOffered`
+ * is the change's alone, because `DELETE` names no change.
+ */
+export const WHEN_CANCELLING: Record<string, string> = {
+  ...Object.fromEntries(Object.entries(THE_ROWS_OWN).filter(([reason]) => reason !== 'thisChangeIsNotOffered')),
+  ...THE_BOXES_OWN,
+}
 
 /** WHAT A CHANGE TO THE EXEMPTION CAN BE REFUSED WITH: all four, and nothing of a booking. */
 export const WHEN_CHANGING_TO_THE_EXEMPTION: Record<string, string> = THE_ROWS_OWN
@@ -101,9 +128,9 @@ export const WHEN_CHANGING_TO_THE_EXEMPTION: Record<string, string> = THE_ROWS_O
 /**
  * WHAT A GRANT CAN BE REFUSED WITH: all four as well, because `POST` names a basis and refuses any
  * but the exemption with `thisChangeIsNotOffered`, and a season that stands by then on another basis
- * with `theBasisHasChanged`.
+ * with `theBasisHasChanged`; and the season's, because it names a season.
  */
-export const WHEN_GRANTING_AN_EXEMPTION: Record<string, string> = THE_ROWS_OWN
+export const WHEN_GRANTING_AN_EXEMPTION: Record<string, string> = { ...THE_ROWS_OWN, ...THE_BOXES_OWN }
 
 /**
  * WHAT A PAYMENT OVER THE EXEMPTION CAN BE REFUSED WITH: the four, and every reason the row's own
@@ -116,8 +143,11 @@ export const WHEN_PAYING_OVER_THE_EXEMPTION: Record<string, string> = {
   ...THE_ROWS_OWN,
 }
 
-/** What a box of the list asks the row to put to the moderator. */
-export type SeasonAsk = { act: 'grant' } | { act: 'cancel'; basis: MembershipBasis } | { act: 'toTheExemption' }
+/** What a box of the list asks the row to put to the moderator, and of which season. */
+export type SeasonAsk =
+  | { act: 'grant'; season: number }
+  | { act: 'cancel'; basis: MembershipBasis; season: number }
+  | { act: 'toTheExemption' }
 
 /**
  * THE BASIS A SEASON OF THE LIST STANDS ON, or nothing where he holds none of it.

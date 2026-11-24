@@ -388,7 +388,7 @@ describe('what a held control wears', () => {
     }
   })
 
-  it('reads the word on the shade of a held button at 4.5:1 or more, in every theme', () => {
+  it('reads the word on the shade of a held button at 4.5:1 or more', () => {
     /* WCAG 2.2 SC 1.4.3 on the ground this adds: `--text` on `--surface-hover`. Each palette in its own
        terms, the way the case below asks for the grounds. */
     const themes = palettes(bare(readFileSync(join(process.cwd(), 'src/styles/tokens.css'), 'utf-8')))
@@ -417,7 +417,9 @@ describe('what a held control wears', () => {
     }
     const naming = themes.filter((one) => one.given.has('surface-hover'))
 
-    expect(naming, 'the shade is no longer written by three palettes').toHaveLength(3)
+    /* One palette, since the portal has one theme (PDL „Portal ima samo tamnu temu; svetla se
+       izbacuje", 24.11.2026). */
+    expect(naming, 'the shade is not written by exactly one palette').toHaveLength(1)
 
     for (const theme of naming) {
       expect(
@@ -491,8 +493,8 @@ describe('what a held control wears', () => {
        29.08.2026 set `--surface-hover` to `--surface` in every theme, and the held
        control lost its shading in Chrome while the whole suite stayed green.
 
-       Every place the two are named, because the portal gives them a value once for
-       the light theme and again for the dark.
+       Every place the two are named: one palette since 24.11.2026, when the light
+       theme left the portal, and three before.
 
        **Each theme is asked in its own palette**, which is the whole of what a
        review found wrong with the first version of this on 29.08.2026. That one
@@ -571,14 +573,12 @@ describe('what a held control wears', () => {
       (one) => one.given.has('surface') || one.given.has('surface-hover'),
     )
 
-    /* One palette for the light theme, one for a dark system and one for the switch
-       on the page. Fewer means a theme has quietly stopped naming its own ground and
-       is drawing another theme's, which is a fault of the same family as the one
-       this case is about. */
+    /* One palette, the portal's only one. None means the grounds are no longer
+       written where this reads them, and the loop below would ask nothing. */
     expect(
       naming.map((one) => one.where),
-      'the two grounds are no longer written out by three palettes',
-    ).toHaveLength(3)
+      'the two grounds are not written out by exactly one palette',
+    ).toEqual([':root'])
 
     for (const theme of naming) {
       expect(

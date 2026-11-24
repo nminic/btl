@@ -3,12 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <!-- What the browser paints its own bar in. Written for the theme the portal
-         opens in, which is the dark one for everybody who has not chosen
-         otherwise, so this is `--bg` of `[data-theme='dark']` in tokens.css. It
-         said `#ffffff`, which put a white address bar above an almost black page
-         on every Android phone. It is kept in step with the choice from
-         app/ThemeProvider.tsx, and a guard holds it to the token. -->
+    <!-- What the browser paints its own bar in: `--bg` of the portal's one theme,
+         the dark one (styles/tokens.css), held to that token by app/oneTheme.test.ts.
+         It said `#ffffff`, which put a white address bar above an almost black page
+         on every Android phone. -->
     <meta name="theme-color" content="#060b16" />
 
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
@@ -120,30 +118,6 @@
     <!--# else -->
     <!--# include virtual="$btl_preview_path" stub="front-page" -->
     <!--# endif -->
-
-    <!-- Applies the theme before the first paint. React sets the same attribute,
-         but it does so after mounting, which is one flash too late.
-
-         The rule is written out rather than left to the stylesheet: dark unless
-         the stored choice is „light", which is what app/themeContext.ts answers
-         and therefore what the page ends up in. Set only for a stored value, this
-         script left a visitor with nothing stored and a light system on the light
-         palette for the first frame (tokens.css follows the system while
-         data-theme is absent) and then moved them to dark on mount, which is the
-         flash it exists to prevent. -->
-    <script>
-      var btlTheme = localStorage.getItem('btl-theme') === 'light' ? 'light' : 'dark'
-      document.documentElement.dataset.theme = btlTheme
-      /* And the browser's own bar, for the same reason and in the same breath. The
-         tag above is written for the theme the portal opens in, so a member who
-         chose the light one used to read a light page under an almost black bar
-         until React mounted: the flash this script exists to prevent, in the other
-         direction. The two colours are `--bg` of each theme (tokens.css) and are
-         held to it by a guard (app/theme.test.tsx). */
-      document
-        .querySelector('meta[name="theme-color"]')
-        .setAttribute('content', btlTheme === 'light' ? '#f4f6fa' : '#060b16')
-    </script>
   </head>
   <body>
     <div id="root"></div>

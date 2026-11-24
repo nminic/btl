@@ -760,10 +760,44 @@ class DucatsFollowTheResultsTest {
 		assertThat(ducatsOf(ANA)).hasSize(5);
 
 		assertThat(http.perform(asking(THE_SUPERADMIN, delete("/api/members/" + ANA + "/membership"))
-						.contentType(MediaType.APPLICATION_JSON).content("{\"basis\":\"feeExempt\"}"))
+						.contentType(MediaType.APPLICATION_JSON).content("{\"basis\":\"feeExempt\",\"season\":2027}"))
 				.andReturn().getResponse().getStatus()).isEqualTo(200);
 
 		assertThat(ducatsOf(ANA)).containsExactly("duk-uspon always");
+		assertThat(ducatMessagesTo(ANA)).isEmpty();
+	}
+
+	/**
+	 * A FROZEN SEASON CANCELLED KEEPS EVERY DUCAT IT HAD. The owner, 23.11.2026, chosen with the recommendation:
+	 * „Storno ili oslobođenje već zamrznute sezone u koloni Sezone ne dira dukate te sezone: menja se samo zapis
+	 * o članstvu, a mesečni i sezonski dukati te sezone ostaju kakvi jesu”. The same five ducats as the case
+	 * above, the same cancellation, and the one difference is the row of {@code season_frozen}, written after
+	 * they were won: the reconciliation after the commit still runs and touches none of them. The other
+	 * direction, a season that has not frozen, is the case above.
+	 */
+	@Test
+	void aFrozenSeasonCancelledKeepsItsMonthlyAndSeasonalDucats() throws Exception {
+		long race = race("dukat-okidac-prva", "Majska trka", LocalDate.of(2027, 5, 20));
+
+		db.sql("insert into result (competitor_id, race_id, race_date, distance_km, ascent_m, descent_m,"
+						+ " seconds, points) values (?, ?, date '2027-05-20', 1000, 100000, 0, 720000, 700)")
+				.params(id(ANA), race).update();
+		reconciled(ANA);
+
+		List<String> before = ducatsOf(ANA);
+
+		assertThat(before).hasSize(5);
+		assertThat(db.sql("insert into season_frozen (season, frozen_at) values (2027, ?) on conflict do nothing")
+				.param(Timestamp.from(IN_JUNE)).update()).as("2027 was frozen already by somebody else").isEqualTo(1);
+		frozeIt = true;
+
+		assertThat(http.perform(asking(THE_SUPERADMIN, delete("/api/members/" + ANA + "/membership"))
+						.contentType(MediaType.APPLICATION_JSON).content("{\"basis\":\"feeExempt\",\"season\":2027}"))
+				.andReturn().getResponse().getStatus()).isEqualTo(200);
+
+		assertThat(db.sql("select count(*) from membership where competitor_id = ? and season = 2027")
+				.param(id(ANA)).query(Integer.class).single()).as("the membership went").isZero();
+		assertThat(ducatsOf(ANA)).as("and the ducats of the frozen season stayed").isEqualTo(before);
 		assertThat(ducatMessagesTo(ANA)).isEmpty();
 	}
 

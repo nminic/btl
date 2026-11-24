@@ -179,6 +179,12 @@ class LeagueConstraintsTest extends DatabaseTest {
 				Violation.notNull("league_prizes_not_null", "prizes",
 						league("'nova-liga', 'Nova liga', 2028, '', null")),
 
+				/* Whether the league highlights its events in the calendar, V109 (owner, PDL 24.11.2026,
+				   „Istakni događaje"): a yes or a no and never an unknown, false where nobody said. */
+				Violation.notNull("league_highlights_events_not_null", "highlights_events",
+						"insert into league (" + COLUMNS + ", highlights_events) values ('nova-liga', 'Nova liga',"
+								+ " 2028, '', '', null)"),
+
 				/* WHICH RACES ARE COUNTED, V19. The pair is the key, so a race is counted by a
 				   league once: adding it twice is not a second fact. And the season is
 				   carried in the row so that both foreign keys can be composite: a row naming

@@ -10,9 +10,9 @@ import { readPng } from './support/pixels.ts'
  * THE ARROW OF A DROPDOWN IS SEEN WHERE THE READER HAS ASKED THE SYSTEM FOR ITS OWN COLOURS (forced colors, Windows
  * high contrast), ASKED OF CHROME (review of PR 803, medium 1; WCAG 2.2 SC 1.4.11 Non-text Contrast, 3:1).
  *
- * <p>The arrow is a picture whose colour is written into it, once per theme (`index.css`), and under forced colors
- * the system paints the box in its own colours and leaves the picture as it was: the grey `#4a5364` of the light
- * palette on the system's black, or the light grey on the system's white. The comment in `index.css` said 3:1 „on
+ * <p>The arrow is a picture whose colour is written into it (`index.css`), and under forced colors the system paints
+ * the box in its own colours and leaves the picture as it was: the palette's light grey on the system's white, or,
+ * while the portal had a light theme (until 24.11.2026), its dark grey on the system's black. The comment in `index.css` said 3:1 „on
  * every surface” and the measure said otherwise. A computed style says what was asked and not what the system
  * painted, so this reads the PIXELS of a screenshot: the arrow region of a select, of the box of a member and of the
  * language box of the header, under `forcedColors: 'active'`, with the system in its light and its dark scheme, and

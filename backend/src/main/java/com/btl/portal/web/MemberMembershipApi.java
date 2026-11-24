@@ -55,21 +55,51 @@ import java.util.Set;
  * lige.”
  * </ul>
  *
- * <p><b>THREE ROUTES ON ONE ADDRESS</b>, the membership of the season on sale: {@code DELETE} cancels it
- * (the owner's „storno”), {@code PUT} changes its basis, and {@code POST} grants it free of the fee to a
- * member who holds none, since 20.10.2026. The two changes there are are the two the owner named,
+ * <p><b>THREE ROUTES ON ONE ADDRESS</b>: {@code DELETE} cancels a season (the owner's „storno”),
+ * {@code PUT} changes the basis of the season on sale, and {@code POST} grants a season free of the fee
+ * to a member who holds none of it, since 20.10.2026; which season {@code DELETE} and {@code POST} act
+ * on is the request's, since the change of the branch {@code b-clanstvo-po-sezoni} (below). The two changes there are are the two the owner named,
  * {@code payment} to {@code feeExempt} and back; anything else is {@link #THIS_CHANGE_IS_NOT_OFFERED},
  * a balance included by his decision above, and a balance is never the basis a change leads to („balans
  * se ne bira ručno kao osnov”). The one basis {@code POST} writes is the exemption, for the same
  * reason and because a payment on a row that holds none is {@link MemberPaymentApi}'s.
  *
- * <p><b>THE SEASON IS THE CLOCK'S, READ ONCE.</b> PDL P8, „Koje sezone: do 14.10. samo tekuća, od
- * 15.10. samo naredna. Tekuća sezona se posle 14.10. na redu člana ne dira”: that is
- * {@link SeasonClock#seasonBeingPaidFor}, the season {@link MembersApi} serves the basis of, and the only
- * season these routes can touch. Nothing in a request names one. The one reading feeds the rows, the
- * book, the trail, the message and, when an exemption is replaced by a payment, the booking itself
- * ({@link BookingAPayment#book(PaymentApi.Confirm, String, WhoIsAsking.Member, int)}), so nothing here
- * can be about two years across midnight of 21 November.
+ * <p><b>THE SEASON OF A GRANT AND OF A CANCELLATION IS THE REQUEST'S; THE SEASON OF A CHANGE IS THE
+ * CLOCK'S.</b> The owner, 22.10.2026 (PDL, „Red na ekranu članova ima pet kolona”): the column „Sezone”
+ * lists every season „i da dodam ili oduzmem neku štikliranu unazad i na taj način promenim nečije
+ * članstvo, iako je nebitno po zamrznute tabele i rang liste”, and, chosen with the recommendation,
+ * „Štikliranje sezone unazad upisuje oslobođenje (ime i vreme odluke); odštikliranje je storno te
+ * sezone.” A box sends {@code POST} (the exemption) or {@code DELETE} (the cancellation), so those two
+ * carry the {@code season} the box is of, and a request without one is incomplete: a default would be a
+ * second source of the one value, the clock, which is exactly what made a box of 2027 change 2028 until
+ * this change (the coordinator's addition of 22.10.2026, „Ruta danas ne prima sezonu nego je čita sa
+ * sata”). {@code PUT} is not a box: „Promeni osnov u oslobođenje” stands beside the season on sale only,
+ * so its season stays {@link SeasonClock#seasonBeingPaidFor}, read once, and feeds the rows, the book,
+ * the trail, the message and the booking itself
+ * ({@link BookingAPayment#book(PaymentApi.Confirm, String, WhoIsAsking.Member, int)}).
+ *
+ * <p><b>WHICH SEASONS A BOX MAY NAME ({@link #whyNot})</b>: the season on sale, and a season of the league
+ * that has FROZEN, by the row of {@code season_frozen} and never by the clock (ADL 08.11.2026), read under
+ * the lock of the freeze each road takes first. Nothing before {@link SeasonClock#FIRST_SEASON} and nothing
+ * after the season on sale is a season the column lists (PDL [IZVEDENO] „Sezone nude samo sezone lige (od
+ * 2027)”), so either is {@link #THE_SEASON_IS_NOT_OFFERED} with a 400, the shape of
+ * {@code LeagueWriteApi.THE_SEASON_IS_NOT_THIS_ONE_OR_THE_NEXT}. <b>A season in between that has not
+ * frozen</b>, the season being run from 15 October to its freeze, is refused with the same reason and a
+ * 409, the shape of {@code LeagueWriteApi.THE_SEASON_IS_FROZEN}, because it is a state of the clock and
+ * not of the form. That is the answer this route gave that box before it took a season, kept and NOT
+ * decided: PDL P8, 18.10.2026, „Tekuća sezona se posle 14.10. na redu člana ne dira (ni upis uplate, ni
+ * promena osnova, ni storno)”, stands against „unazad” of 22.10.2026 for exactly that box, and the two
+ * were put to the coordinator with both sentences rather than settled here.
+ *
+ * <p><b>WHAT A SEASON THAT IS NOT ON SALE DOES NOT MOVE.</b> His team and his pair: a cancellation of the
+ * season on sale after it began takes him out at once (PDL 05.11.2026, „bez članarine za sezonu nema tima
+ * ni para te sezone”), but the teams he stands in are the running season's and a frozen season's are its
+ * snapshot („Ništa iz zamrznute sezone se ne sklanja”, 03.10.2026), so a cancellation of any other season
+ * asks {@link ASeasonBegins} nothing. And the ducats of a frozen season, by the owner's decision of
+ * 23.11.2026, chosen with the recommendation: „Storno ili oslobođenje već zamrznute sezone u koloni Sezone
+ * ne dira dukate te sezone”. That holds without a branch here: the reconciliation after the commit runs
+ * for every cancellation, and {@link AwardingDucats} touches no ducat of a month or a season whose season
+ * has its row of {@code season_frozen}.
  *
  * <p><b>THE REQUEST SAYS WHAT THE SCREEN SHOWED, AND THE ROUTE ACTS ONLY ON THAT.</b> A grant is sent
  * from a row that showed no basis, so a season that stands on one by then is refused the same way, and
@@ -123,6 +153,12 @@ class MemberMembershipApi {
 	/** The season stands on another basis than the one the screen showed, so nothing is done. */
 	static final String THE_BASIS_HAS_CHANGED = "theBasisHasChanged";
 
+	/**
+	 * A season a box of the column „Sezone” may not name: before the league or after the season on sale
+	 * (400), or one in between that has not frozen (409). See the class note.
+	 */
+	static final String THE_SEASON_IS_NOT_OFFERED = "theSeasonIsNotOffered";
+
 	/** The two changes there are, as „from to". */
 	private static final Set<String> OFFERED = Set.of(
 			Basis.PAYMENT.word() + " " + Basis.FEE_EXEMPT.word(),
@@ -167,8 +203,11 @@ class MemberMembershipApi {
 		this.teamsAndPairs = teamsAndPairs;
 	}
 
-	/** @param basis the basis the screen showed for the season, which is the one cancelled */
-	record Cancelling(String basis) {
+	/**
+	 * @param basis  the basis the screen showed for the season, which is the one cancelled
+	 * @param season the season of the box that was cleared
+	 */
+	record Cancelling(String basis, Integer season) {
 	}
 
 	/**
@@ -181,8 +220,11 @@ class MemberMembershipApi {
 	record Changing(String from, String to, BigDecimal received, String method) {
 	}
 
-	/** @param basis the basis the season is to stand on, of which there is one: {@code feeExempt} */
-	record Granting(String basis) {
+	/**
+	 * @param basis  the basis the season is to stand on, of which there is one: {@code feeExempt}
+	 * @param season the season of the box that was ticked
+	 */
+	record Granting(String basis, Integer season) {
 	}
 
 	/**
@@ -253,7 +295,7 @@ class MemberMembershipApi {
 			return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
 		}
 
-		if (typed.basis() == null || typed.basis().isBlank()) {
+		if (typed.basis() == null || typed.basis().isBlank() || typed.season() == null) {
 			return no(HttpStatus.BAD_REQUEST, THE_FORM_IS_NOT_COMPLETE);
 		}
 
@@ -262,7 +304,14 @@ class MemberMembershipApi {
 		}
 
 		ZonedDateTime now = ZonedDateTime.now(clock);
-		int season = SeasonClock.seasonBeingPaidFor(now);
+		int onSale = SeasonClock.seasonBeingPaidFor(now);
+		int season = typed.season();
+		Optional<ResponseEntity<?>> notOffered = whyNot(season, onSale);
+
+		if (notOffered.isPresent()) {
+			return notOffered.get();
+		}
+
 		Optional<Held> held = heldIn(member.get(), season);
 
 		/* NOTHING TO CANCEL IS DONE ALREADY, and nothing is written or said. */
@@ -289,14 +338,18 @@ class MemberMembershipApi {
 		   AND WHO ADMINISTERS HIS TEAMS IS ASKED FIRST, for the reason the category is: he stands in a team
 		   while he holds the season (`AMemberIsActive`), so read after the rows went he would already be
 		   missing and the member who takes his seat would not be told. */
-		ASeasonBegins.Before seated = teamsAndPairs.before(member.get(), season, now);
+		boolean ofTheSeasonOnSale = season == onSale;
+		ASeasonBegins.Before seated = ofTheSeasonOnSale ? teamsAndPairs.before(member.get(), season, now) : null;
 		gone(member.get(), season, held.get());
 
 		/* AND A SEASON THAT HAS BEGUN TAKES HIM OUT OF HIS TEAM AND HIS PAIR AT ONCE, PDL 05.11.2026, „Storno
 		   sezone posle 1. januara u 16h izbacuje člana iz tima i para odmah": „Jedno pravilo: bez članarine
 		   za sezonu nema tima ni para te sezone." The seats before are the ones read above, before the rows
-		   went. */
-		teamsAndPairs.cancelled(member.get(), season, now, seated);
+		   went. Only for the season on sale: no other season is the one his teams stand in (the class note,
+		   „What a season that is not on sale does not move"). */
+		if (ofTheSeasonOnSale) {
+			teamsAndPairs.cancelled(member.get(), season, now, seated);
+		}
 
 		/* WHAT THE SEASON HELD AGAINST THE BALANCE COMES BACK OFF IT, by a line of its own, under the
 		   lock taken above (see `BalanceBook.reversed`). An exemption held nothing, and nothing is
@@ -315,7 +368,7 @@ class MemberMembershipApi {
 	}
 
 	/**
-	 * AN EXEMPTION GRANTED TO A MEMBER WHO HOLDS NO SEASON ON SALE, by the statements the payments screen
+	 * AN EXEMPTION GRANTED TO A MEMBER WHO HOLDS NOTHING OF THE SEASON THE BOX NAMES, by the statements the payments screen
 	 * grants one with ({@link GrantingASeason}): the row free of the fee with the trail of who and when,
 	 * because the act forgives money (PDL P8, 03.10.2026, „Trag (ko je odobrio i kada) ide uz svaku
 	 * radnju koja prašta novac”), nothing off his balance, because a man who owes nothing has nothing for
@@ -342,7 +395,7 @@ class MemberMembershipApi {
 			return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
 		}
 
-		if (typed.basis() == null || typed.basis().isBlank()) {
+		if (typed.basis() == null || typed.basis().isBlank() || typed.season() == null) {
 			return no(HttpStatus.BAD_REQUEST, THE_FORM_IS_NOT_COMPLETE);
 		}
 
@@ -354,7 +407,14 @@ class MemberMembershipApi {
 			return no(HttpStatus.BAD_REQUEST, THIS_CHANGE_IS_NOT_OFFERED);
 		}
 
-		int season = SeasonClock.seasonBeingPaidFor(ZonedDateTime.now(clock));
+		int season = typed.season();
+		Optional<ResponseEntity<?>> notOffered =
+				whyNot(season, SeasonClock.seasonBeingPaidFor(ZonedDateTime.now(clock)));
+
+		if (notOffered.isPresent()) {
+			return notOffered.get();
+		}
+
 		Optional<Held> held = heldIn(member.get(), season);
 
 		if (held.isPresent()) {
@@ -525,6 +585,28 @@ class MemberMembershipApi {
 				.param(memberNumber)
 				.query(Long.class)
 				.optional();
+	}
+
+	/**
+	 * WHY A BOX MAY NOT NAME THIS SEASON, or nothing where it may (the class note, „Which seasons a box may
+	 * name"): the season on sale, or a season of the league with its row of {@code season_frozen}. Asked
+	 * after the lock of the freeze is held, so the row cannot appear between this answer and the write.
+	 */
+	private Optional<ResponseEntity<?>> whyNot(int season, int onSale) {
+		if (season < SeasonClock.FIRST_SEASON || season > onSale) {
+			return Optional.of(no(HttpStatus.BAD_REQUEST, THE_SEASON_IS_NOT_OFFERED));
+		}
+
+		if (season == onSale || hasFrozen(season)) {
+			return Optional.empty();
+		}
+
+		return Optional.of(no(HttpStatus.CONFLICT, THE_SEASON_IS_NOT_OFFERED));
+	}
+
+	private boolean hasFrozen(int season) {
+		return Boolean.TRUE.equals(db.sql("select exists(select 1 from season_frozen where season = ?)")
+				.param(season).query(Boolean.class).single());
 	}
 
 	private static boolean known(String word) {

@@ -74,9 +74,14 @@ class LeagueApi {
 	 *                 order the calendar runs them
 	 * @param eventIds the different events those races belong to, in the order the
 	 *                 calendar runs them - one entry however many of its races count
+	 * @param highlightsEvents whether every event this league counts a race of is highlighted in the
+	 *                 calendar (V109, owner PDL 24.11.2026, „Istakni događaje"). Answered so the form of
+	 *                 the league opens with the box as it stands; what it does to an event is worked
+	 *                 out by {@link CalendarApi} on every read and never written onto the event
 	 */
 	record League(long id, String slug, String name, int season, String rules, String prizes,
-			List<Long> raceIds, List<Long> eventIds, String logo, Crop crop, String smallLogo) {
+			List<Long> raceIds, List<Long> eventIds, String logo, Crop crop, String smallLogo,
+			boolean highlightsEvents) {
 	}
 
 	/**
@@ -118,7 +123,8 @@ class LeagueApi {
 						+ "     where lr.league_id = l.id"
 						+ "   )"
 						+ " ), '{}') as event_ids,"
-						+ " mark.digest, mark.crop_x, mark.crop_y, mark.crop_diameter"
+						+ " mark.digest, mark.crop_x, mark.crop_y, mark.crop_diameter,"
+						+ " l.highlights_events"
 						+ " from league l"
 						/* Left, because a league with no mark is an ordinary league and not one
 						   missing from the list, the same reason `TeamApi` gives. */
@@ -140,7 +146,8 @@ class LeagueApi {
 											row.getBigDecimal(12)),
 							mark == null ? null
 									: PhotoApi.addressOfTheSmall(mark, row.getBigDecimal(10),
-											row.getBigDecimal(11), row.getBigDecimal(12)));
+											row.getBigDecimal(11), row.getBigDecimal(12)),
+							row.getBoolean(13));
 				})
 				.list();
 	}

@@ -10,7 +10,7 @@ import './RaceInMotion.css'
  * stop for the keyboard (`focusable="false"` is for the old Edge and IE, which made every SVG a
  * tab stop), and never in the way of the pointer (`pointer-events: none` in the sheet). Colour,
  * stroke and which part is drawn at which width are the sheet's (`app/RaceInMotion.css`), so the
- * theme decides the colour once and these components know nothing about it.
+ * palette decides the colour once and these components know nothing about it.
  *
  * THE HEADER IS A COPY OF THE OWNER'S REFERENCE (15.11.2026: „Moze li da se iskopira verno ovo sto
  * sam ti dao kao primer?", `btl-produkt/primeri/dizajn-race-in-motion/referenca.webp`). Every line,
