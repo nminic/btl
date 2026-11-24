@@ -220,9 +220,13 @@ class MemberCircleAgainstAnApprovalConcurrencyTest {
 
 		try {
 			Future<MockHttpServletResponse> submitted = holdingTheRow.execute(heldOpen -> {
-				/* THE MEMBER'S ROW, which the approval's own write to it would take. Nothing holds his turn, so the
-				   request is inside the route and reaches the read of the picture that stands. */
-				db.sql("select 1 from competitor where id = ? for update").param(him).query(Integer.class).single();
+				/* THE APPROVAL ITSELF, written and not yet committed: the lock it takes on the member's row is the one
+				   its own update takes (NO KEY UPDATE), which is what the request has to wait behind, and not a
+				   stronger one a hand-written hold would be (a `for update` stops a request that a `for key share`
+				   would let through, and the case would pass for a route that holds less than the approval does).
+				   Nothing holds his turn, so the request is inside the route and reaches the read of the picture that
+				   stands. */
+				theApproval();
 
 				assertThat(BlockedBehindThisHold.count(db)).as("nothing has been submitted yet").isZero();
 
@@ -234,9 +238,7 @@ class MemberCircleAgainstAnApprovalConcurrencyTest {
 					throw new RuntimeException(e);
 				}
 
-				/* THE APPROVAL, written while the request stands at the row, committed when this lets go. */
-				theApproval();
-
+				/* The approval commits when this lets go of the row. */
 				return request;
 			});
 

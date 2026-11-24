@@ -133,7 +133,12 @@ export function SponsorLogo({ sponsor }: { sponsor: SponsorEntered }) {
         <p className="member__note">{t('sponsorLogo.none')}</p>
       ) : (
         <>
-          <p className="member__note">{t(picked === null ? 'sponsorLogo.standing' : 'sponsorLogo.chosen')}</p>
+          {/* „Kad su oba prekidača isključena (boks i traka), rečenica ... se ne prikazuje; pregled loga ostaje."
+              (PDL 24.11.2026): the logo stands on neither then, so the sentence that says where it stands is
+              not said, and the chosen one is, for it says what the press will do and not where it stands. */}
+          {(picked !== null || sponsor.inRotation || sponsor.inStrip) && (
+            <p className="member__note">{t(picked === null ? 'sponsorLogo.standing' : 'sponsorLogo.chosen')}</p>
+          )}
           {/* The same picture twice, in the two frames it is drawn in: named once, and the second is
               decoration beside it, so a screen reader hears one picture and not two. */}
           <div className="sponsor-logo__previews">

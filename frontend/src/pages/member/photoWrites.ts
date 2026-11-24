@@ -260,8 +260,9 @@ export function pictureToSend(file: File | null, crop: Crop, over: string | null
  * <li>`theCropIsNotACircle` is what {@link asTheColumnHolds} exists to stop, so from this
  * screen it should now be unreachable - which is a reason to answer it rather than a reason
  * not to, because the sentence is the only thing standing between the reader and a code;
- * <li>`theFormIsNotComplete` is answered for a request that carried no `picture` part, and
- * the screen refuses to send with nothing chosen before that.
+ * <li>`theFormIsNotComplete` is answered for a request that carried no `picture` part and, since a circle
+ * alone is asked to name the picture it is drawn over, for a circle that carries no `over`; the screen
+ * refuses to send with nothing chosen before the first.
  * </ul>
  *
  * <p><b>AND THE OTHER TWO REALLY ARE REACHABLE, which is measured and is not obvious.</b>
