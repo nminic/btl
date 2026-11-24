@@ -183,7 +183,7 @@ for (const [which, answers, pick, phoneOnly] of [
         expect(
           standing.shownRight - standing.right,
           'the box stops well short of what the frame shows, so the names are cut for nothing',
-        ).toBeLessThanOrEqual(standing.pad * 5)
+        ).toBeLessThanOrEqual(standing.pad * 2)
       }
 
       /* From the first character the box offers every member whose label holds it, and every label holds a nought. */
