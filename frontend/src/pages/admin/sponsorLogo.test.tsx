@@ -58,12 +58,15 @@ function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } })
 }
 
-function serving(toALogo: (init: RequestInit | undefined) => Response = () => json({ logo: '/api/photos/ab12' })): Asked[] {
+function serving(
+  toALogo: (init: RequestInit | undefined) => Response = () => json({ logo: '/api/photos/ab12' }),
+  sponsors: SponsorEntered[] = [VOLT, SOFRA, MINT],
+): Asked[] {
   clearResourceCache()
 
   const { asked, stop } = serverThat((path, init) => {
     if (path === '/api/sponsors/all' && init?.method === undefined) {
-      return json([VOLT, SOFRA, MINT])
+      return json(sponsors)
     }
 
     return /^\/api\/sponsors\/\d+\/logo$/.test(path) ? toALogo(init) : null
@@ -111,6 +114,27 @@ describe('the logo of a sponsor, in its form', () => {
     expect(box.getAllByRole('presentation').map((one) => one.getAttribute('src'))).toEqual(['/api/photos/77aa01bc'])
     expect(box.getByRole('button', { name: 'Ukloni logo' })).toBeVisible()
   }, SLOW)
+
+  it.each([
+    ['in the box only', true, false, true],
+    ['in the strip only', false, true, true],
+    ['in both', true, true, true],
+    ['in neither', false, false, false],
+  ])(
+    'says where the logo stands for a sponsor %s only when it stands somewhere, and always draws it',
+    async (_where, inRotation, inStrip, said) => {
+      serving(undefined, [{ ...MINT, inRotation, inStrip }])
+
+      const box = await theBoxOf(setupUser(), 'Mint')
+
+      expect(
+        box.queryByText('Ovako logo sada stoji na naslovnoj strani, u boksu "Sponzor dana" i u traci.') !== null,
+      ).toBe(said)
+      expect(box.getByRole('img', { name: 'Logo sponzora Mint' })).toHaveAttribute('src', '/api/photos/77aa01bc')
+      expect(box.getByRole('button', { name: 'Ukloni logo' })).toBeVisible()
+    },
+    SLOW,
+  )
 
   it('says that a sponsor with no logo is on neither, and offers nothing to take down', async () => {
     serving()
