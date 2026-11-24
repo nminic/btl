@@ -59,8 +59,8 @@ class APhotoNobodyHoldsGoesTest extends DatabaseTest {
 			+ " father_name, address, shirt_size, health_statement_at";
 
 	/**
-	 * The columns that may point at a photo, the table each lives in and its trigger: four since V54, and
-	 * the fifth, a league's mark, since V108.
+	 * The columns that may point at a photo, the table each lives in and its trigger: four since V54, the
+	 * fifth, a league's mark, since V108, and the sixth, a sponsor's logo, since V111.
 	 */
 	private enum Holder {
 
@@ -68,7 +68,8 @@ class APhotoNobodyHoldsGoesTest extends DatabaseTest {
 		VERIFICATION("verification", "photo_id", "verification_leaves_a_photo_nobody_holds"),
 		TEAM("team", "logo_id", "team_leaves_a_photo_nobody_holds"),
 		TEAM_PROPOSAL("team_proposal", "logo_id", "team_proposal_leaves_a_photo_nobody_holds"),
-		LEAGUE("league", "logo_id", "league_leaves_a_photo_nobody_holds");
+		LEAGUE("league", "logo_id", "league_leaves_a_photo_nobody_holds"),
+		SPONSOR("sponsor", "logo_id", "sponsor_leaves_a_photo_nobody_holds");
 
 		private final String table;
 
@@ -107,6 +108,8 @@ class APhotoNobodyHoldsGoesTest extends DatabaseTest {
 	private int teams;
 
 	private int leagues;
+
+	private int sponsors;
 
 	/**
 	 * Every photo key is far above every holder key, in every case: the sequence is not rolled
@@ -224,7 +227,10 @@ class APhotoNobodyHoldsGoesTest extends DatabaseTest {
 				/* AND THE FIFTH IN THE RING SINCE V108, between a proposed mark and the queue, so that a
 				   league's mark is once the column that keeps the photo and once the one that lets go. */
 				Arguments.of(Holder.TEAM_PROPOSAL, Holder.LEAGUE),
-				Arguments.of(Holder.LEAGUE, Holder.VERIFICATION));
+				/* AND THE SIXTH SINCE V111, a sponsor's logo, between a league's mark and the queue, so that it is once
+				   the column that keeps the photo and once the one that lets go. */
+				Arguments.of(Holder.LEAGUE, Holder.SPONSOR),
+				Arguments.of(Holder.SPONSOR, Holder.VERIFICATION));
 	}
 
 	/**
@@ -568,6 +574,7 @@ class APhotoNobodyHoldsGoesTest extends DatabaseTest {
 			case TEAM -> aTeam(photo);
 			case TEAM_PROPOSAL -> holdingFor(aMember(null), holder, photo);
 			case LEAGUE -> aLeague(photo);
+			case SPONSOR -> aSponsor(photo);
 		};
 	}
 
@@ -608,6 +615,15 @@ class APhotoNobodyHoldsGoesTest extends DatabaseTest {
 		return db.sql("insert into league (slug, name, season, rules, prizes, logo_id) values (?,"
 						+ " 'Probna liga', 2027, '', '', " + literal(photo) + ") returning id")
 				.param("nosilac-lige-" + which).query(Long.class).single();
+	}
+
+	/** A sponsor that may carry this photo as its logo, or none (V111). */
+	private long aSponsor(Long photo) {
+		int which = ++sponsors;
+
+		return db.sql("insert into sponsor (name, url, logo_id, description_sr, position) values ('Probni sponzor',"
+						+ " 'https://primer.rs/', " + literal(photo) + ", 'Opis', ?) returning id")
+				.param(which).query(Long.class).single();
 	}
 
 	/** A number written into a statement, or the word null. Keys the tests made, never input. */

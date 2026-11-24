@@ -13,7 +13,11 @@
  *     `description_sr`, required, and `description_en`, NULL where none is written, both at most 80
  *     characters („Ograničenje od 80 znakova važi za obe”);
  *   - „Redosled u traci: glavni sponzor prvi, pa ručni redosled koji se podešava u administraciji.”:
- *     `position`, one per row, unique, and DEFERRABLE so that two rows can trade places in one transaction;
+ *     `position`, one per row and unique. NOT deferrable, which is the shape `static_page_include` took for
+ *     the reason V24 gives and a different one here: the administration moves a sponsor one place at a time,
+ *     so no statement ever moves a range, and the swap of two places goes through a free place past the end
+ *     under the table's own lock (`SponsorWriteApi`). A key checked at the end of every statement is then
+ *     enough, and every key of the schema is checked there (`KeysAndIndexesTest`);
  *   - „Sponzore uređuje i moderator sa pravom (novo pravo „Sponzori”, kao ostala prava)”: the row
  *     ('entity', 'sponsors') in `admin_right`, which V5's generated column spells `entity:sponsors`.
  *
@@ -66,7 +70,7 @@ create table sponsor (
     constraint sponsor_description_en_shape
         check (description_en is null or (btrim(description_en) <> '' and char_length(description_en) <= 80)),
     constraint sponsor_position_not_negative check (position >= 0),
-    constraint sponsor_position_unique unique (position) deferrable initially deferred
+    constraint sponsor_position_unique unique (position)
 );
 
 /* „Glavni sponzor je najviše jedan.” A unique index over the rows that are main, so no row and one row are

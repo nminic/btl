@@ -62,9 +62,10 @@ import java.util.regex.Pattern;
  *
  * <p><b>THE ORDER IS MOVED ONE PLACE AT A TIME, AMONG THE SPONSORS THAT ARE NOT MAIN</b>: the strip draws the
  * main one first whatever its place, so the place of the main one is not something a press of „up” could be
- * seen to change. A move swaps the place with the neighbour's, which {@code sponsor_position_unique} lets
- * happen in one transaction because it is deferred. Moving the first one up or the last one down changes
- * nothing and is not an error: the list is then as it was asked to be.
+ * seen to change. A move swaps the place with the neighbour's, through a free place past the end, because
+ * {@code sponsor_position_unique} is checked at the end of every statement (V111 says why it is not deferred).
+ * Moving the first one up or the last one down changes nothing and is not an error: the list is then as it
+ * was asked to be.
  *
  * <p><b>DELETING A SPONSOR DELETES ITS LOGO</b> (the plan approved 24.11.2026, „brisanje sponzora briše i
  * njegov logo"): the {@code photo} row goes at the end of the transaction by V111's trigger, and its file with
@@ -231,6 +232,9 @@ class SponsorWriteApi {
 	private record Place(int position, boolean main) {
 	}
 
+	private record Neighbour(long id, int position) {
+	}
+
 	private ResponseEntity<?> move(long id, boolean earlier, HttpServletResponse response) throws IOException {
 		lock();
 
@@ -245,15 +249,18 @@ class SponsorWriteApi {
 			return ResponseEntity.noContent().build();
 		}
 
-		Optional<Long> neighbour = db.sql(earlier
-						? "select id from sponsor where not main and position < ? order by position desc limit 1"
-						: "select id from sponsor where not main and position > ? order by position limit 1")
-				.param(place.get().position()).query(Long.class).optional();
+		Optional<Neighbour> neighbour = db.sql(earlier
+						? "select id, position from sponsor where not main and position < ? order by position desc limit 1"
+						: "select id, position from sponsor where not main and position > ? order by position limit 1")
+				.param(place.get().position()).query(Neighbour.class).optional();
 
-		neighbour.ifPresent(other -> db.sql("update sponsor set position = case id"
-						+ " when ? then (select position from sponsor where id = ?)"
-						+ " when ? then (select position from sponsor where id = ?) end where id in (?, ?)")
-				.params(id, other, other, id, id, other).update());
+		if (neighbour.isPresent()) {
+			db.sql("update sponsor set position = (select max(position) + 1 from sponsor) where id = ?").param(id)
+					.update();
+			db.sql("update sponsor set position = ? where id = ?")
+					.params(place.get().position(), neighbour.get().id()).update();
+			db.sql("update sponsor set position = ? where id = ?").params(neighbour.get().position(), id).update();
+		}
 
 		return ResponseEntity.noContent().build();
 	}

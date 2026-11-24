@@ -402,7 +402,7 @@ class ConstraintsTest extends DatabaseTest {
 						AuthenticationConstraintsTest.TABLES, StaticPageConstraintsTest.TABLES,
 						BalanceConstraintsTest.TABLES, BankStatementConstraintsTest.TABLES,
 						CategoryWishConstraintsTest.TABLES, PointsAtTheFreezeConstraintsTest.TABLES,
-						SharedCardConstraintsTest.TABLES)
+						SharedCardConstraintsTest.TABLES, SponsorConstraintsTest.TABLES)
 				.flatMap(List::stream)
 				.toList();
 

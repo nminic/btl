@@ -938,7 +938,12 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   written.
 
 			   Pinned LAST, when the file was final, off this very assertion. */
-			new Applied("110", "V110__the_privacy_policy_loses_the_row_about_the_choice_of_theme.sql", -406290229));
+			new Applied("110", "V110__the_privacy_policy_loses_the_row_about_the_choice_of_theme.sql", -406290229),
+
+			/* V111. The league keeps its sponsors (owner, PDL 24.11.2026, „Strana za upravljanje sponzorima u
+			   Administraciji → Podaci → Sponzori”): the table `sponsor`, the right `entity:sponsors` and V54's rule
+			   taught the sixth holder. Pinned last, once the file was final (CLAUDE.md, section 9). */
+			new Applied("111", "V111__the_league_keeps_its_sponsors.sql", 859302859));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {
