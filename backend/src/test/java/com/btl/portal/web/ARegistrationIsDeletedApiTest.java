@@ -214,7 +214,12 @@ class ARegistrationIsDeletedApiTest {
 
 	/** Who of the list is offered „Obriši", as the screen Uplate reads it, by key. */
 	private Map<Long, Boolean> offered() throws Exception {
-		MockHttpServletResponse answer = sent(get("/api/payments"), OVER_THE_MEMBERS);
+		return offeredTo(OVER_THE_MEMBERS);
+	}
+
+	/** The same, as the list is served to whoever asks. */
+	private Map<Long, Boolean> offeredTo(String email) throws Exception {
+		MockHttpServletResponse answer = sent(get("/api/payments"), email);
 
 		assertThat(answer.getStatus()).as("GET /api/payments").isEqualTo(200);
 
@@ -413,6 +418,23 @@ class ARegistrationIsDeletedApiTest {
 		}
 
 		assertThat(everybody()).isEqualTo(before);
+	}
+
+	/**
+	 * THE OFFER IS THE SERVER'S AND NOT THE SCREEN'S (owner, 24.11.2026, PDL „Sitnice iz recenzije PR-a 815
+	 * i 811 i panela tima": „server ne šalje oznaku da prijava sme da se obriše moderatoru koji nema pravo nad
+	 * članovima"). The moderator of the payments reads the very list and holds a right, only not the one over
+	 * the members, so every row he is served says no, and the one the moderator over the members is offered
+	 * stays offered to him: the same list, the same morning, two answers.
+	 */
+	@Test
+	void theModeratorOfThePaymentsAloneIsOfferedNoDeletionAtAll() throws Exception {
+		assertThat(offeredTo(OVER_THE_MEMBERS)).as("the one with the right is offered him").containsEntry(him, true);
+
+		Map<Long, Boolean> his = offeredTo(OVER_THE_PAYMENTS_ONLY);
+
+		assertThat(his).as("the list is the same list").containsKey(him);
+		assertThat(his.values()).as("a deletion offered to somebody the route answers 404").doesNotContain(true);
 	}
 
 	@Test

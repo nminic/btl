@@ -112,6 +112,12 @@ function serving(deleting: { status: number; held?: Promise<void> } = { status: 
 
       if (deleting.status === 204) {
         accounts = accounts.filter((one) => one.competitorId !== Number(key[1]))
+      } else if (deleting.status === 404) {
+        /* WHAT A 404 MEANS ON THE SERVER: something changed since the list was read, and the list as it
+           stands now no longer offers him (`mayBeDeleted` false), as `PaymentsDueApi` serves it. */
+        accounts = accounts.map((one) =>
+          one.competitorId === Number(key[1]) ? { ...one, mayBeDeleted: false } : one,
+        )
       }
 
       return new Response(null, { status: deleting.status })
@@ -369,8 +375,11 @@ describe('„Obriši" on the screen Uplate', () => {
     })
   }, SLOW)
 
-  it('says the server\'s refusal beside the row and deletes nothing it was not told it deleted', async () => {
-    const { deletions } = serving({ status: 404 })
+  it('reads the list again after the server\'s refusal, and the button of that row is gone, with nothing deleted', async () => {
+    /* Owner, 24.11.2026: „posle greške (prijava već obrisana ili postala član) lista uplata se odmah osvežava i
+       dugme nestaje". The two sources of the button's absence are told apart: the row of the OTHER Borko, whom
+       nothing was pressed on, keeps his button, and the list was asked for twice and not once. */
+    const { asked, deletions } = serving({ status: 404 })
     const user = setupUser()
 
     renderAt(ADDRESS, 'superadmin')
@@ -391,11 +400,48 @@ describe('„Obriši" on the screen Uplate', () => {
     /* A deletion the server refused took nobody out of the queue. */
     expect(timesDropped('verification')).toBe(queueDropped)
 
-    const stillSecond = await rowAt('Borko Olar', 1)
-    const said = stillSecond.querySelector('.activate__said')
+    /* THE LIST WAS READ AGAIN, and the row it was pressed on is the one that lost its button. */
+    await waitFor(async () => {
+      const second = (await rowsOf('Borko Olar'))[1]
 
-    expect(said?.textContent).not.toBe('')
-    expect(await rowsOf('Borko Olar')).toHaveLength(2)
+      expect(within(second ?? document.body).queryByRole('button', { name: 'Obriši: Borko Olar' })).toBeNull()
+    })
+    expect(asked.filter((one) => one.path === '/api/payments' && (one.init?.method ?? 'GET') === 'GET')).toHaveLength(2)
+
+    const rows = await rowsOf('Borko Olar')
+
+    expect(rows).toHaveLength(2)
+    expect(within(rows[0] ?? document.body).getByRole('button', { name: 'Obriši: Borko Olar' })).toBeInTheDocument()
+    expect(within(rows[1] ?? document.body).queryByRole('button', { name: 'Obriši: Borko Olar' })).toBeNull()
+  }, SLOW)
+
+  it('says „Ništa nije sačuvano" beside the row after any failure but a 404, and reads the list no more than once', async () => {
+    /* Owner, 24.11.2026: only the 404 (already deleted, or become a member) re-reads the list; a 500 says nothing
+       about the row, so the old sentence stands and the list is not asked again. The other source of the
+       refusal is the 404 case above, which says no sentence and asks twice. */
+    const { asked, deletions } = serving({ status: 500 })
+    const user = setupUser()
+
+    renderAt(ADDRESS, 'superadmin')
+
+    const second = await rowAt('Borko Olar', 1)
+
+    await user.click(deleteOn(second, 'Borko Olar'))
+    await user.click(
+      within(await screen.findByRole('dialog', { name: sr.admin.registrationDeleteAsk })).getByRole('button', {
+        name: sr.admin.form.delete,
+      }),
+    )
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    expect(deletions()).toHaveLength(1)
+
+    const stillSecond = await rowAt('Borko Olar', 1)
+
+    expect(within(stillSecond).getByText(/Ništa nije sačuvano/)).toBeVisible()
+    expect(within(stillSecond).getByRole('button', { name: 'Obriši: Borko Olar' })).toBeInTheDocument()
+    expect(asked.filter((one) => one.path === '/api/payments' && (one.init?.method ?? 'GET') === 'GET')).toHaveLength(1)
+    expect(screen.queryByText(sr.admin.registrationGone)).toBeNull()
   }, SLOW)
 
   it('puts „Prijava je obrisana." away when the next thing done on the screen is a booking, which is not about it', async () => {

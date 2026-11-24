@@ -378,6 +378,12 @@ class MePhotoApi {
 	/** One of the three fractions is missing, unreadable, or outside what V21 holds. */
 	static final String THE_CROP_IS_NOT_A_CIRCLE = "theCropIsNotACircle";
 
+	/**
+	 * A circle was sent over a picture that no longer stands: the one it was drawn over has been replaced or
+	 * taken down since the screen was served (owner, 24.11.2026). Answered 409, and nothing is written.
+	 */
+	static final String THE_PICTURE_HAS_CHANGED = "thePictureHasChanged";
+
 	/** The tab a portrait waits in, which is the one PDL P28a names „Profili". */
 	static final String THE_PROFILES_TAB = "profiles";
 

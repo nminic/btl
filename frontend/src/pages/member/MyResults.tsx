@@ -18,6 +18,7 @@ import { DeletionSaid } from '../admin/DeletionSaid'
 import type { SubmissionStatus } from '../../session/context'
 import { useSession } from '../../session/useSession'
 import { useMemberScreen } from './memberScreen'
+import { useAReportIsOpen } from './reportingOpen'
 import type { Answer } from '../account/askTheServer'
 import { ServerSaid } from '../account/ServerSaid'
 import { aCorrectionWaitsOn } from './correctionWaits'
@@ -57,6 +58,10 @@ function drawnAs(run: SentRun): SubmissionStatus {
 function Mine({ me }: { me: string }) {
   const { locale, t } = useI18n()
   const { remove } = useSession()
+  /* A new result and a run sent again are offered only while the server names a season open for
+     his report (PDL P9, 24.11.2026, `reportingOpen.tsx`). „Izmeni" on a counted result is not asked
+     this: the owner chose the same day that a correction stays as it was. */
+  const reports = useAReportIsOpen(me)
   /* HOW MANY TIMES EACH LIST HAS BEEN SAID TO BE OUT OF DATE WHILE THIS SCREEN STOOD, which is
      what makes a list that is already drawn ask again (`HowToRead.revision`). Two numbers and not
      one, because the two go stale apart: taking a counted result back leaves the counted list to
@@ -149,9 +154,11 @@ function Mine({ me }: { me: string }) {
     <div className="member">
       <div className="member__head">
         <h1>{t('myResults.title')}</h1>
-        <Link className="button button--primary" to={`/${locale}/rezultat/novi`}>
-          {t('myResults.add')}
-        </Link>
+        {reports && (
+          <Link className="button button--primary" to={`/${locale}/rezultat/novi`}>
+            {t('myResults.add')}
+          </Link>
+        )}
       </div>
 
       {/* BOTH LISTS AS ONE READ, because one of them decides what the other may offer: „Izmeni"
@@ -263,7 +270,7 @@ function Mine({ me }: { me: string }) {
                             The name of the race is in the accessible name of the control, because
                             a list of six runs sent back is six links a screen reader cannot
                             otherwise tell apart. */}
-                        {one.state === 'rejected' && !aCorrectionWaitsOn(mine, one.amendsResultId) && (
+                        {reports && one.state === 'rejected' && !aCorrectionWaitsOn(mine, one.amendsResultId) && (
                           <p className="submissions__again">
                             <ActionLink
                               symbol={SYMBOL.again}

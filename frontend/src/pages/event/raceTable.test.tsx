@@ -185,6 +185,8 @@ describe('the table of races on an event, as it is written', () => {
 
   it('carries no count of its own columns, which the sheet reads off the cells', async () => {
     const table = await openTable(TWO_DAYS, 'competitor', MEMBER, '2021-09-17')
+    /* His way in is drawn once the server has named a season open for his report (PDL P9, 24.11.2026). */
+    await within(table).findAllByRole('link', { name: /^Unesi rezultat/ })
 
     /* A number written on the element beside the headings it counted was the other home of „how many
        columns", measured disagreeing on 23.08.2026: five columns drawn in the width of four. */
@@ -193,6 +195,8 @@ describe('the table of races on an event, as it is written', () => {
 
   it('draws an empty cell for the way in of a race that has not been run, because the sheet gives an empty one no room', async () => {
     const table = await openTable(TWO_DAYS, 'competitor', MEMBER, '2021-09-17')
+    /* His way in is drawn once the server has named a season open for his report (PDL P9, 24.11.2026). */
+    await within(table).findAllByRole('link', { name: /^Unesi rezultat/ })
     const ways = raceRows(table).map((row) => at(within(row).getAllByRole('cell'), 5))
 
     /* Two races on the Friday, which is today, and two on the Saturday after it, in the owner's
@@ -251,6 +255,8 @@ describe('the table of races on an event, as it is written', () => {
        then drew a telephone with an ordinary table in it, 438,8px in a box of 328 at 360px, and the whole
        package stayed green (measured in Chrome, review of PR 482). */
     const table = await openTable(TWO_DAYS, 'competitor', MEMBER, '2021-09-17')
+    /* His way in is drawn once the server has named a season open for his report (PDL P9, 24.11.2026). */
+    await within(table).findAllByRole('link', { name: /^Unesi rezultat/ })
     const box = must(table.parentElement, 'the box around the table')
     const rules = everyRule(PROFILE, 'Profile.css').filter((rule) => /event-races|table--races/.test(rule.selectorText))
     const selected = new Set(

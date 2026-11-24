@@ -6,6 +6,7 @@ import { I18nProvider } from '../../i18n/I18nProvider'
 import { SessionProvider } from '../../session/SessionProvider'
 import type { SessionValue } from '../../session/context'
 import { useSession } from '../../session/useSession'
+import { theCookieNames } from '../../test/setup'
 
 import { loadResource } from '../../data/client'
 import { btlPoints } from '../../data/scoring'
@@ -184,6 +185,9 @@ describe('an event with no races on it', () => {
        is what an organiser dropping a distance does. */
     /* Read as the day after that race, because a form on an event nobody has run
        yet says so before it gets as far as the distances (NotRunYet). */
+    /* And the server knows who the cookie names, since the form is drawn only where `/api/me` names a
+       season open for his report (PDL P9, 24.11.2026). */
+    theCookieNames({ role: 'competitor', memberNumber: '000007' })
     render(
       <ClockProvider simulatedDay="2027-12-28">
         <I18nProvider locale="sr">

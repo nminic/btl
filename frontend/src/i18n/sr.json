@@ -1111,6 +1111,8 @@
   },
   "newResult": {
     "title": "Unos rezultata",
+    "notOpen": "Prijava rezultata još nije otvorena",
+    "notOpenWhy": "Prijava rezultata se otvara sa prvom sezonom lige.",
     "submit": "Pošalji rezultat",
     "again": "Ispravljaš rezultat koji je odbijen. Razlog je bio: {reason}",
     "fixingCounted": "Menjaš rezultat koji je već uračunat. Dok izmena ne bude potvrđena, u poretku ostaje stari rezultat. Uz izmenu priloži nov dokaz.",
@@ -2018,7 +2020,8 @@
       "theFormIsNotComplete": "Slika nije stigla do servera. Izaberi je ponovo i pošalji.",
       "thePictureIsTooBig": "Slika je prevelika za portal. Izaberi manju ili je smanji pre slanja.",
       "thisIsNotAPicture": "Ovaj fajl nije slika. Pošalji fotografiju, na primer u JPG ili PNG obliku.",
-      "theCropIsNotACircle": "Isečak nije ispravan. Namesti krug ponovo i pošalji."
+      "theCropIsNotACircle": "Isečak nije ispravan. Namesti krug ponovo i pošalji.",
+      "thePictureHasChanged": "Slika je u međuvremenu promenjena. Otvori je ponovo pa namesti krug."
     }
   },
   "theirBoxes": {

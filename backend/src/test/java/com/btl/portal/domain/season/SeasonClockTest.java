@@ -1188,6 +1188,11 @@ class SeasonClockTest {
 		assertThat(SeasonClock.seasonsOpenForAReport(lastSecond, true))
 				.as("at 23:59:59 in Belgrade the tester could no longer send a run of 2026")
 				.containsExactly(2026);
+		/* And the member who is not a tester at the same second, which is the answer the screen hides the
+		   form by until midnight (PDL P9, owner, 24.11.2026, „Sakrij i formu članovima"). */
+		assertThat(SeasonClock.seasonsOpenForAReport(lastSecond, false))
+				.as("at 23:59:59 in Belgrade a member who is not a tester was offered a season")
+				.isEmpty();
 		assertThat(SeasonClock.seasonsOpenForAReport(midnightInBelgrade, true))
 				.as("at midnight in Belgrade the exception had not gone out by itself")
 				.containsExactly(2027);
