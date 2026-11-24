@@ -316,6 +316,9 @@ describe('the circle of his picture, moved by the administration', () => {
 
     expect(body).toBeInstanceOf(FormData)
     expect(body instanceof FormData ? body.get('picture') : 'no form', 'a circle moved sent a file').toBeNull()
+    /* AND NAMES THE PICTURE IT WAS DRAWN OVER, the address the member's data served it at (owner, 24.11.2026:
+       „ako je u međuvremenu odobrena nova slika, portal odbija upis kruga"). */
+    expect(body instanceof FormData ? body.get('over') : 'no form').toBe('/mock/photo/andjelija.svg')
     expect(body instanceof FormData ? [body.get('cropX'), body.get('cropY'), body.get('cropSize')] : []).toEqual([
       '0.13000000',
       '0.15000000',
@@ -330,6 +333,72 @@ describe('the circle of his picture, moved by the administration', () => {
       fittedTo(cropIn({ x: 0.13, y: 0.15, size: 0.42 })).transform,
     )
     await waitFor(() => expect(save).toHaveAttribute('aria-disabled', 'true'))
+  }, SLOW)
+
+  it('names the picture the server answered for, and not the copy the browser draws, when the circle is moved after a file was saved', async () => {
+    /* THE TWO SOURCES OF ONE ADDRESS: after a file is saved the screen draws the browser's own copy of it (a data
+       URL) until the page is read again, and the server knows the picture by the address it answered with. A
+       circle sent over the data URL is a circle over a picture the route has never heard of, so it would be
+       refused every time; sent over the address of the picture that stood BEFORE the save, it would be written
+       onto a picture that is gone. The save is answered with an address that is neither of those. */
+    const user = setupUser()
+    const { asked, stop } = serverThat((path, init) =>
+      init?.method === 'POST' && path === `/api/members/${HAS_ONE}/photo`
+        ? json({ photo: '/api/photos/the-new-one', crop: { x: 0.5, y: 0.5, size: 1 } })
+        : null,
+    )
+
+    stops.push(stop)
+    asTheAdministration(HAS_ONE)
+
+    const panel = within(await screen.findByRole('region', { name: sr.picture.title }))
+    const save = panel.getByRole('button', { name: sr.theirBoxes.pictureSave })
+
+    await user.upload(
+      await panel.findByLabelText(sr.picture.choose),
+      new File(['slika'], 'nova.jpg', { type: 'image/jpeg' }),
+    )
+    await measurePicture()
+    await panel.findByLabelText('Veličina isečka')
+    await user.click(save)
+    expect(await panel.findByText(sr.theirBoxes.saved)).toBeVisible()
+
+    await measurePicture()
+    fireEvent.change(await panel.findByLabelText(sr.crop.x), { target: { value: '0.13' } })
+    await user.click(save)
+    await waitFor(() => expect(writes(asked)).toHaveLength(2))
+
+    const circle = must(writes(asked)[1], 'the second write').init?.body
+
+    expect(circle instanceof FormData ? circle.get('picture') : 'no form', 'the second write sent a file').toBeNull()
+    expect(circle instanceof FormData ? circle.get('over') : 'no form').toBe('/api/photos/the-new-one')
+  }, SLOW)
+
+  it('says, in the owner\'s own sentence, that the picture changed in the meantime, and sends it once', async () => {
+    /* Owner, 24.11.2026, PDL „Sitnice iz recenzije PR-a 815 i 811 i panela tima": „Slika je u međuvremenu
+       promenjena. Otvori je ponovo pa namesti krug." The sentence is the dictionary's and the words are his, so
+       they are asked of the dictionary AND as written, which is what a rewording of either would fail. */
+    const user = setupUser()
+    const { asked, stop } = serverThat((path, init) =>
+      init?.method === 'POST' && path === `/api/members/${HAS_ONE}/photo`
+        ? json({ reason: 'thePictureHasChanged' }, 409)
+        : null,
+    )
+
+    stops.push(stop)
+    asTheAdministration(HAS_ONE)
+
+    const panel = within(await screen.findByRole('region', { name: sr.picture.title }))
+
+    await measurePicture()
+    fireEvent.change(await panel.findByLabelText(sr.crop.x), { target: { value: '0.13' } })
+    await user.click(panel.getByRole('button', { name: sr.theirBoxes.pictureSave }))
+
+    expect(sr.picture.sendRefused.thePictureHasChanged).toBe(
+      'Slika je u međuvremenu promenjena. Otvori je ponovo pa namesti krug.',
+    )
+    expect(await panel.findByText(sr.picture.sendRefused.thePictureHasChanged)).toBeVisible()
+    expect(writes(asked)).toHaveLength(1)
   }, SLOW)
 
   it('draws the picture that stands again, in the circle it stands in, when a file chosen over it cannot be opened', async () => {

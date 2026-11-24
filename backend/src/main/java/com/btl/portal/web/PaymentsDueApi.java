@@ -236,6 +236,9 @@ class PaymentsDueApi {
 
 	private final Clock clock;
 
+	/** Whose right over the members is asked, once per answer, for `mayBeDeleted`. */
+	private final WhatHeMayDo mayHe;
+
 	/**
 	 * The price list, read ONCE for the whole answer rather than per row.
 	 *
@@ -264,7 +267,8 @@ class PaymentsDueApi {
 	private final LeavingBeforeBecomingAMember neverMembers;
 
 	PaymentsDueApi(JdbcClient db, Clock clock, PriceRows priceRows, BalanceBook book,
-			LeavingBeforeBecomingAMember neverMembers) {
+			LeavingBeforeBecomingAMember neverMembers, WhatHeMayDo mayHe) {
+		this.mayHe = mayHe;
 		this.db = db;
 		this.clock = clock;
 		this.priceRows = priceRows;
@@ -459,8 +463,15 @@ class PaymentsDueApi {
 		Map<Long, Balance.Money> books = book.forEveryOneOf(monies);
 		List<MembershipPrice.Row> priceList = priceRows.all();
 
-		/* AND WHO OF THEM MAY BE DELETED, one reading for the whole answer for the same reason. */
-		Set<Long> deletable = neverMembers.whoOf(monies.keySet());
+		/* AND WHO OF THEM MAY BE DELETED, one reading for the whole answer for the same reason, and NOBODY
+		   to a moderator who has no right over the members (owner, 24.11.2026, PDL „Sitnice iz recenzije
+		   PR-a 815 i 811 i panela tima": „server ne šalje oznaku da prijava sme da se obriše moderatoru koji
+		   nema pravo nad članovima"). The route behind the button answers him 404 whatever the row is
+		   (`ARegistrationIsDeletedApi`), so a `true` served to him is an offer nobody can honour, and the
+		   screen drew the button only to whoever holds the right over the members: that decision is now the
+		   server's, and the screen's copy of it is a second line of the same sentence. */
+		Set<Long> deletable = mayHe.may(CompetitorApi.OVER_THE_MEMBERS)
+				? neverMembers.whoOf(monies.keySet()) : Set.of();
 
 		LocalDate today = LocalDate.ofInstant(clock.instant(), SeasonClock.ZONE);
 

@@ -1981,7 +1981,8 @@
       "theFormIsNotComplete": "The picture did not reach the server. Choose it again and send it.",
       "thePictureIsTooBig": "The picture is too big for the portal. Choose a smaller one, or reduce it before sending.",
       "thisIsNotAPicture": "This file is not a picture. Send a photograph, in JPG or PNG form for instance.",
-      "theCropIsNotACircle": "The crop is not right. Set the circle again and send it."
+      "theCropIsNotACircle": "The crop is not right. Set the circle again and send it.",
+      "thePictureHasChanged": "The picture has changed in the meantime. Open it again and then set the circle."
     }
   },
   "theirBoxes": {

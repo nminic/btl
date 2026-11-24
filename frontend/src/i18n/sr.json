@@ -1981,7 +1981,8 @@
       "theFormIsNotComplete": "Slika nije stigla do servera. Izaberi je ponovo i pošalji.",
       "thePictureIsTooBig": "Slika je prevelika za portal. Izaberi manju ili je smanji pre slanja.",
       "thisIsNotAPicture": "Ovaj fajl nije slika. Pošalji fotografiju, na primer u JPG ili PNG obliku.",
-      "theCropIsNotACircle": "Isečak nije ispravan. Namesti krug ponovo i pošalji."
+      "theCropIsNotACircle": "Isečak nije ispravan. Namesti krug ponovo i pošalji.",
+      "thePictureHasChanged": "Slika je u međuvremenu promenjena. Otvori je ponovo pa namesti krug."
     }
   },
   "theirBoxes": {

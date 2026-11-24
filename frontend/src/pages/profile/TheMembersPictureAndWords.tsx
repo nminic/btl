@@ -10,7 +10,12 @@ import { useI18n } from '../../i18n/useI18n'
 import { askTheServer, type Answer } from '../account/askTheServer'
 import { ServerSaid } from '../account/ServerSaid'
 import { WHEN_CHANGING_MY_DATA } from '../member/myAccount'
-import { asTheColumnHolds, pictureToSend, WHEN_SENDING_A_PICTURE } from '../member/photoWrites'
+import {
+  asTheColumnHolds,
+  pictureToSend,
+  theAddressIn,
+  WHEN_MOVING_THE_CIRCLE_OF_A_PICTURE,
+} from '../member/photoWrites'
 import { cropIn, type Crop } from '../../components/crop'
 import { DeleteSheet } from '../admin/DeleteSheet'
 import { Resource } from '../../components/Resource'
@@ -82,7 +87,13 @@ export function TheirBoxesOffTheirData({ memberNumber }: { memberNumber: string 
   )
 }
 
-type Shown = { photo: string; crop: Crop }
+/**
+ * `photo` is what is drawn; `at` is where the SERVER serves the picture that stands, which is what a circle
+ * moved over it names (`pictureToSend`, `over`). They are one string until a file is saved, and then they
+ * are not: what is drawn is the browser's own copy until the page is read again, and the route has never
+ * heard of that. Nothing where the answer to the save did not name an address.
+ */
+type Shown = { photo: string; crop: Crop; at: string | null }
 
 /**
  * The placeholder for "the picture that stands", handed to the chooser in the place of a file, the shape
@@ -97,7 +108,9 @@ const NO_FILE = new File([], 'the-picture-that-stands')
  * poigram krugom pa da je sačuvam."), which the route moves on the row that stands and tells him nothing
  * about („Član ne dobija poruku kad administracija pomeri krug.").
  */
-type Plan = { how: 'file'; file: File; crop: Crop; drawn: string } | { how: 'circle'; crop: Crop; drawn: string }
+type Plan =
+  | { how: 'file'; file: File; crop: Crop; drawn: string }
+  | { how: 'circle'; crop: Crop; drawn: string; over: string | null }
 
 function planOf(picked: Chosen | null, shown: Shown | null, circle: Crop | null): Plan | null {
   if (picked !== null) {
@@ -106,7 +119,7 @@ function planOf(picked: Chosen | null, shown: Shown | null, circle: Crop | null)
 
   return shown === null || circle === null || sameCircle(circle, shown.crop)
     ? null
-    : { how: 'circle', crop: circle, drawn: shown.photo }
+    : { how: 'circle', crop: circle, drawn: shown.photo, over: shown.at }
 }
 
 /** Whether two circles are the same one AS THE COLUMN HOLDS THEM, which is what would be sent. */
@@ -126,7 +139,7 @@ function HisPicture({ competitor }: { competitor: WhatStands }) {
      podatke, želim da mogu da se poigram krugom pa da je sačuvam." (owner, PDL „Administracija sama
      podešava krug na članovoj slici"). */
   const [shown, setShown] = useState<Shown | null>(
-    competitor.photo === null ? null : { photo: competitor.photo, crop: cropIn(competitor.crop) },
+    competitor.photo === null ? null : { photo: competitor.photo, crop: cropIn(competitor.crop), at: competitor.photo },
   )
   const [picked, setPicked] = useState<Chosen | null>(null)
   /* THE CIRCLE MOVED OVER THE PICTURE THAT STANDS, or nothing where it has not been touched. */
@@ -157,7 +170,7 @@ function HisPicture({ competitor }: { competitor: WhatStands }) {
 
     const answered = await askTheServer(
       addressOfHis(competitor.memberNumber, 'photo'),
-      pictureToSend(what.how === 'file' ? what.file : null, what.crop),
+      what.how === 'file' ? pictureToSend(what.file, what.crop) : pictureToSend(null, what.crop, what.over),
     )
 
     outstanding.current = false
@@ -171,7 +184,7 @@ function HisPicture({ competitor }: { competitor: WhatStands }) {
     /* WHAT STANDS IS NOW WHAT WAS SAVED, and the list every circle of his is drawn from is no longer
        true: it carries `photo` and `crop` on his row. */
     clearResourceCache('competitors')
-    setShown({ photo: what.drawn, crop: what.crop })
+    setShown({ photo: what.drawn, crop: what.crop, at: theAddressIn(answered.body) })
     setPicked(null)
     setCircle(null)
     setSavedWhat(what.how)
@@ -266,7 +279,7 @@ function HisPicture({ competitor }: { competitor: WhatStands }) {
           {t(savedWhat === 'circle' ? 'theirBoxes.circleSaved' : 'theirBoxes.saved')}
         </p>
       )}
-      {answer !== null && answer.got !== 'done' && <ServerSaid answer={answer} refusals={WHEN_SENDING_A_PICTURE} />}
+      {answer !== null && answer.got !== 'done' && <ServerSaid answer={answer} refusals={WHEN_MOVING_THE_CIRCLE_OF_A_PICTURE} />}
     </section>
   )
 }

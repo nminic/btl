@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { aimAt, closestIn, cropIn, draggedTo, frameOf, holeOf, UNKNOWN } from './crop'
 import type { Crop, Shape, Spot } from './crop'
@@ -124,6 +124,42 @@ export function CropWindow({ picture, crop, alt, children, onChange, onLoaded, o
    * crossing the picture answers the same thing hundreds of times in a row.
    */
   const [cursor, setCursor] = useState('')
+  /**
+   * THE SLIDERS STAY WHERE THEY ARE UNTIL THE PRESS THAT TOOK THE FOCUS OFF THEM IS OVER (owner, 24.11.2026,
+   * PDL „Sitnice iz recenzije PR-a 815 i 811 i panela tima": a click with the mouse after the keyboard must
+   * not be lost).
+   *
+   * Three sliders are on the screen only while focus is in them (`Crop.css`, `:not(:focus-within)`), so a
+   * member who moved the circle with the arrows and then pressed „Odobri" or „Sačuvaj sliku" with the
+   * mouse had the focus leave on the button-down, the strip fold away, the button jump up by its height
+   * and the button-up land on whatever was under the pointer now: the first click was lost. Held open for
+   * as long as the pointer is down, and let go of a moment after it comes up, which is after the click
+   * has been delivered (a click is dispatched with the release, a timer waits for the next turn). Asked
+   * only of a focus that leaves BECAUSE OF A PRESS: a keyboard that tabs away folds the strip at once, as
+   * before, because no click is waiting for the layout to hold still.
+   */
+  const [keptOpen, setKeptOpen] = useState(false)
+  const pressed = useRef(false)
+
+  useEffect(() => {
+    const down = () => {
+      pressed.current = true
+    }
+    const up = () => {
+      pressed.current = false
+      setTimeout(() => setKeptOpen(false), 0)
+    }
+
+    document.addEventListener('pointerdown', down, true)
+    document.addEventListener('pointerup', up, true)
+    document.addEventListener('pointercancel', up, true)
+
+    return () => {
+      document.removeEventListener('pointerdown', down, true)
+      document.removeEventListener('pointerup', up, true)
+      document.removeEventListener('pointercancel', up, true)
+    }
+  }, [])
 
   /** Where a pointer is, as a share of the drawn picture in each direction. The
    *  box is asked of the element the event was aimed at, so there is one reading
@@ -138,7 +174,14 @@ export function CropWindow({ picture, crop, alt, children, onChange, onLoaded, o
   }
 
   return (
-    <div className="crop">
+    <div
+      className={keptOpen ? 'crop crop--held' : 'crop'}
+      onBlur={(event) => {
+        if (pressed.current && !event.currentTarget.contains(event.relatedTarget)) {
+          setKeptOpen(true)
+        }
+      }}
+    >
       {/* The picture answers a pointer only where there is somewhere to send the
           answer. `touch-action: none` comes with it (Crop.css): without it a drag
           on a telephone scrolls the page under the finger and the circle stays

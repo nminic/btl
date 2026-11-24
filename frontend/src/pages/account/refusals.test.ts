@@ -35,7 +35,7 @@ import {
   WHEN_THE_ADMINISTRATION_MOVES_A_MEMBER,
   WHEN_THE_ADMINISTRATION_WRITES_A_TEAM,
 } from '../admin/teamWrites'
-import { WHEN_SENDING_A_PICTURE } from '../member/photoWrites'
+import { WHEN_MOVING_THE_CIRCLE_OF_A_PICTURE, WHEN_SENDING_A_PICTURE } from '../member/photoWrites'
 import { WHEN_LETTING_MYSELF_IN } from '../member/fromTheBalance'
 import { WHEN_CHOOSING_THE_LANGUAGE_OF_MAIL } from '../member/mailLanguage'
 import { WHEN_DELETING_A_MEMBER } from '../admin/memberWrites'
@@ -392,6 +392,10 @@ describe('the reasons the server can name', () => {
        nothing on this side could read any of them, because no screen called the route at
        all: `grep -rn "me/photo" frontend/src` came back empty, tests included.
 
+       EIGHT CONSTANTS AND FIVE REASONS SINCE 24.11.2026: `thePictureHasChanged`, the one reason of the
+       administration's door on a member's card (`MemberPictureAndWordsApi`), declared here beside the others and
+       answered by the second map (`WHEN_MOVING_THE_CIRCLE_OF_A_PICTURE`).
+
        SEVEN CONSTANTS AND FOUR REASONS SINCE 27.09.2026, and both numbers moved for
        different reasons at once. `aPictureAlreadyWaits` left the class: PDL 21c has a
        second send overwrite the row that waits rather than being refused for it, so the
@@ -403,7 +407,7 @@ describe('the reasons the server can name', () => {
        nor `DELETE /api/me/photo` names a refusal at all - both answer 200 or an empty 404
        - so the one dictionary the screen hands in still covers everything the file can
        say. */
-    ['MePhotoApi.java', [WHEN_SENDING_A_PICTURE], 7],
+    ['MePhotoApi.java', [WHEN_SENDING_A_PICTURE, WHEN_MOVING_THE_CIRCLE_OF_A_PICTURE], 8],
     /* THE LANGUAGE OF AN ACCOUNT'S MAIL, added 17.10.2026 with the panel that meets it
        (`member/MailLanguageChoice.tsx`). One constant, `theFormIsNotComplete`, and it is a refusal: a
        body with no language, or one the portal does not write in. Counted over the file like every
