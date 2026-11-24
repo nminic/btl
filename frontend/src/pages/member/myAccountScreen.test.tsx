@@ -1018,12 +1018,39 @@ describe('changing a password from inside', () => {
 
     const button = within(panel).getByRole('button', { name: sr.account.passwordSubmit })
 
+    expect(button).toHaveAttribute('aria-disabled', 'false')
+
     await user.click(button)
+    /* The press that is out is announced to a reader who cannot see the screen (PR 822, review
+       24.11.2026: the guard of the second press was held, the announcement of the held state not). */
+    expect(button).toHaveAttribute('aria-disabled', 'true')
     await user.click(button)
     release()
 
     expect(await within(panel).findByText(sr.account.passwordDone)).toBeInTheDocument()
     expect(asked.filter((one) => one.path === '/api/me/password')).toHaveLength(1)
+  })
+
+  /* PR 822, review 24.11.2026: the sentence under a box stands INSIDE `.rankings__field`, whose sheet
+     writes its label in capitals, so `styles/rankingsFieldError.test.ts` can only hold the rule that
+     takes the capitals off the sentence while this holds that it is drawn there. */
+  it('draws the sentence under each empty box inside the field that holds the box', async () => {
+    const user = setupUser()
+
+    renderAt('/sr/podesavanja', 'competitor', ME.memberNumber)
+
+    const panel = await passwordPanel()
+
+    await user.click(within(panel).getByRole('button', { name: sr.account.passwordSubmit }))
+
+    const sentences = within(panel).getAllByText(sr.form.errors.required)
+
+    expect(sentences).toHaveLength(3)
+
+    for (const sentence of sentences) {
+      expect(sentence.closest('.rankings__field')).not.toBeNull()
+      expect(sentence).toHaveClass('field__error')
+    }
   })
 
   it('says so when the portal could not be reached at all', async () => {
