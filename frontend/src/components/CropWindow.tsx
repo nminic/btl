@@ -36,8 +36,10 @@ export function CropWindow({ picture, crop, alt, children, onChange, onLoaded, o
    *  the caller is the only one who knows whose face this is. */
   alt: string
   /** The sliders, on the screen where the crop is being chosen rather than
-   *  looked at. They sit under the picture inside the same group so that what
-   *  moves and what is moved are one thing to a screen reader. */
+   *  looked at, and since 23.11.2026 on the moderator's card too, where he may
+   *  move the circle before he approves (`admin/PendingQueue.tsx`). They sit
+   *  under the picture inside the same group so that what moves and what is
+   *  moved are one thing to a screen reader. */
   children?: ReactNode
   /**
    * Where a drag on the picture is sent, on the screen where the crop is being

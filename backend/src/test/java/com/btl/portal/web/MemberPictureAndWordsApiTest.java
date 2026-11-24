@@ -432,9 +432,9 @@ class MemberPictureAndWordsApiTest {
 	@Test
 	void aPictureOfMorePixelsThanTheCutTakesIsRefusedOnEachCeiling() throws Exception {
 		assertThat(body(picture(HIS_NUMBER, PicturesOfASize.png(5_000, 5_001), "0.5", OVER_THE_MEMBERS))
-				.get("reason").asString()).isEqualTo(MePhotoApi.THE_PICTURE_IS_TOO_BIG);
+				.path("reason").asString()).isEqualTo(MePhotoApi.THE_PICTURE_IS_TOO_BIG);
 		assertThat(body(picture(HIS_NUMBER, PicturesOfASize.webpOverItsCeiling(), "0.5", OVER_THE_MEMBERS))
-				.get("reason").asString()).isEqualTo(MePhotoApi.THE_PICTURE_IS_TOO_BIG);
+				.path("reason").asString()).isEqualTo(MePhotoApi.THE_PICTURE_IS_TOO_BIG);
 		assertThat(digestStandingOn(him)).as("a refused picture replaced his").isEqualTo(String.format("%064x", 1));
 		assertThat(messages()).isEmpty();
 

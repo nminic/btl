@@ -278,6 +278,13 @@ function RatingGiven({ rating }: { rating: EventRating }) {
  * picture `one.crop` is `WHOLE`, the portal's own word for „no square of its own" (`./pending.ts`),
  * and nothing is drawn at all.
  *
+ * <p><b>Since 23.11.2026 he moves the circle before he approves</b> (owner, PDL „Administracija sama
+ * podešava krug na članovoj slici"), with the three sliders the member moves his with (`CropSliders`),
+ * under the picture and inside its group, and still with no `onChange` on the picture: the sliders take
+ * the keyboard and a touch without the picture taking every touch, so the height stays uncapped and the
+ * paragraph above stands. What he moves is drawn in place of the member's circle (`moved`) and travels in
+ * the approval beside the print (`approvalOf`); the print stays `one.crop`.
+ *
  * <p><b>A failed load says so rather than hiding the picture or drawing a broken
  * image icon, since PDL.md "29. Slika koja ne moze da se ucita" (owner,
  * 27.09.2026).</b> `GET /api/verification/{id}/photo` answers 404 to a moderator
