@@ -2028,7 +2028,6 @@
     "repeatPassword": "Ponovi novu lozinku",
     "passwordSignsOthersOut": "Kad promeniš lozinku, bićeš odjavljen sa svih ostalih uređaja. Ovaj ostaje prijavljen.",
     "passwordSubmit": "Promeni lozinku",
-    "passwordFillFirst": "Popuni sva tri polja.",
     "passwordDone": "Lozinka je promenjena. Ostali uređaji su odjavljeni.",
     "passwordFormIsNotComplete": "Sva tri polja moraju da budu popunjena, a dve nove iste i duge najmanje {count} znakova.",
     "oldPasswordIsWrong": "Trenutna lozinka nije tačna. Pokušaj ponovo.",

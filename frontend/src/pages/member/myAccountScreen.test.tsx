@@ -766,19 +766,73 @@ describe('changing a password from inside', () => {
     expect(button).toHaveAccessibleDescription(new RegExp(sr.account.passwordSignsOthersOut))
   })
 
-  it('has nothing to press until all three boxes are filled', async () => {
+  /* PDL 24.11.2026, „Popuni sva tri polja. Ovo na podešavanjima ne treba da stoji, sumanuto je":
+     the button is live from the start and the sentence is gone. */
+  it('opens with no sentence about filling in and a button that is not held', async () => {
+    renderAt('/sr/podesavanja', 'competitor', ME.memberNumber)
+
+    const panel = await passwordPanel()
+    const button = within(panel).getByRole('button', { name: sr.account.passwordSubmit })
+
+    expect(within(panel).queryByText(/Popuni sva tri polja/)).toBeNull()
+    expect(button).not.toHaveAttribute('aria-disabled', 'true')
+    expect(button).not.toHaveAccessibleDescription(/Popuni sva tri polja/)
+    expect(panel.querySelectorAll('[aria-invalid="true"]')).toHaveLength(0)
+  })
+
+  it.each([
+    ['only the old one is typed', ['Trenutna lozinka'], ['Nova lozinka', 'Ponovi novu lozinku']],
+    ['only the new one is typed', ['Nova lozinka'], ['Trenutna lozinka', 'Ponovi novu lozinku']],
+    ['only the repeat is typed', ['Ponovi novu lozinku'], ['Trenutna lozinka', 'Nova lozinka']],
+    ['nothing is typed', [], ['Trenutna lozinka', 'Nova lozinka', 'Ponovi novu lozinku']],
+  ])('names every empty box and sends nothing when %s', async (_name, typed, empty) => {
+    const user = setupUser()
+    let asked: Asked[] = []
+    ;({ stop, asked } = serverThat((path, init) =>
+      path === '/api/me/password' && init?.method === 'PUT' ? answeredWith(204) : null,
+    ))
+
+    renderAt('/sr/podesavanja', 'competitor', ME.memberNumber)
+
+    const panel = await passwordPanel()
+    const box = (label: string) =>
+      within(panel).getByLabelText(new RegExp(`^${label}`)) as HTMLInputElement
+
+    for (const label of typed) {
+      await user.type(box(label), 'something')
+    }
+
+    await user.click(within(panel).getByRole('button', { name: sr.account.passwordSubmit }))
+
+    for (const label of empty) {
+      expect(box(label)).toHaveAttribute('aria-invalid', 'true')
+      expect(box(label)).toHaveAccessibleDescription(sr.form.errors.required)
+    }
+
+    for (const label of typed) {
+      expect(box(label)).toHaveAttribute('aria-invalid', 'false')
+      expect(box(label)).not.toHaveAccessibleDescription(sr.form.errors.required)
+    }
+
+    expect(within(panel).getAllByText(sr.form.errors.required)).toHaveLength(empty.length)
+    expect(box(empty[0])).toHaveFocus()
+    expect(asked.filter((one) => one.path === '/api/me/password')).toHaveLength(0)
+  })
+
+  it('takes the error from a box the moment something is typed into it', async () => {
     const user = setupUser()
 
     renderAt('/sr/podesavanja', 'competitor', ME.memberNumber)
 
     const panel = await passwordPanel()
 
-    await user.type(within(panel).getByLabelText(/Trenutna lozinka/), 'the old one')
+    await user.click(within(panel).getByRole('button', { name: sr.account.passwordSubmit }))
+    expect(within(panel).getAllByText(sr.form.errors.required)).toHaveLength(3)
 
-    expect(within(panel).getByRole('button', { name: sr.account.passwordSubmit })).toHaveAttribute(
-      'aria-disabled',
-      'true',
-    )
+    await user.type(within(panel).getByLabelText(/^Nova lozinka/), 'x')
+
+    expect(within(panel).getAllByText(sr.form.errors.required)).toHaveLength(2)
+    expect(within(panel).getByLabelText(/^Nova lozinka/)).toHaveAttribute('aria-invalid', 'false')
   })
 
   /**

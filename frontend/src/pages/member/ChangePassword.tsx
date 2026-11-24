@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { AskedLabel } from '../../forms/AskedLabel'
+import { REQUIRED_KEY } from '../../forms/validate'
 import { useI18n } from '../../i18n/useI18n'
 import { askTheServer, type Answer } from '../account/askTheServer'
 import { SHORTEST_PASSWORD } from '../account/passwordRule'
@@ -49,12 +50,17 @@ export function ChangePassword() {
   const [asking, setAsking] = useState(false)
   const [answer, setAnswer] = useState<Answer | null>(null)
   const said = useRef<HTMLParagraphElement>(null)
+  /* The boxes pressed while empty, by the id of the box. Nothing is said about an empty box until
+     the button is pressed (PDL 24.11.2026: the button is live from the start), and a box stops
+     being said to be empty the moment something is typed into it. */
+  const [owed, setOwed] = useState<string[]>([])
 
   const done = answer !== null && answer.got === 'done'
   const refusal = answer !== null && answer.got !== 'done' ? answer : null
   /* Nothing to send while any of the three is empty. The server says the same thing and is
-     still what decides; this only keeps a member from spending a request on a form he can
-     see is not filled in. Whether the two new ones AGREE is deliberately not asked here:
+     still what decides; this only keeps a member from spending a request on a form that is
+     not filled in, and a press on it names each empty box with the portal's one sentence for
+     a required field (`REQUIRED_KEY`). Whether the two new ones AGREE is deliberately not asked here:
      that is the server's question, and a screen that answered it would have to hold a second
      copy of what „the same" means. */
   const nothing = old === '' || fresh === '' || repeated === ''
@@ -109,9 +115,26 @@ export function ChangePassword() {
         onSubmit={(event) => {
           event.preventDefault()
 
-          if (!asking && !nothing) {
-            void send()
+          if (asking) {
+            return
           }
+
+          if (nothing) {
+            const empty = [
+              ['account-old-password', old],
+              ['account-new-password', fresh],
+              ['account-repeat-password', repeated],
+            ]
+              .filter(([, value]) => value === '')
+              .map(([id]) => id)
+
+            setOwed(empty)
+            document.getElementById(empty[0])?.focus()
+
+            return
+          }
+
+          void send()
         }}
       >
         <div className="rankings__field">
@@ -122,11 +145,21 @@ export function ChangePassword() {
             autoComplete="current-password"
             value={old}
             aria-required="true"
+            aria-invalid={owed.includes('account-old-password')}
+            aria-describedby={
+              owed.includes('account-old-password') ? 'account-old-password-error' : undefined
+            }
             onChange={(event) => {
               setAnswer(null)
+              setOwed(owed.filter((id) => id !== 'account-old-password'))
               setOld(event.target.value)
             }}
           />
+          {owed.includes('account-old-password') && (
+            <p className="field__error" id="account-old-password-error">
+              {t(REQUIRED_KEY)}
+            </p>
+          )}
         </div>
 
         <div className="rankings__field">
@@ -137,11 +170,21 @@ export function ChangePassword() {
             autoComplete="new-password"
             value={fresh}
             aria-required="true"
+            aria-invalid={owed.includes('account-new-password')}
+            aria-describedby={
+              owed.includes('account-new-password') ? 'account-new-password-error' : undefined
+            }
             onChange={(event) => {
               setAnswer(null)
+              setOwed(owed.filter((id) => id !== 'account-new-password'))
               setFresh(event.target.value)
             }}
           />
+          {owed.includes('account-new-password') && (
+            <p className="field__error" id="account-new-password-error">
+              {t(REQUIRED_KEY)}
+            </p>
+          )}
         </div>
 
         <div className="rankings__field">
@@ -152,11 +195,21 @@ export function ChangePassword() {
             autoComplete="new-password"
             value={repeated}
             aria-required="true"
+            aria-invalid={owed.includes('account-repeat-password')}
+            aria-describedby={
+              owed.includes('account-repeat-password') ? 'account-repeat-password-error' : undefined
+            }
             onChange={(event) => {
               setAnswer(null)
+              setOwed(owed.filter((id) => id !== 'account-repeat-password'))
               setRepeated(event.target.value)
             }}
           />
+          {owed.includes('account-repeat-password') && (
+            <p className="field__error" id="account-repeat-password-error">
+              {t(REQUIRED_KEY)}
+            </p>
+          )}
         </div>
 
         {/* BEFORE THE BUTTON, AND NAMED BY IT. The owner asked for exactly this order on
@@ -171,22 +224,12 @@ export function ChangePassword() {
           <button
             type="submit"
             className="button button--primary"
-            aria-disabled={nothing || asking}
-            aria-describedby={
-              nothing
-                ? 'account-password-warning account-password-waits'
-                : 'account-password-warning'
-            }
+            aria-disabled={asking}
+            aria-describedby="account-password-warning"
           >
             {t('account.passwordSubmit')}
           </button>
         </p>
-
-        {nothing && (
-          <p id="account-password-waits" className="rate__hint" role="status">
-            {t('account.passwordFillFirst')}
-          </p>
-        )}
       </form>
 
       {refusal !== null && (
