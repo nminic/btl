@@ -99,7 +99,8 @@ function jsonResponse(body: object, status = 200): Response {
 
 /** A field of a body that came off the wire, as text, or nothing where it was not named. */
 function textIn(body: unknown, name: string): string | undefined {
-  const said: unknown = typeof body === 'object' && body !== null ? Reflect.get(body, name) : undefined
+  const said: unknown =
+    typeof body === 'object' && body !== null ? Reflect.get(body, name) : undefined
 
   return typeof said === 'string' ? said : undefined
 }
@@ -175,7 +176,12 @@ function aServerThatKeepsWhatItIsTold(opening: { address: string; phone?: string
       return jsonResponse({ address: held.address })
     }
 
-    return jsonResponse({ role: 'competitor', account: 1, member: hisRecord(held), mailLanguage: 'sr' })
+    return jsonResponse({
+      role: 'competitor',
+      account: 1,
+      member: hisRecord(held),
+      mailLanguage: 'sr',
+    })
   })
 
   return { asked, stop, held: () => ({ ...held }) }
@@ -251,7 +257,10 @@ describe('a member’s own data', () => {
 
     expect(save).toHaveAttribute('aria-disabled', 'true')
     expect(save).not.toHaveAttribute('aria-describedby')
-    expect(panel.querySelector('[role="status"]'), 'a sentence about the button stands on the panel').toBeNull()
+    expect(
+      panel.querySelector('[role="status"]'),
+      'a sentence about the button stands on the panel',
+    ).toBeNull()
 
     await user.click(save)
 
@@ -490,7 +499,10 @@ describe('a member’s own data', () => {
       'the screen asked the server to remove the telephone',
     )
 
-    expect(JSON.parse(String(sent.init?.body)), 'the request named something besides the telephone').toEqual({
+    expect(
+      JSON.parse(String(sent.init?.body)),
+      'the request named something besides the telephone',
+    ).toEqual({
       phone: '',
     })
     expect(kept.held()).toEqual({ address: 'Vojvode Stepa 5' })
@@ -506,7 +518,18 @@ describe('a member’s own data', () => {
 })
 
 /** Where the server's own source lives, spelled the way `myAccount.test.ts` spells it. */
-const WEB = join(process.cwd(), '..', 'backend', 'src', 'main', 'java', 'com', 'btl', 'portal', 'web')
+const WEB = join(
+  process.cwd(),
+  '..',
+  'backend',
+  'src',
+  'main',
+  'java',
+  'com',
+  'btl',
+  'portal',
+  'web',
+)
 
 /**
  * THE BOXES THE SERVER WILL NOT TAKE EMPTY, read off the Java that refuses them.
@@ -590,7 +613,9 @@ describe('which boxes of a member’s own data are asked for', () => {
     for (const { name, box } of personalBoxes(panel)) {
       const asked = neverEmptied.includes(name)
 
-      expect(box.getAttribute('aria-required'), `aria-required on ${name}`).toBe(asked ? 'true' : null)
+      expect(box.getAttribute('aria-required'), `aria-required on ${name}`).toBe(
+        asked ? 'true' : null,
+      )
       expect(hasTheStar(box), `the star beside ${name}`).toBe(asked)
       expect(saysOptional(box), `the word „${sr.form.optional}" beside ${name}`).toBe(!asked)
     }
@@ -707,12 +732,18 @@ describe('what the owner took off the settings screen', () => {
     expect(screen.queryByRole('heading', { name: sr.account.personalTitle })).toBeNull()
 
     for (const sentence of WHAT_THE_OWNER_TOOK_OFF) {
-      expect(screen.queryByText(new RegExp(sentence.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))), sentence).toBeNull()
+      expect(
+        screen.queryByText(new RegExp(sentence.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))),
+        sentence,
+      ).toBeNull()
     }
 
     expect(screen.queryByRole('heading', { name: 'Podaci koji se ne menjaju ovde' })).toBeNull()
     expect(screen.queryByRole('textbox', { name: /Adresa elektronske pošte/ })).toBeNull()
-    expect(screen.queryByText(`M ${hisCategoryFromMe(ME).ageBand}`), 'the category of the box that is gone').toBeNull()
+    expect(
+      screen.queryByText(`M ${hisCategoryFromMe(ME).ageBand}`),
+      'the category of the box that is gone',
+    ).toBeNull()
   })
 
   it('leaves no control of the screen naming a sentence that is not there', async () => {
@@ -722,7 +753,10 @@ describe('what the owner took off the settings screen', () => {
 
     for (const one of document.querySelectorAll('[aria-describedby]')) {
       for (const id of (one.getAttribute('aria-describedby') ?? '').split(/\s+/).filter(Boolean)) {
-        expect(document.getElementById(id), `${id} is named by a control and is not on the page`).not.toBeNull()
+        expect(
+          document.getElementById(id),
+          `${id} is named by a control and is not on the page`,
+        ).not.toBeNull()
       }
     }
   })
@@ -796,7 +830,7 @@ describe('changing a password from inside', () => {
 
     const panel = await passwordPanel()
     const box = (label: string) =>
-      within(panel).getByLabelText(new RegExp(`^${label}`)) as HTMLInputElement
+      inputElement(within(panel).getByLabelText(new RegExp(`^${label}`)))
 
     for (const label of typed) {
       await user.type(box(label), 'something')
@@ -815,7 +849,7 @@ describe('changing a password from inside', () => {
     }
 
     expect(within(panel).getAllByText(sr.form.errors.required)).toHaveLength(empty.length)
-    expect(box(empty[0])).toHaveFocus()
+    expect(box(at(empty, 0))).toHaveFocus()
     expect(asked.filter((one) => one.path === '/api/me/password')).toHaveLength(0)
   })
 
@@ -1018,7 +1052,14 @@ describe('changing a password from inside', () => {
       })
 
       expect(
-        JSON.parse(String(at(asked.filter((one) => one.path === '/api/me/password'), 0).init?.body)),
+        JSON.parse(
+          String(
+            at(
+              asked.filter((one) => one.path === '/api/me/password'),
+              0,
+            ).init?.body,
+          ),
+        ),
         'the passwords were not sent at all, so this sweep measures nothing',
       ).toEqual({ oldPassword: OLD, password: FRESH, passwordRepeat: REPEATED })
 
@@ -1040,7 +1081,10 @@ describe('changing a password from inside', () => {
       ]
 
       for (const typed of [OLD, FRESH, REPEATED]) {
-        expect(everywhereElse.filter((one) => one.includes(typed)), typed).toEqual([])
+        expect(
+          everywhereElse.filter((one) => one.includes(typed)),
+          typed,
+        ).toEqual([])
       }
     } finally {
       vi.restoreAllMocks()

@@ -120,16 +120,22 @@ export function ChangePassword() {
           }
 
           if (nothing) {
-            const empty = [
-              ['account-old-password', old],
-              ['account-new-password', fresh],
-              ['account-repeat-password', repeated],
-            ]
-              .filter(([, value]) => value === '')
-              .map(([id]) => id)
+            const empty: string[] = []
+
+            if (old === '') empty.push('account-old-password')
+            if (fresh === '') empty.push('account-new-password')
+            if (repeated === '') empty.push('account-repeat-password')
 
             setOwed(empty)
-            document.getElementById(empty[0])?.focus()
+            document
+              .getElementById(
+                old === ''
+                  ? 'account-old-password'
+                  : fresh === ''
+                    ? 'account-new-password'
+                    : 'account-repeat-password',
+              )
+              ?.focus()
 
             return
           }
