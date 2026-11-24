@@ -234,6 +234,9 @@ describe('the logo of a sponsor, in its form', () => {
     const box = await theBoxOf(user, 'Mint')
 
     await choose(user, box, A_PNG)
+    /* A sponsor WITH a logo, so the chosen picture is drawn in the place of one that stands, and not merely where
+       there was none: the picture drawn is the chosen one. */
+    expect(must(box.getByRole('img', { name: 'Logo sponzora Mint' }).getAttribute('src'), 'a picture').startsWith('data:image/png')).toBe(true)
     fireEvent.change(box.getByLabelText('Izaberi logo'), { target: { files: [] } })
 
     expect(await box.findByText('Ovako logo sada stoji na naslovnoj strani, u boksu "Sponzor dana" i u traci.')).toBeVisible()
