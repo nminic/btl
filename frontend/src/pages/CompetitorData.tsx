@@ -16,6 +16,7 @@ import { MEMBERS, recordsOf } from './admin/entityForms'
 import { useOverlay } from './admin/overlay'
 import { ProfileTop } from './profile/ProfileHead'
 import { addressOfTheData, TheMembersData } from './profile/TheMembersData'
+import { TheMembersCategory } from './profile/TheMembersCategory'
 import { TheirBoxesOffTheirData, TheMembersPictureAndWords } from './profile/TheMembersPictureAndWords'
 import { profileFor } from './profile/visible'
 import { THE_DATA, useWhoReadsTheData } from './profile/whoReadsTheData'
@@ -86,7 +87,15 @@ export function CompetitorData() {
     <TheCard
       part={part}
       memberNumber={memberNumber}
-      panel={<TheMembersData address={addressOfTheData(memberNumber)} />}
+      panel={
+        <>
+          <TheMembersData address={addressOfTheData(memberNumber)} />
+          {/* AND THE CHOICE OF HIS CATEGORY, under the form (owner, 24.11.2026, PDL „Administracija bira
+              kategoriju članu u njegovim podacima"): both roads the owner named lead here, the pencil on the
+              screen of the members and the card „Podaci" of the profile. */}
+          {memberNumber !== undefined && <TheMembersCategory memberNumber={memberNumber} />}
+        </>
+      }
       boxes={(competitor) => <TheMembersPictureAndWords competitor={competitor} />}
       /* A member the public list does not carry is drawn the card under a heading of its own (see
          `TheCard`), and his boxes are drawn off the administration's own route: owner, 06.11.2026, „Vidi i

@@ -2074,6 +2074,9 @@
     }
   },
   "memberData": {
+    "categoryFor": "Kategorija za sezonu {season}",
+    "categoryClosed": "Početnička kategorija ovom članu nije dostupna, jer ima zvaničnu sezonu sa {points} i više bodova.",
+    "categoryHeRunsIn": "U sezoni {season} član se takmiči u kategoriji: {category}",
     "nothingChanged": "Nijedan podatak nije izmenjen.",
     "formNotComplete": "Neko polje nije popunjeno onako kako ga forma traži. Proveri ga pa sačuvaj ponovo.",
     "notTakenHere": "Server ne prima jedno od poslatih polja. Osveži stranu pa sačuvaj ponovo.",

@@ -2074,6 +2074,9 @@
     }
   },
   "memberData": {
+    "categoryFor": "Category for the {season} season",
+    "categoryClosed": "The rookie category is not available to this member, because they have an official season with {points} points or more.",
+    "categoryHeRunsIn": "In the {season} season the member competes in the category: {category}",
     "nothingChanged": "No detail was changed.",
     "formNotComplete": "A field is not filled in the way the form asks. Check it and save again.",
     "notTakenHere": "The server does not take one of the fields that were sent. Refresh the page and save again.",
