@@ -234,4 +234,19 @@ describe('the sliders under the picture', () => {
       ':not(:focus-within)',
     )
   })
+
+  it('stay while a press that took the focus off them is still down', () => {
+    /* Owner, 24.11.2026 (PDL „Sitnice iz recenzije PR-a 815 i 811 i panela tima"): a click with the mouse after the
+       keyboard is not lost. The strip is folded away where nothing in the group has focus, and the mouse-down on a
+       button is the moment focus leaves, so the strip would fold and the button jump up before the mouse-up.
+       `CropWindow.tsx` puts `crop--held` on the box from that blur until a moment after the release, and the rule
+       that folds the strip says it does not fold then. The class on the box is held by
+       `cropKeyboardAndPress.test.tsx`; this is the other half of the same fact, the one jsdom cannot see in a
+       layout: without `:not(.crop--held)` in the selector the class is a word nobody reads. */
+    const [rule] = hiding()
+
+    expect(must(rule, 'the rule that takes the sliders off the screen').selectorText).toContain(
+      ':not(.crop--held)',
+    )
+  })
 })
