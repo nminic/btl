@@ -136,6 +136,19 @@ describe('the logo of a sponsor, in its form', () => {
     SLOW,
   )
 
+  it('still says what the press will do for a logo chosen for a sponsor that stands in neither', async () => {
+    serving(undefined, [{ ...MINT, inRotation: false, inStrip: false }])
+
+    const user = setupUser()
+    const box = await theBoxOf(user, 'Mint')
+
+    expect(box.queryByText('Ovako logo sada stoji na naslovnoj strani, u boksu "Sponzor dana" i u traci.')).toBeNull()
+
+    await choose(user, box, A_PNG)
+
+    expect(box.getByText('Ovako će izabrani logo stajati na naslovnoj strani kad ga sačuvaš.')).toBeVisible()
+  }, SLOW)
+
   it('says that a sponsor with no logo is on neither, and offers nothing to take down', async () => {
     serving()
 
