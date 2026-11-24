@@ -1,4 +1,4 @@
-import { cleanup, waitFor, within } from '@testing-library/react'
+import { act, cleanup, waitFor, within } from '@testing-library/react'
 import { clearResourceCache } from '../../data/client'
 import type { Competitor, Member } from '../../data/types'
 import sr from '../../i18n/sr.json'
@@ -95,6 +95,33 @@ describe('the list of seasons when the frozen seasons could not be read', () => 
     const row = await rowOf(THE_MEMBER)
 
     expect(await seasonBox(user, row, 2027)).toBeDisabled()
+    expect(within(row).queryAllByText(SENTENCE)).toHaveLength(0)
+
+    server.stop()
+  }, SLOW)
+
+  it('says nothing where the read came back with no frozen season at all, though the past season stays switched off', async () => {
+    /* THE SECOND SOURCE of a past season's switched-off box: a read that FAILED and a read that came back EMPTY
+       leave the very same list of frozen seasons (none), so the boxes cannot tell them apart. Only the
+       sentence can, and it belongs to the failure alone (a freeze that has not happened is not a thing to
+       retry in a minute). */
+    const empty = Response.json([])
+    const server = serving(() => empty)
+    const user = setupUser()
+    renderAt('/sr/administracija/clanovi', 'superadmin')
+
+    const row = await rowOf(THE_MEMBER)
+    const box = await seasonBox(user, row, 2027)
+
+    /* The answer has been taken and the screen has had its turn to draw it: until then „no sentence" is only
+       the state of a read that is still on its way, which the case above holds on its own. */
+    await waitFor(() => expect(empty.bodyUsed).toBe(true))
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    expect(box).toBeDisabled()
+    expect(await seasonBox(user, row, 2028)).toBeEnabled()
     expect(within(row).queryAllByText(SENTENCE)).toHaveLength(0)
 
     server.stop()

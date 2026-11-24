@@ -122,6 +122,36 @@ function modulesReaching(wanted: string): { walked: number; reaching: string[] }
   return { walked, reaching: reaching.sort() }
 }
 
+/**
+ * Everything a module hands to whoever imports it, as the compiler counts it: a name it declares, one it
+ * re-exports under the same or another name, `export *`, a type. Asked of the checker and not of the text,
+ * for the reason the case above gives of `ts.preProcessFile`: the ways of writing a re-export are not a
+ * list a guard can finish.
+ */
+function exportedBy(wanted: string): string[] {
+  const at = join(SRC, wanted).split(sep).join('/')
+  const program = ts.createProgram([at], {
+    ...AS_THE_BUNDLER_DOES,
+    jsx: ts.JsxEmit.ReactJSX,
+    module: ts.ModuleKind.ESNext,
+    target: ts.ScriptTarget.ES2022,
+    noEmit: true,
+    skipLibCheck: true,
+  })
+  const file = program.getSourceFile(at)
+  const checker = program.getTypeChecker()
+  const module = file === undefined ? undefined : checker.getSymbolAtLocation(file)
+
+  if (module === undefined) {
+    throw new Error(`the compiler found no module at ${wanted}`)
+  }
+
+  return checker
+    .getExportsOfModule(module)
+    .map((one) => one.name)
+    .sort()
+}
+
 describe('the circle a member is drawn in', () => {
   it('takes its letters from a member’s own record, so only an account asks for a monogram', () => {
     /* The other trace, and the one that found the header. `app/monogram.ts` answers the last
@@ -199,13 +229,31 @@ describe('the control a circle is moved with', () => {
 
        WHAT THIS DOES NOT HOLD: a screen that drew a circle over a picture with code of its own, reaching
        neither module, would pass, as a circle with arithmetic of its own passes the case above. That every
-       circle a person moves is moved through `CropChooser` at all is a review question; that the four
-       screens behave the same is measured in Chrome (`geometry/adminCircle.geometry.ts`). */
+       circle a person moves is moved through `CropChooser` at all is a review question. What the four screens
+       do alike is measured in Chrome only as far as `geometry/adminCircle.geometry.ts` asks (`behavesTheSame`):
+       the cap on the height, three sliders on the page, the arrow keys, a drag from the middle and no sideways
+       page. Not asked: whether the sliders stand open or fold away, the cursor, a drag from the rim and a
+       touch; a rule written for one screen alone that changes one of those passes both files (measured,
+       PENDING, review of PR 815). */
     for (const part of ['components/CropWindow.tsx', 'components/CropSliders.tsx']) {
       const { walked, reaching } = modulesReaching(part)
 
       expect(walked).toBeGreaterThan(WHOLE_PORTAL)
       expect(reaching, `a module puts ${part} together without CropChooser`).toEqual(['components/CropChooser.tsx'])
     }
+  })
+
+
+  it('is handed out whole by CropChooser, which does not hand out its two parts for a screen to put together again', () => {
+    /* THE SECOND DOOR TO THE SAME PARTS (PENDING, review of PR 815): the case above asks who IMPORTS `CropWindow`
+       and `CropSliders`, and a line `export { CropSliders } from './CropSliders'` in `CropChooser` is the one
+       importer that is allowed, so every screen could then take the sliders from it and the case above would
+       stay green. Asked of what the module exports, as the compiler counts it, so `export *` and a renamed
+       re-export are the same answer as the plain one. */
+    const handed = exportedBy('components/CropChooser.tsx')
+
+    expect(handed, 'the module hands nothing out, so there is nothing to ask of it').toContain('CropChooser')
+    expect(handed, 'CropChooser hands out a part of the control').not.toContain('CropWindow')
+    expect(handed, 'CropChooser hands out a part of the control').not.toContain('CropSliders')
   })
 })

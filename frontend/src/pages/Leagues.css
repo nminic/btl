@@ -133,7 +133,7 @@
    the colours of the portal's own sign, **in a white ring** (owner, 24.11.2026, PDL „Okvir oko znaka lige je beo”).
    This is the one rule that draws the ring of a league's mark, for the mark from a picture and the one from the
    initials, in every place (the head of the sheet, the tile, the heading of the league's page, the moderation); the
-   ground behind the ring is dark blue in all of them in both themes, so the white is seen (measured in Chrome,
+   ground behind the ring is dark blue in all of them (the portal has one theme since 24.11.2026), so the white is seen (measured in Chrome,
    `geometry/leagueMarkRing.geometry.ts` holds the computed colour). The mark of a team is another rule. */
 .leagues__mark {
   flex: none;

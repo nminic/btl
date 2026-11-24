@@ -23,7 +23,8 @@ const tokens = readFileSync(join(ROOT, 'src/styles/tokens.css'), 'utf-8')
 const page = readFileSync(join(ROOT, 'index.html'), 'utf-8')
 
 /** The ways a second theme is asked for or written down. */
-const A_SECOND_THEME = /prefers-color-scheme|data-theme|dataset\.theme|color-scheme:\s*light/i
+const A_SECOND_THEME =
+  /prefers-color-scheme|data-theme|dataset\.theme|color-scheme:\s*light|<meta[^>]*name=["']color-scheme["'][^>]*content=["'][^"']*light/i
 
 /** This file names them in order to refuse them, and is the only one that may. */
 const HERE = join('src', 'app', 'oneTheme.test.ts')
@@ -33,6 +34,10 @@ function everyFile(): { path: string; text: string }[] {
     ...globSync('src/**/*.{css,ts,tsx,json}', { cwd: ROOT }),
     ...globSync('geometry/**/*.ts', { cwd: ROOT }),
     ...globSync('scripts/**/*.{mjs,js,ts}', { cwd: ROOT }),
+    /* The configuration files at the root of the frontend (`vite.config.ts`, `playwright.config.ts`,
+       `vitest.anotherDay.config.ts`): a build plugin there can write a theme into the built page, which
+       no file under `src` would show. Read off the folder, not off their names. */
+    ...globSync('*.{ts,mts,mjs,js,cjs}', { cwd: ROOT }),
     'index.html',
   ]
     .map((path) => relative(ROOT, join(ROOT, path)))
@@ -50,6 +55,7 @@ describe('one theme', () => {
     expect(files.filter(({ path }) => path.startsWith('geometry/')).length, 'guards of Chrome read').toBeGreaterThan(40)
     expect(files.some(({ path }) => path.startsWith('scripts/')), 'the scripts beside them read').toBe(true)
     expect(files.some(({ path }) => path === 'index.html'), 'the page read').toBe(true)
+    expect(files.filter(({ path }) => /^[^/]+\.config\.ts$/.test(path)).length, 'configuration files read').toBeGreaterThanOrEqual(3)
 
     expect(
       files.filter(({ text }) => A_SECOND_THEME.test(text)).map(({ path }) => path),
