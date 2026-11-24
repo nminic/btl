@@ -647,6 +647,75 @@ class MemberMembershipApiTest {
 	}
 
 	/**
+	 * A FROZEN SEASON HELD ON THE BALANCE IS TAKEN OFF BY ITS OWN SEASON, NOT BY THE ONE ON SALE: three seasons
+	 * that are three years (2027 frozen and named by the box, 2028 run, 2029 on sale), a row of the member in
+	 * each of the two ends, held on the balance because that is the basis whose rows go by season and not by
+	 * the payment a payment season goes by. The row of 2027 goes and the row of 2029 stays; the book gets the
+	 * line back for 2027 and none for 2029; the promise of 2027 goes and the promise of 2029 stays.
+	 */
+	@Test
+	void aFrozenSeasonHeldOnTheBalanceGoesByItsOwnSeasonAndTheSeasonOnSaleStays() throws Exception {
+		clock.moveTo(IN_THE_WINDOW_OF_2029);
+		theJobFroze(2027);
+		HeldOn.season(db, somebodyElse, 2027, "balance");
+		HeldOn.season(db, somebodyElse, 2029, "balance");
+		promise(somebodyElse, 2027);
+		promise(somebodyElse, 2029);
+
+		MockHttpServletResponse answer = cancelledFor("000001", 2027, "balance", OVER_THE_MEMBERS);
+
+		assertThat(answer.getStatus()).isEqualTo(200);
+		assertThat(db.sql("select season || ' ' || basis from membership where competitor_id = ? order by season")
+				.param(somebodyElse).query(String.class).list()).containsExactly("2029 balance");
+		assertThat(bookOf(somebodyElse)).containsExactly("membership -30.00 2027", "membership -30.00 2029",
+				"reversal 30.00 2027");
+		assertThat(db.sql("select season from balance_promise where competitor_id = ? order by season")
+				.param(somebodyElse).query(Integer.class).list()).containsExactly(2029);
+	}
+
+	/** A frozen season held free of the fee goes by its own season too: its row has no payment to go by. */
+	@Test
+	void aFrozenExemptionCancelledLeavesTheRowOfTheSeasonOnSale() throws Exception {
+		clock.moveTo(IN_THE_WINDOW_OF_2029);
+		theJobFroze(2027);
+		HeldOn.season(db, somebodyElse, 2027, "feeExempt");
+		HeldOn.season(db, somebodyElse, 2029, "feeExempt");
+
+		MockHttpServletResponse answer = cancelledFor("000001", 2027, "feeExempt", OVER_THE_MEMBERS);
+
+		assertThat(answer.getStatus()).isEqualTo(200);
+		assertThat(db.sql("select season || ' ' || basis from membership where competitor_id = ? order by season")
+				.param(somebodyElse).query(String.class).list()).containsExactly("2029 feeExempt");
+		assertThat(bookOf(somebodyElse)).isEmpty();
+	}
+
+	/**
+	 * IN NOVEMBER 2028 THE SEASON BEING RUN IS REFUSED WHILE AN EARLIER ONE HAS FROZEN: 2027 has its row of the
+	 * freeze, 2028 has ended without one, and the window of PDL 24.11.2026, „Sezona koja se završila ne dira se
+	 * od 15.10. do zamrzavanja 1.1. u 16:00", is open for 2028 whatever 2027 has. From 2028 on that is the
+	 * ordinary state of the window, so the case with no row of the freeze at all
+	 * ({@link #theRunningSeasonIsRefusedUntilItsRowOfTheFreezeIsThere}) is not the one the route lives in.
+	 */
+	@Test
+	void theRunningSeasonIsRefusedInTheWindowWhileAnEarlierOneHasFrozen() throws Exception {
+		clock.moveTo(IN_THE_WINDOW_OF_2029);
+		theJobFroze(2027);
+		HeldOn.season(db, member, 2028, "payment");
+
+		MockHttpServletResponse cancelling = cancelledFor("000005", 2028, "payment", OVER_THE_MEMBERS);
+		MockHttpServletResponse granting = grantedFor("000001", 2028, "feeExempt", OVER_THE_MEMBERS);
+
+		assertThat(cancelling.getStatus()).isEqualTo(409);
+		assertThat(body(cancelling).path("reason").asString()).isEqualTo("theSeasonIsNotOffered");
+		assertThat(granting.getStatus()).isEqualTo(409);
+		assertThat(body(granting).path("reason").asString()).isEqualTo("theSeasonIsNotOffered");
+		assertThat(seasonsOf(member)).containsExactly("2027 payment 2027", "2028 payment 2028");
+		assertThat(seasonsOf(somebodyElse)).isEmpty();
+		assertThat(trail()).isEmpty();
+		assertThat(messages()).isEmpty();
+	}
+
+	/**
 	 * THE ZAMRZNUTE TABLES, RANKINGS AND POINTS OF THE SEASON STAY BYTE FOR BYTE (owner, 03.10.2026, „Tabele i
 	 * rang liste kao gomila konstanti umesto varijabli"). The floor is every table of the catalog whose name
 	 * begins with {@code season_} and that has a {@code season} column, read whole for 2027 before the box is
