@@ -296,6 +296,36 @@ describe('a sponsor moved in the manual order', () => {
 
     await waitFor(() => expect(asked.filter((one) => one.path === '/api/sponsors/3/down')).toHaveLength(1))
   }, SLOW)
+
+  it('is sent once for two presses of the arrow up that come before the answer', async () => {
+    const user = setupUser()
+    let answer: (response: Response) => void = () => undefined
+    const { asked, stop } = serverThat((path, init) => {
+      if (path === '/api/sponsors/all' && init?.method === undefined) {
+        return json([VOLT, SOFRA, PLANINAR])
+      }
+
+      return path === '/api/sponsors/5/up'
+        ? new Promise<Response>((resolve) => {
+            answer = resolve
+          })
+        : null
+    })
+
+    stops.push(stop)
+    clearResourceCache()
+    drawn()
+
+    const arrow = within(rowOf(await theList(), 'Planinar plus')).getByRole('button', {
+      name: 'Pomeri gore: Planinar plus',
+    })
+
+    await user.click(arrow)
+    await user.click(arrow)
+    answer(did())
+
+    await waitFor(() => expect(asked.filter((one) => one.path === '/api/sponsors/5/up')).toHaveLength(1))
+  }, SLOW)
 })
 
 describe('a sponsor entered', () => {
