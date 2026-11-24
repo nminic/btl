@@ -92,8 +92,9 @@ export function CompetitorData() {
           <TheMembersData address={addressOfTheData(memberNumber)} />
           {/* AND THE CHOICE OF HIS CATEGORY, under the form (owner, 24.11.2026, PDL „Administracija bira
               kategoriju članu u njegovim podacima"): both roads the owner named lead here, the pencil on the
-              screen of the members and the card „Podaci" of the profile. */}
-          {memberNumber !== undefined && <TheMembersCategory memberNumber={memberNumber} />}
+              screen of the members and the card „Podaci" of the profile. The number is said as text the way the
+              boxes below say it: a reader got this far only with a number the card could read (`useWhoReadsTheData`). */}
+          <TheMembersCategory memberNumber={String(memberNumber)} />
         </>
       }
       boxes={(competitor) => <TheMembersPictureAndWords competitor={competitor} />}

@@ -127,6 +127,16 @@ describe('the choice of a member’s category on his card', () => {
     ])
     expect(asked.some((one) => one.path === '/api/me/category')).toBe(false)
     expect(within(box).getByText(/član se takmiči u kategoriji/)).toHaveTextContent(sr.category.rookieMale)
+
+    /* And back, in the other direction (PDL P7, 18.10.2026, „u oba smera"). */
+    await user.click(age)
+
+    await waitFor(() => expect(age).toBeChecked())
+    expect(asked.filter((one) => one.init?.method === 'PUT').map((one) => String(one.init?.body))).toEqual([
+      '{"firstSeason":true}',
+      '{"firstSeason":false}',
+    ])
+    expect(within(box).getByText(/član se takmiči u kategoriji/)).not.toHaveTextContent(sr.category.rookieMale)
   }, SLOW)
 
   it('holds the beginners’ option for a member it is closed to, and says why', async () => {

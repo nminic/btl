@@ -277,6 +277,14 @@ class MemberCategoryApiTest {
 		assertThat(empty.getStatus()).isEqualTo(400);
 		assertThat(body(empty).path("reason").asString()).isEqualTo(MeCategoryWriteApi.THE_FORM_IS_NOT_COMPLETE);
 		assertThat(body(empty).path("missing").toString()).isEqualTo("[\"firstSeason\"]");
+
+		/* And a body that is not a form at all is the same answer, the member's own route's principle. */
+		MockHttpServletResponse unreadable = sent(put("/api/members/" + HE + "/category").with(csrf())
+				.contentType(MediaType.APPLICATION_JSON).content("nije forma"), OVER_THE_MEMBERS);
+
+		assertThat(unreadable.getStatus()).isEqualTo(400);
+		assertThat(unreadable.getContentAsString()).isEqualTo(empty.getContentAsString());
+		assertThat(wishes()).doesNotContain(HE + " 2029 true", HE + " 2029 false");
 	}
 
 	/* ------------------------------------------------------------------- the message */
