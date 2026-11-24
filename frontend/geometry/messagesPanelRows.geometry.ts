@@ -88,6 +88,8 @@ type Row = {
   dateRight: number
   linkRight: number
   overflow: number
+  /** Where the row's own padding ends, which is where the date stands against. */
+  contentRight: number
   /** How many words of the subject are laid out across two lines. */
   broken: number
 }
@@ -107,6 +109,7 @@ const rowsOf = (list: Locator): Promise<Row[]> =>
         dateRight: date?.right ?? Number.NaN,
         linkRight: box.right,
         overflow: link.scrollWidth - link.clientWidth,
+        contentRight: box.right - Number.parseFloat(getComputedStyle(link).paddingRight),
         broken: [...(link.querySelector('.inbox__subject')?.textContent ?? '').matchAll(/\S+/g)].filter((word) => {
           const text = link.querySelector('.inbox__subject')?.firstChild
           const range = document.createRange()
@@ -158,6 +161,11 @@ for (const [what, inbox] of [
           /* A word is kept whole where the date can go under it; only a word wider than the row is broken. */
           expect(row.broken, `row ${index} breaks a word of its subject in two`).toBe(0)
         }
+
+        /* And the date is at the END of the row, on the line of its own as well as beside the subject. */
+        expect(row.dateRight, `the date of row ${index} is not at the end of its row`).toBeGreaterThanOrEqual(
+          row.contentRight - SLACK,
+        )
 
         /* Beside the date, or above it where the date has gone to a line of its own. */
         expect(
