@@ -1245,3 +1245,56 @@ describe('the copy of the picture that is only there to be measured', () => {
     expect(measuring).toHaveAttribute('alt', '')
   })
 })
+
+describe('the circle of a picture that already stands', () => {
+  /* A PICTURE REPLACED UNDER THE SCREEN HAS NO SLIDERS UNTIL ITS OWN PIXELS HAVE ARRIVED (`CropChooser.tsx`,
+     `MovingTheCircleOfOneThatStands`: the window is keyed by the picture and remounts, but what it measured is
+     held one level up, by the picture it measured, and that is the line this asks about; PENDING, review of PR
+     815: removing `measured.picture === chosen.picture` survived). The second source of the shape is the
+     PREVIOUS picture's, which a replaced picture would otherwise be drawn with. */
+  function Standing() {
+    const [picture, setPicture] = useState('/photos/first.png')
+
+    return (
+      <>
+        <CropChooser
+          id="stands"
+          alt="Slika koja ceka"
+          chosen={{ name: 'first.png', picture, crop: WHOLE, file: anImage() }}
+          onChange={() => undefined}
+          standing={{ onLoaded: () => undefined, onFailed: () => undefined }}
+        />
+        <button type="button" onClick={() => setPicture('/photos/second.png')}>
+          replace
+        </button>
+      </>
+    )
+  }
+
+  it('draws the sliders once its picture has said its shape, and none for the picture that replaces it until that one has', async () => {
+    const user = setupUser()
+    const { container } = renderWithI18n(<Standing />)
+
+    expect(screen.queryAllByRole('slider')).toHaveLength(0)
+
+    const arrives = (shape: { width: number; height: number }) => {
+      const whole = must(container.querySelector('.crop__whole'), 'the picture of the window')
+
+      Object.defineProperty(whole, 'naturalWidth', { value: shape.width, configurable: true })
+      Object.defineProperty(whole, 'naturalHeight', { value: shape.height, configurable: true })
+      fireEvent.load(whole)
+    }
+
+    arrives({ width: 1000, height: 1000 })
+    expect(await screen.findAllByRole('slider')).toHaveLength(3)
+
+    await user.click(screen.getByRole('button', { name: 'replace' }))
+
+    /* Replaced, and its pixels not here yet: the shape that stands is the old picture's, and it is not drawn. */
+    expect(screen.queryAllByRole('slider')).toHaveLength(0)
+
+    arrives({ width: 800, height: 400 })
+    expect(await screen.findAllByRole('slider')).toHaveLength(3)
+  })
+})
+

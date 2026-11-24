@@ -451,6 +451,22 @@ describe('where the list of members stands', () => {
     expect(list.style.getPropertyValue('--member-choice-left')).toBe(`${String(window.innerWidth - 300)}px`)
   })
 
+  it('is never put outside the window on its left either, where the box starts left of it', async () => {
+    /* The other side of the case above, which asks the right edge (PENDING, review of PR 813, round 2: removing
+       `Math.max(0, …)` of `seatOf` survived). A box of a table that scrolls sideways has its left edge at a
+       negative place; the list stays in the window at 0 and keeps the width of the box. */
+    const user = setupUser()
+    const { box } = drawn()
+
+    box.getBoundingClientRect = () => DOMRect.fromRect({ x: -50, y: 100, width: 300, height: 48 })
+    await user.click(box)
+
+    const list = screen.getByRole('listbox')
+
+    expect(list.style.getPropertyValue('--member-choice-left')).toBe('0px')
+    expect(list.style.getPropertyValue('--member-choice-width')).toBe('300px')
+  })
+
   it('lets the rows of a fitted list go on to a second line and keeps the one line of the other', async () => {
     const user = setupUser()
 
