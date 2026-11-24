@@ -112,6 +112,12 @@ describe('the list of seasons when the frozen seasons could not be read', () => 
        its list twice (`test/memberRow.ts`), so the sentence is looked for by its place and not by its words. */
     await waitFor(() => expect(list.nextElementSibling).toHaveTextContent(SENTENCE))
     expect(list.nextElementSibling).toBeVisible()
+    /* The row's other copy of the list stays shut, and its sentence with it: it is about the boxes of a list that is open.
+       Two sentences are in the row, and one of them is seen. */
+    const said = within(row).getAllByText(SENTENCE)
+
+    expect(said).toHaveLength(2)
+    expect(said.filter((one) => one.hidden)).toHaveLength(1)
     expect(await seasonBox(user, row, 2027)).toBeDisabled()
     expect(await seasonBox(user, row, 2028)).toBeEnabled()
 
