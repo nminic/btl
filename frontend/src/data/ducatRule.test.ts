@@ -5,6 +5,7 @@ import {
   periodLegend,
   ruleSentence,
   topFor,
+  unitFor,
   unitOf,
   type DucatFamily,
 } from './ducatRule'
@@ -42,18 +43,28 @@ const inEnglish = (key: string, params?: Record<string, string | number>) => tra
 
 describe('what stands on the coin', () => {
   it('gives a unit only to the quantities that are measured in one', () => {
-    expect(unitOf({ kind: 'totalKm', art: 'none' })).toBe('km')
-    expect(unitOf({ kind: 'totalTime', art: 'none' })).toBe('sati')
+    expect(unitOf({ kind: 'totalKm', art: 'none' }, inSerbian)).toBe('km')
+    expect(unitOf({ kind: 'totalTime', art: 'none' }, inSerbian)).toBe('sati')
     // Races, points, seasons and countries are counted in themselves, and the
     // legend under the number is what names them.
-    expect(unitOf({ kind: 'raceCount', art: 'none' })).toBe('')
+    expect(unitOf({ kind: 'raceCount', art: 'none' }, inSerbian)).toBe('')
+  })
+
+  it('says the unit in the language of the reader, kilometre and metre being the same two letters', () => {
+    expect(unitOf({ kind: 'totalTime', art: 'none' }, inEnglish)).toBe('hours')
+    expect(unitFor('totalTime', inSerbian)).toBe('sati')
+    expect(unitFor('totalAscent', inEnglish)).toBe('m')
+    expect(unitFor('bestRaceKm', inEnglish)).toBe('km')
+    expect(firstOf({ ...plain, kind: 'totalTime' }, 'M', inEnglish).unit).toBe('hours')
+    expect(instanceAt({ ...plain, kind: 'totalTime' }, 'M', { value: 10, tier: 3, season: null, month: null }, inEnglish).unit).toBe('hours')
+    expect(firstOf({ ...plain, kind: 'totalTime', art: 'galaxy' }, 'M', inEnglish).unit).toBe('')
   })
 
   it('gives neither number nor unit to a ducat that carries a drawing', () => {
     /* Two of the fifteen have a drawing in the middle instead of a figure, and
        a drawing with a unit floating under it is a drawing with a caption. */
     expect(coinNumber({ value: 40075, art: 'globe' })).toBe('')
-    expect(unitOf({ kind: 'totalKm', art: 'globe' })).toBe('')
+    expect(unitOf({ kind: 'totalKm', art: 'globe' }, inSerbian)).toBe('')
   })
 
   it('strikes the number as plain digits, without a grouping mark', () => {
@@ -183,6 +194,7 @@ describe('one ducat a member holds, drawn from its family', () => {
       art: 'none',
       top: 'ISTRČANIH',
       bottom: 'TRKA',
+      unit: '',
     })
   })
 

@@ -1,6 +1,6 @@
 import { useId } from 'react'
 import type { Ducat, DucatMark } from '../data/ducatRule'
-import { coinNumber, unitOf } from '../data/ducatRule'
+import { coinNumber } from '../data/ducatRule'
 import './DucatArt.css'
 
 /* The mark of a ducat: a struck coin, with everything it says written on it.
@@ -182,7 +182,7 @@ export function DucatArt({ ducat, label }: DucatArtProps) {
      page, so the names have to be this drawing's own. */
   const own = useId()
   const number = coinNumber(ducat)
-  const unit = unitOf(ducat)
+  const unit = ducat.unit
 
   const topSize = legendSize(ducat.top)
   const numberSize = figureSize(number)

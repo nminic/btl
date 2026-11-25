@@ -133,30 +133,36 @@ export type Ducat = {
   art: DucatArtName
   top: string
   bottom: string
+  /** What the number is counted in, written for the reader, empty where the coin carries a drawing. */
+  unit: string
 }
 
 /* What the number in the middle is counted in, when it is counted in anything.
  * Races, seasons, countries and points carry none: the legend under them says
  * what is being counted, and a coin that says both is a coin that stutters. */
-const UNITS: Partial<Record<DucatKind, string>> = {
+const UNITS: Partial<Record<DucatKind, 'km' | 'm' | 'hours'>> = {
   totalKm: 'km',
-  totalTime: 'sati',
+  totalTime: 'hours',
   totalAscent: 'm',
   totalDescent: 'm',
   bestRaceKm: 'km',
   bestRaceAscent: 'm',
 }
 
-/** What a quantity is measured in, whatever is drawn. */
-export function unitFor(kind: DucatKind): string {
-  return UNITS[kind] ?? ''
+/** What a quantity is measured in, whatever is drawn, in the language of the reader (`ducats.coin.unit`,
+ *  PDL P18, 25.11.2026). The kilometre and the metre are the same two letters in both languages and are
+ *  asked of the dictionary all the same, so that no unit of a coin is written anywhere else. */
+export function unitFor(kind: DucatKind, t: Translate): string {
+  const unit = UNITS[kind]
+
+  return unit === undefined ? '' : t(`ducats.coin.unit.${unit}`)
 }
 
 /** The same, for the coin: a ducat that carries a drawing instead of a number
  *  has nothing for a unit to stand under, and a drawing with a unit floating
  *  below it is a drawing with a caption. */
-export function unitOf(ducat: Pick<Ducat, 'kind' | 'art'>): string {
-  return ducat.art === 'none' ? unitFor(ducat.kind) : ''
+export function unitOf(ducat: Pick<Ducat, 'kind' | 'art'>, t: Translate): string {
+  return ducat.art === 'none' ? unitFor(ducat.kind, t) : ''
 }
 
 /** The threshold as it is struck into the coin: plain digits, no grouping.
@@ -239,6 +245,7 @@ export function instanceAt(
     art: family.art,
     top: family.periodAt === 'top' ? legend : top,
     bottom: family.periodAt === 'bottom' ? legend : family.bottom,
+    unit: unitOf({ kind: family.kind, art: family.art }, t),
   })
   const { season, month } = held
 
@@ -280,6 +287,7 @@ export function firstOf(family: DucatFamily, gender: Gender, t: Translate): Duca
     art: family.art,
     top: family.periodAt === 'top' ? legend : top,
     bottom: family.periodAt === 'bottom' ? legend : family.bottom,
+    unit: unitOf({ kind: family.kind, art: family.art }, t),
   }
 }
 

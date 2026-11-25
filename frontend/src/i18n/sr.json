@@ -1779,6 +1779,11 @@
     },
     "coin": {
       "season": "SEZONA {season}",
+      "unit": {
+        "km": "km",
+        "m": "m",
+        "hours": "sati"
+      },
       "month": {
         "1": "JANUAR",
         "2": "FEBRUAR",

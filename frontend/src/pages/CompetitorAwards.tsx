@@ -250,7 +250,7 @@ function AwardsFor({
      The period and the value are not in it, because both stand beside the coin
      as words of the page and a screen reader reads the whole card. */
   const labelFor = (ducat: Ducat) => {
-    const unit = unitFor(ducat.kind)
+    const unit = unitFor(ducat.kind, t)
     const what = `${formatNumber(ducat.value, locale, 0)}${unit === '' ? '' : ` ${unit}`}`
 
     /* And what it is worth, which used to stand under the coin as a line of its

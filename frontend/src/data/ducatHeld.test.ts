@@ -105,6 +105,7 @@ describe('the ducats drawn from their families', () => {
         art: 'none',
         top: 'ISTRČALA',
         bottom: 'JUL 2027',
+        unit: '',
       },
     ])
   })

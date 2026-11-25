@@ -110,3 +110,55 @@ describe('the period on the coin of a member who holds one', () => {
     }
   }, SLOW)
 })
+
+/**
+ * THE UNIT UNDER THE NUMBER IS STRUCK IN THE LANGUAGE OF THE READER TOO (same owner sentence, same day).
+ * The hours of a coin were the one word of it written in Serbian in the code (`sati`); the kilometre and the
+ * metre are the same two letters in both languages and are asked of the dictionary all the same.
+ */
+const timed = (id: string): DucatFamily => ({
+  ...monthly(id),
+  name: 'Sati na stazi',
+  kind: 'totalTime',
+  period: 'always',
+  periodAt: 'none',
+  top: 'TRČAO',
+  bottom: 'SATI',
+})
+
+describe('the unit on the coins', () => {
+  it.each([
+    ['/en/pravilnik', 'hours', 'sati'],
+    ['/sr/pravilnik', 'sati', 'hours'],
+  ])('the rulebook at %s strikes %s and never %s', async (path, struck, notStruck) => {
+    const restore = serving([timed('duk-sati')], [])
+
+    try {
+      renderAt(path, 'visitor', null)
+
+      await screen.findByText('Sati na stazi')
+      expect(screen.getByText(struck, { selector: 'text' })).toBeInTheDocument()
+      expect(screen.queryByText(notStruck, { selector: 'text' })).toBeNull()
+    } finally {
+      restore()
+    }
+  }, SLOW)
+
+  it.each([
+    ['/en/takmicar/000001/priznanja', 'hours', 'sati'],
+    ['/sr/takmicar/000001/priznanja', 'sati', 'hours'],
+  ])('the awards of a member at %s strike %s and never %s', async (path, struck, notStruck) => {
+    const restore = serving([timed('duk-sati')], [{ ducat: 'duk-sati', value: 20, tier: 1, season: null, month: null }])
+
+    try {
+      renderAt(`${path}?sezona=2010`, 'visitor', null, undefined, '2027-08-01')
+
+      await screen.findByRole('img', { name: /^Sati na stazi/ })
+      expect(screen.getByText(struck, { selector: 'text' })).toBeInTheDocument()
+      expect(screen.queryByText(notStruck, { selector: 'text' })).toBeNull()
+      expect(screen.getByRole('img', { name: new RegExp(`^Sati na stazi, 20 ${struck}\\.`) })).toBeInTheDocument()
+    } finally {
+      restore()
+    }
+  }, SLOW)
+})

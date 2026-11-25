@@ -158,6 +158,7 @@ describe('the names the portal composes out of a list', () => {
        of five numbers, and the coin is drawn from the number itself. */
     { of: 'ducats.tier', each: ['1', '2', '3', '4', '5'] },
     /* The twelve months a coin names its period by, asked for by `periodLegend` as the month plus one. */
+    { of: 'ducats.coin.unit', each: ['km', 'm', 'hours'] },
     { of: 'ducats.coin.month', each: ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'] },
     /* Both halves for every entity that has a form, the races included: theirs is
        edited inside its event and is therefore not in ENTITY_FORMS, which is
