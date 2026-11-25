@@ -8,9 +8,10 @@ import { screen } from '@testing-library/react'
    promise and not a function that throws, because `loadTheDevControls` is an `async`
    function and that is the only way it can fail.
 
-   The console is taken BEFORE the header is imported: the loader is awaited while `Shell` is
-   being evaluated, so what is said about its failure is said at import and not when a case
-   renders. */
+   The console is taken BEFORE the suite's renderer is imported: the loader is awaited while
+   `test/render` is being evaluated, as `main.tsx` awaits it before the portal is drawn
+   (`app/devControls.ts`), so what is said about its failure is said at import and not when a
+   case renders. */
 const { REFUSED, said } = vi.hoisted(() => ({
   REFUSED: new Error('Failed to fetch dynamically imported module'),
   said: vi.spyOn(console, 'error').mockImplementation(() => undefined),
@@ -24,8 +25,8 @@ vi.mock('../dev/tools', () => ({
 
 describe('the header of a build whose development controls cannot be loaded (PENDING 28870)', () => {
   it('is drawn all the same, without them, and says in the console what was refused', async () => {
-    /* IMPORTED INSIDE THE CASE, and not at the head of the file. `Shell` awaits the loader while it
-       is evaluated, so with the `catch` taken out of it (or made to throw on) a static import
+    /* IMPORTED INSIDE THE CASE, and not at the head of the file. `test/render` awaits the loader while
+       it is evaluated, so with the `catch` taken out of it (or made to throw on) a static import
        rejects while the file loads and no case starts at all: Vitest reports „no tests”, which is
        neither a pass nor a fail on the assertion, and both mutations went unmeasured. Imported here,
        the same rejection is a thing the case holds in its hand and says in its own words. */

@@ -1,7 +1,7 @@
 import { useRef, useState, type ReactNode } from 'react'
 import { Link, NavLink, Outlet, ScrollRestoration, useLocation } from 'react-router'
 import { dataOr, usePaymentsDue } from '../data/useResource'
-import { DEV_TOOLS_IN_THIS_BUILD, loadTheDevControls } from '../dev/tools'
+import { DEV_TOOLS_IN_THIS_BUILD } from '../dev/tools'
 import { useI18n } from '../i18n/useI18n'
 import { useMayOpen, usePermittedQueues } from '../pages/admin/mayOpen'
 import { usePendingForTheCount } from '../pages/admin/pending'
@@ -11,6 +11,7 @@ import { useServerIsStillBeingAsked } from '../session/useServerIsStillBeingAske
 import { useSession } from '../session/useSession'
 import { useTheServersSession } from '../session/useTheServersSession'
 import { AccountMenu } from './AccountMenu'
+import { theDevControls } from './devControls'
 import { Brand } from './Brand'
 import { ErrorBoundary } from './ErrorBoundary'
 import { PortalError } from './PortalError'
@@ -28,35 +29,16 @@ import { useRouteChrome } from './useRouteChrome'
 import './Shell.css'
 
 /* THE TWO DEVELOPMENT CONTROLS, FOR A BUILD THAT CARRIES THEM (dev/tools.ts), AND NOTHING IN
-   ONE THAT DOES NOT: in the production bundle this line is `null`, and neither switch, nor its
+   ONE THAT DOES NOT: in the production bundle the loader is `null`, and neither switch, nor its
    stylesheet, nor the slot the moved day is kept in, nor the name of either switch, is in the
    package at all (ADL A15). The name is why the condition where they are drawn asks the
    constant as well.
 
-   Awaited before this module is done rather than drawn lazily, because a control that
-   arrived after the first paint would shift the row of tools under the reader's pointer, and
-   on QA, the one place they are drawn, that row is the header of every screen.
-
-   AND A FAILURE TO LOAD THEM IS NOT A FAILURE OF THE PORTAL (PENDING 28870). This line is
-   a top-level `await`, so a module that is not done is a module that never runs: when the
-   import of either switch was refused (a chunk the server no longer holds after a deploy, a
-   connection that dropped while it was fetched) the rejection took `Shell` with it, and
-   `Shell` is the header of every screen, so the whole page stayed blank, on QA, the one
-   place this line is not `null`. A tool for whoever builds the portal must not be able to
-   take the portal down, so the failure is answered here with „no controls" and said once
-   in the console, the way `ErrorBoundary` says what it caught; the row they stand in is
-   drawn without them, which is how it already reads in a build that has none. The answer
-   is `null` for either switch failing, because the two come from one `Promise.all`
-   (`dev/tools.ts`) and a header with one of the two would be a row that changes shape
-   under the reader's pointer, which is what awaiting them was for. */
-const DEV_CONTROLS =
-  loadTheDevControls === null
-    ? null
-    : await loadTheDevControls().catch((failure: unknown) => {
-        console.error('The development controls did not load, so the header is drawn without them', failure)
-
-        return null
-      })
+   They are loaded before the portal is first drawn, by `main.tsx`, and read here
+   (`app/devControls.ts`, which also says why a failure to load them draws the header without
+   them). NOT AWAITED AT THE TOP OF THIS MODULE, which is what this place did until 25.11.2026:
+   this module is in the piece of the bundle each switch imports, so it waited for itself and
+   QA stayed blank. */
 
 function useRestOfPath(): string {
   const location = useLocation()
@@ -262,6 +244,7 @@ export function Shell() {
      front of it: the bundler knows the constant, so it drops the whole branch. A15
      looks for exactly those words, and `dev/productionPackage.test.ts` counts
      them. */
+  const DEV_CONTROLS = theDevControls()
   const devControls =
     DEV_TOOLS_IN_THIS_BUILD && DEV_CONTROLS !== null ? (
       <>
