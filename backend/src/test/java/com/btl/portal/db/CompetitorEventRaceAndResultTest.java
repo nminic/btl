@@ -807,6 +807,9 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 				   it away with the column it stood on (V31). */
 				/* I sesti kljuc reda za verifikaciju, iz istog razloga kao peti: predlog koga nema
 				   je predlog ni o cemu. */
+				/* And V112's, which sorts before it: a team's logo that waits for a team that is gone is a decision about
+				   nothing, so it goes with the team, and the picture it held goes by V54's rule. */
+				"verification.verification_team_fk cascade",
 				"verification.verification_team_proposal_fk cascade",
 				/* A HOLD IS SOMEBODY READING SOMETHING RIGHT NOW, so it goes when either end
 				   of it goes. This is where it differs from the DECISION one column over,

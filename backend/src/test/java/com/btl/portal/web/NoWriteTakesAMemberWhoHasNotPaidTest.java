@@ -249,6 +249,16 @@ class NoWriteTakesAMemberWhoHasNotPaidTest {
 					"{\"accepted\":true}")),
 			entry("DELETE /api/teams/{id}/invitations/{invitation}", (f, owner) -> delete("/api/teams/"
 					+ f.ownTeam(owner) + "/invitations/" + f.invitationFromHisTeam(owner))),
+			/* his team's logo, sent by its editor and taken down by him (PDL 25.11.2026, „Urednik tima postavlja
+			   znak tima slikom”): a write of his about a row of his, as the change of the team above is */
+			entry("POST /api/teams/{id}/own-logo", (f, owner) -> multipart("/api/teams/" + f.ownTeam(owner) + "/own-logo")
+					.file(new MockMultipartFile("picture", "p.jpg", MediaType.IMAGE_JPEG_VALUE,
+							new byte[] {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, 'l', 'o', 'g', 'o'}))
+					.param("cropX", "0.5").param("cropY", "0.5").param("cropSize", "0.5")),
+			entry("DELETE /api/teams/{id}/own-logo", (f, owner) -> {
+				f.ownTeamsLogo(owner);
+				return delete("/api/teams/" + f.ownTeam(owner) + "/own-logo");
+			}),
 			/* „sliku": sending one, and taking his own down, which is on the list by its subject */
 			entry("POST /api/me/photo", (f, owner) -> multipart("/api/me/photo")
 					.file(new MockMultipartFile("picture", "p.jpg", MediaType.IMAGE_JPEG_VALUE,
@@ -1097,6 +1107,19 @@ class NoWriteTakesAMemberWhoHasNotPaidTest {
 		return once("message", owner, () -> db.sql("insert into message (to_id, from_id, from_name,"
 						+ " subject, body) values (?, null, 'Liga', 'Za tebe', 'Tekst') returning id")
 				.param(memberOf.get(owner)).query(Long.class).single());
+	}
+
+	/** A logo standing on the team he runs, which taking it down has to take. */
+	long ownTeamsLogo(String owner) {
+		return once("team-logo", owner, () -> {
+			long photo = db.sql("insert into photo (media_type, byte_size, digest, crop_x, crop_y,"
+							+ " crop_diameter) values ('image/jpeg', 40960, ?, 0.5, 0.5, 1) returning id")
+					.param(String.format("%064x", 0xb258L * 1000 + ++issued)).query(Long.class).single();
+
+			db.sql("update team set logo_id = ? where id = ?").params(photo, ownTeam(owner)).update();
+
+			return photo;
+		});
 	}
 
 	long ownPhoto(String owner) {

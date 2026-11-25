@@ -630,6 +630,10 @@ class PhotoApi {
 	 * tab is this row in" and „which picture is it about" are one reading of one moment. A
 	 * tab read separately could be read after a decision had emptied the row.
 	 */
+	/** A team's logo that waits, with the team whose editor alone is served it. */
+	private record KeptForATeam(long id, String mediaType, long team) {
+	}
+
 	private record KeptForADecision(long id, String mediaType, String rightCode) {
 	}
 
@@ -882,6 +886,57 @@ class PhotoApi {
 				.param("tab", THE_PROFILES_TAB)
 				.query((row, one) -> new Kept(row.getLong(1), row.getString(2)))
 				.optional();
+
+		if (kept.isEmpty()) {
+			return nothingIsHere(response);
+		}
+
+		Optional<byte[]> bytes = theFileOf(kept.get().id(), digest);
+
+		if (bytes.isEmpty()) {
+			return nothingIsHere(response);
+		}
+
+		return carrying(kept.get().mediaType(), bytes.get(), FOR_A_DAY_PRIVATELY);
+	}
+
+	/**
+	 * THE LOGO A TEAM IS WAITING ON, BY ITS DIGEST, TO THE MEMBER WHO RUNS THE TEAM AND TO NOBODY ELSE.
+	 *
+	 * <p>{@link #mineThatWaits} one tab over (owner, 27.09.2026, „Na ekranu za slanje slike vidi se slika koja
+	 * čeka, sa krugom i oznakom da čeka odobrenje”, carried to the team's logo on 25.11.2026): a logo that waits
+	 * is not public (ADL A60), so it is served only to the member who runs the team whose logo it is
+	 * ({@link TeamApi#administers}), whose fee stands. The team is the one whose waiting row holds the digest, read in
+	 * the same statement, so the address carries no key of the team. Kept a day privately, because the address
+	 * carries the digest of the content. Every other caller and a digest that is no team's waiting logo are one
+	 * answer, {@link #nothingIsHere}.
+	 */
+	@GetMapping(TeamLogoApi.WHERE_THE_LOGO_THAT_WAITS_IS + "{digest}")
+	ResponseEntity<byte[]> teamLogoThatWaits(@PathVariable String digest,
+			@AuthenticationPrincipal WhoIsAsking.Member asking, HttpServletResponse response)
+			throws IOException {
+
+		Long me = readers.activeMember(asking).orElse(null);
+
+		if (!A_DIGEST.matcher(digest).matches() || me == null) {
+			return nothingIsHere(response);
+		}
+
+		ZonedDateTime now = ZonedDateTime.now(clock);
+		Optional<Kept> kept = db
+				.sql("select p.id, p.media_type, v.team_id from photo p join verification v on v.photo_id = p.id"
+						+ " where p.digest = :digest and v.queue = :tab and v.state = 'waiting'"
+						+ " order by p.id")
+				.param("digest", digest)
+				.param("tab", TeamLogoApi.THE_TEAMS_TAB)
+				.query((row, one) -> new KeptForATeam(row.getLong(1), row.getString(2), row.getLong(3)))
+				.list()
+				.stream()
+				/* TWO TEAMS MAY WAIT ON ONE PICTURE (the digest is the content, V8), so the one asked is the first
+				   whose editor he is, the oldest first as everywhere a digest names two rows (ADL A60). */
+				.filter(one -> TeamApi.administers(db, me, one.team(), now))
+				.findFirst()
+				.map(one -> new Kept(one.id(), one.mediaType()));
 
 		if (kept.isEmpty()) {
 			return nothingIsHere(response);

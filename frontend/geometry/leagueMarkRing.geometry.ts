@@ -10,7 +10,7 @@ import type { Answers, At } from './support/harness.ts'
  * „Okvir oko znaka lige je beo”: „Okvir oko znaka Lige (i tima jednog dana), treba da bude beo”), for the mark drawn
  * from a picture and for the one drawn from the initials, in every place a league's mark is drawn (the head of the
  * sheet of the leagues, a tile of the showcase, the heading of a league's own page), on a telephone,
- * a tablet and a desktop. The mark of a team is not asked, it is not changed.
+ * a tablet and a desktop. The ring of a team's logo is asked in `teamMarkRing.geometry.ts`, since 25.11.2026.
  *
  * <p>It reads `getComputedStyle`, which the browser has resolved from the cascade, and not the text of
  * `Leagues.css`, so a ring put back in gold by any rule, of any weight, in any sheet, falls here. The thickness is

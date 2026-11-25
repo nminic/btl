@@ -562,7 +562,9 @@ class VerificationApi {
 						   are V10's two exclusive ways of naming one, so the coalesce never
 						   chooses between two that are both there; on every other tab neither
 						   is, because only the results tab carries a submission at all. */
-						+ " coalesce(ra.name, rs.race_name, v.subject) as subject,"
+						/* AND A TEAM'S LOGO IS ABOUT THE TEAM AS IT IS CALLED NOW (V112), for the race's reason:
+						   the name the row was written with is the name the team had that day. */
+						+ " coalesce(ra.name, rs.race_name, logo_team.name, v.subject) as subject,"
 						/* THE THING A DECISION IS ABOUT, BY ITS KEY, and blank everywhere else.
 						   Two sources since V30 and never both at once on one row -
 						   `verification_only_the_<queue>_queue_carries_a_<x>` (V11, V30) makes
@@ -571,7 +573,8 @@ class VerificationApi {
 						   teams may carry one name, so a change matched by its name would be
 						   filed against whichever was found first, and two events may carry one
 						   too (PDL P6, an event copied into the next season keeps its name). */
-						+ " coalesce(cast(tp.team_id as text), cast(cs.event_id as text), '')"
+						+ " coalesce(cast(tp.team_id as text), cast(v.team_id as text),"
+						+ "     cast(cs.event_id as text), '')"
 						+ "     as subject_id,"
 						/* WHAT WAS WRITTEN, AND ON THE TEAMS TAB SINCE 23.11.2026 THE TEAM'S
 						   DESCRIPTION, off the proposal where the approval copies it from (PDL
@@ -588,6 +591,10 @@ class VerificationApi {
 						   this does not re-derive it - and a profiles row holds a photograph
 						   exactly while the picture is what is being decided. */
 						+ " case when tp.team_id is not null then 'teamEdit'"
+						/* A TEAM'S LOGO, sent by the team's editor (V112): the teams tab's picture, told apart by
+						   the team it names, which only a logo's row carries
+						   (`verification_a_team_or_a_proposal`). */
+						+ "      when v.team_id is not null then 'teamLogo'"
 						+ "      when v.queue = 'profiles' and v.photo_id is not null then 'photo'"
 						+ "      when v.queue = 'profiles' then 'bio'"
 						/* AND A RUN THAT CORRECTS A COUNTED RESULT, the third tab holding two
@@ -719,6 +726,8 @@ class VerificationApi {
 						   and a proposal has either a row in the codebook or a town somebody
 						   typed, never both. */
 						+ " left join team_proposal tp on tp.id = v.team_proposal_id"
+						/* AND THE TEAM A LOGO WAITS FOR, LEFT: only a logo's row names one (V112). */
+						+ " left join team logo_team on logo_team.id = v.team_id"
 						+ " left join place town on town.id = tp.place_id"
 						+ " left join country town_country on town_country.id = town.country_id"
 						+ " left join country typed_country on typed_country.id = tp.country_id"

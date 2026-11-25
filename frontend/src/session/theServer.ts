@@ -670,10 +670,19 @@ export type MyPictures = { waiting: HeldPicture | null; standing: HeldPicture | 
  * would be drawn from a route that refuses it.
  */
 export async function whatTheServerSaysOfMyPictures(): Promise<MyPictures | null> {
+  return whatTheServerSaysOfThePicturesAt('/api/me/photo', '/api/me/photo/')
+}
+
+/**
+ * THE SAME TWO HALVES FOR WHATEVER ANSWERS IN THIS SHAPE: a member's own portrait (`/api/me/photo`) and, since
+ * 25.11.2026, a team's logo read by its editor (`/api/teams/{id}/own-logo`, `TeamLogoApi.ours`), each with the
+ * address its waiting picture is served under, which is the only address it is believed under.
+ */
+export async function whatTheServerSaysOfThePicturesAt(address: string, waitingUnder: string): Promise<MyPictures | null> {
   let answer: Response
 
   try {
-    answer = await fetch('/api/me/photo')
+    answer = await fetch(address)
   } catch {
     return null
   }
@@ -694,7 +703,7 @@ export async function whatTheServerSaysOfMyPictures(): Promise<MyPictures | null
     return null
   }
 
-  const waiting = heldIn(body, 'waiting', '/api/me/photo/')
+  const waiting = heldIn(body, 'waiting', waitingUnder)
   const standing = heldIn(body, 'standing', '/api/photos/')
 
   return waiting === undefined || standing === undefined ? null : { waiting, standing }

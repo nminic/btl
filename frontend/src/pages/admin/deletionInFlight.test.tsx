@@ -1,4 +1,5 @@
 import { configure, screen, waitFor, within } from '@testing-library/react'
+import { afterEach, beforeEach } from 'vitest'
 import type { Role } from '../../roles/context'
 import { must } from '../../test/at'
 import { renderAt } from '../../test/render'
@@ -67,7 +68,19 @@ type Screen = {
    * coordinator's decision of 20.10.2026, `event/commentWrites.ts`). Left out, 404.
    */
   refusal?: number
+  /**
+   * What the screen reads before anything is asked, where no served file answers it: the box of a team's logo reads
+   * `GET /api/teams/{id}/own-logo`, which is no resource. Answered under every case of the row, beneath the server of
+   * the deletion, which answers only a `DELETE`.
+   */
+  reads?: (path: string, init: RequestInit | undefined) => Response | null
 }
+
+const A_TEAMS_LOGO_STANDS = () =>
+  new Response(JSON.stringify({ waiting: null, standing: { photo: '/api/photos/' + 'ab'.repeat(32), crop: { x: 0.3, y: 0.15, size: 0.55 } } }), {
+    status: 200,
+    headers: { 'content-type': 'application/json' },
+  })
 
 const SCREENS: Screen[] = [
   {
@@ -174,6 +187,39 @@ const SCREENS: Screen[] = [
     words: { open: sr.sponsorLogo.remove, asks: sr.sponsorLogo.removeAsks },
   },
   {
+    /* A team's logo, taken down by the administration in the form of the team (owner, PDL 25.11.2026, „Urednik tima
+       postavlja znak tima slikom”: „da moze i iz administracije”). The first team of the served file has one; once it is
+       down there is no second to take (`leaves`). */
+    name: 'a team\'s logo, taken down by the administration',
+    asks: sr.teamLogo.removeAsks,
+    gone: sr.teamLogo.removed,
+    leaves: true,
+    source: 'admin/TeamLogoModeration.tsx',
+    at: '/sr/administracija/timovi',
+    role: 'superadmin',
+    ask: async () => {
+      await setupUser().click(await screen.findByRole('button', { name: /^Otvori: Dunavski trkači/ }))
+
+      return screen.findByRole('button', { name: sr.teamLogo.remove })
+    },
+    words: { open: sr.teamLogo.remove, asks: sr.teamLogo.removeAsks },
+  },
+  {
+    /* And by the member who runs the team, at once (owner, 25.11.2026, „i urednik tima sme da ukloni logo, i to važi
+       odmah, bez odobrenja”), on „Izmeni tim”. */
+    name: 'a team\'s logo, taken down by its editor',
+    asks: sr.teamLogo.removeAsks,
+    gone: sr.teamLogo.removed,
+    leaves: true,
+    source: 'member/TeamLogo.tsx',
+    at: '/sr/tim/dunavski-trkaci/izmena',
+    role: 'competitor',
+    member: '000001',
+    ask: async () => screen.findByRole('button', { name: sr.teamLogo.remove }),
+    words: { open: sr.teamLogo.remove, asks: sr.teamLogo.removeAsks },
+    reads: (path, init) => (path === '/api/teams/1/own-logo' && init?.method === undefined ? A_TEAMS_LOGO_STANDS() : null),
+  },
+  {
     name: 'a member\'s own counted result',
     asks: sr.results.deleteAsk,
     gone: sr.results.deleted,
@@ -220,6 +266,16 @@ const sending = () =>
 
 describe('a deletion that is out with the server', () => {
   describe.each(SCREENS)('on $name', (one) => {
+    let stopReading: (() => void) | undefined
+
+    beforeEach(() => {
+      stopReading = one.reads === undefined ? undefined : serverThat(one.reads).stop
+    })
+
+    afterEach(() => {
+      stopReading?.()
+    })
+
     /**
      * Asks the question and answers it, leaving the deletion out, and hands back what a reader is left looking at:
      * the cross, the sheet, and the name of the record.
@@ -412,6 +468,16 @@ describe('a deletion that is out with the server', () => {
  */
 describe('what the screen says once a deletion is through', () => {
   describe.each(SCREENS)('on $name', (one) => {
+    let stopReading: (() => void) | undefined
+
+    beforeEach(() => {
+      stopReading = one.reads === undefined ? undefined : serverThat(one.reads).stop
+    })
+
+    afterEach(() => {
+      stopReading?.()
+    })
+
     /** Asks, says yes, and lets the server answer with what the case gives it. */
     async function deleteWith(answer: () => Response) {
       const server = serverThat((_, init) => (init?.method === 'DELETE' ? answer() : null))

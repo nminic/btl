@@ -386,6 +386,11 @@ const OPENING: { file: string; how: How; why: string }[] = [
     why: 'MY REASONING, read off the code on 24.11.2026, the shape of `LeagueMarkModeration.tsx` above: sending a sponsor\'s logo and taking it down keep every answer that is not done and draw it through `ServerSaid` (`answer`), under the buttons. No case puts the lock on this screen; what says it is drawn is `ServerSaid`\'s own case in `theSiteIsLocked.test.tsx`.',
   },
   {
+    file: 'pages/admin/TeamLogoModeration.tsx',
+    how: 'says',
+    why: 'MY REASONING, read off the code on 25.11.2026, the shape of `LeagueMarkModeration.tsx` above: setting a team logo and taking it down keep every answer that is not done and draw it through `ServerSaid` (`answer`), under the buttons. No case puts the lock on this screen; what says it is drawn is `ServerSaid`\'s own case in `theSiteIsLocked.test.tsx`.',
+  },
+  {
     file: 'pages/admin/LeagueRaceModeration.tsx',
     how: 'says',
     why: 'Owner, 23.10.2026 (PDL, „važi za svaki ekran koji upisuje”, the races of a league named in it), and held by `admin/leagueRaceModeration.test.tsx` (the cases about the site being locked): the lock is drawn by `TheSiteIsLocked` under the panel, for adding a race and for taking one out, and is not one of the panel\'s own sentences.',
@@ -519,6 +524,11 @@ const OPENING: { file: string; how: How; why: string }[] = [
     file: 'pages/member/ProfilePicture.tsx',
     how: 'says',
     why: 'MY REASONING, read off the code on 25.10.2026: the picture keeps the answer and draws it through `ServerSaid`. No case puts the lock on this screen; what says it is drawn is `ServerSaid`\'s own case in `theSiteIsLocked.test.tsx`.',
+  },
+  {
+    file: 'pages/member/TeamLogo.tsx',
+    how: 'says',
+    why: 'MY REASONING, read off the code on 25.11.2026: the box of a team logo is `ProfilePicture.tsx` one page over, and keeps the answer and draws it through `ServerSaid` the same way; what it opens itself is the bytes of the logo that stands, to send them again with a new circle, and a refusal there sends nothing and is drawn through `ServerSaid` too.',
   },
   {
     file: 'pages/member/ProfileVisibility.tsx',

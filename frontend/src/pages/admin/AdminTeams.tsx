@@ -13,6 +13,7 @@ import { ServerSaid } from '../account/ServerSaid'
 import { addressesIn, nameError } from './teamProposal'
 import { EditableCell } from './EditableCell'
 import { DeletionSaid } from './DeletionSaid'
+import { TeamLogoModeration } from './TeamLogoModeration'
 import { TeamMembers } from './TeamMembers'
 import { EntityBar, EntityEditor, RowActions, type Saving } from './EntityEditor'
 import { MEMBERS, recordsOf, TEAMS, type Editing, type Overlay } from './entityForms'
@@ -228,6 +229,18 @@ export function AdminTeams() {
                   )
                 }
                 save={(values) => saveOne(values, editing)}
+                /* THE TEAM'S LOGO, IN THE FORM OF A TEAM THAT EXISTS (owner, PDL 25.11.2026, „Urednik tima postavlja
+                   znak tima slikom”: „da moze i iz administracije”). It writes at once, as the league's mark does in
+                   its own form, and holds nothing the form holds. Found in the served list by identity, so a team
+                   being made, which has no identity yet, draws none. */
+                beneath={
+                  editing.mode === 'one'
+                    ? () =>
+                        teams
+                          .filter((one) => String(one.id) === String(editing.record[TEAMS.idField]))
+                          .map((team) => <TeamLogoModeration key={team.id} team={team} />)
+                    : undefined
+                }
                 onDone={() => setEditing(null)}
               />
             )
