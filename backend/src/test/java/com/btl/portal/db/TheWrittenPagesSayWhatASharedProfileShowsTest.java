@@ -32,6 +32,7 @@ class TheWrittenPagesSayWhatASharedProfileShowsTest extends DatabaseTest {
 	 */
 	@BeforeEach
 	void theTextAsV106LeftIt() {
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "114");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "110");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "107");
 	}

@@ -47,6 +47,7 @@ class TheWrittenPagesSpeakToTheReaderAsTiTest extends DatabaseTest {
 	 */
 	@BeforeEach
 	void theTextAsV109LeftIt() {
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "114");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "110");
 	}
 

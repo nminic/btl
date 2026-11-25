@@ -949,7 +949,16 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   slikom”): `verification.team_id`, its four rules and the index that keeps one logo of a team waiting.
 			   Every row standing comes out of it with no team (TeamLogoCarriedOverTest). Pinned last, once the file
 			   was final (CLAUDE.md, section 9). */
-			new Applied("112", "V112__a_team_logo_waits_in_the_teams_queue.sql", -708902578));
+			new Applied("112", "V112__a_team_logo_waits_in_the_teams_queue.sql", -708902578),
+
+			/* V114. The privacy policy names Microsoft (Azure Translator) as a processor in the table of section 5,
+			   under Zoho and above the bank, in both languages, and its sign-off moves to 25.11.2026 in both (owner,
+			   25.11.2026, PDL P18, „Red u Politici privatnosti, odeljak 5”, who approved the assistant's words
+			   without a change: „Upiši ovako”). No schema, row, key or index touched. 114 and no other: main stood
+			   at V112 when it was written and the pull request with the translation (835) takes V113.
+
+			   Pinned LAST, when the file was final, off this very assertion. */
+			new Applied("114", "V114__the_privacy_policy_names_microsoft_as_a_translator.sql", -2077906867));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {

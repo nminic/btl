@@ -937,6 +937,33 @@ describe('the privacy policy', () => {
     expect(whole('politika-privatnosti').split(sentence)).toHaveLength(2)
   })
 
+  it('names Microsoft as the processor of the translation, right under Zoho and above the bank', () => {
+    /* Owner, 25.11.2026 (PDL P18, „Red u Politici privatnosti, odeljak 5"): he approved the assistant's
+       words without a change, so the row is held word for word, and the place is held with it: one
+       line of the table „Kome prosleđujemo", directly under the row of Zoho and directly above the
+       row of the bank (V114). Held on the rows of the table and not on a phrase, so a row moved a
+       line up or down, or a word changed, is a failure that names the row. */
+    const row =
+      '| Microsoft (usluga Azure Translator) | Tekst koji je odobren za objavu na portalu (tvoja biografija, opis tima, opis događaja, odobren komentar), da bi ga posetilac video i na drugom jeziku. Ne dobija tvoje ime, adresu ni članski broj, i ne čuva tekst posle prevoda | EU |'
+    const table = must(
+      sectionOf('politika-privatnosti', /### Kome prosleđujemo/).split('### Kome prosleđujemo')[1],
+      'the table under „Kome prosleđujemo"',
+    )
+    const rows = table
+      .split(NEWLINE)
+      .filter((line) => line.startsWith('| '))
+      .map((line) => line.split(' | ')[0])
+
+    expect(rows.indexOf(row.split(' | ')[0] ?? '')).toBeGreaterThan(0)
+    expect(table.split(NEWLINE).filter((line) => line === row)).toHaveLength(1)
+    expect(rows.slice(rows.length - 3)).toEqual([
+      '| Zoho Corporation',
+      '| Microsoft (usluga Azure Translator)',
+      '| Poslovna banka Udruženja',
+    ])
+    expect(whole('politika-privatnosti').split('Microsoft')).toHaveLength(2)
+  })
+
   it('promises no way to withdraw a consent it never asks for', () => {
     /* The table of rights offered „saglasnost za kolačiće menjate u podnožju
        svake strane", and there is no such control in the footer; there never
@@ -3037,13 +3064,15 @@ describe('what the written pages say the fee buys', () => {
        owner, 16.11.2026), and all three to 21.11.2026 with the Serbian legal texts speaking to the
        reader as „ti” (V107; owner, 21.11.2026, the day it is expected on QA), by the same rule. The policy alone moved on
       to 24.11.2026 with the row about the choice of theme taken out of it (V110; owner, 24.11.2026, the day it is expected on QA),
-      by the same rule, and the terms and the rulebook kept 21.11.2026. Written per
+      by the same rule, and the terms and the rulebook kept 21.11.2026. The policy alone moved on to 25.11.2026 with the row that names
+      Microsoft (Azure Translator) as a processor (V114; owner, 25.11.2026, the day it is expected on QA), by the same rule, and the
+      terms and the rulebook kept 21.11.2026. Written per
        document and not as one day for all three, so a date moved on one of them,
        or left behind on one, is a failure that names the document. */
     const SIGNED_OFF = {
       pravilnik: '21.11.2026',
       'uslovi-koriscenja': '21.11.2026',
-      'politika-privatnosti': '24.11.2026',
+      'politika-privatnosti': '25.11.2026',
     } as const
 
     for (const slug of ['pravilnik', 'uslovi-koriscenja', 'politika-privatnosti'] as const) {

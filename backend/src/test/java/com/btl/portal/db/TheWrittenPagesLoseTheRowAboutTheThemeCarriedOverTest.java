@@ -93,6 +93,20 @@ class TheWrittenPagesLoseTheRowAboutTheThemeCarriedOverTest extends DatabaseTest
 
 	/** The pages as they stood before V110, and the proof that this is so: the row is back and the day is the old one. */
 	private void theTextAsItStoodBeforeV110() {
+		theTextAsV110LeftIt();
+		v110Undone();
+	}
+
+	/**
+	 * The pages as V110 left them: V114 (25.11.2026) edits sections 5 and 7 of the policy after V110, so with V114 undone the text
+	 * is the text V110 gives and the day it signs off on.
+	 */
+	private void theTextAsV110LeftIt() {
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "114");
+	}
+
+	/** V110 undone over the text V110 left, and the proof that this is so. */
+	private void v110Undone() {
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "110");
 
 		assertThat(bodyOf(POLICY, 2, "sr"))
@@ -138,9 +152,11 @@ class TheWrittenPagesLoseTheRowAboutTheThemeCarriedOverTest extends DatabaseTest
 	 */
 	@Test
 	void v110OverTheTextItFoundGivesTheTextThePortalServesAndChangesNothingElse() {
+		theTextAsV110LeftIt();
+
 		Map<String, String> finished = everyText();
 
-		theTextAsItStoodBeforeV110();
+		v110Undone();
 
 		Map<String, String> before = everyText();
 
@@ -167,6 +183,8 @@ class TheWrittenPagesLoseTheRowAboutTheThemeCarriedOverTest extends DatabaseTest
 	 */
 	@Test
 	void v110RunAgainOverTheFinishedTextStopsAndListsEveryEdit() {
+		theTextAsV110LeftIt();
+
 		Map<String, String> finished = everyText();
 
 		jdbc.execute("savepoint before_the_refusal");
@@ -257,7 +275,7 @@ class TheWrittenPagesLoseTheRowAboutTheThemeCarriedOverTest extends DatabaseTest
 
 		for (String language : List.of("sr", "en")) {
 			jdbc.execute("rollback to savepoint the_finished_text");
-			theTextAsItStoodBeforeV110();
+			v110Undone();
 
 			TheWrittenPagesBeforeV71.Edit sentence = edit("THEME-04 section 4, the sentence after it", language);
 
