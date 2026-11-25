@@ -77,7 +77,10 @@ describe('the period on the coins of the rulebook', () => {
     try {
       renderAt(path, 'visitor', null)
 
-      expect(await screen.findByText(season)).toBeInTheDocument()
+      /* Waited for by what stands under the coin in either language, so that a coin struck in the wrong
+         language ends the case on its own sentence and not on the clock of the wait. */
+      await screen.findByText('Sezonski kilometri')
+      expect(screen.getByText(season)).toBeInTheDocument()
       expect(screen.getByText(month)).toBeInTheDocument()
       expect(screen.queryByText(notSeason)).toBeNull()
       expect(screen.queryByText(notMonth)).toBeNull()
@@ -99,7 +102,8 @@ describe('the period on the coin of a member who holds one', () => {
     try {
       renderAt(`${path}?sezona=2010`, 'visitor', null, undefined, '2027-08-01')
 
-      expect(await screen.findByText(struck)).toBeInTheDocument()
+      await screen.findByRole('img', { name: /^Mesečni kilometri/ })
+      expect(screen.getByText(struck)).toBeInTheDocument()
       expect(screen.queryByText(notStruck)).toBeNull()
     } finally {
       restore()
