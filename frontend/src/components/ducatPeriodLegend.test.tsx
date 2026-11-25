@@ -60,7 +60,7 @@ function serving(families: DucatFamily[], held: unknown[]): () => void {
     return asked.replace(/\?lang=[a-z]+$/, '').endsWith('/api/ducats')
       ? new Response(JSON.stringify(families), { status: 200 })
       : real(input)
-  }) as typeof fetch
+  })
 
   return () => {
     globalThis.fetch = real
