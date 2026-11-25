@@ -53,7 +53,7 @@ services:
         # member and administration flows cannot be reached at all, since
         # authentication does not exist yet, and without the date switch nothing
         # that opens on a date can be looked at before that date arrives.
-        VITE_DEV_TOOLS: "1"
+        VITE_DEV_TOOLS: ""
     container_name: qa-frontend
     restart: unless-stopped
     ports:
