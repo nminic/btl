@@ -569,6 +569,12 @@ class TeamLogoApiTest {
 	 */
 	@Test
 	void aSecondSendOverwritesTheRowThatWaitsAndKeepsItsPlace() throws Exception {
+		/* AND THE TEAM BESIDE IT HAS A LOGO WAITING TOO, written first, so a send that overwrote any team's row is
+		   told from one that overwrote this team's. */
+		send(theOther, aJpeg("zeleni"), as(THE_OTHER_EDITOR));
+
+		String theOthersRow = theTeamsTab().get(0);
+
 		send(ours, aJpeg("prvi"), as(THE_EDITOR));
 
 		long row = theRowThatWaits();
@@ -582,7 +588,7 @@ class TeamLogoApiTest {
 
 		assertThat(theRowThatWaits()).isEqualTo(row);
 		assertThat(second).isNotEqualTo(first);
-		assertThat(theTeamsTab()).containsExactly(ours + " | " + THE_EDITOR + " | waiting | " + second);
+		assertThat(theTeamsTab()).containsExactly(theOthersRow, ours + " | " + THE_EDITOR + " | waiting | " + second);
 		assertThat(db.sql("select raised_at from verification where id = ?").param(row).query(Timestamp.class)
 				.single()).isEqualTo(raised);
 
