@@ -682,6 +682,36 @@ class TeamLogoApiTest {
 		assertThat(theTeamsTab()).hasSize(1);
 	}
 
+	/** A circle that is not one is refused on each of its three fractions, at both doors, and nothing is written. */
+	@Test
+	void aCircleThatIsNotOneIsRefusedOnEachOfItsThreeFractionsAtBothDoors() throws Exception {
+		for (String[] three : List.of(new String[] {"x", "0.5", "0.5"}, new String[] {"0.5", "x", "0.5"},
+				new String[] {"0.5", "0.5", "x"})) {
+			for (String door : List.of("/api/teams/" + ours + "/own-logo", "/api/teams/" + ours + "/logo")) {
+				MockMultipartHttpServletRequestBuilder asking = multipart(door);
+
+				asking.file(new MockMultipartFile("picture", "p.jpg", MediaType.IMAGE_JPEG_VALUE, aJpeg("y")));
+				asking.param("cropX", three[0]).param("cropY", three[1]).param("cropSize", three[2]);
+
+				String who = door.endsWith("own-logo") ? as(THE_EDITOR) : OVER_THE_TEAMS;
+
+				assertThat(body(sent(asking.with(csrf()), who)).path("reason").asString()).as(door + " " + three[0] + three[1])
+						.isEqualTo(MePhotoApi.THE_CROP_IS_NOT_A_CIRCLE);
+			}
+		}
+
+		assertThat(everyLogo()).containsExactlyElementsOf(asTheyWere());
+		assertThat(theTeamsTab()).isEmpty();
+	}
+
+	/** And the administration's door is told an empty file as it is told none: a form not filled in. */
+	@Test
+	void anEmptyFileIsAFormNotFilledInAtTheAdministrationsDoor() throws Exception {
+		assertThat(body(set(ours, new byte[0], "0.5", OVER_THE_TEAMS)).path("reason").asString())
+				.isEqualTo(MePhotoApi.THE_FORM_IS_NOT_COMPLETE);
+		assertThat(everyLogo()).containsExactlyElementsOf(asTheyWere());
+	}
+
 	/** What the camera wrote is taken off before anything is counted, hashed or written. */
 	@Test
 	void whatTheCameraWroteIsTakenOffTheLogoThatWaits() throws Exception {
