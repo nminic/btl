@@ -205,8 +205,12 @@ async function packageBuilt(asQa: boolean): Promise<Package> {
  *
  * <p><b>Asked at the FIRST paint</b>, through an observer set on the root before anything is run: the switches
  * are awaited so that the row they stand in does not change shape under the reader's pointer, and a portal
- * that drew first and brought them later would pass a question asked at the end. The answer is read with the
- * same role and label queries the suite reads with.
+ * that drew first and brought them later would pass a question asked at the end. <b>And the pieces of the
+ * two switches are handed over late</b>, by a hook on Node's own loader, the way a network hands over a piece
+ * that is fetched when it is asked for: read off a disk they arrive before React has drawn anything, and a
+ * portal drawn before they were loaded was measured to pass the first paint all the same. Which pieces they
+ * are is the name of each switch (`THEIR_NAMES`), which is the name the bundler gives its piece. The answer is
+ * read with the same role and label queries the suite reads with.
  *
  * <p><b>And the role switch is asked to answer</b>: it is set to another role and must say it after the
  * portal has drawn again, so a switch drawn out of a copy of the role that nothing else reads fails here. The
@@ -215,9 +219,19 @@ async function packageBuilt(asQa: boolean): Promise<Package> {
  */
 const THE_PAGE_RUN_BY_NODE = `
 import { readFileSync } from 'node:fs'
-import { createRequire } from 'node:module'
+import { createRequire, register } from 'node:module'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
+
+const late = (process.env.LATE_PIECES ?? '').split(',').filter((one) => one !== '')
+register('data:text/javascript,' + encodeURIComponent(
+  'const late = ' + JSON.stringify(late) + ';' +
+  'export async function load(url, context, next) {' +
+  '  const file = url.split("/").at(-1);' +
+  '  if (late.some((name) => file.startsWith(name + "-"))) await new Promise((ok) => setTimeout(ok, 300));' +
+  '  return next(url, context);' +
+  '}',
+))
 
 const built = process.env.BUILT_AT
 const deadline = Number(process.env.DEADLINE)
@@ -282,7 +296,7 @@ async function whatItDraws(one: Package): Promise<unknown> {
     const { stdout } = await promisify(execFile)(
       process.execPath,
       ['--input-type=module', '--eval', THE_PAGE_RUN_BY_NODE],
-      { cwd: FRONTEND, env: { ...process.env, BUILT_AT: at, DEADLINE: String(DEADLINE) }, timeout: DEADLINE + SLOW / 4 },
+      { cwd: FRONTEND, env: { ...process.env, BUILT_AT: at, DEADLINE: String(DEADLINE), LATE_PIECES: THEIR_NAMES.join(',') }, timeout: DEADLINE + SLOW / 4 },
     ).catch((failure: unknown) => ({ stdout: `the runner did not answer: ${String(failure)}` }))
     const said = stdout.trim().split('\n').at(-1) ?? ''
 
