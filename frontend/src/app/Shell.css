@@ -158,6 +158,16 @@
   min-height: 100svh;
 }
 
+/* NOT FROM 1000px: there the foot was measured to shift 0.00 to 0.05 before this and, with the rule, 0.00
+   to 0.07 on a profile (it is drawn in steps, short while its runs are still on their way, so the foot
+   that was held at the bottom of the window was sent under it and brought back). The desktop keeps what it
+   had; the rule is for the widths where the shift was over the limit. */
+@media (min-width: 62.5em) {
+  .shell__main:has(.loader:not(.loader--inline)) {
+    min-height: auto;
+  }
+}
+
 .shell__footer {
   border-top: 1px solid var(--border);
   padding-block: var(--space-24) var(--space-40);

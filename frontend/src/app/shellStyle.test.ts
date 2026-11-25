@@ -68,8 +68,12 @@ describe('the main of every screen', () => {
   it('is as tall as the window while the page-level loader is in it, and no other time', () => {
     const rules = everyRule(css, 'Shell.css').filter((rule) => rule.selectorText.includes('.shell__main'))
     const tall = rules.filter((rule) => rule.style.getPropertyValue('min-height') !== '')
+    const when = (rule: CSSStyleRule) => [rule.parentRule?.cssText.split('{')[0]?.trim() ?? '', rule.selectorText, rule.style.getPropertyValue('min-height')]
 
-    expect(tall.map((rule) => rule.selectorText)).toEqual(['.shell__main:has(.loader:not(.loader--inline))'])
-    expect(tall[0]?.style.getPropertyValue('min-height')).toBe('100svh')
+    /* The rule, and the one that gives it back from 1000px (a desktop was not over the limit before it). */
+    expect(tall.map(when)).toEqual([
+      ['', '.shell__main:has(.loader:not(.loader--inline))', '100svh'],
+      ['@media (min-width: 62.5em)', '.shell__main:has(.loader:not(.loader--inline))', 'auto'],
+    ])
   })
 })
