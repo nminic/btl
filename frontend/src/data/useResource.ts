@@ -684,6 +684,22 @@ export const useMembers = (revision?: number) => useResource<Member[]>('members'
 export const useRunners = () => useResource<Runner[]>('results/runners')
 export const useEvents = () => useLive(useResource<BtlEvent[]>('events'), 'events', 'id')
 /**
+ * THE EVENTS, IN THE LANGUAGE OF THE ADDRESS THE READER IS ON, so that each says what that reader is shown of its
+ * description (`BtlEvent.descriptionShown`; owner, PDL P18, 25.11.2026, „Automatski prevod sadržaja koji posetilac
+ * vidi”). The locale of the ADDRESS and not the dictionary's, for the reason `usePages` gives below.
+ *
+ * <p><b>Read by the page of an event and by nothing else</b>, because that page is the one screen that draws a
+ * description. Every other screen keeps `useEvents`, the answer with no language, and with it the address and the
+ * cache entry it always had; the one price is that the page of an event asks for the calendar once more per
+ * language in a visit. A write that drops `events` drops this answer too (`clearResourceCache`, which drops every
+ * language of a name it is given without one).
+ */
+export const useEventsInTheReadersLanguage = () => {
+  const { locale } = useI18n()
+
+  return useLive(useResource<BtlEvent[]>('events', { language: locale }), 'events', 'id')
+}
+/**
  * Who has said they are going, as the server keeps it.
  *
  * @param revision bumped by the one screen that writes it (`event/GoingToEvent.tsx`) once the

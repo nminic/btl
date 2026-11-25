@@ -223,6 +223,20 @@ services:
       # and FacebookIsAskedToReadAChangedCard does nothing at all.
       BTL_FACEBOOK_APP_ID: ${PROD_FACEBOOK_APP_ID:-}
       BTL_FACEBOOK_APP_SECRET: ${PROD_FACEBOOK_APP_SECRET:-}
+      # MICROSOFT'S AZURE TRANSLATOR, which translates the text a visitor reads
+      # (PDL P18, owner, 25.11.2026, „Automatski prevod sadržaja koji posetilac
+      # vidi"). The key and the region of the Translator resource, never in the
+      # repository. Empty by default and never `:?`, for the relay's reason: a
+      # portal that shows an original where a translation would stand is a
+      # smaller failure than one that will not deploy. Unset, Translator is off
+      # and TextsAreTranslated does nothing at all.
+      #
+      # NOT BEFORE THE PRIVACY POLICY SAYS SO. The plan the owner accepted on
+      # 25.11.2026: „ključ na produkciju tek posle rečenice u Politici
+      # privatnosti". The key is written into /opt/btl/deploy/.env only once the
+      # policy that names Microsoft is on production.
+      BTL_TRANSLATOR_KEY: ${PROD_TRANSLATOR_KEY:-}
+      BTL_TRANSLATOR_REGION: ${PROD_TRANSLATOR_REGION:-}
       # AND WHERE THE PICTURES LIVE, which is the mount right below this block.
       #
       # This stack had neither this line nor the mount until 20.09.2026, and a

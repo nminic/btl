@@ -786,6 +786,10 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 				"team_proposal.team_proposal_logo_fk set null",
 				"team_proposal.team_proposal_place_fk restrict",
 				"team_proposal.team_proposal_team_fk cascade",
+				/* V113. A translation of an event, and the stamp of when it was sent, go with the event: they are
+				   copies of words nobody can read any more. */
+				"text_translation.text_translation_event_fk cascade",
+				"text_translation_asked.text_translation_asked_event_fk cascade",
 				/* V9, and each of the four says something different about what a queue row is.
 				   The member's rows go with him, as his results do (owner, 11.09.2026, ADL A42).
 				   The moderator's name empties rather than taking the decision with it, because the
