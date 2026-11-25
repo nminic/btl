@@ -1230,8 +1230,12 @@ export const NO_RATING = Object.freeze<EventRating>({
    `correction` is a run that corrects a result already counted, on the results
    queue, read off V32's pointer by `VerificationApi` the way `teamEdit` is read off
    V11's. It is the whole of what the owner asked the queue to be told about it:
-   „samo labela, ne šta je ispravljano" (PDL P9, 27.08.2026). */
-export const ITEM_KINDS = ['', 'bio', 'photo', 'teamEdit', 'correction'] as const
+   „samo labela, ne šta je ispravljano" (PDL P9, 27.08.2026).
+
+   `teamLogo` is a team's logo, sent by the member who runs the team and waiting on
+   the teams queue for a moderator (owner, PDL 25.11.2026, „Urednik tima postavlja
+   znak tima slikom”), read off V112's pointer the way `teamEdit` is read off V11's. */
+export const ITEM_KINDS = ['', 'bio', 'photo', 'teamEdit', 'correction', 'teamLogo'] as const
 
 export type ItemKind = (typeof ITEM_KINDS)[number]
 

@@ -16,6 +16,7 @@ import { MEMBERS, recordsOf, TEAMS } from '../admin/entityForms'
 import { useOverlay } from '../admin/overlay'
 import { addressesIn, addressOf, nameError } from '../admin/teamProposal'
 import { useMemberScreen } from './memberScreen'
+import { TeamLogo } from './TeamLogo'
 import './Member.css'
 
 /* The proposal form under another name, built once at module load rather than per
@@ -61,9 +62,10 @@ const IZMENA_TIMA = {
  * **Everything starts as the team says it today**, the description and the link
  * included, so the member changes a word rather than typing it all again.
  *
- * **What is not asked here.** The logo, and who administers the team. The first
- * because no route takes a picture with a change, and the second because it is
- * worked out rather than chosen (`data/teamAdmin.ts`).
+ * **What is not asked here.** Who administers the team, because it is worked out
+ * rather than chosen (`data/teamAdmin.ts`). The logo is on this page since
+ * 25.11.2026, but in a box of its own under the form (`TeamLogo`), sent on its own:
+ * no route takes a picture with a change of the words.
  */
 export function EditTeam() {
   const { locale, t } = useI18n()
@@ -210,6 +212,11 @@ export function EditTeam() {
               {sending && <p role="status">{t('teams.proposeSending')}</p>}
 
               {refusal !== null && <ServerSaid answer={refusal} refusals={WHEN_CHANGING_A_TEAM} />}
+
+              {/* THE LOGO, IN A BOX OF ITS OWN UNDER THE FORM (owner, PDL 25.11.2026, „Logo tima, pitanja iz plana”:
+                  „urednik šalje logo na strani „Izmeni tim”, u posebnom okviru”). It sends at once with its own
+                  button and holds nothing the form holds: a picture is decided apart from the words. */}
+              <TeamLogo team={team} />
             </>
           )
         }}

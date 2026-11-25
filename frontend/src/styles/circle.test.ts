@@ -187,6 +187,10 @@ describe('the circle a face and a team mark share', () => {
     const own = declaredIn(bodyOf(teamMark, '.team-mark'))
 
     expect(own.filter((property) => /color|background|^--/.test(property))).toEqual([])
+    /* AND THE ONE COLOUR IT DOES WEAR IS THE SAME FOR EVERY TEAM: the white ring (owner, 24.11.2026, PDL „Okvir oko
+       znaka lige je beo”, „i tima jednog dana”), written whole, so a ring in a colour of its own falls here and its
+       computed colour is asked of Chrome (`geometry/teamMarkRing.geometry.ts`). */
+    expect(bodyOf(teamMark, '.team-mark')).toMatch(/border:\s*2px solid var\(--white\);/)
     expect(declaredIn(bodyOf(teamMark, '.team-mark.team-mark--logo'))).toEqual(['background'])
   })
 

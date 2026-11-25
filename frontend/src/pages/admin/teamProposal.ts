@@ -249,6 +249,29 @@ export function isChange(item: PendingItem): boolean {
 }
 
 /**
+ * Whether a waiting item is a team's logo (V112, owner, PDL 25.11.2026, „Urednik tima postavlja znak tima slikom”):
+ * a picture on the teams queue, decided as a member's portrait is and never made into a team.
+ */
+export function isTeamLogo(item: PendingItem): boolean {
+  return item.kind === 'teamLogo'
+}
+
+/**
+ * Why this logo cannot be approved, or nothing: it was sent by a member who no longer runs the team it is for.
+ *
+ * The rule a change of a team is held to (`refusal`, „sent by whoever administers that team today"), for its
+ * reason: the logo is the editor's act, and the seat can be handed on while it waits. Derived on 25.11.2026 from
+ * that same rule (PDL, 05.09.2026, „Izmena koju je poslao smenjen administrator se ne odobrava”), not a sentence of
+ * the owner's. A team the list no longer has is not refused here: its logo left the queue with it
+ * (`verification_team_fk`), and the route answers a decision about it.
+ */
+export function logoRefusal(item: PendingItem, teams: Team[], members: Competitor[]): string | null {
+  const about = teams.find((one) => String(one.id) === item.subjectId)
+
+  return about !== undefined && teamAdminOf(about, members) !== item.memberNumber ? 'verification.teamLogoNotYours' : null
+}
+
+/**
  * The addresses a waiting item has to be free of, which is every address but the
  * one belonging to the team it is about.
  *

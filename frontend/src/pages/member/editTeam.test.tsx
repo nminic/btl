@@ -84,7 +84,8 @@ describe('the way to change a team', () => {
 
     await user.click(within(row).getByRole('button', { name: /^Otvori/ }))
     await user.selectOptions(await screen.findByLabelText(/Organizator tima/), '000007')
-    await user.click(screen.getByRole('button', { name: /Sačuvaj/ }))
+    /* The form's own button, and not the one of the team's logo in the box beneath it („Sačuvaj logo”). */
+    await user.click(screen.getByRole('button', { name: /^Sačuvaj$/ }))
 
     await router.navigate('/sr/tim/dunavski-trkaci')
     await screen.findByRole('heading', { level: 1, name: 'Dunavski trkači' })

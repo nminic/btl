@@ -46,6 +46,8 @@ import {
   addressesIn,
   addressOf,
   isChange,
+  isTeamLogo,
+  logoRefusal,
   organisers,
   proposed,
   editsKeyOf,
@@ -134,7 +136,8 @@ function refusalOf(one: PendingItem, reason: string): Answered {
   }
 
   /* A TEAM NAMES THE WORDS IT DREW, as a picture names its print: the card of a change may have been
-     written over while the moderator looked (PDL P13, [ODLUKA 23.11.2026]). */
+     written over while the moderator looked (PDL P13, [ODLUKA 23.11.2026]). A team's logo has a picture and
+     left above. */
   if (one.queue === 'teams') {
     return aRefusalOfTheTeam(reason, proposed(one))
   }
@@ -951,13 +954,19 @@ export function PendingQueue({ queue }: { queue: Queue }) {
           continue
         }
 
-        const made = queue.id === 'teams' ? teamFrom(one, edits) : null
+        /* A TEAM'S LOGO MAKES NO TEAM (V112): it is a picture, decided as a portrait is, and held only to the rule
+           of who sent it (`logoRefusal`). */
+        const made = queue.id === 'teams' && !isTeamLogo(one) ? teamFrom(one, edits) : null
 
         if (
           made !== null &&
           refusal(made, addressesAgainst(one, teams, addresses), one, inATeam, teams, allMembers) !==
             null
         ) {
+          continue
+        }
+
+        if (isTeamLogo(one) && logoRefusal(one, teams, allMembers) !== null) {
           continue
         }
 
@@ -1012,6 +1021,13 @@ export function PendingQueue({ queue }: { queue: Queue }) {
            06.08.2026). PDL P10a, 22.09.2026 removed the queue rather than leaving
            a second road to the one thing `EventWriteApi` already does from the
            event's own screen: „Redova je pet, ne šest." */
+
+        /* AN APPROVED LOGO STANDS ON THE TEAM ON THE SERVER, so the list every page of the teams reads is no
+           longer true. */
+        if (isTeamLogo(one)) {
+          clearResourceCache('teams')
+          setTeamsWritten((was) => was + 1)
+        }
 
         if (made === null) {
           continue
@@ -1347,7 +1363,9 @@ export function PendingQueue({ queue }: { queue: Queue }) {
           const teamOf = (one: PendingItem) => teams.find((each) => String(each.id) === one.subjectId)
 
           const refusedFor = (one: PendingItem) =>
-            queue.id === 'teams'
+            isTeamLogo(one)
+              ? logoRefusal(one, teams, allMembers)
+              : queue.id === 'teams'
               ? refusal(
                   teamFrom(one, edits),
                   addressesAgainst(one, teams, addresses),
@@ -1539,6 +1557,11 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                               (owner, 04.09.2026: „uz oznaku šta je šta"). A new
                               team carries no mark, because a queue called „Novi
                               timovi" is what it is by default. */}
+                          {/* A team's logo, by the team it is for (V112): the heading is the team's name
+                              as it is now, and this says what the card is about. */}
+                          {isTeamLogo(one) && (
+                            <span className="submissions__meta">{t('verification.teamLogo')}</span>
+                          )}
                           {isChange(one) && (
                             <span className="submissions__meta">
                               {/* **Which team**, by the name it carries now. „Izmena
@@ -1611,7 +1634,7 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                         {/* The three things the team will be made of, before it
                             is made (owner, 03.08.2026). Only here: the other four
                             queues decide about something that already exists. */}
-                        {queue.id === 'teams' && <TeamFields item={one} />}
+                        {queue.id === 'teams' && !isTeamLogo(one) && <TeamFields item={one} />}
 
                         {/* What the member thought of it, which is the half of a
                             comment the moderator was deciding about without
