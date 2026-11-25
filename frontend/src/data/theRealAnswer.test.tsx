@@ -89,7 +89,7 @@ const theirName = `${String(theMember.firstName ?? '')} ${String(theMember.lastN
 
 function answering(rows: Record<string, unknown>[], at: string) {
   return serverThat((path) =>
-    path === at
+    path.split('?')[0] === at
       ? new Response(JSON.stringify(rows), {
           status: 200,
           headers: { 'content-type': 'application/json' },

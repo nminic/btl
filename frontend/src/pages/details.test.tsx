@@ -671,7 +671,7 @@ describe('LeagueDetail', () => {
        nothing. */
     const real = globalThis.fetch
     globalThis.fetch = (async (input: RequestInfo | URL) =>
-      String(input).endsWith('/api/leagues')
+      String(input).replace(/\?lang=[a-z]+$/, '').endsWith('/api/leagues')
         ? new Response(JSON.stringify([]), { status: 200 })
         : real(input))
 

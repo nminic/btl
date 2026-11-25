@@ -965,7 +965,15 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   at V112 when it was written and the pull request with the translation (835) takes V113.
 
 			   Pinned LAST, when the file was final, off this very assertion. */
-			new Applied("114", "V114__the_privacy_policy_names_microsoft_as_a_translator.sql", -2077906867));
+			new Applied("114", "V114__the_privacy_policy_names_microsoft_as_a_translator.sql", -2077906867),
+
+
+			/* V115. Every other text a visitor reads is translated too (owner, PDL P18, 25.11.2026): six more kinds of
+			   thing a translation belongs to, the three rules of both tables rewritten to name them, and the English
+			   of the fifteen ducats, written by hand. Written as V115 because V114 is the migration of another
+			   branch (PR 837). Rules rewritten over rows that stand, so it is measured over them
+			   (TextTranslationOfEveryKindCarriedOverTest). Pinned last, once the file was final (CLAUDE.md, section 9). */
+			new Applied("115", "V115__every_text_a_visitor_reads_is_translated.sql", -28403641));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {

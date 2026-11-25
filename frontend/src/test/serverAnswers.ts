@@ -68,6 +68,18 @@ function withoutTheQuery(path: string): string {
 }
 
 /**
+ * THE ADDRESS A CASE IS WRITTEN FOR, whichever language the screen asked in. Since 25.11.2026 (owner, PDL P18,
+ * „Automatski prevod sadržaja koji posetilac vidi”) the screen that draws a translated text reads its resource in the
+ * language of the address (`useLeaguesInTheReadersLanguage` and the five beside it), and a case written for
+ * `/api/leagues` is about the leagues and not about which language they were asked in. `asked` keeps the address as it
+ * went, so a case that is about the language still reads it there, and `/api/pages?lang=` is left as it is, since a
+ * case about the written pages is about the language.
+ */
+function withoutTheReadersLanguage(path: string): string {
+  return path.replace(/^(\/api\/(?:leagues|comments|competitors|teams|pricing|ducats))\?lang=[a-z]+$/, '$1')
+}
+
+/**
  * Puts a server in front of the disc reader for the length of one case.
  *
  * @param answers what to answer, or null to let the disc reader have it. A promise
@@ -86,7 +98,7 @@ export function serverThat(
 
     asked.push({ path, init })
 
-    return answers(path, init) ?? disc(input, init)
+    return answers(withoutTheReadersLanguage(path), init) ?? disc(input, init)
   }
 
   return {

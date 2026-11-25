@@ -2,13 +2,20 @@ import { useEffect, useState } from 'react'
 import { ProfileLink } from '../profile/ProfileLink'
 import { useGrowing } from '../../components/growing'
 import { LoadMore } from '../../components/LoadMore'
+import { MachineNote } from '../../components/MachineNote'
 import { Portrait } from '../../components/Portrait'
 import { Stars } from '../../components/Stars'
 import { RATING_MARKS } from '../../data/types'
 import type { Competitor, EventComment } from '../../data/types'
 import { editionsOf } from '../../data/editions'
+import { shownOr } from '../../data/shownText'
 import { overall, rated } from './overall'
-import { combineResources, useComments, useCompetitors, useEvents } from '../../data/useResource'
+import {
+  combineResources,
+  useCommentsInTheReadersLanguage,
+  useCompetitors,
+  useEvents,
+} from '../../data/useResource'
 import { Loader } from '../../components/Loader'
 import { Resource } from '../../components/Resource'
 import { formatDate, formatNumber } from '../../i18n/format'
@@ -136,7 +143,7 @@ function TheComments({ eventId, date }: { eventId: number; date: string }) {
   const today = useToday()
   /* Read again, here and beside the name of the event alike, when his deletion is answered
      (`theCommentsHaveChanged`, `commentWrites.ts`). */
-  const state = combineResources(useComments(), useCompetitors(), useEvents())
+  const state = combineResources(useCommentsInTheReadersLanguage(), useCompetitors(), useEvents())
   /* WHAT HIS LAST DELETION SAID, held here and not in the list, because deleting his only rating takes the list away
      and the sentence would go with it (PDL, 24.10.2026, „Ocena je obrisana."). */
   const [said, setSaid] = useState('')
@@ -427,7 +434,14 @@ function Comment({
         ))}
       </dl>
 
-      {comment.body !== '' && <p className="comments__text">{comment.body}</p>}
+      {comment.body !== '' && (
+        <>
+          <p className="comments__text" lang={shownOr(comment.body, comment.bodyShown).language ?? undefined}>
+            {shownOr(comment.body, comment.bodyShown).text}
+          </p>
+          <MachineNote shown={shownOr(comment.body, comment.bodyShown)} />
+        </>
+      )}
 
       {his !== null && (
         <div className="comments__his">

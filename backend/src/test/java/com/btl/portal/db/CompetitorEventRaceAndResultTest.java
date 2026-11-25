@@ -790,6 +790,20 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 				   copies of words nobody can read any more. */
 				"text_translation.text_translation_event_fk cascade",
 				"text_translation_asked.text_translation_asked_event_fk cascade",
+				/* V115. The same for every other kind of thing a translation belongs to: the biography of a member
+				   goes with the member, which the privacy policy promises, and the rest are copies of words nobody can
+				   read any more. */
+				"text_translation.text_translation_league_fk cascade",
+				"text_translation.text_translation_price_row_fk cascade",
+				"text_translation.text_translation_competitor_fk cascade",
+				"text_translation.text_translation_team_fk cascade",
+				"text_translation.text_translation_event_comment_fk cascade",
+				"text_translation.text_translation_ducat_fk cascade",
+				"text_translation_asked.text_translation_asked_league_fk cascade",
+				"text_translation_asked.text_translation_asked_price_row_fk cascade",
+				"text_translation_asked.text_translation_asked_competitor_fk cascade",
+				"text_translation_asked.text_translation_asked_team_fk cascade",
+				"text_translation_asked.text_translation_asked_event_comment_fk cascade",
 				/* V9, and each of the four says something different about what a queue row is.
 				   The member's rows go with him, as his results do (owner, 11.09.2026, ADL A42).
 				   The moderator's name empties rather than taking the decision with it, because the

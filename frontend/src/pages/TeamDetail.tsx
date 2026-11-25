@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { PageMeta } from '../app/PageMeta'
 import { CategoryDonut } from '../components/CategoryDonut'
+import { MachineNote } from '../components/MachineNote'
 import { Resource } from '../components/Resource'
 import { SeasonPicker } from '../components/SeasonPicker'
 import { TeamMark } from '../components/TeamMark'
@@ -20,13 +21,20 @@ import {
   totalsOf,
   standsIn,
 } from '../data/derive'
-import { combineFour, useCompetitors, useFrozenSeasons, useResults, useTeams } from '../data/useResource'
+import {
+  combineFour,
+  useCompetitors,
+  useFrozenSeasons,
+  useResults,
+  useTeamsInTheReadersLanguage,
+} from '../data/useResource'
 import { useFrozenTables } from '../data/useFrozenTables'
 import { EMPTY_TOTALS, type RankingRow, type Totals } from '../data/derive'
 import { FrozenName } from './frozen/FrozenName'
 import { useFrozenPeople, type FrozenOne } from './frozen/frozenPeople'
 import { clearResourceCache } from '../data/client'
 import { outsideLink } from '../data/outsideLink'
+import { shownOr } from '../data/shownText'
 import type { Competitor, RaceCategory, Team } from '../data/types'
 import { askTheServer, type Answer } from './account/askTheServer'
 import { ServerSaid } from './account/ServerSaid'
@@ -95,7 +103,7 @@ export function TeamDetail() {
   const { memberNumber } = useSession()
   const navigate = useNavigate()
   const overlay = useOverlay()
-  const state = combineFour(useTeams(), useCompetitors(), useResults(), useFrozenSeasons())
+  const state = combineFour(useTeamsInTheReadersLanguage(), useCompetitors(), useResults(), useFrozenSeasons())
 
   /**
    * Why a deletion did not happen, for the one person who pressed it, and THE PAGE IT WAS REFUSED ON
@@ -442,12 +450,19 @@ export function TeamDetail() {
                       {t('teams.aboutEmpty')}
                     </p>
                   ) : (
-                    team.bio.split(/\n{2,}/).map((paragraph) => (
-                      <p className="profile__bio-text" key={paragraph}>
-                        {paragraph}
-                      </p>
-                    ))
+                    shownOr(team.bio, team.bioShown)
+                      .text.split(/\n{2,}/)
+                      .map((paragraph) => (
+                        <p
+                          className="profile__bio-text"
+                          key={paragraph}
+                          lang={shownOr(team.bio, team.bioShown).language ?? undefined}
+                        >
+                          {paragraph}
+                        </p>
+                      ))
                   )}
+                  <MachineNote shown={shownOr(team.bio, team.bioShown)} />
                   {/* AND THE TEAM'S OWN PAGE, under its words and only where it has one (PDL P13,
                       11.08.2026: „neobavezni link"; on the page since 23.11.2026). Whether there is a
                       link at all is `outsideLink`'s question, as on the event's page

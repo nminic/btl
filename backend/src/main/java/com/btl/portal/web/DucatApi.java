@@ -1,11 +1,17 @@
 package com.btl.portal.web;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.math.BigDecimal;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * THE DUCATS AND WHAT EACH OF THEM IS EARNED FOR.
@@ -76,11 +82,12 @@ import java.util.List;
  * parameter naming the caller, because there is nothing here that could depend on
  * him and a parameter saying otherwise would be a promise.
  *
- * <p><b>The one thing still waiting is a language, and it is not waiting on
- * this.</b> ADL.md (18.09.2026) asks for „imena i opisi dukata" to be translated.
- * No mechanism for a translation exists and {@code name} has not got one either;
- * the seven legends are in exactly {@code name}'s position and will move when it
- * does. Nothing here names a language.
+ * <p><b>The language is here since 25.11.2026, and it is the one thing this route asks for.</b> ADL.md
+ * (18.09.2026) asked for „imena i opisi dukata" to be translated, and the owner decided how (PDL P18,
+ * „Ja ih prevedem ručno"): not by the machine, which never sends a ducat, but by hand, in V115. Asked with
+ * {@code ?lang=}, every ducat answers what that reader is shown of the five texts that are words (the name,
+ * the two legends, the woman's legend and what a run is counted in), and the fields themselves stay what
+ * was written, because the portal reads them as the Serbian they are.
  *
  * <p><b>From bronze to gold</b>, which is the order the rulebook speaks of them in:
  * „od bronzanih, koje mnogi osvoje već u prvoj sezoni, preko srebrnih, do zlatnih,
@@ -129,11 +136,32 @@ class DucatApi {
 	 */
 	record Ducat(String id, String name, String kind, BigDecimal value, String period,
 			String top, String topFemale, String bottom, String periodAt, String mark, String art,
-			int tier, BigDecimal step, BigDecimal last, BigDecimal tierUpFrom, String counted) {
+			int tier, BigDecimal step, BigDecimal last, BigDecimal tierUpFrom, String counted,
+			@JsonInclude(JsonInclude.Include.NON_NULL) TranslatedText.Shown nameShown,
+			@JsonInclude(JsonInclude.Include.NON_NULL) TranslatedText.Shown topShown,
+			@JsonInclude(JsonInclude.Include.NON_NULL) TranslatedText.Shown topFemaleShown,
+			@JsonInclude(JsonInclude.Include.NON_NULL) TranslatedText.Shown bottomShown,
+			@JsonInclude(JsonInclude.Include.NON_NULL) TranslatedText.Shown countedShown) {
 	}
 
+	/**
+	 * @param lang the reader's language, absent for the words as they are written and nothing else. Asked, every
+	 *             ducat says what that reader is shown of each of its five texts ({@code nameShown},
+	 *             {@code topShown}, {@code topFemaleShown}, {@code bottomShown}, {@code countedShown}). The
+	 *             English of a ducat is written by hand (owner, PDL P18, 25.11.2026, „Ja ih prevedem ručno"),
+	 *             so no machine row is ever here and what is shown is a hand row or the Serbian as written; the
+	 *             original is Serbian by definition, which is what the portal's tag says it is. A value not shaped
+	 *             like a tag is refused with 400 and no body.
+	 */
 	@GetMapping("/api/ducats")
-	List<Ducat> ducats() {
+	ResponseEntity<List<Ducat>> ducats(@RequestParam(name = TranslatedText.THE_LANGUAGE_ASKED_FOR, required = false) String lang) {
+		if (TranslatedText.isMalformed(lang)) {
+			return ResponseEntity.badRequest().build();
+		}
+
+		WhatIsTranslated[] said = {WhatIsTranslated.DUCAT_NAME, WhatIsTranslated.DUCAT_TOP,
+				WhatIsTranslated.DUCAT_TOP_FEMALE, WhatIsTranslated.DUCAT_BOTTOM, WhatIsTranslated.DUCAT_COUNTED};
+
 		/* The four numbers come back as they are stored. The column is `numeric(12,2)`
 		   and `DucatKind` says why - a count compared against a decimal through a double
 		   is a comparison that can go wrong at the boundary, which is the one place a
@@ -145,22 +173,33 @@ class DucatApi {
 		   and never null: V27 forbids a null in all seven, because „this ducat has no
 		   bottom legend" and „this ducat has an empty bottom legend" are the same
 		   sentence and the portal reads the second. */
-		return db.sql("select code, name, kind, threshold, period,"
-						+ " top, top_female, bottom, period_at, mark, art,"
-						+ " tier, step, last, tier_up_from, counted"
+		return ResponseEntity.ok(db.sql("select d.code, d.name, d.kind, d.threshold, d.period,"
+						+ " d.top, d.top_female, d.bottom, d.period_at, d.mark, d.art,"
+						+ " d.tier, d.step, d.last, d.tier_up_from, d.counted"
+						+ (lang == null ? "" : ", " + Arrays.stream(said).map(WhatIsTranslated::joinedColumns)
+								.collect(Collectors.joining(", ")))
 						/* FROM BRONZE TO GOLD, and the key breaks the tie within one metal.
 						   Ordered by the key alone the answer would still be this list today,
 						   because the catalogue was written in tier order; ordered by the code
 						   or the name it would not be, and neither of those is an order anybody
 						   decided. The case that separates the first two adds a sixteenth ducat
 						   of the lowest tier, which the key alone would put last. */
-						+ " from ducat order by tier, id")
+						+ " from ducat d"
+						+ (lang == null ? "" : Arrays.stream(said).map(one -> one.joinedOver("d"))
+								.collect(Collectors.joining()))
+						+ " order by d.tier, d.id")
+				.params(lang == null ? Map.<String, Object>of() : Map.<String, Object>of("language", lang))
 				.query((row, one) -> new Ducat(row.getString(1), row.getString(2), row.getString(3),
 						row.getBigDecimal(4), row.getString(5),
 						row.getString(6), row.getString(7), row.getString(8), row.getString(9),
 						row.getString(10), row.getString(11),
 						row.getInt(12), row.getBigDecimal(13), row.getBigDecimal(14),
-						row.getBigDecimal(15), row.getString(16)))
-				.list();
+						row.getBigDecimal(15), row.getString(16),
+						TranslatedText.readWrittenIn(row, 17, row.getString(2), lang, "sr"),
+						TranslatedText.readWrittenIn(row, 20, row.getString(6), lang, "sr"),
+						TranslatedText.readWrittenIn(row, 23, row.getString(7), lang, "sr"),
+						TranslatedText.readWrittenIn(row, 26, row.getString(8), lang, "sr"),
+						TranslatedText.readWrittenIn(row, 29, row.getString(16), lang, "sr")))
+				.list());
 	}
 }

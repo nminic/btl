@@ -1,5 +1,6 @@
 package com.btl.portal.db;
 
+import com.btl.portal.web.TranslatableRows;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -16,7 +17,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * THE TWO TABLES OF V113, against a real database: what each constraint refuses, and that there is no constraint
+ * THE TWO TABLES OF V113 AND WHAT V115 ADDS TO THEM, against a real database: what each constraint refuses, and that there is no constraint
  * without a row that breaks it. The shape of {@link SharedCardConstraintsTest}.
  */
 class TextTranslationConstraintsTest extends DatabaseTest {
@@ -69,9 +70,101 @@ class TextTranslationConstraintsTest extends DatabaseTest {
 				+ " null, null, 'race', false, 'Drugi opis', '')").update();
 		db.sql(translation()).update();
 		db.sql(asked(EVENT, "'description'", DIGEST, "now()", "false")).update();
+
+		/* One of every other thing a translation can belong to (V115). The ducat is one of the fifteen V115 itself
+		   wrote, and carries its English already: a row of its own would not be a first. */
+		long member = TranslatableRows.member(db, "000951", "Biografija", false);
+
+		TranslatableRows.league(db, "prevod-liga", 2041, "Pravila", "Nagrade");
+		TranslatableRows.team(db, "prevod-tim", "Opis tima");
+		TranslatableRows.comment(db, db.sql("select id from btl_event where slug = 'prevod-proba'")
+				.query(Long.class).single(), member, "Komentar");
+	}
+
+	private static final String LEAGUE = "(select id from league where slug = 'prevod-liga')";
+	private static final String PRICE_ROW = "(select id from price_row where key = 'early')";
+	private static final String MEMBER = "(select id from competitor where member_number = '000951')";
+	private static final String TEAM = "(select id from team where slug = 'prevod-tim')";
+	private static final String COMMENT = "(select id from event_comment where body = 'Komentar')";
+	private static final String DUCAT = "(select id from ducat where code = 'duk-sve-trke')";
+
+	/** One row of a translation of ANY kind of thing, every column given. */
+	private static String translationOf(String key, String thing, String field, String language, String origin,
+			String digest, String heardAs, String body) {
+		return "insert into text_translation (" + key + ", field, language, origin, source_digest, source_language,"
+				+ " body) values (" + String.join(", ", thing, field, language, origin, digest, heardAs, body) + ")";
+	}
+
+	private static String askedOf(String key, String thing, String field) {
+		return "insert into text_translation_asked (" + key + ", field, source_digest, asked_at, thrown_away)"
+				+ " values (" + String.join(", ", thing, field, DIGEST, "now()", "false") + ")";
+	}
+
+	/** The kinds a translation belongs to, with a thing of each, the one field it has and one it has not. */
+	record Kind(String key, String thing, String table, String field, String notThatField) {
+	}
+
+	static List<Kind> kinds() {
+		return List.of(
+				new Kind("event_id", EVENT, "btl_event", "description", "name"),
+				new Kind("league_id", LEAGUE, "league", "rules", "name"),
+				new Kind("price_row_id", PRICE_ROW, "price_row", "label", "key"),
+				new Kind("competitor_id", MEMBER, "competitor", "bio", "first_name"),
+				new Kind("team_id", TEAM, "team", "bio", "name"),
+				new Kind("event_comment_id", COMMENT, "event_comment", "body", "who"),
+				new Kind("ducat_id", DUCAT, "ducat", "name", "code"));
+	}
+
+	static List<Violation> ofTheKinds() {
+		List<Violation> more = new java.util.ArrayList<>();
+
+		for (Kind kind : kinds()) {
+			String name = kind.key().replace("_id", "");
+
+			more.add(Violation.of("text_translation_" + name + "_fk",
+					translationOf(kind.key(), "-1", "'" + kind.field() + "'", "'sr'", "'manual'", DIGEST, "null", "'x'")));
+			more.add(Violation.of("text_translation_field_of_its_thing",
+					translationOf(kind.key(), kind.thing(), "'" + kind.notThatField() + "'", "'sr'", "'manual'", DIGEST,
+							"null", "'x'")));
+			/* A SECOND TRANSLATION OF ONE KIND, in the language and origin the first one has: unique for every kind and
+			   not for the event alone, which the key in V113 was. */
+			more.add(Violation.of("text_translation_once",
+					translationOf(kind.key(), kind.thing(), "'" + kind.field() + "'", "'sr'", "'manual'", DIGEST, "null",
+							"'first'")
+							+ "; " + translationOf(kind.key(), kind.thing(), "'" + kind.field() + "'", "'sr'", "'manual'",
+							DIGEST, "null", "'second'")));
+			if (!kind.key().equals("ducat_id") && !kind.key().equals("event_id")) {
+				more.add(Violation.of("text_translation_asked_" + name + "_fk",
+						askedOf(kind.key(), "-1", "'" + kind.field() + "'")));
+				more.add(Violation.of("text_translation_asked_field_of_its_thing",
+						askedOf(kind.key(), kind.thing(), "'" + kind.notThatField() + "'")));
+				more.add(Violation.of("text_translation_asked_once",
+						askedOf(kind.key(), kind.thing(), "'" + kind.field() + "'") + "; "
+								+ askedOf(kind.key(), kind.thing(), "'" + kind.field() + "'")));
+			}
+		}
+
+		/* TWO THINGS IN ONE ROW. The two keys that share a field, so that only the rule that says „exactly one"
+		   refuses it: any other pair also breaks the rule about which field a thing has. */
+		more.add(Violation.of("text_translation_of_one_thing",
+				"insert into text_translation (competitor_id, team_id, field, language, origin, source_digest, body)"
+						+ " values (" + MEMBER + ", " + TEAM + ", 'bio', 'sr', 'manual', " + DIGEST + ", 'x')"));
+		more.add(Violation.of("text_translation_asked_of_one_thing",
+				"insert into text_translation_asked (competitor_id, team_id, field, source_digest, asked_at)"
+						+ " values (" + MEMBER + ", " + TEAM + ", 'bio', " + DIGEST + ", now())"));
+
+		return more;
 	}
 
 	static List<Violation> violations() {
+		List<Violation> all = new java.util.ArrayList<>(ofTheEvent());
+
+		all.addAll(ofTheKinds());
+
+		return all;
+	}
+
+	private static List<Violation> ofTheEvent() {
 		return List.of(
 				Violation.of("text_translation_pk",
 						"insert into text_translation (id, event_id, field, language, origin, source_digest,"
@@ -215,6 +308,32 @@ class TextTranslationConstraintsTest extends DatabaseTest {
 
 		assertThat(Stream.of("text_translation", "text_translation_asked")
 				.map(table -> db.sql("select count(*) from " + table + " where event_id = ?").param(event)
+						.query(Integer.class).single()))
+				.containsOnly(0);
+	}
+
+	/**
+	 * EVERY KIND OF THING TAKES ITS TRANSLATIONS WITH IT when it is deleted (V115): the biography of a member is the one
+	 * the privacy policy promises, and the others are copies of words nobody can read any more.
+	 */
+	@ParameterizedTest
+	@MethodSource("kinds")
+	void aDeletedThingTakesItsTranslationsAndItsStampWithIt(Kind kind) {
+		long thing = db.sql(kind.thing().substring(1, kind.thing().length() - 1)).query(Long.class).single();
+
+		db.sql(translationOf(kind.key(), String.valueOf(thing), "'" + kind.field() + "'", "'zz'", "'manual'", DIGEST,
+				"null", "'x'")).update();
+
+		if (!kind.key().equals("ducat_id")) {
+			db.sql("delete from text_translation_asked where " + kind.key() + " = ?").param(thing).update();
+			db.sql(askedOf(kind.key(), String.valueOf(thing), "'" + kind.field() + "'")).update();
+		}
+
+		db.sql("delete from " + kind.table() + " where id = ?").param(thing).update();
+
+		assertThat(Stream.of("text_translation", "text_translation_asked")
+				.filter(table -> !(table.endsWith("asked") && kind.key().equals("ducat_id")))
+				.map(table -> db.sql("select count(*) from " + table + " where " + kind.key() + " = ?").param(thing)
 						.query(Integer.class).single()))
 				.containsOnly(0);
 	}

@@ -1,11 +1,15 @@
 package com.btl.portal.web;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 
 /**
  * WHAT MEMBERSHIP COSTS, AND WHEN EACH PRICE IS THE ONE IN FORCE.
@@ -137,18 +141,33 @@ class PricingApi {
 	 *                every kind but a period
 	 */
 	record Price(String key, String label, String kind, String from, String to,
-			BigDecimal eur, BigDecimal rsd, Boolean ranking) {
+			BigDecimal eur, BigDecimal rsd, Boolean ranking,
+			@JsonInclude(JsonInclude.Include.NON_NULL) TranslatedText.Shown labelShown) {
 	}
 
+	/**
+	 * @param lang the reader's language, absent for the label as it was written and nothing else; every row then
+	 *             says what that reader is shown of its label ({@code labelShown}, owner, PDL P18, 25.11.2026).
+	 *             {@code label} stays what the administration typed, in every answer, because the form of the
+	 *             price list edits it. A value not shaped like a tag is refused with 400 and no body.
+	 */
 	@GetMapping("/api/pricing")
-	List<Price> pricing() {
+	ResponseEntity<List<Price>> pricing(
+			@RequestParam(name = TranslatedText.THE_LANGUAGE_ASKED_FOR, required = false) String lang) {
+		if (TranslatedText.isMalformed(lang)) {
+			return ResponseEntity.badRequest().build();
+		}
+
+		WhatIsTranslated label = WhatIsTranslated.PRICE_LABEL;
+
 		/* THE AMOUNTS COME BACK AS THEY ARE STORED, `numeric(10,2)`, and nothing here
 		   rounds them or narrows them to a whole number on the way out. Every amount on
 		   the list happens to be whole today; the schema does not say it has to stay
 		   that way, and a price is the one number on this portal that must not change
 		   shape on the way to the person paying it. ADL A12: an amount is numeric and
 		   never a float. */
-		return db.sql("select key, label, kind, day_from, day_to, eur, rsd, ranking"
+		return ResponseEntity.ok(db.sql("select p.key, p.label, p.kind, p.day_from, p.day_to, p.eur, p.rsd, p.ranking"
+						+ (lang == null ? "" : ", " + label.joinedColumns())
 						/* AND IN THE ORDER SOMEBODY DECIDED. Ordered by the key the list would
 						   come out alphabetically, which puts the junior level between `early`
 						   and `late`; ordered by the amount it would open with the processing
@@ -160,11 +179,15 @@ class PricingApi {
 						   too. That comment is worth its length: the first draft of that case
 						   moved a row to the end instead, and dropping this whole clause left
 						   the suite green. */
-						+ " from price_row order by sort_order")
+						+ " from price_row p"
+						+ (lang == null ? "" : label.joinedOver("p"))
+						+ " order by p.sort_order")
+				.params(lang == null ? Map.<String, Object>of() : Map.<String, Object>of("language", lang))
 				.query((row, one) -> new Price(row.getString(1), row.getString(2),
 						row.getString(3), row.getString(4), row.getString(5),
 						row.getBigDecimal(6), row.getBigDecimal(7),
-						row.getObject(8, Boolean.class)))
-				.list();
+						row.getObject(8, Boolean.class),
+						TranslatedText.read(row, 9, row.getString(2), lang)))
+				.list());
 	}
 }
