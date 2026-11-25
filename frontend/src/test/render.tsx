@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { createMemoryRouter, RouterProvider } from 'react-router'
+import { loadTheDevControlsBeforeDrawing } from '../app/devControls'
 import { routeObjects } from '../app/routeObjects'
 import { ClockProvider } from '../clock/ClockProvider'
 import type { Moderator } from '../data/types'
@@ -12,6 +13,12 @@ import type { Role } from '../roles/context'
 import { SessionProvider } from '../session/SessionProvider'
 import { theCookieNames } from './setup'
 import { useTheServersSession } from '../session/useTheServersSession'
+
+/* THE TWO DEVELOPMENT CONTROLS, LOADED BEFORE ANY CASE DRAWS THE PORTAL, as `main.tsx` loads them before
+   the portal is drawn (`app/devControls.ts`). Awaited here, at the top of a module of the suite, where no
+   bundler cuts anything into pieces; the portal itself must not do this (same file). A case that mocks
+   `dev/tools` gets what its mock says: nothing in a production build, the console in a refused one. */
+await loadTheDevControlsBeforeDrawing()
 
 /**
  * A moderator holding exactly the rights given, for the tests that care which.
