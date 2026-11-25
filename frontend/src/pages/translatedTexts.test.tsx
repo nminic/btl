@@ -223,6 +223,8 @@ describe('what a reader is shown of the texts a machine translates', () => {
     renderAt('/en/pravilnik', 'visitor', null)
 
     expect(await screen.findByText('ALL THE RACES')).toBeVisible()
+    /* The legend along the bottom of the coin is drawn in the SVG, and it is the English one. */
+    expect(await screen.findByText('RACES IN ENGLISH')).toBeInTheDocument()
     /* A hand translation is never the machine's. */
     expect(screen.queryByText('Automatic translation')).toBeNull()
   }, SLOW)
