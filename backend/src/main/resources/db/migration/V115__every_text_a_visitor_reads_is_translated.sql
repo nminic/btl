@@ -11,6 +11,12 @@
  * words, and the copy goes with them. For the biography it is a promise of the privacy policy and not a tidiness:
  * a member who is deleted leaves no translation of what he wrote about himself.
  *
+ * THE PRICE ROW IS THE ONE KEY THAT RESTRICTS AND DOES NOT CASCADE, because `price_row` is a codebook: a key from
+ * outside that points at one refuses to let a row leave (`DeltaMigrationAppliesTest`, `payment_price_row_fk` is the
+ * precedent, and the sentence of every delta's header names the keys that do). Nothing on the portal deletes a row of
+ * the price list (owner, 30.07.2026, „Periodi su stalni: redovi se ne dodaju i ne brisu"), so what cascade would have
+ * cleaned up is nothing, and RESTRICT says it.
+ *
  * `text_translation_asked` gets the same columns except the ducat's, because only a machine is ever asked and
  * nothing asks about a ducat.
  *
@@ -47,7 +53,7 @@ alter table text_translation
     add constraint text_translation_league_fk foreign key (league_id)
         references league (id) on delete cascade,
     add constraint text_translation_price_row_fk foreign key (price_row_id)
-        references price_row (id) on delete cascade,
+        references price_row (id) on delete restrict,
     add constraint text_translation_competitor_fk foreign key (competitor_id)
         references competitor (id) on delete cascade,
     add constraint text_translation_team_fk foreign key (team_id)
@@ -89,7 +95,7 @@ alter table text_translation_asked
     add constraint text_translation_asked_league_fk foreign key (league_id)
         references league (id) on delete cascade,
     add constraint text_translation_asked_price_row_fk foreign key (price_row_id)
-        references price_row (id) on delete cascade,
+        references price_row (id) on delete restrict,
     add constraint text_translation_asked_competitor_fk foreign key (competitor_id)
         references competitor (id) on delete cascade,
     add constraint text_translation_asked_team_fk foreign key (team_id)

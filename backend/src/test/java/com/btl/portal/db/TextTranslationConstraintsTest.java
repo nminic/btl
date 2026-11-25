@@ -314,7 +314,8 @@ class TextTranslationConstraintsTest extends DatabaseTest {
 
 	/**
 	 * EVERY KIND OF THING TAKES ITS TRANSLATIONS WITH IT when it is deleted (V115): the biography of a member is the one
-	 * the privacy policy promises, and the others are copies of words nobody can read any more.
+	 * the privacy policy promises, and the others are copies of words nobody can read any more. The price row is the
+	 * exception that is the rule of a codebook: it is not deleted, so it holds its translations (RESTRICT).
 	 */
 	@ParameterizedTest
 	@MethodSource("kinds")
@@ -327,6 +328,16 @@ class TextTranslationConstraintsTest extends DatabaseTest {
 		if (!kind.key().equals("ducat_id")) {
 			db.sql("delete from text_translation_asked where " + kind.key() + " = ?").param(thing).update();
 			db.sql(askedOf(kind.key(), String.valueOf(thing), "'" + kind.field() + "'")).update();
+		}
+
+		if (kind.key().equals("price_row_id")) {
+			/* THE ONE KEY THAT RESTRICTS: price_row is a codebook (DeltaMigrationAppliesTest), and nothing deletes a
+			   row of the price list, so the translation holds the row it translates and the deletion is refused. */
+			assertThatThrownBy(() -> db.sql("delete from price_row where id = ?").param(thing).update())
+					.isInstanceOf(DataIntegrityViolationException.class)
+					.hasMessageContaining("text_translation_price_row_fk");
+
+			return;
 		}
 
 		db.sql("delete from " + kind.table() + " where id = ?").param(thing).update();

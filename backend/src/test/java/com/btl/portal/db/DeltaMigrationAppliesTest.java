@@ -1033,6 +1033,10 @@ class DeltaMigrationAppliesTest extends DatabaseTest {
 			   is asked of every key that stands on OR points at a codebook, and silence about a
 			   key is what this floor exists to refuse. */
 			Verdict.outOfReach("payment_price_row_fk", "a delta does not touch the price list at all"),
+			/* V115: the translation of a price's name, and the stamp of when it was sent, point at it (RESTRICT, as the
+			   payment's does). */
+			Verdict.outOfReach("text_translation_price_row_fk", "a delta does not touch the price list at all"),
+			Verdict.outOfReach("text_translation_asked_price_row_fk", "a delta does not touch the price list at all"),
 
 			/* And the four that point AT the codebooks, which this list did not
 			   ask about at all until 09.09.2026: the question put to

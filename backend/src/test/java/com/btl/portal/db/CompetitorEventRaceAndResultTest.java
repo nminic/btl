@@ -795,13 +795,13 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 				"text_translation.text_translation_event_comment_fk cascade",
 				"text_translation.text_translation_event_fk cascade",
 				"text_translation.text_translation_league_fk cascade",
-				"text_translation.text_translation_price_row_fk cascade",
+				"text_translation.text_translation_price_row_fk restrict",
 				"text_translation.text_translation_team_fk cascade",
 				"text_translation_asked.text_translation_asked_competitor_fk cascade",
 				"text_translation_asked.text_translation_asked_event_comment_fk cascade",
 				"text_translation_asked.text_translation_asked_event_fk cascade",
 				"text_translation_asked.text_translation_asked_league_fk cascade",
-				"text_translation_asked.text_translation_asked_price_row_fk cascade",
+				"text_translation_asked.text_translation_asked_price_row_fk restrict",
 				"text_translation_asked.text_translation_asked_team_fk cascade",
 				/* V9, and each of the four says something different about what a queue row is.
 				   The member's rows go with him, as his results do (owner, 11.09.2026, ADL A42).

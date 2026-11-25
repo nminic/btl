@@ -973,7 +973,7 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   of the fifteen ducats, written by hand. Written as V115 because V114 is the migration of another
 			   branch (PR 837). Rules rewritten over rows that stand, so it is measured over them
 			   (TextTranslationOfEveryKindCarriedOverTest). Pinned last, once the file was final (CLAUDE.md, section 9). */
-			new Applied("115", "V115__every_text_a_visitor_reads_is_translated.sql", -28403641));
+			new Applied("115", "V115__every_text_a_visitor_reads_is_translated.sql", -1812897269));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {
