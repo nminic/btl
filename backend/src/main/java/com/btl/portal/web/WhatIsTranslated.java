@@ -74,8 +74,9 @@ enum WhatIsTranslated {
 
 	/**
 	 * EVERY SERVED TEXT THAT HAS NO MACHINE TRANSLATION OF ITS PRESENT VERSION, with its digest and when it was last
-	 * sent: never sent first, then the one sent longest ago. A version the portal threw a translation of away is
-	 * not here; the same words would come back the same (V112, {@code thrown_away}).
+	 * sent. In no order: the pass puts the texts of every kind in one order ({@code TextsAreTranslated#chosen}), so an
+	 * order here would be a second one, and measured it was (a mutation of it survived). A version the portal threw a
+	 * translation of away is not here; the same words would come back the same (V112, {@code thrown_away}).
 	 */
 	String waiting() {
 		return "select x.id, x." + column + ", " + digestOf("x") + ", a.asked_at"
@@ -84,8 +85,7 @@ enum WhatIsTranslated {
 				+ " where " + servedWhere + " and btrim(x." + column + ") <> ''"
 				+ " and not exists (select 1 from text_translation t where t." + key + " = x.id"
 				+ " and t.field = '" + column + "' and t.origin = 'machine' and t.source_digest = " + digestOf("x") + ")"
-				+ " and not coalesce(a.thrown_away and a.source_digest = " + digestOf("x") + ", false)"
-				+ " order by a.asked_at nulls first, x.id";
+				+ " and not coalesce(a.thrown_away and a.source_digest = " + digestOf("x") + ", false)";
 	}
 
 	/**

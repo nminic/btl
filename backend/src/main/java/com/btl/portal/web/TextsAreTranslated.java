@@ -133,7 +133,8 @@ class TextsAreTranslated {
 					.list());
 		}
 
-		waiting.sort(Comparator.comparing(Waiting::askedAt, Comparator.nullsFirst(Comparator.naturalOrder())));
+		waiting.sort(Comparator.comparing(Waiting::askedAt, Comparator.nullsFirst(Comparator.naturalOrder()))
+				.thenComparingLong(Waiting::id));
 
 		int languages = Translator.INTO.size();
 		List<Waiting> chosen = new ArrayList<>();
