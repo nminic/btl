@@ -28,16 +28,28 @@ describe('effectiveLengthKm', () => {
 })
 
 describe('btlPoints', () => {
-  // The golden set from an official race, confirmed by the organiser. The
-  // backend is held to the same numbers. Never change what is expected here.
+  // THIS BRANCH (b-formula-b-qa) IS NEVER MERGED: the proposal of 25.11.2026 (94.80, exponent 0.35,
+  // no cap) for a comparison on QA. On main the golden set stays 79.03, 46.78, 38.94, 38.21, 38.13.
   it.each([
-    [26911, '79.03'],
-    [34395, '46.78'],
-    [37476, '38.94'],
-    [37813, '38.21'],
-    [37850, '38.13'],
+    [26911, '73.71'],
+    [34395, '27.62'],
+    [37476, '19.60'],
+    [37813, '18.91'],
+    [37850, '18.84'],
   ])('gives %i seconds %s points', (seconds, expected) => {
     expect(scored(62.07, 3456, 3133, seconds).toFixed(2)).toBe(expected)
+  })
+
+  it.each([
+    [21.1, 250, 250, 6300, '18.59'],
+    [3, 0, 0, 900, '3.53'],
+    [5, 0, 0, 755, '74.38'],
+    [10, 0, 0, 1571, '94.80'],
+    [75, 0, 0, 30000, '13.94'],
+    [150, 0, 0, 86400, '7.00'],
+    [300, 0, 0, 86400, '241.95'],
+  ])('agrees with the independent working for %f km, +%i, -%i, %i s: %s', (km, up, down, s, expected) => {
+    expect(scored(km, up, down, s).toFixed(2)).toBe(expected)
   })
 
   it('rewards a faster time and a longer race at the same pace', () => {

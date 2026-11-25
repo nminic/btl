@@ -1,9 +1,9 @@
 /* The BTL formula, for the calculator on the front page.
  *
  *   Le  = L + (1.25 * AP + 0.75 * AN) / 200
- *   BTL = (40 * Le)^3.257 / (2 * Tsec^2.137)
+ *   BTL = 94.80 * (Tref / Tsec)^4 * (Le / 10)^0.35   (THIS BRANCH ONLY, see pointsOf)
  *
- * The exponent 2.137 applies to the time alone. The same formula lives in the
+ * The same formula lives in the
  * backend (BtlScoreCalculator) and both are held to the same golden set taken
  * from an official race; neither may be changed without the owner saying so.
  *
@@ -43,7 +43,42 @@ export function pointsOf(
   descentM: number,
   seconds: number,
 ): number {
-  return (40 * effectiveLengthKm(lengthKm, ascentM, descentM)) ** 3.257 / (2 * seconds ** 2.137)
+  /* ON THIS BRANCH ONLY (b-formula-b-qa, never merged): the proposal put on QA on 25.11.2026,
+     BTL = 94.80 * (Tref / Tsec)^4 * (Le / 10)^0.35, no cap on the length bonus. The same as
+     BtlScoreCalculator on this branch. */
+  const le = effectiveLengthKm(lengthKm, ascentM, descentM)
+
+  return 94.8 * (referenceSeconds(le) / seconds) ** 4 * (le / 10) ** 0.35
+}
+
+const REFERENCE: readonly (readonly [number, number])[] = [
+  [5, 755],
+  [10, 1571],
+  [21.0975, 3450],
+  [42.195, 7235],
+  [50, 9613],
+  [100, 21935],
+]
+
+/** The reference time for an effective length: log-log between points of the table, a power of 1.06
+ *  below its first point, and the slope of its last two points above its last. */
+export function referenceSeconds(le: number): number {
+  if (le <= 5) {
+    return 755 * (le / 5) ** 1.06
+  }
+  /* Above 5 km the first point at or beyond the length is never the first of the table; past the
+     last point the last two points carry on. */
+  const found = REFERENCE.findIndex(([km]) => le <= km)
+  const at = found === -1 ? REFERENCE.length - 1 : found
+  const lower = REFERENCE[at - 1]
+  const higher = REFERENCE[at]
+  if (lower === undefined || higher === undefined) {
+    return Number.NaN
+  }
+  const [a, ta] = lower
+  const [b, tb] = higher
+
+  return Math.exp(Math.log(ta) + (Math.log(le / a) / Math.log(b / a)) * Math.log(tb / ta))
 }
 
 /**

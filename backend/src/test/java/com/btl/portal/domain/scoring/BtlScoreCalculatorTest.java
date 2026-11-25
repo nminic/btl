@@ -10,21 +10,40 @@ import org.junit.jupiter.params.provider.CsvSource;
 
 class BtlScoreCalculatorTest {
 
-    // Golden test set: official results of a race with L=62.07 km, AP=3456 m,
-    // AN=3133 m, confirmed by the league organizer. The implementation must
-    // reproduce all 6 rows exactly. NEVER change the expected values.
+    // THIS BRANCH (b-formula-b-qa) IS NEVER MERGED. It carries the formula proposed to the owner on
+    // 25.11.2026 (scale 94.80, length exponent 0.35, no cap) for a comparison on QA only. The golden
+    // set on main stays the official one (79.03, 46.78, 38.94, 38.94, 38.21, 38.13); the values here
+    // are the same race worked out by the proposal, computed independently in Python.
     @ParameterizedTest(name = "time {0}s -> {1} points")
     @CsvSource({
-            "26911, 79.03", // Todevski,     7:28:31
-            "34395, 46.78", // Zeljkovic,    9:33:15
-            "37476, 38.94", // Avramovic,   10:24:36
-            "37476, 38.94", // Tabandzelic, 10:24:36 (same time, same points)
-            "37813, 38.21", // Lakatos,     10:30:13
-            "37850, 38.13", // Tasic,       10:30:50
+            "26911, 73.71", // Todevski,     7:28:31
+            "34395, 27.62", // Zeljkovic,    9:33:15
+            "37476, 19.60", // Avramovic,   10:24:36
+            "37476, 19.60", // Tabandzelic, 10:24:36 (same time, same points)
+            "37813, 18.91", // Lakatos,     10:30:13
+            "37850, 18.84", // Tasic,       10:30:50
     })
     void goldenResultsFromOfficialRace(long timeSeconds, String expectedPoints) {
         BigDecimal points = BtlScoreCalculator.calculate(62.07, 3456, 3133, timeSeconds);
         assertThat(points).isEqualByComparingTo(expectedPoints);
+    }
+
+    // The control the owner was given: 21.1 km, +250 m, -250 m, 1:45:00 is 18.59 under both formulas.
+    // Below the table, on a point of it, between points and above it, each against Python.
+    @ParameterizedTest(name = "L={0}, AP={1}, AN={2}, Tsec={3} -> {4}")
+    @CsvSource({
+            "21.1, 250, 250,  6300, 18.59",
+            "3,      0,   0,   900,  3.53",
+            "5,      0,   0,   755, 74.38",
+            "10,     0,   0,  1571, 94.80",
+            "75,     0,   0, 30000, 13.94",
+            "150,    0,   0, 86400,  7.00",
+            "300,    0,   0, 86400, 241.95",
+    })
+    void theProposalAgreesWithItsIndependentWorking(double lengthKm, double ascent, double descent,
+            long timeSeconds, String expectedPoints) {
+        assertThat(BtlScoreCalculator.calculate(lengthKm, ascent, descent, timeSeconds))
+                .isEqualByComparingTo(expectedPoints);
     }
 
     @Test
