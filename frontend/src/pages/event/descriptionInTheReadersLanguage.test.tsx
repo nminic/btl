@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { screen } from '@testing-library/react'
+import { configure, getConfig, screen } from '@testing-library/react'
 import type { BtlEvent, ShownText } from '../../data/types'
 import { must } from '../../test/at'
 import { renderAt } from '../../test/render'
@@ -16,6 +16,11 @@ import { SLOW } from '../../test/slow'
  * fallback. The answer with no language carries the original only, so a page that asked in no language draws the
  * original and the cases about the translation fail.
  */
+
+/* EVERY WAIT OF THIS FILE IS GIVEN HALF OF THE TIME A CASE HAS, the shape of `pages/admin/saveWhileSaving.test.tsx`
+   and for its reason (CLAUDE.md, section 25): a description that is never drawn fails on the wait that looked for it,
+   and not on the clock of the case, which would read as nothing measured. */
+configure({ asyncUtilTimeout: SLOW / 2 })
 
 const EVENT = 'maraton-maratona-2015'
 const WRITTEN = 'Kroz grad i nazad, uz reku.'
@@ -56,6 +61,10 @@ describe('the description of an event', () => {
 
   afterEach(() => {
     globalThis.fetch = real
+  })
+
+  it('waits for half of the time a case has, so a wait that fails is a failure and not the clock', () => {
+    expect(getConfig().asyncUtilTimeout).toBeLessThan(SLOW)
   })
 
   it("is the machine's English on /en, marked as English and as the machine's", async () => {
