@@ -168,6 +168,36 @@ class TheRestIsReadInALanguageTest {
 				.isEqualTo(401);
 	}
 
+	/**
+	 * A SIGNED-IN ACCOUNT THAT MAY NOT READ THE COMMENTS (a member who has never paid) IS TOLD THE ADDRESS IS NOT
+	 * THERE, with a language, with a malformed one and with none: the door is asked before the language, and the
+	 * chain's 401 is not what holds it, because he is signed in.
+	 */
+	@Test
+	void aSignedInReaderWhoMayNotReadTheCommentsIsToldTheAddressIsNotThereWhateverHePutInTheQuery() throws Exception {
+		long unpaid = TranslatableRows.member(db, "000946", "", false);
+
+		db.sql("insert into account (first_name, last_name, email, role_id, competitor_id)"
+				+ " values ('Ime', 'Prezime', 'bez-clanarine@example.org',"
+				+ " (select id from role where code = 'competitor'), ?)")
+				.param(unpaid).update();
+
+		SecretToken session = SecretToken.fresh();
+		Instant now = Instant.now();
+
+		db.sql("insert into account_session (account_id, token_hash, created_at, last_used_at, expires_at)"
+						+ " values ((select id from account where email = 'bez-clanarine@example.org'), ?, ?, ?, ?)")
+				.params(session.hash(), Timestamp.from(now.minus(Duration.ofDays(1))), Timestamp.from(now),
+						Timestamp.from(now.plus(SessionLife.LASTS)))
+				.update();
+
+		for (String query : List.of("", "?lang=en", "?lang=EN")) {
+			assertThat(http.perform(get("/api/comments" + query)
+					.cookie(new Cookie(SessionCookie.NAME, session.secret()))).andReturn().getResponse().getStatus())
+					.as(query).isEqualTo(404);
+		}
+	}
+
 	/* ---------------------------------------------------------------------------------------------------------- */
 	/* Leagues: the rules and the prizes are two texts of one row                                                  */
 	/* ---------------------------------------------------------------------------------------------------------- */
