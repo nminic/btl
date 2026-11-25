@@ -220,6 +220,14 @@ services:
       # all: no reading, no writing, no request (FacebookIsAskedToReadAChangedCardTest).
       BTL_FACEBOOK_APP_ID: ""
       BTL_FACEBOOK_APP_SECRET: ""
+      # MICROSOFT'S AZURE TRANSLATOR, ON HERE TOO, unlike Facebook above: the
+      # service reads what it is sent and nothing behind the password, and the
+      # owner checks a change on QA before production (QA is switched on with the
+      # same free key, decided 25.11.2026 with the plan of the translation). From
+      # /opt/btl-qa/deploy/.env, QA_-prefixed like every other value of this
+      # stack. Unset, Translator is off and TextsAreTranslated does nothing.
+      BTL_TRANSLATOR_KEY: ${QA_TRANSLATOR_KEY:-}
+      BTL_TRANSLATOR_REGION: ${QA_TRANSLATOR_REGION:-}
       # The JVM sizes the heap from the cgroup limit below, not from the host's
       # 3.7 GB, so this is what keeps it from taking a quarter of the machine.
       # SerialGC is what a 2 vCPU box would pick anyway and costs the least in

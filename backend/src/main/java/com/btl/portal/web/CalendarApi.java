@@ -1,12 +1,16 @@
 package com.btl.portal.web;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 /**
  * THE CALENDAR: what was run, and what was run at it.
@@ -65,10 +69,20 @@ class CalendarApi {
 	 * @param copiedFrom  the event this one was copied from when the year turned,
 	 *                    or null. A calendar is built by copying the year before it
 	 *                    and the link back is what says which
+	 * @param description the description AS IT WAS WRITTEN, in every answer and in every
+	 *                    language. It is what the form of the event edits and what the copy
+	 *                    of an event carries into the next year (`event/copyOf.ts`), so it is
+	 *                    never a translation: a translation saved back as the original would
+	 *                    be the machine's words standing as the administration's
+	 * @param descriptionShown what a reader of the language asked for is shown of the
+	 *                    description (TranslatedText#shown), and only in an answer asked for in
+	 *                    a language: the answer with no {@code lang} is the answer it always
+	 *                    was, field for field
 	 */
 	record Event(long id, String slug, String name, LocalDate date, String city, String country,
 			String kind, boolean featured, boolean highlighted, String description, String link,
-			Long copiedFrom) {
+			Long copiedFrom,
+			@JsonInclude(JsonInclude.Include.NON_NULL) TranslatedText.Shown descriptionShown) {
 	}
 
 	/**
@@ -151,23 +165,44 @@ class CalendarApi {
 			+ " when 'time' then coalesce(ran.lengths, array['unmeasured'])"
 			+ " end";
 
+	/**
+	 * @param lang the reader's language, absent for the description as it was written and nothing else. Asked
+	 *             for, every event says what that reader is shown of its description
+	 *             ({@code descriptionShown}): its machine translation into that language, or the description
+	 *             as written where there is none yet, where the service did not answer, where the description
+	 *             has changed since it was translated, or where it is written in that language already (owner,
+	 *             PDL P18, 25.11.2026, „Automatski prevod sadržaja koji posetilac vidi”). A value not shaped like
+	 *             a language tag is refused with 400 and no body, as {@code PageApi} refuses it.
+	 */
 	@GetMapping("/api/events")
-	List<Event> events() {
-		return db.sql("select e.id, e.slug, e.name, e.date,"
+	ResponseEntity<List<Event>> events(
+			@RequestParam(name = TranslatedText.THE_LANGUAGE_ASKED_FOR, required = false) String lang) {
+		if (lang != null && !TranslatedText.A_LANGUAGE_TAG.matcher(lang).matches()) {
+			return ResponseEntity.badRequest().build();
+		}
+
+		WhatIsTranslated description = WhatIsTranslated.EVENT_DESCRIPTION;
+
+		return ResponseEntity.ok(db.sql("select e.id, e.slug, e.name, e.date,"
 						+ " coalesce(town.name, e.city) as city,"
 						+ " coalesce(town_country.code, typed_country.code) as country,"
 						+ " e.kind, e.featured, " + HIGHLIGHTED + " as highlighted,"
 						+ " e.description, e.link, e.copied_from"
+						+ (lang == null ? "" : ", " + description.joinedColumns())
 						+ " from btl_event e"
 						+ " left join place town on town.id = e.place_id"
 						+ " left join country town_country on town_country.id = town.country_id"
 						+ " left join country typed_country on typed_country.id = e.country_id"
+						+ (lang == null ? "" : description.joinedOver("e"))
 						+ " order by e.date, e.id")
+				.params(lang == null ? Map.<String, Object>of() : Map.<String, Object>of("language", lang))
 				.query((row, one) -> new Event(row.getLong(1), row.getString(2), row.getString(3),
 						row.getDate(4).toLocalDate(), row.getString(5), row.getString(6),
 						row.getString(7), row.getBoolean(8), row.getBoolean(9), row.getString(10),
-						row.getString(11), row.getObject(12) == null ? null : row.getLong(12)))
-				.list();
+						row.getString(11), row.getObject(12) == null ? null : row.getLong(12),
+						lang == null ? null : TranslatedText.shown(row.getString(10), lang, row.getString(13),
+								row.getString(14), row.getBoolean(15))))
+				.list());
 	}
 
 	@GetMapping("/api/races")
