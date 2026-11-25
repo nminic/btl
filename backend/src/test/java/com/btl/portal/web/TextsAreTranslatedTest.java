@@ -166,6 +166,28 @@ class TextsAreTranslatedTest {
 				.isEqualTo(Duration.ofMinutes(5));
 	}
 
+	/**
+	 * AND THE TASK THE SCHEDULER HOLDS IS THE PASS, run here out of the scheduler: over the suite's own translator,
+	 * which has no key, so it reads, writes and sends nothing.
+	 */
+	@Test
+	void theTaskTheSchedulerHoldsIsThePass() {
+		long mine = event("prevod-zakazan", "Kroz grad");
+		String thePass = TextsAreTranslated.class.getName() + ".pass";
+
+		schedulers.stream()
+				.flatMap(each -> each.getScheduledTasks().stream())
+				.filter(task -> task.getTask().getRunnable().toString().equals(thePass))
+				.findFirst()
+				.orElseThrow()
+				.getTask()
+				.getRunnable()
+				.run();
+
+		assertThat(translationsOf(mine)).isEmpty();
+		assertThat(service.asked).isEmpty();
+	}
+
 	/* ---------------------------------------------------------------------------------------------------------- */
 	/* What is sent and what is written                                                                            */
 	/* ---------------------------------------------------------------------------------------------------------- */
@@ -353,6 +375,19 @@ class TextsAreTranslatedTest {
 		ran(job());
 
 		assertThat(translationsOf(mine)).containsEntry("en machine", "EN: Prijave na [stranici](https://primer.rs/prijava).");
+	}
+
+	/** A translation that came back empty is thrown away as well: the original is shown, and not nothing. */
+	@Test
+	void anEmptyTranslationIsThrownAway() throws Exception {
+		long mine = event("prevod-prazan-prevod", "Kroz grad");
+		service.changing = text -> text.startsWith("EN: ") ? " " : text;
+
+		ran(job());
+
+		assertThat(translationsOf(mine)).isEmpty();
+		assertThat(db.sql("select thrown_away from text_translation_asked where event_id = ?").param(mine)
+				.query(Boolean.class).single()).isTrue();
 	}
 
 	/** And a translation that carries every address unchanged is kept, a mailbox included. */
