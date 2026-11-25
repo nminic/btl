@@ -1,5 +1,8 @@
-import { readFileSync } from 'node:fs'
+import { execFile } from 'node:child_process'
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { basename, dirname, extname, join, relative, sep } from 'node:path'
+import { promisify } from 'node:util'
 import ts from 'typescript'
 import { build, type Rollup } from 'vite'
 import { LOCALES, type Locale } from '../i18n/config'
@@ -108,7 +111,10 @@ function importsOf(module: string): string[] {
 /** One piece of a build: the file it is written to and the modules in it. */
 type Piece = { fileName: string; modules: string[] }
 
-type Package = { modules: Set<string>; text: string; pieces: Piece[]; page: string }
+/** One file of a build, as it would be written to `dist/`. */
+type Written = { fileName: string; content: string | Uint8Array }
+
+type Package = { modules: Set<string>; text: string; pieces: Piece[]; page: string; files: Written[] }
 
 /** One build of the portal, held in memory: which modules went in, and every word of it. */
 async function packageBuilt(asQa: boolean): Promise<Package> {
@@ -163,6 +169,10 @@ async function packageBuilt(asQa: boolean): Promise<Package> {
       page: files.flatMap((file) =>
         file.type === 'asset' && file.fileName === 'index.html' && typeof file.source === 'string' ? [file.source] : [],
       ).join(''),
+      files: files.map((file) => ({
+        fileName: file.fileName,
+        content: file.type === 'chunk' ? file.code : file.source,
+      })),
     }
   } finally {
     process.env.NODE_ENV = before.mode
@@ -172,6 +182,139 @@ async function packageBuilt(asQa: boolean): Promise<Package> {
     } else {
       process.env.VITE_DEV_TOOLS = before.flag
     }
+  }
+}
+
+/**
+ * WHAT A PACKAGE DRAWS WHEN IT IS RUN, asked of the package itself and not of the modules it was built from.
+ *
+ * <p><b>Why it is here, 25.11.2026.</b> QA, the one build with the two switches, stayed blank: no error in the
+ * console and no request to the server. `app/Shell.tsx` awaited the switches at the top of its module, that
+ * module was cut into the piece each switch imports (`portal`, `vite.config.ts`), and a module that awaits a
+ * module that imports it waits for itself. Every case of the suite was green, because the suite does not cut
+ * the portal into pieces; and every case above was green, because the package carried everything it should.
+ * Only running it says whether it draws (`app/devControls.ts`).
+ *
+ * <p><b>Run by Node in a process of its own, with the page given by jsdom</b>, because the question is how
+ * the language itself evaluates the pieces, and the suite's own loader is not the language's: it is the
+ * reason the suite never saw this. The pieces are written to a folder of their own and the entry the page
+ * names is imported, the way the browser does. The server answers nothing (401 for every request), which is
+ * how a visitor who is nobody meets it, and it is enough for the portal to be drawn. Measured on the package
+ * of `8404e35e` with `VITE_DEV_TOOLS=1`: headless Chromium and this runner said the same, the entry never
+ * finished and nothing was drawn; the production package of the same commit was drawn in half a second.
+ *
+ * <p><b>Asked at the FIRST paint</b>, through an observer set on the root before anything is run: the switches
+ * are awaited so that the row they stand in does not change shape under the reader's pointer, and a portal
+ * that drew first and brought them later would pass a question asked at the end. <b>And the pieces of the
+ * two switches are handed over late</b>, the way a network hands over a piece that is fetched when it is asked
+ * for: read off a disk they arrive before React has drawn anything, and a portal drawn before they were loaded
+ * was measured to pass the first paint all the same. So each piece the bundler put a switch's module in
+ * (`CONTROLS`) is written with a wait at its head. Not with a hook on Node's loader, which was tried and
+ * measured to hold the whole page still while it waits, so that it delayed the paint as well and proved
+ * nothing. The answer is read with the same role and label queries the suite reads with.
+ *
+ * <p><b>And the role switch is asked to answer</b>: it is set to another role and must say it after the
+ * portal has drawn again, so a switch drawn out of a copy of the role that nothing else reads fails here. The
+ * day switch is drawn by the same loader and is asked only to be there; what it does is the clock's own
+ * cases (`clock/clock.test.tsx`).
+ */
+const THE_PAGE_RUN_BY_NODE = `
+import { readFileSync } from 'node:fs'
+import { createRequire } from 'node:module'
+import { join } from 'node:path'
+import { pathToFileURL } from 'node:url'
+
+const built = process.env.BUILT_AT
+const deadline = Number(process.env.DEADLINE)
+const require = createRequire(join(process.cwd(), 'package.json'))
+const { JSDOM } = require('jsdom')
+const { fireEvent, queryAllByLabelText, queryAllByRole } = require('@testing-library/dom')
+const { window } = new JSDOM('<!doctype html><html lang="sr"><body><div id="root"></div></body></html>', {
+  url: 'http://localhost/sr',
+  pretendToBeVisual: true,
+})
+window.matchMedia = (media) => ({ matches: false, media, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {} })
+window.scrollTo = () => {}
+for (const key of Object.getOwnPropertyNames(window)) {
+  if (!(key in globalThis)) Object.defineProperty(globalThis, key, { configurable: true, get: () => window[key] })
+}
+globalThis.fetch = async () => new Response('{}', { status: 401, headers: { 'content-type': 'application/json' } })
+process.on('unhandledRejection', () => {})
+
+const body = window.document.body
+const root = window.document.getElementById('root')
+const seen = () => ({
+  role: queryAllByRole(body, 'combobox', { name: 'Uloga' }).length,
+  day: queryAllByLabelText(body, 'Današnji datum').length,
+})
+let first = null
+new window.MutationObserver(() => {
+  if (first === null && root.childElementCount > 0) first = seen()
+}).observe(root, { childList: true, subtree: true })
+
+const entry = /<script type="module" crossorigin src="\\/([^"]+)"/.exec(readFileSync(join(built, 'index.html'), 'utf-8'))
+let finished = false
+if (entry !== null) import(pathToFileURL(join(built, entry[1])).href).then(() => { finished = true }, () => {})
+for (let waited = 0; waited < deadline && !(finished && first !== null); waited += 25) {
+  await new Promise((ok) => setTimeout(ok, 25))
+}
+
+let answered = null
+const [role] = queryAllByRole(body, 'combobox', { name: 'Uloga' })
+if (role !== undefined) {
+  fireEvent.change(role, { target: { value: 'superadmin' } })
+  await new Promise((ok) => setTimeout(ok, 50))
+  answered = queryAllByRole(body, 'combobox', { name: 'Uloga' })[0]?.value ?? null
+}
+console.log(JSON.stringify({ named: entry !== null, finished, drawn: root.childElementCount > 0, first, answered }))
+process.exit(0)
+`
+
+/** How long the page is given, half of a case's clock, so a page that never draws fails on an assertion and not on the clock. */
+const DEADLINE = SLOW / 2
+
+/** How late the pieces of the two switches are handed over, in milliseconds, well inside the deadline. */
+const LATE = 1500
+
+/** The files of the pieces the bundler put a switch's module in, which are the ones handed over late. */
+function piecesOfTheSwitches(one: Package): string[] {
+  return one.pieces.filter((piece) => piece.modules.some((module) => CONTROLS.includes(module))).map((piece) => piece.fileName)
+}
+
+/** What the page drew, as the runner printed it: whether the entry finished, whether anything was drawn, the
+ *  two switches at the first paint, and what the role switch said once it was set. */
+async function whatItDraws(one: Package): Promise<unknown> {
+  const at = mkdtempSync(join(tmpdir(), 'btl-package-'))
+
+  try {
+    const late = new Set(piecesOfTheSwitches(one))
+
+    for (const file of one.files) {
+      mkdirSync(dirname(join(at, file.fileName)), { recursive: true })
+      /* An `import` stands wherever it is written and is taken before anything else, so the wait put in front
+         of a piece holds its own code back and not the pieces it imports. */
+      writeFileSync(
+        join(at, file.fileName),
+        late.has(file.fileName) ? `await new Promise((ok) => setTimeout(ok, ${LATE}));\n${String(file.content)}` : file.content,
+      )
+    }
+
+    const { stdout } = await promisify(execFile)(
+      process.execPath,
+      ['--input-type=module', '--eval', THE_PAGE_RUN_BY_NODE],
+      { cwd: FRONTEND, env: { ...process.env, BUILT_AT: at, DEADLINE: String(DEADLINE) }, timeout: DEADLINE + SLOW / 4 },
+    ).catch((failure: unknown) => ({ stdout: `the runner did not answer: ${String(failure)}` }))
+    const said = stdout.trim().split('\n').at(-1) ?? ''
+
+    /* Whatever the runner printed that is not an answer is handed back as it was, so a case that fails on it
+       says what was printed. */
+    try {
+      return JSON.parse(said)
+    } catch {
+      return said
+    }
+  } finally {
+    rmSync(at, { recursive: true, force: true })
   }
 }
 
@@ -265,6 +408,28 @@ describe('the production package (ADL A15)', () => {
     expect(CONTROLS.length).toBeGreaterThan(0)
     expect(THEIR_PARTS.filter((one) => one.endsWith('.css')).length).toBeGreaterThan(0)
   })
+
+  it('is drawn when it is run, which the production package is too, so the runner can see a portal at all', async () => {
+    expect(await whatItDraws(production)).toEqual({
+      named: true,
+      finished: true,
+      drawn: true,
+      first: { role: 0, day: 0 },
+      answered: null,
+    })
+  }, SLOW)
+
+  it('is drawn on QA with both switches in its first paint, and the role switch answers', async () => {
+    /* The floor of the late pieces: none would be a first paint asked with nothing held back. */
+    expect(piecesOfTheSwitches(qa).length).toBeGreaterThan(0)
+    expect(await whatItDraws(qa)).toEqual({
+      named: true,
+      finished: true,
+      drawn: true,
+      first: { role: 1, day: 1 },
+      answered: 'superadmin',
+    })
+  }, SLOW)
 
   it('carries no part of either switch, every one of which QA carries', () => {
     expect(THEIR_PARTS.filter((part) => !qa.modules.has(part))).toEqual([])
