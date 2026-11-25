@@ -118,7 +118,8 @@ function serving(
       return answering({ role: 'moderator', account: 1, mailLanguage: 'sr', seasonsOpenForAReport: open })
     }
 
-    if (method === 'GET' && path === '/api/events') {
+    /* In any language too: the page of an event the save goes to reads the calendar in its reader's language. */
+    if (method === 'GET' && path.replace(/\?.*$/, '') === '/api/events') {
       return events()
     }
 

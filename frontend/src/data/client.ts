@@ -509,8 +509,13 @@ export function clearResourceCache(name?: ResourceName, language?: string): void
   }
 
   for (const one of [name, ...(GO_WITH[name] ?? [])]) {
-    /* The name's own address and every member's answer of it (see {@link ONE_MEMBERS_DOORS}). */
-    for (const at of [addressOf(one, language), ...oneMembersAnswersOf(one)]) {
+    /* The name's own address and every member's answer of it (see {@link ONE_MEMBERS_DOORS}); and, asked with no
+       language, the name's answer in every language this visit holds, since 25.11.2026: the page of an event reads
+       `events` in the reader's language (`useEventsInTheReadersLanguage`), and the seven writes that drop `events`
+       name no language, so without this the page would go on drawing the event as it stood before the write. */
+    const inEveryLanguage = language === undefined ? everyLanguageOf(one) : []
+
+    for (const at of [addressOf(one, language), ...oneMembersAnswersOf(one), ...inEveryLanguage]) {
       inFlight.delete(at)
       arrived.delete(at)
     }
@@ -520,6 +525,13 @@ export function clearResourceCache(name?: ResourceName, language?: string): void
   }
 
   tellWhoWatchesTheDrops()
+}
+
+/** Every address of a name asked for in a language that the two caches hold now, whatever the language. */
+function everyLanguageOf(name: ResourceName): string[] {
+  const inALanguage = `${addressOf(name)}?${THE_LANGUAGE_ASKED_FOR}=`
+
+  return [...new Set([...inFlight.keys(), ...arrived.keys()])].filter((at) => at.startsWith(inALanguage))
 }
 
 /**

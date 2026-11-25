@@ -9,7 +9,7 @@ import {
   combineResources,
   RESULTS,
   useCompetitors,
-  useEvents,
+  useEventsInTheReadersLanguage,
   useRaces,
   useResults,
 } from '../data/useResource'
@@ -27,7 +27,7 @@ import { raceLabel, raceMeasure } from '../data/raceLabel'
 import { inEventOrder } from '../data/raceOrder'
 import { outsideLink } from '../data/outsideLink'
 import { kindHasRaces } from '../data/types'
-import type { Race, BtlEvent, Result } from '../data/types'
+import type { Race, BtlEvent, Result, ShownText } from '../data/types'
 import type { ResourceState } from '../data/useResource'
 import { UNSCORED_RESULTS, useEveryResult, useUnscoredResults } from '../data/unscoredResults'
 import { useSession } from '../session/useSession'
@@ -613,10 +613,15 @@ function EventResultsTable({
   )
 }
 
+/** What the reader is shown of the description: what the server said, or the words as written where it said nothing. */
+function shownOf(event: BtlEvent): ShownText {
+  return event.descriptionShown ?? { text: event.description, language: null, machine: false }
+}
+
 export function EventDetail() {
   const { locale, t } = useI18n()
   const { slug } = useParams()
-  const events = useEvents()
+  const events = useEventsInTheReadersLanguage()
   /* Read for what it is worth rather than waited for: the buttons at the top of
      the screen must not hold up the name and the date, and the only one that
      needs the races is the copy. */
@@ -713,9 +718,23 @@ export function EventDetail() {
                   whose host as typed is not the host that opens is words (owner,
                   17.10.2026, chosen with my recommendation, PDL „Odgovori vlasnika
                   17.10.2026, jezik pošte (PR 545) i uređivač (PR 546)"). */}
-              {event.description !== '' && (
+              {/* WHAT THIS READER IS SHOWN OF IT, and not the description as written (owner, PDL P18,
+                  25.11.2026, „Automatski prevod sadržaja koji posetilac vidi”): the machine's translation into
+                  the language of the address, or the words as written where there is none yet. Marked with the
+                  language they are really in, so that a screen reader reads Serbian on /en as Serbian (ADL A7),
+                  and, where they are the machine's, said to be so beside them (owner, 25.11.2026, „uz mašinski
+                  preveden tekst stoji kratka oznaka”). An answer that carries no `descriptionShown` is one asked
+                  in no language, and then the words are the ones written. */}
+              {shownOf(event).text !== '' && (
                 <div className="event__said">
-                  <Markdown text={event.description} under={1} addresses="mail" outward />
+                  <Markdown
+                    text={shownOf(event).text}
+                    under={1}
+                    addresses="mail"
+                    outward
+                    lang={shownOf(event).language ?? undefined}
+                  />
+                  {shownOf(event).machine && <p className="event__translated">{t('translation.machine')}</p>}
                 </div>
               )}
 

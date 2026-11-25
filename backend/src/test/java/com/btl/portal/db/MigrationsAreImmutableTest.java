@@ -951,6 +951,13 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   was final (CLAUDE.md, section 9). */
 			new Applied("112", "V112__a_team_logo_waits_in_the_teams_queue.sql", -708902578),
 
+			/* V113. A text a visitor reads is translated by a machine (owner, PDL P18, 25.11.2026, „Automatski prevod
+			   sadržaja koji posetilac vidi"): the tables `text_translation` and `text_translation_asked`, keyed today by
+			   the event and nothing else. Two tables made and none touched, so no row standing refuses it
+			   (TextTranslationCarriedOverTest). Written as V112 and moved to 113 when PR 836 took 112 (the team's
+			   logo) first. Pinned last, once the file was final (CLAUDE.md, section 9). */
+			new Applied("113", "V113__a_text_a_visitor_reads_is_translated_by_a_machine.sql", 1863875101),
+
 			/* V114. The privacy policy names Microsoft (Azure Translator) as a processor in the table of section 5,
 			   under Zoho and above the bank, in both languages, and its sign-off moves to 25.11.2026 in both (owner,
 			   25.11.2026, PDL P18, „Red u Politici privatnosti, odeljak 5”, who approved the assistant's words
