@@ -23,7 +23,7 @@ describe('effectiveLengthKm', () => {
   })
 
   it('matches the golden race', () => {
-    expect(effectiveLengthKm(62.07, 3456, 3133)).toBe(95.41875)
+    expect(effectiveLengthKm(62.07, 3456, 3133)).toBe(96.307)
   })
 })
 
@@ -31,11 +31,11 @@ describe('btlPoints', () => {
   // THIS BRANCH (b-formula-b-qa) IS NEVER MERGED: the proposal of 25.11.2026 (94.80, exponent 0.35,
   // no cap) for a comparison on QA. On main the golden set stays 79.03, 46.78, 38.94, 38.21, 38.13.
   it.each([
-    [26911, '73.71'],
-    [34395, '27.62'],
-    [37476, '19.60'],
-    [37813, '18.91'],
-    [37850, '18.84'],
+    [26911, '77.29'],
+    [34395, '28.96'],
+    [37476, '20.55'],
+    [37813, '19.83'],
+    [37850, '19.75'],
   ])('gives %i seconds %s points', (seconds, expected) => {
     expect(scored(62.07, 3456, 3133, seconds).toFixed(2)).toBe(expected)
   })
@@ -48,6 +48,10 @@ describe('btlPoints', () => {
     [75, 0, 0, 30000, '13.94'],
     [150, 0, 0, 86400, '7.00'],
     [300, 0, 0, 86400, '241.95'],
+    [10, 1000, 0, 5400, '12.72'],
+    [10, 0, 800, 2400, '24.73'],
+    [3, 1000, 0, 1920, '97.67'],
+    [5, 0, 0, 1200, '11.65'],
   ])('agrees with the independent working for %f km, +%i, -%i, %i s: %s', (km, up, down, s, expected) => {
     expect(scored(km, up, down, s).toFixed(2)).toBe(expected)
   })

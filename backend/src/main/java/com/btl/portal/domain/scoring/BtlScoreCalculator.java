@@ -9,7 +9,7 @@ import java.math.RoundingMode;
  *
  * <pre>
  *   BTL  = 94.80 × (Tref / Tsec)^4 × (Le / 10)^0.35
- *   Le   = L + (1.25 × AP + 0.75 × AN) / 200
+ *   Le   = L + (9 × AP + 1 × AN) / 1000   (ascent 9, descent 1, descent ADDS)
  * </pre>
  *
  * Tref is a reference time for the length Le, read from a table by kilometres and interpolated
@@ -23,9 +23,9 @@ public final class BtlScoreCalculator {
     private static final double QUALITY_EXPONENT = 4.0;
     private static final double LENGTH_EXPONENT = 0.35;
     private static final double LENGTH_UNIT_KM = 10.0;
-    private static final double ASCENT_WEIGHT = 1.25;
-    private static final double DESCENT_WEIGHT = 0.75;
-    private static final double ELEVATION_PER_KM = 200.0;
+    private static final double ASCENT_WEIGHT = 9.0;
+    private static final double DESCENT_WEIGHT = 1.0;
+    private static final double ELEVATION_PER_KM = 1000.0;
     private static final int DISPLAY_SCALE = 2;
 
     /** The reference table: kilometres and the reference time in seconds at each of them. */

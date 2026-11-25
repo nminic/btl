@@ -1,6 +1,6 @@
 /* The BTL formula, for the calculator on the front page.
  *
- *   Le  = L + (1.25 * AP + 0.75 * AN) / 200
+ *   Le  = L + (9 * AP + 1 * AN) / 1000   (THIS BRANCH ONLY, 25.11.2026: ascent 9, descent 1)
  *   BTL = 94.80 * (Tref / Tsec)^4 * (Le / 10)^0.35   (THIS BRANCH ONLY, see pointsOf)
  *
  * The same formula lives in the
@@ -13,7 +13,7 @@
 
 /** Length with climb folded in. Ascent counts for more than descent. */
 export function effectiveLengthKm(lengthKm: number, ascentM: number, descentM: number): number {
-  return lengthKm + (1.25 * ascentM + 0.75 * descentM) / 200
+  return lengthKm + (9 * ascentM + 1 * descentM) / 1000
 }
 
 /**
