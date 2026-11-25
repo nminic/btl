@@ -238,8 +238,8 @@ function AwardsFor({
      from his results until 13.11.2026; the server writes it now, when a result is verified, corrected or
      deleted, and at night (PDL, 08.11.2026, plan „Dukate dodeljuje verifikacija rezultata"). */
   const earned = useMemo(
-    () => heldDucats(held, ducats, competitor.gender),
-    [held, ducats, competitor.gender],
+    () => heldDucats(held, ducats, competitor.gender, t),
+    [held, ducats, competitor.gender, t],
   )
 
   /* One held ducat, in a sentence, for a reader who cannot see the coin. The

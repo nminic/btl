@@ -1,4 +1,5 @@
 import { useCallback } from 'react'
+import type { Translate } from '../i18n/context'
 import { useHeldRead } from '../pages/member/useHeldRead'
 import { instanceAt, type Ducat, type DucatFamily, type DucatTier } from './ducatRule'
 import type { Gender } from './types'
@@ -87,11 +88,11 @@ export function heldDucatsIn(body: unknown): HeldDucat[] | null {
  * answers come from one server and one codebook, so it is a state of a deploy caught between two versions
  * and not one a member can bring about.
  */
-export function heldDucats(held: HeldDucat[], families: DucatFamily[], gender: Gender): Ducat[] {
+export function heldDucats(held: HeldDucat[], families: DucatFamily[], gender: Gender, t: Translate): Ducat[] {
   return held.flatMap((one) => {
     const family = families.find((each) => each.id === one.ducat)
 
-    return family === undefined ? [] : [instanceAt(family, gender, one)]
+    return family === undefined ? [] : [instanceAt(family, gender, one, t)]
   })
 }
 

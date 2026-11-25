@@ -1,3 +1,4 @@
+import type { Translate } from '../i18n/context'
 import { formatNumber } from '../i18n/format'
 import { FIRST_SEASON } from './season'
 import type { Gender } from './types'
@@ -168,32 +169,24 @@ export function coinNumber(ducat: Pick<Ducat, 'value' | 'art'>): string {
   return ducat.art === 'none' ? String(ducat.value) : ''
 }
 
-/** The months, upper case, as they stand on a coin. Not `Intl`: this is a
- *  legend struck in one language at a time, and `Intl` in Serbian yields the
- *  genitive ("januara") which is a caption and not an inscription. */
-const MONTHS = [
-  'JANUAR',
-  'FEBRUAR',
-  'MART',
-  'APRIL',
-  'MAJ',
-  'JUN',
-  'JUL',
-  'AVGUST',
-  'SEPTEMBAR',
-  'OKTOBAR',
-  'NOVEMBAR',
-  'DECEMBAR',
-]
-
-/** The legend that names the period of one instance: "JUL 2027", "SEZONA 2027",
- *  and nothing at all for a family that runs through the whole history. */
-export function periodLegend(period: DucatPeriod, season: number, month: number): string {
+/** The legend that names the period of one instance: "JUL 2027" and "SEZONA 2027" on `/sr`, "JULY 2027" and
+ *  "SEASON 2027" on `/en`, and nothing at all for a family that runs through the whole history.
+ *
+ *  Written in the reader's language through the dictionary (`ducats.coin`), as every other text of the
+ *  portal is, and not by a machine: it is a closed set of thirteen words and a year, and the machine pass
+ *  never reads a ducat (PDL P18, 25.11.2026).
+ *
+ *  **Not `Intl`, for the months:** this is a legend struck in one language at a time, and `Intl` in Serbian
+ *  yields the genitive ("januara") which is a caption and not an inscription. The Serbian months are
+ *  therefore the nominative, upper case, exactly as they stood in this file before they moved. */
+export function periodLegend(period: DucatPeriod, season: number, month: number, t: Translate): string {
   if (period === 'month') {
-    return `${MONTHS[month] ?? ''} ${season}`
+    const named = month >= 0 && month <= 11 ? t(`ducats.coin.month.${String(month + 1)}`) : ''
+
+    return `${named} ${String(season)}`
   }
 
-  return period === 'season' ? `SEZONA ${season}` : ''
+  return period === 'season' ? t('ducats.coin.season', { season: String(season) }) : ''
 }
 
 /** Which of the two legends a woman reads differently. Three families do
@@ -231,6 +224,7 @@ export function instanceAt(
   family: DucatFamily,
   gender: Gender,
   held: { value: number; tier: DucatTier; season: number | null; month: number | null },
+  t: Translate,
 ): Ducat {
   const top = topFor(family, gender)
   const drawn = (from: string, to: string, legend: string, suffix: string): Ducat => ({
@@ -253,7 +247,7 @@ export function instanceAt(
   }
 
   if (month === null) {
-    return drawn(`${String(season)}-01-01`, `${String(season)}-12-31`, periodLegend('season', season, 0), `-${String(season)}`)
+    return drawn(`${String(season)}-01-01`, `${String(season)}-12-31`, periodLegend('season', season, 0, t), `-${String(season)}`)
   }
 
   const mm = twoDigits(month)
@@ -261,7 +255,7 @@ export function instanceAt(
   return drawn(
     `${String(season)}-${mm}-01`,
     `${String(season)}-${mm}-${twoDigits(lastDay(season, month - 1))}`,
-    periodLegend('month', season, month - 1),
+    periodLegend('month', season, month - 1, t),
     `-${String(season)}-${mm}`,
   )
 }
@@ -270,8 +264,8 @@ export function instanceAt(
  *  for a series is the first month and the first step. A wall that drew every
  *  instance would be fifty-five coins in the first season and grow by
  *  twenty-eight a year (ADL A12, 7). */
-export function firstOf(family: DucatFamily, gender: Gender): Ducat {
-  const legend = periodLegend(family.period, FIRST_SEASON, 0)
+export function firstOf(family: DucatFamily, gender: Gender, t: Translate): Ducat {
+  const legend = periodLegend(family.period, FIRST_SEASON, 0, t)
   const top = topFor(family, gender)
 
   return {
