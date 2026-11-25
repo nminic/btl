@@ -2,7 +2,6 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { configure, getConfig, screen } from '@testing-library/react'
 import type { BtlEvent, ShownText } from '../../data/types'
-import { must } from '../../test/at'
 import { renderAt } from '../../test/render'
 import { SLOW } from '../../test/slow'
 
@@ -28,7 +27,7 @@ const WRITTEN = 'Kroz grad i nazad, uz reku.'
 const mock = (name: string) => JSON.parse(readFileSync(join(process.cwd(), 'src/test/mock', `${name}.json`), 'utf-8'))
 
 /** The events, with this one described, and what each language is shown of it. */
-function serving(shown: Record<string, ShownText>, real: typeof globalThis.fetch): typeof globalThis.fetch {
+function serving(shown: Record<string, ShownText | undefined>, real: typeof globalThis.fetch): typeof globalThis.fetch {
   return async (input: RequestInfo | URL, init?: RequestInit) => {
     const asked = /^\/api\/events(?:\?lang=([a-z]+))?$/.exec(String(input))
 
@@ -47,7 +46,7 @@ function serving(shown: Record<string, ShownText>, real: typeof globalThis.fetch
             : {
                 ...one,
                 description: WRITTEN,
-                ...(language === undefined ? {} : { descriptionShown: must(shown[language], 'a language asked') }),
+                ...(language === undefined || !(language in shown) ? {} : { descriptionShown: shown[language] }),
               },
         ),
       ),
@@ -114,6 +113,18 @@ describe('the description of an event', () => {
     const words = await screen.findByText(WRITTEN)
 
     expect(words.closest('.markdown')).toHaveAttribute('lang', 'sr')
+    expect(screen.queryByText('Automatic translation')).toBeNull()
+  }, SLOW)
+
+  it('is the words as written where the server said nothing of what is shown', async () => {
+    /* A server a release behind the screen, for the minutes of a deploy: it answers the calendar in a language with
+       no `descriptionShown`, and the reader is still drawn the description rather than nothing. */
+    globalThis.fetch = serving({}, real)
+    renderAt(`/en/kalendar/${EVENT}`, 'visitor', null)
+
+    const words = await screen.findByText(WRITTEN)
+
+    expect(words.closest('.markdown')).not.toHaveAttribute('lang')
     expect(screen.queryByText('Automatic translation')).toBeNull()
   }, SLOW)
 
