@@ -354,7 +354,7 @@ describe('who is offered „Pozovi u trkački par"', () => {
 
       /* The reads that did go out are the anchor: the page asked for its members, so a list of
          what was asked that is empty for some other reason cannot pass. */
-      expect(reads(server.asked)).toContain('/api/competitors')
+      expect(reads(server.asked)).toContain('/api/competitors?lang=sr')
       expect(readsOfWhatHeWaitsOn(server.asked)).toBe(0)
       expect(theButton()).toBeNull()
     } finally {
