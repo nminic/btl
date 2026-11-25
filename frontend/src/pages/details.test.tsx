@@ -1024,7 +1024,9 @@ describe('the description of an event and the organiser’s page', () => {
     vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
       const answer = await served(input, init)
 
-      if (!String(input).endsWith('/api/events')) {
+      /* In any language too: the page of an event reads the calendar in its reader's language (owner, PDL P18,
+         25.11.2026), and an answer that carries no `descriptionShown` is drawn as written. */
+      if (!/\/api\/events(\?lang=[a-z]+)?$/.test(String(input))) {
         return answer
       }
 
@@ -1185,7 +1187,9 @@ describe('the description of an event and the organiser’s page', () => {
     vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
       const answer = await served(input, init)
 
-      if (!String(input).endsWith('/api/events')) {
+      /* In any language too: the page of an event reads the calendar in its reader's language (owner, PDL P18,
+         25.11.2026), and an answer that carries no `descriptionShown` is drawn as written. */
+      if (!/\/api\/events(\?lang=[a-z]+)?$/.test(String(input))) {
         return answer
       }
 

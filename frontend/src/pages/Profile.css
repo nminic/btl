@@ -465,6 +465,16 @@
   overflow-wrap: anywhere;
 }
 
+/* The few words that say the description above them is the machine's (owner, PDL P18, 25.11.2026, „uz mašinski
+   preveden tekst stoji kratka oznaka"). Muted and smaller, because they are about the text and not part of it;
+   still the muted text colour every other quiet line of the portal is drawn in, so the contrast it already passes
+   is the contrast this passes. */
+.event__translated {
+  margin: var(--space-4) 0 0;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+}
+
 /* And where the rest of it is said. A paragraph rather than a row of controls,
    because it is one link and not a toolbar: the two buttons this page does have
    act on the event itself, and leaving for somebody else's site is not one of
