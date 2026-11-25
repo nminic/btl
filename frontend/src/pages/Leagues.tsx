@@ -14,7 +14,7 @@ import {
   failed,
   useCompetitors,
   useEvents,
-  useLeagues,
+  useLeaguesInTheReadersLanguage,
   useRaces,
   useResults,
   useFrozenSeasons,
@@ -278,7 +278,7 @@ export function Leagues() {
     <div className="rankings rankings--tooled">
       <h1>{t('leagues.title')}</h1>
 
-      <Resource state={useLeagues()}>
+      <Resource state={useLeaguesInTheReadersLanguage()}>
         {(leagues) => {
           /* EVERY LEAGUE SERVED IS LISTED, AND NOTHING IS FILTERED OFF THIS SCREEN.
              Until 24.09.2026 a row at `btl-2027` was taken out here, on the reading that the
@@ -448,12 +448,14 @@ export function Leagues() {
             <div className="leagues__texts">
               <LeagueText
                 value={league.rules}
+                shown={league.rulesShown}
                 headingId={`league-rules-${league.id}`}
                 heading={t('leagues.rules')}
               />
 
               <LeagueText
                 value={league.prizes}
+                shown={league.prizesShown}
                 headingId={`league-prizes-${league.id}`}
                 heading={t('leagues.prizes')}
               />

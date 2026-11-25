@@ -17,6 +17,7 @@ import tools.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 import java.time.Duration;
+import java.time.Clock;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -62,14 +63,14 @@ class TextsAreTranslatedTest {
 	@BeforeEach
 	void aServiceOfItsOwn() throws IOException {
 		service = new ATranslatorOfItsOwn();
-		db.sql("delete from text_translation").update();
+		db.sql("delete from text_translation where ducat_id is null").update();
 		db.sql("delete from text_translation_asked").update();
 	}
 
 	@AfterEach
 	void nothingIsLeftBehind() {
 		service.close();
-		db.sql("delete from text_translation").update();
+		db.sql("delete from text_translation where ducat_id is null").update();
 		db.sql("delete from text_translation_asked").update();
 		db.sql("delete from btl_event where slug like 'prevod-%'").update();
 	}
@@ -77,7 +78,7 @@ class TextsAreTranslatedTest {
 	private TextsAreTranslated job(int atMost) {
 		return new TextsAreTranslated(db,
 				new Translator(ATranslatorOfItsOwn.KEY, ATranslatorOfItsOwn.REGION, service.address(), 2000, JSON),
-				inOneTransaction, atMost);
+				inOneTransaction, atMost, Clock.systemUTC(), List.of(WhatIsTranslated.EVENT_DESCRIPTION));
 	}
 
 	private TextsAreTranslated job() {

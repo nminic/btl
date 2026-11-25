@@ -1,4 +1,7 @@
+import { MachineNote } from '../../components/MachineNote'
 import { Markdown } from '../../components/Markdown'
+import { shownOr } from '../../data/shownText'
+import type { ShownText } from '../../data/types'
 
 /**
  * A piece of what an organiser has written about a competition, read on the sheet of the competition
@@ -54,19 +57,29 @@ import { Markdown } from '../../components/Markdown'
  *
  * **Every link carries `dir="ltr"` and `rel="noreferrer noopener"`**, and why is said where the
  * link is drawn (`components/Markdown.tsx`) and held by `pages/league/linkDirection.test.tsx`.
+ *
+ * **WHAT THE READER IS SHOWN IS THE SERVER'S TO SAY, since 25.11.2026** (owner, PDL P18, „Automatski prevod
+ * sadržaja koji posetilac vidi"): `shown` is the translation into the language of the address, or the words as
+ * written where there is none yet, and it is marked with the language it is really in so that a screen reader reads
+ * Serbian on `/en` as Serbian (ADL A7), and said to be the machine's where it is. `value` is the words as written
+ * and decides only whether the box is drawn: a text nobody wrote is not translated into something somebody did.
  */
 export function LeagueText({
   value,
+  shown,
   headingId,
   heading,
 }: {
   value: string
+  shown?: ShownText
   headingId: string
   heading: string
 }) {
   if (value === '') {
     return null
   }
+
+  const said = shownOr(value, shown)
 
   return (
     <section aria-labelledby={headingId}>
@@ -76,7 +89,8 @@ export function LeagueText({
 
       {/* Under the heading of its box, an h3, so a heading of its own is an h4. */}
       <div className="profile__text">
-        <Markdown text={value} under={3} addresses outward />
+        <Markdown text={said.text} under={3} addresses outward lang={said.language ?? undefined} />
+        <MachineNote shown={said} />
       </div>
     </section>
   )

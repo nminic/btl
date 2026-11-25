@@ -391,7 +391,7 @@ describe('a part of a screen whose read failed', () => {
 
     expect(await screen.findByRole('list', { name: sr.ducats.title })).toBeVisible()
     expect(screen.queryByRole('button', { name })).toBeNull()
-    expect(timesAsked('/api/ducats')).toBe(2)
+    expect(timesAsked('/api/ducats?lang=sr')).toBe(2)
   }, SLOW)
 
   it('names the button by its own word where the part has no name', async () => {

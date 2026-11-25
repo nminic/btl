@@ -379,7 +379,10 @@
     "visually-hidden"
   ],
   "src/pages/league/LeagueText.tsx": [
+    "../../components/MachineNote",
     "../../components/Markdown",
+    "../../data/shownText",
+    "../../data/types",
     "profile__section",
     "profile__text"
   ],

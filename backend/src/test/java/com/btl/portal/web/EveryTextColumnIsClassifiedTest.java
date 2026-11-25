@@ -36,17 +36,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 class EveryTextColumnIsClassifiedTest {
 
 	enum Kind {
-		/** Translated by the machine today ({@link WhatIsTranslated}). */
+		/** Translated by the machine ({@link WhatIsTranslated#sentToTheService}). */
 		TRANSLATED,
 		/**
-		 * A visitor reads it and the machine will translate it, in a pull request of its own (the plan of 25.11.2026:
-		 * the league and the price list, then the biography and the team, then the comments).
+		 * Translated BY HAND and read like every translated text ({@link WhatIsTranslated}) but never sent to the
+		 * service: the ducats (owner, 25.11.2026, „Ja ih prevedem ručno"), whose English is written in V115.
 		 */
-		TRANSLATED_LATER,
+		TRANSLATED_BY_HAND,
 		/**
-		 * A visitor reads it and its English is written by hand or it is shown as written: the written pages
-		 * (PDL P18, „Prevodi Claude"), the ducats (owner, 25.11.2026, „engleski piše Claude ručno, jednom, kroz
-		 * migraciju") and the sponsors (owner, 25.11.2026, „opis sponzora se ne prevodi mašinski").
+		 * A visitor reads it and its English is written by hand somewhere else or it is shown as written: the written
+		 * pages (PDL P18, „Prevodi Claude") and the sponsors (owner, 25.11.2026, „opis sponzora se ne prevodi
+		 * mašinski").
 		 */
 		BY_HAND_OR_AS_WRITTEN,
 		/** A name of a person, a race, an event, a team, a league or a place, which stays as it was written. */
@@ -68,13 +68,13 @@ class EveryTextColumnIsClassifiedTest {
 	private static Map<String, Kind> kinds() {
 		Map<String, Kind> kinds = new LinkedHashMap<>();
 
-		put(kinds, Kind.TRANSLATED, "btl_event.description");
+		put(kinds, Kind.TRANSLATED, "btl_event.description", "competitor.bio", "team.bio", "league.rules",
+				"league.prizes", "price_row.label", "event_comment.body");
 
-		put(kinds, Kind.TRANSLATED_LATER, "competitor.bio", "team.bio", "league.rules", "league.prizes",
-				"price_row.label", "event_comment.body");
+		put(kinds, Kind.TRANSLATED_BY_HAND, "ducat.name", "ducat.top", "ducat.top_female", "ducat.bottom",
+				"ducat.counted");
 
-		put(kinds, Kind.BY_HAND_OR_AS_WRITTEN, "ducat.name", "ducat.top", "ducat.top_female", "ducat.bottom",
-				"ducat.counted", "sponsor.description_sr", "sponsor.description_en", "static_page.title",
+		put(kinds, Kind.BY_HAND_OR_AS_WRITTEN, "sponsor.description_sr", "sponsor.description_en", "static_page.title",
 				"static_page_section.heading", "static_page_section.body", "static_page_translation.title",
 				"static_page_section_translation.heading", "static_page_section_translation.body");
 
@@ -156,13 +156,28 @@ class EveryTextColumnIsClassifiedTest {
 
 	@Test
 	void theMachineTranslatesExactlyWhatThisTableSaysItDoes() {
-		Set<String> translated = Arrays.stream(WhatIsTranslated.values())
-				.map(what -> what.table + "." + what.column)
-				.collect(Collectors.toCollection(TreeSet::new));
+		assertThat(columnsOf(WhatIsTranslated.sentToTheService())).isEqualTo(classifiedAs(Kind.TRANSLATED));
+	}
 
-		assertThat(translated).isEqualTo(KINDS.entrySet().stream()
-				.filter(one -> one.getValue() == Kind.TRANSLATED)
+	/**
+	 * AND WHAT IS READ AS TRANSLATED BUT NEVER SENT is exactly the ducats, so a column cannot be made a text the
+	 * service is not asked about by leaving it out of the pass, and a name cannot be sent by being put among them.
+	 */
+	@Test
+	void whatIsTranslatedByHandIsExactlyWhatThisTableSaysItIs() {
+		assertThat(columnsOf(Arrays.stream(WhatIsTranslated.values()).filter(what -> !what.byMachine).toList()))
+				.isEqualTo(classifiedAs(Kind.TRANSLATED_BY_HAND));
+	}
+
+	private static Set<String> columnsOf(java.util.List<WhatIsTranslated> whats) {
+		return whats.stream().map(what -> what.table + "." + what.column)
+				.collect(Collectors.toCollection(TreeSet::new));
+	}
+
+	private static Set<String> classifiedAs(Kind kind) {
+		return KINDS.entrySet().stream()
+				.filter(one -> one.getValue() == kind)
 				.map(Map.Entry::getKey)
-				.collect(Collectors.toCollection(TreeSet::new)));
+				.collect(Collectors.toCollection(TreeSet::new));
 	}
 }

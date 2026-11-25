@@ -1,11 +1,14 @@
 package com.btl.portal.web;
 
 import com.btl.portal.domain.season.SeasonClock;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.io.IOException;
@@ -13,6 +16,7 @@ import java.time.Clock;
 import java.time.LocalDate;
 import java.time.ZonedDateTime;
 import java.util.List;
+import java.util.Map;
 
 /**
  * WHAT MEMBERS WROTE ABOUT AN EVENT, the first resource of this portal that is not public, closed
@@ -190,7 +194,8 @@ class CommentApi {
 	 *                     V33 rewrites it rather than clearing it
 	 */
 	record EventComment(long id, long eventId, String memberNumber, String who, LocalDate date,
-			Rating rating, String body) {
+			Rating rating, String body,
+			@JsonInclude(JsonInclude.Include.NON_NULL) TranslatedText.Shown bodyShown) {
 	}
 
 	/** The three marks PDL P6 fixes, and no fourth: the total is worked out where it is drawn. */
@@ -204,8 +209,8 @@ class CommentApi {
 	 *                 exactly as {@link AttendanceApi#attendance} does
 	 */
 	@GetMapping("/api/comments")
-	List<EventComment> comments(@AuthenticationPrincipal WhoIsAsking.Member asking,
-			HttpServletResponse response) throws IOException {
+	ResponseEntity<List<EventComment>> comments(@AuthenticationPrincipal WhoIsAsking.Member asking,
+			HttpServletResponse response, @RequestParam(name = TranslatedText.THE_LANGUAGE_ASKED_FOR, required = false) String lang) throws IOException {
 		/* AN ACTIVE MEMBER OR THE ADMINISTRATION, and anybody else signed in is told the address
 		   is not there (owner, 03.10.2026; ADL A8). Asked before the query and answered through
 		   `sendError`, so no row is read to refuse a reader and the refusal is the one an address
@@ -217,7 +222,17 @@ class CommentApi {
 			return null;
 		}
 
-		return db.sql("select c.id, c.event_id,"
+		/* A LANGUAGE ASKED FOR is a tag or it is refused with 400 and no body, as `PageApi` refuses it, and it is
+		   asked AFTER the door: a reader who may not read the comments is told the address is not there whatever he
+		   put in the query. Asked, every comment says what that reader is shown of its words (`bodyShown`), and
+		   `body` stays as it was written (owner, PDL P18, 25.11.2026). */
+		if (TranslatedText.isMalformed(lang)) {
+			return ResponseEntity.badRequest().build();
+		}
+
+		WhatIsTranslated words = WhatIsTranslated.COMMENT_BODY;
+
+		return ResponseEntity.ok(db.sql("select c.id, c.event_id,"
 						/* THE NUMBER ONLY WHILE THE PROFILE IS THERE TO READ. A left join and a
 						   CASE rather than a condition on the rows: the comment comes back either
 						   way, because it is published prose and the owner kept it (07.08.2026);
@@ -234,13 +249,16 @@ class CommentApi {
 						   comments it exists for. */
 						+ " c.who, c.published_at,"
 						+ " c.rating_organisation, c.rating_value, c.rating_ambience, c.body"
+						+ (lang == null ? "" : ", " + words.joinedColumns())
 						+ " from event_comment c"
 						/* LEFT, because `competitor_id` is nullable on purpose: the reference is
 						   `on delete set null` so that a comment survives its author. An inner
 						   join here would delete from the portal every comment of everybody who
 						   ever left, which is the opposite of what 06.08.2026 decided. */
 						+ " left join competitor author on author.id = c.competitor_id"
+						+ (lang == null ? "" : words.joinedOver("c"))
 						+ " order by c.published_at desc, c.id desc")
+				.params(lang == null ? Map.<String, Object>of() : Map.<String, Object>of("language", lang))
 				.query((row, one) -> new EventComment(row.getLong(1), row.getLong(2),
 						row.getString(3), row.getString(4),
 						/* THE LEAGUE'S OWN ZONE, asked of the one place that holds it. Read as the
@@ -248,7 +266,7 @@ class CommentApi {
 						   in UTC, which is every server this portal runs on. */
 						row.getTimestamp(5).toInstant().atZone(SeasonClock.ZONE).toLocalDate(),
 						new Rating(row.getInt(6), row.getInt(7), row.getInt(8)),
-						row.getString(9)))
-				.list();
+						row.getString(9), TranslatedText.read(row, 10, row.getString(9), lang)))
+				.list());
 	}
 }

@@ -52,6 +52,34 @@ final class TranslatedText {
 	private TranslatedText() {
 	}
 
+	/** Whether a {@code ?lang=} is there and is not shaped like a language tag, which a route refuses with 400. */
+	static boolean isMalformed(String lang) {
+		return lang != null && !A_LANGUAGE_TAG.matcher(lang).matches();
+	}
+
+	/**
+	 * WHAT A ROUTE ANSWERS FOR ONE TEXT, off the three columns {@link WhatIsTranslated#joinedColumns} added at
+	 * {@code firstColumn}, or null where it was asked in no language or there is no text to show (a biography the
+	 * reader may not read is null in the answer, and so is what is shown of it).
+	 */
+	static Shown read(java.sql.ResultSet row, int firstColumn, String original, String asked)
+			throws java.sql.SQLException {
+		return asked == null ? null : readWrittenIn(row, firstColumn, original, asked, row.getString(firstColumn));
+	}
+
+	/**
+	 * THE SAME FOR A TEXT WHOSE LANGUAGE IS KNOWN, not read off a machine row: a ducat is written in Serbian and its
+	 * English by a person, so there is no row of the service's to say what it read.
+	 */
+	static Shown readWrittenIn(java.sql.ResultSet row, int firstColumn, String original, String asked,
+			String writtenIn) throws java.sql.SQLException {
+		if (asked == null || original == null) {
+			return null;
+		}
+
+		return shown(original, asked, writtenIn, row.getString(firstColumn + 1), row.getBoolean(firstColumn + 2));
+	}
+
 	/**
 	 * WHAT A READER IS SHOWN OF ONE TEXT.
 	 *

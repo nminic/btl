@@ -67,7 +67,7 @@ class TheScheduledPassTranslatesTest {
 
 	@AfterEach
 	void nothingIsLeftBehind() {
-		db.sql("delete from text_translation").update();
+		db.sql("delete from text_translation where ducat_id is null").update();
 		db.sql("delete from text_translation_asked").update();
 		db.sql("delete from btl_event where slug like 'prevod-%'").update();
 	}

@@ -2,9 +2,11 @@ package com.btl.portal.web;
 
 import com.btl.portal.domain.season.SeasonClock;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.math.BigDecimal;
@@ -704,7 +706,8 @@ class TeamApi {
 			@JsonInclude(JsonInclude.Include.NON_NULL) Boolean foundedByMe,
 			@JsonInclude(JsonInclude.Include.NON_NULL) Boolean administeredByMe,
 			@JsonInclude(JsonInclude.Include.NON_NULL) Optional<String> organizerMemberNumber,
-			String link) {
+			String link,
+			@JsonInclude(JsonInclude.Include.NON_NULL) TranslatedText.Shown bioShown) {
 	}
 
 	/**
@@ -713,7 +716,17 @@ class TeamApi {
 	 *               reading, so an anonymous GET arrives here rather than at a 401
 	 */
 	@GetMapping("/api/teams")
-	List<Team> teams(@AuthenticationPrincipal WhoIsAsking.Member member) {
+	ResponseEntity<List<Team>> teams(@AuthenticationPrincipal WhoIsAsking.Member member,
+			@RequestParam(name = TranslatedText.THE_LANGUAGE_ASKED_FOR, required = false) String lang) {
+		/* A LANGUAGE ASKED FOR is a language tag or it is refused with 400 and no body, as `PageApi` refuses it.
+		   Asked, every team says what that reader is shown of its description (`bioShown`); `bio` stays as it was
+		   written, because it is what the team's own form edits (owner, PDL P18, 25.11.2026). */
+		if (TranslatedText.isMalformed(lang)) {
+			return ResponseEntity.badRequest().build();
+		}
+
+		WhatIsTranslated bio = WhatIsTranslated.TEAM_BIO;
+
 		/* The caller as a MEMBER, which an account that does not race does not have:
 		   a signed in moderator founded no team, so nothing on the seat below is his.
 
@@ -862,7 +875,7 @@ class TeamApi {
 				.collect(Collectors.groupingBy(Map.Entry::getKey,
 						Collectors.mapping(Map.Entry::getValue, Collectors.toList())));
 
-		return db.sql(
+		return ResponseEntity.ok(db.sql(
 						/* WHO IS A STANDING MEMBER OF WHICH TEAM, WRITTEN ONCE BECAUSE THE RULE
 						   BELOW ASKS IT TWICE. Owner, PDL „Inkrement 133", 04.09.2026, „Administrator
 						   tima je onaj ko je tim osnovao" (organizerMemberNumber): kad se mesto
@@ -1012,6 +1025,7 @@ class TeamApi {
 						   above it moves (PDL P13, 11.08.2026: „opis (ograniceni unos) i neobavezni
 						   link"; drawn on the team's page since 23.11.2026). */
 						+ " t.link"
+						+ (lang == null ? "" : ", " + bio.joinedColumns())
 						+ " from team t"
 						+ " left join place town on town.id = t.place_id"
 						+ " left join country town_country on town_country.id = town.country_id"
@@ -1039,6 +1053,7 @@ class TeamApi {
 						   nothing more - a sentence about what LEAVES, held over the whole text by
 						   `noMemberNumberLeavesTheServer`. */
 						+ " left join competitor seat on seat.id = t.admin_id"
+						+ (lang == null ? "" : bio.joinedOver("t"))
 						/* NOTHING IS JOINED TO `team_membership` IN THIS FROM CLAUSE, and that is
 						   the shape of the answer rather than a rule about the table: a join here
 						   would give a team as many rows as it has members, which is what
@@ -1046,6 +1061,7 @@ class TeamApi {
 						   reaches the same table through scalar subqueries, which answer one value
 						   per team however many members it has. */
 						+ " order by t.name, t.id")
+				.params(lang == null ? Map.<String, Object>of() : Map.<String, Object>of("language", lang))
 				.param("me", me)
 				.query((row, one) -> {
 					/* Exact decimal all the way out, never a double. V21 chose `numeric(9, 8)`
@@ -1100,8 +1116,9 @@ class TeamApi {
 							   sentence „you do not administer this" told to somebody who was never
 							   asked about. */
 							row.getObject(11, Boolean.class), row.getObject(12, Boolean.class),
-							inTheSeat, row.getString("link"));
+							inTheSeat, row.getString("link"),
+							TranslatedText.read(row, 15, row.getString(6), lang));
 				})
-				.list();
+				.list());
 	}
 }

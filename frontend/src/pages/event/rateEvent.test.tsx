@@ -915,7 +915,7 @@ describe('a comment a moderator lets out', () => {
        on the same shape earlier in this file - though nothing this test renders
        posts anything. */
     globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) =>
-      String(input).endsWith('/api/comments')
+      String(input).replace(/\?lang=[a-z]+$/, '').endsWith('/api/comments')
         ? new Response(JSON.stringify(many), { status: 200 })
         : real(input, init))
 
@@ -1039,7 +1039,7 @@ describe('a comment a moderator lets out', () => {
       }))
 
     globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) =>
-      String(input).endsWith('/api/comments')
+      String(input).replace(/\?lang=[a-z]+$/, '').endsWith('/api/comments')
         ? new Response(
             JSON.stringify([
               ...many((await eventAt(EVENT)).id, 23, 1),
