@@ -26,6 +26,11 @@
      cell: the two travel together and the gap belongs to the pair. */
   margin-inline-end: var(--space-8);
   font-size: 0.7rem;
+  /* IN A WHITE RING, the logo and the initials alike (owner, 24.11.2026, PDL „Okvir oko znaka lige je beo”:
+     „Okvir oko znaka Lige (i tima jednog dana), treba da bude beo”), the day a team can set its logo (PDL
+     25.11.2026). The same ring for every team, so it picks no team out: the ground behind it is the portal's
+     one dark theme, so the white is seen (`geometry/teamMarkRing.geometry.ts` asks Chrome for the colour). */
+  border: 2px solid var(--white);
 }
 
 /* A picture fills the circle rather than sitting in it, and is cut to the circle

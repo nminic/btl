@@ -1407,7 +1407,9 @@ class VerificationWriteApi {
 		   from V30 until PDL P10a, 22.09.2026 took the queue away with the question still
 		   answered where it always was, {@code EventWriteApi.wouldStrandAResultInAnotherYear},
 		   just no longer asked a second time from this route. */
-		Proposal proposal = TEAMS.equals(item.queue()) ? proposalBehind(item) : null;
+		/* A PROPOSAL IS BEHIND A TEAMS ROW THAT POINTS AT ONE, and a team's logo (V112) points at none: the teams
+		   tab holds both since 25.11.2026, told apart by the pointer and never by the tab. */
+		Proposal proposal = isATeam(item) ? proposalBehind(item) : null;
 
 		/* AND AS THE MODERATOR CORRECTED IT, where he did and only on an approval: a refusal makes
 		   nothing, so nothing it carries can be wrong. Asked here, with the refusals, and writing
@@ -1541,8 +1543,10 @@ class VerificationWriteApi {
 		Run approved = null;
 
 		if (answer.yes()) {
-			if (TEAMS.equals(item.queue())) {
+			if (proposal != null) {
 				makeTheTeam(proposal, season);
+			} else if (TEAMS.equals(item.queue())) {
+				publishTheLogo(item, typed);
 			} else if (COMMENTS.equals(item.queue())) {
 				publishTheComment(item);
 			} else if (RESULTS.equals(item.queue())) {
@@ -1604,6 +1608,27 @@ class VerificationWriteApi {
 	}
 
 	/**
+	 * THE PICTURE BECOMES THE TEAM'S LOGO (owner, PDL 25.11.2026, „Urednik tima postavlja znak tima slikom”, and the
+	 * derivation of the same day: „Znak koji pošalje urednik tima ide moderatoru na odobrenje i ne vidi se dok nije
+	 * odobren”). {@link #publishTheProfile}'s picture half, onto {@code team.logo_id}: the circle the moderator left
+	 * is written onto the picture first, then the team holds it, and whatever logo it held before is let go and goes
+	 * at the end of the transaction (V54). <b>Nobody is told</b> (the owner's answer of 25.11.2026: „odobren logo ne
+	 * šalje poruku”); a refusal tells the sender its reason, as every refusal of this route does.
+	 *
+	 * <p>The row names its team (V112) and goes with it ({@code verification_team_fk}), so the team is there.
+	 */
+	private void publishTheLogo(Item item, Answered typed) {
+		VerificationApi.Crop set = typed.crop() == null ? null : asTheColumnHolds(typed.crop());
+
+		if (set != null) {
+			db.sql("update photo set crop_x = ?, crop_y = ?, crop_diameter = ? where id = ?")
+					.params(set.x(), set.y(), set.size(), item.photoId()).update();
+		}
+
+		db.sql("update team set logo_id = ? where id = ?").params(item.photoId(), item.teamId()).update();
+	}
+
+	/**
 	 * A circle as the column holds it (V21, {@code numeric(9, 8)}), or nothing where one of its three is
 	 * missing or is not a fraction the column takes: the same test a circle sent with a picture passes
 	 * ({@link MePhotoApi#fractionOf(BigDecimal, boolean)}), so a circle the moderator sets is held to what
@@ -1636,10 +1661,9 @@ class VerificationWriteApi {
 	 * <p><b>Asked of the ROW and not of the queue.</b> {@code PendingQueue.tsx} draws a picture on
 	 * any card whose {@code photoId} is not null, "whichever tab it stands in" (the note on
 	 * {@code WaitingPicture}), and the screen asks the same fact to decide what it sends, so the
-	 * two cannot come apart. Today only the profiles tab ever holds one: {@code MePhotoApi} is the
-	 * one writer. That a team's logo would be decided the same way is my reading and not the
-	 * owner's, who spoke of the profile picture; it costs nothing because nothing writes such a
-	 * row.
+	 * two cannot come apart. Two tabs hold one since 25.11.2026: the profiles tab ({@code MePhotoApi})
+	 * and the teams tab, where a team's logo waits ({@code TeamLogoApi}, V112), decided the same way
+	 * (owner, 12.08.2026: „Prolazi kroz isto odobravanje kao profilna slika”).
 	 *
 	 * <p><b>The same answer for the approval and the refusal</b> (PDL, 10.10.2026: „I odbijanje
 	 * slike traži viđenu sliku."), which is why this takes no {@code answer}: a version that asked
@@ -1899,9 +1923,9 @@ class VerificationWriteApi {
 	 * team, it has no address". {@link EventAddress#written} is the rule the whole portal
 	 * runs on, so the address this makes is the one the team's page will answer at.
 	 *
-	 * <p><b>Nothing of the proposal's picture survives</b> (ADL, 15.08.2026: „Nista od
-	 * timske slike ne prezivljava odobravanje predloga, do F5"), so {@code logo_id} is not
-	 * copied and the screen draws initials for a team with no mark.
+	 * <p><b>Nothing of the proposal's picture survives</b>: a proposal of a new team carries no
+	 * logo (owner, 22.09.2026, kept on 25.11.2026), so {@code logo_id} is not copied. A team's logo
+	 * is its own item on the teams tab ({@link #publishTheLogo}).
 	 */
 	private Proposal proposalBehind(Item item) {
 		return db.sql("select competitor_id, name, bio, link, place_id, city,"
@@ -2929,7 +2953,7 @@ class VerificationWriteApi {
 	private Optional<Item> itemHeMayModerate(AKey key, WhoIsAsking.Member asking) {
 		Optional<Item> item = db.sql("select v.id, v.queue, v.right_code, v.state, v.competitor_id,"
 						+ " v.photo_id, v.team_proposal_id, v.comment_submission_id,"
-						+ " v.result_submission_id, v.body, l.held_by, l.held_until"
+						+ " v.result_submission_id, v.body, l.held_by, l.held_until, v.team_id"
 						+ " from verification v"
 						+ " left join verification_lock l on l.verification_id = v.id"
 						+ " where v.id = ?")
@@ -2940,7 +2964,8 @@ class VerificationWriteApi {
 						row.getObject(9, Long.class), row.getString(10),
 						row.getObject(11, Long.class) == null ? null
 								: new HoldingAnItem.Hold(row.getLong(11),
-										row.getTimestamp(12).toInstant())))
+										row.getTimestamp(12).toInstant()),
+						row.getObject(13, Long.class)))
 				.optional();
 
 		/* MAY HE, ASKED OF THE ONE PLACE THAT ANSWERS IT (ADL A8, „Odgovara jedno mesto"),
@@ -2999,7 +3024,7 @@ class VerificationWriteApi {
 	/** One queue row with whatever holds it, as one reading of one moment. */
 	private record Item(long id, String queue, String rightCode, String state, Long competitorId,
 			Long photoId, Long teamProposalId, Long commentSubmissionId, Long resultSubmissionId,
-			String body, HoldingAnItem.Hold hold) {
+			String body, HoldingAnItem.Hold hold, Long teamId) {
 	}
 
 	/** What a member asked for, in the shape an approval copies across. */

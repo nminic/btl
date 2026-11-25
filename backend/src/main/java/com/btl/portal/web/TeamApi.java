@@ -417,12 +417,12 @@ import java.util.stream.Collectors;
  * square of nothing; that is what {@code aTeamAnswersWithBothHalvesOfItsMarkOrNeither}
  * now refuses.
  *
- * <p><b>What this does NOT give a team, named rather than left to be found:</b> a way
- * to have a mark at all. {@code team_proposal.logo_id} is not carried over when a
- * moderator approves a proposal (ADL, 15.08.2026: „Nista od timske slike ne prezivljava
- * odobravanje predloga, do F5") and {@link TeamWriteApi} collects no picture, so the
- * only teams that answer with an address are the ones the league's own data gave one.
- * The field has a home here; filling it is F5 and somebody else's increment.
+ * <p><b>Where the logo comes from</b> (owner, PDL 25.11.2026, „Urednik tima postavlja znak tima
+ * slikom”): the team's editor sends one and a moderator approves it, or the administration sets it at
+ * once, both through {@link TeamLogoApi}. A logo that WAITS is never answered here: it is not a public
+ * holder's (ADL A60), and its editor reads it at {@code GET /api/teams/{id}/own-logo}. A proposal of a
+ * new team still carries no logo (owner, 22.09.2026, kept on 25.11.2026), so {@code team_proposal.logo_id}
+ * is not carried over when one is approved.
  *
  * <p><b>The three numbers are answered under the portal's names and not the
  * schema's, and that is a boundary rather than an oversight.</b> V21 renamed the
@@ -547,6 +547,22 @@ class TeamApi {
 					+ " where longest.team_id = t.id"
 					+ " order by longest.season_from, longest.member_number"
 					+ " limit 1))";
+
+	/**
+	 * WHETHER THIS MEMBER ADMINISTERS THIS TEAM, asked of the two fragments above and of nothing else, so
+	 * every door that asks it asks the one rule: {@link TeamWriteApi} for a change and for deleting the team,
+	 * and {@link TeamLogoApi} and {@link PhotoApi} for the team's logo. False for a team nobody administers
+	 * and for a team that is not there, which is the same 404 to the caller (ADL A8).
+	 */
+	static boolean administers(JdbcClient db, long me, long team, ZonedDateTime now) {
+		return db.sql("with standing as (" + whoStandsInATeam(now) + ")"
+						+ " select coalesce(" + WHO_ADMINISTERS_IT + " = ?, false)"
+						+ " from team t where t.id = ?")
+				.params(me, team)
+				.query(Boolean.class)
+				.optional()
+				.orElse(false);
+	}
 
 	private final JdbcClient db;
 

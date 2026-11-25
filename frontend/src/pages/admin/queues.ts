@@ -259,6 +259,11 @@ export function returned(queue: Queue, item: { kind: ItemKind }): string | null 
     return 'verification.teamChangeReturned'
   }
 
+  /* And a third since 25.11.2026: a team's logo, sent by the member who runs the team (V112). */
+  if (queue.id === 'teams' && item.kind === 'teamLogo') {
+    return 'verification.teamLogoReturned'
+  }
+
   /* The comments are deleted rather than returned, and nothing is sent
      (PDL P22): a comment is not work to be improved. */
   return queue.returnedKey ?? null

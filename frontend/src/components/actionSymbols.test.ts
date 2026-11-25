@@ -236,6 +236,11 @@ const STAYS_A_WORD = new Map([
   ['leagueMark.save', FORM],
   /* „Sačuvaj logo", the button of the box that sends a sponsor's logo (24.11.2026), the twin of the one above. */
   ['sponsorLogo.save', FORM],
+  /* The two buttons of the boxes of a team's logo (PDL 25.11.2026, „Urednik tima postavlja znak tima slikom”): the
+     editor's sends the box it stands under for approval, as `picture.send` does, and the administration's saves the
+     box it stands under, as `leagueMark.save` does. */
+  ['teamLogo.send', FORM],
+  ['teamLogo.save', FORM],
   /* The administration's buttons under the picture and the words of a member (PDL 06.11.2026): each saves
      the box it stands under, the same kind of button as `picture.send` and `bio.send` on his own card. */
   ['theirBoxes.pictureSave', FORM],

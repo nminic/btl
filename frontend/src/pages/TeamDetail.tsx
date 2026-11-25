@@ -4,6 +4,7 @@ import { PageMeta } from '../app/PageMeta'
 import { CategoryDonut } from '../components/CategoryDonut'
 import { Resource } from '../components/Resource'
 import { SeasonPicker } from '../components/SeasonPicker'
+import { TeamMark } from '../components/TeamMark'
 import { offeredSeason, useSeason } from '../components/season'
 import { useToday } from '../clock/useClock'
 import { Counters } from './home/Counters'
@@ -345,7 +346,14 @@ export function TeamDetail() {
                 >
                   {({ controls, said }) => (
                     <div className="profile__title rankings--tooled">
-                      <h1 className="profile__name">{team.name}</h1>
+                      {/* THE TEAM'S LOGO IN THE HEAD OF ITS PAGE, in its white ring, or its initials (owner,
+                          31.07.2026, „Tim ima svoju stranu sa logom”; drawn since the day a team can set one,
+                          PDL 25.11.2026). Hidden from a reader, as in the table of teams: the name beside it
+                          is the thing to read. */}
+                      <h1 className="profile__name">
+                        <TeamMark team={team} />
+                        {team.name}
+                      </h1>
                       <div className="rankings__head-tool">
                         {controls}
                         {/* The way into the team's own data, and only for whoever

@@ -157,10 +157,10 @@ import java.util.Optional;
  * key, and since {@link TeamApi} began answering a team's digest beside the three
  * fractions of its crop (21.09.2026). Left standing it would read as an instruction to
  * the next reader to take those back out. What is unchanged is the decision this entry
- * exists for: nothing of a team's picture survives a moderator's approval of a proposal,
- * to F5 (ADL, 15.08.2026, „Nista od timske slike ne prezivljava odobravanje predloga, do
- * F5"), and {@link RegistrationApi} names the receiving half as the same boundary for the
- * member's own photograph. The column is nullable, so a proposal without one is a whole
+ * exists for: a proposal of a new team carries no logo (owner, 22.09.2026, „znak tima izlazi
+ * sa ekrana dok ruta ne ume da ga primi”, kept on 25.11.2026: „Predlog novog tima i dalje nema
+ * polje za logo; osnivač ga postavlja posle odobrenja, kao urednik”). Since that day the logo
+ * is sent by the team's editor once the team exists ({@link TeamLogoApi}), which takes a file. The column is nullable, so a proposal without one is a whole
  * row and not a half filled one, and the screen draws initials for a team with no mark
  * ({@link TeamApi}).
  * <li><b>A town out of the world codebook.</b> V11 lets a team's town be either a row of
@@ -1029,13 +1029,7 @@ class TeamWriteApi {
 			return false;
 		}
 
-		return db.sql("with standing as (" + TeamApi.whoStandsInATeam(now) + ")"
-						+ " select coalesce(" + TeamApi.WHO_ADMINISTERS_IT + " = ?, false)"
-						+ " from team t where t.id = ?")
-				.params(me, team)
-				.query(Boolean.class)
-				.optional()
-				.orElse(false);
+		return TeamApi.administers(db, me, team, now);
 	}
 
 	/**

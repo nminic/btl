@@ -628,6 +628,14 @@ class KeysAndIndexesTest extends DatabaseTest {
 					"one picture of one member waits for a moderator at a time; the complement of the"
 							+ " text index above, told apart by photo_id, and a partial index for the"
 							+ " same reason"),
+			/* V112. A team's logo waits on the teams tab (owner, PDL 25.11.2026, „Urednik tima postavlja znak tima
+			   slikom”): the end of verification_team_fk, which the deletion of a team cascades through, and the
+			   owner's „Ponovno slanje pregazi red koji čeka, ne pravi drugi” for a team's logo, said by the
+			   database under the turn TeamLogoApi takes on the team's row. */
+			new Index("verification_team_idx", "the team a logo waits for, and the other end of verification_team_fk"),
+			new Index("verification_one_logo_waits_per_team",
+					"one logo of one team waits for a moderator at a time; a partial index for the reason of"
+							+ " the two above"),
 			new Index("bank_statement_loaded_by_idx",
 					"the other end of bank_statement_loaded_by_fk, which a deleted account empties"),
 			new Index("bank_statement_line_payment_idx",

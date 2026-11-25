@@ -528,6 +528,15 @@ class RightsAtTheDoorTest {
 					   which is a question about where bytes come from and not about who may
 					   have them. See `MePhotoApi.mine` and `PhotoApi.mineThatWaits`. */
 					"GET /api/me/photo", "GET /api/me/photo/{digest}",
+					/* AND A TEAM'S LOGO BY THE MEMBER WHO RUNS THE TEAM, ADDED 25.11.2026 (owner, PDL „Urednik tima
+					   postavlja znak tima slikom”). Here for `POST /api/teams/{id}/changes`'s reason: the one they
+					   exist for is the team's editor, which no box anybody could tick says, so what decides is the
+					   session weighed against the roster inside the handler (`TeamApi.administers`), and everybody
+					   else, the administration included, is answered 404 (ADL A8). The bytes of the logo that waits
+					   live in `PhotoApi` for the reason the two lines above give. See `TeamLogoApi` and
+					   `PhotoApi.teamLogoThatWaits`. */
+					"POST /api/teams/{id}/own-logo", "GET /api/teams/{id}/own-logo", "DELETE /api/teams/{id}/own-logo",
+					"GET /api/teams/own-logo/{digest}",
 					"POST /api/verification/{id}/hold", "DELETE /api/verification/{id}/hold",
 					"POST /api/verification/{id}/decision",
 					/* AND THE PICTURE A QUEUE ROW IS ABOUT, ADDED 27.09.2026 WITH B131. Here
@@ -1353,7 +1362,11 @@ class RightsAtTheDoorTest {
 						"MemberCategoryApi#choose is a write with no required body and no typed variable",
 						/* 24.11.2026, V111: a sponsor's logo is sent as multipart, as a league's mark is. Its door is measured
 						   by `SponsorLogoApiTest`, where a moderator over the leagues and a member are answered 404. */
-						"SponsorLogoApi#setTheLogo is not the handler the dispatcher gives the request the sweeps send");
+						"SponsorLogoApi#setTheLogo is not the handler the dispatcher gives the request the sweeps send",
+						/* 25.11.2026, V112: a team's logo set by the administration is sent as multipart, as a league's mark
+						   is. Its door is measured by `TeamLogoApiTest`, where a moderator over the teams' queue, a moderator
+						   over the leagues and the team's own editor are answered 404. */
+						"TeamLogoApi#setTheLogo is not the handler the dispatcher gives the request the sweeps send");
 	}
 
 	/**
