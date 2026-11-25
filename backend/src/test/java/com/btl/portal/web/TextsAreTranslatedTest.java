@@ -406,6 +406,36 @@ class TextsAreTranslatedTest {
 		assertThat(service.asked.get(0).texts()).containsExactly("Ovo je dug tekst");
 	}
 
+	/**
+	 * A TEXT LONGER THAN THE SERVICE TAKES IN ONE REQUEST IS NEVER SENT, and the rest are: no form of the portal
+	 * writes one (the description of an event is at most 600 characters), and the service would refuse it whole.
+	 */
+	@Test
+	void aTextLongerThanOneRequestIsNeverSent() throws Exception {
+		event("prevod-preveliki", "a".repeat(Translator.AT_MOST_IN_ONE_REQUEST / Translator.INTO.size() + 1));
+		event("prevod-obican", "Obican");
+
+		ran(job(10));
+
+		assertThat(service.textsAsked()).containsExactly("Obican");
+	}
+
+	/**
+	 * ONE TEXT THE DATABASE WILL NOT TAKE IS THAT TEXT'S AND NOT THE PASS'S: the others of the same answer are
+	 * still written, and that one is sent again by the next pass.
+	 */
+	@Test
+	void oneTranslationTheDatabaseRefusesDoesNotStopTheOthers() throws Exception {
+		long odd = event("prevod-cudan", "Cudan");
+		long mine = event("prevod-obicni", "Obicni");
+		service.heardAs.put("Cudan", "not a code");
+
+		ran(job());
+
+		assertThat(translationsOf(odd)).isEmpty();
+		assertThat(translationsOf(mine)).containsKeys("en machine", "sr machine");
+	}
+
 	/** An event deleted while its request was on its way gets nothing, and the others still get theirs. */
 	@Test
 	void anEventDeletedWhileItWasBeingTranslatedGetsNothing() throws Exception {

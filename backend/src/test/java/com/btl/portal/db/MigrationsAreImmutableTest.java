@@ -943,7 +943,14 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			/* V111. The league keeps its sponsors (owner, PDL 24.11.2026, „Strana za upravljanje sponzorima u
 			   Administraciji → Podaci → Sponzori”): the table `sponsor`, the right `entity:sponsors` and V54's rule
 			   taught the sixth holder. Pinned last, once the file was final (CLAUDE.md, section 9). */
-			new Applied("111", "V111__the_league_keeps_its_sponsors.sql", 859302859));
+			new Applied("111", "V111__the_league_keeps_its_sponsors.sql", 859302859),
+
+			/* V112. A text a visitor reads is translated by a machine (owner, PDL P18, 25.11.2026, „Automatski prevod
+			   sadržaja koji posetilac vidi"): the tables `text_translation` and `text_translation_asked`, keyed today by
+			   the event and nothing else. Two tables made and none touched, so no row standing refuses it
+			   (TextTranslationCarriedOverTest). 112 and no other: main stood at V111 when it was written.
+			   Pinned last, once the file was final (CLAUDE.md, section 9). */
+			new Applied("112", "V112__a_text_a_visitor_reads_is_translated_by_a_machine.sql", 1863875101));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {

@@ -339,6 +339,14 @@ class KeysAndIndexesTest extends DatabaseTest {
 			new Key("sponsor_pk", false, "a surrogate key nothing outside the portal sees"),
 			new Key("sponsor_position_unique", false,
 					"the manual order of the strip, moved one swap at a time through a free place, never a range"),
+			/* V112. A translation and the stamp of when a text was sent are looked up by what they translate, and
+			   neither holds an order: nothing is ever moved along a range of them. */
+			new Key("text_translation_pk", false, "a surrogate key nothing outside the portal sees"),
+			new Key("text_translation_once", false,
+					"one translation per thing, field, language and origin, looked up and never counted"),
+			new Key("text_translation_asked_pk", false, "a surrogate key nothing outside the portal sees"),
+			new Key("text_translation_asked_once", false,
+					"one stamp per thing and field, replaced each time the text is sent, never counted"),
 			/* V18. Nijedan se ne odlaze: sesija se trazi po otisku na svakom zahtevu, pa se
 			   sudar mora znati odmah; a pravo u matrici je jedan red i nema sta da ceka. */
 			new Key("account_session_pk", false, "one session, looked up by its own number"),

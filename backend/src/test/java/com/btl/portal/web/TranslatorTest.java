@@ -157,6 +157,17 @@ class TranslatorTest {
 						.doesNotContain(ATranslatorOfItsOwn.KEY).doesNotContain("Kroz grad"));
 	}
 
+	/** What is logged of a refusal is one line of the log, however long the service's answer. */
+	@Test
+	void aLongRefusalIsLoggedAsOneLine() throws Exception {
+		service.status = 400;
+		service.refusal = "{\"error\":\"" + "x".repeat(1000) + "\"}";
+
+		List<ILoggingEvent> heard = heardWhileGetting(() -> answered(translator(), List.of("Kroz grad")));
+
+		assertThat(heard.get(0).getFormattedMessage()).endsWith("...").hasSizeLessThan(400);
+	}
+
 	/** A service that takes longer than the term is nothing. */
 	@Test
 	void aServiceThatTakesTooLongIsNothing() throws Exception {
@@ -194,6 +205,8 @@ class TranslatorTest {
 			"[{\"translations\":[{\"text\":\"EN\",\"to\":\"en\"},{\"text\":\"SR\",\"to\":\"sr-Latn\"}]}]",
 			"[{\"detectedLanguage\":{\"language\":\"sr-Latn\"},\"translations\":[{\"text\":\"EN\",\"to\":\"en\"},"
 					+ "{\"text\":\"SR\",\"to\":\"sr-Cyrl\"}]}]",
+			"[{\"detectedLanguage\":{\"language\":\"sr-Latn\"},\"translations\":[{\"text\":\"EN\",\"to\":\"en\"},"
+					+ "{\"text\":7,\"to\":\"sr-Latn\"}]}]",
 			"[{\"detectedLanguage\":{\"language\":\"sr-Latn\"},\"translations\":[{\"text\":\"EN\",\"to\":\"en\"},"
 					+ "{\"text\":\"SR\",\"to\":\"sr-Latn\"}]},{\"detectedLanguage\":{\"language\":\"en\"},"
 					+ "\"translations\":[{\"text\":\"EN\",\"to\":\"en\"},{\"text\":\"SR\",\"to\":\"sr-Latn\"}]}]"})
