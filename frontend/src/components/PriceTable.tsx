@@ -1,7 +1,9 @@
+import { MachineNote } from './MachineNote'
 import { Resource } from './Resource'
 import { A_LEVEL, A_PERIOD, pricedInBoth, ranksByPeriod, windowOf } from '../data/priceList'
 import type { Price } from '../data/types'
-import { usePricing } from '../data/useResource'
+import { shownOr } from '../data/shownText'
+import { usePricingInTheReadersLanguage } from '../data/useResource'
 import { money } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 /* The sheets this table's own classes come from, and both are needed. `table`
@@ -78,7 +80,9 @@ function ranks(row: Price, say: (key: string) => string): string {
 
 export function PriceTable() {
   const { t, locale } = useI18n()
-  const state = usePricing()
+  /* In the language of the address, so that each row says what that reader is shown of its name (owner, PDL P18,
+     25.11.2026, „Automatski prevod sadržaja koji posetilac vidi”). */
+  const state = usePricingInTheReadersLanguage()
 
   /* `inline`, because this is a part of a page rather than a page: the rulebook
      around it is already drawn, and a sheet over the whole screen while the prices
@@ -112,15 +116,22 @@ export function PriceTable() {
                 </tr>
               </thead>
               <tbody>
-                {rows.map((row) => (
+                {rows.map((row) => {
+                  const said = shownOr(row.label, row.labelShown)
+
+                  return (
                   <tr key={row.key}>
-                    <td>{row.label}</td>
+                    <td>
+                      <span lang={said.language ?? undefined}>{said.text}</span>
+                      <MachineNote shown={said} inline />
+                    </td>
                     <td>{windowOf(row) ?? t('pricing.everyPayment')}</td>
                     <td>{money(row.eur, locale)}</td>
                     <td>{money(row.rsd, locale)}</td>
                     <td>{ranks(row, t)}</td>
                   </tr>
-                ))}
+                  )
+                })}
               </tbody>
             </table>
           </div>

@@ -1,11 +1,15 @@
 package com.btl.portal.web;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 
 /**
  * THE LEAGUES, AND WHICH RACES COUNT TOWARDS EACH.
@@ -78,10 +82,19 @@ class LeagueApi {
 	 *                 calendar (V109, owner PDL 24.11.2026, „Istakni događaje"). Answered so the form of
 	 *                 the league opens with the box as it stands; what it does to an event is worked
 	 *                 out by {@link CalendarApi} on every read and never written onto the event
+	 * @param rules    the rules AS THEY WERE WRITTEN, in every answer and every language: the form of the league
+	 *                 edits them, so they are never a translation
+	 * @param prizes   the prizes as written, for the same reason
+	 * @param rulesShown  what a reader of the language asked for is shown of the rules (TranslatedText#shown), and
+	 *                 only in an answer asked for in a language; the answer with no {@code lang} is the answer it
+	 *                 always was, field for field (owner, PDL P18, 25.11.2026)
+	 * @param prizesShown the same of the prizes
 	 */
 	record League(long id, String slug, String name, int season, String rules, String prizes,
 			List<Long> raceIds, List<Long> eventIds, String logo, Crop crop, String smallLogo,
-			boolean highlightsEvents) {
+			boolean highlightsEvents,
+			@JsonInclude(JsonInclude.Include.NON_NULL) TranslatedText.Shown rulesShown,
+			@JsonInclude(JsonInclude.Include.NON_NULL) TranslatedText.Shown prizesShown) {
 	}
 
 	/**
@@ -94,9 +107,21 @@ class LeagueApi {
 	/** The address a picture is asked for at, followed by its digest (`PhotoApi`). */
 	private static final String A_PICTURE_IS_ASKED_FOR_AT = "/api/photos/";
 
+	/**
+	 * @param lang the reader's language, absent for the texts as they were written and nothing else. A value not
+	 *             shaped like a language tag is refused with 400 and no body, as {@code PageApi} refuses it.
+	 */
 	@GetMapping("/api/leagues")
-	List<League> leagues() {
-		return db.sql("select l.id, l.slug, l.name, l.season, l.rules, l.prizes,"
+	ResponseEntity<List<League>> leagues(
+			@RequestParam(name = TranslatedText.THE_LANGUAGE_ASKED_FOR, required = false) String lang) {
+		if (TranslatedText.isMalformed(lang)) {
+			return ResponseEntity.badRequest().build();
+		}
+
+		WhatIsTranslated rules = WhatIsTranslated.LEAGUE_RULES;
+		WhatIsTranslated prizes = WhatIsTranslated.LEAGUE_PRIZES;
+
+		return ResponseEntity.ok(db.sql("select l.id, l.slug, l.name, l.season, l.rules, l.prizes,"
 						/* Gathered in the database rather than in a loop here: `array_agg` over
 						   the join, ordered by the day the race is RUN - which is not always the
 						   day of its event, because one event may run over more than one morning
@@ -125,11 +150,14 @@ class LeagueApi {
 						+ " ), '{}') as event_ids,"
 						+ " mark.digest, mark.crop_x, mark.crop_y, mark.crop_diameter,"
 						+ " l.highlights_events"
+						+ (lang == null ? "" : ", " + rules.joinedColumns() + ", " + prizes.joinedColumns())
 						+ " from league l"
 						/* Left, because a league with no mark is an ordinary league and not one
 						   missing from the list, the same reason `TeamApi` gives. */
 						+ " left join photo mark on mark.id = l.logo_id"
+						+ (lang == null ? "" : rules.joinedOver("l") + prizes.joinedOver("l"))
 						+ " order by l.season, l.id")
+				.params(lang == null ? Map.<String, Object>of() : Map.<String, Object>of("language", lang))
 				.query((row, one) -> {
 					/* Every column of `photo` is NOT NULL, so the digest is null exactly when no
 					   picture joined, and the mark, its circle and its small one leave together or
@@ -147,8 +175,10 @@ class LeagueApi {
 							mark == null ? null
 									: PhotoApi.addressOfTheSmall(mark, row.getBigDecimal(10),
 											row.getBigDecimal(11), row.getBigDecimal(12)),
-							row.getBoolean(13));
+							row.getBoolean(13),
+							TranslatedText.read(row, 14, row.getString(5), lang),
+							TranslatedText.read(row, 17, row.getString(6), lang));
 				})
-				.list();
+				.list());
 	}
 }

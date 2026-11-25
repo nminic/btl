@@ -33,6 +33,9 @@ let results: ResourceState<Result[]> = { status: 'loading' }
 vi.mock('../../data/useResource', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../data/useResource')>()),
   useComments: (): ResourceState<EventComment[]> => comments,
+  /* The list under an event reads the comments in the language of the address since 25.11.2026 (PDL P18), and this
+     case is about the state the list is in, not about which language it was asked in. */
+  useCommentsInTheReadersLanguage: (): ResourceState<EventComment[]> => comments,
   useResults: (): ResourceState<Result[]> => results,
 }))
 

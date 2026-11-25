@@ -740,7 +740,7 @@ describe('a ducat that belongs to one month rather than to all of them', () => {
         return new Response(JSON.stringify(held), { status: 200 })
       }
 
-      return asked.endsWith('/api/ducats')
+      return asked.replace(/\?lang=[a-z]+$/, '').endsWith('/api/ducats')
         ? new Response(JSON.stringify([family]), { status: 200 })
         : real(input)
     })
@@ -912,7 +912,7 @@ describe('a wall of ducats that grows as it is read', () => {
         return new Response(JSON.stringify(another), { status: 200 })
       }
 
-      return asked.endsWith('/api/ducats')
+      return asked.replace(/\?lang=[a-z]+$/, '').endsWith('/api/ducats')
         ? new Response(JSON.stringify(familiesWithAnother), { status: 200 })
         : real(input)
     })

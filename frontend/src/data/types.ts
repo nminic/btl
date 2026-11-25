@@ -427,6 +427,13 @@ export type Competitor = {
    * square into it, and a screen that spelt it again would be a second home for that.
    */
   smallPhoto: string | null
+  /**
+   * WHAT A READER OF THE LANGUAGE ASKED FOR IS SHOWN OF THE BIOGRAPHY, and only in an answer asked for in a language
+   * (owner, PDL P18, 25.11.2026, „Automatski prevod sadržaja koji posetilac vidi"): absent from the answer with
+   * no `lang`, which is what every other screen reads. `bio` above stays what was written, in every answer,
+   * because what the member wrote is what his own form edits; absent as well where the biography is withheld from this reader.
+   */
+  bioShown?: ShownText
 }
 
 /** One season a member was a member of, on that season's own basis (`MembersApi.Season`). */
@@ -933,6 +940,13 @@ export type Team = {
    * season rule reads it the same way (`inTeamIn`).
    */
   alsoInTheTeam: { memberNumber: string; since: number }[]
+  /**
+   * WHAT A READER OF THE LANGUAGE ASKED FOR IS SHOWN OF THE DESCRIPTION, and only in an answer asked for in a language
+   * (owner, PDL P18, 25.11.2026, „Automatski prevod sadržaja koji posetilac vidi"): absent from the answer with
+   * no `lang`, which is what every other screen reads. `bio` above stays what was written, in every answer,
+   * because the team's own form edits it.
+   */
+  bioShown?: ShownText
 }
 
 /**
@@ -992,6 +1006,20 @@ export type League = {
    * form; what it does to an event the server works out and serves as `BtlEvent.highlighted`.
    */
   highlightsEvents: boolean
+  /**
+   * WHAT A READER OF THE LANGUAGE ASKED FOR IS SHOWN OF THE RULES, and only in an answer asked for in a language
+   * (owner, PDL P18, 25.11.2026, „Automatski prevod sadržaja koji posetilac vidi"): absent from the answer with
+   * no `lang`, which is what every other screen reads. `rules` above stays what was written, in every answer,
+   * because the form of the league edits it.
+   */
+  rulesShown?: ShownText
+  /**
+   * WHAT A READER OF THE LANGUAGE ASKED FOR IS SHOWN OF THE PRIZES, and only in an answer asked for in a language
+   * (owner, PDL P18, 25.11.2026, „Automatski prevod sadržaja koji posetilac vidi"): absent from the answer with
+   * no `lang`, which is what every other screen reads. `prizes` above stays what was written, in every answer,
+   * because the form of the league edits it.
+   */
+  prizesShown?: ShownText
 }
 
 /**
@@ -1047,6 +1075,13 @@ export type Price = {
   /** Whether what this buys carries a place in the standing, and null on every kind but
    *  a period - a level, a fee and a referral do not answer the question. */
   ranking: boolean | null
+  /**
+   * WHAT A READER OF THE LANGUAGE ASKED FOR IS SHOWN OF THE LABEL OF THE ROW, and only in an answer asked for in a language
+   * (owner, PDL P18, 25.11.2026, „Automatski prevod sadržaja koji posetilac vidi"): absent from the answer with
+   * no `lang`, which is what every other screen reads. `label` above stays what was written, in every answer,
+   * because the form of the price list edits it.
+   */
+  labelShown?: ShownText
 }
 
 /**
@@ -1206,6 +1241,13 @@ export type EventComment = {
   /** Empty where the member rated the event and said nothing, which the form
    *  allows on purpose (RateEvent.tsx). */
   body: string
+  /**
+   * WHAT A READER OF THE LANGUAGE ASKED FOR IS SHOWN OF THE COMMENT, and only in an answer asked for in a language
+   * (owner, PDL P18, 25.11.2026, „Automatski prevod sadržaja koji posetilac vidi"): absent from the answer with
+   * no `lang`, which is what every other screen reads. `body` above stays what was written, in every answer,
+   * because the member's own form edits it.
+   */
+  bodyShown?: ShownText
 }
 
 /* The three marks an event is rated on (PDL P6). The names are the owner's, with

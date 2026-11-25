@@ -238,6 +238,24 @@ class NoTextHoldsAZeroTest {
 			Map.entry("CalendarApi#events:lang (parameter)",
 					"matched against the shape of a language tag (TranslatedText.A_LANGUAGE_TAG), which has no room"
 							+ " for a zero, as PageApi's is"),
+			Map.entry("LeagueApi#leagues:lang (parameter)",
+					"matched against the shape of a language tag (TranslatedText.isMalformed), which has no room for a"
+							+ " zero, as CalendarApi's is"),
+			Map.entry("PricingApi#pricing:lang (parameter)",
+					"matched against the shape of a language tag (TranslatedText.isMalformed), which has no room for a"
+							+ " zero, as CalendarApi's is"),
+			Map.entry("CompetitorApi#competitors:lang (parameter)",
+					"matched against the shape of a language tag (TranslatedText.isMalformed), which has no room for a"
+							+ " zero, as CalendarApi's is"),
+			Map.entry("TeamApi#teams:lang (parameter)",
+					"matched against the shape of a language tag (TranslatedText.isMalformed), which has no room for a"
+							+ " zero, as CalendarApi's is"),
+			Map.entry("CommentApi#comments:lang (parameter)",
+					"matched against the shape of a language tag (TranslatedText.isMalformed), which has no room for a"
+							+ " zero, as CalendarApi's is"),
+			Map.entry("DucatApi#ducats:lang (parameter)",
+					"matched against the shape of a language tag (TranslatedText.isMalformed), which has no room for a"
+							+ " zero, as CalendarApi's is"),
 			Map.entry("PaymentsDueApi#due:search (parameter)",
 					"REFUSED: it asks NoTextHoldsAZero.holdsAZero itself and answers 400"),
 			Map.entry("MePasswordApi#change:" + SessionCookie.NAME + " (cookie)",

@@ -2,15 +2,18 @@ package com.btl.portal.web;
 
 import com.btl.portal.domain.season.SeasonClock;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.ZonedDateTime;
 import java.util.List;
+import java.util.Map;
 
 /**
  * WHO RUNS IN THE LEAGUE, and only what the league publishes about them.
@@ -546,7 +549,8 @@ class CompetitorApi {
 			List<CategoryOfASeason.OfASeason> categories, int firstSeason, String bio, Long teamId, Integer teamSince, boolean profileHidden,
 			String birthdayShown, String photo, Crop crop, String smallPhoto,
 			@JsonInclude(JsonInclude.Include.NON_NULL) String membershipBasis,
-			@JsonInclude(JsonInclude.Include.NON_NULL) Integer membershipSeason) {
+			@JsonInclude(JsonInclude.Include.NON_NULL) Integer membershipSeason,
+			@JsonInclude(JsonInclude.Include.NON_NULL) TranslatedText.Shown bioShown) {
 	}
 
 	/**
@@ -586,7 +590,19 @@ class CompetitorApi {
 	 *               compares them text for text, with nothing named as excused.
 	 */
 	@GetMapping("/api/competitors")
-	List<Competitor> competitors(@AuthenticationPrincipal WhoIsAsking.Member member) {
+	ResponseEntity<List<Competitor>> competitors(@AuthenticationPrincipal WhoIsAsking.Member member,
+			@RequestParam(name = TranslatedText.THE_LANGUAGE_ASKED_FOR, required = false) String lang) {
+		/* A LANGUAGE ASKED FOR is a language tag or it is refused, with 400 and no body, as `PageApi` refuses it
+		   (owner, PDL P18, 25.11.2026). Asked, every member says what that reader is shown of his biography
+		   (`bioShown`), and only that: `bio` stays what he wrote, and is withheld by the rule below exactly as it was.
+		   A biography withheld from this reader is withheld from its translation as well, because what is shown is
+		   made of what is read. */
+		if (TranslatedText.isMalformed(lang)) {
+			return ResponseEntity.badRequest().build();
+		}
+
+		WhatIsTranslated bio = WhatIsTranslated.COMPETITOR_BIO;
+
 		/* WHO IS ASKING IS TWO QUESTIONS HERE, AND THE FIRST IS ABOUT THE BASIS.
 
 		   Whether the caller is the administration over the members decides one field of the
@@ -641,7 +657,7 @@ class CompetitorApi {
 		   apart, and the owner's decision of 18.10.2026 is about exactly that stretch. */
 		int sold = SeasonClock.seasonBeingPaidFor(now);
 
-		return db.sql("select c.member_number, c.first_name, c.last_name, c.gender,"
+		return ResponseEntity.ok(db.sql("select c.member_number, c.first_name, c.last_name, c.gender,"
 						+ " coalesce(town.name, c.city) as city,"
 						+ " coalesce(town_country.code, typed_country.code) as country,"
 						+ " c.id, c.first_season,"
@@ -769,6 +785,9 @@ class CompetitorApi {
 						   below stays true: the year is still the LAST column read. */
 						+ " mine.digest, mine.crop_x, mine.crop_y, mine.crop_diameter,"
 						+ " c.birth_year"
+						/* AFTER THE YEAR, and only in an answer asked for in a language: the year of birth is still
+						   the last column the card reads, and the three below are the translation of the biography. */
+						+ (lang == null ? "" : ", " + bio.joinedColumns())
 						+ " from competitor c"
 						+ " left join place town on town.id = c.place_id"
 						+ " left join country town_country on town_country.id = town.country_id"
@@ -819,8 +838,10 @@ class CompetitorApi {
 						   here, chose this one over serving the flag: a member whose fee has
 						   lapsed is not on this list at all. Asked of `membership` at the one
 						   reading of the clock (`AMemberIsActive`). */
+						+ (lang == null ? "" : bio.joinedOver("c"))
 						+ " where " + AMemberIsActive.of("c.id", now)
 						+ " order by c.member_number")
+				.params(lang == null ? Map.<String, Object>of() : Map.<String, Object>of("language", lang))
 				.param("administration", administration)
 				.param("readsHiddenProfiles", readsHiddenProfiles)
 				.param("sold", sold)
@@ -863,8 +884,14 @@ class CompetitorApi {
 										row.getBigDecimal(18)),
 						/* The season of the basis is the season the join was pinned to, present
 						   exactly when the basis is, so it is withheld by the same `case`. */
-						basis, basis == null ? null : sold);
+						basis, basis == null ? null : sold,
+						TranslatedText.read(row, 20, row.getString(9), lang));
 				})
-				.list();
+				.list());
+	}
+
+	/** The members as they were written, in no language: what the portal's own code reads (CompetitorCards). */
+	List<Competitor> competitors(WhoIsAsking.Member member) {
+		return competitors(member, null).getBody();
 	}
 }

@@ -32,6 +32,7 @@ import type {
   Runner,
   SentRun,
   ServedMessage,
+  ShownText,
   SponsorEntered,
   StaticPage,
   Team,
@@ -595,7 +596,48 @@ export function useLive<T>(state: ResourceState<T[]>, entity: string, idField: k
   }, [state, gone, idField])
 }
 
-export const useDucats = () => useResource<DucatFamily[]>('ducats')
+/**
+ * THE DUCATS, IN THE LANGUAGE OF THE ADDRESS THE READER IS ON, with each of the five words a coin is made of (the
+ * name, the two legends, the woman's legend and what a run is counted in) replaced by what that reader is shown of it
+ * (`DucatApi.Ducat.nameShown` and the four beside it; owner, PDL P18, 25.11.2026, „Ja ih prevedem ručno").
+ *
+ * <p><b>Replaced here and not at every screen that draws a coin</b>, because the ducat is a value the rule reads
+ * (`ducatRule.ts`: its legends and its counted unit go into a sentence, a coin and a label) and every one of those
+ * would otherwise have to ask the same question. Nothing writes a ducat, so there is no form that edits the Serbian
+ * and could be handed an English one. The `lang` of the words is not needed: a hand translation is in the language
+ * of the address, and the Serbian is in the language of the address when the address is Serbian.
+ */
+export const useDucats = (): ResourceState<DucatFamily[]> => {
+  const { locale } = useI18n()
+  const state = useResource<ServedDucat[]>(THE_DUCATS, { language: locale })
+
+  return useMemo((): ResourceState<DucatFamily[]> => {
+    if (state.status !== 'ready') {
+      return state
+    }
+
+    return {
+      status: 'ready',
+      data: state.data.map((one) => ({
+        ...one,
+        name: one.nameShown?.text ?? one.name,
+        top: one.topShown?.text ?? one.top,
+        topFemale: one.topFemaleShown?.text ?? one.topFemale,
+        bottom: one.bottomShown?.text ?? one.bottom,
+        counted: one.countedShown?.text ?? one.counted,
+      })),
+    }
+  }, [state])
+}
+
+/** What `GET /api/ducats?lang=` answers: the family, and what the reader is shown of its five words. */
+type ServedDucat = DucatFamily & {
+  nameShown?: ShownText
+  topShown?: ShownText
+  topFemaleShown?: ShownText
+  bottomShown?: ShownText
+  countedShown?: ShownText
+}
 /**
  * What is published under an event: what the server holds, and nothing laid beside it.
  *
@@ -628,6 +670,20 @@ export const useComments = () =>
   useResource<EventComment[]>('comments', {
     revision: useSyncExternalStore(whileDrawingTheComments, theCommentsRevisionNow),
   })
+
+/**
+ * THE COMMENTS IN THE LANGUAGE OF THE ADDRESS THE READER IS ON (`EventComment.bodyShown`; owner, PDL P18,
+ * 25.11.2026), read again on the same occasions as `useComments` and read by the list under an event and nothing else:
+ * the mark beside the name and the form that edits a member's own comment keep the comments as they were written.
+ */
+export const useCommentsInTheReadersLanguage = () => {
+  const { locale } = useI18n()
+
+  return useResource<EventComment[]>('comments', {
+    language: locale,
+    revision: useSyncExternalStore(whileDrawingTheComments, theCommentsRevisionNow),
+  })
+}
 
 /** How many times the comments have changed on the server during this visit; see `theCommentsHaveChanged`. */
 let commentsRevision = 0
@@ -670,6 +726,17 @@ function theCommentsRevisionNow(): number {
 export const useCompetitors = (revision?: number) =>
   useResource<Competitor[]>('competitors', { revision })
 /**
+ * THE MEMBERS IN THE LANGUAGE OF THE ADDRESS THE READER IS ON, so that each says what that reader is shown of his
+ * biography (`Competitor.bioShown`; owner, PDL P18, 25.11.2026). **Read by the page of one member and by nothing
+ * else**: it is the one screen that draws a biography of somebody else, and every other screen keeps the answer
+ * with no language and the cache entry it always had.
+ */
+export const useCompetitorsInTheReadersLanguage = () => {
+  const { locale } = useI18n()
+
+  return useResource<Competitor[]>('competitors', { language: locale })
+}
+/**
  * Everybody ever given a member number, for the moderation of the members (`MembersApi`).
  *
  * @param revision bumped by that screen once a payment recorded on a row has gone through, so the row
@@ -709,6 +776,18 @@ export const useEventsInTheReadersLanguage = () => {
 export const useAttendance = (revision?: number) =>
   useResource<Attending[]>('attendance', { revision })
 export const useLeagues = () => useResource<League[]>('leagues')
+/**
+ * THE LEAGUES, IN THE LANGUAGE OF THE ADDRESS THE READER IS ON, so that each says what that reader is shown of its
+ * rules and its prizes (`League.rulesShown`, `prizesShown`; owner, PDL P18, 25.11.2026). **Read by the screen that
+ * draws those two texts and by nothing else**, the shape `useEventsInTheReadersLanguage` has and for its reason:
+ * every other screen keeps `useLeagues`, the answer with no language, and the form of a league edits the texts as
+ * they were written.
+ */
+export const useLeaguesInTheReadersLanguage = () => {
+  const { locale } = useI18n()
+
+  return useResource<League[]>(THE_LEAGUES, { language: locale })
+}
 export const useModerators = () => useResource<Moderator[]>('moderators')
 /**
  * THE WRITTEN PAGES, IN THE LANGUAGE OF THE ADDRESS THE READER IS ON.
@@ -783,6 +862,12 @@ export const useEnteredSponsors = (revision?: number) =>
  * was how the price list worked until 26.09.2026, and it never reached the server at all.
  */
 export const usePricing = () => useResource<Price[]>('pricing')
+/** THE PRICE LIST IN THE READER'S LANGUAGE (`Price.labelShown`), read by the table that publishes it and nothing else. */
+export const usePricingInTheReadersLanguage = () => {
+  const { locale } = useI18n()
+
+  return useResource<Price[]>(THE_PRICING, { language: locale })
+}
 /**
  * WHOSE MEMBERSHIP FOR THE SEASON IS NOT ACTIVE, worked out by the server on every read.
  *
@@ -839,11 +924,22 @@ export const useFrozenSeasons = () => useResource<FrozenSeason[]>('frozen-season
  *   passes none.
  */
 export const useTeams = (revision?: number) => useResource<Team[]>(THE_TEAMS, { revision })
+/** THE TEAMS IN THE READER'S LANGUAGE (`Team.bioShown`), read by the page of one team and nothing else. */
+export const useTeamsInTheReadersLanguage = () => {
+  const { locale } = useI18n()
+
+  return useResource<Team[]>(THE_TEAMS, { language: locale })
+}
 
 /* The name held apart from the call, because `teams` is also a namespace of `sr.json` and a call
    whose first word is a key of the dictionary followed by an object is read as a sentence being
    made (`i18n/valueInSentence.test.ts`). It is the resource's name and nothing more. */
 const THE_TEAMS: ResourceName = 'teams'
+/* And the three that join it since 25.11.2026, for the same reason: `ducats`, `leagues` and `pricing` are namespaces of
+   `sr.json` too, and each is read in a language by a call that would otherwise have been read as a sentence. */
+const THE_DUCATS: ResourceName = 'ducats'
+const THE_LEAGUES: ResourceName = 'leagues'
+const THE_PRICING: ResourceName = 'pricing'
 
 /**
  * WHOEVER THE INBOX IN THE CACHE WAS FETCHED FOR, kept beside the cache rather than

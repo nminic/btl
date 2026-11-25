@@ -276,7 +276,7 @@ function watchingEveryHeading(): { seen: () => string[]; stop: () => void } {
 
 describe.each([
   { screen: 'the profile', suffix: '', last: '/api/pairs' },
-  { screen: 'the page of awards', suffix: '/priznanja', last: '/api/ducats' },
+  { screen: 'the page of awards', suffix: '/priznanja', last: '/api/ducats?lang=sr' },
 ])('$screen of a hidden member, before the server has said who is reading', ({ suffix, last }) => {
   let server: ReturnType<typeof aServerThatHasNotSaidWho> | null = null
 
@@ -449,7 +449,7 @@ describe.each([
  */
 describe.each([
   { screen: 'the profile', suffix: '', last: '/api/pairs' },
-  { screen: 'the page of awards', suffix: '/priznanja', last: '/api/ducats' },
+  { screen: 'the page of awards', suffix: '/priznanja', last: '/api/ducats?lang=sr' },
 ])('$screen of a hidden member, with the clock stopped', ({ suffix, last }) => {
   let server: ReturnType<typeof aServerThatHasNotSaidWho> | null = null
 

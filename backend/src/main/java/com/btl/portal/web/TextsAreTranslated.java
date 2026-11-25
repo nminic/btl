@@ -2,6 +2,7 @@ package com.btl.portal.web;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -9,6 +10,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.sql.Timestamp;
+import java.time.Clock;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -61,14 +64,28 @@ class TextsAreTranslated {
 	private final Translator translator;
 	private final TransactionTemplate inOneTransaction;
 	private final int atMost;
+	private final Clock clock;
+	private final List<WhatIsTranslated> translated;
 
 	/** @param atMost how many characters of text one pass may send */
+	@Autowired
 	TextsAreTranslated(JdbcClient db, Translator translator, TransactionTemplate inOneTransaction,
-			@Value("${btl.translator.characters-per-pass:15000}") int atMost) {
+			@Value("${btl.translator.characters-per-pass:15000}") int atMost, Clock clock) {
+		this(db, translator, inOneTransaction, atMost, clock, WhatIsTranslated.sentToTheService());
+	}
+
+	/**
+	 * @param translated which kinds of text this pass reads: every one a machine translates in the portal, and a
+	 *                   narrower list in a case that measures one kind at a time
+	 */
+	TextsAreTranslated(JdbcClient db, Translator translator, TransactionTemplate inOneTransaction, int atMost,
+			Clock clock, List<WhatIsTranslated> translated) {
 		this.db = db;
 		this.translator = translator;
 		this.inOneTransaction = inOneTransaction;
 		this.atMost = atMost;
+		this.clock = clock;
+		this.translated = translated;
 	}
 
 	@Scheduled(fixedDelay = 5, initialDelay = 5, timeUnit = TimeUnit.MINUTES)
@@ -90,11 +107,15 @@ class TextsAreTranslated {
 			return Optional.empty();
 		}
 
-		for (WhatIsTranslated what : WhatIsTranslated.values()) {
-			db.sql(what.forgetting()).update();
+		/* ONE READING OF THE CLOCK for the whole pass, the shape every route has: a biography is served only to a member
+		   whose fee stands, and that is a question about a moment. */
+		ZonedDateTime now = ZonedDateTime.now(clock);
+
+		for (WhatIsTranslated what : translated) {
+			db.sql(what.forgetting(now)).update();
 		}
 
-		List<Waiting> sent = chosen();
+		List<Waiting> sent = chosen(now);
 
 		if (sent.isEmpty()) {
 			return Optional.empty();
@@ -123,11 +144,11 @@ class TextsAreTranslated {
 	 * than a whole pass goes alone if the service can take it in one request, so no text waits forever behind its
 	 * own length.
 	 */
-	private List<Waiting> chosen() {
+	private List<Waiting> chosen(ZonedDateTime now) {
 		List<Waiting> waiting = new ArrayList<>();
 
-		for (WhatIsTranslated what : WhatIsTranslated.values()) {
-			waiting.addAll(db.sql(what.waiting())
+		for (WhatIsTranslated what : translated) {
+			waiting.addAll(db.sql(what.waiting(now))
 					.query((row, one) -> new Waiting(what, row.getLong(1), row.getString(2), row.getString(3),
 							row.getTimestamp(4)))
 					.list());

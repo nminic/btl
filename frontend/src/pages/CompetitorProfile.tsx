@@ -26,11 +26,19 @@ import {
   totalsOf,
   pairsNow,
 } from '../data/derive'
-import type { Competitor, Gender, RaceCategory, RacingPair, Result, Team } from '../data/types'
-import { combineFour, combinePair, useCompetitors, usePairs, useTeams } from '../data/useResource'
+import type { Competitor, Gender, RaceCategory, RacingPair, Result, ShownText, Team } from '../data/types'
+import {
+  combineFour,
+  combinePair,
+  useCompetitorsInTheReadersLanguage,
+  usePairs,
+  useTeams,
+} from '../data/useResource'
 import { useHisResults, useHisUnscoredResults } from '../data/hisResults'
 import { formatDuration, formatNumber, formatPoints, formatShortDate } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
+import { MachineNote } from '../components/MachineNote'
+import { shownOr } from '../data/shownText'
 import { shortBio } from './profile/bio'
 import { ProfileTop } from './profile/ProfileHead'
 import { ALL_SEASONS, offeredSeason, useSeason } from '../components/season'
@@ -78,8 +86,21 @@ const AT_FIRST = 50
  * `profile.test.tsx` builds the disagreement by hand to keep the guard from being a
  * branch nothing checks (rule of 14.09.2026).
  */
-function Biography({ text, gender }: { text: string | null; gender: Gender }) {
+function Biography({
+  text,
+  shown,
+  gender,
+}: {
+  text: string | null
+  shown?: ShownText
+  gender: Gender
+}) {
   const { t } = useI18n()
+  /* WHAT THIS READER IS SHOWN OF IT, since 25.11.2026 (owner, PDL P18, „Automatski prevod sadržaja koji posetilac
+     vidi”): the translation into the language of the address or the words as written, marked with the language they
+     are really in and said to be the machine's where they are. `text` decides whether there is anything to show: a
+     biography withheld from this reader is null, and nothing is shown in its place. */
+  const said = shownOr(text ?? '', shown)
 
   return (
     <section className="profile__card profile__bio" aria-labelledby="profile-bio">
@@ -94,13 +115,16 @@ function Biography({ text, gender }: { text: string | null; gender: Gender }) {
           {t(gender === 'F' ? 'profile.bioEmptyFemale' : 'profile.bioEmpty')}
         </p>
       ) : (
-        shortBio(text)
-          .split(/\n{2,}/)
-          .map((paragraph) => (
-            <p className="profile__bio-text" key={paragraph}>
-              {paragraph}
-            </p>
-          ))
+        <>
+          {shortBio(said.text)
+            .split(/\n{2,}/)
+            .map((paragraph) => (
+              <p className="profile__bio-text" key={paragraph} lang={said.language ?? undefined}>
+                {paragraph}
+              </p>
+            ))}
+          <MachineNote shown={said} />
+        </>
       )}
     </section>
   )
@@ -263,7 +287,7 @@ function ProfileBody({
           `profile/ProfileHead.tsx` and `member/MyRacingPairs.tsx`). */}
 
       <div className="profile__row profile__row--bio">
-        <Biography text={competitor.bio} gender={competitor.gender} />
+        <Biography text={competitor.bio} shown={competitor.bioShown} gender={competitor.gender} />
 
         <section className="profile__card profile__card--donut">
           <CategoryDonut
@@ -500,7 +524,7 @@ function TheProfileOf({ memberNumber }: { memberNumber: string }) {
      the scored ones alone so that nothing which counts can ever meet an unscored result
      (`data/unscoredResults.ts`), and his own two addresses keep the same split. */
   const state = combinePair(
-    combineFour(useCompetitors(), useHisResults(memberNumber), useTeams(), usePairs()),
+    combineFour(useCompetitorsInTheReadersLanguage(), useHisResults(memberNumber), useTeams(), usePairs()),
     useHisUnscoredResults(memberNumber),
   )
 

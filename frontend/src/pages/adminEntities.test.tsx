@@ -2418,7 +2418,7 @@ describe('nothing is filtered off the list of competitions', () => {
 
     clearResourceCache()
     globalThis.fetch = (async (input: RequestInfo | URL) =>
-      String(input).endsWith('/api/leagues')
+      String(input).replace(/\?lang=[a-z]+$/, '').endsWith('/api/leagues')
         ? new Response(JSON.stringify(served), { status: 200 })
         : real(input))
 
