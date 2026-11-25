@@ -943,7 +943,13 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			/* V111. The league keeps its sponsors (owner, PDL 24.11.2026, „Strana za upravljanje sponzorima u
 			   Administraciji → Podaci → Sponzori”): the table `sponsor`, the right `entity:sponsors` and V54's rule
 			   taught the sixth holder. Pinned last, once the file was final (CLAUDE.md, section 9). */
-			new Applied("111", "V111__the_league_keeps_its_sponsors.sql", 859302859));
+			new Applied("111", "V111__the_league_keeps_its_sponsors.sql", 859302859),
+
+			/* V112. A team's logo waits in the teams queue (owner, PDL 25.11.2026, „Urednik tima postavlja znak tima
+			   slikom”): `verification.team_id`, its four rules and the index that keeps one logo of a team waiting.
+			   Every row standing comes out of it with no team (TeamLogoCarriedOverTest). Pinned last, once the file
+			   was final (CLAUDE.md, section 9). */
+			new Applied("112", "V112__a_team_logo_waits_in_the_teams_queue.sql", -708902578));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {

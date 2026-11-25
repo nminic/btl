@@ -121,6 +121,16 @@ class VerificationConstraintsTest extends DatabaseTest {
 	private static final String A_PROPOSAL =
 			"(select id from team_proposal where name = 'Probni predlog')";
 
+	/** The team V112 gives the teams tab to point at, for a logo waiting for it. */
+	private static final String A_TEAM = "(select id from team where slug = 'probni-tim-v112')";
+
+	/** A logo of a team waiting on a named tab, naming the team and the proposal given. */
+	private static String aLogo(String queue, String team, String proposal) {
+		return "insert into verification (queue, competitor_id, subject, body, photo_id, state, team_id,"
+				+ " team_proposal_id) values ('" + queue + "', " + A_MEMBER + ", 'Logo tima', '', " + A_PHOTO
+				+ ", 'waiting', " + team + ", " + proposal + ")";
+	}
+
 	/** The event V30 gives both new tables something to point at. */
 	private static final String AN_EVENT = "(select id from btl_event where slug = 'probni-dogadjaj-v30')";
 
@@ -185,6 +195,9 @@ class VerificationConstraintsTest extends DatabaseTest {
 				+ A_TOWN + ", null, null, null)").update();
 
 		db.sql(row("'teams', " + A_MEMBER + ", 'Zatecen red', '', null, 'waiting', null, null, null, null")).update();
+
+		db.sql("insert into team (slug, name, bio, link, place_id, first_season) values ('probni-tim-v112',"
+				+ " 'Probni tim', '', '', " + A_TOWN + ", 2027)").update();
 
 		/* An event for the table V30 adds to point at, and one waiting submission on it,
 		   for the three constraints V30 adds. */
@@ -349,6 +362,20 @@ class VerificationConstraintsTest extends DatabaseTest {
 						"insert into verification (queue, competitor_id, subject, body, photo_id, state)"
 								+ " select 'profiles', " + A_MEMBER + ", 'Naslov', '', " + A_PHOTO + ", 'waiting'"
 								+ " from generate_series(1, 2)"),
+
+				/* AND A TEAM'S LOGO, WHICH V112 ADDS (owner, PDL 25.11.2026, „Urednik tima postavlja znak tima
+				   slikom”): a team that is not there, a team named on a tab that does not judge teams, a team and a
+				   proposal on one row, a picture on the teams tab that names no team, and two logos of one team
+				   waiting at once. What the index lets stand beside a waiting logo is
+				   `oneLogoWaitsAndEverythingElseOfTheTeamMayStandBesideIt` below. */
+				Violation.of("verification_team_fk", aLogo("teams", "999999", "null")),
+				Violation.of("verification_only_the_teams_queue_carries_a_team", aLogo("profiles", A_TEAM, "null")),
+				Violation.of("verification_a_team_or_a_proposal", aLogo("teams", A_TEAM, A_PROPOSAL)),
+				Violation.of("verification_a_picture_of_the_teams_tab_names_its_team", aLogo("teams", "null", "null")),
+				Violation.of("verification_one_logo_waits_per_team",
+						"insert into verification (queue, competitor_id, subject, body, photo_id, state, team_id)"
+								+ " select 'teams', " + A_MEMBER + ", 'Logo tima', '', " + A_PHOTO + ", 'waiting', "
+								+ A_TEAM + " from generate_series(1, 2)"),
 
 				/* V30 gave the schedule tab the identical three shapes, off `schedule_proposal`
 				   (ADL A64 A2), until PDL P10a, 22.09.2026 took the tab and the table both away
@@ -526,8 +553,7 @@ class VerificationConstraintsTest extends DatabaseTest {
 						+ AN_INSTANT + ", " + AN_ACCOUNT + ", 'Moderator Probni', null"),
 				row("'profiles', " + A_MEMBER + ", 'Tekst', 'Odbijen tekst', null, 'rejected', "
 						+ AN_INSTANT + ", " + AN_ACCOUNT + ", 'Moderator Probni', 'Nije o trcanju'"),
-				row("'teams', " + A_MEMBER + ", 'Tim', '', " + A_PHOTO + ", 'waiting', null, null,"
-						+ " null, null"),
+				aLogo("teams", A_TEAM, "null"),
 				row("'profiles', " + anotherMember + ", 'Slika', '', " + A_PHOTO + ", 'waiting', null,"
 						+ " null, null, null"),
 				row("'profiles', null, 'Slika', '', " + A_PHOTO + ", 'waiting', null, null, null, null"),
@@ -544,6 +570,39 @@ class VerificationConstraintsTest extends DatabaseTest {
 						+ " refuses nothing it should")
 				.isInstanceOf(DataIntegrityViolationException.class)
 				.hasMessageContaining("verification_one_picture_waits_per_member");
+	}
+
+	/**
+	 * ONE LOGO OF ONE TEAM WAITS, AND WHAT IS BESIDE IT MAY STAND (V112): a change of the same team waiting on the
+	 * same tab with no picture (the term {@code photo_id is not null}), a decided logo of the team (the term
+	 * {@code state = 'waiting'}, which V9 makes one with the picture's), the editor's own portrait waiting on the
+	 * profiles tab (the term {@code queue = 'teams'}), and another team's logo (the key). It ends with the refusal
+	 * again, with every one of those standing.
+	 */
+	@Test
+	void oneLogoWaitsAndEverythingElseOfTheTeamMayStandBesideIt() {
+		db.sql("insert into team (slug, name, bio, link, place_id, first_season) values ('drugi-tim-v112',"
+				+ " 'Drugi tim', '', '', " + A_TOWN + ", 2027)").update();
+
+		assertThat(db.sql(aLogo("teams", A_TEAM, "null")).update()).as("the logo itself was refused").isOne();
+
+		List<String> beside = List.of(
+				"insert into verification (queue, competitor_id, subject, body, state, team_proposal_id)"
+						+ " values ('teams', " + A_MEMBER + ", 'Izmena', '', 'waiting', " + A_PROPOSAL + ")",
+				"insert into verification (queue, competitor_id, subject, body, state, decided_at, decided_by,"
+						+ " decided_by_name, reason, team_id) values ('teams', " + A_MEMBER + ", 'Logo tima', '',"
+						+ " 'rejected', " + AN_INSTANT + ", " + AN_ACCOUNT + ", 'Moderator Probni', 'Mutan', " + A_TEAM + ")",
+				row("'profiles', " + A_MEMBER + ", 'Slika', '', " + A_PHOTO + ", 'waiting', null, null, null, null"),
+				aLogo("teams", "(select id from team where slug = 'drugi-tim-v112')", "null"));
+
+		for (String insert : beside) {
+			assertThat(db.sql(insert).update()).as("refused beside a waiting logo: %s", insert).isOne();
+		}
+
+		assertThatThrownBy(() -> db.sql(aLogo("teams", A_TEAM, "null")).update())
+				.as("a second logo of the team went in with all of the above standing")
+				.isInstanceOf(DataIntegrityViolationException.class)
+				.hasMessageContaining("verification_one_logo_waits_per_team");
 	}
 
 	/**
