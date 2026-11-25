@@ -511,12 +511,19 @@ class PageApiTest {
 		String[][] asked = {
 				{ "sr", "| Brevo (Sendinblue SAS) | Tvoja adresa i sadržaj poruke | Francuska |\n"
 						+ "| Zoho Corporation | Prepiska sa adresom info@: tvoja adresa i sadržaj poruka | SAD |\n"
+						+ "| Microsoft (usluga Azure Translator) | Tekst koji je odobren za objavu na portalu (tvoja biografija,"
+						+ " opis tima, opis događaja, odobren komentar), da bi ga posetilac video i na drugom jeziku. Ne dobija"
+						+ " tvoje ime, adresu ni članski broj, i ne čuva tekst posle prevoda | EU |\n"
 						+ "| Poslovna banka Udruženja |",
-						"Poslednja izmena: 24.11.2026." },
+						"Poslednja izmena: 25.11.2026." },
 				{ "en", "| Brevo (Sendinblue SAS) | Your address and the content of the message | France |\n"
 						+ "| Zoho Corporation | Correspondence with info@: your address and the content of the messages"
-						+ " | USA |\n| The Association's business bank |",
-						"Last amended: 24.11.2026." } };
+						+ " | USA |\n"
+						+ "| Microsoft (Azure Translator service) | Text approved for publication on the portal (your biography,"
+						+ " team description, event description, an approved comment), so that a visitor can also read it in"
+						+ " another language. It does not receive your name, address or member number, and does not keep the"
+						+ " text after translating it | EU |\n| The Association's business bank |",
+						"Last amended: 25.11.2026." } };
 
 		for (String[] each : asked) {
 			JsonNode served = answerIn(each[0]);
