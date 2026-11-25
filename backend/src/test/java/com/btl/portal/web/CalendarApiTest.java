@@ -5,6 +5,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -18,6 +19,7 @@ import tools.jackson.databind.ObjectMapper;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -348,5 +350,138 @@ class CalendarApiTest {
 		assertThat(StreamSupport.stream(answer("/api/races").spliterator(), false)
 				.filter(one -> one.path("name").asString().equals("Trka na short"))
 				.map(one -> one.path("dots").toString()).toList()).containsExactly("[\"short\"]");
+	}
+
+	/* ---------------------------------------------------------------------------------------------------------- */
+	/* In a language (PDL P18, 25.11.2026, „Automatski prevod sadržaja koji posetilac vidi")                       */
+	/* ---------------------------------------------------------------------------------------------------------- */
+
+	/** A translation of the description of {@code slug}, made of the description as it stands now. */
+	private void translated(String slug, String language, String origin, String heardAs, String body) {
+		db.sql("insert into text_translation (event_id, field, language, origin, source_digest, source_language, body)"
+						+ " select id, 'description', ?, ?, encode(sha256(convert_to(description, 'UTF8')), 'hex'), ?, ?"
+						+ " from btl_event where slug = ?")
+				.params(language, origin, heardAs, body, slug)
+				.update();
+	}
+
+	/** What the reader of {@code lang} is shown of the description of {@code slug}. */
+	private JsonNode shownOf(String slug, String lang) throws Exception {
+		return StreamSupport.stream(answer("/api/events?lang=" + lang).spliterator(), false)
+				.filter(one -> one.path("slug").asString().equals(slug))
+				.map(one -> one.path("descriptionShown"))
+				.findFirst()
+				.orElseThrow();
+	}
+
+	private static String shown(String text, String language, boolean machine) {
+		return "{\"text\":\"" + text + "\",\"language\":" + (language == null ? "null" : "\"" + language + "\"")
+				+ ",\"machine\":" + machine + "}";
+	}
+
+	/**
+	 * ASKED IN A LANGUAGE, THE ANSWER CARRIES ONE FIELD MORE, AND ONLY THAT ONE. The portal does not read it off the
+	 * served file (the file is the answer with no language, which is the one without it), so it is named; and the
+	 * answer with no language is held field for field by the case above.
+	 */
+	@Test
+	void askedInALanguageTheAnswerSaysWhatIsShownAndNothingMore() throws Exception {
+		Answers.everyFieldThePortalReadsIsAnswered("/api/events?lang=en", answer("/api/events?lang=en"), "events.json",
+				Set.of("descriptionShown"));
+		Answers.noFieldIsTheSameInEveryRecord("/api/events?lang=en", answer("/api/events?lang=en"));
+	}
+
+	/** A value that is not a language tag is refused, with no body, as PageApi refuses it. */
+	@ParameterizedTest
+	@ValueSource(strings = {"EN", "sr-Latn", "e", "engl", "1"})
+	void aLanguageThatIsNotATagIsRefused(String lang) throws Exception {
+		var answered = http.perform(get("/api/events").param("lang", lang)).andReturn().getResponse();
+
+		assertThat(answered.getStatus()).isEqualTo(400);
+		assertThat(answered.getContentAsString()).isEmpty();
+	}
+
+	/**
+	 * A SERBIAN DESCRIPTION IS SHOWN IN ENGLISH TO A READER OF /en, MARKED AS THE MACHINE'S, and as written to a
+	 * reader of /sr, marked as Serbian. And the description field itself is the original in both: it is what the
+	 * form of the event edits.
+	 */
+	@Test
+	void aSerbianDescriptionIsShownInEnglishOnEnAndAsWrittenOnSr() throws Exception {
+		translated("prvi", "en", "machine", "sr-Latn", "Through the town and back");
+		translated("prvi", "sr", "machine", "sr-Latn", "Kroz grad i natrag");
+
+		assertThat(shownOf("prvi", "en").toString()).isEqualTo(shown("Through the town and back", "en", true));
+		assertThat(shownOf("prvi", "sr").toString()).isEqualTo(shown("Kroz grad i nazad", "sr", false));
+		assertThat(StreamSupport.stream(answer("/api/events?lang=en").spliterator(), false)
+				.filter(one -> one.path("slug").asString().equals("prvi"))
+				.map(one -> one.path("description").asString()).toList()).containsExactly("Kroz grad i nazad");
+	}
+
+	/** A description written in English is English on /en, as written, and the machine's Serbian on /sr. */
+	@Test
+	void anEnglishDescriptionIsShownAsWrittenOnEnAndInSerbianOnSr() throws Exception {
+		translated("prvi", "en", "machine", "en", "Kroz grad i nazad, again");
+		translated("prvi", "sr", "machine", "en", "Kroz grad na srpskom");
+
+		assertThat(shownOf("prvi", "en").toString()).isEqualTo(shown("Kroz grad i nazad", "en", false));
+		assertThat(shownOf("prvi", "sr").toString()).isEqualTo(shown("Kroz grad na srpskom", "sr", true));
+	}
+
+	/** Croatian, as the service may hear a short Serbian text, is Serbian to this portal: shown as written on /sr. */
+	@Test
+	void aTextHeardAsCroatianIsShownAsWrittenOnSr() throws Exception {
+		translated("prvi", "sr", "machine", "hr", "Kroz grad, ponovo");
+		translated("prvi", "en", "machine", "hr", "Through the town");
+
+		assertThat(shownOf("prvi", "sr").toString()).isEqualTo(shown("Kroz grad i nazad", "sr", false));
+		assertThat(shownOf("prvi", "en").toString()).isEqualTo(shown("Through the town", "en", true));
+	}
+
+	/** A text in a third language is translated for both readers. */
+	@Test
+	void aTextInAThirdLanguageIsTranslatedForBoth() throws Exception {
+		translated("prvi", "sr", "machine", "de", "Kroz grad");
+		translated("prvi", "en", "machine", "de", "Through the town");
+
+		assertThat(shownOf("prvi", "sr").toString()).isEqualTo(shown("Kroz grad", "sr", true));
+		assertThat(shownOf("prvi", "en").toString()).isEqualTo(shown("Through the town", "en", true));
+	}
+
+	/**
+	 * A TRANSLATION OF WORDS THE DESCRIPTION NO LONGER SAYS IS NOT SHOWN: the original is, and nobody claims to know
+	 * what it is written in (owner, 25.11.2026: „zastareo prevod (original izmenjen) se ne prikazuje").
+	 */
+	@Test
+	void aTranslationOfAnOlderDescriptionIsNotShown() throws Exception {
+		translated("prvi", "en", "machine", "sr-Latn", "Through the town and back");
+		db.sql("update btl_event set description = 'Kroz grad, pa nazad' where slug = 'prvi'").update();
+
+		assertThat(shownOf("prvi", "en").toString()).isEqualTo(shown("Kroz grad, pa nazad", null, false));
+	}
+
+	/** A hand translation is shown before the machine's, and it is not marked as the machine's. */
+	@Test
+	void aHandTranslationIsShownBeforeTheMachines() throws Exception {
+		translated("prvi", "en", "machine", "sr-Latn", "Through the town and back");
+		translated("prvi", "en", "manual", null, "Across town and home");
+
+		assertThat(shownOf("prvi", "en").toString()).isEqualTo(shown("Across town and home", "en", false));
+	}
+
+	/** Another event's translation is that event's: a description with none of its own is shown as written. */
+	@Test
+	void anotherEventsTranslationIsNotThisOnes() throws Exception {
+		db.sql("update btl_event set description = 'Kroz grad i nazad' where slug = 'drugi'").update();
+		translated("drugi", "en", "machine", "sr-Latn", "Through the town and back");
+
+		assertThat(shownOf("prvi", "en").toString()).isEqualTo(shown("Kroz grad i nazad", null, false));
+		assertThat(shownOf("drugi", "en").toString()).isEqualTo(shown("Through the town and back", "en", true));
+	}
+
+	/** An event with no description shows none, in any language. */
+	@Test
+	void noDescriptionIsShownAsNone() throws Exception {
+		assertThat(shownOf("treci", "en").toString()).isEqualTo(shown("", null, false));
 	}
 }

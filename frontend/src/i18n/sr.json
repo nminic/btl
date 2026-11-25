@@ -287,6 +287,9 @@
     "sr": "Srpski",
     "en": "English"
   },
+  "translation": {
+    "machine": "Automatski prevod"
+  },
   "notFound": {
     "title": "Ove strane nema"
   },

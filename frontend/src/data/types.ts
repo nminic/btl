@@ -695,6 +695,31 @@ export type BtlEvent = {
    * unrelated "Novogodišnja trka" are not one race in two towns.
    */
   copiedFrom: number | null
+  /**
+   * WHAT A READER OF THE LANGUAGE ASKED FOR IS SHOWN OF THE DESCRIPTION, and only in an answer asked for in a
+   * language (`useEventsInTheReadersLanguage`, `CalendarApi.Event.descriptionShown`): absent from `/api/events`
+   * asked with no `lang`, which is what every other screen reads.
+   *
+   * **`description` above stays the description as it was written**, in every answer, because it is what the form
+   * of the event edits and what the copy of an event carries into the next year (`event/copyOf.ts`). This is the
+   * one field a reader is drawn from (owner, PDL P18, 25.11.2026, „Automatski prevod sadržaja koji posetilac
+   * vidi").
+   */
+  descriptionShown?: ShownText
+}
+
+/**
+ * WHAT A READER IS SHOWN OF A TEXT THE PORTAL TRANSLATES BY MACHINE (`TranslatedText.Shown` on the server).
+ *
+ * `language` is the portal's tag of the language the words are in, or `null` where nobody knows yet (an original
+ * the service has not read), and the screen marks the words with it so that a screen reader reads them in their
+ * own phonetics (ADL A7). `machine` says the words are the machine's, which the screen says beside them (owner,
+ * 25.11.2026, „uz mašinski preveden tekst stoji kratka oznaka").
+ */
+export type ShownText = {
+  text: string
+  language: string | null
+  machine: boolean
 }
 
 /* An event does not list its races. It did, in `raceIds`, and the same link was

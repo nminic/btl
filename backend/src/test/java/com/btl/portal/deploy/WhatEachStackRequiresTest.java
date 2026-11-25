@@ -212,21 +212,30 @@ class WhatEachStackRequiresTest {
 				   Facebook stay as they were is a smaller failure than one that will not come up. Without
 				   either, FacebookGraph is off and nothing is ever sent. */
 				Map.entry("PROD_FACEBOOK_APP_ID", asked(Asking.DEPLOYS_WITHOUT_IT, 1)),
-				Map.entry("PROD_FACEBOOK_APP_SECRET", asked(Asking.DEPLOYS_WITHOUT_IT, 1))));
+				Map.entry("PROD_FACEBOOK_APP_SECRET", asked(Asking.DEPLOYS_WITHOUT_IT, 1)),
+				/* THE TRANSLATOR'S PAIR (PDL P18, 25.11.2026), each reaching only the backend, and each deploying
+				   without a value on purpose, for the relay's reason: a portal that shows an original where a
+				   translation would stand is a smaller failure than one that will not come up. */
+				Map.entry("PROD_TRANSLATOR_KEY", asked(Asking.DEPLOYS_WITHOUT_IT, 1)),
+				Map.entry("PROD_TRANSLATOR_REGION", asked(Asking.DEPLOYS_WITHOUT_IT, 1))));
 
-		table.put("compose.qa.yml", Map.of(
-				"QA_POSTGRES_DB", asked(Asking.DEPLOYS_WITHOUT_IT, 3),
-				"QA_POSTGRES_USER", asked(Asking.DEPLOYS_WITHOUT_IT, 3),
-				"QA_POSTGRES_PASSWORD", asked(Asking.REFUSES_UNSET_OR_EMPTY, 2),
-				"QA_MAIL_HOST", asked(Asking.DEPLOYS_WITHOUT_IT, 1),
-				"QA_MAIL_PORT", asked(Asking.DEPLOYS_WITHOUT_IT, 1),
-				"QA_MAIL_USERNAME", asked(Asking.DEPLOYS_WITHOUT_IT, 1),
-				"QA_MAIL_PASSWORD", asked(Asking.DEPLOYS_WITHOUT_IT, 1),
+		table.put("compose.qa.yml", Map.ofEntries(
+				Map.entry("QA_POSTGRES_DB", asked(Asking.DEPLOYS_WITHOUT_IT, 3)),
+				Map.entry("QA_POSTGRES_USER", asked(Asking.DEPLOYS_WITHOUT_IT, 3)),
+				Map.entry("QA_POSTGRES_PASSWORD", asked(Asking.REFUSES_UNSET_OR_EMPTY, 2)),
+				Map.entry("QA_MAIL_HOST", asked(Asking.DEPLOYS_WITHOUT_IT, 1)),
+				Map.entry("QA_MAIL_PORT", asked(Asking.DEPLOYS_WITHOUT_IT, 1)),
+				Map.entry("QA_MAIL_USERNAME", asked(Asking.DEPLOYS_WITHOUT_IT, 1)),
+				Map.entry("QA_MAIL_PASSWORD", asked(Asking.DEPLOYS_WITHOUT_IT, 1)),
 				/* The same address on this stack, spelled the same way, and the reason
 				   is written beside it in both files: the owner administers QA and
 				   production alike, so this is the one thing the two stacks are meant
 				   to agree about. */
-				"BTL_SUPERADMIN_EMAIL", asked(Asking.DEPLOYS_WITHOUT_IT, 1)));
+				Map.entry("BTL_SUPERADMIN_EMAIL", asked(Asking.DEPLOYS_WITHOUT_IT, 1)),
+				/* The translator's pair on this stack, QA_-prefixed like every value of it, for the reason the
+				   production pair gives (PDL P18, 25.11.2026: QA is switched on with the same free key). */
+				Map.entry("QA_TRANSLATOR_KEY", asked(Asking.DEPLOYS_WITHOUT_IT, 1)),
+				Map.entry("QA_TRANSLATOR_REGION", asked(Asking.DEPLOYS_WITHOUT_IT, 1))));
 
 		/* The development stack in the repository root, which CLAUDE.md tells a developer
 		   to run as `docker compose up -d postgres`. Its password is required too, and it

@@ -230,7 +230,7 @@ chose. Confirming proves somebody READS that mailbox, not that whoever holds the
 owns it.
 
 
-Fifteen names, and no value of any of them belongs in this repository or in any
+Seventeen names, and no value of any of them belongs in this repository or in any
 message:
 
 | name | what it is | required |
@@ -250,6 +250,8 @@ message:
 | `PROD_BACKUP_PASSPHRASE` | what every copy is encrypted with; ALSO in the owner's password manager | not to START; the backup refuses without it |
 | `PROD_FACEBOOK_APP_ID` | id of the Facebook application "BTL page", which the server uses to ask Facebook to read a changed profile again (PDL P11) | not to START; without it nothing is sent to Facebook |
 | `PROD_FACEBOOK_APP_SECRET` | that application's secret; written by the owner's `facebook/upisi-facebook-aplikaciju.cmd` | not to START; without it nothing is sent to Facebook |
+| `PROD_TRANSLATOR_KEY` | key of the Azure Translator resource, which translates the text a visitor reads (PDL P18, 25.11.2026); **written only once the privacy policy that names Microsoft is on production** | not to START; without it nothing is sent to Microsoft and every text is shown as written |
+| `PROD_TRANSLATOR_REGION` | the region that resource was made in, a European one | not to START; without it the translator is off |
 
 **The two mail variables are the pair that fails quietly.** They are empty by default ON PURPOSE:
 a missing relay key must never keep the public site down, so the stack starts without them. What it
@@ -683,8 +685,10 @@ for either of them.
 
 The database name, role and password come from `/opt/btl-qa/deploy/.env`, which
 is gitignored and never committed. Compose reads the `.env` of the directory the
-deploy command runs from, and that is `deploy/`. Copy the seven `QA_*` lines (three `QA_POSTGRES_*` and four `QA_MAIL_*`) out
-of `.env.example` in the repository root and set a real password:
+deploy command runs from, and that is `deploy/`. Copy the nine `QA_*` lines (three `QA_POSTGRES_*` and four `QA_MAIL_*`) out
+of `.env.example` in the repository root and set a real password; the other two are
+`QA_TRANSLATOR_KEY` and `QA_TRANSLATOR_REGION`, the Azure Translator pair, which may stay
+empty (QA then shows every text as it was written):
 
 ```bash
 cd /opt/btl-qa/deploy

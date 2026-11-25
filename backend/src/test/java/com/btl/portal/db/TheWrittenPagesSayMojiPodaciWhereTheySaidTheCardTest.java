@@ -83,6 +83,7 @@ class TheWrittenPagesSayMojiPodaciWhereTheySaidTheCardTest extends DatabaseTest 
 
 	private void everyEditHolds(String language) {
 		/* The text as V94 left it: V95 (owner, 11.11.2026) moved the sign-offs of all three pages and took sentences out of them, which is held by TheWrittenPagesStateTheFactCarriedOverTest. */
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "114");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "110");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "107");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "102");
@@ -146,6 +147,7 @@ class TheWrittenPagesSayMojiPodaciWhereTheySaidTheCardTest extends DatabaseTest 
 	@Test
 	void theWordsAroundEachEditAreAsTheyWere() {
 		/* V107 (21.11.2026) later changed the pronoun of this sentence; what is asked here is asked of the text as V106 left it. */
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "114");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "110");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "107");
 		assertThat(bodyOf(POLICY, 2, "sr")).contains("| Broj ličnog dokumenta | Evidencija članova koju udruženje vodi"
@@ -169,6 +171,7 @@ class TheWrittenPagesSayMojiPodaciWhereTheySaidTheCardTest extends DatabaseTest 
 	@Test
 	void thePolicyIsSignedOffOnTheEighthOfNovemberAndTheOtherTwoKeepTheirDays() {
 		/* The text as V94 left it: V95 (owner, 11.11.2026) moved the sign-offs of all three pages and took sentences out of them, which is held by TheWrittenPagesStateTheFactCarriedOverTest. */
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "114");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "110");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "107");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "102");
