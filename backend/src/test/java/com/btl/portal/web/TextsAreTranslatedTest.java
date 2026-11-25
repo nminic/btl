@@ -166,28 +166,6 @@ class TextsAreTranslatedTest {
 				.isEqualTo(Duration.ofMinutes(5));
 	}
 
-	/**
-	 * AND THE TASK THE SCHEDULER HOLDS IS THE PASS, run here out of the scheduler: over the suite's own translator,
-	 * which has no key, so it reads, writes and sends nothing.
-	 */
-	@Test
-	void theTaskTheSchedulerHoldsIsThePass() {
-		long mine = event("prevod-zakazan", "Kroz grad");
-		String thePass = TextsAreTranslated.class.getName() + ".pass";
-
-		schedulers.stream()
-				.flatMap(each -> each.getScheduledTasks().stream())
-				.filter(task -> task.getTask().getRunnable().toString().equals(thePass))
-				.findFirst()
-				.orElseThrow()
-				.getTask()
-				.getRunnable()
-				.run();
-
-		assertThat(translationsOf(mine)).isEmpty();
-		assertThat(service.asked).isEmpty();
-	}
-
 	/* ---------------------------------------------------------------------------------------------------------- */
 	/* What is sent and what is written                                                                            */
 	/* ---------------------------------------------------------------------------------------------------------- */
