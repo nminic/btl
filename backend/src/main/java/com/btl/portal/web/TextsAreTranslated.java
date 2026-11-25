@@ -44,7 +44,7 @@ import java.util.concurrent.TimeUnit;
  * service's count, which is inside both of its limits: fifty thousand a request, and, on the free tier, two
  * million an hour „consumed evenly throughout the hour", roughly 33,300 a minute (Microsoft Learn, „Service
  * limits"). On 25.11.2026 production held 60 descriptions of 25,632 characters, so the texts already there go in
- * two passes. A text sent is stamped first ({@code text_translation_asked}, V112), so the next pass takes the ones
+ * two passes. A text sent is stamped first ({@code text_translation_asked}, V113), so the next pass takes the ones
  * never sent and the ones sent longest ago first, and a text the service keeps failing on cannot hold the head
  * of every pass.
  *

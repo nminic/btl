@@ -16,7 +16,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * THE TWO TABLES OF V112, against a real database: what each constraint refuses, and that there is no constraint
+ * THE TWO TABLES OF V113, against a real database: what each constraint refuses, and that there is no constraint
  * without a row that breaks it. The shape of {@link SharedCardConstraintsTest}.
  */
 class TextTranslationConstraintsTest extends DatabaseTest {
@@ -171,7 +171,7 @@ class TextTranslationConstraintsTest extends DatabaseTest {
 
 	/**
 	 * A HAND TRANSLATION AND A MACHINE ONE STAND SIDE BY SIDE, in the same language and of the same original: origin
-	 * is part of what makes a row unique, which is what keeps the machine from ever reaching a hand row (V112).
+	 * is part of what makes a row unique, which is what keeps the machine from ever reaching a hand row (V113).
 	 */
 	@Test
 	void aHandTranslationStandsBesideTheMachineOne() {

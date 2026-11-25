@@ -181,6 +181,8 @@ class NoTextHoldsAZeroTest {
 					"a zero in a path is a 400 before any handler is reached"),
 			Map.entry("PhotoApi#mineThatWaits:digest (path)",
 					"a zero in a path is a 400 before any handler is reached"),
+			Map.entry("PhotoApi#teamLogoThatWaits:digest (path)",
+					"a zero in a path is a 400 before any handler is reached"),
 			Map.entry("PhotoApi#small:digest (path)",
 					"a zero in a path is a 400 before any handler is reached"),
 			Map.entry("PhotoApi#small:circle (path)",
@@ -216,6 +218,16 @@ class NoTextHoldsAZeroTest {
 					"compared whole with the address of the picture that stands and never put into a statement;"
 							+ " a request that names none is a 400, and a zero or an empty text names no picture that"
 							+ " stands, so it is the 409 of a picture that has changed"),
+			Map.entry("TeamLogoApi#send:cropX (parameter)", "parsed as a number"),
+			Map.entry("TeamLogoApi#send:cropY (parameter)", "parsed as a number"),
+			Map.entry("TeamLogoApi#send:cropSize (parameter)", "parsed as a number"),
+			Map.entry("TeamLogoApi#send:over (parameter)",
+					"compared whole with the address of the team's logo that waits and never put into a statement;"
+							+ " a request that names none is a 400, and a zero or an empty text names no logo that"
+							+ " waits, so it is the 409 of a picture that has changed"),
+			Map.entry("TeamLogoApi#setTheLogo:cropX (parameter)", "parsed as a number"),
+			Map.entry("TeamLogoApi#setTheLogo:cropY (parameter)", "parsed as a number"),
+			Map.entry("TeamLogoApi#setTheLogo:cropSize (parameter)", "parsed as a number"),
 			Map.entry("LeagueMarkApi#setTheMark:cropX (parameter)", "parsed as a number"),
 			Map.entry("LeagueMarkApi#setTheMark:cropY (parameter)", "parsed as a number"),
 			Map.entry("LeagueMarkApi#setTheMark:cropSize (parameter)", "parsed as a number"),

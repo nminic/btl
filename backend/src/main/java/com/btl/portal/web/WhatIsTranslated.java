@@ -76,7 +76,7 @@ enum WhatIsTranslated {
 	 * EVERY SERVED TEXT THAT HAS NO MACHINE TRANSLATION OF ITS PRESENT VERSION, with its digest and when it was last
 	 * sent. In no order: the pass puts the texts of every kind in one order ({@code TextsAreTranslated#chosen}), so an
 	 * order here would be a second one, and measured it was (a mutation of it survived). A version the portal threw a
-	 * translation of away is not here; the same words would come back the same (V112, {@code thrown_away}).
+	 * translation of away is not here; the same words would come back the same (V113, {@code thrown_away}).
 	 */
 	String waiting() {
 		return "select x.id, x." + column + ", " + digestOf("x") + ", a.asked_at"
@@ -91,7 +91,7 @@ enum WhatIsTranslated {
 	/**
 	 * THE MACHINE'S TRANSLATIONS OF TEXTS THAT ARE NO LONGER SERVED OR NO LONGER SAY ANYTHING, which go: a
 	 * description emptied by the administration is words nobody wrote any more, and a translation of them is a
-	 * copy of something that was taken down. Hand rows stay, for the reason V112 gives.
+	 * copy of something that was taken down. Hand rows stay, for the reason V113 gives.
 	 */
 	String forgetting() {
 		return "delete from text_translation t using " + table + " x where t." + key + " = x.id"

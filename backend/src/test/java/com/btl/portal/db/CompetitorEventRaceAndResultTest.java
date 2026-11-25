@@ -786,7 +786,7 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 				"team_proposal.team_proposal_logo_fk set null",
 				"team_proposal.team_proposal_place_fk restrict",
 				"team_proposal.team_proposal_team_fk cascade",
-				/* V112. A translation of an event, and the stamp of when it was sent, go with the event: they are
+				/* V113. A translation of an event, and the stamp of when it was sent, go with the event: they are
 				   copies of words nobody can read any more. */
 				"text_translation.text_translation_event_fk cascade",
 				"text_translation_asked.text_translation_asked_event_fk cascade",
@@ -811,6 +811,9 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 				   it away with the column it stood on (V31). */
 				/* I sesti kljuc reda za verifikaciju, iz istog razloga kao peti: predlog koga nema
 				   je predlog ni o cemu. */
+				/* And V112's, which sorts before it: a team's logo that waits for a team that is gone is a decision about
+				   nothing, so it goes with the team, and the picture it held goes by V54's rule. */
+				"verification.verification_team_fk cascade",
 				"verification.verification_team_proposal_fk cascade",
 				/* A HOLD IS SOMEBODY READING SOMETHING RIGHT NOW, so it goes when either end
 				   of it goes. This is where it differs from the DECISION one column over,

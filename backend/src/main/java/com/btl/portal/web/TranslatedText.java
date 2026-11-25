@@ -18,7 +18,7 @@ import java.util.regex.Pattern;
  *
  * <p><b>A text is shown as written to a reader of its own language.</b> A description written in English is
  * English on {@code /en} whatever the service made of it, and Serbian written by a member is Serbian on
- * {@code /sr}. What the language of the original is comes from the service ({@code source_language}, V112),
+ * {@code /sr}. What the language of the original is comes from the service ({@code source_language}, V113),
  * because nobody on the portal says it: the owner, „Servis sam prepoznaje jezik originala".
  */
 final class TranslatedText {

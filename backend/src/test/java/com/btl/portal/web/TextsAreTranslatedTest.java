@@ -265,7 +265,7 @@ class TextsAreTranslatedTest {
 		assertThat(translationsOf(mine)).containsEntry("en machine", "EN: Novo");
 	}
 
-	/** An emptied description loses its machine translations; a hand one stays, for the reason V112 gives. */
+	/** An emptied description loses its machine translations; a hand one stays, for the reason V113 gives. */
 	@Test
 	void anEmptiedDescriptionLosesTheMachinesTranslationsAndKeepsTheHandOne() throws Exception {
 		long other = event("prevod-drugi-ostaje", "Drugi");
