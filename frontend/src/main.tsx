@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client'
    them; `app/stylesheets.ts` says why the order is written down since the screens are loaded one by one. */
 import './app/stylesheets'
 import App from './app/App.tsx'
+import { loadTheDevControlsBeforeDrawing } from './app/devControls'
 import { forgetTheChosenTheme } from './app/forgetTheTheme'
 import { reloadOnceWhenAPieceIsGone } from './app/staleChunks'
 import { startTheFirstDictionary } from './i18n/config'
@@ -27,8 +28,14 @@ if (root === null) {
   throw new Error('index.html carries no #root for the portal to be drawn into')
 }
 
-createRoot(root).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-)
+/* The two development controls of QA, before anything is drawn, so that the row they stand in does not
+   change shape under the reader's pointer; in a build without them there is nothing to wait for. A promise
+   kept here and NOT a top-level `await`: everything this module reaches is in the piece each switch imports,
+   and an `await` there on the switches waits for itself (`app/devControls.ts`). It never rejects. */
+void loadTheDevControlsBeforeDrawing().then(() => {
+  createRoot(root).render(
+    <StrictMode>
+      <App />
+    </StrictMode>,
+  )
+})
