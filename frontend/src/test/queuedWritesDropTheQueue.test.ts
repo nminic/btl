@@ -49,6 +49,17 @@ const GUARDS: Record<string, { file: string; title: string }> = {
     file: 'src/pages/member/editTeam.test.tsx',
     title: "drops the moderator's queue once the server has taken the change",
   },
+  'POST /api/teams/{id}/own-logo': {
+    file: 'src/pages/member/teamLogo.test.tsx',
+    title: 'sends a chosen picture with its circle to this team’s address, and then shows it waiting',
+  },
+  /* The administration's logo of a team queues nothing: it stands at once (PDL 25.11.2026). It is here because its
+     class, `TeamLogoApi`, inserts into the queue for the editor's door, which is the rule this floor reads by (the
+     note above, `MeWriteApi`'s case); the case named is the one that holds what this route does write. */
+  'POST /api/teams/{id}/logo': {
+    file: 'src/pages/admin/teamLogoModeration.test.tsx',
+    title: 'sets a picture at once at this team’s own address, then takes it down there',
+  },
   'POST /api/me/photo': {
     file: 'src/pages/member/pictureIsOneRow.test.tsx',
     title: 'appears on a queue this visit had ALREADY read once',
