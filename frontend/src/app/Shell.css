@@ -134,26 +134,28 @@
 
 .shell__main {
   flex: 1;
-  /* THE FOOT STANDS UNDER THE FIRST SCREEN AND NOT IN IT, ON A TELEPHONE AND A TABLET (owner, 25.11.2026,
-     „1 potvrđujem": the pomeranje podnožja). While a screen waits for its piece of the bundle and for its
-     data the main is short, so the foot, which `#root` (`min-height: 100svh`) keeps at the bottom of the
-     window, was drawn IN the first screen and was pushed out of it when the content landed: a layout shift
-     of 0.18 on the front page, the calendar, a profile and a competitor, all of it the foot (Lighthouse 12,
-     simulated telephone, 25.11.2026; the limit for „dobro" is 0.10). The main is never shorter than the
-     window, so the foot starts under it before the content is there and has nowhere further to go when it
-     comes. The header stands above, so the foot is always below the fold. */
-  min-height: 100svh;
   padding-block-start: var(--space-20);
   padding-block-end: clamp(var(--space-24), 4vw, var(--space-40));
 }
 
-/* From 1000px, where the window is wide and most screens fill it, the main is as tall as its content
-   again: a short screen (the sign in form) keeps the foot at the bottom of the window and draws no scroll
-   of its own. The shift there was 0.04 to 0.05 before this, which is „dobro" without it. */
-@media (min-width: 62.5em) {
-  .shell__main {
-    min-height: auto;
-  }
+/* THE FOOT STANDS UNDER THE FIRST SCREEN WHILE A SCREEN IS ON ITS WAY, AND ONLY THEN (owner, 25.11.2026,
+   „1 potvrđujem": „min-height na .shell__main dok ekran stiže, da podnožje ne stoji u prvom ekranu").
+   While a screen waits for its data the main is short, so the foot, which `#root` (`min-height: 100svh`)
+   keeps at the bottom of the window, was drawn IN the first screen and was pushed out of it when the
+   content landed: a layout shift of 0.18 on the front page, the calendar, a profile and a competitor, all
+   of it the foot (Lighthouse 12, simulated telephone, 25.11.2026; the limit for „dobro" is 0.10).
+
+   The shell knows a screen is on its way by the page-level loader the screen draws inside the main
+   (`components/Loader.tsx`; the `inline` one is a part of a screen that has already been drawn and does
+   not count). While it is there the main is as tall as the window, so the foot starts under the first
+   screen and has nowhere further to go when the content comes; the moment the loader is gone the main is
+   as tall as its content again, and a short screen (the sign in form) draws no scroll of its own.
+
+   WHAT IT DOES NOT COVER: the wait for a screen's CODE. The router holds the address until the piece has
+   arrived and draws nothing of the shell before the first one (`app/routeObjects.tsx`, `HydrateFallback`),
+   so there is no drawn main to be short during it. */
+.shell__main:has(.loader:not(.loader--inline)) {
+  min-height: 100svh;
 }
 
 .shell__footer {

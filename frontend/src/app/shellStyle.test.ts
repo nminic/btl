@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { ruleFor, ruleInMedia } from '../test/stylesheet'
+import { everyRule, ruleFor } from '../test/stylesheet'
 
 /**
  * Where the three links of the footer sit, which no rendered test can see.
@@ -55,23 +55,21 @@ describe('the header links of a visitor, while they wait', () => {
 
 
 /**
- * The main is never shorter than the window on a telephone and a tablet, so the foot is not in the first
- * screen while a screen waits for its data (owner, 25.11.2026, „1 potvrđujem": the pomeranje podnožja,
- * 0.18 measured by Lighthouse on `footer.shell__footer`; the limit for „dobro" is 0.10).
+ * The main is as tall as the window WHILE A SCREEN IS ON ITS WAY, so the foot is not in the first screen when
+ * the content lands (owner, 25.11.2026, „1 potvrđujem": „min-height na .shell__main dok ekran stiže"; 0.18
+ * measured by Lighthouse on `footer.shell__footer`, the limit for „dobro" is 0.10), and only while it is.
  *
- * <p>Where the foot stands is a question for a browser and `geometry/footerBelowTheFold.geometry.ts` asks
- * it, at 360 and 768. What is asked here is the half it cannot: that the rule applies unconditionally, and
- * that from 1000px it gives way, because a short screen of a desktop (the sign in form) would otherwise
- * draw a scroll of its own for the sake of a shift that measured 0.04 to 0.05 there.
+ * <p>Where the foot stands is a question for a browser and `geometry/footerBelowTheFold.geometry.ts` asks it.
+ * What is asked here is the half that is the stylesheet's own word: that the rule is bound to the page-level
+ * loader and not to the inline one, and that nothing else gives the main a height, which is what would make
+ * a short screen scroll for good.
  */
 describe('the main of every screen', () => {
-  it('is as tall as the window before 1000px, and says so unconditionally', () => {
-    expect(ruleFor(css, '.shell__main', 'Shell.css').getPropertyValue('min-height')).toBe('100svh')
-  })
+  it('is as tall as the window while the page-level loader is in it, and no other time', () => {
+    const rules = everyRule(css, 'Shell.css').filter((rule) => rule.selectorText.includes('.shell__main'))
+    const tall = rules.filter((rule) => rule.style.getPropertyValue('min-height') !== '')
 
-  it('is as tall as its content again from 1000px', () => {
-    expect(
-      ruleInMedia(css, '(min-width: 62.5em)', '.shell__main', 'Shell.css').getPropertyValue('min-height'),
-    ).toBe('auto')
+    expect(tall.map((rule) => rule.selectorText)).toEqual(['.shell__main:has(.loader:not(.loader--inline))'])
+    expect(tall[0]?.style.getPropertyValue('min-height')).toBe('100svh')
   })
 })
