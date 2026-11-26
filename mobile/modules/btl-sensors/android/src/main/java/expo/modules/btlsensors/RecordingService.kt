@@ -57,10 +57,11 @@ class RecordingService : Service(), LocationListener, SensorEventListener {
 
   @SuppressLint("MissingPermission")
   override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-    val path = intent?.getStringExtra(EXTRA_FILE)
+    if (intent == null) return START_NOT_STICKY
+    val path = intent.getStringExtra(EXTRA_FILE)
     if (running || path == null) return START_NOT_STICKY
 
-    startInForeground(intent.getStringExtra(EXTRA_TITLE) ?: "", intent.getStringExtra(EXTRA_TEXT) ?: "")
+    startInForeground(intent.getStringExtra(EXTRA_TITLE).orEmpty(), intent.getStringExtra(EXTRA_TEXT).orEmpty())
     running = true
 
     val sensorManager = getSystemService(SENSOR_SERVICE) as SensorManager

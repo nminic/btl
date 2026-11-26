@@ -47,10 +47,12 @@ class BtlSensorsModule : Module() {
       } else {
         context.startService(intent)
       }
+      Unit
     }
 
     Function("stop") {
       context.stopService(Intent(context, RecordingService::class.java))
+      Unit
     }
 
     Function("read") { offset: Double ->
