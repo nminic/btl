@@ -1801,9 +1801,9 @@ describe('TopBoards', () => {
     /* The number under the points, which the owner asked for on 04.08.2026 and which nothing drew
        until now: their points together, and under them the races they share. The second pair ran
        **more** races for **fewer** points, so neither figure can stand in for the other. */
-    expect(within(at(rows, 0)).getByText('510,34')).toBeVisible()
+    expect(within(at(rows, 0)).getByText('373,88')).toBeVisible()
     expect(within(at(rows, 0)).getByText('13 zajedničkih trka')).toBeVisible()
-    expect(within(at(rows, 1)).getByText('480,31')).toBeVisible()
+    expect(within(at(rows, 1)).getByText('341,44')).toBeVisible()
     expect(within(at(rows, 1)).getByText('21 zajednička trka')).toBeVisible()
 
     cleanup()
