@@ -1776,6 +1776,28 @@
       "bestRacePoints": "najviše bodova na jednoj trci",
       "bestRaceKm": "najviše kilometara na jednoj trci",
       "bestRaceAscent": "najviše uspona na jednoj trci"
+    },
+    "coin": {
+      "season": "SEZONA {season}",
+      "unit": {
+        "km": "km",
+        "m": "m",
+        "hours": "sati"
+      },
+      "month": {
+        "1": "JANUAR",
+        "2": "FEBRUAR",
+        "3": "MART",
+        "4": "APRIL",
+        "5": "MAJ",
+        "6": "JUN",
+        "7": "JUL",
+        "8": "AVGUST",
+        "9": "SEPTEMBAR",
+        "10": "OKTOBAR",
+        "11": "NOVEMBAR",
+        "12": "DECEMBAR"
+      }
     }
   },
   "settings": {

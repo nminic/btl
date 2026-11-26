@@ -72,7 +72,7 @@ export function DucatGallery() {
             {families.map((family) => (
               <li className="ducat" key={family.id}>
                 <DucatArt
-                  ducat={firstOf(family, exampleGender(family, families))}
+                  ducat={firstOf(family, exampleGender(family, families), t)}
                   label={`${family.name}. ${ruleSentence(family, t, locale)} ${t(
                     `ducats.tier.${family.tier}`,
                   )}`}

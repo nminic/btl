@@ -403,6 +403,10 @@ describe('a sentence with a value put into it', () => {
       'crop.tooSmall',
       'data.loadingPart',
       'ducats.again <- formatNumber',
+      /* The word struck along the coin for a season: „SEZONA {season}" / „SEASON {season}". The value is a
+         bare year written in figures after the word, with no case to be wrong in (`data/ducatRule.ts`,
+         `periodLegend`, 25.11.2026). */
+      'ducats.coin.season',
       'ducats.everyMonth',
       'ducats.everySeason',
       'ducats.sentence <- formatNumber',

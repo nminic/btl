@@ -4,7 +4,11 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { serverThat } from '../test/serverAnswers'
 import { heldDucats, heldDucatsIn, useHeldDucats, type HeldDucat } from './ducatHeld'
+import sr from '../i18n/sr.json'
+import { translate } from '../i18n/translate'
 import type { DucatFamily } from './ducatRule'
+
+const inSerbian = (key: string, params?: Record<string, string | number>) => translate(sr, 'sr', key, params)
 
 /**
  * WHAT THE PAGE OF AWARDS READS THE DUCATS A MEMBER HOLDS WITH: the answer of
@@ -77,7 +81,7 @@ describe('the ducats drawn from their families', () => {
       { ...one, ducat: 'duk-a', tier: 1 },
     ]
 
-    expect(heldDucats(held, families, 'M').map((each) => each.id)).toEqual(['duk-b', 'duk-c', 'duk-a'])
+    expect(heldDucats(held, families, 'M', inSerbian).map((each) => each.id)).toEqual(['duk-b', 'duk-c', 'duk-a'])
   })
 
   it('draws each from its own family, with the threshold and tier of the record', () => {
@@ -85,6 +89,7 @@ describe('the ducats drawn from their families', () => {
       [{ ducat: 'duk-b', value: 300, tier: 4, season: 2027, month: 7 }],
       [family('duk-a', 1), family('duk-b', 2, { period: 'month', periodAt: 'bottom', step: 100, last: 1000 })],
       'F',
+      inSerbian,
     )
 
     expect(drawn).toEqual([
@@ -100,12 +105,13 @@ describe('the ducats drawn from their families', () => {
         art: 'none',
         top: 'ISTRČALA',
         bottom: 'JUL 2027',
+        unit: '',
       },
     ])
   })
 
   it('leaves off a ducat whose family the portal does not serve', () => {
-    expect(heldDucats([{ ...one, ducat: 'duk-nema' }, one], [family('duk-a', 3)], 'M').map((each) => each.id))
+    expect(heldDucats([{ ...one, ducat: 'duk-nema' }, one], [family('duk-a', 3)], 'M', inSerbian).map((each) => each.id))
       .toEqual(['duk-a'])
   })
 })
