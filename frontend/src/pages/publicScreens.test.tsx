@@ -3099,10 +3099,12 @@ describe('the row of whoever is signed in', () => {
   })
 
   it('is marked on every board that is a table and has him, and on no chart', async () => {
-    /* 2015 rather than 2019, because in 2015 he stands on all three boards that
+    /* 2021 rather than 2019, because in 2021 he stands on all three boards that
        are tables. A season where he is on two of them cannot say anything about
-       the third, and the third is where the mark would be missing. */
-    renderAt(`/sr/top-liste?sezona=${String(inLeague(2015))}`, 'competitor', ME)
+       the third, and the third is where the mark would be missing. (It was 2015
+       until the formula of 26.11.2026 moved the points of the mock: in 2015 none
+       of his runs is among the ten best any more.) */
+    renderAt(`/sr/top-liste?sezona=${String(inLeague(2021))}`, 'competitor', ME)
 
     await screen.findByRole('table', { name: 'Najviše kilometara' })
 
