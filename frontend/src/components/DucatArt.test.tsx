@@ -28,6 +28,7 @@ const coin: Ducat = {
   art: 'none',
   top: 'ISTRČANIH',
   bottom: 'JUL 2027',
+  unit: 'km',
 }
 
 /** The radius of one of the two arcs the legends are set along, read back out
@@ -159,13 +160,13 @@ describe('the number in the middle', () => {
   })
 
   it('carries none where the legend under it already names what is counted', () => {
-    const { container } = render(<DucatArt ducat={{ ...coin, kind: 'raceCount' }} label="Proba" />)
+    const { container } = render(<DucatArt ducat={{ ...coin, kind: 'raceCount', unit: '' }} label="Proba" />)
 
     expect(container.querySelector('.ducat-art__unit')).toBeNull()
   })
 
   it('gives the middle to a drawing where a family has one, and then sets no number', () => {
-    const { container } = render(<DucatArt ducat={{ ...coin, art: 'globe' }} label="Proba" />)
+    const { container } = render(<DucatArt ducat={{ ...coin, art: 'globe', unit: '' }} label="Proba" />)
 
     expect(container.querySelector('.ducat-art__art')).not.toBeNull()
     expect(container.querySelector('.ducat-art__number')).toBeNull()
@@ -174,7 +175,7 @@ describe('the number in the middle', () => {
 
   it('draws the galaxy for the one that climbs and the globe for the one that circles', () => {
     const climbed = render(<DucatArt ducat={{ ...coin, art: 'galaxy' }} label="Proba" />).container
-    const circled = render(<DucatArt ducat={{ ...coin, art: 'globe' }} label="Proba" />).container
+    const circled = render(<DucatArt ducat={{ ...coin, art: 'globe', unit: '' }} label="Proba" />).container
 
     // The galaxy is turned on the coin; the globe stands square.
     expect(must(climbed.querySelector('.ducat-art__art'), 'a galaxy').getAttribute('transform'))
