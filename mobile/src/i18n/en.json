@@ -1,0 +1,28 @@
+{
+  "meter": {
+    "title": "BTL meter",
+    "distance": "Distance",
+    "ascent": "Ascent",
+    "descent": "Descent",
+    "kilometres": "{value} km",
+    "metres": "{value} m",
+    "start": "Start measuring",
+    "stop": "Stop measuring",
+    "idle": "The meter records distance, ascent and descent from the moment you start it, also with the screen off.",
+    "starting": "Measuring is starting.",
+    "last": "Last measurement",
+    "denied": "Without permission for precise location, measuring cannot start. You grant it in the phone's settings.",
+    "noPressureSensor": "This phone has no pressure sensor, so ascent and descent cannot be measured.",
+    "vehicle": "Part of the way was covered at vehicle speed and is not counted in the distance."
+  },
+  "gps": {
+    "searching": "Looking for a GPS signal.",
+    "good": "The GPS signal is good.",
+    "poor": "The GPS signal is weak, so these points do not count.",
+    "lost": "No GPS signal. Distance continues when the signal returns."
+  },
+  "notification": {
+    "title": "BTL meter is measuring",
+    "text": "Distance, ascent and descent are recorded also with the screen off."
+  }
+}

@@ -1,0 +1,28 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <!-- GPS at the highest accuracy. Coarse is declared with it because Android 12
+       and later refuse a request for fine location that does not also ask for coarse. -->
+  <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+  <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
+  <!-- Recording survives the app in the background and the screen off because a
+       foreground service of type location does the recording, not JavaScript. A
+       location service started while the app is in the foreground keeps location
+       access in the background without ACCESS_BACKGROUND_LOCATION. -->
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+  <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+  <!-- The pressure sensor is not a wake-up sensor: with the CPU asleep its events
+       stop, and so would ascent and descent. -->
+  <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+  <uses-feature android:name="android.hardware.location.gps" android:required="false" />
+  <uses-feature android:name="android.hardware.sensor.barometer" android:required="false" />
+
+  <application>
+    <service
+      android:name=".RecordingService"
+      android:exported="false"
+      android:foregroundServiceType="location" />
+  </application>
+</manifest>

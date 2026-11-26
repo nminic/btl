@@ -1,0 +1,28 @@
+{
+  "meter": {
+    "title": "BTL merilo",
+    "distance": "Dužina",
+    "ascent": "Uspon",
+    "descent": "Spust",
+    "kilometres": "{value} km",
+    "metres": "{value} m",
+    "start": "Počni merenje",
+    "stop": "Završi merenje",
+    "idle": "Merenje beleži dužinu, uspon i spust od trenutka kad ga pokreneš, i kad je ekran ugašen.",
+    "starting": "Merenje počinje.",
+    "last": "Poslednje merenje",
+    "denied": "Bez dozvole za tačnu lokaciju merenje ne može da počne. Dozvolu daješ u podešavanjima telefona.",
+    "noPressureSensor": "Ovaj telefon nema senzor pritiska, pa uspon i spust ne mogu da se mere.",
+    "vehicle": "Deo puta je pređen brzinom vozila i nije uračunat u dužinu."
+  },
+  "gps": {
+    "searching": "Traži se GPS signal.",
+    "good": "GPS signal je dobar.",
+    "poor": "GPS signal je slab, pa se ove tačke ne računaju.",
+    "lost": "Nema GPS signala. Dužina se nastavlja kad se signal vrati."
+  },
+  "notification": {
+    "title": "BTL merilo meri",
+    "text": "Dužina, uspon i spust se beleže i kad je ekran ugašen."
+  }
+}
