@@ -49,7 +49,7 @@ Ništa se ne predlaže ni ne odlučuje u sukobu sa tim fajlovima, a svaka nova o
 ## Domen (izvor istine)
 
 - Pravila lige: Pravilnik BTL 2017 (domenski kontekst; periodične trke se NE koriste).
-- Formula bodova: `BTL = (40 × Le)^3.257 / (2 × Tsec^2.137)`, `Le = L + (1.25×AP + 0.75×AN)/200`. L u km, AP/AN u metrima (AN pozitivan broj), Tsec u sekundama, prikaz na 2 decimale. Stepen 2.137 ide SAMO na Tsec. Implementacija: `backend/src/main/java/com/btl/portal/domain/scoring/BtlScoreCalculator.java`. Zlatni test set u `BtlScoreCalculatorTest` je NEPRIKOSNOVEN: ne menjati očekivane vrednosti.
+- Formula bodova (vlasnik 26.11.2026, PDL P4, „Nova formula bodova, na produkciju”): `BTL = 103,34 × (Tref / Tsec)^4,25 × (Le / 10)^0,39`, `Le = L + (9×AP + 1×AN)/1000`. `Tref` je referentno vreme za dužinu `Le` iz tabele (5 km 755 s, 10 km 1571 s, 21,0975 km 3450 s, 42,195 km 7235 s, 50 km 9613 s, 100 km 21935 s), između tačaka log-log, ispod 5 km `755 × (Le/5)^1,06`, iznad 100 km produžetak poslednjeg odsečka. L u km, AP/AN u metrima (AN pozitivan broj, i spust dodaje dužini), Tsec u sekundama, prikaz na 2 decimale. Kontrola: 21,1 km, +250, −250, 1:45:00 daje 18,59. ~~`BTL = (40 × Le)^3.257 / (2 × Tsec^2.137)`, `Le = L + (1.25×AP + 0.75×AN)/200`~~ (oboreno 26.11.2026). Implementacija: `backend/src/main/java/com/btl/portal/domain/scoring/BtlScoreCalculator.java`. Zlatni test set u `BtlScoreCalculatorTest` je NEPRIKOSNOVEN: ne menjati očekivane vrednosti.
 
 ## Bezbednost (obavezno)
 

@@ -102,9 +102,10 @@ describe('what a report says about the run', () => {
 
   it('never reads the climb for the fall, whichever side they come from', () => {
     /* Two figures of the same shape next to each other, and the formula weighs them
-       differently: `Le = L + (1.25 × AP + 0.75 × AN) / 200`. Measured on 30.08.2026
-       by a review: with the two swapped, 60 km of 2000 up and 500 down comes out
-       about a fifth lighter, and a case that typed nought into both could not see
+       differently: `Le = L + (9 × AP + 1 × AN) / 1000` (the formula of 26.11.2026).
+       Measured on 30.08.2026 by a review, under the formula of the day: with the two
+       swapped, 60 km of 2000 up and 500 down comes out lighter (under today's, less
+       than half as heavy), and a case that typed nought into both could not see
        it. Asked on the side the member fills in and on the side the race answers
        for, because they are two different readings. */
     const mine = reportedResult(race({ kind: 'free', distanceKm: 0 }), typed())
