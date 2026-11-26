@@ -21,17 +21,17 @@ export function effectiveLengthKm(lengthKm: number, ascentM: number, descentM: n
 /** A stretch of the reference table: from a length and its reference time to the next. */
 type Stretch = readonly [fromKm: number, fromSeconds: number, toKm: number, toSeconds: number]
 
-/** The last stretch of the table, which also carries on beyond it, past 100 km. */
-const BEYOND: Stretch = [50, 9613, 100, 21935]
+/** The last stretch of the table, 50 km 9613 s to 100 km 21935 s, which answers for every
+ *  length above 50 km, past 100 km included: beyond the table its last stretch carries on. */
+const FROM_FIFTY: Stretch = [50, 9613, 100, 21935]
 
-/** The reference table (5 km 755 s, 10 km 1571 s, 21.0975 km 3450 s, 42.195 km 7235 s,
- *  50 km 9613 s, 100 km 21935 s), as the stretches between its points. */
-const STRETCHES: readonly Stretch[] = [
+/** The stretches of the reference table up to 50 km (5 km 755 s, 10 km 1571 s, 21.0975 km
+ *  3450 s, 42.195 km 7235 s, 50 km 9613 s); above it, `FROM_FIFTY`. */
+const UP_TO_FIFTY: readonly Stretch[] = [
   [5, 755, 10, 1571],
   [10, 1571, 21.0975, 3450],
   [21.0975, 3450, 42.195, 7235],
   [42.195, 7235, 50, 9613],
-  BEYOND,
 ]
 
 /**
@@ -44,7 +44,7 @@ function referenceSeconds(le: number): number {
   if (le <= 5) {
     return 755 * (le / 5) ** 1.06
   }
-  const [a, ta, b, tb] = STRETCHES.find(([, , toKm]) => le <= toKm) ?? BEYOND
+  const [a, ta, b, tb] = UP_TO_FIFTY.find(([, , toKm]) => le <= toKm) ?? FROM_FIFTY
 
   return Math.exp(Math.log(ta) + (Math.log(le / a) / Math.log(b / a)) * Math.log(tb / ta))
 }
