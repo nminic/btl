@@ -388,8 +388,8 @@ class ARaceCorrectedRecountsItsRunsTest {
 		alreadyThereRun = result(alreadyThere, theMarathon, "42.195", 520, 310, 16000,
 				counted("42.195", 520, 310, 16000));
 		runAtTheHalf = result(runner, itsHalf, "21.1", 150, 140, 6000, NOT_WHAT_THE_FORMULA_GIVES);
-		runAtTheTen = result(third, anotherEventsTen, "10", 120, 110, 2700, NOT_WHAT_THE_FORMULA_GIVES);
-		rookiesRun = result(rookie, anotherEventsTen, "10", 120, 110, 2700, counted("10", 120, 110, 2700));
+		runAtTheTen = result(third, anotherEventsTen, "10", 120, 110, 3000, NOT_WHAT_THE_FORMULA_GIVES);
+		rookiesRun = result(rookie, anotherEventsTen, "10", 120, 110, 3000, counted("10", 120, 110, 3000));
 		runnersSixHours = result(runner, sixHours, "61.3", 120, 130, 21600, counted("61.3", 120, 130, 21600));
 		thirdsSixHours = result(third, sixHours, "55", 90, 80, 21600, counted("55", 90, 80, 21600));
 		runAtTheFreeOne = result(lapsed, theFreeOne, "8.5", 60, 70, 3100, NOT_WHAT_THE_FORMULA_GIVES);
@@ -814,8 +814,8 @@ class ARaceCorrectedRecountsItsRunsTest {
 	 */
 	private void theRookieIsCarriedOverTheThresholdAndToldHisCategoryClosesFor2028()
 			throws Exception {
-		assertThat(counted("10", 120, 110, 2700)).isLessThan(new BigDecimal("12"));
-		assertThat(counted("12", 120, 110, 2700)).isGreaterThanOrEqualTo(new BigDecimal("12"));
+		assertThat(counted("10", 120, 110, 3000)).isLessThan(new BigDecimal("12"));
+		assertThat(counted("12", 120, 110, 3000)).isGreaterThanOrEqualTo(new BigDecimal("12"));
 
 		assertThat(change(anotherEventsTen, ofALength("Desetka", THE_TENS_DAY, "12", 120, 110))
 				.getStatus()).isEqualTo(200);
@@ -848,10 +848,10 @@ class ARaceCorrectedRecountsItsRunsTest {
 	 */
 	private void theRookieIsCarriedBackUnderTheThresholdAndToldHisCategoryOpensAgainFor2028()
 			throws Exception {
-		db.sql("update result set seconds = 2400, points = ? where id = ?")
-				.params(counted("10", 120, 110, 2400), rookiesRun).update();
-		assertThat(counted("10", 120, 110, 2400)).isGreaterThanOrEqualTo(new BigDecimal("12"));
-		assertThat(counted("9.5", 120, 110, 2400)).isLessThan(new BigDecimal("12"));
+		db.sql("update result set seconds = 2880, points = ? where id = ?")
+				.params(counted("10", 120, 110, 2880), rookiesRun).update();
+		assertThat(counted("10", 120, 110, 2880)).isGreaterThanOrEqualTo(new BigDecimal("12"));
+		assertThat(counted("9.5", 120, 110, 2880)).isLessThan(new BigDecimal("12"));
 
 		assertThat(change(anotherEventsTen, ofALength("Desetka", THE_TENS_DAY, "9.5", 120, 110))
 				.getStatus()).isEqualTo(200);
@@ -1025,7 +1025,7 @@ class ARaceCorrectedRecountsItsRunsTest {
 		assertThat(rowOf(runnersSecond)).isEqualTo(countedAt("42.195", 520, 310, 13800, "long"));
 		assertThat(rowOf(lapsedRun)).isEqualTo(countedAt("42.195", 520, 310, 15000, "long"));
 		assertThat(rowOf(rookiesRun)).as("the rookie's run at the ten of a frozen season")
-				.isEqualTo(countedAt("12", 120, 110, 2700, "short"));
+				.isEqualTo(countedAt("12", 120, 110, 3000, "short"));
 		assertThat(rowOf(runOnNewYearsDay)).as("a race of the season now running")
 				.isEqualTo(countedAt("5.2", 60, 45, 1500, "short"));
 		assertThat(rowsOf(runAtTheHalf, alreadyThereRun))
@@ -1124,16 +1124,16 @@ class ARaceCorrectedRecountsItsRunsTest {
 	@Test
 	void aTwoDayEventHoldsOneRaceOfTheFrozenSeasonAndOneOfTheRunningSeasonAndEachIsJudgedByItsOwnDay()
 			throws Exception {
-		assertThat(counted("10", 120, 110, 2700)).isLessThan(new BigDecimal("12"));
-		assertThat(counted("12", 120, 110, 2700)).isGreaterThanOrEqualTo(new BigDecimal("12"));
+		assertThat(counted("10", 120, 110, 3000)).isLessThan(new BigDecimal("12"));
+		assertThat(counted("12", 120, 110, 3000)).isGreaterThanOrEqualTo(new BigDecimal("12"));
 		event("dvodnevna-2027", "Dvodnevna trka", LocalDate.parse("2027-12-31"));
 
 		long theFirstDay = race("dvodnevna-2027", "Dvodnevna prva", LocalDate.parse("2027-12-31"), "length", 0,
 				"10", 120, 110);
 		long theSecondDay = race("dvodnevna-2027", "Dvodnevna druga", NEW_YEARS_DAY, "length", 0, "10", 120, 110);
-		long runOnTheFirstDay = result(secondRunner, theFirstDay, "10", 120, 110, 2700,
-				counted("10", 120, 110, 2700));
-		long runOnTheSecondDay = result(rookie, theSecondDay, "10", 120, 110, 2700, counted("10", 120, 110, 2700));
+		long runOnTheFirstDay = result(secondRunner, theFirstDay, "10", 120, 110, 3000,
+				counted("10", 120, 110, 3000));
+		long runOnTheSecondDay = result(rookie, theSecondDay, "10", 120, 110, 3000, counted("10", 120, 110, 3000));
 
 		clock.moveTo(HALF_AN_HOUR_AFTER_THE_FREEZE);
 
@@ -1143,9 +1143,9 @@ class ARaceCorrectedRecountsItsRunsTest {
 				.getStatus()).isEqualTo(200);
 
 		assertThat(rowOf(runOnTheFirstDay)).as("a race of the frozen season did not count its run again")
-				.isEqualTo(countedAt("12", 120, 110, 2700, "short"));
+				.isEqualTo(countedAt("12", 120, 110, 3000, "short"));
 		assertThat(rowOf(runOnTheSecondDay)).as("a race of the season now running did not count its run again")
-				.isEqualTo(countedAt("12", 120, 110, 2700, "short"));
+				.isEqualTo(countedAt("12", 120, 110, 3000, "short"));
 		assertThat(linesTo(secondRunner)).extracting(Line::subject).containsExactly(RECOUNTED);
 		assertThat(linesTo(rookie)).as("the season of the second race is not its own day's")
 				.extracting(Line::subject).containsExactly(RECOUNTED, "Početnička kategorija ti je zatvorena");
@@ -1545,19 +1545,19 @@ class ARaceCorrectedRecountsItsRunsTest {
 	/**
 	 * A CORRECTED COURSE THAT WOULD MAKE A RUN AT THE RACE WORTH MORE THAN ANY RUN CAN BE IS REFUSED, AND NOTHING
 	 * MOVES (PDL P4, owner, 10.10.2026, „Nikad broj bodova nece biti veci nego trocifren uz jos dve decimale";
-	 * the recount met {@code numeric(8,2)} and answered 500 until then). Asked from both sides: 122,0073 km
-	 * with the climb and the fall below make the runner's 12600 seconds worth 1000,00, and 122,007 km worth
+	 * the recount met {@code numeric(8,2)} and answered 500 until then). Asked from both sides: 78,4798 km
+	 * with the climb and the fall below make the runner's 12600 seconds worth 1000,00, and 78,4796 km worth
 	 * 999,99, the most a run can be, which is taken. His run is the fastest at the race, so it decides.
 	 */
 	@Test
 	void aCorrectedCourseThatWouldMakeARunWorthMoreThanAnyRunIsRefusedAndTheMostIsTaken() throws Exception {
-		assertThat(counted("122.0073", 520, 310, 12600)).isEqualByComparingTo("1000.00");
-		assertThat(counted("122.007", 520, 310, 12600)).isEqualByComparingTo("999.99");
+		assertThat(counted("78.4798", 520, 310, 12600)).isEqualByComparingTo("1000.00");
+		assertThat(counted("78.4796", 520, 310, 12600)).isEqualByComparingTo("999.99");
 
 		Map<Long, Run> before = rowsOf(runnersFirst, runnersSecond, lapsedRun, alreadyThereRun);
 
 		MockHttpServletResponse refused = change(theMarathon,
-				ofALength("Maraton", THE_MARATHONS_DAY, "122.0073", 520, 310));
+				ofALength("Maraton", THE_MARATHONS_DAY, "78.4798", 520, 310));
 
 		assertThat(refused.getStatus()).as(refused.getContentAsString()).isEqualTo(409);
 		assertThat(reasonIn(refused)).isEqualTo(RaceWriteApi.THE_RACE_WOULD_MAKE_A_RUN_IMPOSSIBLE);
@@ -1567,7 +1567,7 @@ class ARaceCorrectedRecountsItsRunsTest {
 				.query(BigDecimal.class).single()).as("a refused edit wrote the race").isEqualByComparingTo("42.2");
 		assertThat(newLines()).isEmpty();
 
-		assertThat(change(theMarathon, ofALength("Maraton", THE_MARATHONS_DAY, "122.007", 520, 310)).getStatus())
+		assertThat(change(theMarathon, ofALength("Maraton", THE_MARATHONS_DAY, "78.4796", 520, 310)).getStatus())
 				.isEqualTo(200);
 		assertThat(rowOf(runnersFirst).points()).isEqualByComparingTo("999.99");
 	}
@@ -1579,9 +1579,9 @@ class ARaceCorrectedRecountsItsRunsTest {
 		db.sql("update btl_event set kind = 'unscored' where slug = 'plivanje-2027'").update();
 
 		long swim = race("plivanje-2027", "Plivanje", THE_TENS_DAY, "length", 0, "10", 120, 110);
-		long swum = result(secondRunner, swim, "10", 120, 110, 2700, new BigDecimal("0.00"));
+		long swum = result(secondRunner, swim, "10", 120, 110, 3000, new BigDecimal("0.00"));
 
-		assertThat(counted("9999", 120, 110, 2700)).isGreaterThan(new BigDecimal("999.99"));
+		assertThat(counted("9999", 120, 110, 3000)).isGreaterThan(new BigDecimal("999.99"));
 		assertThat(change(swim, ofALength("Plivanje", THE_TENS_DAY, "9999", 120, 110)).getStatus()).isEqualTo(200);
 		assertThat(rowOf(swum).points()).isEqualByComparingTo("0.00");
 	}
@@ -1602,7 +1602,7 @@ class ARaceCorrectedRecountsItsRunsTest {
 		db.sql("update btl_event set kind = 'unscored' where slug = 'plivanje-2027'").update();
 
 		long swim = race("plivanje-2027", "Plivanje", THE_TENS_DAY, "length", 0, "10", 120, 110);
-		long swum = result(secondRunner, swim, "10", 120, 110, 2700, new BigDecimal("0.00"));
+		long swum = result(secondRunner, swim, "10", 120, 110, 3000, new BigDecimal("0.00"));
 
 		assertThat(change(swim, ofALength("Plivanje", THE_TENS_DAY, "10", 400, 380)).getStatus()).isEqualTo(200);
 		assertThat(change(anotherEventsTen, ofALength("Desetka", THE_TENS_DAY, "10", 400, 380)).getStatus())
@@ -1610,7 +1610,7 @@ class ARaceCorrectedRecountsItsRunsTest {
 
 		assertThat(rowOf(swum).ascentM()).as("the run was not counted again at all").isEqualTo(400);
 		assertThat(rowOf(swum).points()).as("the run counted again was given points").isEqualByComparingTo("0.00");
-		assertThat(rowOf(runAtTheTen).points()).isEqualByComparingTo(counted("10", 400, 380, 2700));
+		assertThat(rowOf(runAtTheTen).points()).isEqualByComparingTo(counted("10", 400, 380, 3000));
 
 		/* AND THE LINE IN HIS INBOX NAMES NO POINTS, as it was nor as it is (PointsOfARun#toTell), where the line
 		   about the scored ten, corrected the same way in the same case, names them on both. The row above is the
