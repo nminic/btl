@@ -785,12 +785,36 @@ describe('what tells a spike from a drive, and a trip away from a place he went 
   it('counts a place he walked to and back from across two long gaps as a place he went to', () => {
     const walk = (fromS: number, toS: number, eastM: number, northM: number) =>
       every(fromS * 1000, toS * 1000, 1).map((t) => fix(t, eastM + 1.5 * (t / 1000 - fromS), northM, { speed: 1.5 }));
-    // Out 80 m north during a minute without a fix, five fixes there, back during another minute.
-    const there = measureDistance([...walk(0, 100, 0, 0), ...walk(160, 165, 150, 80), ...walk(225, 260, 150, 0)]);
+    // Out 80 m north during a minute without a fix, five fixes there, back during another minute; and the same with
+    // three fixes of standing there, which would be a trip of spikes but for the two long gaps.
+    const moving = measureDistance([...walk(0, 100, 0, 0), ...walk(160, 165, 150, 80), ...walk(225, 260, 150, 0)]);
+    const stood = measureDistance([...walk(0, 100, 0, 0), ...standing(160, 163, 150, 80), ...walk(225, 260, 150, 0)]);
     const not = measureDistance([...walk(0, 100, 0, 0), ...walk(225, 260, 150, 0)]);
 
-    expect(there.spikeFixes).toBe(0);
-    expect(there.distanceM - not.distanceM).toBeGreaterThan(2 * 80 - 2 * MIN_STEP_M);
+    expect([moving.spikeFixes, stood.spikeFixes]).toEqual([0, 0]);
+    expect(moving.distanceM - not.distanceM).toBeGreaterThan(2 * 80 - 2 * MIN_STEP_M);
+    expect(stood.distanceM - not.distanceM).toBeGreaterThan(2 * 80 - 2 * MIN_STEP_M);
+  });
+
+  it('keeps every fix of a man who stands while his position wanders within its accuracy, faster than a runner', () => {
+    // Accuracy 8 m, positions 7 m either side of where he stands: 14 m apart a second, faster than a runner unless the
+    // two errors are taken off, and then nothing.
+    const fixes = every(0, 60_000, 1).map((t, i) => fix(t, i % 2 === 0 ? 7 : -7, 0, { speed: 0.1, accuracy: 8 }));
+    const result = measureDistance(fixes);
+
+    expect(result.spikeFixes).toBe(0);
+    expect(result.vehicleSegments).toBe(0);
+  });
+
+  it('drops a burst of six fixes 100 m off without a Doppler speed, a jump no vehicle makes', () => {
+    const plain = (fromS: number, toS: number, eastM: number, northM: number) =>
+      every(fromS * 1000, toS * 1000, 1).map((t) => fix(t, eastM + 3 * (t / 1000 - fromS), northM, { speed: undefined }));
+    const result = measureDistance([...plain(0, 100, 0, 0), ...plain(100, 106, 300, 100), ...plain(106, 200, 318, 0)]);
+
+    expect(result.vehicleSegments).toBe(0);
+    expect(result.spikeFixes).toBe(6);
+    expect(result.distanceM).toBeGreaterThan(597 - 2 * MIN_STEP_M);
+    expect(result.distanceM).toBeLessThanOrEqual(597.000001);
   });
 
   it('keeps a loop he ran out and back through a gap, entered and left at a runner speed', () => {

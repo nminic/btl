@@ -90,9 +90,8 @@ export type DistanceResult = {
  * The app reads the whole file every time, so a fix is judged by the fixes on BOTH
  * sides of it, not only by those before it. There are two passes.
  *
- * 1. WHICH FIXES ARE REAL (`chooseFixes`). First out go the fixes no track can hold:
- *    trips away that come back (`excursions`) and swerves in a drive (`swerves`).
- *    Then, of all the ways to walk through the rest in order, skipping some, the
+ * 1. WHICH FIXES ARE REAL (`chooseFixes`). First out go the trips away that come
+ *    back (`excursions`), which no track can hold. Then, of all the ways to walk through the rest in order, skipping some, the
  *    cheapest is taken (`cheapestWalk`). Skipping a fix costs 1. A step a runner can
  *    make costs nothing. A step at vehicle speed is allowed only in a drive, which
  *    costs VEHICLE_CONFIRM_FIXES - 0.5 to begin and 0.4 more to end, so three such
@@ -315,31 +314,10 @@ function excursions(track: Track): Set<number> {
   return out;
 }
 
-/**
- * Fixes that a drive would have to swerve to: one reached faster than a runner and
- * left faster than a runner, that lengthens the way between its neighbours by more
- * than both the errors four times over and more than its shorter leg. In a drive
- * speed says little about a spike that is no more than a car's speed off the way, so
- * its shape does; a real fix of a drive lies on its way, and even a corner lengthens
- * the way by less than its shorter leg.
- */
-function swerves(track: Track): Set<number> {
-  const out = new Set<number>();
-  for (let k = 1; k + 1 < track.fixes.length; k += 1) {
-    const i = k - 1;
-    const j = k + 1;
-    if (track.step(i, k) === 'run' || track.step(k, j) === 'run' || track.step(i, j) === null) continue;
-    const longer = track.apartM(i, k) + track.apartM(k, j) - track.apartM(i, j);
-    if (longer > Math.max(4 * stepThresholdM(track.fixes[i], track.fixes[j]), Math.min(track.apartM(i, k), track.apartM(k, j)))) out.add(k);
-  }
-  return out;
-}
-
-/** Pass 1: the trips away and the swerves out first, until none is left, then the cheapest walk. */
+/** Pass 1: the trips away out first, until none is left, then the cheapest walk. */
 function chooseFixes(good: readonly LocationSample[]): Taken[] {
   let track = new Track(good);
-  const odd = (t: Track) => new Set([...excursions(t), ...swerves(t)]);
-  for (let away = odd(track); away.size > 0; away = odd(track)) track = track.without(away);
+  for (let away = excursions(track); away.size > 0; away = excursions(track)) track = track.without(away);
   return cheapestWalk(track).map(({ index, mode }) => ({ fix: track.fixes[index], mode }));
 }
 
