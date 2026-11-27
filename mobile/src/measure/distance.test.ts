@@ -315,6 +315,13 @@ describe('a stand right after a gap in the signal', () => {
     expect(result.distanceM).toBeGreaterThan(297 + 183 + 700);
   });
 
+  it('counts the bridge to the place where he stands when the stand is the end of the session', () => {
+    const result = measureDistance([...run(0, 100, 0), ...standing(160, 161, 480)]);
+
+    expect(result.distanceM).toBeGreaterThan(470);
+    expect(result.vehicleSegments).toBe(0);
+  });
+
   it('drops a held fix of standing that the fix after it contradicts, as it drops any held fix', () => {
     const result = measureDistance([...run(0, 100, 0), fix(160_000, 480, 80, { speed: 0 }), ...run(161, 261, 480)]);
 
