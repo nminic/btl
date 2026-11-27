@@ -3,6 +3,7 @@ import type { Competitor, PendingItem, Team } from '../../data/types'
 import { NO_RATING } from '../../data/types'
 import {
   addressOf,
+  logoRefusal,
   nameError,
   nameFault,
   organisers,
@@ -232,6 +233,28 @@ describe('who the league counts as running a team', () => {
        member number, so it refuses nobody, and taking it off here would be this function
        deciding something `teamAdminOf` already decides. */
     expect(organisers([], [{ ...first(TEAMS), organizerMemberNumber: '' }])).toEqual([''])
+  })
+})
+
+describe('why a team’s logo cannot be approved', () => {
+  /* THE SEAT AND THE MEMBER WHO RUNS THE TEAM ARE TWO VALUES, and a logo is held to the second (PENDING, PR 836 FE2,
+     27.11.2026). In the served files the two are the same number on every team, so a card that read the seat off
+     the team and never asked who runs it was told apart from none. Here the seat names a member who is not in the
+     team (`000009` left it), so the one who runs it is the longest standing member (`000001`) and the two differ. */
+  const SEAT_LEFT_THE_TEAM: Team[] = [{ ...first(TEAMS), organizerMemberNumber: '000009' }]
+  const aLogoSentBy = (memberNumber: string): PendingItem =>
+    item({ kind: 'teamLogo', subjectId: '1', memberNumber })
+
+  it('is nothing for the member who runs the team, although the seat names somebody else', () => {
+    expect(logoRefusal(aLogoSentBy('000001'), SEAT_LEFT_THE_TEAM, MEMBERS)).toBeNull()
+  })
+
+  it('is the word that it is not his, for the member the seat names and who no longer runs it', () => {
+    expect(logoRefusal(aLogoSentBy('000009'), SEAT_LEFT_THE_TEAM, MEMBERS)).toBe('verification.teamLogoNotYours')
+  })
+
+  it('is nothing for a team the list no longer has', () => {
+    expect(logoRefusal(item({ kind: 'teamLogo', subjectId: '99', memberNumber: '000009' }), TEAMS, MEMBERS)).toBeNull()
   })
 })
 

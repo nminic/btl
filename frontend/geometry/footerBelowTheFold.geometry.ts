@@ -1,5 +1,5 @@
 import { expect } from '@playwright/test'
-import { SLACK, label, test } from './support/harness.ts'
+import { SLACK, label, notMeasured, settle, test } from './support/harness.ts'
 import type { At } from './support/harness.ts'
 
 /**
@@ -19,7 +19,11 @@ import type { At } from './support/harness.ts'
  *   from the sign in form by its link) the loader is on the page and the foot starts at or under the bottom
  *   edge of the window;
  * - **once a short screen is drawn** (the sign in form, every answer a 404) the foot is in the first screen,
- *   the page is no taller than the window, and it does not scroll for the sake of the rule.
+ *   the page is no taller than the window, and it does not scroll for the sake of the rule;
+ * - **once a screen that WAS on its way is drawn short** (the calendar reached from the sign in form, every answer
+ *   a 404, so its wait ends in the sentence that its data cannot be read) the same three hold and no loader
+ *   is left on the page. The sign in form has never had a loader, so the case above cannot see one that stays
+ *   (PENDING, PR 834, 27.11.2026).
  *
  * What it does not read is the shift itself, which `open` cannot see because it waits for the page to settle:
  * the number is Lighthouse's, and the property that makes it zero is the first one above. And it does not
@@ -43,8 +47,15 @@ for (const at of WIDTHS) {
        here, and its data is the wait. */
     await page.context().route('**/api/**', () => undefined)
     await page.locator(ON_ITS_WAY).first().click()
-    await page.locator('.loader:not(.loader--inline)').waitFor({ state: 'attached', timeout: 15_000 })
+    await page
+      .locator('.loader:not(.loader--inline)')
+      .waitFor({ state: 'attached', timeout: 15_000 })
+      .catch(() => {
+        throw notMeasured('the page-level loader never came onto the page after the press, so there was no wait to measure')
+      })
 
+    /* READ NOW, WHILE THE SCREEN WAITS: the page's own sideways reading is the one taken before the press, on
+       the sign in form, and says nothing of the state this case is about (PENDING, PR 834 N1, 27.11.2026). */
     const seen = await page.evaluate(() => {
       const foot = document.querySelector('.shell__footer')
 
@@ -52,10 +63,19 @@ for (const at of WIDTHS) {
         throw new Error('nothing matches .shell__footer')
       }
 
-      return { footTop: foot.getBoundingClientRect().top + scrollY, window: innerHeight }
+      const root = document.documentElement
+
+      return {
+        footTop: foot.getBoundingClientRect().top + scrollY,
+        window: innerHeight,
+        loaders: document.querySelectorAll('.loader:not(.loader--inline)').length,
+        sideways: Math.max(0, root.scrollWidth - root.clientWidth),
+      }
     })
 
+    expect(seen.loaders).toBe(1)
     expect(seen.footTop).toBeGreaterThanOrEqual(seen.window - SLACK)
+    expect(seen.sideways).toBe(0)
     expect(probe.sideways).toBe(0)
   })
 }
@@ -85,5 +105,40 @@ for (const at of WIDTHS) {
     expect(seen.footTop).toBeLessThan(seen.window)
 
     expect(probe.sideways).toBe(0)
+  })
+}
+
+for (const at of WIDTHS) {
+  test(`a screen that was on its way and is drawn short keeps no loader and has its foot in the first screen, at ${label(at)}`, async ({ open }) => {
+    const { page } = await open(at, SHORT, '.shell__footer', {})
+
+    /* The harness answers every request for data with a 404, so the calendar's wait ends in the sentence that
+       its data cannot be read: a short screen that WAS on its way, which is the state the loader has to leave
+       the main in. */
+    await page.locator(ON_ITS_WAY).first().click()
+    await settle(page, '.unreadable')
+
+    const seen = await page.evaluate(() => {
+      const foot = document.querySelector('.shell__footer')
+
+      if (foot === null) {
+        throw new Error('nothing matches .shell__footer')
+      }
+
+      const root = document.documentElement
+
+      return {
+        loaders: document.querySelectorAll('.loader').length,
+        footTop: foot.getBoundingClientRect().top + scrollY,
+        window: innerHeight,
+        document: root.scrollHeight,
+        sideways: Math.max(0, root.scrollWidth - root.clientWidth),
+      }
+    })
+
+    expect(seen.loaders).toBe(0)
+    expect(seen.document).toBeLessThanOrEqual(seen.window + SLACK)
+    expect(seen.footTop).toBeLessThan(seen.window)
+    expect(seen.sideways).toBe(0)
   })
 }

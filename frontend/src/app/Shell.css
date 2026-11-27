@@ -153,7 +153,15 @@
 
    WHAT IT DOES NOT COVER: the wait for a screen's CODE. The router holds the address until the piece has
    arrived and draws nothing of the shell before the first one (`app/routeObjects.tsx`, `HydrateFallback`),
-   so there is no drawn main to be short during it. */
+   so there is no drawn main to be short during it.
+
+   AND A PROFILE IS NOT THE ONLY SCREEN DRAWN IN STEPS (the review of PR 834, 27.11.2026, with `/api` held for
+   1000 ms): the page of an event moved from 0.0086 to 0.0727 at 360px and from 0.0056 to 0.0309 at 768px
+   (both under the limit of 0.10, and both new with the rule), and the league list from 0.2237 to 0.1073 at
+   360px (better, and still over the limit) and from 0.1542 to 0.173 at 768px (worse). With the answer in
+   300 ms every one of them measures 0. So the rule is measured to help the screens that wait once and is not
+   measured to be neutral on the ones that wait in steps; what it does to those is recorded here and not
+   claimed away. */
 .shell__main:has(.loader:not(.loader--inline)) {
   min-height: 100svh;
 }

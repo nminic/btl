@@ -60,6 +60,19 @@ describe('what stands on the coin', () => {
     expect(firstOf({ ...plain, kind: 'totalTime', art: 'galaxy' }, 'M', inEnglish).unit).toBe('')
   })
 
+  it('gives no unit under a drawing on the path a member\'s own ducat takes, whichever drawing it is', () => {
+    /* `instanceAt` is the road of every ducat a member holds and `firstOf` of the rulebook's, and the rule that a
+       drawing carries no unit is one rule that has to hold on both: a kind that has a unit, with each of the two
+       drawings, and a plain one beside them that does, so the empty string is not simply what `instanceAt` gives. */
+    const held = { value: 10, tier: 3, season: null, month: null } as const
+    const hours = { ...plain, kind: 'totalTime' } as const
+
+    expect(instanceAt({ ...hours, art: 'globe' }, 'M', held, inEnglish).unit).toBe('')
+    expect(instanceAt({ ...hours, art: 'galaxy' }, 'M', held, inEnglish).unit).toBe('')
+    expect(instanceAt({ ...hours, art: 'galaxy' }, 'M', { ...held, season: 2027, month: 3 }, inEnglish).unit).toBe('')
+    expect(instanceAt(hours, 'M', held, inEnglish).unit).toBe('hours')
+  })
+
   it('gives neither number nor unit to a ducat that carries a drawing', () => {
     /* Two of the fifteen have a drawing in the middle instead of a figure, and
        a drawing with a unit floating under it is a drawing with a caption. */
