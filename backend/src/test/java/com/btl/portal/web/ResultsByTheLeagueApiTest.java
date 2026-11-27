@@ -925,6 +925,47 @@ class ResultsByTheLeagueApiTest {
 				BtlScoreCalculator.calculate(10.0, 100, 80, 3300)));
 	}
 
+	/**
+	 * ON A RACE TO A LIMIT THE PENCIL COUNTS THE LIMIT AND THE RUNNER'S COURSE, by the formula of such a race
+	 * (PENDING, PR 841, 27.11.2026): the same figures the entering case above counts (34.79 at the limit, 25.98 by the
+	 * formula of a length), with the seconds typed beside them being 999 and the race's limit being 21600, so a pencil
+	 * that read the kind as another or the typed seconds for the limit is told apart. It writes {@code result.points}.
+	 */
+	@Test
+	void thePencilOnARaceToALimitCountsTheLimitAndTheRunnersCourseByTheFormulaOfSuchARace() throws Exception {
+		long veras = resultAlreadyCounted(VERA, theSixHours, LocalDate.of(2027, 5, 8), SIX_HOURS, "5.00", "10.00",
+				100, 80);
+
+		assertThat(changed(RESULTS_MODERATOR, theSixHours, veras, figuresBody("61.2500", 420, 380, 999))
+				.getStatus()).isEqualTo(204);
+		assertThat(resultsOf(VERA)).containsExactly(figures(theSixHours, "61.25", 420, 380, SIX_HOURS,
+				new BigDecimal("34.79")));
+	}
+
+	/**
+	 * AND IT JUDGES THE RUN BY THAT FORMULA TOO: 170 km in the limit of six hours are 827.84 at the limit and 1133.40
+	 * by the formula of a length, which is past the most a run can be, so a pencil that asked the other formula refuses
+	 * a run that is possible. The entering of a row, which asks the same question of its own, is held beside it.
+	 */
+	@Test
+	void aRunThatIsPossibleAtTheLimitIsNotRefusedByTheFormulaOfALengthOnThePencilOrOnARow() throws Exception {
+		assertThat(BtlScoreCalculator.calculateAtALimit(170, 0, 0, SIX_HOURS)).isEqualByComparingTo("827.84");
+		assertThat(BtlScoreCalculator.calculate(170, 0, 0, SIX_HOURS)).isGreaterThan(new BigDecimal("999.99"));
+
+		long veras = resultAlreadyCounted(VERA, theSixHours, LocalDate.of(2027, 5, 8), SIX_HOURS, "5.00", "10.00",
+				100, 80);
+		MockHttpServletResponse pencilled = changed(RESULTS_MODERATOR, theSixHours, veras,
+				figuresBody("170.00", 0, 0, 999));
+
+		assertThat(pencilled.getStatus()).as(pencilled.getContentAsString()).isEqualTo(204);
+		assertThat(pointsOf(VERA, theSixHours)).isEqualTo("827.84");
+
+		MockHttpServletResponse entered = entered(RESULTS_MODERATOR, theSixHours, rows(row(BOJAN, "170.00", 0, 0, 999)));
+
+		assertThat(entered.getStatus()).as(entered.getContentAsString()).isEqualTo(201);
+		assertThat(pointsOf(BOJAN, theSixHours)).isEqualTo("827.84");
+	}
+
 	@Test
 	void thePencilRefusesARunThatIsNotWhole() throws Exception {
 		long veras = resultAlreadyCounted(VERA, theHill, LocalDate.of(2027, 5, 8), AN_HOUR, "5.00",

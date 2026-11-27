@@ -192,6 +192,30 @@ class TheRestIsTranslatedByThePassTest {
 		assertThat(translationsOf("competitor_id", member)).isEmpty();
 	}
 
+	/**
+	 * A MEMBER WHOSE FEE LAPSES AFTER HE WAS TRANSLATED LOSES THE TRANSLATION at the next pass, as one who hides his
+	 * profile does, and the member beside him whose fee stands keeps his: the route serves a lapsed member to nobody,
+	 * so a copy of his words is a copy of something that is no longer shown. The profile is NOT hidden, so the
+	 * hiding half of the rule cannot be what removes it.
+	 */
+	@Test
+	void aMemberWhoseFeeLapsesLaterLosesTheTranslationOfHisBiographyAndTheOneWhoseFeeStandsKeepsIt() throws Exception {
+		long lapses = TranslatableRows.member(db, "009709", "Biografija člana kome članarina ističe.", false);
+		long stays = TranslatableRows.member(db, "009710", "Biografija člana kome članarina važi.", false);
+
+		active(lapses);
+		active(stays);
+		ran(job(WhatIsTranslated.COMPETITOR_BIO));
+		assertThat(translationsOf("competitor_id", lapses)).hasSize(2);
+		assertThat(translationsOf("competitor_id", stays)).hasSize(2);
+
+		db.sql("delete from membership where competitor_id = ?").param(lapses).update();
+		ran(job(WhatIsTranslated.COMPETITOR_BIO));
+
+		assertThat(translationsOf("competitor_id", lapses)).isEmpty();
+		assertThat(translationsOf("competitor_id", stays)).hasSize(2);
+	}
+
 	/** A deleted member takes the translation of his biography with him, which is the privacy policy's promise. */
 	@Test
 	void aDeletedMemberTakesTheTranslationOfHisBiographyWithHim() throws Exception {

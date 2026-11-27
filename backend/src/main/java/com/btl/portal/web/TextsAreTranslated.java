@@ -126,6 +126,15 @@ class TextsAreTranslated {
 		return Optional.of(translator.translate(sent.stream().map(Waiting::text).toList())
 				.thenAccept(answer -> answer.ifPresent(translated -> {
 					for (int at = 0; at < sent.size(); at++) {
+						if (translated.get(at) == null) {
+							/* The service answered this text with something that is not its translations, and the
+							   others of the pack are written all the same. It stays stamped as sent, so it goes
+							   behind the texts never sent and is tried again. */
+							LOG.warn("The translations of {} {} were not written: the service did not answer this text"
+									+ " with one translation into each language", sent.get(at).what(), sent.get(at).id());
+							continue;
+						}
+
 						try {
 							kept(sent.get(at), translated.get(at));
 						} catch (RuntimeException refused) {

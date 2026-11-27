@@ -18,6 +18,7 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
@@ -124,9 +125,12 @@ class Translator {
 
 	/**
 	 * TRANSLATES THESE TEXTS, without waiting for the answer. Off, it sends nothing. The future completes when the
-	 * service has answered or the term has run out, and never with a failure: it holds one {@link Translated} per
-	 * text, in the order they were given, or nothing at all when the service refused, was not reached, ran out of
-	 * time, answered with something that is not one translation into each language per text, or nothing was sent.
+	 * service has answered or the term has run out, and never with a failure: it holds one entry per text, in the
+	 * order they were given, or nothing at all when the service refused, was not reached, ran out of time, answered
+	 * with something that is not an array of one element per text, answered with no usable element, or nothing was
+	 * sent. An entry is {@code null} for a text whose element is not one translation into each language: that text
+	 * is not translated and the others are, so one text the service answers badly cannot hold the good texts of its
+	 * pack untranslated (PENDING, PR 835 S1, 27.11.2026).
 	 *
 	 * @param texts at most {@link #AT_MOST_IN_ONE_REQUEST} characters across the languages asked for; the caller
 	 *              counts them, because it is the caller that decides what waits for the next pass
@@ -170,7 +174,13 @@ class Translator {
 				});
 	}
 
-	/** One translation into each language per text, in order, or nothing. */
+	/**
+	 * One translation into each language per text, in order. Nothing when the answer is not an array of exactly one
+	 * element per text (a dropped element would put the translations of one text under another) and nothing when
+	 * no element is usable; otherwise an entry per text, {@code null} where that text's element is not one
+	 * translation into each language. The elements are the service's own positions, so an element that is wrong
+	 * cannot move another.
+	 */
 	private Optional<List<Translated>> read(String answer, int texts) {
 		JsonNode all;
 
@@ -200,14 +210,10 @@ class Translator {
 				});
 			}
 
-			if (heardAs.isBlank() || !into.keySet().equals(INTO.keySet())) {
-				return Optional.empty();
-			}
-
-			read.add(new Translated(heardAs, into));
+			read.add(heardAs.isBlank() || !into.keySet().equals(INTO.keySet()) ? null : new Translated(heardAs, into));
 		}
 
-		return Optional.of(read);
+		return read.stream().allMatch(Objects::isNull) ? Optional.empty() : Optional.of(read);
 	}
 
 	/** The text without the key, and no longer than a line of the log. */

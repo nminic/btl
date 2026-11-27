@@ -303,7 +303,14 @@ async function whatItDraws(one: Package): Promise<unknown> {
       process.execPath,
       ['--input-type=module', '--eval', THE_PAGE_RUN_BY_NODE],
       { cwd: FRONTEND, env: { ...process.env, BUILT_AT: at, DEADLINE: String(DEADLINE) }, timeout: DEADLINE + SLOW / 4 },
-    ).catch((failure: unknown) => ({ stdout: `the runner did not answer: ${String(failure)}` }))
+    ).catch((failure: unknown) => ({
+      /* ONE LINE, and not `String(failure)`: the message of a failed `execFile` carries the whole command, and the
+         command carries the runner's source, so the last line of it is the last line of that source and a case
+         that fails on it says `void 0` and not that the runner did not answer (PENDING, PR 833, 27.11.2026). */
+      stdout: `the runner did not answer (code ${String(Reflect.get(Object(failure), 'code'))}, signal ${String(
+        Reflect.get(Object(failure), 'signal'),
+      )}, killed ${String(Reflect.get(Object(failure), 'killed'))})`,
+    }))
     const said = stdout.trim().split('\n').at(-1) ?? ''
 
     /* Whatever the runner printed that is not an answer is handed back as it was, so a case that fails on it

@@ -218,6 +218,14 @@ describe('a run of one’s own that is still waiting', () => {
     expect(rows).toHaveLength(3)
     expect(rows.filter((row) => row.queryByText(/24,95 BTL poena$/) !== null)).toHaveLength(1)
     expect(rows.filter((row) => row.queryByText(/20,86 BTL poena$/) !== null)).toHaveLength(2)
+
+    /* AND EACH NUMBER IS ON THE ROW OF ITS OWN RACE (PENDING, PR 841, 27.11.2026): a count of rows is satisfied
+       by the three kinds read in another order, so the race that is named in a row is the one asked about. */
+    const rowOf = (name: string) => must(rows.find((row) => row.queryByText(name) !== null), name)
+
+    expect(rowOf('Vremenska').getByText(/24,95 BTL poena$/)).toBeVisible()
+    expect(rowOf('Slobodna').getByText(/20,86 BTL poena$/)).toBeVisible()
+    expect(rowOf('Neobicna').getByText(/20,86 BTL poena$/)).toBeVisible()
   }, SLOW)
 
   it('carries the caveat about the count while it waits, and not once it has been sent back', async () => {

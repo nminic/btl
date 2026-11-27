@@ -886,6 +886,49 @@ class TeamLogoApiTest {
 		assertThat(stands(picture)).isTrue();
 	}
 
+	/**
+	 * APPROVED, THE LOGO STANDS ON THE TEAM OF THE ROW THAT WAS DECIDED, and not on the team of the oldest logo that
+	 * waits (PENDING, PR 836 F, 27.11.2026). The team beside it has a logo waiting that was sent FIRST, so the oldest
+	 * row of its kind is not this one, and what it leaves behind is what is measured: its logo is the one it had and
+	 * its row still waits.
+	 */
+	@Test
+	void anApprovalLeavesTheOtherTeamsLogoThatWaitsAndItsLogoThatStandsAlone() throws Exception {
+		send(theOther, aJpeg("zeleni, stariji"), as(THE_OTHER_EDITOR));
+		send(ours, aJpeg("plavi, noviji"), as(THE_EDITOR));
+
+		List<String> before = theTeamsTab();
+		long row = theRowThatWaits();
+		long picture = thePictureThatWaits();
+
+		assertThat(decide(row, "{\"approved\":true," + seen(row) + "}", OVER_THE_TEAMS_QUEUE).getStatus())
+				.isEqualTo(200);
+
+		assertThat(everyLogo()).containsExactly("zeleni-trkaci " + theOthersLogo, "plavi-trkaci " + picture);
+		assertThat(theTeamsTab()).hasSize(2).containsExactly(before.get(0), ours + " | " + THE_EDITOR + " | approved | -");
+	}
+
+	/**
+	 * A CIRCLE DRAWN OVER THE LOGO OF THE TEAM BESIDE IT THAT WAITS IS NOT DRAWN OVER THE ONE THAT WAITS HERE (PENDING,
+	 * PR 836 I, 27.11.2026). Both teams have a logo waiting under the same route, and a send that named any picture
+	 * under {@code /api/teams/own-logo/} would move the circle of this team's logo on the strength of the other's.
+	 */
+	@Test
+	void aCircleDrawnOverTheOtherTeamsLogoThatWaitsIsNotTheOneThatWaitsHere() throws Exception {
+		byte[] theirs = aJpeg("zeleni logo koji ceka");
+
+		send(theOther, theirs, as(THE_OTHER_EDITOR));
+		send(ours, aJpeg("plavi logo koji ceka"), as(THE_EDITOR));
+
+		long picture = thePictureThatWaits();
+		MockHttpServletResponse over = send(String.valueOf(ours), null, "0.3",
+				"/api/teams/own-logo/" + WhatAPictureIs.digestOf(theirs), as(THE_EDITOR));
+
+		assertThat(over.getStatus()).isEqualTo(409);
+		assertThat(body(over).path("reason").asString()).isEqualTo(MePhotoApi.THE_PICTURE_HAS_CHANGED);
+		assertThat(circleOf(picture)).isEqualTo("0.25 0.75 0.5");
+	}
+
 	/** An approval with no circle of the moderator's publishes the editor's circle as it was sent. */
 	@Test
 	void anApprovalWithNoCircleOfItsOwnKeepsTheEditors() throws Exception {

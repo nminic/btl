@@ -391,6 +391,34 @@ class CalendarApiTest {
 		Answers.noFieldIsTheSameInEveryRecord("/api/events?lang=en", answer("/api/events?lang=en"));
 	}
 
+	/**
+	 * THE LANGUAGE IS ASKED FOR IN {@code ?lang=} AND NOWHERE ELSE: a reader's browser says what it prefers in
+	 * {@code Accept-Language}, and an answer that read it would be one the file the portal serves is not (PENDING,
+	 * PR 835 N2, 27.11.2026). The translation of the first event exists in both languages, so a route that took the
+	 * header for the language would answer {@code descriptionShown}, which the answer with no language does not carry.
+	 */
+	@Test
+	void aBrowserThatPrefersALanguageGetsTheAnswerWithNoLanguageUnlessItAsksInTheAddress() throws Exception {
+		translated("prvi", "en", "machine", "sr-Latn", "Through the town and back");
+		translated("prvi", "sr", "machine", "en", "Kroz grad na srpskom");
+
+		String plain = http.perform(get("/api/events")).andReturn().getResponse().getContentAsString();
+
+		for (String header : List.of("en", "en-GB,en;q=0.9", "sr")) {
+			assertThat(http.perform(get("/api/events").header("Accept-Language", header)).andReturn().getResponse()
+					.getContentAsString()).as("the answer for Accept-Language %s", header).isEqualTo(plain);
+		}
+
+		JsonNode inTheAddress = new ObjectMapper().readTree(http.perform(get("/api/events").param("lang", "en")
+				.header("Accept-Language", "sr")).andReturn().getResponse().getContentAsString());
+
+		assertThat(StreamSupport.stream(inTheAddress.spliterator(), false)
+				.filter(one -> one.path("slug").asString().equals("prvi"))
+				.map(one -> one.path("descriptionShown").toString()).toList())
+				.as("the address wins over the header")
+				.containsExactly(shown("Through the town and back", "en", true));
+	}
+
 	/** A value that is not a language tag is refused, with no body, as PageApi refuses it. */
 	@ParameterizedTest
 	@ValueSource(strings = {"EN", "sr-Latn", "e", "engl", "1"})

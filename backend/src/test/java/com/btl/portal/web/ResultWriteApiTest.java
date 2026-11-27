@@ -399,6 +399,76 @@ class ResultWriteApiTest {
 				.containsEntry("descent_m", 130);
 	}
 
+	/**
+	 * 170 KM AT A RACE TO A LIMIT OF SIX HOURS ARE POSSIBLE AND ARE WORTH WHAT THE FORMULA OF SUCH A RACE SAYS, which is
+	 * a number the formula of a race of a length would put past the most a run can be (PENDING, PR 841, 27.11.2026).
+	 * The same figures are 827,84 at the limit and 1133,40 by the formula of a length, so a route that judged or told
+	 * a run of this kind by the other formula is told apart: it refuses a run that is possible, or tells the member
+	 * the number of another kind of race. The three roads to a run are the calendar's race, a correction of a result
+	 * on it and a race typed by hand, and each is a case of its own below.
+	 */
+	private static final String FAR_AT_A_LIMIT = "170.00";
+
+	private static String asTheMemberReadsIt(BigDecimal points) {
+		return points.toPlainString().replace('.', ',');
+	}
+
+	private void theFiguresAreOnOneSideOfTheMostARunCanBeWorthAtEachFormula() {
+		assertThat(BtlScoreCalculator.calculateAtALimit(170, 0, 0, 21600))
+				.as("the figures must be possible at the formula of a race to a limit")
+				.isLessThanOrEqualTo(new BigDecimal("999.99"));
+		assertThat(BtlScoreCalculator.calculate(170, 0, 0, 21600))
+				.as("and not possible at the formula of a race of a length, or the case tells the two apart by nothing")
+				.isGreaterThan(new BigDecimal("999.99"));
+	}
+
+	@Test
+	void aRunAtARaceToALimitFromTheCalendarIsJudgedAndToldByTheFormulaOfSuchARace() throws Exception {
+		theFiguresAreOnOneSideOfTheMostARunCanBeWorthAtEachFormula();
+
+		MockHttpServletResponse answered = reportedAs(ME, form(Map.of(
+				"raceId", timeRace,
+				"distanceKm", FAR_AT_A_LIMIT,
+				"ascentM", 0,
+				"descentM", 0,
+				"link", "https://rezultati.rs/sest-sati-daleko")));
+
+		assertThat(answered.getStatus()).as(answered.getContentAsString()).isEqualTo(201);
+		assertThat(theLineInTheInboxOf(ME).get(1)).contains("vreme 6:00:00, "
+				+ asTheMemberReadsIt(BtlScoreCalculator.calculateAtALimit(170, 0, 0, 21600)) + " bodova");
+	}
+
+	@Test
+	void aCorrectionAtARaceToALimitIsJudgedAndToldByTheFormulaOfSuchARace() throws Exception {
+		theFiguresAreOnOneSideOfTheMostARunCanBeWorthAtEachFormula();
+
+		MockHttpServletResponse answered = correctedAs(FIRST_WRITTEN, timedResult, correction(FAR_AT_A_LIMIT, 0, 0,
+				21600, "https://rezultati.rs/ispravka-daleko", ""));
+
+		assertThat(answered.getStatus()).as(answered.getContentAsString()).isLessThan(300);
+		assertThat(theLineInTheInboxOf(FIRST_WRITTEN).get(1)).contains("vreme 6:00:00, "
+				+ asTheMemberReadsIt(BtlScoreCalculator.calculateAtALimit(170, 0, 0, 21600)) + " bodova");
+	}
+
+	@Test
+	void aRaceToALimitTypedByHandIsJudgedAndToldByTheFormulaOfSuchARace() throws Exception {
+		theFiguresAreOnOneSideOfTheMostARunCanBeWorthAtEachFormula();
+
+		Map<String, Object> fields = aDescribedRun();
+
+		fields.put("raceKind", "time");
+		fields.put("distanceKm", FAR_AT_A_LIMIT);
+		fields.put("ascentM", 0);
+		fields.put("descentM", 0);
+		fields.put("seconds", 21600);
+
+		MockHttpServletResponse answered = reportedAs(ME, form(fields));
+
+		assertThat(answered.getStatus()).as(answered.getContentAsString()).isEqualTo(201);
+		assertThat(theLineInTheInboxOf(ME).get(1)).contains("vreme 6:00:00, "
+				+ asTheMemberReadsIt(BtlScoreCalculator.calculateAtALimit(170, 0, 0, 21600)) + " bodova");
+	}
+
 	/** A FREE RACE FIXES NEITHER, so all four are the member's. */
 	@Test
 	void aFreeRaceLeavesAllFourToTheMember() throws Exception {
