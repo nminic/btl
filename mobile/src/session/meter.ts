@@ -13,7 +13,9 @@ export type MeterView =
  * The screen's side of a session. The session file is the only source: every
  * view is computed from the samples read from it, so a JavaScript that Android
  * paused in the background catches up on its next read and loses nothing, and a
- * meter opened after the app was closed shows the last session as it was saved.
+ * meter opened after the app was closed shows the last session as it was saved,
+ * or the session still recording, in the same file, when Android killed
+ * everything in between.
  */
 export class Meter {
   private recording = new Recording();
@@ -26,9 +28,13 @@ export class Meter {
     private readonly notification: { title: string; text: string },
   ) {}
 
-  /** On opening the app: a session still recording, the last one saved, or none. */
+  /**
+   * On opening the app: a session still recording, the last one saved, or none.
+   * A session still recording whose service Android killed is started again.
+   */
   open(): MeterView {
     this.recordingNow = this.sensors.isRecording();
+    if (this.recordingNow) this.sensors.resume();
     return this.tick();
   }
 

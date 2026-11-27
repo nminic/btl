@@ -32,9 +32,6 @@ import java.io.File
  */
 class RecordingService : Service(), LocationListener, SensorEventListener {
   companion object {
-    const val EXTRA_FILE = "file"
-    const val EXTRA_TITLE = "title"
-    const val EXTRA_TEXT = "text"
     private const val CHANNEL_ID = "btl-recording"
     private const val NOTIFICATION_ID = 1
 
@@ -55,28 +52,51 @@ class RecordingService : Service(), LocationListener, SensorEventListener {
 
   override fun onBind(intent: Intent?): IBinder? = null
 
+  /**
+   * Started by the module, or started again by Android with no intent after it
+   * killed the process (START_STICKY). Either way the session comes from
+   * [ActiveSession], so a restart goes on writing the SAME file, and the time it
+   * was down is a gap that the algorithm bridges like a lost signal.
+   */
   @SuppressLint("MissingPermission")
   override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-    if (intent == null) return START_NOT_STICKY
-    val path = intent.getStringExtra(EXTRA_FILE)
-    if (running || path == null) return START_NOT_STICKY
+    if (running) return START_STICKY
+    val session = ActiveSession(this)
+    val path = session.file
+    if (path == null) {
+      stopSelf()
+      return START_NOT_STICKY
+    }
 
-    startInForeground(intent.getStringExtra(EXTRA_TITLE).orEmpty(), intent.getStringExtra(EXTRA_TEXT).orEmpty())
+    try {
+      startInForeground(session.notificationTitle, session.notificationText)
+    } catch (refused: SecurityException) {
+      // Location was revoked since the session began; nothing can be recorded.
+      stopSelf()
+      return START_NOT_STICKY
+    }
     running = true
 
     val sensorManager = getSystemService(SENSOR_SERVICE) as SensorManager
     val pressure = sensorManager.getDefaultSensor(Sensor.TYPE_PRESSURE)
-    writer = SampleWriter(File(path)).also {
-      it.meta(pressure != null, System.currentTimeMillis(), SystemClock.elapsedRealtime())
+    val file = File(path)
+    val firstStart = file.length() == 0L
+    writer = SampleWriter(file).also {
+      if (firstStart) it.meta(pressure != null, System.currentTimeMillis(), SystemClock.elapsedRealtime())
     }
 
     val handlerThread = HandlerThread("btl-sensors").also { it.start() }
     thread = handlerThread
     val looper = handlerThread.looper
 
-    // The module checks ACCESS_FINE_LOCATION before it starts this service.
+    // The module checks ACCESS_FINE_LOCATION before it starts this service. After
+    // a restart by Android it may have been revoked; pressure is still recorded.
     val locationManager = getSystemService(LOCATION_SERVICE) as LocationManager
-    locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, LOCATION_INTERVAL_MS, 0f, this, looper)
+    try {
+      locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, LOCATION_INTERVAL_MS, 0f, this, looper)
+    } catch (refused: SecurityException) {
+      // Recorded as a gap in the fixes, which the screen shows as a lost signal.
+    }
     if (pressure != null) {
       sensorManager.registerListener(this, pressure, PRESSURE_PERIOD_US, Handler(looper))
     }
@@ -85,7 +105,7 @@ class RecordingService : Service(), LocationListener, SensorEventListener {
       .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "btl:recording")
       .also { it.acquire() }
 
-    return START_NOT_STICKY
+    return START_STICKY
   }
 
   override fun onDestroy() {

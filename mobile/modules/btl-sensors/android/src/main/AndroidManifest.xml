@@ -16,6 +16,11 @@
        stop, and so would ascent and descent. -->
   <uses-permission android:name="android.permission.WAKE_LOCK" />
 
+  <!-- The app asks once, on its first start, to be exempted from battery
+       optimisation, so that Android kills the recording less often (PDL, „Kad
+       Android ubije servis za merenje, servis se sam podiže"). -->
+  <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+
   <uses-feature android:name="android.hardware.location.gps" android:required="false" />
   <uses-feature android:name="android.hardware.sensor.barometer" android:required="false" />
 

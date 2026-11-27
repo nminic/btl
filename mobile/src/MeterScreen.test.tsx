@@ -53,6 +53,8 @@ it('shows distance, ascent and descent live, and the GPS state, while recording'
   expect(screen.getByLabelText(/^Uspon: \d+ m$/)).toBeTruthy();
   expect(screen.getByLabelText('Spust: 0 m')).toBeTruthy();
   expect(screen.getByText(t('gps.good'))).toBeTruthy();
+  expect(screen.getByText('Telefon ima senzor pritiska.')).toBeTruthy();
+  expect(screen.getByText('Stiglo uzoraka: lokacija 401, pritiska 401.')).toBeTruthy();
   expect(screen.getByRole('button', { name: 'Završi merenje' })).toBeTruthy();
 });
 
@@ -68,18 +70,23 @@ it('says that the phone has no pressure sensor instead of showing ascent and des
   expect(screen.queryByLabelText(/^Uspon/)).toBeNull();
   expect(screen.queryByLabelText(/^Spust/)).toBeNull();
   expect(screen.getByText(t('gps.searching'))).toBeTruthy();
+  expect(screen.queryByText('Telefon ima senzor pritiska.')).toBeNull();
+  expect(screen.getByText('Stiglo uzoraka: lokacija 0, pritiska 0.')).toBeTruthy();
 });
 
-it('says when part of the way was at vehicle speed', async () => {
+it('counts a drive in the distance and says nothing about it to the member', async () => {
+  // PDL, „Član na ekranu aplikacije ne dobija rečenicu o vozilu; napomena je moderatorova".
   const sensors = await setUp();
   await fireEvent.press(screen.getByRole('button', { name: 'Počni merenje' }));
   sensors.writeMeta();
-  for (let s = 0; s < 40; s += 1) {
+  for (let s = 0; s < 41; s += 1) {
     sensors.write({ k: 'loc', t: s * 1000, ...offset(25 * s, 0), rx: s * 1000, mock: false, acc: 4, spd: 25 });
   }
+  sensors.now = 40_000;
   await act(async () => jest.advanceTimersByTime(READ_EVERY_MS));
 
-  expect(screen.getByText(t('meter.vehicle'))).toBeTruthy();
+  expect(screen.getByLabelText('Dužina: 1,00 km')).toBeTruthy();
+  expect(screen.queryByText(/vozil/i)).toBeNull();
 });
 
 it('stops, shows the last measurement without a GPS state, and stops reading', async () => {

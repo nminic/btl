@@ -36,3 +36,42 @@ class Sessions(context: Context) {
     }
   }
 }
+
+/**
+ * The session being recorded, kept outside the process. When Android kills the
+ * process, the service is started again with no intent, and this is how it knows
+ * which file to go on writing: „Kad Android ubije servis za merenje, servis se sam
+ * podiže i nastavlja ISTO merenje" (PDL). Only the member's stop ends it.
+ */
+class ActiveSession(context: Context) {
+  private val prefs = context.getSharedPreferences("btl-sensors", Context.MODE_PRIVATE)
+
+  val file: String?
+    get() = prefs.getString(KEY_FILE, null)
+  val notificationTitle: String
+    get() = prefs.getString(KEY_TITLE, null).orEmpty()
+  val notificationText: String
+    get() = prefs.getString(KEY_TEXT, null).orEmpty()
+
+  fun begin(file: String, notificationTitle: String, notificationText: String) {
+    prefs.edit().putString(KEY_FILE, file).putString(KEY_TITLE, notificationTitle).putString(KEY_TEXT, notificationText).commit()
+  }
+
+  fun end() {
+    prefs.edit().remove(KEY_FILE).remove(KEY_TITLE).remove(KEY_TEXT).commit()
+  }
+
+  /** True only the first time: the app asks for the battery exemption once, on its first start. */
+  fun firstAskForBatteryExemption(): Boolean {
+    if (prefs.getBoolean(KEY_BATTERY_ASKED, false)) return false
+    prefs.edit().putBoolean(KEY_BATTERY_ASKED, true).commit()
+    return true
+  }
+
+  private companion object {
+    const val KEY_FILE = "activeFile"
+    const val KEY_TITLE = "notificationTitle"
+    const val KEY_TEXT = "notificationText"
+    const val KEY_BATTERY_ASKED = "batteryExemptionAsked"
+  }
+}

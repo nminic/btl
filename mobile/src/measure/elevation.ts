@@ -27,6 +27,13 @@ export const BUCKET_MS = 1000;
 export const CLIMB_RATE_WINDOW_MS = 30_000;
 
 /**
+ * And over this one, for the decision about standing only: a climb that starts
+ * from standing shows in five seconds, where the long window would still take
+ * its first half metre for the weather and lose it.
+ */
+export const CLIMB_START_WINDOW_MS = 5_000;
+
+/**
  * Slower than this, a change of altitude while standing is the weather. Weather
  * moves pressure by about 1 hPa an hour at its fastest, which is about 8 m an hour
  * or 0.0023 m/s; this is nine times that, and far below any climb on foot (a
@@ -44,9 +51,39 @@ export function pressureToAltitudeM(hPa: number): number {
   return 44330 * (1 - Math.pow(hPa / SEA_LEVEL_HPA, 1 / 5.255));
 }
 
+/**
+ * A change of altitude at least this fast, with less horizontal speed than
+ * vertical (steeper than 1:1) or with no fresh fix to say, is climbing without
+ * moving on: a lift, or stairs indoors. Above the fastest weather by fifty times,
+ * and as fast as a hard climb on a trail (360 m an hour); a steep trail at 0.3 m/s
+ * horizontally and 0.1 m/s vertically is still not steeper than 1:1.
+ * Known limit: stairs outdoors with a good fix are about 30 to 37 degrees, gentler
+ * than 1:1, so they are not marked.
+ */
+export const VERTICAL_ONLY_MIN_RATE_MPS = 0.1;
+
+/**
+ * The mark needs a rate measured over at least this long. At the start of a
+ * session the window is a second or two, and half a metre of sensor noise over
+ * one second would read as a lift.
+ */
+export const VERTICAL_ONLY_MIN_SPAN_MS = 10_000;
+
 export type ElevationResult =
   | { status: 'noPressureSensor' }
-  | { status: 'measured'; ascentM: number; descentM: number };
+  | {
+      status: 'measured';
+      ascentM: number;
+      descentM: number;
+      /**
+       * Stretches climbed or dropped without moving on. They COUNT, and they are
+       * marked for the moderator: „Kao za duzinu, broji se sve ali se skrece
+       * paznja" (PDL, „Uspon uz stepenice i liftom se broji, ali se skreće
+       * pažnja, isto kao za dužinu").
+       */
+      verticalSegments: number;
+      verticalDurationMs: number;
+    };
 
 type Point = { t: number; altitudeM: number };
 
@@ -65,8 +102,8 @@ function buckets(pressures: readonly PressureSample[]): Point[] {
     .map(([, g]) => ({ t: g.t / g.n, altitudeM: pressureToAltitudeM(g.hPa / g.n) }));
 }
 
-/** Whether the latest good fix at or before `t` is fresh and says, by Doppler, that the runner stands. */
-function standingAt(goodFixes: readonly LocationSample[], t: number): boolean {
+/** The Doppler speed of the latest good fix at or before `t`, or null when there is no fresh one that has it. */
+function horizontalSpeedAt(goodFixes: readonly LocationSample[], t: number): number | null {
   let lo = 0;
   let hi = goodFixes.length - 1;
   let found = -1;
@@ -79,9 +116,9 @@ function standingAt(goodFixes: readonly LocationSample[], t: number): boolean {
       hi = mid - 1;
     }
   }
-  if (found < 0) return false;
+  if (found < 0) return null;
   const fix = goodFixes[found];
-  return t - fix.t <= FIX_FRESH_MS && fix.speed !== undefined && fix.speed < STATIONARY_SPEED_MPS;
+  return t - fix.t <= FIX_FRESH_MS && fix.speed !== undefined ? fix.speed : null;
 }
 
 /**
@@ -95,6 +132,9 @@ function standingAt(goodFixes: readonly LocationSample[], t: number): boolean {
  * gradient run fast. With no fresh fix (a tunnel, before the first fix) the runner
  * counts as moving: the barometer is the primary sensor and a lost GPS signal is
  * where a real climb would otherwise be lost.
+ *
+ * Climbing without moving on (a lift, stairs indoors) counts like any climb and
+ * is marked; see `VERTICAL_ONLY_MIN_RATE_MPS`.
  */
 export function measureElevation(
   pressureSensor: boolean,
@@ -114,6 +154,10 @@ export function measureElevation(
   let base = 0;
   let extreme = 0;
   let windowStart = 0;
+  let startWindowStart = 0;
+  let verticalSegments = 0;
+  let verticalDurationMs = 0;
+  let verticalBefore = false;
 
   const bank = () => {
     if (direction === 'up') ascentM += extreme - base;
@@ -129,8 +173,23 @@ export function measureElevation(
     while (windowStart + 1 < i && points[windowStart + 1].t <= point.t - CLIMB_RATE_WINDOW_MS) windowStart += 1;
     const from = points[windowStart];
     const rate = Math.abs(a - from.altitudeM) / ((point.t - from.t) / 1000);
+    while (startWindowStart + 1 < i && points[startWindowStart + 1].t <= point.t - CLIMB_START_WINDOW_MS) startWindowStart += 1;
+    const recent = points[startWindowStart];
+    const startRate = Math.abs(a - recent.altitudeM) / ((point.t - recent.t) / 1000);
+    const horizontal = horizontalSpeedAt(goodFixes, point.t);
 
-    if (standingAt(goodFixes, point.t) && rate < MIN_CLIMB_RATE_MPS) {
+    const vertical =
+      point.t - from.t >= VERTICAL_ONLY_MIN_SPAN_MS &&
+      rate >= VERTICAL_ONLY_MIN_RATE_MPS &&
+      (horizontal === null || horizontal < rate);
+    if (vertical) {
+      if (!verticalBefore) verticalSegments += 1;
+      verticalDurationMs += point.t - points[i - 1].t;
+    }
+    verticalBefore = vertical;
+
+    const slow = rate < MIN_CLIMB_RATE_MPS && startRate < MIN_CLIMB_RATE_MPS;
+    if (horizontal !== null && horizontal < STATIONARY_SPEED_MPS && slow) {
       bank();
       direction = null;
       base = a;
@@ -161,5 +220,5 @@ export function measureElevation(
   });
   bank();
 
-  return { status: 'measured', ascentM, descentM };
+  return { status: 'measured', ascentM, descentM, verticalSegments, verticalDurationMs };
 }

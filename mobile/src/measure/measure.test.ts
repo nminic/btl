@@ -43,10 +43,45 @@ it('carries distance, elevation and what is suspicious from the samples', () => 
   const result = measure(r, 200_000);
 
   expect(result.distanceM).toBeGreaterThan(590);
-  expect(result.elevation).toEqual({ status: 'measured', ascentM: expect.closeTo(10, 1), descentM: 0 });
-  expect(result.suspicious).toEqual({ vehicleSegments: 0, vehicleDurationMs: 0, mockFixes: 1 });
+  expect(result.samples).toEqual({ locations: 200, pressures: 1000 });
+  expect(result.elevation).toEqual({
+    status: 'measured',
+    ascentM: expect.closeTo(10, 1),
+    descentM: 0,
+    verticalSegments: 0,
+    verticalDurationMs: 0,
+  });
+  expect(result.suspicious).toEqual({
+    vehicleSegments: 0,
+    vehicleDurationMs: 0,
+    mockFixes: 1,
+    verticalSegments: 0,
+    verticalDurationMs: 0,
+  });
 });
 
-it('reads the absence of a pressure sensor from the session the service wrote', () => {
-  expect(measure(recording(false), 0).elevation).toEqual({ status: 'noPressureSensor' });
+it('gathers the marks of a drive and of a lift among what is suspicious, and keeps their distance and ascent', () => {
+  const r = recording(true);
+  // A run, a drive at 20 m/s from 100 to 160 s, then standing in a lift that climbs 30 m from 200 to 220 s.
+  every(0, 300_000, 1).forEach((t) => {
+    const s = t / 1000;
+    const east = s < 100 ? 3 * s : s < 160 ? 300 + 20 * (s - 100) : 1500;
+    r.locations.push(fix(t, east, 0, { speed: s < 100 ? 3 : s < 160 ? 20 : 0 }));
+  });
+  every(0, 300_000, 5).forEach((t) => r.pressures.push(pressure(t, Math.min(30, Math.max(0, (t - 200_000) / 666)))));
+
+  const result = measure(r, 300_000);
+
+  expect(result.distanceM).toBeGreaterThan(1470);
+  expect(result.suspicious.vehicleSegments).toBe(1);
+  expect(result.suspicious.verticalSegments).toBe(1);
+  expect(result.suspicious.verticalDurationMs).toBeGreaterThan(0);
+});
+
+it('reads the absence of a pressure sensor from the session the service wrote, and marks no lift', () => {
+  const result = measure(recording(false), 0);
+
+  expect(result.elevation).toEqual({ status: 'noPressureSensor' });
+  expect(result.suspicious.verticalSegments).toBe(0);
+  expect(result.suspicious.verticalDurationMs).toBe(0);
 });

@@ -14,6 +14,8 @@ function doppler(fromS: number, toS: number, speed: number, gpsAltitude?: (s: nu
   );
 }
 
+const NOTHING = { status: 'measured', ascentM: 0, descentM: 0, verticalSegments: 0, verticalDurationMs: 0 };
+
 function measured(result: ReturnType<typeof measureElevation>) {
   if (result.status !== 'measured') throw new Error(`expected a measurement, got ${result.status}`);
   return result;
@@ -39,11 +41,13 @@ describe('a pressure sensor and none', () => {
       status: 'measured',
       ascentM: 0,
       descentM: 0,
+      verticalSegments: 0,
+      verticalDurationMs: 0,
     });
   });
 
   it('with a sensor and no samples yet measures nothing', () => {
-    expect(measureElevation(true, [], [])).toEqual({ status: 'measured', ascentM: 0, descentM: 0 });
+    expect(measureElevation(true, [], [])).toEqual(NOTHING);
   });
 });
 
@@ -52,7 +56,15 @@ describe('standing and moving', () => {
     const fixes = doppler(0, 3 * 3600, 0.1);
     const pressures = every(0, 3 * 3600 * 1000, 1).map((t) => ({ t, hPa: 1000 - t / (3 * 3600 * 1000), receivedAt: t }));
 
-    expect(measureElevation(true, pressures, fixes)).toEqual({ status: 'measured', ascentM: 0, descentM: 0 });
+    expect(measureElevation(true, pressures, fixes)).toEqual(NOTHING);
+  });
+
+  it('counts nothing for the same drift with sensor noise of half a metre, which the short window sees as motion', () => {
+    const next = jitter(5);
+    const fixes = doppler(0, 3600, 0.1);
+    const pressures = every(0, 3600 * 1000, 5).map((t) => pressure(t, 100 - t / 3_600_000 * 8 + next() * 0.5));
+
+    expect(measureElevation(true, pressures, fixes)).toEqual(NOTHING);
   });
 
   it('counts the same kind of change when the runner moves', () => {
@@ -68,6 +80,9 @@ describe('standing and moving', () => {
 
     expect(result.ascentM).toBeGreaterThan(29);
     expect(result.ascentM).toBeLessThanOrEqual(30.01);
+    // Climbing along a trail, not without moving on: no mark.
+    expect(result.verticalSegments).toBe(0);
+    expect(result.verticalDurationMs).toBe(0);
   });
 
   it('counts a gentle gradient run fast, which the rate alone would call weather', () => {
@@ -84,6 +99,52 @@ describe('standing and moving', () => {
 
     expect(result.ascentM).toBeCloseTo(10, 0);
     expect(result.descentM).toBe(0);
+  });
+});
+
+describe('climbing without moving on, and climbing along a way', () => {
+  // PDL, „Uspon uz stepenice i liftom se broji, ali se skreće pažnja, isto kao za dužinu".
+  const ride = (fromS: number, height: number, seconds: number) => (s: number) =>
+    s < fromS ? 0 : Math.min(height, ((s - fromS) / seconds) * height);
+
+  it('counts a lift of 30 m in 20 s whole, standing by Doppler, and marks it', () => {
+    const result = measured(measureElevation(true, barometer(0, 200, ride(60, 30, 20)), doppler(0, 200, 0)));
+
+    expect(result.ascentM).toBeCloseTo(30, 0);
+    expect(result.verticalSegments).toBe(1);
+    expect(result.verticalDurationMs).toBeGreaterThanOrEqual(19_000);
+    expect(result.verticalDurationMs).toBeLessThanOrEqual(51_000);
+  });
+
+  it('counts stairs indoors, with no fix at all, and marks them', () => {
+    const result = measured(measureElevation(true, barometer(0, 200, ride(30, 15, 60)), []));
+
+    expect(result.ascentM).toBeCloseTo(15, 0);
+    expect(result.verticalSegments).toBe(1);
+  });
+
+  it('marks a lift down as it marks a lift up, and counts the descent', () => {
+    const down = (s: number) => 40 - ride(60, 30, 20)(s);
+    const result = measured(measureElevation(true, barometer(0, 200, down), doppler(0, 200, 0)));
+
+    expect(result.descentM).toBeCloseTo(30, 0);
+    expect(result.verticalSegments).toBe(1);
+  });
+
+  it('counts two lift rides as two marks', () => {
+    const twice = (s: number) => ride(60, 30, 20)(s) + ride(200, 30, 20)(s);
+    const result = measured(measureElevation(true, barometer(0, 400, twice), doppler(0, 400, 0)));
+
+    expect(result.ascentM).toBeCloseTo(60, 0);
+    expect(result.verticalSegments).toBe(2);
+  });
+
+  it('KNOWN LIMIT: stairs outdoors with a good fix, 0.4 m/s along and 0.25 m/s up, count but get no mark', () => {
+    // Stairs are about 30 to 37 degrees, gentler than 1:1, so the criterion takes them for a steep way.
+    const result = measured(measureElevation(true, barometer(0, 200, ride(30, 15, 60)), doppler(0, 200, 0.4)));
+
+    expect(result.ascentM).toBeCloseTo(15, 0);
+    expect(result.verticalSegments).toBe(0);
   });
 });
 
@@ -124,6 +185,8 @@ describe(`a real climb below and above the ${ELEVATION_HYSTERESIS_M} m threshold
       status: 'measured',
       ascentM: 0,
       descentM: 0,
+      verticalSegments: 0,
+      verticalDurationMs: 0,
     });
   });
 
@@ -145,7 +208,7 @@ describe(`a real climb below and above the ${ELEVATION_HYSTERESIS_M} m threshold
     const next = jitter(4);
     const pressures = every(0, 600_000, 5).map((t) => pressure(t, 80 + next() * 0.5));
 
-    expect(measureElevation(true, pressures, doppler(0, 600, 3))).toEqual({ status: 'measured', ascentM: 0, descentM: 0 });
+    expect(measureElevation(true, pressures, doppler(0, 600, 3))).toEqual(NOTHING);
   });
 
   it('counts both ways over several hills', () => {

@@ -25,12 +25,50 @@ it('opens on the last saved session, as it was, when the app was closed', () => 
   expect(view.phase === 'stopped' && view.measures.distanceM).toBeGreaterThan(290);
 });
 
-it('opens on a session the service is still recording', () => {
+it('opens on a session the service is still recording, and asks for its service to be started again', () => {
   const sensors = new FakeSensors();
   sensors.recording = true;
   sensors.writeMeta();
 
   expect(new Meter(sensors, async () => true, NOTIFICATION).open().phase).toBe('recording');
+  expect(sensors.resumed).toBe(1);
+});
+
+it('does not start anything again for a session that ended', () => {
+  const sensors = new FakeSensors();
+  sensors.writeMeta();
+  new Meter(sensors, async () => true, NOTIFICATION).open();
+
+  expect(sensors.resumed).toBe(0);
+});
+
+describe('a service Android killed and started again, and one that ran without a break', () => {
+  // PDL, „Kad Android ubije servis za merenje, servis se sam podiže i nastavlja ISTO merenje".
+  it('opens on the SAME session, bridges the time it was down, and measures what the unbroken one does', () => {
+    const unbroken = new FakeSensors();
+    unbroken.recording = true;
+    unbroken.writeMeta();
+    walkEast(unbroken, 0, 301);
+    unbroken.now = 300_000;
+
+    const killed = new FakeSensors();
+    killed.recording = true;
+    killed.writeMeta();
+    walkEast(killed, 0, 100);
+    // Down from 100 to 160 s: nothing written. Started again: the same file goes on, with no second meta.
+    walkEast(killed, 160, 301);
+    killed.now = 300_000;
+
+    const a = new Meter(unbroken, async () => true, NOTIFICATION).open();
+    const b = new Meter(killed, async () => true, NOTIFICATION).open();
+
+    expect(a.phase).toBe('recording');
+    expect(b.phase).toBe('recording');
+    const distance = (v: typeof a) => (v.phase === 'recording' ? v.measures.distanceM : NaN);
+    expect(distance(b)).toBeGreaterThan(890);
+    expect(distance(b)).toBeCloseTo(distance(a), 0);
+    expect(killed.started).toEqual([]);
+  });
 });
 
 it('does not start without precise location, and does not ask the module', async () => {

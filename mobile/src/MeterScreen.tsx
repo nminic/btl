@@ -19,7 +19,7 @@ function Figure({ label, value }: { label: string; value: string }) {
 }
 
 function Figures({ measures, t, locale, live }: { measures: Measures; t: Translate; locale: Locale; live: boolean }) {
-  const { elevation, gps, suspicious } = measures;
+  const { elevation, gps } = measures;
   return (
     <View>
       <Figure label={t('meter.distance')} value={t('meter.kilometres', { value: formatKilometres(locale, measures.distanceM) })} />
@@ -31,12 +31,16 @@ function Figures({ measures, t, locale, live }: { measures: Measures; t: Transla
       ) : (
         <Text style={styles.notice}>{t('meter.noPressureSensor')}</Text>
       )}
-      {suspicious.vehicleSegments > 0 && <Text style={styles.notice}>{t('meter.vehicle')}</Text>}
       {live && (
         <Text style={styles.status} accessibilityLiveRegion="polite">
           {t(`gps.${gps}`)}
         </Text>
       )}
+      {/* What a phone without a cable needs to show to be checked. */}
+      {elevation.status === 'measured' && <Text style={styles.check}>{t('meter.pressureSensor')}</Text>}
+      <Text style={styles.check}>
+        {t('meter.samples', { locations: String(measures.samples.locations), pressures: String(measures.samples.pressures) })}
+      </Text>
     </View>
   );
 }
@@ -85,6 +89,7 @@ const styles = StyleSheet.create({
   value: { fontSize: 40, fontWeight: '700', color: '#1a1a1a', fontVariant: ['tabular-nums'] },
   notice: { fontSize: 16, color: '#1a1a1a', marginVertical: 12 },
   status: { fontSize: 16, color: '#1a1a1a', marginVertical: 12 },
+  check: { fontSize: 14, color: '#1a1a1a', marginTop: 4 },
   button: { marginTop: 24, minHeight: 56, borderRadius: 8, backgroundColor: '#0b5394', alignItems: 'center', justifyContent: 'center' },
   buttonText: { fontSize: 18, fontWeight: '700', color: '#ffffff' },
 });

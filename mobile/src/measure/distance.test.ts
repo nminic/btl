@@ -111,16 +111,30 @@ describe('a spike and a vehicle', () => {
     expect(measureDistance(fixes).spikeFixes).toBe(1);
   });
 
-  it('adds no distance for a stretch at vehicle speed and exposes how many and how long', () => {
-    const fixes = [...straight(0, 100), ...straight(100, 160, 20, 300), ...straight(160, 260, 3, 1500)];
+  it('counts a stretch at vehicle speed as it counts running, and marks how many and how long', () => {
+    // PDL, „Deonica pređena brzinom vozila se RAČUNA, uz napomenu za moderatora".
+    const run = measureDistance(straight(0, 600));
+    const drive = measureDistance([...straight(0, 100), ...straight(100, 160, 20, 300), ...straight(160, 260, 3, 1500)]);
+
+    expect(run.distanceM).toBeGreaterThan(1780);
+    expect(drive.distanceM).toBeGreaterThan(1780);
+    expect(drive.distanceM).toBeLessThanOrEqual(1797.000001);
+    expect(run.vehicleSegments).toBe(0);
+    expect(run.vehicleDurationMs).toBe(0);
+    expect(drive.vehicleSegments).toBe(1);
+    expect(drive.vehicleDurationMs).toBeGreaterThanOrEqual(58_000);
+    expect(drive.vehicleDurationMs).toBeLessThanOrEqual(62_000);
+  });
+
+  it('counts the first fixes of a drive too, the ones it held until the drive was confirmed', () => {
+    // Ends at 90 m; the three fixes at 50, 70 and 90 m are the ones held.
+    const fixes = [...straight(0, 10), ...straight(10, 14, 20, 30)];
 
     const result = measureDistance(fixes);
 
-    expect(result.distanceM).toBeGreaterThan(590);
-    expect(result.distanceM).toBeLessThan(610);
     expect(result.vehicleSegments).toBe(1);
-    expect(result.vehicleDurationMs).toBeGreaterThanOrEqual(58_000);
-    expect(result.vehicleDurationMs).toBeLessThanOrEqual(62_000);
+    expect(result.distanceM).toBeGreaterThan(89.99);
+    expect(result.distanceM).toBeLessThanOrEqual(90.000001);
   });
 
   it('closes a vehicle stretch that lasts to the end of the session', () => {
@@ -133,13 +147,16 @@ describe('a spike and a vehicle', () => {
     expect(result.spikeFixes).toBe(0);
   });
 
-  it('counts the last fixes of a drive that ends with the session before they are confirmed', () => {
-    const fixes = [...straight(0, 100), ...straight(100, 132, 20, 300)];
+  it('in a drive counts every fix as it comes, and skips one repeated at the same instant', () => {
+    const drive = straight(100, 132, 20, 300);
+    const fixes = [...straight(0, 100), ...drive.slice(0, 20), { ...drive[19] }, ...drive.slice(20)];
 
     const result = measureDistance(fixes);
 
     expect(result.vehicleDurationMs).toBe(31_000);
     expect(result.spikeFixes).toBe(0);
+    expect(result.distanceM).toBeGreaterThan(297 + 620 - 6);
+    expect(result.distanceM).toBeLessThanOrEqual(920.000001);
   });
 
   it('counts two separate drives as two', () => {

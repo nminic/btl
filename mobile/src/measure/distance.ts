@@ -22,7 +22,8 @@ export const MIN_STEP_M = 5;
 
 /**
  * Faster than this is not running: just above the fastest human sprint (about
- * 12.4 m/s). Known limit: a bicycle at 7 m/s passes below it.
+ * 12.4 m/s). A fix that implies more is either a spike or a vehicle. Known limit:
+ * a bicycle at 7 m/s passes below it and is not marked.
  */
 export const MAX_SPEED_MPS = 12.5;
 
@@ -36,10 +37,10 @@ export type DistanceResult = {
   /** Single implausible fixes (multipath, a jump) that were dropped. */
   spikeFixes: number;
   /**
-   * Stretches covered at vehicle speed. They add no distance, and they are
-   * exposed rather than silently dropped: a suspicious result gets a mark that a
-   * moderator reviews (PDL, „Sumnjiv rezultat (brzina vozila, lažna lokacija)
-   * dobija oznaku").
+   * Stretches covered at vehicle speed. Their distance COUNTS, and they are
+   * marked for the moderator: „hocu da se svakako racuna, sa napomenom za
+   * moderatora da je deonica rizicna ili sta god" (PDL, „Deonica pređena
+   * brzinom vozila se RAČUNA, uz napomenu za moderatora").
    */
   vehicleSegments: number;
   vehicleDurationMs: number;
@@ -58,10 +59,13 @@ function bySampleTime(fixes: readonly LocationSample[]): LocationSample[] {
  * Horizontal distance from the raw fixes.
  *
  * An anchor is the last fix that distance was counted to. A new fix adds the
- * straight line from the anchor only when it is good, the runner is not standing,
- * the implied speed is plausible, and the step is longer than both fixes' error
- * together. A gap in the signal (tunnel, forest) is bridged by the straight line
- * from the last anchor, because nothing better is known about it.
+ * straight line from the anchor when it is good, the runner is not standing, and
+ * the step is longer than both fixes' error together. A fix that implies a speed
+ * no runner reaches is held: alone it is a spike and is dropped, three in a row
+ * are a vehicle, whose distance counts from the first of them on, and which is
+ * marked. A gap in the signal (tunnel, forest, a service Android killed and
+ * started again) is bridged by the straight line from the last anchor, because
+ * nothing better is known about it.
  */
 export function measureDistance(fixes: readonly LocationSample[]): DistanceResult {
   const result: DistanceResult = {
@@ -81,14 +85,13 @@ export function measureDistance(fixes: readonly LocationSample[]): DistanceResul
   let vehicleTo = 0;
 
   /**
-   * Implausible fixes not yet confirmed as a vehicle end either way: as the tail
-   * of a vehicle stretch that is under way, or as spikes.
+   * A plausible fix, or the end of the session: a drive under way ends, and held
+   * fixes that never became a drive were spikes.
    */
   const settle = () => {
     if (vehicleFrom === null) {
       result.spikeFixes += implausible.length;
     } else {
-      if (implausible.length > 0) vehicleTo = implausible[implausible.length - 1].t;
       result.vehicleDurationMs += vehicleTo - vehicleFrom;
       vehicleFrom = null;
     }
@@ -114,14 +117,24 @@ export function measureDistance(fixes: readonly LocationSample[]): DistanceResul
     const stepM = haversineM(anchor, fix);
     const seconds = (fix.t - anchor.t) / 1000;
     if (seconds <= 0 || stepM / seconds > MAX_SPEED_MPS) {
+      if (vehicleFrom !== null) {
+        // A drive under way: every fix counts as it comes.
+        if (seconds > 0) {
+          result.distanceM += stepM;
+          vehicleTo = fix.t;
+          anchor = fix;
+        }
+        continue;
+      }
       implausible.push(fix);
       if (implausible.length >= VEHICLE_CONFIRM_FIXES) {
-        if (vehicleFrom === null) {
-          result.vehicleSegments += 1;
-          vehicleFrom = anchor.t;
+        result.vehicleSegments += 1;
+        vehicleFrom = anchor.t;
+        for (const held of implausible) {
+          result.distanceM += haversineM(anchor, held);
+          anchor = held;
         }
         vehicleTo = fix.t;
-        anchor = fix;
         implausible = [];
       }
       continue;

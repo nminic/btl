@@ -13,7 +13,8 @@
     "last": "Last measurement",
     "denied": "Without permission for precise location, measuring cannot start. You grant it in the phone's settings.",
     "noPressureSensor": "This phone has no pressure sensor, so ascent and descent cannot be measured.",
-    "vehicle": "Part of the way was covered at vehicle speed and is not counted in the distance."
+    "pressureSensor": "This phone has a pressure sensor.",
+    "samples": "Samples received: location {locations}, pressure {pressures}."
   },
   "gps": {
     "searching": "Looking for a GPS signal.",

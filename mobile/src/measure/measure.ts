@@ -11,8 +11,21 @@ export type Measures = {
   distanceM: number;
   elevation: ElevationResult;
   gps: GpsState;
-  /** What a moderator would look at; nothing sends it yet (inkrement 3). */
-  suspicious: { vehicleSegments: number; vehicleDurationMs: number; mockFixes: number };
+  /** How many samples of each kind the service wrote, so that a phone can be checked without a cable. */
+  samples: { locations: number; pressures: number };
+  /**
+   * Marks for the moderator, gathered in one place. They take nothing away from
+   * the result: every stretch they name is counted. Nothing sends them yet
+   * (inkrement 3), and the member does not see them (PDL, „Član na ekranu
+   * aplikacije ne dobija rečenicu o vozilu").
+   */
+  suspicious: {
+    vehicleSegments: number;
+    vehicleDurationMs: number;
+    mockFixes: number;
+    verticalSegments: number;
+    verticalDurationMs: number;
+  };
 };
 
 /** Everything the screen shows, from the samples alone. `now` is on the samples' clock and only dates the GPS state. */
@@ -24,14 +37,20 @@ export function measure(recording: Recording & { meta: SessionMeta }, now: numbe
   else if (now - distance.lastFixT > SIGNAL_LOST_MS) gps = 'lost';
   else gps = distance.lastFixPoor ? 'poor' : 'good';
 
+  const elevation = measureElevation(recording.meta.pressureSensor, recording.pressures, recording.locations);
+  const measured = elevation.status === 'measured';
+
   return {
     distanceM: distance.distanceM,
-    elevation: measureElevation(recording.meta.pressureSensor, recording.pressures, recording.locations),
+    elevation,
     gps,
+    samples: { locations: recording.locations.length, pressures: recording.pressures.length },
     suspicious: {
       vehicleSegments: distance.vehicleSegments,
       vehicleDurationMs: distance.vehicleDurationMs,
       mockFixes: distance.mockFixes,
+      verticalSegments: measured ? elevation.verticalSegments : 0,
+      verticalDurationMs: measured ? elevation.verticalDurationMs : 0,
     },
   };
 }

@@ -13,7 +13,8 @@
     "last": "Poslednje merenje",
     "denied": "Bez dozvole za tačnu lokaciju merenje ne može da počne. Dozvolu daješ u podešavanjima telefona.",
     "noPressureSensor": "Ovaj telefon nema senzor pritiska, pa uspon i spust ne mogu da se mere.",
-    "vehicle": "Deo puta je pređen brzinom vozila i nije uračunat u dužinu."
+    "pressureSensor": "Telefon ima senzor pritiska.",
+    "samples": "Stiglo uzoraka: lokacija {locations}, pritiska {pressures}."
   },
   "gps": {
     "searching": "Traži se GPS signal.",

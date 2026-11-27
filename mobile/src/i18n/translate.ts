@@ -12,10 +12,7 @@ export type Locale = 'sr' | 'en';
 
 export const DICTIONARIES: Record<Locale, Dictionary> = { sr, en };
 
-/** Serbian in Latin script is the language the public sees (ADL A2). */
-export const DISPLAY_LOCALE: Locale = 'sr';
-
-/** The tag `Intl` formats numbers with: a decimal comma in Serbian. */
+/** Which of the two the app speaks is the phone's language (`./locale.ts`). The tag `Intl` formats numbers with: a decimal comma in Serbian. */
 export const INTL_TAG: Record<Locale, string> = { sr: 'sr-Latn-RS', en: 'en' };
 
 export type Translate = (key: string, params?: Record<string, string>) => string;

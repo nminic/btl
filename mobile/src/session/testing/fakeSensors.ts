@@ -27,8 +27,21 @@ export class FakeSensors implements BtlSensors {
     this.recording = true;
   }
 
+  /** How many times the screen asked for the service to be started again. */
+  resumed = 0;
+  batteryAsked = 0;
+
+  resume() {
+    this.resumed += 1;
+  }
+
   stop() {
     this.recording = false;
+  }
+
+  askBatteryExemptionOnce() {
+    this.batteryAsked += 1;
+    return true;
   }
 
   read(offset: number) {
