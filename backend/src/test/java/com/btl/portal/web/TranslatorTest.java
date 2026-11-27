@@ -216,6 +216,29 @@ class TranslatorTest {
 		assertThat(answered(translator(), List.of("Kroz grad"))).isEmpty();
 	}
 
+	/**
+	 * AN ELEMENT THAT IS NOT ONE TRANSLATION INTO EACH LANGUAGE IS NOTHING FOR ITS TEXT AND FOR NO OTHER (PENDING,
+	 * PR 835 S1, 27.11.2026): the answer keeps its positions, so the entry of the second text is empty and the
+	 * entries either side of it are the translations of the texts they are the translations of. The answer that
+	 * is wrong in every element is still nothing.
+	 */
+	@Test
+	void anElementThatIsNotAllTheTranslationsIsNothingForItsTextAndTheOthersStay() throws Exception {
+		service.answeredWithHalf.add("Sredina");
+
+		List<Translator.Translated> back = answered(translator(), List.of("Kroz grad", "Sredina", "Through the town"))
+				.orElseThrow();
+
+		assertThat(back).hasSize(3);
+		assertThat(back.get(0)).isEqualTo(
+				new Translator.Translated("sr-Latn", Map.of("en", "EN: Kroz grad", "sr", "SR: Kroz grad")));
+		assertThat(back.get(1)).isNull();
+		assertThat(back.get(2)).isEqualTo(
+				new Translator.Translated("sr-Latn", Map.of("en", "EN: Through the town", "sr", "SR: Through the town")));
+
+		assertThat(answered(translator(), List.of("Sredina"))).isEmpty();
+	}
+
 	/** Nothing to send is no request. */
 	@Test
 	void noTextsAreNoRequest() throws Exception {

@@ -57,6 +57,8 @@ final class ATranslatorOfItsOwn implements AutoCloseable {
 	volatile Runnable whileAsked = () -> { };
 	/** The whole answer instead of the one this server would make, when a case needs a broken one. */
 	volatile String answeredInstead;
+	/** The texts whose element of the answer carries the English and no Serbian, the others being answered whole. */
+	final java.util.Set<String> answeredWithHalf = ConcurrentHashMap.newKeySet();
 
 	ATranslatorOfItsOwn() throws IOException {
 		server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
@@ -109,6 +111,13 @@ final class ATranslatorOfItsOwn implements AutoCloseable {
 		List<Map<String, Object>> answer = new ArrayList<>();
 
 		for (String text : texts) {
+			if (answeredWithHalf.contains(text)) {
+				answer.add(Map.of(
+						"detectedLanguage", Map.of("language", "sr-Latn", "score", 1.0),
+						"translations", List.of(Map.of("text", "EN: " + text, "to", "en"))));
+				continue;
+			}
+
 			answer.add(Map.of(
 					"detectedLanguage", Map.of("language", heardAs.getOrDefault(text, "sr-Latn"), "score", 1.0),
 					"translations", List.of(

@@ -319,6 +319,34 @@ class TextsAreTranslatedTest {
 	}
 
 	/**
+	 * A TEXT THE SERVICE ANSWERS BADLY DOES NOT HOLD THE GOOD TEXTS OF ITS PACK UNTRANSLATED (PENDING, PR 835 S1,
+	 * 27.11.2026). Three events in one request, the one in the middle answered with half of what is asked: the texts
+	 * either side of it are translated under their own events, so a translation cannot have moved to the neighbour of
+	 * the one that was dropped, the middle one has none, and the next pass sends it alone and not the others again.
+	 */
+	@Test
+	void aTextTheServiceAnswersBadlyIsNotTranslatedAndTheGoodOnesOfItsPackAre() throws Exception {
+		long before = event("prevod-pre", "Dobar tekst pre");
+		long poisoned = event("prevod-otrovan", "Otrovan tekst");
+		long after = event("prevod-posle", "Dobar tekst posle");
+		service.answeredWithHalf.add("Otrovan tekst");
+
+		ran(job());
+
+		assertThat(translationsOf(before)).isEqualTo(Map.of("en machine", "EN: Dobar tekst pre",
+				"sr machine", "SR: Dobar tekst pre"));
+		assertThat(translationsOf(after)).isEqualTo(Map.of("en machine", "EN: Dobar tekst posle",
+				"sr machine", "SR: Dobar tekst posle"));
+		assertThat(translationsOf(poisoned)).isEmpty();
+
+		ran(job());
+
+		assertThat(service.asked).hasSize(2);
+		assertThat(service.asked.get(1).texts()).containsExactly("Otrovan tekst");
+		assertThat(translationsOf(before)).hasSize(2);
+	}
+
+	/**
 	 * A TEXT SENT AND NOT ANSWERED GOES BEHIND ONE NEVER SENT, so a text the service keeps failing on cannot hold
 	 * the head of every pass. A pass here carries one text only, so the order is the whole answer.
 	 */
