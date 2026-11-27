@@ -30,12 +30,17 @@ export class Meter {
 
   /**
    * On opening the app: a session still recording, the last one saved, or none.
-   * A session still recording whose service Android killed is started again.
+   * A session still recording whose service Android killed is started again,
+   * unless the phone was restarted in between: that ends it (PDL, „Kad se telefon
+   * usred merenja restartuje, merenje se završava"). The file is read BEFORE the
+   * service is asked to go on, so that a restart the module did not notice is seen
+   * here and the service is never started over it.
    */
   open(): MeterView {
     this.recordingNow = this.sensors.isRecording();
+    const view = this.tick();
     if (this.recordingNow) this.sensors.resume();
-    return this.tick();
+    return view;
   }
 
   async start(): Promise<MeterView> {
@@ -63,6 +68,7 @@ export class Meter {
     const { text, next } = this.sensors.read(this.offset);
     this.recording.append(text);
     this.offset = next;
+    if (this.recordingNow && this.recording.restarted) this.sensors.stop();
     if (this.recordingNow && !this.sensors.isRecording()) this.recordingNow = false;
 
     const meta = this.recording.meta;

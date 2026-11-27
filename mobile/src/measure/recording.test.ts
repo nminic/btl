@@ -86,3 +86,66 @@ it.each([
   expect(recording.locations).toHaveLength(0);
   expect(recording.pressures).toHaveLength(0);
 });
+
+describe('a restart of the phone in the middle of the session', () => {
+  // PDL, „Kad se telefon usred merenja restartuje, merenje se završava": after a restart the
+  // elapsedRealtime clock begins from zero, and its times cannot be placed among the earlier ones.
+  const loc = (t: number, rx: number) => `{"k":"loc","t":${t},"lat":44.8,"lon":20.46,"rx":${rx},"mock":false}`;
+  const prs = (t: number, rx: number) => `{"k":"prs","t":${t},"hpa":998,"rx":${rx}}`;
+
+  it('keeps what was written before the clock went back, leaves out the rest, and does not call it damage', () => {
+    const recording = new Recording();
+    recording.append([META, loc(6000, 6100), prs(6200, 6300), loc(900, 950), prs(1000, 1050)].join('\n') + '\n');
+
+    expect(recording.restarted).toBe(true);
+    expect(recording.locations.map((f) => f.t)).toEqual([6000]);
+    expect(recording.pressures.map((p) => p.t)).toEqual([6200]);
+    expect(recording.unreadable).toBe(0);
+  });
+
+  it('goes on leaving lines out on the reads that follow, even those whose clock is later again', () => {
+    const recording = new Recording();
+    recording.append(`${META}\n${loc(6000, 6100)}\n${loc(900, 950)}\n`);
+    recording.append(`${loc(7000, 9000)}\n${prs(7100, 9100)}\n`);
+
+    expect(recording.locations).toHaveLength(1);
+    expect(recording.pressures).toHaveLength(0);
+  });
+
+  it('sees a second meta line that is earlier than what was written before it, as a restart, and keeps the first', () => {
+    const recording = new Recording();
+    recording.append(`${META}
+${loc(6000, 6100)}
+{"k":"meta","v":1,"pressure":false,"wall":1764200999999,"t":10}
+`);
+
+    expect(recording.restarted).toBe(true);
+    expect(recording.meta?.pressureSensor).toBe(true);
+  });
+
+  it('sees a first sample written before the meta line was, as a restart', () => {
+    const recording = new Recording();
+    recording.append(`${META}\n${loc(100, 200)}\n`);
+
+    expect(recording.restarted).toBe(true);
+    expect(recording.locations).toHaveLength(0);
+  });
+
+  it('does not see one in lines written at the same millisecond, nor in a gap that goes forward', () => {
+    const recording = new Recording();
+    recording.append([META, loc(6000, 6100), prs(6050, 6100), loc(906000, 906100)].join('\n') + '\n');
+
+    expect(recording.restarted).toBe(false);
+    expect(recording.locations).toHaveLength(2);
+    expect(recording.pressures).toHaveLength(1);
+  });
+
+  it('does not see one in a fix that is late: its time is earlier than a sample written before it, its write is not', () => {
+    const recording = new Recording();
+    recording.append([META, prs(6900, 6950), loc(6000, 7000), prs(7100, 7150)].join('\n') + '\n');
+
+    expect(recording.restarted).toBe(false);
+    expect(recording.locations).toHaveLength(1);
+    expect(recording.pressures).toHaveLength(2);
+  });
+});

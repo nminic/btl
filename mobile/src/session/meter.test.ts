@@ -1,4 +1,4 @@
-import { offset } from '../measure/testing/synth';
+import { hPaAt, offset } from '../measure/testing/synth';
 import { Meter } from './meter';
 import { FakeSensors } from './testing/fakeSensors';
 
@@ -141,4 +141,98 @@ it('notices a service that ended on its own', async () => {
   sensors.recording = false;
 
   expect(meter.tick().phase).toBe('stopped');
+});
+
+describe('a phone that was restarted in the middle of the session', () => {
+  // PDL, „Kad se telefon usred merenja restartuje, merenje se završava": what was measured up to the
+  // restart stays and shows as a finished session; nothing after the restart is part of it.
+  function pressureAt(sensors: FakeSensors, s: number, altitudeM: number, rxOffset = 0) {
+    sensors.write({ k: 'prs', t: s * 1000, hpa: hPaAt(altitudeM), rx: s * 1000 + rxOffset });
+  }
+
+  /** One fix and one pressure a second over `[fromS, toS)`, in the order the service writes them. */
+  function run(sensors: FakeSensors, fromS: number, toS: number, altitudeM: number) {
+    for (let s = fromS; s < toS; s += 1) {
+      walkEast(sensors, s, s + 1);
+      pressureAt(sensors, s, altitudeM);
+    }
+  }
+
+  /** 30 minutes at 3 m/s and 100 m, then the phone restarts and the clock begins again from zero for another 30. */
+  function restartedAfterThirtyMinutes(sensors: FakeSensors, afterRestartAltitudeM: number) {
+    sensors.recording = true;
+    sensors.writeMeta();
+    run(sensors, 0, 1800, 100);
+    // After the restart: the clock is at zero again, and the weather is not what it was.
+    run(sensors, 0, 1800, afterRestartAltitudeM);
+    sensors.now = 1_800_000;
+  }
+
+  function control() {
+    const sensors = new FakeSensors();
+    sensors.writeMeta();
+    run(sensors, 0, 1800, 100);
+    return new Meter(sensors, async () => true, NOTIFICATION).open();
+  }
+
+  it('opens on a finished session that holds what was measured before the restart, and does not start the service', () => {
+    const sensors = new FakeSensors();
+    restartedAfterThirtyMinutes(sensors, 100);
+
+    const view = new Meter(sensors, async () => true, NOTIFICATION).open();
+    const before = control();
+
+    expect(view.phase).toBe('stopped');
+    expect(before.phase).toBe('stopped');
+    expect(sensors.resumed).toBe(0);
+    expect(sensors.recording).toBe(false);
+    if (view.phase !== 'stopped' || before.phase !== 'stopped') return;
+    // The length is that of the first thirty minutes (about 5400 m), not of sixty (10800 m).
+    expect(view.measures.distanceM).toBeCloseTo(before.measures.distanceM, 0);
+    expect(view.measures.distanceM).toBeLessThan(5500);
+    expect(view.measures.samples).toEqual(before.measures.samples);
+  });
+
+  it('adds no descent for the difference between the weather before and after the restart', () => {
+    const sensors = new FakeSensors();
+    restartedAfterThirtyMinutes(sensors, -100);
+
+    const view = new Meter(sensors, async () => true, NOTIFICATION).open();
+
+    expect(view.phase).toBe('stopped');
+    const elevation = view.phase === 'stopped' ? view.measures.elevation : null;
+    expect(elevation?.status === 'measured' && elevation.descentM).toBe(0);
+    expect(elevation?.status === 'measured' && elevation.ascentM).toBe(0);
+  });
+
+  it('ends the session on a read while it is recording, and stops the service so that it writes no more', async () => {
+    const sensors = new FakeSensors();
+    const meter = new Meter(sensors, async () => true, NOTIFICATION);
+    await meter.start();
+    sensors.writeMeta();
+    walkEast(sensors, 0, 600);
+    expect(meter.tick().phase).toBe('recording');
+
+    walkEast(sensors, 0, 100);
+    const view = meter.tick();
+
+    expect(view.phase).toBe('stopped');
+    expect(sensors.recording).toBe(false);
+    expect(view.phase === 'stopped' && view.measures.distanceM).toBeLessThan(1900);
+  });
+
+  it('is not what a service killed and started again in the same boot is: that one goes on, as before', () => {
+    const sensors = new FakeSensors();
+    sensors.recording = true;
+    sensors.writeMeta();
+    walkEast(sensors, 0, 100);
+    walkEast(sensors, 160, 301);
+    sensors.now = 300_000;
+
+    const view = new Meter(sensors, async () => true, NOTIFICATION).open();
+
+    expect(view.phase).toBe('recording');
+    expect(sensors.resumed).toBe(1);
+    expect(sensors.recording).toBe(true);
+  });
 });

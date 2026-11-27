@@ -13,8 +13,8 @@ async function setUp(sensors = new FakeSensors(), granted = true) {
   return sensors;
 }
 
-function walkEast(sensors: FakeSensors, toS: number) {
-  for (let s = 0; s < toS; s += 1) {
+function walkEast(sensors: FakeSensors, toS: number, fromS = 0) {
+  for (let s = fromS; s < toS; s += 1) {
     sensors.write({ k: 'loc', t: s * 1000, ...offset(3 * s, 0), rx: s * 1000, mock: false, acc: 4, spd: 3 });
   }
 }
@@ -44,8 +44,11 @@ it('shows distance, ascent and descent live, and the GPS state, while recording'
   expect(screen.getByText(t('meter.starting'))).toBeTruthy();
 
   sensors.writeMeta();
-  walkEast(sensors, 401);
-  for (let s = 0; s < 401; s += 1) sensors.write({ k: 'prs', t: s * 1000, hpa: 1000 - Math.min(s, 100) * 0.012, rx: s * 1000 });
+  // One fix and one pressure a second, as the service writes them: in the order they were taken.
+  for (let s = 0; s < 401; s += 1) {
+    walkEast(sensors, s + 1, s);
+    sensors.write({ k: 'prs', t: s * 1000, hpa: 1000 - Math.min(s, 100) * 0.012, rx: s * 1000 });
+  }
   sensors.now = 400_000;
   await act(async () => jest.advanceTimersByTime(READ_EVERY_MS));
 

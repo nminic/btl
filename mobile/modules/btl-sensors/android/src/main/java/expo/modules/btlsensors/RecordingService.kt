@@ -56,7 +56,9 @@ class RecordingService : Service(), LocationListener, SensorEventListener {
    * Started by the module, or started again by Android with no intent after it
    * killed the process (START_STICKY). Either way the session comes from
    * [ActiveSession], so a restart goes on writing the SAME file, and the time it
-   * was down is a gap that the algorithm bridges like a lost signal.
+   * was down is a gap that the algorithm bridges like a lost signal. A phone that
+   * was restarted since the session began has no session here any more
+   * ([ActiveSession.file] ends it), so nothing is written on past the restart.
    */
   @SuppressLint("MissingPermission")
   override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {

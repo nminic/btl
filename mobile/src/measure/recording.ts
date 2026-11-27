@@ -61,6 +61,19 @@ export class Recording {
   readonly pressures: PressureSample[] = [];
   /** Lines that could not be read: the half line of a killed process, or damage. */
   unreadable = 0;
+  /**
+   * The phone was restarted in the middle of the session: a line was written at an
+   * earlier time on the elapsedRealtime clock than the one before it, which that
+   * clock never does while the phone stays up. The samples before it are kept and
+   * everything from that line on is left out, because after a restart the clock
+   * begins again from zero and its times cannot be placed among the earlier ones.
+   * It is read from `rx` and not from `t`: `rx` is the time the line was WRITTEN,
+   * so it only goes forward, where `t` of a late batch of fixes may legitimately
+   * be earlier than the pressure sample written before it.
+   */
+  restarted = false;
+  /** The latest time any line was written at: the meta line's `t`, then every sample's `rx`. */
+  private clock = -Infinity;
 
   /** Appends the lines of `text`. Arrays grow in place: a session is tens of thousands of samples. */
   append(text: string): void {
@@ -70,16 +83,29 @@ export class Recording {
     }
   }
 
+  /** Notes the time a line was written at; true when it is at or after the restart, and the line is left out. */
+  private restart(writtenAt: number): boolean {
+    if (this.restarted) return true;
+    if (writtenAt < this.clock) {
+      this.restarted = true;
+      return true;
+    }
+    this.clock = writtenAt;
+    return false;
+  }
+
   private take(line: Line | null): boolean {
     if (line === null) return false;
     const { k, t, rx } = line;
 
     if (k === 'meta') {
       if (typeof line.pressure !== 'boolean' || !isNumber(line.wall) || !isNumber(t)) return false;
+      if (this.restart(t)) return true;
       this.meta = { pressureSensor: line.pressure, startedAtWallMs: line.wall, startedAt: t };
       return true;
     }
     if (!isNumber(t) || !isNumber(rx)) return false;
+    if (this.restart(rx)) return true;
 
     if (k === 'loc') {
       if (!isNumber(line.lat) || !isNumber(line.lon)) return false;
