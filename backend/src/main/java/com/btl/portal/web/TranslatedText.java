@@ -45,9 +45,19 @@ final class TranslatedText {
 	 * A description holds the organiser's site and the address to write to (EventDetail draws a mailbox as a
 	 * link), and a translation that moved a letter of one of them is a link to somewhere else, published without
 	 * anybody having read it. So it is thrown away and the original is shown.
+	 *
+	 * <p>The third alternative is the target of a Markdown link that is not a full address, {@code [x](/kalendar)}:
+	 * the portal's own pages, which the screen draws as a link inside the portal, so a translation that turned
+	 * {@code (/kalendar)} into {@code (/calendar)} or added a {@code [prijava](/admin)} is a link to somewhere else
+	 * as well. A target that does start with a scheme or {@code www.} is the first alternative's already, and
+	 * is not counted twice (PENDING, PR 835 S2, 27.11.2026).
 	 */
 	private static final Pattern AN_ADDRESS = Pattern.compile(
-			"(?i)(?:https?://|mailto:|www\\.)[^\\s<>()\\[\\]\"']+|[a-z0-9._%+-]+@[a-z0-9.-]+\\.[a-z]{2,}");
+			"(?i)(?:https?://|mailto:|www\\.)[^\\s<>()\\[\\]\"']+|[a-z0-9._%+-]+@[a-z0-9.-]+\\.[a-z]{2,}"
+					+ "|(?<=\\]\\()(?!https?://|mailto:|www\\.)[^\\s<>()\\[\\]\"']+");
+
+	/** An address that starts as a site does: with a scheme or with {@code www.}, but not {@code mailto:}. */
+	private static final Pattern A_SITE = Pattern.compile("(?i)^(?:https?://|www\\.)");
 
 	private TranslatedText() {
 	}
@@ -126,19 +136,41 @@ final class TranslatedText {
 	}
 
 	/**
-	 * Every address of a site and every mailbox in a text, in order, without the sentence's own full stop or
-	 * comma after it, so that a translation that only moved one of them is told apart from one that changed it.
+	 * Every address of a site, every mailbox and every target of a link inside the portal in a text, sorted, without
+	 * the sentence's own full stop or comma after it, so that a translation that only moved one of them is told
+	 * apart from one that changed it.
+	 *
+	 * <p><b>Only what is not case-sensitive is lowered</b> (PENDING, PR 835 N1, 27.11.2026): the scheme and the
+	 * domain of a site, and a whole mailbox. The path, the query and the fragment of an address are the site's, and
+	 * {@code /Prijava} is not {@code /prijava} to a server that tells them apart, so a translation that changed the
+	 * case of a letter there changed the address.
 	 */
 	static List<String> addressesIn(String text) {
 		List<String> found = new ArrayList<>();
 		Matcher at = AN_ADDRESS.matcher(text);
 
 		while (at.find()) {
-			found.add(at.group().replaceAll("[.,;:!?]+$", "").toLowerCase(Locale.ROOT));
+			found.add(lowerWhereCaseIsNotTheSites(at.group().replaceAll("[.,;:!?]+$", "")));
 		}
 
 		found.sort(null);
 
 		return found;
+	}
+
+	/** The address with its scheme and domain, or the whole of a mailbox, in lower case; the rest as it is written. */
+	private static String lowerWhereCaseIsNotTheSites(String address) {
+		if (!A_SITE.matcher(address).find()) {
+			return address.indexOf('@') >= 0 && address.indexOf('/') < 0 ? address.toLowerCase(Locale.ROOT) : address;
+		}
+
+		int domainStart = address.indexOf("://") >= 0 ? address.indexOf("://") + 3 : 0;
+		int domainEnd = domainStart;
+
+		while (domainEnd < address.length() && "/?#".indexOf(address.charAt(domainEnd)) < 0) {
+			domainEnd++;
+		}
+
+		return address.substring(0, domainEnd).toLowerCase(Locale.ROOT) + address.substring(domainEnd);
 	}
 }
