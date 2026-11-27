@@ -43,8 +43,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  *
  * <p>The decisions are the owner's of 24.10.2026 (PDL „Učitavanje izvoda iz banke na ekranu Uplate"):
  * „Kad poziv na broj imenuje člana i sezonu (YYYYNNNNNN) i iznos je tačno očekivani, uplata se evidentira
- * sama. Sve ostalo (manji ili veći iznos, nepoznat broj) ide na ručnu potvrdu."; „Uplata bez poziva na
- * broj dobija predlog člana po imenu i prezimenu uplatioca"; „Server pamti broj izvoda i stavke (da se
+ * sama. Sve ostalo (manji ili veći iznos, nepoznat broj) ide na ručnu potvrdu."; since 26.11.2026 „Uplata
+ * bez poziva na broj knjiži se sama po imenu kad imenu i prezimenu uplatioca odgovara tačno jedan član"
+ * and „Ime unutar teksta uplatioca daje predlog, nikad knjiženje"; „Server pamti broj izvoda i stavke (da se
  * isti izvod ne knjiži dvaput)".
  *
  * <p><b>The clock is {@code PaymentApiTest}'s</b>, 20 October 2027: the season being paid for is 2028,
@@ -222,31 +223,170 @@ class StatementApiTest {
 	   ------------------------------------------------------------------------------------ */
 
 	/**
-	 * THE PAYER'S NAME SUGGESTS THE MEMBER, in either order of the two names and whether or not his bank
-	 * kept the Serbian letters; two members of the name are both suggested; a payer who is no member
-	 * suggests nobody. None of it is booked: a suggestion is for a person to confirm.
+	 * THE ONE MEMBER OF THE PAYER'S NAME IS BOOKED BY ITSELF (owner, 26.11.2026): „Uplata bez poziva na broj
+	 * knjiži se sama po imenu kad imenu i prezimenu uplatioca odgovara tačno jedan član, iznos je tačno onaj
+	 * koji se od njega očekuje, a član za tu sezonu još nije aktivan." In either order of the two names and
+	 * whether or not his bank kept the Serbian letters (owner, 27.11.2026), as the suggestion compared them.
+	 *
+	 * <p>Booked as a reference books: {@code ips}, what arrived, by whoever took the statement, and with no
+	 * reference, because none arrived. Djordje held 2027 and not 2028, so a season ago is not „already
+	 * active" for the season the line is taken for.
+	 *
+	 * <p><b>The other sources kept apart:</b> Aca Aleksić is first in every list of members (the lowest id,
+	 * the first last name) and named by no line, so a booking to the first member instead of the member of
+	 * the name books him; every line is another member, so a booking off the wrong line books the wrong man.
 	 */
 	@Test
-	void aPaymentWithoutAReferenceSuggestsTheMembersOfThePayersName() throws Exception {
+	void aPaymentWithoutAReferenceIsBookedToTheOneMemberOfThePayersName() throws Exception {
+		long decoy = competitor("000001", "Aca", "Aleksić", A_TOWN_IN_SERBIA);
+		long valentina = competitor("000043", "Valentina", "Suslov", A_TOWN_IN_SERBIA);
 		long dusko = competitor("000004", "Duško", "Kunić", A_TOWN_IN_SERBIA);
 		long djordje = competitor("000005", "Đorđe", "Čolić", A_TOWN_IN_SERBIA);
+		db.sql("insert into membership (competitor_id, season, basis, decided_by_name, decided_at)"
+						+ " values (?, ?, 'feeExempt', 'Probni Odbor', timestamptz '2026-10-01 10:00:00+00')")
+				.params(djordje, SEASON - 1).update();
+
+		ASyntheticStatement statement = statement(3)
+				.credit("Valentina Suslov, - -", EXPECTED, null, order())
+				.credit("KUNIC DUSKO, KRALJA PETRA 1, BEOGRAD", EXPECTED, null, order())
+				.credit("ČOLIĆ ĐORĐE", EXPECTED, null, order());
+		JsonNode taken = taken(statement);
+
+		assertThat(taken.get("bookedNow").asInt()).isEqualTo(3);
+		assertThat(states(taken)).containsOnly("booked");
+		assertThat(List.of(member(taken, 0), member(taken, 1), member(taken, 2)))
+				.containsExactly(valentina, dusko, djordje);
+		assertThat(db.sql("select competitor_id || '|' || season || '|' || coalesce(reference, '-') || '|' || method"
+						+ " || '|' || received || '|' || recorded_by_name from payment order by competitor_id")
+				.query(String.class).list())
+				.containsExactlyInAnyOrder(valentina + "|2028|-|ips|4200.00|Blagajnik Izvoda",
+						dusko + "|2028|-|ips|4200.00|Blagajnik Izvoda",
+						djordje + "|2028|-|ips|4200.00|Blagajnik Izvoda");
+		assertThat(db.sql("select count(*) from membership where competitor_id = ?").param(decoy)
+				.query(Long.class).single()).isZero();
+
+		/* AND TAKEN AGAIN IT BOOKS NOTHING MORE („da se isti izvod ne knjiži dvaput"). */
+		assertThat(taken(statement).get("bookedNow").asInt()).isZero();
+		assertThat(paymentCount()).isEqualTo(3);
+	}
+
+	/**
+	 * WHAT THE NAME DOES NOT BOOK IS A SUGGESTION, and waits with the sentence that is true of it, „Uplata
+	 * nema poziv na broj." (coordinator, 27.11.2026). Every line here sends exactly the expected amount to
+	 * a member who is not active, so only the name keeps it from being booked:
+	 * <ul>
+	 * <li>two members of the name: „Sve ostalo (dva ili više imenjaka, drugi iznos) ostaje predlog na
+	 * potvrdi" (owner, 26.11.2026), and both are suggested;
+	 * <li>a payer who is no member's name suggests nobody;
+	 * <li>a registration with no member number yet (owner, 27.11.2026): „Prijavljen koji još nema članski
+	 * broj se po imenu ne knjiži sam; njegova uplata ostaje predlog sa „Potvrdi"";
+	 * <li>the name only inside the payer's text, the post office's own line of statement 10 (owner,
+	 * 26.11.2026): „Ime unutar teksta uplatioca daje predlog, nikad knjiženje";
+	 * <li>the whole name of one member and another member's name inside the rest of the text, because „adresa
+	 * ume da nosi tuđe ime" (owner, 26.11.2026): the agent's reasoning, accepted by the coordinator on
+	 * 27.11.2026. The member of the whole name is suggested first.
+	 * </ul>
+	 */
+	@Test
+	void whatThePayersNameDoesNotBookWaitsAsASuggestion() throws Exception {
 		long ana = competitor("000006", "Ana", "Anić", A_TOWN_IN_SERBIA);
-		long anotherAna = competitor("000007", "Ana", "Anić", A_TOWN_ABROAD);
+		long anotherAna = competitor("000007", "Ana", "Anić", A_TOWN_IN_SERBIA);
 		competitor("000008", "Nikola", "Nikolić", A_TOWN_IN_SERBIA);
+		long mila = competitor(null, "Mila", "Milić", A_TOWN_IN_SERBIA);
+		long branko = competitor("000012", "Branko", "Milević", A_TOWN_IN_SERBIA);
+		long marko = competitor("000027", "Marko", "Markovic", A_TOWN_IN_SERBIA);
+		long petar = competitor("000028", "Petar", "Petrović", A_TOWN_IN_SERBIA);
 
 		JsonNode taken = taken(statement(3)
-				.credit("DUSKO KUNIC, KRALJA PETRA 1, BEOGRAD", EXPECTED, null, order())
-				.credit("ČOLIĆ ĐORĐE, ULICA 2, NIŠ", EXPECTED, null, order())
 				.credit("ANA ANIĆ, ULICA 3", EXPECTED, null, order())
-				.credit("SUPRUGA NIKOLIĆ, ULICA 4", EXPECTED, null, order()));
+				.credit("SUPRUGA NIKOLIĆ, ULICA 4", EXPECTED, null, order())
+				.credit("MILA MILIC", EXPECTED, null, order())
+				.credit("POSTA ZA MILEVIC BRANKO STEVANA OPACICA 30 BEOGRAD", EXPECTED, null, order())
+				.credit("MARKO MARKOVIC, KOD PETAR PETROVIC, BEOGRAD", EXPECTED, null, order()));
 
 		assertThat(taken.get("bookedNow").asInt()).isZero();
+		assertThat(states(taken)).containsOnly("waiting");
 		assertThat(field(taken, "waitsBecause")).containsOnly("noReference");
-		assertThat(candidates(taken, 0)).containsExactly(dusko);
-		assertThat(candidates(taken, 1)).containsExactly(djordje);
-		assertThat(candidates(taken, 2)).containsExactlyInAnyOrder(ana, anotherAna);
-		assertThat(candidates(taken, 3)).isEmpty();
-		assertThat(db.sql("select count(*) from payment").query(Long.class).single()).isZero();
+		assertThat(candidates(taken, 0)).containsExactlyInAnyOrder(ana, anotherAna);
+		assertThat(candidates(taken, 1)).isEmpty();
+		assertThat(candidates(taken, 2)).containsExactly(mila);
+		assertThat(candidates(taken, 3)).containsExactly(branko);
+		assertThat(candidates(taken, 4)).containsExactly(marko, petar);
+		assertThat(paymentCount()).isZero();
+	}
+
+	/**
+	 * ONE MEMBER OF THE NAME, AND STILL NOT BOOKED, each for the reason a reference would give: an amount
+	 * that is not the expected one (less, more, and paras), a member who pays in euro, and a payment with a
+	 * reference, which is never booked by the name whatever the reference is (owner, 24.10.2026: „Sve
+	 * ostalo (manji ili veći iznos, nepoznat broj) ide na ručnu potvrdu"). The last three lines are each
+	 * the whole name of one member who could be booked, with exactly the expected amount.
+	 */
+	@Test
+	void theOneMemberOfTheNameIsNotBookedOnAnyOtherAmountOrWithAReference() throws Exception {
+		competitor("000041", "Manje", "Placa", A_TOWN_IN_SERBIA);
+		competitor("000042", "Vise", "Placa", A_TOWN_IN_SERBIA);
+		competitor("000045", "Sa", "Parama", A_TOWN_IN_SERBIA);
+		competitor("000044", "Iz", "Inostranstva", A_TOWN_ABROAD);
+		competitor("000046", "Nepoznat", "Broj", A_TOWN_IN_SERBIA);
+		competitor("000047", "Ranija", "Sezona", A_TOWN_IN_SERBIA);
+		competitor("000048", "Kratak", "Broj", A_TOWN_IN_SERBIA);
+
+		JsonNode taken = taken(statement(4)
+				.credit("MANJE PLACA", "4199.00", null, order())
+				.credit("VISE PLACA", "4201.00", null, order())
+				.credit("SA PARAMA", "4200.50", null, order())
+				.credit("IZ INOSTRANSTVA", EXPECTED, null, order())
+				.credit("NEPOZNAT BROJ", EXPECTED, "2028999999", order())
+				.credit("RANIJA SEZONA", EXPECTED, "2027000047", order())
+				.credit("KRATAK BROJ", EXPECTED, "202800004", order()));
+
+		assertThat(taken.get("bookedNow").asInt()).isZero();
+		assertThat(field(taken, "waitsBecause")).containsExactly("notTheExpectedAmount", "notTheExpectedAmount",
+				"notTheExpectedAmount", "notInDinars", "unknownReference", "anotherSeason", "unknownReference");
+		assertThat(paymentCount()).isZero();
+	}
+
+	/**
+	 * ONE MEMBER ON TWO LINES, AND LINES BY REFERENCE AND BY NAME ON ONE STATEMENT. The first line of his
+	 * books him and the second finds him active and waits; a reference and a name book side by side.
+	 */
+	@Test
+	void oneMemberOnTwoLinesIsBookedOnceBesideAReferenceBooking() throws Exception {
+		long marko = competitor("000027", "Marko", "Markovic", A_TOWN_IN_SERBIA);
+		long janko = competitor("000031", "Janko", "Jankovic", A_TOWN_IN_SERBIA);
+
+		JsonNode taken = taken(statement(5)
+				.credit("MARKO MARKOVIĆ", EXPECTED, null, order())
+				.credit("JANKO JANKOVIĆ, ULICA 2", EXPECTED, "2028000031", order())
+				.credit("MARKOVIĆ MARKO", EXPECTED, null, order()));
+
+		assertThat(taken.get("bookedNow").asInt()).isEqualTo(2);
+		assertThat(states(taken)).containsExactly("booked", "booked", "alreadyRecorded");
+		assertThat(member(taken, 0)).isEqualTo(marko);
+		assertThat(member(taken, 1)).isEqualTo(janko);
+		assertThat(paymentCount()).isEqualTo(2);
+	}
+
+	/**
+	 * A MEMBER FOUND ONLY INSIDE THE PAYER'S TEXT WHO IS ACTIVE ALREADY LEAVES THE LINE WAITING, and not
+	 * „already recorded" (owner, 27.11.2026): „stavka čeka i nudi „Drugi član", a ne „Već evidentirano",
+	 * jer adresa ume da nosi ime aktivnog člana dok je uplatio neko drugi." The same member as the whole
+	 * name reads „already recorded", as it did before.
+	 */
+	@Test
+	void aMemberActiveAlreadyAndFoundOnlyInsideTheTextLeavesTheLineWaiting() throws Exception {
+		long branko = competitor("000012", "Branko", "Milević", A_TOWN_IN_SERBIA);
+		bookedByHand(branko);
+
+		JsonNode taken = taken(statement(6)
+				.credit("POSTA ZA MILEVIC BRANKO STEVANA OPACICA 30 BEOGRAD", EXPECTED, null, order())
+				.credit("MILEVIC BRANKO, STEVANA OPACICA 30", EXPECTED, null, order()));
+
+		assertThat(states(taken)).containsExactly("waiting", "alreadyRecorded");
+		assertThat(candidates(taken, 0)).containsExactly(branko);
+		assertThat(states(waiting())).containsExactly("waiting", "alreadyRecorded");
+		assertThat(paymentCount()).isEqualTo(1);
 	}
 
 	/**
@@ -673,6 +813,11 @@ class StatementApiTest {
 
 	private long paymentCount() {
 		return db.sql("select count(*) from payment").query(Long.class).single();
+	}
+
+	/** Whom a line was booked to, or who already holds its season. */
+	private static long member(JsonNode taken, int line) {
+		return taken.get("lines").get(line).get("member").get("competitorId").asLong();
 	}
 
 	/** The row on the Payments screen, opened from a line, pressing „Aktiviraj" with the box ticked. */

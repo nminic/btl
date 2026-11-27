@@ -16,7 +16,12 @@ package com.btl.portal.web;
  */
 final class WhyALineWaits {
 
-	/** The payment carries no poziv na broj. */
+	/**
+	 * The payment carries no poziv na broj, and its payer's name did not book it by itself: two members
+	 * or more of the name, a name only inside the payer's text, a member with no number yet, or nobody
+	 * (PDL, 26.11.2026 and 27.11.2026). One member of the name whom the dinars or the amount stop waits
+	 * for that reason instead, as he would with a reference.
+	 */
 	static final String NO_REFERENCE = "noReference";
 
 	/** It carries one that is not ten digits, or names no member. */
