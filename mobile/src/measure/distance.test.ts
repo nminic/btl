@@ -448,6 +448,48 @@ describe('the first fixes after a gap in the signal, as a class', () => {
     expect(afterGap.distanceM).toBeGreaterThan(297 + 183 + 780 - MIN_STEP_M);
   });
 
+  it('measures a second gap from where he stands after the first, not from the anchor before both', () => {
+    // 297 m at 99 s, then 1000 m at 160 s (11.5 m/s, a runner), then 15 s later 10 m further on.
+    const second = measureDistance([...run(0, 100, 0), ...standing(160, 170, 1000), ...standing(185, 195, 1010), ...run(195, 295, 1010)]);
+    // The same, but the second gap was a drive of 2000 m: the bridge from the anchor across both gaps counts.
+    const drive = measureDistance([...run(0, 100, 0), ...standing(160, 170, 1000), ...standing(185, 195, 3000), ...run(195, 295, 3000)]);
+
+    expect(second.vehicleSegments).toBe(0);
+    expect(second.distanceM).toBeGreaterThan(1307 - MIN_STEP_M);
+    expect(drive.vehicleSegments).toBe(1);
+    expect(drive.distanceM).toBeGreaterThan(3297 - MIN_STEP_M);
+    expect(drive.distanceM).toBeLessThanOrEqual(3297.000001);
+  });
+
+  it('drops a spike two fixes after a gap that ends in a stand, after a step too short to count', () => {
+    const fixes = [...run(0, 100, 0), fix(160_000, 480, 0, { speed: 0 }), fix(161_000, 482, 0), fix(162_000, 482, 80), ...run(163, 263, 485)];
+    const result = measureDistance(fixes);
+
+    expect(result.spikeFixes).toBe(1);
+    expect(result.distanceM).toBeLessThanOrEqual(782.000001);
+    expect(result.distanceM).toBeGreaterThan(782 - MIN_STEP_M);
+  });
+
+  it('holds a fix that comes a gap after the one it confirmed, so a spike there is dropped', () => {
+    // 480 m at 160 s is real; 15 s later a fix 80 m off is confirmed by nothing.
+    const fixes = [...run(0, 100, 0), fix(160_000, 480, 0), fix(175_000, 525, 80), ...run(176, 276, 528)];
+    const result = measureDistance(fixes);
+
+    expect(result.spikeFixes).toBe(1);
+    expect(result.distanceM).toBeLessThanOrEqual(825.000001);
+    expect(result.distanceM).toBeGreaterThan(825 - MIN_STEP_M);
+  });
+
+  it('keeps one drive one stretch when the car stands at a light, with no gap', () => {
+    // A fix of standing never ends a drive. The first fix after the light is already 20 m on, so nothing else ends it either.
+    const fixes = [...run(0, 100, 0), ...straight(100, 160, 20, 297), ...standing(160, 180, 1477), ...straight(180, 240, 20, 1497), ...run(240, 300, 2677)];
+    const result = measureDistance(fixes);
+
+    expect(result.vehicleSegments).toBe(1);
+    expect(result.distanceM).toBeGreaterThan(2854 - MIN_STEP_M);
+    expect(result.distanceM).toBeLessThanOrEqual(2854.000001);
+  });
+
   it('drops a spike that is the first fix after a gap and the session ends with the fix after it', () => {
     const result = measureDistance([...run(0, 100, 0), fix(200_000, 497, 80), fix(201_000, 500, 0)]);
 
