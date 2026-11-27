@@ -462,12 +462,14 @@ describe('the first fixes after a gap in the signal, as a class', () => {
   });
 
   it('drops a spike two fixes after a gap that ends in a stand, after a step too short to count', () => {
-    const fixes = [...run(0, 100, 0), fix(160_000, 480, 0, { speed: 0 }), fix(161_000, 482, 0), fix(162_000, 482, 80), ...run(163, 263, 485)];
+    // The anchor is at 294 m. He stands at 296 m after the gap, then takes a step of 4 m from the anchor, too short to
+    // count, so the stand clock is still the time of the stand; from the time before the gap the spike would be a walk.
+    const fixes = [...run(0, 100, 0), fix(160_000, 296, 0, { speed: 0 }), fix(161_000, 298, 0), fix(162_000, 298, 80), ...run(163, 263, 300)];
     const result = measureDistance(fixes);
 
     expect(result.spikeFixes).toBe(1);
-    expect(result.distanceM).toBeLessThanOrEqual(782.000001);
-    expect(result.distanceM).toBeGreaterThan(782 - MIN_STEP_M);
+    expect(result.distanceM).toBeLessThanOrEqual(597.000001);
+    expect(result.distanceM).toBeGreaterThan(597 - MIN_STEP_M);
   });
 
   it('holds a fix that comes a gap after the one it confirmed, so a spike there is dropped', () => {
