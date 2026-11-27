@@ -1023,6 +1023,15 @@ describe('the silence around a place he went to, whatever spikes stand next to t
     });
   });
 
+  it('a stale position by the last fix before the first gap, delivered as the first fix after it (round 6)', () => {
+    // The mirror of the one above: it can pass for the fix the trip leaves from, a second before the place.
+    holds((shape) => {
+      const before = shape.real.filter((f) => f.t <= 100_000).at(-1) as Fix;
+      const first = placeOf(shape)[0];
+      return [{ ...moved(before, 1, 1), t: first.t - 1000, receivedAt: first.t - 1000 }];
+    });
+  });
+
   it('a spike as the last fix before the second gap, which the fix after the gap could follow (round 6)', () => {
     holds((shape) => [off((placeOf(shape).at(-1) as Fix).t + 2000, 330, -60)]);
   });
