@@ -58,6 +58,15 @@ function bySampleTime(fixes: readonly LocationSample[]): LocationSample[] {
   return [...fixes].sort((a, b) => a.t - b.t);
 }
 
+const standing = (fix: LocationSample) => fix.speed !== undefined && fix.speed < STATIONARY_SPEED_MPS;
+
+/** The shortest step between two fixes that is not jitter: both fixes' error together. */
+const stepThresholdM = (a: LocationSample, b: LocationSample) =>
+  Math.max(MIN_STEP_M, Math.hypot(a.accuracy as number, b.accuracy as number));
+
+/** Could one runner have been at both fixes? Two fixes at the same instant give a NaN or an infinity, and neither passes. */
+const plausible = (a: LocationSample, b: LocationSample) => haversineM(a, b) / ((b.t - a.t) / 1000) <= MAX_SPEED_MPS;
+
 /**
  * Horizontal distance from the raw fixes.
  *
@@ -84,17 +93,23 @@ export function measureDistance(fixes: readonly LocationSample[]): DistanceResul
 
   let anchor: LocationSample | null = null;
   /**
-   * The time the runner was last known to be where the anchor is: the anchor's own
-   * time, or the latest fix at which Doppler said he stood. The speed of a new fix
-   * is measured from here, not from the anchor's time. While he stands the anchor
-   * does not move, so its time goes stale, and a jump after a long stand would look
-   * like a slow, believable walk.
+   * Where the runner was last known to be (`ref`), and when (`refT`). The speed of
+   * a new fix is measured from here, never from the anchor's own time: while he
+   * stands the anchor does not move, so its time goes stale, and a jump after a long
+   * stand would look like a slow, believable walk. Everywhere but right after a gap
+   * `ref` is the anchor and `refT` is the anchor's time or the latest fix at which
+   * Doppler said he stood there.
    */
-  let anchoredAt = 0;
-  /** Sample time of the latest good fix, standing or not. */
+  let ref: LocationSample | null = null;
+  let refT = 0;
+  /** Sample time of the latest good fix that was taken into the track: not one still held after a gap, and not one dropped. */
   let lastGoodT = 0;
-  /** The first fix after a gap, held until the next one says whether it is real. */
-  let afterGap: LocationSample | null = null;
+  /**
+   * The state „waiting for confirmation after a gap": the fixes since the gap that no
+   * fix has confirmed yet, oldest first. Each one but the last was contradicted by the
+   * one after it. Empty is the ordinary state.
+   */
+  let afterGap: LocationSample[] = [];
   let implausible: LocationSample[] = [];
   let vehicleFrom: number | null = null;
   let vehicleTo = 0;
@@ -113,52 +128,77 @@ export function measureDistance(fixes: readonly LocationSample[]): DistanceResul
     implausible = [];
   };
 
-  /**
-   * A good fix, with an anchor already set. `released` is a fix that was held after a
-   * gap and has now been confirmed by the next one.
-   */
-  const consider = (fix: LocationSample, released = false) => {
-    const current = anchor as LocationSample;
-    const accuracy = fix.accuracy as number;
-    if (fix.t - lastGoodT > GAP_MS) {
-      // After a gap the speed from the anchor says nothing: a minute of running
-      // makes any jump look like a slow walk. The next fix decides. This comes
-      // before the stand check: a fix of standing after a gap would otherwise move
-      // the stand clock to now while the anchor stays before the gap, and the next
-      // fix would look like a jump of the whole gap in a second.
-      afterGap = fix;
-      return;
-    }
-    const standing = fix.speed !== undefined && fix.speed < STATIONARY_SPEED_MPS;
-    if (standing && !released) {
-      anchoredAt = fix.t;
-      return;
-    }
+  /** Distance was counted to `fix`: it is the anchor, and the runner was there then. */
+  const moveTo = (fix: LocationSample) => {
+    anchor = fix;
+    ref = fix;
+    refT = fix.t;
+  };
 
-    const stepM = haversineM(current, fix);
-    const seconds = (fix.t - anchoredAt) / 1000;
-    if (seconds <= 0 || stepM / seconds > MAX_SPEED_MPS) {
+  /*
+   * THE RULE FOR A GAP AND THE FIXES AFTER IT.
+   *
+   * A gap is more than GAP_MS between a good fix and the latest good fix taken into
+   * the track (`lastGoodT`). Poor fixes do not end a gap; they are not there.
+   *
+   * After a gap the speed from `ref` says nothing, so the first fix after it is not
+   * judged by it. It is held, and the next good fix decides: if one runner could
+   * have been at both, the held fix is confirmed and every fix held before it was a
+   * spike. If not, the next fix is held in its turn and the gap is still open: a
+   * fix that was dropped never moves `lastGoodT`, so the fix after it is again the
+   * first after the gap and is never measured over the gap. Two fixes at the same
+   * instant cannot confirm each other, so the earlier is dropped. When
+   * VEHICLE_CONFIRM_FIXES held fixes in a row are each contradicted by the next, they
+   * are not spikes but a drive that began after the gap: the oldest is taken as
+   * confirmed and the rest go through the ordinary path, which marks the drive. The
+   * last held fix of the session is taken as confirmed, since nothing is left to
+   * contradict it.
+   *
+   * A confirmed fix after a gap (`resume`) is never a spike. If one runner could not
+   * have covered the gap from `ref` to it, the gap was a vehicle: it counts and is
+   * marked at once. Otherwise, a fix that moves is the ordinary step from the anchor,
+   * the straight line across the gap. A fix of standing says where he stands now,
+   * not what he did in the gap: it becomes `ref` and adds nothing, and the bridge
+   * from the anchor waits for his next step (or the end of the session) and is then
+   * one straight line.
+   *
+   * What a fix of standing may do, in short: it moves the stand clock `refT`, and
+   * after a gap also `ref`. It never moves the anchor, never adds distance and never
+   * ends a drive, before a gap or after one. So a runner who stands adds nothing
+   * however sparse his fixes are and however many gaps they leave, except one bridge
+   * when the session ends while he stands away from the anchor.
+   */
+
+  /** A good fix in the ordinary state, with an anchor already set. */
+  const consider = (fix: LocationSample) => {
+    lastGoodT = fix.t;
+    if (standing(fix)) {
+      refT = fix.t;
+      return;
+    }
+    const from = anchor as LocationSample;
+    const stepM = haversineM(from, fix);
+    const seconds = (fix.t - refT) / 1000;
+    if (seconds <= 0 || haversineM(ref as LocationSample, fix) / seconds > MAX_SPEED_MPS) {
       if (vehicleFrom !== null) {
         // A drive under way: every fix counts as it comes.
         if (seconds > 0) {
           result.distanceM += stepM;
           vehicleTo = fix.t;
-          anchor = fix;
-          anchoredAt = fix.t;
+          moveTo(fix);
         }
         return;
       }
       implausible.push(fix);
       if (implausible.length >= VEHICLE_CONFIRM_FIXES) {
         result.vehicleSegments += 1;
-        vehicleFrom = current.t;
-        let from = current;
+        vehicleFrom = refT;
+        let last = from;
         for (const held of implausible) {
-          result.distanceM += haversineM(from, held);
-          from = held;
+          result.distanceM += haversineM(last, held);
+          last = held;
         }
-        anchor = from;
-        anchoredAt = from.t;
+        moveTo(last);
         vehicleTo = fix.t;
         implausible = [];
       }
@@ -167,14 +207,61 @@ export function measureDistance(fixes: readonly LocationSample[]): DistanceResul
 
     settle();
 
-    if (stepM < Math.max(MIN_STEP_M, Math.hypot(current.accuracy as number, accuracy))) {
-      // A released fix of standing that stayed where the anchor is: he stood here from now on.
-      if (standing) anchoredAt = fix.t;
+    if (stepM < stepThresholdM(from, fix)) return;
+    result.distanceM += stepM;
+    moveTo(fix);
+  };
+
+  /** A fix after a gap, now confirmed. */
+  const resume = (fix: LocationSample) => {
+    lastGoodT = fix.t;
+    if (!plausible(ref as LocationSample, fix)) {
+      // The gap was covered faster than a runner: a vehicle, counted and marked.
+      if (vehicleFrom === null) {
+        settle();
+        result.vehicleSegments += 1;
+        vehicleFrom = refT;
+      }
+      result.distanceM += haversineM(anchor as LocationSample, fix);
+      vehicleTo = fix.t;
+      moveTo(fix);
       return;
     }
-    result.distanceM += stepM;
-    anchor = fix;
-    anchoredAt = fix.t;
+    if (standing(fix)) {
+      ref = fix;
+      refT = fix.t;
+      return;
+    }
+    consider(fix);
+  };
+
+  const take = (fix: LocationSample) => {
+    if (anchor === null) {
+      moveTo(fix);
+      lastGoodT = fix.t;
+      return;
+    }
+    if (afterGap.length === 0) {
+      if (fix.t - lastGoodT > GAP_MS) afterGap = [fix];
+      else consider(fix);
+      return;
+    }
+    const held = afterGap[afterGap.length - 1];
+    if (plausible(held, fix)) {
+      result.spikeFixes += afterGap.length - 1;
+      afterGap = [];
+      resume(held);
+      take(fix);
+      return;
+    }
+    if (afterGap.length < VEHICLE_CONFIRM_FIXES) {
+      afterGap.push(fix);
+      return;
+    }
+    const [first, ...rest] = afterGap;
+    afterGap = [];
+    resume(first);
+    for (const next of [...rest, fix]) take(next);
   };
 
   for (const fix of bySampleTime(fixes)) {
@@ -185,30 +272,19 @@ export function measureDistance(fixes: readonly LocationSample[]): DistanceResul
       result.poorFixes += 1;
       continue;
     }
-
-    if (anchor === null) {
-      anchor = fix;
-      anchoredAt = fix.t;
-      lastGoodT = fix.t;
-      continue;
-    }
-    if (afterGap !== null) {
-      const held: LocationSample = afterGap;
-      afterGap = null;
-      // Two seconds apart and 80 m between them is no runner; the held fix was a
-      // spike. Two fixes at the same instant give a NaN or an infinity, and
-      // neither passes, so the held one is dropped then too.
-      if (haversineM(held, fix) / ((fix.t - held.t) / 1000) <= MAX_SPEED_MPS) {
-        consider(held, true);
-      } else {
-        result.spikeFixes += 1;
-      }
-    }
-    consider(fix);
-    lastGoodT = fix.t;
+    take(fix);
   }
 
-  if (afterGap !== null) consider(afterGap, true);
+  if (afterGap.length > 0) {
+    result.spikeFixes += afterGap.length - 1;
+    resume(afterGap[afterGap.length - 1]);
+  }
+  if (ref !== anchor) {
+    // The session ends while he stands where a gap left him: the bridge to there.
+    const from = anchor as unknown as LocationSample;
+    const bridgeM = haversineM(from, ref as LocationSample);
+    if (bridgeM >= stepThresholdM(from, ref as LocationSample)) result.distanceM += bridgeM;
+  }
   settle();
   return result;
 }
