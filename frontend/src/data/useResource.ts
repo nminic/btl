@@ -885,6 +885,22 @@ export const usePricingInTheReadersLanguage = () => {
  * thing `data/season.ts` cannot do correctly.
  */
 export const usePaymentsDue = () => useResource<Outstanding>('payments')
+
+/**
+ * THE SAME ANSWER, FOR THE TWO COUNTS THAT STAY MOUNTED: the number beside „Administracija" in the header
+ * (`app/Shell.tsx`) and the one beside „Uplate" in the navigation (`admin/SectionNav.tsx`).
+ *
+ * <p><b>It reads again whenever anybody drops `payments`</b>, the shape `usePendingForTheCount` gave the
+ * queue of verification (`admin/pending.ts`) and for its reason. An activation drops the name
+ * (`whatActiveMoves.ts`) and the Payments screen remounts its own list to read it again, but these two
+ * stand beside the outlet and are never remounted, so they kept the answer they had read on arriving:
+ * the owner saw the number beside „Uplate" go down only after a reload (26.11.2026).
+ *
+ * <p><b>Only these two.</b> The list itself reads again by its remount (`Payments.tsx`, `readAgain`), so
+ * it needs no second way of doing the same.
+ */
+export const usePaymentsDueForTheCount = () =>
+  useResource<Outstanding>('payments', { revision: useHowManyTimesDropped('payments') })
 export const useRaces = () => useLive(useResource<Race[]>('races'), 'races', 'id')
 /** What a deletion of results is filed under. Named here, where the results
  *  are read, rather than spelled out at the screen that deletes them. */
