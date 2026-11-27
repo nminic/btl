@@ -215,7 +215,9 @@ export function measureDistance(fixes: readonly LocationSample[]): DistanceResul
   /** A fix after a gap, now confirmed. */
   const resume = (fix: LocationSample) => {
     lastGoodT = fix.t;
-    if (!plausible(ref as LocationSample, fix)) {
+    // Measured from the stand clock, not from the time of `ref`: after a long stand that would make a drive across
+    // the gap look like a walk.
+    if (haversineM(ref as LocationSample, fix) / ((fix.t - refT) / 1000) > MAX_SPEED_MPS) {
       // The gap was covered faster than a runner: a vehicle, counted and marked.
       if (vehicleFrom === null) {
         settle();

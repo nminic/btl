@@ -398,6 +398,15 @@ describe('the first fixes after a gap in the signal, as a class', () => {
     expect(result.distanceM).toBeLessThanOrEqual(2297.000001);
   });
 
+  it('marks a gap crossed at vehicle speed after he stood ten minutes before it', () => {
+    // From the time of the last fix he ran to, the gap would be 1700 m in eleven minutes, a walk.
+    const result = measureDistance([...run(0, 100, 0), ...standing(100, 700, 297), ...standing(760, 770, 2000), ...run(770, 870, 2000)]);
+
+    expect(result.vehicleSegments).toBe(1);
+    expect(result.vehicleDurationMs).toBe(61_000);
+    expect(result.distanceM).toBeGreaterThan(2297 - MIN_STEP_M);
+  });
+
   it('counts a spike held just before such a gap as a spike, not as part of the vehicle', () => {
     const fixes = [...run(0, 100, 0), fix(100_000, 300, 80), ...standing(160, 170, 2000), ...run(170, 270, 2000)];
     const result = measureDistance(fixes);
