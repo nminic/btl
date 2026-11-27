@@ -1,5 +1,6 @@
 import { GAP_MS, measureDistance, MAX_ACCURACY_M, MIN_STEP_M, STATIONARY_SPEED_MPS } from './distance';
 import { NO_GAP, ON_FOOT, type Profile, session, STANDING, type Truth, WITH_DRIVE } from './testing/paths';
+import { haversineM } from './geo';
 import { every, fix, jitter } from './testing/synth';
 
 /** A straight run east at `speed` m/s, one fix a second. */
@@ -844,6 +845,49 @@ describe('what tells a spike from a drive, and a trip away from a place he went 
 
     expect(result.spikeFixes).toBe(0);
     expect(result.distanceM).toBeGreaterThan(24 + leg([-25, 17], [-79, -49]) + 18 * 3.7 - 3 * MIN_STEP_M);
+  });
+});
+
+describe('a place he went to across two long gaps, with a spike as the first fix after the second', () => {
+  // K2 of round 4 keeps a place reached across one long gap and left across another. A spike right before the way back
+  // must not undo it: the silence before the return is the one before the spike, measured from the last fix of the
+  // place, and not the one second between the spike and the return. The expected length is the chord through the real
+  // fixes, the true positions at the times of the good ones, never the output of a version of the code.
+  const walk = (fromS: number, toS: number, eastM: number, northM: number) =>
+    every(fromS * 1000, toS * 1000, 1).map((t) => fix(t, eastM + 1.5 * (t / 1000 - fromS), northM, { speed: 1.5 }));
+  const stood = (fromS: number, toS: number, eastM: number, northM: number) =>
+    every(fromS * 1000, toS * 1000, 1).map((t) => fix(t, eastM, northM, { speed: 0.1 }));
+  const spike = fix(224_000, 330, -60, { speed: 1.5 });
+  const chord = (fixes: ReturnType<typeof walk>) =>
+    fixes.slice(1).reduce((sum, f, i) => sum + haversineM(fixes[i], f), 0);
+
+  const lap = () => ({
+    first: every(0, 100_000, 1).map((t) => fix(t, 3 * (t / 1000), 0, { speed: 3 })),
+    around: every(160_000, 175_000, 1).map((t) => fix(t, 400 - 5 * (t / 1000 - 160), 180, { speed: 5 })),
+    last: every(236_000, 336_000, 1).map((t) => fix(t, 300 + 3 * (t / 1000 - 236), 0, { speed: 3 })),
+  });
+
+  it.each([
+    ['moving there', () => [...walk(0, 100, 0, 0), ...walk(160, 165, 150, 80), ...walk(225, 260, 150, 0)], spike],
+    ['standing there', () => [...walk(0, 100, 0, 0), ...stood(160, 163, 150, 80), ...walk(225, 260, 150, 0)], spike],
+    ['around a block', () => Object.values(lap()).flat(), fix(235_000, 600, -100, { speed: 3 })],
+    ['and the session ends right after the return', () => [...walk(0, 100, 0, 0), ...walk(160, 165, 150, 80), ...walk(225, 227, 150, 0)], spike],
+  ] as const)('counts the place, %s, though the fix before the way back is a spike', (_, make, jump) => {
+    const real = make();
+    const result = measureDistance([...real, jump]);
+
+    expect(result.spikeFixes).toBe(1);
+    expect(Math.abs(result.distanceM - chord(real))).toBeLessThanOrEqual(2 * MIN_STEP_M);
+  });
+
+  it('still drops a place he stood at when the way there was not hidden by a long gap, spike or no spike', () => {
+    // He could not have walked 80 m in five seconds, and no gap hides it: the three fixes at 80 m are a trip of spikes.
+    const real = [...walk(0, 100, 0, 0), ...walk(225, 260, 150, 0)];
+    const trip = stood(105, 108, 150, 80);
+    const result = measureDistance([...walk(0, 100, 0, 0), ...trip, ...walk(225, 260, 150, 0), spike]);
+
+    expect(result.spikeFixes).toBe(4);
+    expect(Math.abs(result.distanceM - chord(real))).toBeLessThanOrEqual(2 * MIN_STEP_M);
   });
 });
 
