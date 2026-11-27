@@ -1353,6 +1353,29 @@ describe('the probes of round 7 of the review', () => {
     expect(result.distanceM - truthM).toBeLessThan(190);
   });
 
+  it.each([77, 30])(`${CLAUSE}: a fix of a man who stands, %i s after the last fix of a walk, with a spike three seconds after it, is a place of one fix and the spike is dropped`, (silence) => {
+    // MY footSparse 602, reduced. One fix cannot be told from a spike three seconds from it, but the long silence
+    // before it says that he went somewhere, and the fix of the place is the one that has fixes after it. Without the
+    // silence of 30 s or more the same fix is taken for the spike's neighbour and goes with it.
+    const walk = [225, 228, 232, 235, 241].map((t) => fix(t * 1000, -1.5 * (241 - t), 0, { speed: 1.5, accuracy: 6 }));
+    const there = 241 + silence;
+    const place = fix(there * 1000, -19, -175, { speed: 0.02, accuracy: 5 });
+    const spike = fix((there + 3) * 1000, -38, -50, { speed: 2.2, accuracy: 8 });
+    const onwards = [9, 14, 19, 22, 23, 25].map((s) => fix((there + s) * 1000, -33 - 1.5 * (s - 9), -173, { speed: 1.8, accuracy: 8 }));
+    const real = [...walk, place, ...onwards];
+    const result = measureDistance([...real, spike].sort((a, b) => a.t - b.t));
+
+    expect(result.spikeFixes).toBe(1);
+    expect(Math.abs(result.distanceM - real.slice(1).reduce((sum, f, i) => sum + haversineM(real[i], f), 0))).toBeLessThanOrEqual(2 * MIN_STEP_M);
+  });
+
+  it('TRIP_BACK seed 628 of 1000: a trip of two real fixes is no lone fix, and the spike that ends it before a long silence does not take them', () => {
+    // 55 m short as it is, 152 m short when a trip of two fixes is counted as one.
+    const { fixes, truth } = session(628, { ...TRIP_BACK, quietEndFixes: 10 });
+
+    expect(Math.abs(measureDistance(fixes).distanceM - truth.idealM)).toBeLessThan(100);
+  });
+
   it('ON_FOOT seed 869 of 1000: a gap that only opened because spikes were taken out is no silence, and the real fixes after it stay', () => {
     // 37 m short as it is, 100 m short when the silences are read off the fixes that are left: a spike before a gap, the
     // real fixes of a trip entered across a hole that an earlier pass made.
