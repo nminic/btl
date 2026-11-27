@@ -22,8 +22,8 @@ import java.sql.SQLException;
  * V83, V84, {@code season_points_at_freeze} among them) are a snapshot this never reads or writes:
  * „zamrznuta tabela ostaje konstanta”. The ducats already awarded ({@code ducat_award}) are not touched.
  *
- * <p><b>V116 is not edited, because it ran on production.</b> It counted every run by the formula of
- * 26.11.2026 and its record in {@code flyway_schema_history} stands; this migration is the next recount, not
+ * <p><b>V116 is not rewritten, because it ran on production</b> (it only reads the kind of the race now, which the function it asks takes). It counted every run by the formula of
+ * 26.11.2026 and its record in Flyway's own history table stands; this migration is the next recount, not
  * a correction of it. (V116 asks {@link PointsOfARun#of} as this does, so on a database that has never run
  * either, the two recounts agree and the second changes nothing.)
  *
