@@ -61,10 +61,19 @@ import java.util.Optional;
  * {@code POST /api/teams/{id}/changes}: the administration has its own door here and no business sending itself a
  * logo to approve.
  *
- * <p><b>ONE WRITE OF A TEAM'S LOGO AT A TIME</b>: every door here takes the team's row first ({@code for update}),
- * so two sends of the editor, a send and the administration's set, and a send and the team's deletion run one
- * after the other. A first send therefore finds the row the send in front of it opened; V112's
- * {@code verification_one_logo_waits_per_team} is the floor under that.
+ * <p><b>ONE WRITE OF A TEAM'S LOGO AT A TIME</b>: every door here takes the team's row ({@code for update}), so a
+ * send and the administration's set, and a send and the team's deletion, run one after the other, and the sends of
+ * one team take turns ({@link #oneSendOfATeamAtATime}). A first send therefore finds the row the send in front of it
+ * opened; V112's {@code verification_one_logo_waits_per_team} is the floor under that.
+ *
+ * <p><b>THE SEND TAKES ITS LOCKS IN THE DECISION'S ORDER</b> (PENDING, PR 836, 27.11.2026): the team's turn, then
+ * the queue row of the logo that waits, then the team's row. A decision claims the queue row and then writes
+ * {@code team.logo_id} ({@code VerificationWriteApi}), and a send that took the team's row first was the other half
+ * of a cycle: measured on PostgreSQL 18 with the same statements in two sessions, {@code deadlock detected} and one
+ * of the two answered 500, nothing torn. The precedent is {@link MePhotoApi}'s send (the turn, the queue row, then
+ * the member's row), and {@code ATeamLogoSentWhileItIsBeingDecidedTest} holds the order. <b>Not covered:</b> the
+ * team's deletion takes the team and then, through the cascade, the queue row, which is the order a decision has
+ * had all along and now the send's too; it is not measured and is not changed here.
  *
  * <p><b>THE ADMINISTRATION'S DOOR IS THE LEAGUE'S MARK</b> ({@link LeagueMarkApi}): the right over the teams at the
  * door, a new picture with its circle and nothing that waits, and the logo taken down at once. <b>What waits is not
@@ -146,14 +155,20 @@ class TeamLogoApi {
 			HttpServletResponse response) throws IOException {
 
 		Long me = readers.activeMember(asking).orElse(null);
-		Optional<String> name = theEditorTakesTheTeam(me, id.value());
+		long team = id.value();
+
+		/* THE TURN, THE QUEUE ROW, THEN THE TEAM, in the order a decision takes them. The team's row was taken
+		   first until 27.11.2026, and the editor's send and the moderator's decision about the logo that waits
+		   were then a cycle. The question who the editor is is asked under the team's row below, as before, so a
+		   seat that passes or a team that goes is seen by it. */
+		oneSendOfATeamAtATime(db, team);
+		Optional<Waits> waits = theOneThatWaits(team);
+		Optional<String> name = theEditorTakesTheTeam(me, team);
 
 		if (name.isEmpty()) {
 			return away(response);
 		}
 
-		long team = id.value();
-		Optional<Waits> waits = theOneThatWaits(team);
 		boolean onlyTheCircle = picture == null || picture.isEmpty();
 
 		if (onlyTheCircle && over == null) {
@@ -369,6 +384,20 @@ class TeamLogoApi {
 	 */
 	private Optional<String> theTeamUnderALock(long team) {
 		return db.sql("select name from team where id = ? for update").param(team).query(String.class).optional();
+	}
+
+	/**
+	 * WAITS UNTIL NO OTHER SEND OF THIS TEAM'S LOGO IS IN FLIGHT, AND KEEPS THE TURN UNTIL THE TRANSACTION ENDS.
+	 * {@link MePhotoApi#oneSendOfAMemberAtATime}'s lock, for the same reasons and keyed by the team: it is
+	 * transaction-scoped, so a send that fails at the disk lets the next one through, and it is what lets two first
+	 * sends find the row the first opened, because there is no row for {@code for update} to take until then. The
+	 * text is not a {@code static final String}, for the reason that method gives.
+	 */
+	static void oneSendOfATeamAtATime(JdbcClient db, long team) {
+		db.sql("select pg_advisory_xact_lock(hashtextextended(?, 0))::text")
+				.param("team-logo:" + team)
+				.query(String.class)
+				.single();
 	}
 
 	private Optional<Waits> theOneThatWaits(long team) {
