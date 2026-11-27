@@ -571,18 +571,23 @@ class ARaceCorrectedRecountsItsRunsTest {
 	 */
 	@Test
 	void aCorrectedLimitReachesEveryRunAndEachRunnerKeepsWhatHeCovered() throws Exception {
-		assertThat(BtlScoreCalculator.calculate(61.3, 350, 130, 86400))
+		assertThat(BtlScoreCalculator.calculateAtALimit(61.3, 350, 130, 86400))
 				.as("the race's climb read into the run would have to come out different")
-				.isNotEqualByComparingTo(BtlScoreCalculator.calculate(61.3, 120, 130, 86400));
-		assertThat(BtlScoreCalculator.calculate(61.3, 120, 130, 21600))
+				.isNotEqualByComparingTo(BtlScoreCalculator.calculateAtALimit(61.3, 120, 130, 86400));
+		assertThat(BtlScoreCalculator.calculateAtALimit(61.3, 120, 130, 21600))
 				.as("the run's old time would have to come out different")
-				.isNotEqualByComparingTo(BtlScoreCalculator.calculate(61.3, 120, 130, 86400));
+				.isNotEqualByComparingTo(BtlScoreCalculator.calculateAtALimit(61.3, 120, 130, 86400));
 
 		assertThat(change(sixHours, toALimit("Sest sati", SIX_HOURS_DAY, 86400, 350, 410))
 				.getStatus()).isEqualTo(200);
 
-		assertThat(rowOf(runnersSixHours)).isEqualTo(countedAt("61.3", 120, 130, 86400, "ultra"));
-		assertThat(rowOf(thirdsSixHours)).isEqualTo(countedAt("55", 90, 80, 86400, "ultra"));
+		assertThat(rowOf(runnersSixHours)).isEqualTo(countedAtALimit("61.3", 120, 130, 86400, "ultra"));
+		assertThat(rowOf(thirdsSixHours)).isEqualTo(countedAtALimit("55", 90, 80, 86400, "ultra"));
+		/* AND BY THE FORMULA OF A RACE TO A LIMIT, written out and worked in Python (the owner's reference
+		   calculation) and not asked of the calculator: the same figures counted as a race of a length are
+		   0.51 and 0.34, so a recount that did not read the kind of the race fails here. */
+		assertThat(rowOf(runnersSixHours).points()).isEqualByComparingTo("1.53");
+		assertThat(rowOf(thirdsSixHours).points()).isEqualByComparingTo("1.07");
 		assertThat(linesTo(runner)).extracting(Line::subject).containsExactly(RECOUNTED);
 		assertThat(linesTo(third)).extracting(Line::subject).containsExactly(RECOUNTED);
 	}
@@ -1337,6 +1342,13 @@ class ARaceCorrectedRecountsItsRunsTest {
 				counted(km, ascent, descent, seconds), category);
 	}
 
+	/** The same, at a race to a limit, whose time is the limit and which is counted by its own formula. */
+	private static Run countedAtALimit(String km, int ascent, int descent, int seconds, String category) {
+		return new Run(new BigDecimal(km).setScale(4), ascent, descent, seconds,
+				BtlScoreCalculator.calculateAtALimit(new BigDecimal(km).doubleValue(), ascent, descent, seconds),
+				category);
+	}
+
 	private static BigDecimal counted(String km, int ascent, int descent, int seconds) {
 		return BtlScoreCalculator.calculate(new BigDecimal(km).doubleValue(), ascent, descent, seconds);
 	}
@@ -1545,19 +1557,19 @@ class ARaceCorrectedRecountsItsRunsTest {
 	/**
 	 * A CORRECTED COURSE THAT WOULD MAKE A RUN AT THE RACE WORTH MORE THAN ANY RUN CAN BE IS REFUSED, AND NOTHING
 	 * MOVES (PDL P4, owner, 10.10.2026, „Nikad broj bodova nece biti veci nego trocifren uz jos dve decimale";
-	 * the recount met {@code numeric(8,2)} and answered 500 until then). Asked from both sides: 78,4798 km
-	 * with the climb and the fall below make the runner's 12600 seconds worth 1000,00, and 78,4796 km worth
+	 * the recount met {@code numeric(8,2)} and answered 500 until then). Asked from both sides: 109,9003 km
+	 * with the climb and the fall below make the runner's 12600 seconds worth 1000,00, and 109,9002 km worth
 	 * 999,99, the most a run can be, which is taken. His run is the fastest at the race, so it decides.
 	 */
 	@Test
 	void aCorrectedCourseThatWouldMakeARunWorthMoreThanAnyRunIsRefusedAndTheMostIsTaken() throws Exception {
-		assertThat(counted("78.4798", 520, 310, 12600)).isEqualByComparingTo("1000.00");
-		assertThat(counted("78.4796", 520, 310, 12600)).isEqualByComparingTo("999.99");
+		assertThat(counted("109.9003", 520, 310, 12600)).isEqualByComparingTo("1000.00");
+		assertThat(counted("109.9002", 520, 310, 12600)).isEqualByComparingTo("999.99");
 
 		Map<Long, Run> before = rowsOf(runnersFirst, runnersSecond, lapsedRun, alreadyThereRun);
 
 		MockHttpServletResponse refused = change(theMarathon,
-				ofALength("Maraton", THE_MARATHONS_DAY, "78.4798", 520, 310));
+				ofALength("Maraton", THE_MARATHONS_DAY, "109.9003", 520, 310));
 
 		assertThat(refused.getStatus()).as(refused.getContentAsString()).isEqualTo(409);
 		assertThat(reasonIn(refused)).isEqualTo(RaceWriteApi.THE_RACE_WOULD_MAKE_A_RUN_IMPOSSIBLE);
@@ -1567,7 +1579,7 @@ class ARaceCorrectedRecountsItsRunsTest {
 				.query(BigDecimal.class).single()).as("a refused edit wrote the race").isEqualByComparingTo("42.2");
 		assertThat(newLines()).isEmpty();
 
-		assertThat(change(theMarathon, ofALength("Maraton", THE_MARATHONS_DAY, "78.4796", 520, 310)).getStatus())
+		assertThat(change(theMarathon, ofALength("Maraton", THE_MARATHONS_DAY, "109.9002", 520, 310)).getStatus())
 				.isEqualTo(200);
 		assertThat(rowOf(runnersFirst).points()).isEqualByComparingTo("999.99");
 	}

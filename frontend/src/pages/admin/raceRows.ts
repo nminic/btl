@@ -509,7 +509,7 @@ export function whatIsMissing(row: RaceRow): RaceCell | undefined {
      (`definitions/admin-trka.form.json`). The form went with the owner's change and the bounds
      nearly went with it: `min` on a number box is decoration here, because the form is
      `noValidate` and nothing reads `checkValidity`. Measured on the real screen: a climb of
-     **minus five hundred** metres saved. `Le = L + (9×AP + 1×AN)/1000` then works out a
+     **minus five hundred** metres saved. `Le = L + (5×AP + 2×AN)/1000` then works out a
      profile that was never run, and the whole standing is worked out from it. */
   return RACE_CELLS.find((field) => whyWrong(row, field) !== undefined)
 }

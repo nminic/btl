@@ -60,7 +60,7 @@ export function reportedResult(race: Reporting, values: FormValues): Reported {
   return {
     ...measured,
     seconds,
-    points: pointsOf(measured.distanceKm, measured.ascentM, measured.descentM, seconds),
+    points: pointsOf(measured.distanceKm, measured.ascentM, measured.descentM, seconds, kind),
     /* Off the race where the race fixes a length, which leaves every one of the 1612
        races in the file reading exactly as it did. Where it does not, the race
        carries the category of a length nobody ran, so it is read off what the member

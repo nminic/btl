@@ -2537,15 +2537,15 @@ class ResultWriteApiTest {
 	/*
 	 * FIGURES NOBODY RAN ARE REFUSED WHEN THEY ARE SENT (PDL P4, owner, 10.10.2026: „Nikad broj bodova nece
 	 * biti veci nego trocifren uz jos dve decimale", and the refusal at sending derived beside it). The
-	 * boundary is asked from both sides: two lengths over 15500 seconds a third of a metre apart, worth
+	 * boundary is asked from both sides: two lengths over 15500 seconds a tenth of a metre apart, worth
 	 * exactly 999,99 and exactly 1000,00 as the column keeps them (the fixture asks the calculator so).
 	 */
 
 	/** Worth 999,99 over {@link #THE_TIME_AT_THE_EDGE}, the most a run can be: taken. */
-	private static final String THE_MOST = "98.1079";
+	private static final String THE_MOST = "130.8524";
 
 	/** Worth 1000,00 over the same time: one hundredth too many, refused. */
-	private static final String ONE_HUNDREDTH_TOO_MANY = "98.1082";
+	private static final String ONE_HUNDREDTH_TOO_MANY = "130.8525";
 
 	private static final int THE_TIME_AT_THE_EDGE = 15500;
 

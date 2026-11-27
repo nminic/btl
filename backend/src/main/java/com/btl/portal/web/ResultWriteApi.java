@@ -533,13 +533,13 @@ class ResultWriteApi {
 			return no(THE_FORM_IS_NOT_COMPLETE);
 		}
 
-		if (PointsOfARun.impossible(before.scored(), figures)) {
+		if (PointsOfARun.impossible(before.scored(), race.kind(), figures)) {
 			return no(THE_RUN_IS_IMPOSSIBLE);
 		}
 
 		Run after = new Run(before.raceName(), before.day(), figures.distanceKm(),
 				figures.ascentM(), figures.descentM(), figures.seconds(), PointsOfARun.toTell(
-						before.scored(), pointsFor(figures.distanceKm(), figures.ascentM(),
+						before.scored(), pointsFor(race.kind(), figures.distanceKm(), figures.ascentM(),
 								figures.descentM(), figures.seconds())));
 
 		Recipient him = recipient(asking.account());
@@ -677,13 +677,13 @@ class ResultWriteApi {
 			return no(THE_FORM_IS_NOT_COMPLETE);
 		}
 
-		if (PointsOfARun.impossible(scored, figures)) {
+		if (PointsOfARun.impossible(scored, race.kind(), figures)) {
 			return no(THE_RUN_IS_IMPOSSIBLE);
 		}
 
 		Run run = new Run(race.name(), race.day(), figures.distanceKm(), figures.ascentM(),
 				figures.descentM(), figures.seconds(), PointsOfARun.toTell(scored,
-						pointsFor(figures.distanceKm(), figures.ascentM(), figures.descentM(),
+						pointsFor(race.kind(), figures.distanceKm(), figures.ascentM(), figures.descentM(),
 								figures.seconds())));
 
 		return write(me, typed.raceId(), race.day(), null, null, null, null, null, TheEvent.NONE,
@@ -735,7 +735,7 @@ class ResultWriteApi {
 
 		/* AND FIGURES NOBODY RAN, judged as the kind he sent it under is judged: a run of an unscored race
 		   keeps nought and is never refused for it. */
-		if (PointsOfARun.impossible(scored, figures)) {
+		if (PointsOfARun.impossible(scored, typed.raceKind(), figures)) {
 			return no(THE_RUN_IS_IMPOSSIBLE);
 		}
 
@@ -805,8 +805,8 @@ class ResultWriteApi {
 
 		Run run = new Run(named, typed.day(), figures.distanceKm(), figures.ascentM(),
 				figures.descentM(), figures.seconds(), PointsOfARun.toTell(scored,
-						pointsFor(figures.distanceKm(), figures.ascentM(), figures.descentM(),
-								figures.seconds())));
+						pointsFor(typed.raceKind(), figures.distanceKm(), figures.ascentM(),
+								figures.descentM(), figures.seconds())));
 
 		return write(me, null, typed.day(), named, typed.raceKind(),
 				fromTheCodebook ? placeKey(typed.placeId()).orElseThrow() : null,
@@ -1127,10 +1127,11 @@ class ResultWriteApi {
 		return outcome == Outcome.GOOD ? null : no(WHY_NOT.get(outcome));
 	}
 
-	/** The points, from the one place that answers for them and never from a request. */
-	private static BigDecimal pointsFor(BigDecimal distanceKm, int ascentM, int descentM,
+	/** The points, from the one place that answers for them and never from a request: the formula of the
+	 *  kind of race the run is at ({@link PointsOfARun#of}), which the caller asks whether to tell. */
+	private static BigDecimal pointsFor(String raceKind, BigDecimal distanceKm, int ascentM, int descentM,
 			int seconds) {
-		return BtlScoreCalculator.calculate(distanceKm.doubleValue(), ascentM, descentM, seconds);
+		return PointsOfARun.of(true, raceKind, new Figures(distanceKm, ascentM, descentM, seconds));
 	}
 
 	/** Today in the league's own zone, never the machine's: a server kept in UTC would call a

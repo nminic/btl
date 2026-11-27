@@ -1122,15 +1122,15 @@ class VerificationDecisionConcurrencyTest {
 	 * FIGURES WORTH THE MOST A RUN CAN BE THEN GOES THROUGH (PDL P4, owner, 10.10.2026, „Nikad broj bodova
 	 * nece biti veci nego trocifren uz jos dve decimale"). Here and not in {@code VerificationWriteApiTest}
 	 * for the reason the case below gives: the refusal is met after the row is claimed, where the points
-	 * are worked out, and only a transaction the route owns rolls the claim back. 98,1082 km over 15500
-	 * seconds are worth 1000,00 and 98,1079 km 999,99.
+	 * are worked out, and only a transaction the route owns rolls the claim back. 130,8525 km over 15500
+	 * seconds are worth 1000,00 and 130,8524 km 999,99.
 	 */
 	@Test
 	void anApprovalAtFiguresWorthMoreThanAnyRunLeavesTheRunWaitingAndTheMostIsThenCounted() throws Exception {
 		aRunWaitsInTheResultsTab();
 
 		MockHttpServletResponse refused = answerWith(ONE_MODERATOR, runItem, "{\"approved\":true,\"amended\":"
-				+ "{\"distanceKm\":98.1082,\"ascentM\":0,\"descentM\":0,\"seconds\":15500}}");
+				+ "{\"distanceKm\":130.8525,\"ascentM\":0,\"descentM\":0,\"seconds\":15500}}");
 
 		assertThat(refused.getStatus()).as(refused.getContentAsString(StandardCharsets.UTF_8)).isEqualTo(400);
 		assertThat(refused.getContentAsString(StandardCharsets.UTF_8))
@@ -1143,7 +1143,7 @@ class VerificationDecisionConcurrencyTest {
 				.query(Integer.class).single()).isZero();
 
 		MockHttpServletResponse theMost = answerWith(ONE_MODERATOR, runItem, "{\"approved\":true,\"amended\":"
-				+ "{\"distanceKm\":98.1079,\"ascentM\":0,\"descentM\":0,\"seconds\":15500}}");
+				+ "{\"distanceKm\":130.8524,\"ascentM\":0,\"descentM\":0,\"seconds\":15500}}");
 
 		assertThat(theMost.getStatus()).as(theMost.getContentAsString(StandardCharsets.UTF_8)).isEqualTo(200);
 		assertThat(db.sql("select points from result where competitor_id = ?").param(founder)
@@ -1163,7 +1163,7 @@ class VerificationDecisionConcurrencyTest {
 	void anApprovalThatMakesTheRaceAtFiguresNobodyRanMakesNoEventNoRaceNoResultAndTheRunWaits() throws Exception {
 		aRunOnARaceTheCalendarDoesNotHoldWaits();
 
-		String amended = ",\"amended\":{\"distanceKm\":98.1082,\"ascentM\":0,\"descentM\":0,\"seconds\":15500}}";
+		String amended = ",\"amended\":{\"distanceKm\":130.8525,\"ascentM\":0,\"descentM\":0,\"seconds\":15500}}";
 		MockHttpServletResponse refused = answerWith(ONE_MODERATOR, runItem,
 				makingTheRace(A_THIRD_NAME).replaceFirst("}$", amended));
 

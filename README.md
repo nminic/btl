@@ -46,4 +46,4 @@ docker compose -f compose.prod.yml up -d --build frontend
 
 - `main` prima izmene samo kroz PR sa zelenim CI-jem.
 - Šema baze se menja samo kroz Flyway migracije.
-- Formula BTL bodova (od 26.11.2026): `103,34 × (Tref / Tsec)^4,25 × (Le / 10)^0,39`, `Le = L + (9×AP + 1×AN)/1000`, gde je `Tref` referentno vreme za dužinu `Le` (tabela u `BtlScoreCalculator`). Zlatni test set u `BtlScoreCalculatorTest` je izvor istine.
+- Formula BTL bodova (od 27.11.2026): trka zadate dužine `55,75 × (Tref / Tsec)^2,75 × (Le / 10)^0,39`, vremenska trka `58,71 × (Le / Lref(Tsec))^2,86 × (Le / 10)^0,39`, `Le = L + (5×AP + 2×AN)/1000`, gde je `Tref` glatka kriva referentnog vremena za dužinu `Le` (u `BtlScoreCalculator`), a `Lref` ista kriva čitana obrnuto. Zlatni test set u `BtlScoreCalculatorTest` je izvor istine.

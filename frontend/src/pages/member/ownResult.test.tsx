@@ -189,7 +189,7 @@ describe('a run of one’s own that is still waiting', () => {
        nothing here noticed the difference (review, 05.09.2026).
 
        And the number is what the figures the route answers work out to: 21,1 km with 540 up and
-       540 down in 1:52:10 is 24,87 by the formula of 26.11.2026 (23,55 by the one before it). Whether a number belongs on
+       540 down in 1:52:10 is 20,86 by the formula of 27.11.2026 (24,87 by the one before it). Whether a number belongs on
        this row at all before a moderator decides is a question still before the owner (PENDING,
        29.09.2026), so the row keeps it as it was. */
     answering(() => [aRun(41, { state: 'waiting', reason: null, raceName: 'Probna trka' })])
@@ -197,8 +197,27 @@ describe('a run of one’s own that is still waiting', () => {
 
     const row = within(must((await sentRows())[0], 'the run that waits'))
 
-    expect(row.getByText(/24,87 BTL poena$/)).toBeVisible()
+    expect(row.getByText(/20,86 BTL poena$/)).toBeVisible()
     expect(row.queryByText(/bodova$/)).toBeNull()
+  }, SLOW)
+
+  it('counts a run at a race to a limit by the formula of such a race, and any other kind by the formula of a length', async () => {
+    /* The same figures, the same 21,1 km with 540 up and 540 down in 1:52:10, are 24,95 at a race to
+       a limit and 20,86 at every other (the formula of 27.11.2026, worked in Python; the server's
+       seconds are the race's limit there, `WhatARaceCarries.figuresOf`). A free race and a word the
+       screen does not know are read as a race of a length, as `data/raceKind.ts` reads them. */
+    answering(() => [
+      aRun(41, { state: 'waiting', reason: null, raceName: 'Vremenska', raceKind: 'time' }),
+      aRun(42, { state: 'waiting', reason: null, raceName: 'Slobodna', raceKind: 'free' }),
+      aRun(43, { state: 'waiting', reason: null, raceName: 'Neobicna', raceKind: 'ludilo' }),
+    ])
+    renderAt(MINE, 'competitor', ME, undefined, null)
+
+    const rows = (await sentRows()).map((one) => within(one))
+
+    expect(rows).toHaveLength(3)
+    expect(rows.filter((row) => row.queryByText(/24,95 BTL poena$/) !== null)).toHaveLength(1)
+    expect(rows.filter((row) => row.queryByText(/20,86 BTL poena$/) !== null)).toHaveLength(2)
   }, SLOW)
 
   it('carries the caveat about the count while it waits, and not once it has been sent back', async () => {

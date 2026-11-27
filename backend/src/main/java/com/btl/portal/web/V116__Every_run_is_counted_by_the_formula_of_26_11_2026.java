@@ -48,7 +48,8 @@ import java.sql.SQLException;
 public class V116__Every_run_is_counted_by_the_formula_of_26_11_2026 extends BaseJavaMigration {
 
 	private static final String EVERY_RUN = "select r.id, r.distance_km, r.ascent_m, r.descent_m, r.seconds,"
-			+ " exists(select 1 from scored_race s where s.id = r.race_id) from result r order by r.id";
+			+ " exists(select 1 from scored_race s where s.id = r.race_id),"
+			+ " (select ra.kind from race ra where ra.id = r.race_id) from result r order by r.id";
 
 	private static final String ITS_POINTS = "update result set points = ? where id = ?";
 
@@ -62,7 +63,7 @@ public class V116__Every_run_is_counted_by_the_formula_of_26_11_2026 extends Bas
 			while (runs.next()) {
 				Figures figures = new Figures(runs.getBigDecimal(2), runs.getInt(3), runs.getInt(4), runs.getInt(5));
 
-				write.setBigDecimal(1, PointsOfARun.of(runs.getBoolean(6), figures));
+				write.setBigDecimal(1, PointsOfARun.of(runs.getBoolean(6), runs.getString(7), figures));
 				write.setLong(2, runs.getLong(1));
 				write.addBatch();
 			}

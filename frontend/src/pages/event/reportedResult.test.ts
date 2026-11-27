@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { btlPoints } from '../../data/scoring'
+import { btlPoints, pointsOf } from '../../data/scoring'
 import type { Race } from '../../data/types'
 import type { FormValues } from '../../forms/types'
 import { reportedResult } from './reportedResult'
@@ -85,7 +85,11 @@ describe('what a report says about the run', () => {
 
     expect(said.seconds).toBe(86_400)
     expect(said.seconds).not.toBe(TYPED_SECONDS)
-    expect(said.points).toBe(btlPoints(60, 2000, 500, 86_400))
+    /* By the formula of a race to a limit, worked in Python and not asked of the code under test:
+       the same 60 km of 2000 up and 500 down in the same 24 hours counted as a race of a length is
+       0.84 (`scoring.test.ts` holds both). */
+    expect(said.points.toFixed(2)).toBe('2.36')
+    expect(said.points).toBe(pointsOf(60, 2000, 500, 86_400, 'time'))
   })
 
   it('takes all four off the member on a free race, the time included', () => {
@@ -102,11 +106,10 @@ describe('what a report says about the run', () => {
 
   it('never reads the climb for the fall, whichever side they come from', () => {
     /* Two figures of the same shape next to each other, and the formula weighs them
-       differently: `Le = L + (9 × AP + 1 × AN) / 1000` (the formula of 26.11.2026).
+       differently: `Le = L + (5 × AP + 2 × AN) / 1000` (the formula of 27.11.2026).
        Measured on 30.08.2026 by a review, under the formula of the day: with the two
-       swapped, 60 km of 2000 up and 500 down comes out lighter (under today's, less
-       than half as heavy), and a case that typed nought into both could not see
-       it. Asked on the side the member fills in and on the side the race answers
+       swapped, 60 km of 2000 up and 500 down comes out lighter, and a case that typed
+       nought into both could not see it. Asked on the side the member fills in and on the side the race answers
        for, because they are two different readings. */
     const mine = reportedResult(race({ kind: 'free', distanceKm: 0 }), typed())
 

@@ -79,8 +79,24 @@ describe('the rulebook', () => {
     expect(printed).not.toContain('1.25')
 
     /* And the constants of the formula of 26.11.2026 (PDL P4, „Nova formula bodova, na
-       produkciju”), in both ways of writing a decimal, for the same reason. */
-    for (const constant of ['103.34', '103,34', '4.25', '4,25', '0.39', '0,39']) {
+       produkciju”) and of the one of 27.11.2026 (PDL P4, „Izabrana varijanta V3c”), in both ways
+       of writing a decimal, for the same reason. */
+    for (const constant of [
+      '103.34',
+      '103,34',
+      '4.25',
+      '4,25',
+      '0.39',
+      '0,39',
+      '55.75',
+      '55,75',
+      '58.71',
+      '58,71',
+      '2.75',
+      '2,75',
+      '2.86',
+      '2,86',
+    ]) {
       expect(printed).not.toContain(constant)
     }
   })

@@ -981,7 +981,15 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   the row pins none, and its script is the class Flyway was handed. Data only, measured over rows that
 			   stand (EveryRunCountedByTheNewFormulaCarriedOverTest). 116 and no other: main stood at V115 when it
 			   was written. */
-			new Applied("116", "com.btl.portal.web.V116__Every_run_is_counted_by_the_formula_of_26_11_2026", null));
+			new Applied("116", "com.btl.portal.web.V116__Every_run_is_counted_by_the_formula_of_26_11_2026", null),
+
+			/* V117. Every run already standing is counted again by the formula of 27.11.2026, V3c (owner, PDL P4,
+			   „Izabrana varijanta V3c” and „Napisi i podigni”). A Java migration as V116 was, for V116's reason, and
+			   V116 itself is not edited here: it ran on production and its record stands. It reads the kind of the
+			   race with the row, because a race to a limit is counted by its own formula from this one. Flyway keeps
+			   no checksum for it, so the row pins none. Data only, measured over rows that stand
+			   (EveryRunCountedByTheFormulaOf27112026CarriedOverTest). 117 and no other: main stood at V116. */
+			new Applied("117", "com.btl.portal.web.V117__Every_run_is_counted_by_the_formula_of_27_11_2026", null));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {
