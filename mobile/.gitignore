@@ -42,3 +42,7 @@ yarn-error.*
 
 # test coverage
 coverage/
+
+# Gradle output of the local native module
+modules/*/android/build/
+modules/*/android/.cxx/
