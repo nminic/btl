@@ -57,7 +57,7 @@ export type Profile = {
    * are; a property about a man who stands is stated without that case, which has its
    * own cases in distance.test.ts.
    */
-  quietEndFixes?: number;
+  quietEndFixes: number;
 };
 
 export type Truth = {
@@ -164,7 +164,7 @@ export function session(seed: number, profile: Profile): Session {
       fn = p.n + r * Math.sin(a);
     }
     const doppler = p.mode === 'stand' ? between(next, 0, STATIONARY_SPEED_MPS * 0.9) : Math.max(STATIONARY_SPEED_MPS + 0.05, p.speed + between(next, -0.15, 0.15));
-    const quiet = i >= kept.length - (profile.quietEndFixes ?? 0);
+    const quiet = i >= kept.length - profile.quietEndFixes;
     const chance = quiet ? 0 : afterGap > 0 ? profile.afterGapSpikeRate : profile.spikeRate;
     afterGap -= 1;
     if (burst === 0 && next() < chance) {
@@ -228,7 +228,7 @@ export function session(seed: number, profile: Profile): Session {
   };
 }
 
-export const ON_FOOT: Profile = { modes: ['run', 'walk', 'slow', 'stand'], gaps: 3, spikeRate: 0.02, afterGapSpikeRate: 0.3 };
-export const WITH_DRIVE: Profile = { modes: ['run', 'walk', 'stand', 'drive'], gaps: 3, spikeRate: 0.02, afterGapSpikeRate: 0.3 };
-export const STANDING: Profile = { modes: ['stand'], gaps: 3, spikeRate: 0.03, afterGapSpikeRate: 0.3 };
-export const NO_GAP: Profile = { modes: ['run', 'walk', 'slow', 'stand', 'drive'], gaps: 0, spikeRate: 0.02, afterGapSpikeRate: 0 };
+export const ON_FOOT: Profile = { modes: ['run', 'walk', 'slow', 'stand'], gaps: 3, spikeRate: 0.02, afterGapSpikeRate: 0.3, quietEndFixes: 0 };
+export const WITH_DRIVE: Profile = { modes: ['run', 'walk', 'stand', 'drive'], gaps: 3, spikeRate: 0.02, afterGapSpikeRate: 0.3, quietEndFixes: 0 };
+export const STANDING: Profile = { modes: ['stand'], gaps: 3, spikeRate: 0.03, afterGapSpikeRate: 0.3, quietEndFixes: 0 };
+export const NO_GAP: Profile = { modes: ['run', 'walk', 'slow', 'stand', 'drive'], gaps: 0, spikeRate: 0.02, afterGapSpikeRate: 0, quietEndFixes: 0 };
