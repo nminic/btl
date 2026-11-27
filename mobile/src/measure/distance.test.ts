@@ -1,5 +1,5 @@
-import { GAP_MS, measureDistance, MAX_ACCURACY_M, MIN_STEP_M, STATIONARY_SPEED_MPS } from './distance';
-import { NO_GAP, ON_FOOT, type Profile, session, STANDING, type Truth, WITH_DRIVE } from './testing/paths';
+import { GAP_MS, LONG_GAP_MS, measureDistance, MAX_ACCURACY_M, MIN_STEP_M, STATIONARY_SPEED_MPS } from './distance';
+import { NO_GAP, ON_FOOT, type Profile, session, STANDING, TRIP_BACK, type Truth, WITH_DRIVE } from './testing/paths';
 import { haversineM } from './geo';
 import { every, fix, jitter } from './testing/synth';
 
@@ -880,6 +880,35 @@ describe('a place he went to across two long gaps, with a spike as the first fix
     expect(Math.abs(result.distanceM - chord(real))).toBeLessThanOrEqual(2 * MIN_STEP_M);
   });
 
+  it.each([
+    [30, 30, true],
+    [29, 30, false],
+    [30, 29, false],
+  ] as const)('is a place only when both silences reach LONG_GAP_MS: %i s before the stay, %i s from the stay to the return', (before, after, counted) => {
+    // The silence before the way back is measured from the last fix of the stay to the return, through the spike
+    // that comes between them, so 30 s there is 30 s with the spike one second before the return.
+    const lastBefore = 99;
+    const stay = stood(lastBefore + before, lastBefore + before + 3, 150, 80);
+    const backAt = lastBefore + before + 2 + after;
+    const home = walk(backAt, backAt + 40, 150, 0);
+    const out = walk(0, 100, 0, 0);
+    const result = measureDistance([...out, ...stay, fix((backAt - 1) * 1000, 330, -60, { speed: 1.5 }), ...home]);
+
+    expect(LONG_GAP_MS).toBe(30_000);
+    expect(result.spikeFixes).toBe(counted ? 1 : 4);
+    expect(Math.abs(result.distanceM - chord(counted ? [...out, ...stay, ...home] : [...out, ...home]))).toBeLessThanOrEqual(2 * MIN_STEP_M);
+  });
+
+  it('drops a burst of spikes that a long gap runs through, since its fixes are one place and not a place and a spike', () => {
+    // Four spikes 195 m off after 30 s without a fix, a fifth of the same burst 33 s later, then he is back where he
+    // stood. The way back is not hidden: the second between the burst's last fix and the return is all the time there is.
+    const burst = [...every(129_000, 133_000, 1).map((t) => fix(t, 190 + (t - 129_000) / 1000, 0, { speed: 0.1 })), fix(166_000, 198, 0, { speed: 0.1 })];
+    const result = measureDistance([...stood(0, 100, 0, 0), ...burst, ...stood(167, 200, 0, 0)]);
+
+    expect(result.spikeFixes).toBe(5);
+    expect(result.distanceM).toBeLessThanOrEqual(MIN_STEP_M);
+  });
+
   it('still drops a place he stood at when the way there was not hidden by a long gap, spike or no spike', () => {
     // He could not have walked 80 m in five seconds, and no gap hides it: the three fixes at 80 m are a trip of spikes.
     const real = [...walk(0, 100, 0, 0), ...walk(225, 260, 150, 0)];
@@ -905,6 +934,7 @@ describe('properties against the true path, fixed seeds (testing/paths.ts)', () 
     ['with a drive', WITH_DRIVE],
     ['with no gap', NO_GAP],
     ['standing', STANDING],
+    ['out to a place and back across long gaps, with a spike first after the last', TRIP_BACK],
   ] as const)('%s: the length is within its tolerance of the true path, and a vehicle is marked exactly when there was one', (_, profile) => {
     const wrong = sessions(profile).flatMap(({ seed, fixes, truth }) => {
       const result = measureDistance(fixes);
@@ -932,13 +962,17 @@ describe('properties against the true path, fixed seeds (testing/paths.ts)', () 
   });
 
   it('the generator holds every state it claims, so that no property is met by leaving one out', () => {
-    const all = [ON_FOOT, WITH_DRIVE, NO_GAP, STANDING].flatMap((p) => sessions(p));
+    const all = [ON_FOOT, WITH_DRIVE, NO_GAP, STANDING, TRIP_BACK].flatMap((p) => sessions(p));
 
     expect(all.some((s) => s.truth.standsOnly)).toBe(true);
     expect(all.some((s) => s.truth.vehicleVisible && s.truth.gaps > 0)).toBe(true);
     expect(all.filter((s) => s.truth.gaps > 0).length).toBeGreaterThan(all.length / 3);
     expect(all.some((s) => s.fixes.some((f, i) => s.fixes.some((g, j) => j !== i && g.t === f.t)))).toBe(true);
     expect(all.some((s) => s.fixes.some((f) => (f.accuracy as number) > MAX_ACCURACY_M))).toBe(true);
+    const back = sessions(TRIP_BACK);
+    expect(back.some((s) => s.truth.gaps === 1)).toBe(true);
+    expect(back.some((s) => s.truth.gaps === 2 && s.truth.stands === 1)).toBe(true);
+    expect(back.some((s) => s.truth.gaps === 2 && s.truth.stands === 0)).toBe(true);
   });
 });
 

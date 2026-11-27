@@ -297,6 +297,20 @@ function excursions(track: Track): Set<number> {
    */
   const leftByJump = (c: number) => track.step(c - 1, c) === 'jump';
   /**
+   * Whether a long gap on both sides hid the way there and the way back. The way there is the silence of the signal
+   * before the first fix of the trip. The way back is the time from the last fix of the trip to the return fix `c`,
+   * through a spike that comes between them: while the spike is still in the track `c` jumps away from it and the
+   * time runs from the fix before it, and once it is taken out the time runs from the fix before `c` anyway. A spike
+   * is a fix of the signal and not a place he was, so the second between it and `c` is not the way back (a place walked
+   * to and back from across two long gaps, with a spike as the first fix after the second: K2 of round 5). The fix
+   * before `c` is such a spike only if it lies away from the fix before it: one at the same place is a fix of the same
+   * burst, and a burst that a long gap runs through is no place he went to.
+   */
+  const hidden = (a: number, c: number) => {
+    const spiked = leftByJump(c) && c - 1 > a + 1 && track.apartM(c - 2, c - 1) > 2 * stepThresholdM(track.fixes[a], track.fixes[c]);
+    return track.silenceBefore[a + 1] >= LONG_GAP_MS && track.fixes[c].t - track.fixes[spiked ? c - 2 : c - 1].t >= LONG_GAP_MS;
+  };
+  /**
    * The fix the trip comes back to must not be a spike itself. It is one when it is not back at the place the trip
    * left and the fixes after it disown it: the next one cannot follow it, and neither can the one after that (two, so
    * that a single spike right after it does not disown it). A spike that happens to lie where a runner could be (on the
@@ -310,7 +324,7 @@ function excursions(track: Track): Set<number> {
     let still = true;
     for (let w = a + 1; w < c && still; w += 1) still = standing(track.fixes[w]);
     const few = still || c - a - 1 <= VEHICLE_CONFIRM_FIXES;
-    return few && Math.min(track.silenceBefore[a + 1], track.silenceBefore[c]) < LONG_GAP_MS;
+    return few;
   };
   for (let a = 0; a < n; a += 1) {
     for (let c = a + 2; c <= Math.min(a + LOOK_BACK_FIXES, n - 1); c += 1) {
@@ -319,7 +333,7 @@ function excursions(track: Track): Set<number> {
       let far = true;
       for (let w = a + 1; w < c && far; w += 1) far = track.apartM(a, w) > near && track.apartM(w, c) > near;
       const place = 2 * stepThresholdM(track.fixes[a], track.fixes[c]);
-      if (!far || !confirmed(a, c, place) || !(leftByJump(c) || brief(a, c)) || !heldBetter(a, c, place)) continue;
+      if (!far || !confirmed(a, c, place) || hidden(a, c) || !(leftByJump(c) || brief(a, c)) || !heldBetter(a, c, place)) continue;
       for (let w = a + 1; w < c; w += 1) out.add(w);
       break;
     }

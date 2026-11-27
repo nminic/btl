@@ -58,6 +58,20 @@ export type Profile = {
    * own cases in distance.test.ts.
    */
   quietEndFixes: number;
+  /**
+   * The path goes out from a point of the track, stays a few seconds and comes back to that very point, with one long
+   * gap over the way there and the way back, or one over each (and the fixes of the stay between them). The place he
+   * comes back to is one he was at before: what a spike as the first fix after a gap threatens to turn into a trip away.
+   */
+  tripBack?: boolean;
+  /** Every spike is one fix, never a burst, and after a gap only the first fix can be one: the single spike that is the first fix after a gap. */
+  singleSpikes?: boolean;
+  /**
+   * With `tripBack`: no spike right after the gaps before the last one, so that the one that can be there is the first
+   * fix after the gap he comes back across. A spike as the first fix of the place itself is a different case (he is not
+   * known to have been there yet) and has its own cases in distance.test.ts.
+   */
+  spikeOnlyAfterLastGap?: boolean;
 };
 
 export type Truth = {
@@ -105,7 +119,34 @@ export function session(seed: number, profile: Profile): Session {
   let t = 0;
   let stands = 0;
   const count = 6 + Math.floor(next() * 8);
-  for (let s = 0; s < count; s += 1) {
+  /** Where the gaps are, when the path decides it (`tripBack`); otherwise they are drawn below. */
+  let scripted: (readonly [number, number])[] | null = null;
+  if (profile.tripBack) {
+    const theta = between(next, 0, 2 * Math.PI);
+    const leg = (mode: Mode, speed: number, seconds: number, toward: number) => {
+      for (let i = 0; i < seconds; i += 1) {
+        truePath.push({ t, e, n, speed, mode });
+        e += speed * Math.cos(toward);
+        n += speed * Math.sin(toward);
+        t += 1000;
+      }
+    };
+    leg('run', between(next, 2.5, 4.5), Math.round(between(next, 30, 70)), theta);
+    const walking = between(next, 1.2, 2);
+    const outFrom = { t, e, n };
+    leg('walk', walking, Math.round(between(next, 40, 70)), theta + Math.PI / 2);
+    const stays = next() < 0.5 ? 'stand' : 'walk';
+    const stayFrom = t;
+    if (stays === 'stand') stands += 1;
+    leg(stays, stays === 'stand' ? 0 : walking, Math.round(between(next, 3, 8)), theta + Math.PI / 2);
+    const stayTo = t;
+    const home = Math.hypot(outFrom.e - e, outFrom.n - n);
+    const homeSeconds = Math.max(35, Math.round(home / walking));
+    leg('walk', home / homeSeconds, homeSeconds, Math.atan2(outFrom.n - n, outFrom.e - e));
+    scripted = next() < 0.5 ? [[outFrom.t + 1000, stayFrom], [stayTo, t]] : [[outFrom.t + 1000, t]];
+    leg('run', between(next, 2.5, 4.5), Math.round(between(next, 30, 70)), theta);
+  }
+  for (let s = 0; s < (profile.tripBack ? 0 : count); s += 1) {
     const mode = profile.modes[Math.floor(next() * profile.modes.length)];
     if (mode === 'stand') stands += 1;
     const [lo, hi] = SPEED[mode];
@@ -132,10 +173,12 @@ export function session(seed: number, profile: Profile): Session {
 
   // Gaps in the signal.
   const end = truePath[truePath.length - 1].t;
-  const windows = Array.from({ length: Math.floor(next() * (profile.gaps + 1)) }, () => {
-    const from = Math.round(between(next, 5000, end - 5000));
-    return [from, from + Math.round(between(next, 11_000, 90_000))] as const;
-  });
+  const windows =
+    scripted ??
+    Array.from({ length: Math.floor(next() * (profile.gaps + 1)) }, () => {
+      const from = Math.round(between(next, 5000, end - 5000));
+      return [from, from + Math.round(between(next, 11_000, 90_000))] as const;
+    });
   const kept = sampled.filter((p) => windows.every(([from, to]) => p.t < from || p.t >= to));
 
   // GPS error that drifts slowly, inside the accuracy.
@@ -145,12 +188,13 @@ export function session(seed: number, profile: Profile): Session {
   const real: Sample[] = [];
   const seen: Sample[] = [];
   let afterGap = 0;
+  const spikesFrom = scripted !== null && profile.spikeOnlyAfterLastGap ? scripted[scripted.length - 1][1] : 0;
   let burst = 0;
   let burstE = 0;
   let burstN = 0;
   kept.forEach((p, i) => {
     const previous = kept[i - 1];
-    if (previous !== undefined && p.t - previous.t > 10_000) afterGap = 6;
+    if (previous !== undefined && p.t - previous.t > 10_000) afterGap = p.t < spikesFrom ? 0 : profile.singleSpikes ? 1 : 6;
     const fixAccuracy = accuracy + Math.round(between(next, -1, 1));
     errE = Math.max(-0.6, Math.min(0.6, errE / fixAccuracy + between(next, -0.05, 0.05))) * fixAccuracy;
     errN = Math.max(-0.6, Math.min(0.6, errN / fixAccuracy + between(next, -0.05, 0.05))) * fixAccuracy;
@@ -169,6 +213,7 @@ export function session(seed: number, profile: Profile): Session {
     afterGap -= 1;
     if (burst === 0 && next() < chance) {
       burst = 1 + (next() < 0.3 ? Math.floor(next() * 5) : 0);
+      if (profile.singleSpikes) burst = 1;
       const r = between(next, 30, 200);
       const a = between(next, 0, 2 * Math.PI);
       burstE = r * Math.cos(a);
@@ -232,3 +277,5 @@ export const ON_FOOT: Profile = { modes: ['run', 'walk', 'slow', 'stand'], gaps:
 export const WITH_DRIVE: Profile = { modes: ['run', 'walk', 'stand', 'drive'], gaps: 3, spikeRate: 0.02, afterGapSpikeRate: 0.3, quietEndFixes: 0 };
 export const STANDING: Profile = { modes: ['stand'], gaps: 3, spikeRate: 0.03, afterGapSpikeRate: 0.3, quietEndFixes: 0 };
 export const NO_GAP: Profile = { modes: ['run', 'walk', 'slow', 'stand', 'drive'], gaps: 0, spikeRate: 0.02, afterGapSpikeRate: 0, quietEndFixes: 0 };
+/** Out to a place and back to the point he left from, across long gaps, with spikes the first fixes after them (see `tripBack`). */
+export const TRIP_BACK: Profile = { modes: ['run', 'walk', 'stand'], gaps: 2, spikeRate: 0, afterGapSpikeRate: 0.5, quietEndFixes: 0, tripBack: true, singleSpikes: true, spikeOnlyAfterLastGap: true };
