@@ -49,12 +49,13 @@ final class TranslatedText {
 	 * <p>The third alternative is the target of a Markdown link that is not a full address, {@code [x](/kalendar)}:
 	 * the portal's own pages, which the screen draws as a link inside the portal, so a translation that turned
 	 * {@code (/kalendar)} into {@code (/calendar)} or added a {@code [prijava](/admin)} is a link to somewhere else
-	 * as well. A target that does start with a scheme or {@code www.} is the first alternative's already, and
-	 * is not counted twice (PENDING, PR 835 S2, 27.11.2026).
+	 * as well. A target that does start with a scheme or {@code www.} is taken by the first alternative, which is
+	 * tried first at that position, so it is not counted a second time as a target (PENDING, PR 835 S2,
+	 * 27.11.2026; a lookahead that was to keep it from being counted twice was measured to change nothing).
 	 */
 	private static final Pattern AN_ADDRESS = Pattern.compile(
 			"(?i)(?:https?://|mailto:|www\\.)[^\\s<>()\\[\\]\"']+|[a-z0-9._%+-]+@[a-z0-9.-]+\\.[a-z]{2,}"
-					+ "|(?<=\\]\\()(?!https?://|mailto:|www\\.)[^\\s<>()\\[\\]\"']+");
+					+ "|(?<=\\]\\()[^\\s<>()\\[\\]\"']+");
 
 	/** An address that starts as a site does: with a scheme or with {@code www.}, but not {@code mailto:}. */
 	private static final Pattern A_SITE = Pattern.compile("(?i)^(?:https?://|www\\.)");
