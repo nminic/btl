@@ -315,7 +315,8 @@ function statementSentence(
  * <p><b>„Potvrdi"</b> opens the member's row with the line's amount written in, and the booking goes
  * through that row's own question (manjak, balans, višak), never from here. It stands on every line that
  * waits, with a reference or without (coordinator, 25.10.2026), once for each suggested member who owes
- * this season, and „Drugi član" opens anybody else's row the same way. A member who pays in euro is not
+ * this season, and „Drugi član" opens anybody else's row the same way, behind the same tick „Potvrdi"
+ * (owner, 26.11.2026). A member who pays in euro is not
  * offered: the line is dinars, and the route refuses it anyway (`theMemberDoesNotPayInDinars`).
  *
  * <p><b>„Nije članarina"</b> closes the line without a booking, and the server keeps who and when.
@@ -350,6 +351,8 @@ function WaitingLine({
      i dugmetom „Nije članarina"". Nothing to book, so no „Potvrdi" and no other member; only the closing. */
   const recorded = one.state === 'alreadyRecorded' ? one.member : null
   const anotherId = `another-${one.id}`
+  /* WHOM „DRUGI ČLAN" HOLDS, read off the same list its options are drawn from. */
+  const chosen = owing.find((member) => String(member.competitorId) === another)
 
   async function setAside() {
     if (outstanding.current) {
@@ -456,9 +459,14 @@ function WaitingLine({
                   ))}
                 </select>
               </div>
+              {/* THE TICK „POTVRDI" AND NOT A PENCIL (owner, 26.11.2026): „isti znak i ista reč kao kod
+                  predloženog člana, jer je radnja ista (otvara članov red sa upisanim iznosom); neaktivno
+                  dok član nije izabran." Named for the member chosen, as the suggested member's tick is,
+                  so the two ticks on one line are told apart by ear and the word stays in the name. */}
               <ActionButton
-                symbol={SYMBOL.pencil}
-                word={t('review.statement.openAnother')}
+                symbol={SYMBOL.check}
+                word={t('review.statement.confirm')}
+                name={chosen === undefined ? undefined : t('review.statement.confirmFor', { whose: whose(chosen) })}
                 className="button button--secondary"
                 disabled={another === ''}
                 onClick={() => onOpen({ line: one, competitorId: Number(another) })}

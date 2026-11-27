@@ -1338,7 +1338,6 @@
       "confirmFor": "Confirm: {whose}",
       "another": "Another member",
       "anotherNone": "Choose a member",
-      "openAnother": "Open the row",
       "setAside": "Not a membership fee",
       "setAsideRefused": {
         "theStatementLineIsSettled": "This line of the statement is already closed. Refresh the page."

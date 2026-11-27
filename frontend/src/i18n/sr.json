@@ -1338,7 +1338,6 @@
       "confirmFor": "Potvrdi: {whose}",
       "another": "Drugi član",
       "anotherNone": "Izaberi člana",
-      "openAnother": "Otvori red",
       "setAside": "Nije članarina",
       "setAsideRefused": {
         "theStatementLineIsSettled": "Ova stavka izvoda je već zatvorena. Osveži stranicu."
