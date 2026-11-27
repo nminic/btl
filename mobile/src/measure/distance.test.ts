@@ -1030,6 +1030,17 @@ describe('the silence around a place he went to, whatever spikes stand next to t
     expect(Math.abs(result.distanceM - chord(real))).toBeLessThanOrEqual(2 * MIN_STEP_M);
   });
 
+  it('measures the way there from the fix the trip leaves from when the walk keeps no fix before the place', () => {
+    // The first fix of the session is 5 km from the place he stands at a minute later, which no car reaches: it is
+    // dropped, and the way there is still the minute from it. Then a drive of 138 s back to where it was, counted and
+    // marked (PDL, „Deonica pređena brzinom vozila se RAČUNA, uz napomenu za moderatora”).
+    const real = [...stood(60, 63, 5000, 0), ...stood(200, 240, 0, 0)];
+    const result = measureDistance([fix(0, 0, 0, { speed: 3 }), ...real]);
+
+    expect([result.spikeFixes, result.vehicleSegments]).toEqual([1, 1]);
+    expect(Math.abs(result.distanceM - chord(real))).toBeLessThanOrEqual(2 * MIN_STEP_M);
+  });
+
   it('a stale position by the last fix of the place, delivered as the first fix after the second gap (SREDNJI 1 of round 6)', () => {
     holds((shape) => {
       const last = placeOf(shape).at(-1) as Fix;
