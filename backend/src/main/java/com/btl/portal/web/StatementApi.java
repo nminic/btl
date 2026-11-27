@@ -42,9 +42,12 @@ import java.util.Optional;
  * <li>„Kad poziv na broj imenuje člana i sezonu ({@code YYYYNNNNNN}) i iznos je tačno očekivani, uplata
  * se evidentira sama. Sve ostalo (manji ili veći iznos, nepoznat broj) ide na ručnu potvrdu." That is
  * {@link #take}.
- * <li>„Uplata bez poziva na broj dobija predlog člana po imenu i prezimenu uplatioca, a vlasnik ga
- * potvrđuje jednim klikom ili bira drugog." The suggestion is {@link #candidatesFor}. The click that
- * confirms it is the owner's of 25.10.2026 (PDL „Učitavanje izvoda: dva odgovora od 25.10.2026"): it
+ * <li>A payment without a reference, owner, 26.11.2026: „Uplata bez poziva na broj knjiži se sama po imenu
+ * kad imenu i prezimenu uplatioca odgovara tačno jedan član, iznos je tačno onaj koji se od njega
+ * očekuje, a član za tu sezonu još nije aktivan. Sve ostalo (dva ili više imenjaka, drugi iznos) ostaje
+ * predlog na potvrdi." And „Ime unutar teksta uplatioca daje predlog, nikad knjiženje." The member the
+ * name books is {@link ByName#theOneItBooks}, and the suggestion is {@link #candidatesFor}. The click
+ * that confirms a suggestion is the owner's of 25.10.2026 (PDL „Učitavanje izvoda: dva odgovora od 25.10.2026"): it
  * opens the member's row on the Payments screen with the line's amount written in, and the booking goes
  * through {@link PaymentApi}, which writes it onto the line ({@link PaymentApi.Confirm#statementLine}).
  * It stands on every line that waits, with a reference or without one (coordinator, 25.10.2026).
@@ -152,8 +155,9 @@ class StatementApi {
 	 * @param state        {@link #BOOKED}, {@link #ALREADY_RECORDED}, {@link #SET_ASIDE} or {@link #WAITING}
 	 * @param member       whom it was booked to, or who already holds the season; null while it waits
 	 * @param candidates   while it waits, whom it may be about: the member its reference names, or the
-	 *                     members of the payer's name, both namesakes when there are two; empty when
-	 *                     neither names anybody
+	 *                     members of the payer's name, both namesakes when there are two, and after them
+	 *                     every member whose name stands inside the payer's text; empty when nothing
+	 *                     names anybody
 	 * @param waitsBecause why it was not booked by itself, while it waits
 	 */
 	record Line(long id, LocalDate dated, int statement, int position, String payer, String payerAccount,
@@ -296,13 +300,30 @@ class StatementApi {
 					.ifPresent(line -> fresh.add(new Fresh(line, credit)));
 		}
 
-		/* WHOM EACH NEW LINE'S REFERENCE NAMES, and the lines that name nobody wait at once. */
+		/* WHOM EACH NEW LINE'S REFERENCE OR, WITHOUT ONE, ITS PAYER'S NAME BOOKS, and the lines that book
+		   nobody wait at once. A line WITH a reference is never booked by the name, whatever the reference
+		   is: „Sve ostalo (manji ili veći iznos, nepoznat broj) ide na ručnu potvrdu" (owner, 24.10.2026). */
 		record Bookable(long line, long competitorId, AikStatement.Credit credit) {
 		}
 
 		List<Bookable> bookable = new ArrayList<>();
+		List<Candidate> everybody = fresh.stream().anyMatch(one -> one.credit().reference() == null)
+				? everybody() : List.of();
 
 		for (Fresh one : fresh) {
+			if (one.credit().reference() == null) {
+				Optional<Candidate> byName = ByName.of(one.credit().payer(), everybody).theOneItBooks();
+
+				if (byName.isEmpty()) {
+					waits(one.line(), WhyALineWaits.NO_REFERENCE);
+				}
+				else {
+					bookable.add(new Bookable(one.line(), byName.get().competitorId(), one.credit()));
+				}
+
+				continue;
+			}
+
 			Optional<Long> named = whomTheReferenceNames(one.credit().reference(), season);
 
 			if (named.isEmpty()) {
@@ -314,7 +335,9 @@ class StatementApi {
 		}
 
 		/* IN THE ORDER OF THE MEMBERS AND NOT OF THE STATEMENT, so that two statements taken at once
-		   that book the same two members take their rows in one order and cannot hold each other. */
+		   that book the same two members take their rows in one order and cannot hold each other. The
+		   lines booked by the name are in this one list for that reason: a second loop after it would
+		   take a row out of that order. */
 		bookable.sort(Comparator.comparingLong(Bookable::competitorId));
 
 		int booked = 0;
@@ -384,9 +407,12 @@ class StatementApi {
 		return MembershipPrice.on(priceRows.all(), today, born.getYear(), season, DINARS).expected();
 	}
 
-	/** The member a reference names, when it is a reference of this season and he exists. */
+	/**
+	 * The member a reference names, when it is a reference of this season and he exists. A line without a
+	 * reference never gets here: it is booked or held by its payer's name above.
+	 */
 	private Optional<Long> whomTheReferenceNames(String reference, int season) {
-		if (reference == null || !PaymentApi.A_REFERENCE.matcher(reference).matches()
+		if (!PaymentApi.A_REFERENCE.matcher(reference).matches()
 				|| Integer.parseInt(reference.substring(0, 4)) != season) {
 			return Optional.empty();
 		}
@@ -395,10 +421,6 @@ class StatementApi {
 	}
 
 	private String whyTheReferenceDoesNotBook(String reference, int season) {
-		if (reference == null) {
-			return WhyALineWaits.NO_REFERENCE;
-		}
-
 		if (PaymentApi.A_REFERENCE.matcher(reference).matches()
 				&& Integer.parseInt(reference.substring(0, 4)) != season) {
 			return WhyALineWaits.ANOTHER_SEASON;
@@ -472,12 +494,16 @@ class StatementApi {
 				return line(one, SET_ASIDE, null, List.of(), null);
 			}
 
-			List<Candidate> candidates = candidatesFor(one, everybody);
+			Suggested suggested = candidatesFor(one, everybody);
+			List<Candidate> candidates = suggested.candidates();
 
 			/* ALREADY RECORDED ONLY WHEN THE LINE IS ABOUT ONE MEMBER, and he holds the season the line was
 			   taken for, on whatever basis: two namesakes are a question a person answers, whichever of
-			   them has paid. */
-			if (candidates.size() == 1 && holds(candidates.getFirst().competitorId(), one.season())) {
+			   them has paid. And not when that one member's name was found only inside the payer's text
+			   (owner, 27.11.2026): „stavka čeka i nudi „Drugi član", a ne „Već evidentirano", jer adresa
+			   ume da nosi ime aktivnog člana dok je uplatio neko drugi." */
+			if (candidates.size() == 1 && !suggested.onlyInsideTheText()
+					&& holds(candidates.getFirst().competitorId(), one.season())) {
 				return line(one, ALREADY_RECORDED, candidates.getFirst(), List.of(), null);
 			}
 
@@ -487,23 +513,73 @@ class StatementApi {
 	}
 
 	/**
-	 * Whom a waiting line may be about: the member its reference names when it names one, whatever
-	 * season it names, and otherwise every member whose first and last name the payer is.
+	 * Whom a waiting line may be about.
+	 *
+	 * @param candidates        the member its reference names when it names one, whatever season it
+	 *                          names, and otherwise the members of the payer's name ({@link ByName#all})
+	 * @param onlyInsideTheText whether they were all found only inside the payer's text, which a line
+	 *                          never reads as „already recorded" (owner, 27.11.2026)
 	 */
-	private List<Candidate> candidatesFor(Stored line, List<Candidate> everybody) {
+	private record Suggested(List<Candidate> candidates, boolean onlyInsideTheText) {
+	}
+
+	private static Suggested candidatesFor(Stored line, List<Candidate> everybody) {
 		if (line.reference() != null && PaymentApi.A_REFERENCE.matcher(line.reference()).matches()) {
 			String number = line.reference().substring(4);
 			List<Candidate> named = everybody.stream()
 					.filter(one -> number.equals(one.memberNumber())).toList();
 
 			if (!named.isEmpty()) {
-				return named;
+				return new Suggested(named, false);
 			}
 		}
 
-		String payer = PayerName.of(line.payer());
+		ByName byName = ByName.of(line.payer(), everybody);
 
-		return everybody.stream().filter(one -> PayerName.names(payer, one.firstName(), one.lastName())).toList();
+		return new Suggested(byName.all(), byName.whole().isEmpty());
+	}
+
+	/**
+	 * WHOM A PAYER'S NAME IS ABOUT, asked in one place by the booking ({@link #keep}) and by the
+	 * suggestion ({@link #seen}), so the two cannot part.
+	 *
+	 * @param whole  every member the payer, as far as the first comma, IS ({@link PayerName#names})
+	 * @param inside every OTHER member whose name stands inside the whole payer field
+	 *               ({@link PayerName#inside})
+	 */
+	private record ByName(List<Candidate> whole, List<Candidate> inside) {
+
+		static ByName of(String payer, List<Candidate> everybody) {
+			String name = PayerName.of(payer);
+			List<Candidate> whole = everybody.stream()
+					.filter(one -> PayerName.names(name, one.firstName(), one.lastName())).toList();
+
+			return new ByName(whole, everybody.stream()
+					.filter(one -> !whole.contains(one) && PayerName.inside(payer, one.firstName(), one.lastName()))
+					.toList());
+		}
+
+		/** The whole name's members first, then the rest: the order the line suggests them in. */
+		List<Candidate> all() {
+			List<Candidate> all = new ArrayList<>(whole);
+			all.addAll(inside);
+
+			return List.copyOf(all);
+		}
+
+		/**
+		 * THE MEMBER THE NAME BOOKS BY ITSELF, when there is exactly one: exactly one member IS the name,
+		 * and no other is named anywhere in the payer's text, because „adresa ume da nosi tuđe ime"
+		 * (owner, 26.11.2026) and a second name in it is a question for a person (coordinator, 27.11.2026,
+		 * from the agent's reasoning). And he has a member number already (owner, 27.11.2026): „Prijavljen
+		 * koji još nema članski broj se po imenu ne knjiži sam", because a booking in error would spend a
+		 * number, and numbers are not given back. Whether he holds the season already, and whether the
+		 * amount is the expected one in dinars, is asked by {@link #book}, as for a reference.
+		 */
+		Optional<Candidate> theOneItBooks() {
+			return whole.size() == 1 && inside.isEmpty() && whole.getFirst().memberNumber() != null
+					? Optional.of(whole.getFirst()) : Optional.empty();
+		}
 	}
 
 	private boolean holds(long competitorId, int season) {

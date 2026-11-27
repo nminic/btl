@@ -498,7 +498,6 @@ describe('a payment that waits, confirmed or set aside', () => {
     expect(row.getByRole('button', { name: 'Nije članarina' })).toBeVisible()
     expect(row.queryByRole('button', { name: /Potvrdi/ })).not.toBeInTheDocument()
     expect(row.queryByLabelText('Drugi član')).not.toBeInTheDocument()
-    expect(row.queryByRole('button', { name: 'Otvori red' })).not.toBeInTheDocument()
   })
 
   it('lets the opened row go and shows everybody again', async () => {
@@ -513,6 +512,11 @@ describe('a payment that waits, confirmed or set aside', () => {
     expect(screen.queryByText(/Otvoren je red/)).not.toBeInTheDocument()
   })
 
+  /**
+   * „DRUGI ČLAN" OPENS ANOTHER MEMBER'S ROW BEHIND THE SAME TICK „POTVRDI" (owner, 26.11.2026): „isti znak i
+   * ista reč kao kod predloženog člana […]; neaktivno dok član nije izabran." Named for the member chosen,
+   * and the row it opens is his and not the suggested member's, whose tick stands on the same line.
+   */
   it('opens another member’s row the same way, offering only those in dinars', async () => {
     aServerOfPayments([[WAITING]])
     const user = setupUser()
@@ -521,10 +525,20 @@ describe('a payment that waits, confirmed or set aside', () => {
     const another = await screen.findByLabelText('Drugi član')
 
     expect(within(another).queryByText(/Ana Anić/)).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Otvori red' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Potvrdi' })).toBeDisabled()
+    expect(screen.queryByRole('button', { name: 'Otvori red' })).not.toBeInTheDocument()
 
     await user.selectOptions(another, 'Marko Marković (000027), Niš')
-    await user.click(screen.getByRole('button', { name: 'Otvori red' }))
+
+    const tick = screen.getByRole('button', { name: 'Potvrdi: Marko Marković (000027), Niš' })
+
+    expect(tick).toBeEnabled()
+    expect(tick).toHaveTextContent('Potvrdi')
+    expect(tick.innerHTML).toBe(
+      screen.getByRole('button', { name: 'Potvrdi: Duško Kunić (000004), Beograd' }).innerHTML,
+    )
+
+    await user.click(tick)
 
     const rows = within(screen.getByRole('table', { name: 'Uplate i aktivacija članova' })).getAllByRole('row')
 

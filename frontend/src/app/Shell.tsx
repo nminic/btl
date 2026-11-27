@@ -1,6 +1,6 @@
 import { useRef, useState, type ReactNode } from 'react'
 import { Link, NavLink, Outlet, ScrollRestoration, useLocation } from 'react-router'
-import { dataOr, usePaymentsDue } from '../data/useResource'
+import { dataOr, usePaymentsDueForTheCount } from '../data/useResource'
 import { DEV_TOOLS_IN_THIS_BUILD } from '../dev/tools'
 import { useI18n } from '../i18n/useI18n'
 import { useMayOpen, usePermittedQueues } from '../pages/admin/mayOpen'
@@ -79,7 +79,7 @@ function useWaiting(): number {
      total would be short by however many people owe a fee, and the number over every screen on
      the portal would disagree with the column that stands beside the work. Both are resources
      the data layer keeps for the whole visit, so it is still one request each. */
-  const due = usePaymentsDue()
+  const due = usePaymentsDueForTheCount()
   /* Over the queues this moderator may work in and no others. A total that
      counted the rest would send him looking for work he cannot reach and is not
      shown anywhere (owner, 30.07.2026). */

@@ -173,6 +173,115 @@ describe('the counter in the header', () => {
   }, SLOW)
 })
 
+/**
+ * AND THE NUMBER OF WHO OWES A FEE FOLLOWS ITS LIST THE SAME WAY (owner, 26.11.2026: the number beside
+ * „Uplate" went down only after a reload).
+ *
+ * <p>The payments queue is not in the file of verification but a derived list (`GET /api/payments`), and
+ * the header and the navigation count it off their own reading of it (`usePaymentsDueForTheCount`). Both
+ * are asked, and each on its own, because each reads it for itself: a fix in one leaves the other holding
+ * what it read on arriving. Two people owe on arrival and one after the write, so a counter that only
+ * ever grows, or never moves, is told apart.
+ */
+describe('the counters of who owes a fee', () => {
+  const OWING = [
+    { competitorId: 23, memberNumber: '000031', firstName: 'Jovana', lastName: 'Ilić', city: 'Beograd',
+      currency: 'RSD', expected: 4500, price: 4500, balance: 0, mayBeDeleted: false },
+    { competitorId: 12, memberNumber: '000004', firstName: 'Marko', lastName: 'Perić', city: 'Beograd',
+      currency: 'RSD', expected: 4200, price: 4200, balance: 0, mayBeDeleted: false },
+  ]
+
+  /** The number beside „Uplate" in the navigation. */
+  async function paymentsTabCount(): Promise<number> {
+    const nav = within(await screen.findByRole('navigation', { name: 'Odeljak Verifikacija' }))
+    const link = nav.getByRole('link', { name: new RegExp(`^${translate(sr, 'sr', QUEUE.payments.labelKey)}, `) })
+
+    return Number((link.textContent ?? '').replace(/\D/g, ''))
+  }
+
+  /** Who owes: both people until somebody pays, then only Marko. */
+  function serving() {
+    let paid = false
+    const server = serverThat((path, init) => {
+      if (path === '/api/payments' && (init?.method ?? 'GET') === 'GET') {
+        return new Response(JSON.stringify({ season: 2027, accounts: paid ? OWING.slice(1) : OWING }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        })
+      }
+
+      if (path === '/api/payments' && init?.method === 'POST') {
+        paid = true
+
+        return new Response(JSON.stringify({ paymentId: 1 }), { status: 201 })
+      }
+
+      if (path === '/api/statements/lines') {
+        return new Response('[]', { status: 200, headers: { 'content-type': 'application/json' } })
+      }
+
+      return null
+    })
+
+    stops.push(server.stop)
+
+    return { pay: () => (paid = true) }
+  }
+
+  it('counts one fewer in the header and beside „Uplate" once a payment is booked, without a reload', async () => {
+    serving()
+    const user = setupUser()
+
+    renderAt(`/sr/${QUEUE.payments.path}`, 'superadmin', '000002', undefined, DAY)
+
+    const before = await headerCount()
+
+    expect(await paymentsTabCount(), 'the navigation counts nobody owing, so nothing is measured').toBe(2)
+
+    const name = await screen.findByText('Jovana Ilić')
+    const row = name.closest('tr') ?? document.body
+
+    await user.type(within(row).getByLabelText('Uplaćeno (RSD)'), '4500')
+    await user.click(within(row).getByRole('button', { name: 'Aktiviraj' }))
+
+    await waitFor(async () => {
+      expect(await headerCount()).toBe(before - 1)
+    })
+    await waitFor(async () => {
+      expect(await paymentsTabCount()).toBe(1)
+    })
+  }, SLOW)
+
+  it('follows a drop of the list from another screen, and does not move for a drop of another name', async () => {
+    const { pay } = serving()
+
+    renderAt('/sr/administracija/verifikacija/rezultati', 'superadmin', '000002', undefined, DAY)
+
+    const before = await headerCount()
+
+    expect(await paymentsTabCount()).toBe(2)
+
+    pay()
+    act(() => {
+      clearResourceCache('places')
+    })
+    await new Promise((resolve) => setTimeout(resolve, 100))
+
+    expect(await headerCount(), 'a name the counter does not read made it read the list again').toBe(before)
+
+    act(() => {
+      clearResourceCache('payments')
+    })
+
+    await waitFor(async () => {
+      expect(await headerCount()).toBe(before - 1)
+    })
+    await waitFor(async () => {
+      expect(await paymentsTabCount()).toBe(1)
+    })
+  }, SLOW)
+})
+
 describe('what a case of this file may end in', () => {
   it('is an assertion and never its own clock: every wait is given less time than a case has', () => {
     expect(getConfig().asyncUtilTimeout).toBeLessThan(SLOW)

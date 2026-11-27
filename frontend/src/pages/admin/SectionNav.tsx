@@ -6,7 +6,7 @@ import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
 import { usePermittedEntities, usePermittedQueues } from './mayOpen'
 import { usePendingForTheCount } from './pending'
-import { usePaymentsDue } from '../../data/useResource'
+import { usePaymentsDueForTheCount } from '../../data/useResource'
 import { countFor, notMembersYetIn, QUEUE } from './queues'
 import './SectionNav.css'
 
@@ -241,7 +241,7 @@ function QueuesSector() {
      writes that queue any more (`queues.ts`, `notMembersYet`). Asked here beside the file so
      the number beside a queue, the number on the screen and the number beside Verification
      stay one number. */
-  const due = usePaymentsDue()
+  const due = usePaymentsDueForTheCount()
   const queues = usePermittedQueues()
 
   if (queues.length === 0) {
