@@ -1,7 +1,9 @@
 package com.btl.portal.db;
 
+import com.btl.portal.web.V116__Every_run_is_counted_by_the_formula_of_26_11_2026;
 import com.btl.portal.web.V117__Every_run_is_counted_by_the_formula_of_27_11_2026;
 import org.flywaydb.core.api.configuration.Configuration;
+import org.flywaydb.core.api.migration.BaseJavaMigration;
 import org.flywaydb.core.api.migration.Context;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,6 +43,11 @@ class EveryRunCountedByTheFormulaOf27112026CarriedOverTest extends DatabaseTest 
 
 	@Autowired
 	V117__Every_run_is_counted_by_the_formula_of_27_11_2026 migration;
+
+	/** V116, which ran on production and is not rewritten: it asks the same function, so it is held here to
+	 *  agree with V117 over the same rows (see {@link #theEarlierRecountAgreesWithItOverTheSameRows}). */
+	@Autowired
+	V116__Every_run_is_counted_by_the_formula_of_26_11_2026 earlierMigration;
 
 	@Autowired
 	DataSource dataSource;
@@ -82,8 +89,12 @@ class EveryRunCountedByTheFormulaOf27112026CarriedOverTest extends DatabaseTest 
 	}
 
 	private void runTheMigration() throws Exception {
+		runTheMigration(migration);
+	}
+
+	private void runTheMigration(BaseJavaMigration which) throws Exception {
 		Connection connection = DataSourceUtils.getConnection(dataSource);
-		migration.migrate(new Context() {
+		which.migrate(new Context() {
 			@Override
 			public Configuration getConfiguration() {
 				return flyway.getConfiguration();
@@ -98,6 +109,21 @@ class EveryRunCountedByTheFormulaOf27112026CarriedOverTest extends DatabaseTest 
 
 	@Test
 	void everyRunIsCountedAgainAndOnlyItsPointsMove() throws Exception {
+		everyRunIsCountedAgainBy(migration);
+	}
+
+	/**
+	 * V116 RECOUNTS THE SAME ROWS TO THE SAME POINTS: it asks the function V117 asks, so on a database that
+	 * has never run either (a fresh one, where Flyway runs both over nothing) the two agree, and the first
+	 * of them is no longer a record of the formula of 26.11.2026 but of the formula of the day it is asked.
+	 * Held so a change to the one that is not the other's is seen here.
+	 */
+	@Test
+	void theEarlierRecountAgreesWithItOverTheSameRows() throws Exception {
+		everyRunIsCountedAgainBy(earlierMigration);
+	}
+
+	private void everyRunIsCountedAgainBy(BaseJavaMigration which) throws Exception {
 		aMember();
 		aRun("free", "race", "2027-05-02", "free", "0", 0, "21.1", 250, 250, 6300, "21.40");
 		aRun("marathon", "race", "2027-06-06", "length", "42.195", 0, "42.195", 300, 280, 12600, "31.00");
@@ -118,7 +144,7 @@ class EveryRunCountedByTheFormulaOf27112026CarriedOverTest extends DatabaseTest 
 		List<String> figuresBefore = rowsOf(figures);
 		List<String> frozenBefore = rowsOf("select t::text from season_points_at_freeze t order by t.competitor_id");
 
-		runTheMigration();
+		runTheMigration(which);
 
 		Map<String, BigDecimal> due = new LinkedHashMap<>();
 		due.put("free", new BigDecimal("18.59"));
