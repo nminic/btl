@@ -201,6 +201,25 @@ describe('a run of one’s own that is still waiting', () => {
     expect(row.queryByText(/bodova$/)).toBeNull()
   }, SLOW)
 
+  it('counts a run at a race to a limit by the formula of such a race, and any other kind by the formula of a length', async () => {
+    /* The same figures, the same 21,1 km with 540 up and 540 down in 1:52:10, are 24,95 at a race to
+       a limit and 20,86 at every other (the formula of 27.11.2026, worked in Python; the server's
+       seconds are the race's limit there, `WhatARaceCarries.figuresOf`). A free race and a word the
+       screen does not know are read as a race of a length, as `data/raceKind.ts` reads them. */
+    answering(() => [
+      aRun(41, { state: 'waiting', reason: null, raceName: 'Vremenska', raceKind: 'time' }),
+      aRun(42, { state: 'waiting', reason: null, raceName: 'Slobodna', raceKind: 'free' }),
+      aRun(43, { state: 'waiting', reason: null, raceName: 'Neobicna', raceKind: 'ludilo' }),
+    ])
+    renderAt(MINE, 'competitor', ME, undefined, null)
+
+    const rows = (await sentRows()).map((one) => within(one))
+
+    expect(rows).toHaveLength(3)
+    expect(rows.filter((row) => row.queryByText(/24,95 BTL poena$/) !== null)).toHaveLength(1)
+    expect(rows.filter((row) => row.queryByText(/20,86 BTL poena$/) !== null)).toHaveLength(2)
+  }, SLOW)
+
   it('carries the caveat about the count while it waits, and not once it has been sent back', async () => {
     /* The one screen that still announces a number before anybody has decided, and so the one that
        still carries the caveat (PDL, 30.08.2026, point 8): after verification it may be a
