@@ -407,9 +407,12 @@ class StatementApi {
 		return MembershipPrice.on(priceRows.all(), today, born.getYear(), season, DINARS).expected();
 	}
 
-	/** The member a reference names, when it is a reference of this season and he exists. */
+	/**
+	 * The member a reference names, when it is a reference of this season and he exists. A line without a
+	 * reference never gets here: it is booked or held by its payer's name above.
+	 */
 	private Optional<Long> whomTheReferenceNames(String reference, int season) {
-		if (reference == null || !PaymentApi.A_REFERENCE.matcher(reference).matches()
+		if (!PaymentApi.A_REFERENCE.matcher(reference).matches()
 				|| Integer.parseInt(reference.substring(0, 4)) != season) {
 			return Optional.empty();
 		}
@@ -418,10 +421,6 @@ class StatementApi {
 	}
 
 	private String whyTheReferenceDoesNotBook(String reference, int season) {
-		if (reference == null) {
-			return WhyALineWaits.NO_REFERENCE;
-		}
-
 		if (PaymentApi.A_REFERENCE.matcher(reference).matches()
 				&& Integer.parseInt(reference.substring(0, 4)) != season) {
 			return WhyALineWaits.ANOTHER_SEASON;
