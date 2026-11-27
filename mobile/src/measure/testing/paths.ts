@@ -32,6 +32,12 @@ import { offset } from './synth';
  *   (the measure keeps whichever holds more fixes). Measured on 1000 sessions with bursts
  *   of up to five among the first six fixes after a gap: 50 outside the tolerance, against
  *   19 as generated (4d5dc0c1b: 223 and 210).
+ * - In the profiles of the rounds 5 to 7 below, the same limit stands where a place is made short: the spikes in its
+ *   stay (SPIKES_AFTER_A_SHORT_STAY, TRIP_BACK_SHORT) never outnumber its real fixes, and the stay of TRIP_BACK_SHORT
+ *   takes a spike for every two fixes it has beyond the first. The shapes where they do (a
+ *   place of one fix with two spikes behind it, 721 m for 340) are cases of their own in distance.test.ts, not a
+ *   property over sessions, and are not claimed to be solved. TWO_GAPS keeps the shape of the review as it was, with
+ *   its bursts of up to five against one to three real fixes, and counts what it prices (see the property).
  */
 
 /** A deterministic sequence in [0, 1): mulberry32, independent of `jitter` in synth.ts. */
@@ -84,6 +90,26 @@ export type Profile = {
    * 150 m off.
    */
   twinInStayRate?: number;
+  /** With `tripBack`: how many real fixes the stay holds, at least and at most; 6 and 12 unless said. */
+  stayFixes?: readonly [number, number];
+  /** With `tripBack`: how many long gaps there are, 1 or 2; either, by chance, unless said. */
+  tripGaps?: 1 | 2;
+  /**
+   * The first fixes after gap number `after` are always a burst of spikes, this many of them (at least and at most) and
+   * at one point, as a spike of a real session would be. Applies to the scripted gaps of `tripBack` and `twoGaps`.
+   */
+  burstAfterGap?: { after: 1 | 2; length: readonly [number, number] };
+  /**
+   * With `tripBack`: after the real fixes of the stay, and before the second gap, this many more fixes (at least and
+   * at most) at one point 30 to 200 m from the stay: spikes, a place of a few fixes that something follows. The stay
+   * holds no other spike.
+   */
+  spikesAfterStay?: readonly [number, number];
+  /**
+   * A straight run at 2.2 to 5 m/s with two gaps of 11 to 40 s: after the first, the fixes of `burstAfterGap`, and then
+   * `realBetween` real ones before the second.
+   */
+  twoGaps?: { realBetween: readonly [number, number] };
 };
 
 export type Truth = {
@@ -112,6 +138,9 @@ export type Session = { fixes: LocationSample[]; truth: Truth; kinds: Kind[] };
 
 const between = (next: () => number, lo: number, hi: number) => lo + next() * (hi - lo);
 
+/** A whole number from `lo` to `hi`, both included. */
+const countBetween = (next: () => number, [lo, hi]: readonly [number, number]) => lo + Math.floor(next() * (hi - lo + 1));
+
 const SPEED: Record<Mode, readonly [number, number]> = {
   run: [2.5, 5.5],
   walk: [1.2, 2],
@@ -137,7 +166,9 @@ export function session(seed: number, profile: Profile): Session {
   /** Where the gaps are, when the path decides it (`tripBack`); otherwise they are drawn below. */
   let scripted: (readonly [number, number])[] | null = null;
   /** With `tripBack`: the stay, and the point he left from and comes back to. */
-  let stay = { from: 0, to: 0, e: 0, n: 0 };
+  let stay = { from: 0, to: 0, e: 0, n: 0, tail: Infinity, real: 2 };
+  /** How many spikes the first fixes after gap number `burstAfterGap.after` are, drawn once (0 when there is no such burst). */
+  const burstLength = profile.burstAfterGap === undefined ? 0 : countBetween(next, profile.burstAfterGap.length);
   if (profile.tripBack) {
     const theta = between(next, 0, 2 * Math.PI);
     const leg = (mode: Mode, speed: number, seconds: number, toward: number) => {
@@ -155,16 +186,33 @@ export function session(seed: number, profile: Profile): Session {
     const stays = next() < 0.5 ? 'stand' : 'walk';
     const stayFrom = t;
     if (stays === 'stand') stands += 1;
-    leg(stays, stays === 'stand' ? 0 : walking, Math.round(between(next, 6, 12)), theta + Math.PI / 2);
+    const [stayLo, stayHi] = profile.stayFixes ?? [6, 12];
+    const stayTail = profile.spikesAfterStay === undefined ? 0 : countBetween(next, profile.spikesAfterStay);
+    // The spikes behind a place never outnumber its real fixes (see the end of the header).
+    const stayReal = Math.max(Math.round(between(next, stayLo, stayHi)), stayTail);
+    leg(stays, stays === 'stand' ? 0 : walking, stayReal + stayTail, theta + Math.PI / 2);
     const stayTo = t;
-    stay = { from: stayFrom, to: stayTo, e: outFrom.e, n: outFrom.n };
+    stay = { from: stayFrom, to: stayTo, e: outFrom.e, n: outFrom.n, tail: stayTail > 0 ? stayTo - stayTail * 1000 : Infinity, real: stayReal };
     const home = Math.hypot(outFrom.e - e, outFrom.n - n);
     const homeSeconds = Math.max(35, Math.round(home / walking));
     leg('walk', home / homeSeconds, homeSeconds, Math.atan2(outFrom.n - n, outFrom.e - e));
-    scripted = next() < 0.5 ? [[outFrom.t + 1000, stayFrom], [stayTo, t]] : [[outFrom.t + 1000, t]];
+    const twoLongGaps = profile.tripGaps === undefined ? next() < 0.5 : profile.tripGaps === 2;
+    scripted = twoLongGaps ? [[outFrom.t + 1000, stayFrom], [stayTo, t]] : [[outFrom.t + 1000, t]];
     leg('run', between(next, 2.5, 4.5), Math.round(between(next, 30, 70)), theta);
   }
-  for (let s = 0; s < (profile.tripBack ? 0 : count); s += 1) {
+  if (profile.twoGaps) {
+    // A straight run, a gap, the first fixes after it (the burst, then real ones), a gap, and the run on.
+    const speed = between(next, 2.2, 5);
+    const toward = between(next, 0, 2 * Math.PI);
+    const first = Math.round(between(next, 11, 40));
+    const real = countBetween(next, profile.twoGaps.realBetween);
+    const second = Math.round(between(next, 11, 40));
+    const lastReal = 30 + first + burstLength + real - 1;
+    const end = lastReal + second + 40;
+    for (let s = 0; s <= end; s += 1) truePath.push({ t: s * 1000, e: speed * s * Math.cos(toward), n: speed * s * Math.sin(toward), speed, mode: 'run' });
+    scripted = [[31_000, (30 + first) * 1000], [(lastReal + 1) * 1000, (lastReal + second) * 1000]];
+  }
+  for (let s = 0; s < (profile.tripBack || profile.twoGaps ? 0 : count); s += 1) {
     const mode = profile.modes[Math.floor(next() * profile.modes.length)];
     if (mode === 'stand') stands += 1;
     const [lo, hi] = SPEED[mode];
@@ -212,18 +260,22 @@ export function session(seed: number, profile: Profile): Session {
   const real: Sample[] = [];
   const seen: Sample[] = [];
   let afterGap = 0;
+  let gapNo = 0;
   let burst = 0;
   let burstE = 0;
   let burstN = 0;
-  /** Spikes still allowed in the stay: with more spikes than real fixes there, the place could not be told from a burst. */
-  let stayBudget = 2;
+  /** Spikes still allowed in the stay: with more spikes than real fixes there, the place could not be told from a burst (never more than its real fixes). */
+  let stayBudget = Math.min(2, Math.floor((stay.real - 1) / 2));
   let lastE = 0;
   let lastN = 0;
   kept.forEach((p, i) => {
     const previous = kept[i - 1];
     const firstAfterGap = previous !== undefined && p.t - previous.t > 10_000;
     const lastBeforeGap = i + 1 < kept.length && kept[i + 1].t - p.t > 10_000;
-    if (firstAfterGap) afterGap = profile.afterGapFixes ?? 6;
+    if (firstAfterGap) {
+      afterGap = profile.afterGapFixes ?? 6;
+      gapNo += 1;
+    }
     const fixAccuracy = accuracy + Math.round(between(next, -1, 1));
     errE = Math.max(-0.6, Math.min(0.6, errE / fixAccuracy + between(next, -0.05, 0.05))) * fixAccuracy;
     errN = Math.max(-0.6, Math.min(0.6, errN / fixAccuracy + between(next, -0.05, 0.05))) * fixAccuracy;
@@ -239,19 +291,21 @@ export function session(seed: number, profile: Profile): Session {
     const doppler = p.mode === 'stand' ? between(next, 0, STATIONARY_SPEED_MPS * 0.9) : Math.max(STATIONARY_SPEED_MPS + 0.05, p.speed + between(next, -0.15, 0.15));
     const quiet = i >= kept.length - profile.quietEndFixes;
     const inStay = scripted !== null && p.t >= stay.from && p.t < stay.to;
-    const stayFull = inStay && stayBudget <= 0;
+    const stayFull = inStay && stayBudget <= 0 && profile.spikesAfterStay === undefined;
     if (stayFull) burst = 0;
+    // A burst the profile insists on: the first fixes after a gap, or the tail of the stay.
+    const forced = quiet ? 0 : firstAfterGap && profile.burstAfterGap?.after === gapNo ? burstLength : inStay && p.t === stay.tail ? Math.round((stay.to - stay.tail) / 1000) : 0;
     const chance = quiet || stayFull ? 0 : afterGap > 0 ? profile.afterGapSpikeRate : profile.spikeRate;
     afterGap -= 1;
-    if (!quiet && firstAfterGap && real.length > 0 && profile.staleAfterGapRate !== undefined && next() < profile.staleAfterGapRate) {
+    if (!quiet && forced === 0 && firstAfterGap && real.length > 0 && profile.staleAfterGapRate !== undefined && next() < profile.staleAfterGapRate) {
       // Android hands over the last position it had, with the time of now.
       seen.push(p);
       push({ t: p.t, ...offset(lastE + between(next, -1, 1), lastN + between(next, -1, 1)), accuracy: fixAccuracy, speed: doppler, mock: false, receivedAt: p.t }, 'stale');
       return;
     }
     const lastSpike = !quiet && !stayFull && lastBeforeGap && burst === 0 && profile.beforeGapSpikeRate !== undefined && next() < profile.beforeGapSpikeRate;
-    if (lastSpike || (burst === 0 && next() < chance)) {
-      burst = lastSpike ? 1 : 1 + (next() < 0.3 ? Math.floor(next() * (profile.maxBurst ?? 5)) : 0);
+    if (lastSpike || forced > 0 || (burst === 0 && next() < chance)) {
+      burst = forced > 0 ? forced : lastSpike ? 1 : 1 + (next() < 0.3 ? Math.floor(next() * (profile.maxBurst ?? 5)) : 0);
       const r = between(next, 30, 200);
       const a = between(next, 0, 2 * Math.PI);
       burstE = r * Math.cos(a);
@@ -349,3 +403,36 @@ export const TRIP_BACK: Profile = {
   staleAfterGapRate: 0.2,
   twinInStayRate: 0.15,
 };
+
+/*
+ * The shapes the reviews of rounds 5 to 7 found each with a generator of their own, kept here so that no later fix can
+ * go round them. Each is TRIP_BACK or a straight run with one thing turned: the stay, the number of gaps, or the burst.
+ */
+
+/** The place he went to is one to five fixes: what a clause about the fix after a gap decides most. */
+export const TRIP_BACK_SHORT: Profile = { ...TRIP_BACK, stayFixes: [1, 5] };
+/** Two gaps of 11 to 40 s, one to five spikes as the first fixes after the first, one to three real fixes before the second. */
+export const TWO_GAPS: Profile = {
+  modes: ['run'],
+  gaps: 2,
+  spikeRate: 0,
+  afterGapSpikeRate: 0,
+  quietEndFixes: 0,
+  twoGaps: { realBetween: [1, 3] },
+  burstAfterGap: { after: 1, length: [1, 5] },
+};
+/** A place of one to five fixes with one or two spikes at one point right after it, never more than the place has fixes, and nothing else in the stay. */
+export const SPIKES_AFTER_A_SHORT_STAY: Profile = {
+  ...TRIP_BACK,
+  afterGapSpikeRate: 0,
+  beforeGapSpikeRate: undefined,
+  staleAfterGapRate: undefined,
+  twinInStayRate: undefined,
+  stayFixes: [1, 2],
+  tripGaps: 2,
+  spikesAfterStay: [1, 2],
+};
+/** Two to four spikes as the first fixes after the second gap, which the place before it and the return after it surround. */
+export const BURST_AFTER_THE_SECOND_GAP: Profile = { ...TRIP_BACK, tripGaps: 2, burstAfterGap: { after: 2, length: [2, 4] } };
+/** A spike as the first fix after the first gap; the fixes after it are TRIP_BACK's own (more spikes, a stale position). */
+export const SPIKE_FIRST_AFTER_THE_FIRST_GAP: Profile = { ...TRIP_BACK, burstAfterGap: { after: 1, length: [1, 1] } };
