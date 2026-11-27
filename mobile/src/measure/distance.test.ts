@@ -909,6 +909,17 @@ describe('a place he went to across two long gaps, with a spike as the first fix
     expect(result.distanceM).toBeLessThanOrEqual(MIN_STEP_M);
   });
 
+  it('does not count the time before the fix before the return when the return does not jump away from that fix', () => {
+    // A spike 200 m off after 40 s without a fix, then 36 s later a fix 15 m from where he stands, then the return two
+    // seconds after it. The fix before the return is no spike (the return is a run from it), so the time back is the two
+    // seconds, and the spike is not a place he went to.
+    const fixes = [...stood(0, 100, 0, 0), fix(139_000, 200, 0, { speed: 0.1 }), fix(175_000, 15, 0, { speed: 0.1 }), ...stood(177, 220, 0, 0)];
+    const result = measureDistance(fixes);
+
+    expect(result.spikeFixes).toBeGreaterThanOrEqual(1);
+    expect(result.distanceM).toBeLessThanOrEqual(MIN_STEP_M * 2);
+  });
+
   it('still drops a place he stood at when the way there was not hidden by a long gap, spike or no spike', () => {
     // He could not have walked 80 m in five seconds, and no gap hides it: the three fixes at 80 m are a trip of spikes.
     const real = [...walk(0, 100, 0, 0), ...walk(225, 260, 150, 0)];
