@@ -287,13 +287,15 @@ function excursions(track: Track): Set<number> {
     return true;
   };
   /*
-   * What makes it a trip of spikes and not a way he went. Either it is entered or left by a jump no one makes, or
-   * it is a stand or a few fixes only, not hidden by a long gap on both sides. A longer stretch that moves, which a
+   * What makes it a trip of spikes and not a way he went. Either it is left by a jump no one makes, or it is a
+   * stand or a few fixes only, not hidden by a long gap on both sides. (A trip entered by a jump needs no rule: the
+   * walk drops it, since skipping it is cheaper than the jump. Left by a jump, the walk may instead drop the fix it
+   * comes back to, when that fix is the last of the session or of its own place.) A longer stretch that moves, which a
    * runner could have entered and left, is his own way out and back through gaps (measured: such a loop of 170 m),
    * and a place reached across a long gap and left across another is a place he went to, however few its fixes: K2
    * of round 4.
    */
-  const abrupt = (a: number, c: number) => track.step(a, a + 1) === 'jump' || track.step(c - 1, c) === 'jump';
+  const leftByJump = (c: number) => track.step(c - 1, c) === 'jump';
   const brief = (a: number, c: number) => {
     let still = true;
     for (let w = a + 1; w < c && still; w += 1) still = standing(track.fixes[w]);
@@ -306,7 +308,7 @@ function excursions(track: Track): Set<number> {
       const near = Math.max(2 * stepThresholdM(track.fixes[a], track.fixes[c]), track.apartM(a, c));
       let far = true;
       for (let w = a + 1; w < c && far; w += 1) far = track.apartM(a, w) > near && track.apartM(w, c) > near;
-      if (!far || !(abrupt(a, c) || brief(a, c)) || !heldBetter(a, c, 2 * stepThresholdM(track.fixes[a], track.fixes[c]))) continue;
+      if (!far || !(leftByJump(c) || brief(a, c)) || !heldBetter(a, c, 2 * stepThresholdM(track.fixes[a], track.fixes[c]))) continue;
       for (let w = a + 1; w < c; w += 1) out.add(w);
       break;
     }
