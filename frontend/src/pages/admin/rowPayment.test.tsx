@@ -373,17 +373,20 @@ describe('recording a payment on a member’s row', () => {
 
     /* The payments screen's list and the inbox are held as this visit already read them, so dropping
        them is something a case can see. */
-    await loadResource('payments')
     await loadResource('inbox')
 
-    expect(arrivedResource('payments')).toBeDefined()
     expect(arrivedResource('inbox')).toBeDefined()
+
+    /* `payments` IS COUNTED BY HOW OFTEN IT IS ASKED FOR: the two counters over the portal keep it read
+       and ask again the moment it is dropped (`usePaymentsDueForTheCount`), so it is never seen gone. */
+    await waitFor(() => expect(reads(server.asked, '/api/payments')).toBeGreaterThan(0))
+    const paymentsReads = reads(server.asked, '/api/payments')
 
     await recordInTheSheet(user, await paymentSheet(user, row), '4200')
 
     await waitFor(() => expect(reads(server.asked, '/api/members')).toBe(2))
     expect(reads(server.asked, '/api/competitors')).toBe(2)
-    expect(arrivedResource('payments')).toBeUndefined()
+    await waitFor(() => expect(reads(server.asked, '/api/payments'), 'payments was not asked again').toBe(paymentsReads + 1))
     expect(arrivedResource('inbox')).toBeUndefined()
     expect(await screen.findByText('Uplata je upisana.')).toBeInTheDocument()
 

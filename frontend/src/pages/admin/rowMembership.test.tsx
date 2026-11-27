@@ -452,7 +452,7 @@ describe('cancelling a season or changing its basis on a member’s row', () => 
 
     const row = await rowOf(EXEMPT)
 
-    const dropped: ResourceName[] = ['payments', 'results', 'teams', 'pairs']
+    const dropped: ResourceName[] = ['results', 'teams', 'pairs']
 
     for (const name of dropped) {
       await loadResource(name)
@@ -463,11 +463,18 @@ describe('cancelling a season or changing its basis on a member’s row', () => 
     await waitFor(() => expect(reads(server.asked, '/api/inbox')).toBeGreaterThan(0))
     const inboxReads = reads(server.asked, '/api/inbox')
 
+    /* `payments` IS COUNTED THE WAY THE INBOX IS, NOT HELD AND CHECKED GONE: the counters beside
+       „Administracija" and „Uplate" stay mounted and read it again the moment it is dropped
+       (`usePaymentsDueForTheCount`), so „gone afterwards" is never a state anybody sees. */
+    await waitFor(() => expect(reads(server.asked, '/api/payments')).toBeGreaterThan(0))
+    const paymentsReads = reads(server.asked, '/api/payments')
+
     await user.click(within(row).getByRole('button', { name: 'Storniraj' }))
     await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Da' }))
 
     await waitFor(() => expect(reads(server.asked, '/api/members')).toBe(2))
     expect(reads(server.asked, '/api/competitors')).toBe(2)
+    await waitFor(() => expect(reads(server.asked, '/api/payments'), 'payments was not asked again').toBe(paymentsReads + 1))
 
     for (const name of dropped) {
       expect(arrivedResource(name), name).toBeUndefined()
@@ -496,7 +503,7 @@ describe('cancelling a season or changing its basis on a member’s row', () => 
     renderAt('/sr/administracija/clanovi', 'superadmin', AN_OLDER_SEASON)
 
     const row = await rowOf(number)
-    const dropped: ResourceName[] = ['payments', 'results', 'teams', 'pairs']
+    const dropped: ResourceName[] = ['results', 'teams', 'pairs']
 
     for (const name of dropped) {
       await loadResource(name)
@@ -504,6 +511,12 @@ describe('cancelling a season or changing its basis on a member’s row', () => 
 
     await waitFor(() => expect(reads(server.asked, '/api/inbox')).toBeGreaterThan(0))
     const inboxReads = reads(server.asked, '/api/inbox')
+
+    /* `payments` IS COUNTED THE WAY THE INBOX IS, NOT HELD AND CHECKED GONE: the counters beside
+       „Administracija" and „Uplate" stay mounted and read it again the moment it is dropped
+       (`usePaymentsDueForTheCount`), so „gone afterwards" is never a state anybody sees. */
+    await waitFor(() => expect(reads(server.asked, '/api/payments')).toBeGreaterThan(0))
+    const paymentsReads = reads(server.asked, '/api/payments')
 
     if (number === PAID) {
       await user.click(within(await seasonsOf(user, row)).getByRole('button', { name: 'Promeni osnov u oslobođenje' }))
@@ -514,6 +527,7 @@ describe('cancelling a season or changing its basis on a member’s row', () => 
 
     await waitFor(() => expect(reads(server.asked, '/api/members')).toBe(2))
     expect(reads(server.asked, '/api/competitors')).toBe(2)
+    await waitFor(() => expect(reads(server.asked, '/api/payments'), 'payments was not asked again').toBe(paymentsReads + 1))
 
     for (const name of dropped) {
       expect(arrivedResource(name), name).toBeUndefined()
@@ -613,7 +627,7 @@ describe('cancelling a season or changing its basis on a member’s row', () => 
     renderAt('/sr/administracija/clanovi', 'superadmin', PAID)
 
     const row = await rowOf(AN_OLDER_SEASON)
-    const dropped: ResourceName[] = ['payments', 'results', 'teams', 'pairs']
+    const dropped: ResourceName[] = ['results', 'teams', 'pairs']
 
     for (const name of dropped) {
       await loadResource(name)
@@ -621,6 +635,12 @@ describe('cancelling a season or changing its basis on a member’s row', () => 
 
     await waitFor(() => expect(reads(server.asked, '/api/inbox')).toBeGreaterThan(0))
     const inboxReads = reads(server.asked, '/api/inbox')
+
+    /* `payments` IS COUNTED THE WAY THE INBOX IS, NOT HELD AND CHECKED GONE: the counters beside
+       „Administracija" and „Uplate" stay mounted and read it again the moment it is dropped
+       (`usePaymentsDueForTheCount`), so „gone afterwards" is never a state anybody sees. */
+    await waitFor(() => expect(reads(server.asked, '/api/payments')).toBeGreaterThan(0))
+    const paymentsReads = reads(server.asked, '/api/payments')
 
     await user.click(await seasonBox(user, row, 2028))
 
@@ -643,6 +663,7 @@ describe('cancelling a season or changing its basis on a member’s row', () => 
     )
     await waitFor(() => expect(reads(server.asked, '/api/members')).toBe(2))
     expect(reads(server.asked, '/api/competitors')).toBe(2)
+    await waitFor(() => expect(reads(server.asked, '/api/payments'), 'payments was not asked again').toBe(paymentsReads + 1))
 
     for (const name of dropped) {
       expect(arrivedResource(name), name).toBeUndefined()
