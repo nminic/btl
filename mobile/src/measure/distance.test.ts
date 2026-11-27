@@ -773,14 +773,19 @@ describe('what tells a spike from a drive, and a trip away from a place he went 
     expect(result.spikeFixes).toBe(3);
   });
 
-  it('measures a gap by the signal, not by the fixes left once the spikes are taken out', () => {
-    // Five spikes 31 s after he last stood here, then one more elsewhere 5 s later, then 31 s with no fix at all. Once
-    // the five are out, the sixth looks like a place between two long gaps, but the signal was never silent before it.
+  it('measures a gap by the real fixes, so a lone fix no one reaches from a burst does not end the silence after it', () => {
+    // Five fixes at one place 31 s after he last stood here, one more 205 m from them 5 s later, then 31 s with no fix.
+    // The five are a place hidden by two long gaps whether the sixth is there or not (round 6; until then the sixth
+    // ended the silence, and both were dropped). That five fixes like these may be a burst of spikes is the price the
+    // PDL states for such a place: „Mesto do kog se stiže preko duge rupe i sa kog se odlazi preko druge duge rupe
+    // broji se i kad ima samo jednu tačku.”
     const burst = every(131_000, 136_000, 1).map((t) => fix(t, -90, 115, { speed: 0.1 }));
+    const without = measureDistance([...standing(0, 101, 0), ...burst, ...standing(171, 200, 0)]);
     const result = measureDistance([...standing(0, 101, 0), ...burst, fix(140_000, 80, 0, { speed: 0.1 }), ...standing(171, 200, 0)]);
 
-    expect(result.distanceM).toBe(0);
-    expect(result.spikeFixes).toBe(6);
+    expect(without.distanceM).toBeCloseTo(2 * haversineM(fix(0, 0, 0), fix(0, -90, 115)), 6);
+    expect(result.distanceM).toBeCloseTo(without.distanceM, 6);
+    expect([without.spikeFixes, result.spikeFixes]).toEqual([0, 1]);
   });
 
   it('counts a place he walked to and back from across two long gaps as a place he went to', () => {
@@ -899,14 +904,19 @@ describe('a place he went to across two long gaps, with a spike as the first fix
     expect(Math.abs(result.distanceM - chord(counted ? [...out, ...stay, ...home] : [...out, ...home]))).toBeLessThanOrEqual(2 * MIN_STEP_M);
   });
 
-  it('drops a burst of spikes that a long gap runs through, since its fixes are one place and not a place and a spike', () => {
-    // Four spikes 195 m off after 30 s without a fix, a fifth of the same burst 33 s later, then he is back where he
-    // stood. The way back is not hidden: the second between the burst's last fix and the return is all the time there is.
-    const burst = [...every(129_000, 133_000, 1).map((t) => fix(t, 190 + (t - 129_000) / 1000, 0, { speed: 0.1 })), fix(166_000, 198, 0, { speed: 0.1 })];
-    const result = measureDistance([...stood(0, 100, 0, 0), ...burst, ...stood(167, 200, 0, 0)]);
+  it('counts four fixes that a long gap runs through as a place, though a fifth at the same place comes a second before the return', () => {
+    // Four fixes 190 m off after 30 s without a fix, a fifth at the same place 33 s later, then he is back where he
+    // stood. No one gets back 198 m in a second, so the fifth is no fix of the way back, and the four are a place hidden
+    // by two long gaps whether it is there or not, exactly as a stale position by the last fix of a place he went to is
+    // (round 6; until then the fifth ended the silence, and all five were dropped). The price is the one of the case
+    // above: four fixes like these may be a burst of spikes that the signal gave on both sides of a gap.
+    const four = every(129_000, 133_000, 1).map((t) => fix(t, 190 + (t - 129_000) / 1000, 0, { speed: 0.1 }));
+    const without = measureDistance([...stood(0, 100, 0, 0), ...four, ...stood(167, 200, 0, 0)]);
+    const result = measureDistance([...stood(0, 100, 0, 0), ...four, fix(166_000, 198, 0, { speed: 0.1 }), ...stood(167, 200, 0, 0)]);
 
-    expect(result.spikeFixes).toBe(5);
-    expect(result.distanceM).toBeLessThanOrEqual(MIN_STEP_M);
+    expect(without.distanceM).toBeGreaterThan(2 * 190 - 2 * MIN_STEP_M);
+    expect(result.distanceM).toBeCloseTo(without.distanceM, 6);
+    expect([without.spikeFixes, result.spikeFixes]).toEqual([0, 1]);
   });
 
   it('does not count the time before the fix before the return when the return does not jump away from that fix', () => {
@@ -931,6 +941,93 @@ describe('a place he went to across two long gaps, with a spike as the first fix
   });
 });
 
+describe('the silence around a place he went to, whatever spikes stand next to the gaps (round 6)', () => {
+  // Whether a place is hidden behind two long gaps is asked of its real fixes and of nothing else: a spike, a burst of
+  // them, a stale position or a second position at the same instant next to a gap is no fix of the way there or back,
+  // so it neither shortens a silence nor stands in for the fix the trip leaves from or comes back to. Every case is
+  // the same five sessions (the cases of round 5 and the lap around a block), and the expected length is the chord
+  // through their real fixes, never the output of a version of the code.
+  const walk = (fromS: number, toS: number, eastM: number, northM: number) =>
+    every(fromS * 1000, toS * 1000, 1).map((t) => fix(t, eastM + 1.5 * (t / 1000 - fromS), northM, { speed: 1.5 }));
+  const stood = (fromS: number, toS: number, eastM: number, northM: number) =>
+    every(fromS * 1000, toS * 1000, 1).map((t) => fix(t, eastM, northM, { speed: 0.1 }));
+  const chord = (fixes: readonly Fix[]) => fixes.slice(1).reduce((sum, f, i) => sum + haversineM(fixes[i], f), 0);
+  /** The real fixes; `back` is the first fix after the second gap, the one he comes back to. */
+  type Shape = { real: ReturnType<typeof walk>; back: number };
+  const lap = (): Shape => ({
+    real: [
+      ...every(0, 100_000, 1).map((t) => fix(t, 3 * (t / 1000), 0, { speed: 3 })),
+      ...every(160_000, 175_000, 1).map((t) => fix(t, 400 - 5 * (t / 1000 - 160), 180, { speed: 5 })),
+      ...every(236_000, 336_000, 1).map((t) => fix(t, 300 + 3 * (t / 1000 - 236), 0, { speed: 3 })),
+    ],
+    back: 236_000,
+  });
+  const SHAPES: readonly (readonly [string, () => Shape])[] = [
+    ['moving there', () => ({ real: [...walk(0, 100, 0, 0), ...walk(160, 165, 150, 80), ...walk(225, 260, 150, 0)], back: 225_000 })],
+    ['standing there', () => ({ real: [...walk(0, 100, 0, 0), ...stood(160, 163, 150, 80), ...walk(225, 260, 150, 0)], back: 225_000 })],
+    ['around a block', lap],
+    ['moving there, the session ending right after the return', () => ({ real: [...walk(0, 100, 0, 0), ...walk(160, 165, 150, 80), ...walk(225, 227, 150, 0)], back: 225_000 })],
+    ['standing there, the session ending right after the return', () => ({ real: [...walk(0, 100, 0, 0), ...stood(160, 163, 150, 80), ...walk(225, 227, 150, 0)], back: 225_000 })],
+  ];
+  /** The real fixes of the place: those between the two gaps. */
+  const placeOf = ({ real, back }: Shape) => real.filter((f) => f.t > 100_000 && f.t < back);
+  const off = (t: number, eastM: number, northM: number) => fix(t, eastM, northM, { speed: 1.5 });
+  type Fix = ReturnType<typeof walk>[number];
+  const metresPerDegree = haversineM({ lat: 44.8, lon: 20.46 }, { lat: 45.8, lon: 20.46 });
+  /** The same fix `eastM` and `northM` metres further on. */
+  const moved = (f: Fix, eastM: number, northM: number): Fix => ({
+    ...f,
+    lat: f.lat + northM / metresPerDegree,
+    lon: f.lon + eastM / (metresPerDegree * Math.cos((f.lat * Math.PI) / 180)),
+  });
+
+  /** Each shape with the extra fixes `extra` makes of it gives the chord of its real fixes, and every extra fix is dropped. */
+  const holds = (extra: (shape: Shape) => Fix[]) => {
+    const wrong = SHAPES.flatMap(([name, make]) => {
+      const shape = make();
+      const more = extra(shape);
+      const result = measureDistance([...shape.real, ...more]);
+      const ok = Math.abs(result.distanceM - chord(shape.real)) <= 2 * MIN_STEP_M && result.spikeFixes === more.length;
+      return ok ? [] : [`${name}: ${result.distanceM.toFixed(0)} m against ${chord(shape.real).toFixed(0)} m, ${result.spikeFixes} dropped of ${more.length}`];
+    });
+    expect(wrong).toEqual([]);
+  };
+
+  it('control: with no fix but the real ones, each shape gives the chord of its real fixes and drops none', () => {
+    holds(() => []);
+  });
+
+  it('two spikes apart right before the return (VISOK 1 of round 6)', () => {
+    holds(({ back }) => [off(back - 2000, 330, -60), off(back - 1000, -50, 200)]);
+  });
+
+  it('two and three spikes at one place right before the return (VISOK 1 of round 6)', () => {
+    holds(({ back }) => [off(back - 2000, 330, -60), off(back - 1000, 332, -61)]);
+    holds(({ back }) => [off(back - 3000, 330, -60), off(back - 2000, 331, -60), off(back - 1000, 332, -61)]);
+  });
+
+  it('a spike as the first fix after the first gap (VISOK 2 of round 6)', () => {
+    holds((shape) => [off(placeOf(shape)[0].t - 1000, 330, -60)]);
+  });
+
+  it('a second position at the same instant inside the place (SREDNJI 2 of round 6)', () => {
+    // By the point he left from, where it can pass for the fix a trip leaves from or comes back to, and 72 m off the place.
+    holds((shape) => [off(placeOf(shape)[1].t, 150, 2)]);
+    holds((shape) => [moved(placeOf(shape)[1], 60, 40)]);
+  });
+
+  it('a stale position by the last fix of the place, delivered as the first fix after the second gap (SREDNJI 1 of round 6)', () => {
+    holds((shape) => {
+      const last = placeOf(shape).at(-1) as Fix;
+      return [{ ...moved(last, 1, 1), t: shape.back - 1000, receivedAt: shape.back - 1000 }];
+    });
+  });
+
+  it('a spike as the last fix before the second gap, which the fix after the gap could follow (round 6)', () => {
+    holds((shape) => [off((placeOf(shape).at(-1) as Fix).t + 2000, 330, -60)]);
+  });
+});
+
 describe('properties against the true path, fixed seeds (testing/paths.ts)', () => {
   const SEEDS = Array.from({ length: 150 }, (_, i) => i + 1);
   /**
@@ -939,14 +1036,23 @@ describe('properties against the true path, fixed seeds (testing/paths.ts)', () 
    */
   const tolerance = (t: Truth) => 0.02 * t.idealM + 2 * MIN_STEP_M * (1 + t.gaps + t.stands);
   const sessions = (profile: Profile) => SEEDS.map((seed) => ({ seed, ...session(seed, { ...profile, quietEndFixes: 10 }) }));
+  /**
+   * Sessions that the price stated in the PDL costs, and nothing else: „Mesto do kog se stiže preko duge rupe i sa kog
+   * se odlazi preko druge duge rupe broji se i kad ima samo jednu tačku”, so a burst of spikes that two long gaps hide
+   * counts as such a place. STANDING 90: three spikes 150 m off a second after a gap of 90 s, the fourth fix of the
+   * same burst 77 s later and a second before he is back. Each of them must still cost it (the floor below), so that
+   * the list goes when the price does.
+   */
+  const PRICED: ReadonlyMap<Profile, readonly number[]> = new Map([[STANDING, [90]]]);
 
   it.each([
     ['on foot', ON_FOOT],
     ['with a drive', WITH_DRIVE],
     ['with no gap', NO_GAP],
     ['standing', STANDING],
-    ['out to a place and back across long gaps, with a spike first after the last', TRIP_BACK],
+    ['out to a place and back across long gaps, with everything a gap can have next to it', TRIP_BACK],
   ] as const)('%s: the length is within its tolerance of the true path, and a vehicle is marked exactly when there was one', (_, profile) => {
+    const priced = PRICED.get(profile) ?? [];
     const wrong = sessions(profile).flatMap(({ seed, fixes, truth }) => {
       const result = measureDistance(fixes);
       const out: string[] = [];
@@ -957,7 +1063,8 @@ describe('properties against the true path, fixed seeds (testing/paths.ts)', () 
       return out;
     });
 
-    expect(wrong).toEqual([]);
+    expect(wrong.filter((w) => !priced.includes(Number(w.split(':')[0])))).toEqual([]);
+    expect(priced.filter((seed) => !wrong.some((w) => w.startsWith(`${seed}:`)))).toEqual([]);
   });
 
   it.each([
@@ -984,6 +1091,27 @@ describe('properties against the true path, fixed seeds (testing/paths.ts)', () 
     expect(back.some((s) => s.truth.gaps === 1)).toBe(true);
     expect(back.some((s) => s.truth.gaps === 2 && s.truth.stands === 1)).toBe(true);
     expect(back.some((s) => s.truth.gaps === 2 && s.truth.stands === 0)).toBe(true);
+  });
+
+  it('out to a place and back holds every state next to a gap that the measure must see past (round 6)', () => {
+    // Read off the fixes themselves, in the order of their time, with what the generator says each one is.
+    const states = sessions(TRIP_BACK).map(({ fixes, kinds }) => {
+      const ordered = fixes.map((f, i) => ({ t: f.t, kind: kinds[i] })).sort((a, b) => a.t - b.t);
+      const gaps = ordered.flatMap((f, i) => (i > 0 && f.t - ordered[i - 1].t > GAP_MS ? [i] : []));
+      const at = (i: number) => ordered[i]?.kind;
+      const stay = gaps.length === 2 ? ordered.slice(gaps[0], gaps[1]) : [];
+      return {
+        twoInARowAfterTheSecondGap: gaps.length === 2 && at(gaps[1]) === 'spike' && at(gaps[1] + 1) === 'spike',
+        spikeFirstAfterTheFirstGap: gaps.length === 2 && at(gaps[0]) === 'spike',
+        spikeLastBeforeAGap: gaps.some((g) => at(g - 1) === 'spike'),
+        staleFirstAfterAGap: gaps.some((g) => at(g) === 'stale'),
+        twinInTheStay: stay.some((f) => f.kind === 'twin'),
+      };
+    });
+
+    for (const state of Object.keys(states[0]) as (keyof (typeof states)[number])[]) {
+      expect({ state, held: states.some((s) => s[state]) }).toEqual({ state, held: true });
+    }
   });
 });
 

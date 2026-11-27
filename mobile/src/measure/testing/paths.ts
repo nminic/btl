@@ -26,6 +26,12 @@ import { offset } from './synth';
  *   the one before it, which is harsher than real GPS error, whose drift is slow.
  * - A drive is entered and left at once, with no braking: that is the hardest case for
  *   where it begins, not an easier one.
+ * - In TRIP_BACK, more spikes in the stay than real fixes, a burst of more than two after
+ *   a gap, and spikes beyond the first four fixes after one: then the spikes next to a gap
+ *   outnumber the real fixes there, and nothing but the true path tells which is which
+ *   (the measure keeps whichever holds more fixes). Measured on 1000 sessions with bursts
+ *   of up to five among the first six fixes after a gap: 50 outside the tolerance, against
+ *   19 as generated (4d5dc0c1b: 223 and 210).
  */
 
 /** A deterministic sequence in [0, 1): mulberry32, independent of `jitter` in synth.ts. */
@@ -64,14 +70,20 @@ export type Profile = {
    * comes back to is one he was at before: what a spike as the first fix after a gap threatens to turn into a trip away.
    */
   tripBack?: boolean;
-  /** Every spike is one fix, never a burst, and after a gap only the first fix can be one: the single spike that is the first fix after a gap. */
-  singleSpikes?: boolean;
+  /** The longest burst of spikes in a row; 5 unless said. */
+  maxBurst?: number;
+  /** How many of the first fixes after a gap `afterGapSpikeRate` applies to; 6 unless said. */
+  afterGapFixes?: number;
+  /** The chance that the last fix before a gap is a spike. */
+  beforeGapSpikeRate?: number;
+  /** The chance that the first fix after a gap is a stale position: where the last real fix before the gap was, with the time of now. */
+  staleAfterGapRate?: number;
   /**
-   * With `tripBack`: no spike right after the gaps before the last one, so that the one that can be there is the first
-   * fix after the gap he comes back across. A spike as the first fix of the place itself is a different case (he is not
-   * known to have been there yet) and has its own cases in distance.test.ts.
+   * With `tripBack`, the chance that a real fix of the stay comes with a second position at the same instant: half of
+   * them by the point he left from, where it can pass for the fix a trip leaves from or comes back to, and half 30 to
+   * 150 m off.
    */
-  spikeOnlyAfterLastGap?: boolean;
+  twinInStayRate?: number;
 };
 
 export type Truth = {
@@ -93,7 +105,10 @@ export type Truth = {
   accuracy: number;
 };
 
-export type Session = { fixes: LocationSample[]; truth: Truth };
+/** What each fix is, so that a property of the generator can be checked against the fixes themselves. */
+export type Kind = 'real' | 'spike' | 'poor' | 'copy' | 'twin' | 'stale';
+
+export type Session = { fixes: LocationSample[]; truth: Truth; kinds: Kind[] };
 
 const between = (next: () => number, lo: number, hi: number) => lo + next() * (hi - lo);
 
@@ -121,6 +136,8 @@ export function session(seed: number, profile: Profile): Session {
   const count = 6 + Math.floor(next() * 8);
   /** Where the gaps are, when the path decides it (`tripBack`); otherwise they are drawn below. */
   let scripted: (readonly [number, number])[] | null = null;
+  /** With `tripBack`: the stay, and the point he left from and comes back to. */
+  let stay = { from: 0, to: 0, e: 0, n: 0 };
   if (profile.tripBack) {
     const theta = between(next, 0, 2 * Math.PI);
     const leg = (mode: Mode, speed: number, seconds: number, toward: number) => {
@@ -138,8 +155,9 @@ export function session(seed: number, profile: Profile): Session {
     const stays = next() < 0.5 ? 'stand' : 'walk';
     const stayFrom = t;
     if (stays === 'stand') stands += 1;
-    leg(stays, stays === 'stand' ? 0 : walking, Math.round(between(next, 3, 8)), theta + Math.PI / 2);
+    leg(stays, stays === 'stand' ? 0 : walking, Math.round(between(next, 6, 12)), theta + Math.PI / 2);
     const stayTo = t;
+    stay = { from: stayFrom, to: stayTo, e: outFrom.e, n: outFrom.n };
     const home = Math.hypot(outFrom.e - e, outFrom.n - n);
     const homeSeconds = Math.max(35, Math.round(home / walking));
     leg('walk', home / homeSeconds, homeSeconds, Math.atan2(outFrom.n - n, outFrom.e - e));
@@ -164,10 +182,11 @@ export function session(seed: number, profile: Profile): Session {
     }
   }
 
-  // Which samples become fixes: all of them, except that a stand may be sampled sparsely.
+  // Which samples become fixes: all of them, except that a stand may be sampled sparsely (not the stay of `tripBack`,
+  // whose few fixes are the place: with fewer real fixes there than spikes, it could not be told from a burst).
   const sparse = next() < 0.5;
   const sampled = truePath.filter((p, i) => {
-    if (p.mode !== 'stand' || !sparse || i === 0) return true;
+    if (p.mode !== 'stand' || !sparse || i === 0 || profile.tripBack) return true;
     return next() < 0.25;
   });
 
@@ -185,16 +204,26 @@ export function session(seed: number, profile: Profile): Session {
   let errE = 0;
   let errN = 0;
   const fixes: LocationSample[] = [];
+  const kinds: Kind[] = [];
+  const push = (fix: LocationSample, kind: Kind) => {
+    fixes.push(fix);
+    kinds.push(kind);
+  };
   const real: Sample[] = [];
   const seen: Sample[] = [];
   let afterGap = 0;
-  const spikesFrom = scripted !== null && profile.spikeOnlyAfterLastGap ? scripted[scripted.length - 1][1] : 0;
   let burst = 0;
   let burstE = 0;
   let burstN = 0;
+  /** Spikes still allowed in the stay: with more spikes than real fixes there, the place could not be told from a burst. */
+  let stayBudget = 2;
+  let lastE = 0;
+  let lastN = 0;
   kept.forEach((p, i) => {
     const previous = kept[i - 1];
-    if (previous !== undefined && p.t - previous.t > 10_000) afterGap = p.t < spikesFrom ? 0 : profile.singleSpikes ? 1 : 6;
+    const firstAfterGap = previous !== undefined && p.t - previous.t > 10_000;
+    const lastBeforeGap = i + 1 < kept.length && kept[i + 1].t - p.t > 10_000;
+    if (firstAfterGap) afterGap = profile.afterGapFixes ?? 6;
     const fixAccuracy = accuracy + Math.round(between(next, -1, 1));
     errE = Math.max(-0.6, Math.min(0.6, errE / fixAccuracy + between(next, -0.05, 0.05))) * fixAccuracy;
     errN = Math.max(-0.6, Math.min(0.6, errN / fixAccuracy + between(next, -0.05, 0.05))) * fixAccuracy;
@@ -209,11 +238,20 @@ export function session(seed: number, profile: Profile): Session {
     }
     const doppler = p.mode === 'stand' ? between(next, 0, STATIONARY_SPEED_MPS * 0.9) : Math.max(STATIONARY_SPEED_MPS + 0.05, p.speed + between(next, -0.15, 0.15));
     const quiet = i >= kept.length - profile.quietEndFixes;
-    const chance = quiet ? 0 : afterGap > 0 ? profile.afterGapSpikeRate : profile.spikeRate;
+    const inStay = scripted !== null && p.t >= stay.from && p.t < stay.to;
+    const stayFull = inStay && stayBudget <= 0;
+    if (stayFull) burst = 0;
+    const chance = quiet || stayFull ? 0 : afterGap > 0 ? profile.afterGapSpikeRate : profile.spikeRate;
     afterGap -= 1;
-    if (burst === 0 && next() < chance) {
-      burst = 1 + (next() < 0.3 ? Math.floor(next() * 5) : 0);
-      if (profile.singleSpikes) burst = 1;
+    if (!quiet && firstAfterGap && real.length > 0 && profile.staleAfterGapRate !== undefined && next() < profile.staleAfterGapRate) {
+      // Android hands over the last position it had, with the time of now.
+      seen.push(p);
+      push({ t: p.t, ...offset(lastE + between(next, -1, 1), lastN + between(next, -1, 1)), accuracy: fixAccuracy, speed: doppler, mock: false, receivedAt: p.t }, 'stale');
+      return;
+    }
+    const lastSpike = !quiet && !stayFull && lastBeforeGap && burst === 0 && profile.beforeGapSpikeRate !== undefined && next() < profile.beforeGapSpikeRate;
+    if (lastSpike || (burst === 0 && next() < chance)) {
+      burst = lastSpike ? 1 : 1 + (next() < 0.3 ? Math.floor(next() * (profile.maxBurst ?? 5)) : 0);
       const r = between(next, 30, 200);
       const a = between(next, 0, 2 * Math.PI);
       burstE = r * Math.cos(a);
@@ -221,23 +259,33 @@ export function session(seed: number, profile: Profile): Session {
     }
     if (burst > 0 && !quiet) {
       burst -= 1;
+      if (inStay) stayBudget -= 1;
       seen.push(p);
       // A spike: as accurate and with the same Doppler speed as a real fix, so nothing but its position gives it away.
-      fixes.push({ t: p.t, ...offset(p.e + burstE + between(next, -5, 5), p.n + burstN + between(next, -5, 5)), accuracy: fixAccuracy, speed: doppler, mock: false, receivedAt: p.t });
+      push({ t: p.t, ...offset(p.e + burstE + between(next, -5, 5), p.n + burstN + between(next, -5, 5)), accuracy: fixAccuracy, speed: doppler, mock: false, receivedAt: p.t }, 'spike');
       return;
     }
     if (next() < 0.03) {
-      fixes.push({ t: p.t, ...offset(p.e + between(next, -100, 100), p.n), accuracy: between(next, 25, 60), speed: doppler, mock: false, receivedAt: p.t });
+      push({ t: p.t, ...offset(p.e + between(next, -100, 100), p.n), accuracy: between(next, 25, 60), speed: doppler, mock: false, receivedAt: p.t }, 'poor');
       return;
     }
     const fix: LocationSample = { t: p.t, ...offset(fe, fn), accuracy: fixAccuracy, speed: doppler, mock: false, receivedAt: p.t };
-    fixes.push(fix);
+    push(fix, 'real');
     real.push(p);
     seen.push(p);
+    lastE = fe;
+    lastN = fn;
     const odd = next();
     // The same fix delivered twice, or a second position at the same instant (which is one of the two wrong).
-    if (odd < 0.01) fixes.push({ ...fix });
-    else if (odd < 0.015) fixes.push({ ...fix, ...offset(p.e + 60, p.n + 40) });
+    if (odd < 0.01) push({ ...fix }, 'copy');
+    else if (odd < 0.015) push({ ...fix, ...offset(p.e + 60, p.n + 40) }, 'twin');
+    else if (inStay && profile.twinInStayRate !== undefined && next() < profile.twinInStayRate) {
+      // By the point he left from, or 30 to 150 m off where he is.
+      const home = next() < 0.5;
+      const r = home ? between(next, 0, 4) : between(next, 30, 150);
+      const a = between(next, 0, 2 * Math.PI);
+      push({ ...fix, ...offset((home ? stay.e : p.e) + r * Math.cos(a), (home ? stay.n : p.n) + r * Math.sin(a)) }, 'twin');
+    }
   });
 
   let idealM = 0;
@@ -254,13 +302,19 @@ export function session(seed: number, profile: Profile): Session {
 
   // Android hands fixes over in batches, sometimes in the wrong order.
   const delivered: LocationSample[] = [];
+  const deliveredKinds: Kind[] = [];
   for (let i = 0; i < fixes.length; i += 7) {
-    const batch = fixes.slice(i, i + 7);
-    delivered.push(...(next() < 0.2 ? batch.reverse() : batch));
+    const order = fixes.slice(i, i + 7).map((_, k) => i + k);
+    if (next() < 0.2) order.reverse();
+    for (const k of order) {
+      delivered.push(fixes[k]);
+      deliveredKinds.push(kinds[k]);
+    }
   }
 
   return {
     fixes: delivered,
+    kinds: deliveredKinds,
     truth: {
       idealM,
       noVehicle: truePath.every((p) => p.mode !== 'drive'),
@@ -277,5 +331,21 @@ export const ON_FOOT: Profile = { modes: ['run', 'walk', 'slow', 'stand'], gaps:
 export const WITH_DRIVE: Profile = { modes: ['run', 'walk', 'stand', 'drive'], gaps: 3, spikeRate: 0.02, afterGapSpikeRate: 0.3, quietEndFixes: 0 };
 export const STANDING: Profile = { modes: ['stand'], gaps: 3, spikeRate: 0.03, afterGapSpikeRate: 0.3, quietEndFixes: 0 };
 export const NO_GAP: Profile = { modes: ['run', 'walk', 'slow', 'stand', 'drive'], gaps: 0, spikeRate: 0.02, afterGapSpikeRate: 0, quietEndFixes: 0 };
-/** Out to a place and back to the point he left from, across long gaps, with spikes the first fixes after them (see `tripBack`). */
-export const TRIP_BACK: Profile = { modes: ['run', 'walk', 'stand'], gaps: 2, spikeRate: 0, afterGapSpikeRate: 0.5, quietEndFixes: 0, tripBack: true, singleSpikes: true, spikeOnlyAfterLastGap: true };
+/**
+ * Out to a place and back to the point he left from, across long gaps (see `tripBack`), with everything a gap can have
+ * next to it: single spikes and bursts as the first fixes after either gap, a spike as the last fix before one, a stale
+ * position as the first fix after one, and a second position at the same instant in the stay.
+ */
+export const TRIP_BACK: Profile = {
+  modes: ['run', 'walk', 'stand'],
+  gaps: 2,
+  spikeRate: 0,
+  afterGapSpikeRate: 0.4,
+  quietEndFixes: 0,
+  tripBack: true,
+  afterGapFixes: 4,
+  maxBurst: 2,
+  beforeGapSpikeRate: 0.3,
+  staleAfterGapRate: 0.2,
+  twinInStayRate: 0.15,
+};

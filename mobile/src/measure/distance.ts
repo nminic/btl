@@ -155,13 +155,10 @@ class Track {
   readonly fixes: readonly LocationSample[];
   readonly x: Float64Array;
   readonly y: Float64Array;
-  /** How long before each fix the signal gave the one before it, among all the good fixes: a fix taken out leaves no gap. */
-  readonly silenceBefore: Float64Array;
 
-  constructor(fixes: readonly LocationSample[], silenceBefore?: Float64Array) {
+  constructor(fixes: readonly LocationSample[]) {
     this.fixes = fixes;
     const n = fixes.length;
-    this.silenceBefore = silenceBefore ?? Float64Array.from(fixes, (f, i) => (i === 0 ? 0 : f.t - fixes[i - 1].t));
     this.x = new Float64Array(n);
     this.y = new Float64Array(n);
     const lat0 = fixes[0].lat;
@@ -205,18 +202,20 @@ class Track {
   }
 
   without(drop: ReadonlySet<number>): Track {
-    const keep = (_: unknown, i: number) => !drop.has(i);
-    return new Track(this.fixes.filter(keep), this.silenceBefore.filter(keep));
+    return new Track(this.fixes.filter((_, i) => !drop.has(i)));
   }
 }
 
 type Chosen = { index: number; mode: Mode };
 type Taken = { fix: LocationSample; mode: Mode };
 
-/** The cheapest walk through the fixes, as described above. */
-function cheapestWalk(track: Track): Chosen[] {
-  const n = track.fixes.length;
-  // cost[2j + mode], and the state it was reached from.
+/**
+ * The cheapest walk through the fixes, as described above, or through the fixes `first` to `last` only. With
+ * `pinned`, it keeps `last`.
+ */
+function cheapestWalk(track: Track, first = 0, last = track.fixes.length - 1, pinned = false): Chosen[] {
+  const n = last - first + 1;
+  // cost[2k + mode] for the fix first + k, and the state it was reached from.
   const cost = new Float64Array(2 * n).fill(Infinity);
   const back = new Int32Array(2 * n).fill(-1);
   const relax = (state: number, value: number, from: number) => {
@@ -225,19 +224,21 @@ function cheapestWalk(track: Track): Chosen[] {
       back[state] = from;
     }
   };
-  for (let j = 0; j < n; j += 1) {
+  for (let k = 0; k < n; k += 1) {
+    const j = first + k;
     // `j` as the first fix kept: every fix before it is skipped.
-    relax(2 * j + RUN, j * SKIP_COST, -1);
-    for (let i = Math.max(0, j - LOOK_BACK_FIXES); i < j; i += 1) {
+    relax(2 * k + RUN, k * SKIP_COST, -1);
+    for (let h = Math.max(0, k - LOOK_BACK_FIXES); h < k; h += 1) {
+      const i = first + h;
       const kind = track.step(i, j);
       if (kind === null) continue;
-      const base = (j - i - 1) * SKIP_COST + LENGTH_COST_PER_M * track.apartM(i, j);
+      const base = (k - h - 1) * SKIP_COST + LENGTH_COST_PER_M * track.apartM(i, j);
       for (let from = RUN; from <= DRIVE; from += 1) {
-        const before = cost[2 * i + from] + base;
-        if (kind === 'run') relax(2 * j + RUN, before + (from === DRIVE ? DRIVE_END_COST : 0), 2 * i + from);
+        const before = cost[2 * h + from] + base;
+        if (kind === 'run') relax(2 * k + RUN, before + (from === DRIVE ? DRIVE_END_COST : 0), 2 * h + from);
         else {
           const start = track.fixes[j].t - track.fixes[i].t > GAP_MS ? GAP_DRIVE_START_COST : DRIVE_START_COST;
-          relax(2 * j + DRIVE, before + (from === RUN ? start : 0) + (kind === 'jump' ? JUMP_COST : 0), 2 * i + from);
+          relax(2 * k + DRIVE, before + (from === RUN ? start : 0) + (kind === 'jump' ? JUMP_COST : 0), 2 * h + from);
         }
       }
     }
@@ -245,15 +246,15 @@ function cheapestWalk(track: Track): Chosen[] {
 
   let best = Infinity;
   let state = -1;
-  for (let k = 0; k < 2 * n; k += 1) {
-    const total = cost[k] + (n - 1 - (k >> 1)) * SKIP_COST;
+  for (let s = pinned ? 2 * (n - 1) : 0; s < 2 * n; s += 1) {
+    const total = cost[s] + (n - 1 - (s >> 1)) * SKIP_COST;
     if (total < best) {
       best = total;
-      state = k;
+      state = s;
     }
   }
   const chosen: Chosen[] = [];
-  for (; state >= 0; state = back[state]) chosen.push({ index: state >> 1, mode: (state & 1) as Mode });
+  for (; state >= 0; state = back[state]) chosen.push({ index: first + (state >> 1), mode: (state & 1) as Mode });
   return chosen.reverse();
 }
 
@@ -297,29 +298,55 @@ function excursions(track: Track): Set<number> {
    */
   const leftByJump = (c: number) => track.step(c - 1, c) === 'jump';
   /**
-   * Whether a long gap on both sides hid the way there and the way back. The way there is the silence of the signal
-   * before the first fix of the trip. The way back is the time from the last fix of the trip to the return fix `c`,
-   * through a spike that comes between them: while the spike is still in the track `c` jumps away from it and the
-   * time runs from the fix before it, and once it is taken out the time runs from the fix before `c` anyway. A spike
-   * is a fix of the signal and not a place he was, so the second between it and `c` is not the way back (a place walked
-   * to and back from across two long gaps, with a spike as the first fix after the second: K2 of round 5). The fix
-   * before `c` is such a spike only if it lies away from the fix before it: one at the same place is a fix of the same
-   * burst, and a burst that a long gap runs through is no place he went to.
+   * Whether a long gap on both sides hid the way there and the way back. Both are asked of real fixes only, and the
+   * cheapest walk says which those are: the walk that comes back to `c` (a fix the trip comes back to is real, below),
+   * through the trip and as many fixes before it. The place is what the walk keeps of the trip; the way there runs from
+   * the last fix it keeps before the place, and the way back from the last fix of the place to `c`. A spike, a burst of
+   * them, a stale position or a second position at the same instant next to a gap is a fix of the signal and not of the
+   * way, and the walk skips it as it skips one anywhere, so it neither ends a silence nor begins one, whether it is a
+   * fix of the trip or `a` itself. A trip the walk keeps nothing of is no place at all. (Round 6: the silences used to
+   * be read off the fixes as they came, so that one spike or more next to a gap made a place walked to and back from
+   * across two long gaps a trip of spikes, around a block 594 m of 1054 m.)
    */
   const hidden = (a: number, c: number) => {
-    const spiked = leftByJump(c) && c - 1 > a + 1 && track.apartM(c - 2, c - 1) > 2 * stepThresholdM(track.fixes[a], track.fixes[c]);
-    return track.silenceBefore[a + 1] >= LONG_GAP_MS && track.fixes[c].t - track.fixes[spiked ? c - 2 : c - 1].t >= LONG_GAP_MS;
+    // The way back ends at `c` and begins at a fix of the trip at the earliest: too short a trip has no time for it.
+    if (track.fixes[c].t - track.fixes[a + 1].t < LONG_GAP_MS) return false;
+    const kept = cheapestWalk(track, Math.max(0, a - LOOK_BACK_FIXES), c, true).map(({ index }) => index);
+    const first = kept.findIndex((k) => k > a);
+    const last = kept.length - 2;
+    if (last < first) return false;
+    const fixes = track.fixes;
+    const there = fixes[kept[first]].t - fixes[first > 0 ? kept[first - 1] : a].t;
+    return there >= LONG_GAP_MS && fixes[c].t - fixes[kept[last]].t >= LONG_GAP_MS;
   };
   /**
    * The fix the trip comes back to must not be a spike itself. It is one when it is not back at the place the trip
    * left and the fixes after it disown it: the next one cannot follow it, and neither can the one after that (two, so
    * that a single spike right after it does not disown it). A spike that happens to lie where a runner could be (on the
-   * way he runs a little later) would otherwise make the real fixes before it the trip. The last fix of a session has
-   * nothing after it to disown it.
+   * way he runs a little later) would otherwise make the real fixes before it the trip. A fix that comes only after a
+   * gap follows nothing: across a gap a runner reaches a spike as easily as a real fix (round 6: a spike as the last fix
+   * before a gap, a minute from the fix after it, took the place of the fix the trip came back to). The last fix of a
+   * session has nothing after it to disown it.
    */
-  const jumpsTo = (c: number, d: number) => d >= n || track.step(c, d) === 'jump';
+  const jumpsTo = (c: number, d: number) => d >= n || track.fixes[d].t - track.fixes[c].t > GAP_MS || track.step(c, d) === 'jump';
   const confirmed = (a: number, c: number, near: number) =>
     track.apartM(a, c) <= near || c + 1 >= n || !(jumpsTo(c, c + 1) && jumpsTo(c, c + 2));
+  /**
+   * A fix with a second position at the same instant (one of the two is wrong) is the fix a trip leaves from or comes back
+   * to only when the other position is not at the trip as well: if it is, the trip is where he was at that instant, and
+   * the fix is the wrong one of the two (round 6: such a position by the point he left from made the place he went to a
+   * trip of spikes, left 0 s after the fix it began with).
+   */
+  const alone = (e: number, a: number, c: number, near: number) => {
+    for (let q = e - 1; q >= 0 && track.fixes[q].t === track.fixes[e].t; q -= 1) if (!farFrom(q, a, c, near)) return false;
+    for (let q = e + 1; q < n && track.fixes[q].t === track.fixes[e].t; q += 1) if (!farFrom(q, a, c, near)) return false;
+    return true;
+  };
+  /** Whether every fix of the trip but `q` itself is further than `near` from `q`. */
+  const farFrom = (q: number, a: number, c: number, near: number) => {
+    for (let w = a + 1; w < c; w += 1) if (w !== q && track.apartM(q, w) <= near) return false;
+    return true;
+  };
   const brief = (a: number, c: number) => {
     let still = true;
     for (let w = a + 1; w < c && still; w += 1) still = standing(track.fixes[w]);
@@ -333,7 +360,7 @@ function excursions(track: Track): Set<number> {
       let far = true;
       for (let w = a + 1; w < c && far; w += 1) far = track.apartM(a, w) > near && track.apartM(w, c) > near;
       const place = 2 * stepThresholdM(track.fixes[a], track.fixes[c]);
-      if (!far || !confirmed(a, c, place) || hidden(a, c) || !(leftByJump(c) || brief(a, c)) || !heldBetter(a, c, place)) continue;
+      if (!far || !alone(a, a, c, near) || !alone(c, a, c, near) || !confirmed(a, c, place) || !(leftByJump(c) || brief(a, c)) || !heldBetter(a, c, place) || hidden(a, c)) continue;
       for (let w = a + 1; w < c; w += 1) out.add(w);
       break;
     }
