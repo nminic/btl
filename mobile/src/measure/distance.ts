@@ -113,18 +113,25 @@ export function measureDistance(fixes: readonly LocationSample[]): DistanceResul
     implausible = [];
   };
 
-  /** A good fix, with an anchor already set. */
-  const consider = (fix: LocationSample) => {
+  /**
+   * A good fix, with an anchor already set. `released` is a fix that was held after a
+   * gap and has now been confirmed by the next one.
+   */
+  const consider = (fix: LocationSample, released = false) => {
     const current = anchor as LocationSample;
     const accuracy = fix.accuracy as number;
-    if (fix.speed !== undefined && fix.speed < STATIONARY_SPEED_MPS) {
-      anchoredAt = fix.t;
-      return;
-    }
     if (fix.t - lastGoodT > GAP_MS) {
       // After a gap the speed from the anchor says nothing: a minute of running
-      // makes any jump look like a slow walk. The next fix decides.
+      // makes any jump look like a slow walk. The next fix decides. This comes
+      // before the stand check: a fix of standing after a gap would otherwise move
+      // the stand clock to now while the anchor stays before the gap, and the next
+      // fix would look like a jump of the whole gap in a second.
       afterGap = fix;
+      return;
+    }
+    const standing = fix.speed !== undefined && fix.speed < STATIONARY_SPEED_MPS;
+    if (standing && !released) {
+      anchoredAt = fix.t;
       return;
     }
 
@@ -160,7 +167,11 @@ export function measureDistance(fixes: readonly LocationSample[]): DistanceResul
 
     settle();
 
-    if (stepM < Math.max(MIN_STEP_M, Math.hypot(current.accuracy as number, accuracy))) return;
+    if (stepM < Math.max(MIN_STEP_M, Math.hypot(current.accuracy as number, accuracy))) {
+      // A released fix of standing that stayed where the anchor is: he stood here from now on.
+      if (standing) anchoredAt = fix.t;
+      return;
+    }
     result.distanceM += stepM;
     anchor = fix;
     anchoredAt = fix.t;
@@ -188,7 +199,7 @@ export function measureDistance(fixes: readonly LocationSample[]): DistanceResul
       // spike. Two fixes at the same instant give a NaN or an infinity, and
       // neither passes, so the held one is dropped then too.
       if (haversineM(held, fix) / ((fix.t - held.t) / 1000) <= MAX_SPEED_MPS) {
-        consider(held);
+        consider(held, true);
       } else {
         result.spikeFixes += 1;
       }
@@ -197,7 +208,7 @@ export function measureDistance(fixes: readonly LocationSample[]): DistanceResul
     lastGoodT = fix.t;
   }
 
-  if (afterGap !== null) consider(afterGap);
+  if (afterGap !== null) consider(afterGap, true);
   settle();
   return result;
 }

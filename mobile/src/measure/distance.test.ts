@@ -264,6 +264,76 @@ describe('a spike after the speed check has lost its reference', () => {
   });
 });
 
+describe('a stand right after a gap in the signal', () => {
+  // The first fix after a gap is held until the next one says whether it is real. A fix that says the runner
+  // stands used to move the stand clock to now and leave the anchor where it was before the gap, so the next
+  // fix looked like a hundred metres in one second and three of them became a vehicle.
+  const standing = (fromS: number, toS: number, eastM: number) =>
+    every(fromS * 1000, toS * 1000, 1).map((t) => fix(t, eastM, 0, { speed: 0 }));
+  const control = measureDistance([...run(0, 100, 0), ...run(160, 260, 480)]);
+
+  const afterStand = (standS: number) => measureDistance([...run(0, 100, 0), ...standing(160, 160 + standS, 480), ...run(160 + standS, 260 + standS, 480)]);
+
+  it('has no vehicle and the same distance when the runner stands ten seconds after a minute without a fix', () => {
+    const result = afterStand(10);
+
+    expect(result.vehicleSegments).toBe(0);
+    expect(result.vehicleDurationMs).toBe(0);
+    expect(result.spikeFixes).toBe(0);
+    expect(Math.abs(result.distanceM - control.distanceM)).toBeLessThanOrEqual(MIN_STEP_M);
+  });
+
+  it('has no vehicle when he stands three seconds, or for a single fix', () => {
+    for (const seconds of [3, 1]) {
+      const result = afterStand(seconds);
+
+      expect(result.vehicleSegments).toBe(0);
+      expect(result.spikeFixes).toBe(0);
+      expect(result.distanceM).toBeGreaterThan(control.distanceM - MIN_STEP_M);
+    }
+  });
+
+  it('has no vehicle when the minute was filled with fixes too poor to use, not left empty', () => {
+    const poor = every(100_000, 160_000, 1).map((t) => fix(t, 300 + 3 * (t / 1000 - 100), 0, { accuracy: 50, speed: 3 }));
+    const result = measureDistance([...run(0, 100, 0), ...poor, ...standing(160, 170, 480), ...run(170, 270, 480)]);
+
+    expect(result.poorFixes).toBe(60);
+    expect(result.vehicleSegments).toBe(0);
+    expect(Math.abs(result.distanceM - control.distanceM)).toBeLessThanOrEqual(MIN_STEP_M);
+  });
+
+  it('counts the bridge to where he stands, so the distance does not stay at the anchor before the gap', () => {
+    expect(afterStand(10).distanceM).toBeGreaterThan(770);
+  });
+
+  it('still marks a real drive that starts after a stand that follows a gap', () => {
+    const drive = straight(161, 200, 20, 480);
+    const result = measureDistance([...run(0, 100, 0), ...standing(160, 161, 480), ...drive]);
+
+    expect(result.vehicleSegments).toBe(1);
+    expect(result.vehicleDurationMs).toBeGreaterThan(30_000);
+    expect(result.distanceM).toBeGreaterThan(297 + 183 + 700);
+  });
+
+  it('drops a held fix of standing that the fix after it contradicts, as it drops any held fix', () => {
+    const result = measureDistance([...run(0, 100, 0), fix(160_000, 480, 80, { speed: 0 }), ...run(161, 261, 480)]);
+
+    expect(result.spikeFixes).toBe(1);
+    expect(result.vehicleSegments).toBe(0);
+  });
+
+  it('keeps the stand clock moving when fixes of standing come further apart than a gap', () => {
+    // Every one of them is the first after a gap. Without the clock a jump of 80 m looks like a walk of five minutes.
+    const stands = every(115_000, 401_000, 1 / 15).map((t) => fix(t, 300, 0, { speed: 0 }));
+    const result = measureDistance([...run(0, 100, 0), ...stands, ...jumpAt(run(401, 501, 300), 1, 303)]);
+
+    expect(result.spikeFixes).toBe(1);
+    expect(result.vehicleSegments).toBe(0);
+    expect(result.distanceM).toBeGreaterThan(590);
+    expect(result.distanceM).toBeLessThanOrEqual(597.000001);
+  });
+});
+
 describe('a mock location', () => {
   it('counts the distance and exposes the fixes Android marked as mock', () => {
     const fixes = straight(0, 100).map((f, i) => ({ ...f, mock: i % 2 === 0 }));
