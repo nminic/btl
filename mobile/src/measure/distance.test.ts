@@ -1,4 +1,4 @@
-import { measureDistance, MAX_ACCURACY_M } from './distance';
+import { measureDistance, MAX_ACCURACY_M, MIN_STEP_M } from './distance';
 import { every, fix, jitter } from './testing/synth';
 
 /** A straight run east at `speed` m/s, one fix a second. */
@@ -169,6 +169,98 @@ describe('a spike and a vehicle', () => {
     ];
 
     expect(measureDistance(fixes).vehicleSegments).toBe(2);
+  });
+});
+
+/** Seconds `fromS` to `toS` at `speed`, the runner at `eastM` at `fromS`, one fix a second. */
+const run = (fromS: number, toS: number, eastM: number) =>
+  every(fromS * 1000, toS * 1000, 1).map((t) => fix(t, eastM + 3 * (t / 1000 - fromS), 0, { speed: 3 }));
+
+/** The fix at `at` replaced by one 80 m north of where the runner is (`eastM`), with the same accuracy and Doppler speed as a real one. */
+const jumpAt = (fixes: ReturnType<typeof run>, at: number, eastM: number) =>
+  fixes.map((f, i) => (i === at ? fix(f.t, eastM, 80, { speed: 3 }) : f));
+
+describe('a spike after the speed check has lost its reference', () => {
+  // A stand does not move the anchor, so the speed of the next fix used to be measured over the whole
+  // stand and an 80 m jump looked like a slow walk. A gap in the signal does the same: the anchor is old.
+  const standing = (fromS: number, toS: number, eastM: number) =>
+    every(fromS * 1000, toS * 1000, 1).map((t) => fix(t, eastM, 0, { speed: 0 }));
+
+  const standResume = (spike: boolean) => {
+    const after = run(160, 260, 300);
+    return [...run(0, 100, 0), ...standing(100, 160, 300), ...(spike ? jumpAt(after, 0, 300) : after)];
+  };
+
+  it('drops a jump right after a minute of standing, as it drops one in the middle of a run', () => {
+    const clean = measureDistance(standResume(false));
+    const spiked = measureDistance(standResume(true));
+
+    expect(clean.distanceM).toBeGreaterThan(590);
+    expect(spiked.spikeFixes).toBe(1);
+    expect(spiked.vehicleSegments).toBe(0);
+    expect(Math.abs(spiked.distanceM - clean.distanceM)).toBeLessThanOrEqual(MIN_STEP_M);
+    expect(spiked.distanceM).toBeLessThanOrEqual(597.000001);
+  });
+
+  it('still drops the same jump in the middle of a run without any stand', () => {
+    const result = measureDistance(jumpAt(run(0, 200, 0), 100, 300));
+
+    expect(result.spikeFixes).toBe(1);
+    expect(result.distanceM).toBeLessThanOrEqual(597.000001);
+  });
+
+  it('counts a run that resumes after a stand, and marks no vehicle', () => {
+    const result = measureDistance(standResume(false));
+
+    expect(result.distanceM).toBeGreaterThan(590);
+    expect(result.distanceM).toBeLessThanOrEqual(597.000001);
+    expect(result.spikeFixes).toBe(0);
+    expect(result.vehicleSegments).toBe(0);
+  });
+
+  it('counts a run that resumes after a stand whose fixes Android delivered in a late batch', () => {
+    const stand = standing(100, 160, 300).map((f) => ({ ...f, receivedAt: Math.ceil((f.t + 1) / 30_000) * 30_000 }));
+    const result = measureDistance([...run(0, 100, 0), ...stand, ...run(160, 260, 300)]);
+
+    expect(result.distanceM).toBeGreaterThan(590);
+    expect(result.vehicleSegments).toBe(0);
+    expect(result.spikeFixes).toBe(0);
+  });
+
+  it('drops a jump right after a minute without any fix', () => {
+    const after = run(160, 260, 480);
+    const result = measureDistance([...run(0, 100, 0), ...jumpAt(after, 0, 480)]);
+
+    expect(result.spikeFixes).toBe(1);
+    expect(result.vehicleSegments).toBe(0);
+    expect(result.distanceM).toBeLessThanOrEqual(777.000001);
+    expect(result.distanceM).toBeGreaterThan(770);
+  });
+
+  it('drops a jump right after a service that was killed and started again, 40 s later', () => {
+    const after = run(140, 240, 420);
+    const result = measureDistance([...run(0, 100, 0), ...jumpAt(after, 0, 420)]);
+
+    expect(result.spikeFixes).toBe(1);
+    expect(result.vehicleSegments).toBe(0);
+    expect(result.distanceM).toBeLessThanOrEqual(717.000001);
+    expect(result.distanceM).toBeGreaterThan(710);
+  });
+
+  it('counts a real run that resumes after the gap, bridged as before', () => {
+    const result = measureDistance([...run(0, 100, 0), ...run(160, 260, 480)]);
+
+    expect(result.spikeFixes).toBe(0);
+    expect(result.vehicleSegments).toBe(0);
+    expect(result.distanceM).toBeGreaterThan(770);
+    expect(result.distanceM).toBeLessThanOrEqual(777.000001);
+  });
+
+  it('counts the fix that ends a gap when it is the last of the session', () => {
+    const result = measureDistance([...run(0, 100, 0), fix(200_000, 497, 0, { speed: 3 })]);
+
+    expect(result.spikeFixes).toBe(0);
+    expect(result.distanceM).toBeGreaterThan(490);
   });
 });
 

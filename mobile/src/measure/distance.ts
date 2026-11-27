@@ -30,6 +30,9 @@ export const MAX_SPEED_MPS = 12.5;
 /** This many implausible fixes in a row are a vehicle, not a spike. */
 export const VEHICLE_CONFIRM_FIXES = 3;
 
+/** No good fix for this long is a gap: the fix that ends it is checked against the next one, not against the anchor. */
+export const GAP_MS = 10_000;
+
 export type DistanceResult = {
   distanceM: number;
   /** Fixes rejected for their accuracy, or for carrying none. */
@@ -80,6 +83,18 @@ export function measureDistance(fixes: readonly LocationSample[]): DistanceResul
   };
 
   let anchor: LocationSample | null = null;
+  /**
+   * The time the runner was last known to be where the anchor is: the anchor's own
+   * time, or the latest fix at which Doppler said he stood. The speed of a new fix
+   * is measured from here, not from the anchor's time. While he stands the anchor
+   * does not move, so its time goes stale, and a jump after a long stand would look
+   * like a slow, believable walk.
+   */
+  let anchoredAt = 0;
+  /** Sample time of the latest good fix, standing or not. */
+  let lastGoodT = 0;
+  /** The first fix after a gap, held until the next one says whether it is real. */
+  let afterGap: LocationSample | null = null;
   let implausible: LocationSample[] = [];
   let vehicleFrom: number | null = null;
   let vehicleTo = 0;
@@ -98,6 +113,59 @@ export function measureDistance(fixes: readonly LocationSample[]): DistanceResul
     implausible = [];
   };
 
+  /** A good fix, with an anchor already set. */
+  const consider = (fix: LocationSample) => {
+    const current = anchor as LocationSample;
+    const accuracy = fix.accuracy as number;
+    if (fix.speed !== undefined && fix.speed < STATIONARY_SPEED_MPS) {
+      anchoredAt = fix.t;
+      return;
+    }
+    if (fix.t - lastGoodT > GAP_MS) {
+      // After a gap the speed from the anchor says nothing: a minute of running
+      // makes any jump look like a slow walk. The next fix decides.
+      afterGap = fix;
+      return;
+    }
+
+    const stepM = haversineM(current, fix);
+    const seconds = (fix.t - anchoredAt) / 1000;
+    if (seconds <= 0 || stepM / seconds > MAX_SPEED_MPS) {
+      if (vehicleFrom !== null) {
+        // A drive under way: every fix counts as it comes.
+        if (seconds > 0) {
+          result.distanceM += stepM;
+          vehicleTo = fix.t;
+          anchor = fix;
+          anchoredAt = fix.t;
+        }
+        return;
+      }
+      implausible.push(fix);
+      if (implausible.length >= VEHICLE_CONFIRM_FIXES) {
+        result.vehicleSegments += 1;
+        vehicleFrom = current.t;
+        let from = current;
+        for (const held of implausible) {
+          result.distanceM += haversineM(from, held);
+          from = held;
+        }
+        anchor = from;
+        anchoredAt = from.t;
+        vehicleTo = fix.t;
+        implausible = [];
+      }
+      return;
+    }
+
+    settle();
+
+    if (stepM < Math.max(MIN_STEP_M, Math.hypot(current.accuracy as number, accuracy))) return;
+    result.distanceM += stepM;
+    anchor = fix;
+    anchoredAt = fix.t;
+  };
+
   for (const fix of bySampleTime(fixes)) {
     if (fix.mock) result.mockFixes += 1;
     result.lastFixT = fix.t;
@@ -106,47 +174,30 @@ export function measureDistance(fixes: readonly LocationSample[]): DistanceResul
       result.poorFixes += 1;
       continue;
     }
-    const accuracy = fix.accuracy as number;
 
     if (anchor === null) {
       anchor = fix;
+      anchoredAt = fix.t;
+      lastGoodT = fix.t;
       continue;
     }
-    if (fix.speed !== undefined && fix.speed < STATIONARY_SPEED_MPS) continue;
-
-    const stepM = haversineM(anchor, fix);
-    const seconds = (fix.t - anchor.t) / 1000;
-    if (seconds <= 0 || stepM / seconds > MAX_SPEED_MPS) {
-      if (vehicleFrom !== null) {
-        // A drive under way: every fix counts as it comes.
-        if (seconds > 0) {
-          result.distanceM += stepM;
-          vehicleTo = fix.t;
-          anchor = fix;
-        }
-        continue;
+    if (afterGap !== null) {
+      const held: LocationSample = afterGap;
+      afterGap = null;
+      // Two seconds apart and 80 m between them is no runner; the held fix was a
+      // spike. Two fixes at the same instant give a NaN or an infinity, and
+      // neither passes, so the held one is dropped then too.
+      if (haversineM(held, fix) / ((fix.t - held.t) / 1000) <= MAX_SPEED_MPS) {
+        consider(held);
+      } else {
+        result.spikeFixes += 1;
       }
-      implausible.push(fix);
-      if (implausible.length >= VEHICLE_CONFIRM_FIXES) {
-        result.vehicleSegments += 1;
-        vehicleFrom = anchor.t;
-        for (const held of implausible) {
-          result.distanceM += haversineM(anchor, held);
-          anchor = held;
-        }
-        vehicleTo = fix.t;
-        implausible = [];
-      }
-      continue;
     }
-
-    settle();
-
-    if (stepM < Math.max(MIN_STEP_M, Math.hypot(anchor.accuracy as number, accuracy))) continue;
-    result.distanceM += stepM;
-    anchor = fix;
+    consider(fix);
+    lastGoodT = fix.t;
   }
 
+  if (afterGap !== null) consider(afterGap);
   settle();
   return result;
 }
