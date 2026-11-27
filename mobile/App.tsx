@@ -15,10 +15,11 @@ export default function App() {
     return { meter, t, locale };
   });
   // The module asks only the first time it is called on this phone (PDL, „Aplikacija na prvom pokretanju traži
-  // izuzetak od štednje baterije").
+  // izuzetak od štednje baterije"). It asks once the location question the screen puts on opening is answered, so
+  // that the two system dialogs of a first start do not open over each other.
   useEffect(() => {
-    sensors.askBatteryExemptionOnce();
-  }, []);
+    meter.gate.ask().then(() => sensors.askBatteryExemptionOnce());
+  }, [meter]);
   return (
     <>
       <MeterScreen meter={meter} t={t} locale={locale} />

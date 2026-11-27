@@ -1,4 +1,4 @@
-import type { BtlSensors } from '../../../modules/btl-sensors';
+import type { BtlSensors, GpsFix } from '../../../modules/btl-sensors';
 
 /**
  * The Kotlin module as the tests see it: a session file held as text, read the
@@ -42,6 +42,30 @@ export class FakeSensors implements BtlSensors {
   askBatteryExemptionOnce() {
     this.batteryAsked += 1;
     return true;
+  }
+
+  /** Whether fine location is granted, as the module checks it before it listens to GPS. */
+  fineLocation = true;
+  watchingGps = false;
+  /**
+   * The phone has a good GPS fix at every moment it is asked, unless a case says
+   * otherwise by setting `gpsFix`. A case that is not about the start button
+   * presses it as a member does once the GPS is good.
+   */
+  gpsFix: GpsFix | null | 'good now' = 'good now';
+
+  watchGps() {
+    if (!this.fineLocation) return false;
+    this.watchingGps = true;
+    return true;
+  }
+
+  unwatchGps() {
+    this.watchingGps = false;
+  }
+
+  lastGpsFix(): GpsFix | null {
+    return this.gpsFix === 'good now' ? { t: this.now, acc: 4 } : this.gpsFix;
   }
 
   read(offset: number) {

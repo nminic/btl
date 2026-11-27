@@ -1,6 +1,7 @@
 {
   "meter": {
     "title": "BTL merilo",
+    "duration": "Trajanje",
     "distance": "Dužina",
     "ascent": "Uspon",
     "descent": "Spust",
@@ -10,6 +11,8 @@
     "stop": "Završi merenje",
     "idle": "Merenje beleži dužinu, uspon i spust od trenutka kad ga pokreneš, i kad je ekran ugašen.",
     "starting": "Merenje počinje.",
+    "waitingForGps": "Čeka se dobar GPS signal. Merenje može da počne tek kad stigne.",
+    "gpsReady": "GPS signal je dobar, merenje može da počne.",
     "last": "Poslednje merenje",
     "denied": "Bez dozvole za tačnu lokaciju merenje ne može da počne. Dozvolu daješ u podešavanjima telefona.",
     "noPressureSensor": "Ovaj telefon nema senzor pritiska, pa uspon i spust ne mogu da se mere.",

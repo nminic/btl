@@ -1,13 +1,15 @@
 import type { BtlSensors } from '../../modules/btl-sensors';
 import { measure, type Measures } from '../measure/measure';
 import { Recording, type SessionMeta } from '../measure/recording';
+import { sessionDurationMs } from './duration';
+import { StartGate } from './startGate';
 
 export type MeterView =
   | { phase: 'idle' }
   | { phase: 'denied' }
   | { phase: 'starting' }
-  | { phase: 'recording'; measures: Measures }
-  | { phase: 'stopped'; measures: Measures };
+  | { phase: 'recording'; measures: Measures; durationMs: number }
+  | { phase: 'stopped'; measures: Measures; durationMs: number };
 
 /**
  * The screen's side of a session. The session file is the only source: every
@@ -21,12 +23,16 @@ export class Meter {
   private recording = new Recording();
   private offset = 0;
   private recordingNow = false;
+  /** Whether the member may start, before a session; asks for location with the same request `start` does. */
+  readonly gate: StartGate;
 
   constructor(
     private readonly sensors: BtlSensors,
     private readonly askForLocation: () => Promise<boolean>,
     private readonly notification: { title: string; text: string },
-  ) {}
+  ) {
+    this.gate = new StartGate(sensors, askForLocation);
+  }
 
   /**
    * On opening the app: a session still recording, the last one saved, or none.
@@ -73,7 +79,9 @@ export class Meter {
 
     const meta = this.recording.meta;
     if (meta === null) return this.recordingNow ? { phase: 'starting' } : { phase: 'idle' };
-    const measures = measure(this.recording as Recording & { meta: SessionMeta }, this.sensors.elapsedRealtimeMs());
-    return { phase: this.recordingNow ? 'recording' : 'stopped', measures };
+    const session = this.recording as Recording & { meta: SessionMeta };
+    const now = this.sensors.elapsedRealtimeMs();
+    const durationMs = sessionDurationMs(session, now, this.recordingNow);
+    return { phase: this.recordingNow ? 'recording' : 'stopped', measures: measure(session, now), durationMs };
   }
 }
