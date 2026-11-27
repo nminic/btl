@@ -115,8 +115,14 @@ public final class ASyntheticStatement {
 	 * @param reference the poziv na broj as it is to be printed, or null for none
 	 */
 	public ASyntheticStatement credit(String payer, String amount, String reference, String order) {
+		return credit(payer, amount, reference, order, "Članarina za 2027. godinu");
+	}
+
+	/** The same, with the purpose of the payment as the payer wrote it. */
+	public ASyntheticStatement credit(String payer, String amount, String reference, String order,
+			String purpose) {
 		items.add(new Item(true, payer, "200-0000000000001-11", new BigDecimal(amount), "289",
-				List.of("Članarina za 2027. godinu"), reference, order));
+				List.of(purpose), reference, order));
 
 		return this;
 	}

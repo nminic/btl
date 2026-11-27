@@ -316,6 +316,54 @@ class StatementApiTest {
 	}
 
 	/**
+	 * THE PURPOSE OF A PAYMENT IS NOT A PLACE WHERE A NAME IS LOOKED FOR (PDL, 27.11.2026, measured on
+	 * production: „(u bilo kom redu)" means in any order of the words, inside the payer's field). The payer
+	 * here is the whole name of one member and the purpose names another member, so a name read out of the
+	 * purpose too would make the line „a second name in it" and leave it waiting.
+	 *
+	 * <p>The other line pays under a name that is nobody's and writes a member's name only in the purpose,
+	 * so it books nobody. Every line is another member, so a booking off the wrong line books the wrong man.
+	 */
+	@Test
+	void aNameInThePurposeOfAPaymentNeitherStopsABookingNorMakesOne() throws Exception {
+		long valentina = competitor("000043", "Valentina", "Suslov", A_TOWN_IN_SERBIA);
+		long marko = competitor("000027", "Marko", "Markovic", A_TOWN_IN_SERBIA);
+		long petar = competitor("000028", "Petar", "Petrović", A_TOWN_IN_SERBIA);
+
+		JsonNode taken = taken(statement(3)
+				.credit("Valentina Suslov", EXPECTED, null, order(), "Clanarina za Marko Markovic")
+				.credit("DONATOR", EXPECTED, null, order(), "Clanarina za Petar Petrovic"));
+
+		assertThat(taken.get("bookedNow").asInt()).isEqualTo(1);
+		assertThat(states(taken)).containsExactly("booked", "waiting");
+		assertThat(member(taken, 0)).isEqualTo(valentina);
+		assertThat(db.sql("select competitor_id from payment").query(Long.class).list())
+				.containsExactly(valentina);
+		assertThat(candidates(taken, 1)).isEmpty();
+		assertThat(db.sql("select count(*) from payment where competitor_id in (?, ?)").params(marko, petar)
+				.query(Long.class).single()).isZero();
+	}
+
+	/**
+	 * THE SAME FOR A LINE THAT WAITS: the payer is the whole name of one member, the amount is not the
+	 * expected one, and another member's name stands in the purpose. The suggestion is the member of the
+	 * name and nobody else.
+	 */
+	@Test
+	void aNameInThePurposeIsNotSuggestedBesideTheMemberOfThePayersName() throws Exception {
+		long nikola = competitor("000008", "Nikola", "Nikolić", A_TOWN_IN_SERBIA);
+		competitor("000028", "Petar", "Petrović", A_TOWN_IN_SERBIA);
+
+		JsonNode taken = taken(statement(3)
+				.credit("NIKOLA NIKOLIĆ", "10.00", null, order(), "Clanarina za Petar Petrovic")
+				.credit("DONATOR", "10.00", null, order(), "Clanarina za Petar Petrovic"));
+
+		assertThat(states(taken)).containsOnly("waiting");
+		assertThat(candidates(taken, 0)).containsExactly(nikola);
+		assertThat(candidates(taken, 1)).isEmpty();
+	}
+
+	/**
 	 * ONE MEMBER OF THE NAME, AND STILL NOT BOOKED, each for the reason a reference would give: an amount
 	 * that is not the expected one (less, more, and paras), a member who pays in euro, and a payment with a
 	 * reference, which is never booked by the name whatever the reference is (owner, 24.10.2026: „Sve
