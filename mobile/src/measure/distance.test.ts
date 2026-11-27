@@ -875,6 +875,18 @@ describe('properties against the true path, fixed seeds (testing/paths.ts)', () 
     expect(wrong).toEqual([]);
   });
 
+  it.each([
+    ['on foot', ON_FOOT, 1525, 'the next fix alone does not disown the fix a trip comes back to'],
+    ['on foot', ON_FOOT, 1493, 'a return to the place the trip left needs nothing after it'],
+    ['standing', STANDING, 125, 'the last fix of a session is not disowned (it ends on a spike after a gap, which waits for a decision)'],
+  ] as const)('%s, seed %i of the comparison: %s', (_, profile, seed, _why) => {
+    // Each of these sessions is decided by one clause of the rule for the fix a trip comes back to; without the clause
+    // the trip before it stays, and the length goes 290 to 370 m past its tolerance.
+    const { fixes, truth } = session(seed, profile);
+
+    expect(Math.abs(measureDistance(fixes).distanceM - truth.idealM)).toBeLessThanOrEqual(tolerance(truth));
+  });
+
   it('the generator holds every state it claims, so that no property is met by leaving one out', () => {
     const all = [ON_FOOT, WITH_DRIVE, NO_GAP, STANDING].flatMap((p) => sessions(p));
 
