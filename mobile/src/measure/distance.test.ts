@@ -817,6 +817,23 @@ describe('what tells a spike from a drive, and a trip away from a place he went 
     expect(result.distanceM).toBeLessThanOrEqual(597.000001);
   });
 
+  it('keeps a run that a trip seems to leave from, when the fix it would come back to is itself a spike', () => {
+    // ON_FOOT 1501 of the comparison, reduced. A walk ends at (-55, 0) at 88 s; 69 s with no fix; a spike; six fixes of
+    // running south; a second spike 30 m from where the walk ended, on the way he runs a few seconds later. Taking that
+    // spike as the place the trip came back to made the six real fixes a trip of spikes, and lost 45 m.
+    const walk = every(0, 89_000, 1).map((t) => fix(t, -143 + t / 1000, 0, { speed: 1 }));
+    const south = every(158_000, 164_000, 1).map((t) => fix(t, -115, 36 - 3.3 * (t / 1000 - 158), { speed: 3.3 }));
+    const on = every(165_000, 230_000, 1).map((t) => fix(t, -111 + 2.14 * (t / 1000 - 165), 13.4 - 2.1 * (t / 1000 - 165), { speed: 3 }));
+    const spikes = [fix(157_000, -170, -131, { speed: 3.2 }), fix(164_000, -83, -14, { speed: 3.4 })];
+
+    const control = measureDistance([...walk, ...south, ...on]);
+    const result = measureDistance([...walk, spikes[0], ...south, spikes[1], ...on]);
+
+    expect(result.spikeFixes).toBe(2);
+    expect(result.vehicleSegments).toBe(0);
+    expect(Math.abs(result.distanceM - control.distanceM)).toBeLessThanOrEqual(MIN_STEP_M);
+  });
+
   it('keeps a loop he ran out and back through a gap, entered and left at a runner speed', () => {
     // 19 fixes of running after a gap of a minute, which end 15 m from where he then stands, 10 m from where he was
     // before the gap.

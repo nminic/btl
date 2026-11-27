@@ -296,6 +296,16 @@ function excursions(track: Track): Set<number> {
    * of round 4.
    */
   const leftByJump = (c: number) => track.step(c - 1, c) === 'jump';
+  /**
+   * The fix the trip comes back to must not be a spike itself. It is one when it is not back at the place the trip
+   * left and the fixes after it disown it: the next one cannot follow it, and neither can the one after that (two, so
+   * that a single spike right after it does not disown it). A spike that happens to lie where a runner could be (on the
+   * way he runs a little later) would otherwise make the real fixes before it the trip. The last fix of a session has
+   * nothing after it to disown it.
+   */
+  const jumpsTo = (c: number, d: number) => d >= n || track.step(c, d) === 'jump';
+  const confirmed = (a: number, c: number, near: number) =>
+    track.apartM(a, c) <= near || c + 1 >= n || !(jumpsTo(c, c + 1) && jumpsTo(c, c + 2));
   const brief = (a: number, c: number) => {
     let still = true;
     for (let w = a + 1; w < c && still; w += 1) still = standing(track.fixes[w]);
@@ -308,7 +318,8 @@ function excursions(track: Track): Set<number> {
       const near = Math.max(2 * stepThresholdM(track.fixes[a], track.fixes[c]), track.apartM(a, c));
       let far = true;
       for (let w = a + 1; w < c && far; w += 1) far = track.apartM(a, w) > near && track.apartM(w, c) > near;
-      if (!far || !(leftByJump(c) || brief(a, c)) || !heldBetter(a, c, 2 * stepThresholdM(track.fixes[a], track.fixes[c]))) continue;
+      const place = 2 * stepThresholdM(track.fixes[a], track.fixes[c]);
+      if (!far || !confirmed(a, c, place) || !(leftByJump(c) || brief(a, c)) || !heldBetter(a, c, place)) continue;
       for (let w = a + 1; w < c; w += 1) out.add(w);
       break;
     }
