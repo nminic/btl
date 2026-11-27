@@ -1,19 +1,52 @@
 /* The BTL formula, for the calculator on the front page.
  *
- *   Le  = L + (1.25 * AP + 0.75 * AN) / 200
- *   BTL = (40 * Le)^3.257 / (2 * Tsec^2.137)
+ *   Le  = L + (9 * AP + 1 * AN) / 1000
+ *   BTL = 103.34 * (Tref / Tsec)^4.25 * (Le / 10)^0.39
  *
- * The exponent 2.137 applies to the time alone. The same formula lives in the
- * backend (BtlScoreCalculator) and both are held to the same golden set taken
- * from an official race; neither may be changed without the owner saying so.
+ * Decided by the owner on 26.11.2026 (PDL P4, „Nova formula bodova, na produkciju”):
+ * „Uradi 0.39 i 4.25 i podigni sve i na produkciju”. `Tref` is the reference time for
+ * the length `Le` (`referenceSeconds`). The same formula lives in the backend
+ * (BtlScoreCalculator) and both are held to the same golden set, worked out
+ * independently in Python; neither may be changed without the owner saying so.
  *
  * This copy exists because the calculator is a toy that has to answer while you
  * type. Nothing is scored here: a result gets its points from the backend.
  */
 
-/** Length with climb folded in. Ascent counts for more than descent. */
+/** Length with climb folded in. Ascent counts for more than descent, and descent still adds. */
 export function effectiveLengthKm(lengthKm: number, ascentM: number, descentM: number): number {
-  return lengthKm + (1.25 * ascentM + 0.75 * descentM) / 200
+  return lengthKm + (9 * ascentM + 1 * descentM) / 1000
+}
+
+/** A stretch of the reference table: from a length and its reference time to the next. */
+type Stretch = readonly [fromKm: number, fromSeconds: number, toKm: number, toSeconds: number]
+
+/** The last stretch of the table, 50 km 9613 s to 100 km 21935 s, which answers for every
+ *  length above 50 km, past 100 km included: beyond the table its last stretch carries on. */
+const FROM_FIFTY: Stretch = [50, 9613, 100, 21935]
+
+/** The stretches of the reference table up to 50 km (5 km 755 s, 10 km 1571 s, 21.0975 km
+ *  3450 s, 42.195 km 7235 s, 50 km 9613 s); above it, `FROM_FIFTY`. */
+const UP_TO_FIFTY: readonly Stretch[] = [
+  [5, 755, 10, 1571],
+  [10, 1571, 21.0975, 3450],
+  [21.0975, 3450, 42.195, 7235],
+  [42.195, 7235, 50, 9613],
+]
+
+/**
+ * The reference time for an effective length, in seconds: `755 * (Le/5)^1.06` at or below
+ * the first point of the table, log-log between the two points around it, and the line
+ * through the last two points beyond the last one. The same as
+ * `BtlScoreCalculator.referenceSeconds`.
+ */
+function referenceSeconds(le: number): number {
+  if (le <= 5) {
+    return 755 * (le / 5) ** 1.06
+  }
+  const [a, ta, b, tb] = UP_TO_FIFTY.find(([, , toKm]) => le <= toKm) ?? FROM_FIFTY
+
+  return Math.exp(Math.log(ta) + (Math.log(le / a) / Math.log(b / a)) * Math.log(tb / ta))
 }
 
 /**
@@ -43,7 +76,9 @@ export function pointsOf(
   descentM: number,
   seconds: number,
 ): number {
-  return (40 * effectiveLengthKm(lengthKm, ascentM, descentM)) ** 3.257 / (2 * seconds ** 2.137)
+  const le = effectiveLengthKm(lengthKm, ascentM, descentM)
+
+  return 103.34 * (referenceSeconds(le) / seconds) ** 4.25 * (le / 10) ** 0.39
 }
 
 /**

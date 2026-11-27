@@ -30,7 +30,7 @@ import { Calculator } from './Calculator'
  * (`calculatorWhole.test.tsx`); what is written about the comma above holds for the length alone.
  *
  * <p>**One race, chosen so that every box moves the answer at two decimals** when a fraction is
- * added to it. Measured before it was written down: with a race of 62,07 km, 7:28:31, a half
+ * added to it. Measured before it was written down, under the formula of 2017: with a race of 62,07 km, 7:28:31, a half
  * second in the seconds box leaves „79,03" exactly as it was, and a case built on it cannot tell a
  * reader that cuts at the comma from one that does not. This one is 10 km, 2.000 m up and down, 50
  * minutes, and every fraction below changes the figure it is written next to.

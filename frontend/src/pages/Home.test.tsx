@@ -189,7 +189,7 @@ describe('Home', () => {
     expect(within(calc).getByText('BTL poeni:')).toBeVisible()
     expect(within(calc).getByText('Unesi dužinu i vreme.')).toBeVisible()
 
-    // The golden race: 62.07 km, 3456 m up, 3133 m down, 7:28:31 gives 79.03.
+    // The golden race: 62.07 km, 3456 m up, 3133 m down, 7:28:31 gives 86.67 (the formula of 26.11.2026).
     await user.type(within(calc).getByLabelText('Dužina (km)'), '62.07')
     await user.type(within(calc).getByLabelText('Uspon (m)'), '3456')
     await user.type(within(calc).getByLabelText('Spust (m)'), '3133')
@@ -198,7 +198,7 @@ describe('Home', () => {
     await user.type(within(calc).getByLabelText('Sekunde'), '31')
 
     expect(within(calc).getByText('BTL poeni:')).toBeVisible()
-    expect(within(calc).getByText('79,03')).toBeVisible()
+    expect(within(calc).getByText('86,67')).toBeVisible()
     expect(within(calc).queryByText('Unesi dužinu i vreme.')).not.toBeInTheDocument()
   })
 
@@ -236,7 +236,7 @@ describe('Home', () => {
     await user.type(within(calc).getByLabelText('Spust (m)'), '3133')
     await user.type(within(calc).getByLabelText('Sati'), '7')
     await user.type(within(calc).getByLabelText('Minuti'), '28')
-    expect(within(calc).getByText('79,03')).toBeVisible()
+    expect(within(calc).getByText('86,67')).toBeVisible()
 
     await user.click(reset)
 
@@ -340,7 +340,7 @@ describe('Home', () => {
     await user.type(within(calc).getByLabelText('Minuti'), '28')
     await user.type(within(calc).getByLabelText('Sekunde'), '31')
 
-    expect(within(calc).getByText('79,03')).toBeVisible()
+    expect(within(calc).getByText('86,67')).toBeVisible()
     expect(within(calc).queryByText('Unesi dužinu i vreme.')).not.toBeInTheDocument()
   })
 

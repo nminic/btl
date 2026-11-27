@@ -1801,9 +1801,9 @@ describe('TopBoards', () => {
     /* The number under the points, which the owner asked for on 04.08.2026 and which nothing drew
        until now: their points together, and under them the races they share. The second pair ran
        **more** races for **fewer** points, so neither figure can stand in for the other. */
-    expect(within(at(rows, 0)).getByText('510,34')).toBeVisible()
+    expect(within(at(rows, 0)).getByText('373,88')).toBeVisible()
     expect(within(at(rows, 0)).getByText('13 zajedničkih trka')).toBeVisible()
-    expect(within(at(rows, 1)).getByText('480,31')).toBeVisible()
+    expect(within(at(rows, 1)).getByText('341,44')).toBeVisible()
     expect(within(at(rows, 1)).getByText('21 zajednička trka')).toBeVisible()
 
     cleanup()
@@ -3099,10 +3099,12 @@ describe('the row of whoever is signed in', () => {
   })
 
   it('is marked on every board that is a table and has him, and on no chart', async () => {
-    /* 2015 rather than 2019, because in 2015 he stands on all three boards that
+    /* 2021 rather than 2019, because in 2021 he stands on all three boards that
        are tables. A season where he is on two of them cannot say anything about
-       the third, and the third is where the mark would be missing. */
-    renderAt(`/sr/top-liste?sezona=${String(inLeague(2015))}`, 'competitor', ME)
+       the third, and the third is where the mark would be missing. (It was 2015
+       until the formula of 26.11.2026 moved the points of the mock: in 2015 none
+       of his runs is among the ten best any more.) */
+    renderAt(`/sr/top-liste?sezona=${String(inLeague(2021))}`, 'competitor', ME)
 
     await screen.findByRole('table', { name: 'Najviše kilometara' })
 

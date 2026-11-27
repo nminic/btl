@@ -972,7 +972,16 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   of the fifteen ducats, written by hand. Written as V115 because V114 is the privacy policy's
 			   (PR 837). Rules rewritten over rows that stand, so it is measured over them
 			   (TextTranslationOfEveryKindCarriedOverTest). Pinned last, once the file was final (CLAUDE.md, section 9). */
-			new Applied("115", "V115__every_text_a_visitor_reads_is_translated.sql", -1812897269));
+			new Applied("115", "V115__every_text_a_visitor_reads_is_translated.sql", -1812897269),
+
+			/* V116. Every run already standing is counted again by the formula of 26.11.2026 (owner, PDL P4, „Nova
+			   formula bodova, na produkciju”: „Uradi 0.39 i 4.25 i podigni sve i na produkciju”). The first migration
+			   in Java, and on purpose: the points are asked of the one home of the formula, BtlScoreCalculator through
+			   PointsOfARun, never worked out by a statement of SQL. Flyway keeps no checksum for a Java migration, so
+			   the row pins none, and its script is the class Flyway was handed. Data only, measured over rows that
+			   stand (EveryRunCountedByTheNewFormulaCarriedOverTest). 116 and no other: main stood at V115 when it
+			   was written. */
+			new Applied("116", "com.btl.portal.web.V116__Every_run_is_counted_by_the_formula_of_26_11_2026", null));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {

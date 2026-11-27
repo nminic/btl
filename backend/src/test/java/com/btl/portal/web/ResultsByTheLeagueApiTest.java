@@ -2507,19 +2507,19 @@ class ResultsByTheLeagueApiTest {
 	}
 
 	/* ======================== figures nobody ran (PDL P4, owner, 10.10.2026, „Nikad broj bodova nece biti
-	 * veci nego trocifren uz jos dve decimale"): two lengths over 8800 seconds, worth exactly 999,99 and
+	 * veci nego trocifren uz jos dve decimale"): two lengths over 15500 seconds, worth exactly 999,99 and
 	 * exactly 1000,00 as the column keeps them, so the boundary is asked from both sides. */
 
-	private static final String THE_MOST = "99.8923";
+	private static final String THE_MOST = "98.1079";
 
-	private static final String ONE_HUNDREDTH_TOO_MANY = "99.8926";
+	private static final String ONE_HUNDREDTH_TOO_MANY = "98.1082";
 
-	private static final int THE_TIME_AT_THE_EDGE = 8800;
+	private static final int THE_TIME_AT_THE_EDGE = 15500;
 
 	@Test
 	void aRowWorthMoreThanAnyRunIsRefusedAndNothingOfTheSaveIsWritten() throws Exception {
-		assertThat(BtlScoreCalculator.calculate(99.8923, 0, 0, THE_TIME_AT_THE_EDGE)).isEqualByComparingTo("999.99");
-		assertThat(BtlScoreCalculator.calculate(99.8926, 0, 0, THE_TIME_AT_THE_EDGE))
+		assertThat(BtlScoreCalculator.calculate(98.1079, 0, 0, THE_TIME_AT_THE_EDGE)).isEqualByComparingTo("999.99");
+		assertThat(BtlScoreCalculator.calculate(98.1082, 0, 0, THE_TIME_AT_THE_EDGE))
 				.isEqualByComparingTo("1000.00");
 
 		MockHttpServletResponse refused = entered(RESULTS_MODERATOR, theHill, rows(

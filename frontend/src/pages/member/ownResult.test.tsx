@@ -189,7 +189,7 @@ describe('a run of one’s own that is still waiting', () => {
        nothing here noticed the difference (review, 05.09.2026).
 
        And the number is what the figures the route answers work out to: 21,1 km with 540 up and
-       540 down in 1:52:10 is 23,55 by the formula in the rulebook. Whether a number belongs on
+       540 down in 1:52:10 is 24,87 by the formula of 26.11.2026 (23,55 by the one before it). Whether a number belongs on
        this row at all before a moderator decides is a question still before the owner (PENDING,
        29.09.2026), so the row keeps it as it was. */
     answering(() => [aRun(41, { state: 'waiting', reason: null, raceName: 'Probna trka' })])
@@ -197,7 +197,7 @@ describe('a run of one’s own that is still waiting', () => {
 
     const row = within(must((await sentRows())[0], 'the run that waits'))
 
-    expect(row.getByText(/23,55 BTL poena$/)).toBeVisible()
+    expect(row.getByText(/24,87 BTL poena$/)).toBeVisible()
     expect(row.queryByText(/bodova$/)).toBeNull()
   }, SLOW)
 

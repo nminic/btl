@@ -77,6 +77,12 @@ describe('the rulebook', () => {
     expect(printed).not.toContain('3.257')
     expect(printed).not.toContain('2.137')
     expect(printed).not.toContain('1.25')
+
+    /* And the constants of the formula of 26.11.2026 (PDL P4, „Nova formula bodova, na
+       produkciju”), in both ways of writing a decimal, for the same reason. */
+    for (const constant of ['103.34', '103,34', '4.25', '4,25', '0.39', '0,39']) {
+      expect(printed).not.toContain(constant)
+    }
   })
 
   /* The example under the article used to give the effective length of a race
@@ -100,7 +106,7 @@ describe('the rulebook', () => {
 
     const printed = document.body.textContent ?? ''
 
-    for (const number of ['95,41875', '79,03', '46,78', '38,94']) {
+    for (const number of ['95,41875', '79,03', '46,78', '38,94', '96,307', '86,67', '30,55', '21,21']) {
       expect(printed, `the rulebook prints ${number}`).not.toContain(number)
     }
   })
