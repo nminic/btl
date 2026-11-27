@@ -79,6 +79,12 @@ class TranslatedTextTest {
 		assertThat(TranslatedText.addressesIn("See https://primer.rs/Prijava?Ko=1#Gore or www.primer.rs/staza, write to"
 				+ " info@primer.rs.")).isNotEqualTo(TranslatedText.addressesIn(original));
 		assertThat(TranslatedText.addressesIn("[x](/Kalendar)")).containsExactly("/Kalendar");
+		/* A target of the portal that carries an @ is not a mailbox, and keeps its case; a site with no path at all
+		   ends where the text ends, and one whose path starts with a query or a fragment ends at that. */
+		assertThat(TranslatedText.addressesIn("[x](/Ko@Primer/Staza)")).containsExactly("/Ko@Primer/Staza");
+		assertThat(TranslatedText.addressesIn("Vidi HTTPS://Primer.RS")).containsExactly("https://primer.rs");
+		assertThat(TranslatedText.addressesIn("Vidi www.Primer.RS?Ko=1 i www.Drugi.RS#Gore"))
+				.containsExactly("www.drugi.rs#Gore", "www.primer.rs?Ko=1");
 	}
 
 	/** A reader whose language the original is in is shown the original, even where a translation exists. */
