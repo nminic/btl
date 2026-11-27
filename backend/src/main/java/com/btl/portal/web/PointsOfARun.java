@@ -1,5 +1,6 @@
 package com.btl.portal.web;
 
+import com.btl.portal.domain.event.WhatARaceCarries;
 import com.btl.portal.domain.event.WhatARaceCarries.Figures;
 import com.btl.portal.domain.scoring.BtlScoreCalculator;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -22,6 +23,12 @@ import java.math.BigDecimal;
  * <p><b>Every write of {@code result.points} comes through here</b>: the league's entry and its change
  * ({@link ResultsByTheLeagueApi}), an approval and an approved correction ({@link VerificationWriteApi}),
  * and a race counted again ({@link RaceWriteApi}). The formula and its golden set are not touched.
+ *
+ * <p><b>THE KIND OF THE RACE IS ASKED WITH THE FIGURES, because from 27.11.2026 (PDL P4, „Izabrana
+ * varijanta V3c”) a race to a limit is counted by its own formula</b> and the calculator is told only four
+ * figures. Every caller therefore hands the kind with them, and none can leave it out and be counted as a
+ * race of a length by accident: the signature does not compile without it. Which kind runs to a clock is
+ * {@link WhatARaceCarries#fixesTheTime}'s to say.
  */
 final class PointsOfARun {
 
@@ -50,10 +57,11 @@ final class PointsOfARun {
 	 * asked of the same answer every write keeps ({@link #of}), so a run at an unscored race, which keeps
 	 * nought, is never refused for it.
 	 *
+	 * @param raceKind one of {@link WhatARaceCarries#KINDS}: which formula the figures are counted by
 	 * @param figures the four figures as they are counted, never as they were typed
 	 */
-	static boolean impossible(boolean scored, Figures figures) {
-		return beyondAnyRun(of(scored, figures));
+	static boolean impossible(boolean scored, String raceKind, Figures figures) {
+		return beyondAnyRun(of(scored, raceKind, figures));
 	}
 
 	/** Whether these points are more than a run can be worth ({@link #THE_MOST_A_RUN_IS_WORTH}). */
@@ -63,10 +71,12 @@ final class PointsOfARun {
 
 	/**
 	 * @param race    {@code race.id} of the race the run is counted at, as it stands in this transaction
+	 * @param raceKind the kind of that race AS IT IS COUNTED NOW, handed by the caller that holds the race
+	 *                 (a correction of the race counts its runs before the row is read back)
 	 * @param figures the four figures as they are counted, never as they were typed
 	 */
-	static BigDecimal at(JdbcClient db, long race, Figures figures) {
-		return of(scored(db, race), figures);
+	static BigDecimal at(JdbcClient db, long race, String raceKind, Figures figures) {
+		return of(scored(db, race), raceKind, figures);
 	}
 
 	/**
@@ -75,10 +85,18 @@ final class PointsOfARun {
 	 * event is the member's choice ({@code result_submission.event_kind}, V101) and no row of
 	 * {@code scored_race} can answer for it.
 	 */
-	static BigDecimal of(boolean scored, Figures figures) {
-		return scored ? BtlScoreCalculator.calculate(figures.distanceKm().doubleValue(), figures.ascentM(),
-				figures.descentM(), figures.seconds()) : AT_AN_UNSCORED_RACE;
+	static BigDecimal of(boolean scored, String raceKind, Figures figures) {
+		if (!scored) {
+			return AT_AN_UNSCORED_RACE;
+		}
+
+		return WhatARaceCarries.fixesTheTime(raceKind)
+				? BtlScoreCalculator.calculateAtALimit(figures.distanceKm().doubleValue(), figures.ascentM(),
+						figures.descentM(), figures.seconds())
+				: BtlScoreCalculator.calculate(figures.distanceKm().doubleValue(), figures.ascentM(),
+						figures.descentM(), figures.seconds());
 	}
+
 
 	/** Whether the race is a scored one, asked of {@code scored_race} (V99) and of nothing else. */
 	static boolean scored(JdbcClient db, long race) {

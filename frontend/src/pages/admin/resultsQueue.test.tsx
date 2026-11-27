@@ -358,7 +358,7 @@ describe('the queue of results as the server answers it', () => {
       expect(cells.slice(4, 8)).toEqual(['10,00', '50', '40', '55:00'])
       /* And no points anywhere on the row, which a cell of its own carried until question 22:
          10 km, 50 m up, 40 m down in 55:00 is worth this, and the row does not say it. */
-      expect(row.queryByText(formatPoints(pointsOf(10, 50, 40, 3300), 'sr'))).toBeNull()
+      expect(row.queryByText(formatPoints(pointsOf(10, 50, 40, 3300, 'length'), 'sr'))).toBeNull()
     } finally {
       server.stop()
     }

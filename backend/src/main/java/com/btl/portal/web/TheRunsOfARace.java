@@ -86,7 +86,7 @@ final class TheRunsOfARace {
 			}
 
 			/* AND NOTHING AT AN UNSCORED RACE (PointsOfARun, PDL 14.11.2026). */
-			BigDecimal points = PointsOfARun.at(db, id, counted);
+			BigDecimal points = PointsOfARun.at(db, id, race.kind(), counted);
 
 			db.sql("update result set distance_km = ?, ascent_m = ?, descent_m = ?, seconds = ?, points = ? where id = ?")
 					.params(counted.distanceKm(), counted.ascentM(), counted.descentM(), counted.seconds(), points, run.id())
@@ -111,7 +111,7 @@ final class TheRunsOfARace {
 	static boolean wouldMakeOneImpossible(JdbcClient db, long id, ARace race, List<Counted> runs) {
 		boolean scored = PointsOfARun.scored(db, id);
 
-		return runs.stream().anyMatch(run -> PointsOfARun.impossible(scored, countedAt(race, run)));
+		return runs.stream().anyMatch(run -> PointsOfARun.impossible(scored, race.kind(), countedAt(race, run)));
 	}
 
 	/**
@@ -119,7 +119,10 @@ final class TheRunsOfARace {
 	 * compared as a number: it is one number whatever scale it was written at.
 	 *
 	 * <p><b>THE POINTS ARE NOT ASKED, and that is a measurement and not a shortcut.</b> They are a
-	 * function of the four figures and of nothing else, and the only statements that write a figure
+	 * function of the four figures and of the kind of the race ({@link PointsOfARun#of}: a race to a
+	 * limit is counted by a formula of its own from 27.11.2026), and a race that carries a counted run
+	 * cannot change its kind ({@code RaceWriteApi}, the refusal beside {@code carriesACountedRun}), so
+	 * they are a function of the four figures and of nothing else that moves. The only statements that write a figure
 	 * of {@code result} are three: the approval ({@code VerificationWriteApi}, an insert and an update
 	 * of the row), the league's own entry and change from the event page ({@code
 	 * ResultsByTheLeagueApi}, an insert and an update) and the recount ({@link #countAgain}). All three

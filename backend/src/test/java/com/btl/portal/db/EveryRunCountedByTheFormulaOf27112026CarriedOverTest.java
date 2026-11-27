@@ -1,6 +1,6 @@
 package com.btl.portal.db;
 
-import com.btl.portal.web.V116__Every_run_is_counted_by_the_formula_of_26_11_2026;
+import com.btl.portal.web.V117__Every_run_is_counted_by_the_formula_of_27_11_2026;
 import org.flywaydb.core.api.configuration.Configuration;
 import org.flywaydb.core.api.migration.Context;
 import org.junit.jupiter.api.Test;
@@ -17,28 +17,30 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * V116 RUN OVER A DATABASE THAT ALREADY HOLDS RUNS COUNTED BY THE FORMULA OF 2017: EVERY ONE OF THEM IS
- * COUNTED AGAIN BY THE FORMULA OF 26.11.2026, AND NOTHING ELSE MOVES.
+ * V117 RUN OVER A DATABASE THAT ALREADY HOLDS RUNS COUNTED BY THE FORMULA OF 26.11.2026: EVERY ONE OF THEM
+ * IS COUNTED AGAIN BY THE FORMULA OF 27.11.2026 (V3c), AND NOTHING ELSE MOVES.
  *
- * <p>Owner, PDL P4, 26.11.2026, „Nova formula bodova, na produkciju”: „Uradi 0.39 i 4.25 i podigni sve i
- * na produkciju”. Every case of this suite begins at an empty {@code result}, where V116 has nothing to
+ * <p>Owner, PDL P4, 27.11.2026, „Izabrana varijanta V3c”, chosen among the outcomes offered, and then
+ * „Napisi i podigni”. Every case of this suite begins at an empty {@code result}, where V117 has nothing to
  * count, so the data half of it is measured only here, over rows written as production holds them: the
  * shape is {@code UnscoredKindCarriedOverTest}'s, with the migration run over the fixture inside the
- * case's own transaction.
+ * case's own transaction. (It was V116's, one formula earlier; V116 is not run here, it stands as it ran.)
  *
- * <p><b>The points expected are written out, worked independently in Python</b> (the same working as
- * {@code BtlScoreCalculatorTest}), and not asked of the calculator, so a migration that counted by any
- * other formula fails here. Every row's points in the fixture differ from what it is due, so a row the
- * migration skipped fails too. The axes: a free race, a race of a fixed length, a timed race (whose time
- * is the limit of the race, PDL P4), a race before 2027, a race of a season that has frozen, and a run
- * at an unscored event, which keeps nought.
+ * <p><b>The points expected are written out, worked independently in Python</b> (the owner's reference
+ * calculation, {@code dorada-formule-glatka2.py}, the same working as {@code BtlScoreCalculatorTest}), and
+ * not asked of the calculator, so a migration that counted by any other formula fails here. Every row's
+ * points in the fixture differ from what it is due, so a row the migration skipped fails too. The axes: a
+ * free race, a race of a fixed length, TWO timed races (whose time is the limit of the race, PDL P4, and
+ * which are counted by the formula of a race to a limit, so a migration that read the kind of no race
+ * would count them as the others), a race before 2027, a race of a season that has frozen, and a run at an
+ * unscored event, which keeps nought.
  */
-class EveryRunCountedByTheNewFormulaCarriedOverTest extends DatabaseTest {
+class EveryRunCountedByTheFormulaOf27112026CarriedOverTest extends DatabaseTest {
 
 	private static final String A_TOWN = "(select id from place where rank = 1)";
 
 	@Autowired
-	V116__Every_run_is_counted_by_the_formula_of_26_11_2026 migration;
+	V117__Every_run_is_counted_by_the_formula_of_27_11_2026 migration;
 
 	@Autowired
 	DataSource dataSource;
@@ -97,12 +99,13 @@ class EveryRunCountedByTheNewFormulaCarriedOverTest extends DatabaseTest {
 	@Test
 	void everyRunIsCountedAgainAndOnlyItsPointsMove() throws Exception {
 		aMember();
-		aRun("free", "race", "2027-05-02", "free", "0", 0, "21.1", 250, 250, 6300, "19.12");
-		aRun("marathon", "race", "2027-06-06", "length", "42.195", 0, "42.195", 300, 280, 12600, "75.40");
-		aRun("twenty-four-hours", "race", "2027-07-04", "time", "0", 86400, "60", 2000, 500, 86400, "4.17");
-		aRun("before-2027", "race", "2019-04-14", "free", "0", 0, "10", 0, 0, 3000, "7.13");
-		aRun("frozen-season", "race", "2027-04-12", "free", "0", 0, "10", 0, 0, 3000, "7.13");
-		aRun("unscored", "unscored", "2027-08-01", "free", "0", 0, "10", 0, 0, 3000, "0.00");
+		aRun("free", "race", "2027-05-02", "free", "0", 0, "21.1", 250, 250, 6300, "21.40");
+		aRun("marathon", "race", "2027-06-06", "length", "42.195", 0, "42.195", 300, 280, 12600, "31.00");
+		aRun("twenty-four-hours", "race", "2027-07-04", "time", "0", 86400, "60", 2000, 500, 86400, "0.20");
+		aRun("twelve-hours", "race", "2027-07-18", "time", "0", 43200, "80", 1500, 1500, 43200, "14.26");
+		aRun("before-2027", "race", "2019-04-14", "free", "0", 0, "10", 0, 0, 3000, "6.61");
+		aRun("frozen-season", "race", "2027-04-12", "free", "0", 0, "10", 0, 0, 3000, "6.61");
+		aRun("unscored", "unscored", "2027-08-01", "free", "0", 0, "10", 0, 0, 3000, "7.77");
 
 		db.sql("insert into season_frozen (season, frozen_at) values (2027, timestamptz '2027-11-01 00:00:00+00')")
 				.update();
@@ -119,13 +122,14 @@ class EveryRunCountedByTheNewFormulaCarriedOverTest extends DatabaseTest {
 
 		Map<String, BigDecimal> due = new LinkedHashMap<>();
 		due.put("free", new BigDecimal("18.59"));
-		due.put("marathon", new BigDecimal("28.62"));
-		due.put("twenty-four-hours", new BigDecimal("0.20"));
-		due.put("before-2027", new BigDecimal("6.61"));
-		due.put("frozen-season", new BigDecimal("6.61"));
+		due.put("marathon", new BigDecimal("29.07"));
+		due.put("twenty-four-hours", new BigDecimal("2.36"));
+		due.put("twelve-hours", new BigDecimal("22.86"));
+		due.put("before-2027", new BigDecimal("8.86"));
+		due.put("frozen-season", new BigDecimal("8.86"));
 		due.put("unscored", new BigDecimal("0.00"));
 
-		assertThat(pointsBySlug()).as("each run counted by the formula of 26.11.2026, worked in Python")
+		assertThat(pointsBySlug()).as("each run counted by the formula of 27.11.2026, worked in Python")
 				.containsExactlyEntriesOf(due);
 		assertThat(rowsOf(figures)).as("the figures of a run are the run's, and only its points move")
 				.isEqualTo(figuresBefore);
@@ -136,9 +140,9 @@ class EveryRunCountedByTheNewFormulaCarriedOverTest extends DatabaseTest {
 	}
 
 	@Test
-	void theMigrationIsTheOneFlywayRanAsV116() {
-		assertThat(migration.getVersion().getVersion()).isEqualTo("116");
-		assertThat(db.sql("select count(*) from " + flywayTable() + " where version = '116' and success")
+	void theMigrationIsTheOneFlywayRanAsV117() {
+		assertThat(migration.getVersion().getVersion()).isEqualTo("117");
+		assertThat(db.sql("select count(*) from " + flywayTable() + " where version = '117' and success")
 				.query(Long.class).single()).as("Flyway was handed the bean and ran it").isEqualTo(1L);
 	}
 }

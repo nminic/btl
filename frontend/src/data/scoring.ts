@@ -1,56 +1,83 @@
-/* The BTL formula, for the calculator on the front page.
+/* The BTL formula, for the calculator on the front page and for what a member is told
+ * before the server has counted a run.
  *
- *   Le  = L + (9 * AP + 1 * AN) / 1000
- *   BTL = 103.34 * (Tref / Tsec)^4.25 * (Le / 10)^0.39
+ *   a race of a length:  BTL = 55.75 * (Tref(Le) / Tsec)^2.75 * (Le / 10)^0.39
+ *   a race to a limit:   BTL = 58.71 * (Le / Lref(Tsec))^2.86 * (Le / 10)^0.39
+ *   Le  = L + (5 * AP + 2 * AN) / 1000
  *
- * Decided by the owner on 26.11.2026 (PDL P4, „Nova formula bodova, na produkciju”):
- * „Uradi 0.39 i 4.25 i podigni sve i na produkciju”. `Tref` is the reference time for
- * the length `Le` (`referenceSeconds`). The same formula lives in the backend
- * (BtlScoreCalculator) and both are held to the same golden set, worked out
- * independently in Python; neither may be changed without the owner saying so.
+ * Chosen by the owner on 27.11.2026 (PDL P4, „Izabrana varijanta V3c”, and then „Napisi i
+ * podigni”). `Tref` is one smooth curve of the reference time for the length `Le`
+ * (`referenceSeconds`), `Lref` the same curve read the other way (`referenceKm`). The same
+ * formula lives in the backend (BtlScoreCalculator) and both are held to the same golden
+ * set, worked out independently in Python; neither may be changed without the owner saying so.
  *
  * This copy exists because the calculator is a toy that has to answer while you
  * type. Nothing is scored here: a result gets its points from the backend.
  */
 
+import type { RaceKind } from './types'
+
 /** Length with climb folded in. Ascent counts for more than descent, and descent still adds. */
 export function effectiveLengthKm(lengthKm: number, ascentM: number, descentM: number): number {
-  return lengthKm + (9 * ascentM + 1 * descentM) / 1000
+  return lengthKm + (5 * ascentM + 2 * descentM) / 1000
 }
 
-/** A stretch of the reference table: from a length and its reference time to the next. */
-type Stretch = readonly [fromKm: number, fromSeconds: number, toKm: number, toSeconds: number]
+/** The curve above 5 km: `ln Tref = A x^2 + B x + C`, `x = ln(Le in km)`, a least-squares curve
+ *  through the six records of the league, and it holds above 100 km too. */
+const A = 0.04766
+const B = 0.82303
+const C = 5.18994
 
-/** The last stretch of the table, 50 km 9613 s to 100 km 21935 s, which answers for every
- *  length above 50 km, past 100 km included: beyond the table its last stretch carries on. */
-const FROM_FIFTY: Stretch = [50, 9613, 100, 21935]
-
-/** The stretches of the reference table up to 50 km (5 km 755 s, 10 km 1571 s, 21.0975 km
- *  3450 s, 42.195 km 7235 s, 50 km 9613 s); above it, `FROM_FIFTY`. */
-const UP_TO_FIFTY: readonly Stretch[] = [
-  [5, 755, 10, 1571],
-  [10, 1571, 21.0975, 3450],
-  [21.0975, 3450, 42.195, 7235],
-  [42.195, 7235, 50, 9613],
-]
+/** Where the curve is cut over, and its value and its slope there. Below 5 km it keeps the slope
+ *  of the curve AT 5 km, worked out and not the 0.976 the decision prints rounded, so the two
+ *  pieces meet without a corner, and bends away from it by `BELOW_FIVE_BEND`. */
+const X_AT_FIVE = Math.log(5)
+const LN_TREF_AT_FIVE = A * X_AT_FIVE * X_AT_FIVE + B * X_AT_FIVE + C
+const SLOPE_AT_FIVE = 2 * A * X_AT_FIVE + B
+const BELOW_FIVE_BEND = -0.14
 
 /**
- * The reference time for an effective length, in seconds: `755 * (Le/5)^1.06` at or below
- * the first point of the table, log-log between the two points around it, and the line
- * through the last two points beyond the last one. The same as
- * `BtlScoreCalculator.referenceSeconds`.
+ * The reference time for an effective length, in seconds: the quadratic curve in the logarithm
+ * at or above 5 km, and below it the curve that leaves 5 km along the same tangent and bends
+ * away. The same as `BtlScoreCalculator.referenceSeconds`.
  */
 function referenceSeconds(le: number): number {
-  if (le <= 5) {
-    return 755 * (le / 5) ** 1.06
-  }
-  const [a, ta, b, tb] = UP_TO_FIFTY.find(([, , toKm]) => le <= toKm) ?? FROM_FIFTY
+  const x = Math.log(le)
 
-  return Math.exp(Math.log(ta) + (Math.log(le / a) / Math.log(b / a)) * Math.log(tb / ta))
+  if (x >= X_AT_FIVE) {
+    return Math.exp(A * x * x + B * x + C)
+  }
+
+  const below = x - X_AT_FIVE
+
+  return Math.exp(LN_TREF_AT_FIVE + SLOPE_AT_FIVE * below + BELOW_FIVE_BEND * below * below)
 }
 
 /**
- * The points a run is worth, for figures that are a race by construction.
+ * The reference length for a time, in kilometres: the length whose `referenceSeconds` is the
+ * time, by bisection on the logarithm of the length, as `BtlScoreCalculator.referenceKm`.
+ */
+function referenceKm(seconds: number): number {
+  let low = 1e-4
+  let high = 1e5
+
+  for (let round = 0; round < 200; round++) {
+    const middle = Math.sqrt(low * high)
+
+    if (referenceSeconds(middle) < seconds) {
+      low = middle
+    } else {
+      high = middle
+    }
+  }
+
+  return Math.sqrt(low * high)
+}
+
+/**
+ * The points a run is worth, for figures that are a race by construction, by the formula of the
+ * kind of race it was run at (`kind`: a timed race is counted against its limit, which the
+ * caller hands as the seconds).
  *
  * <p><b>Every caller hands it figures nothing can make into anything else.</b> What the
  * server answers about a run is a race by the schema: `result_submission_distance_positive`
@@ -75,10 +102,19 @@ export function pointsOf(
   ascentM: number,
   descentM: number,
   seconds: number,
+  kind: RaceKind,
 ): number {
   const le = effectiveLengthKm(lengthKm, ascentM, descentM)
 
-  return 103.34 * (referenceSeconds(le) / seconds) ** 4.25 * (le / 10) ** 0.39
+  /* A race to a limit has its own formula, and the kind is asked of the caller that holds the
+     race, so none can leave it out and be counted as a race of a length by accident. Any kind
+     but a timed one is counted by the length's, a free race included, as the backend does
+     (`PointsOfARun.of`). */
+  if (kind === 'time') {
+    return 58.71 * (le / referenceKm(seconds)) ** 2.86 * (le / 10) ** 0.39
+  }
+
+  return 55.75 * (referenceSeconds(le) / seconds) ** 2.75 * (le / 10) ** 0.39
 }
 
 /**
@@ -102,6 +138,7 @@ export function btlPoints(
   }
 
   /* The formula itself is written once, in `pointsOf`, so the golden set this function is
-     held to (`scoring.test.ts`) holds the one every screen draws. */
-  return pointsOf(lengthKm, ascentM, descentM, seconds)
+     held to (`scoring.test.ts`) holds the one every screen draws. The calculator asks about a
+     race of a length: it has no box for a limit. */
+  return pointsOf(lengthKm, ascentM, descentM, seconds, 'length')
 }

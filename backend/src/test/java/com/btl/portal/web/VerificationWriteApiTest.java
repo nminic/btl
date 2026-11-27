@@ -2870,7 +2870,10 @@ class VerificationWriteApiTest {
 				.as("the run is counted at the limit and at the moderator's own three")
 				.isEqualTo(fourFigures("61.25", 410, 395, 86400));
 		assertThat(theResultOf(ANA).points()).isEqualByComparingTo(
-				BtlScoreCalculator.calculate(61.25, 410, 395, 86400));
+				BtlScoreCalculator.calculateAtALimit(61.25, 410, 395, 86400));
+		assertThat(theResultOf(ANA).points())
+				.as("by the formula of a race to a limit, worked in Python; as a race of a length it is 0.57")
+				.isEqualByComparingTo("1.69");
 	}
 
 	/** A NEW FREE RACE FIXES NOTHING, and the run is counted at all four of the member's own. */
@@ -4687,7 +4690,7 @@ class VerificationWriteApiTest {
 	 */
 	@Test
 	void onARaceToALimitHeSetsTheDistanceAndTheClimbAndTheTimeStaysTheRaces() throws Exception {
-		theFormulaTellsTheTwoOrdersApart("53.1", 655, 620, SIX_HOURS);
+		theFormulaAtALimitTellsTheTwoOrdersApart("53.1", 655, 620, SIX_HOURS);
 
 		assertThat(decideWith(THE_SUPERADMIN, mirasRun, "{\"approved\":true,\"amended\":"
 				+ "{\"distanceKm\":53.1,\"ascentM\":655,\"descentM\":620,\"seconds\":18000}}")
@@ -4699,8 +4702,11 @@ class VerificationWriteApiTest {
 				.as("his distance, climb or drop was not counted, or his time was counted in place"
 						+ " of the race's limit")
 				.isEqualTo(fourFigures("53.1", 655, 620, SIX_HOURS));
-		assertThat(counted.points()).isEqualByComparingTo(BtlScoreCalculator.calculate(
+		assertThat(counted.points()).isEqualByComparingTo(BtlScoreCalculator.calculateAtALimit(
 				new BigDecimal("53.1").doubleValue(), 655, 620, SIX_HOURS));
+		assertThat(counted.points())
+				.as("by the formula of a race to a limit, worked in Python (24.44 with the two swapped)")
+				.isEqualByComparingTo("24.59");
 	}
 
 	/**
@@ -5876,6 +5882,18 @@ class VerificationWriteApiTest {
 						seconds));
 	}
 
+	/** The same floor under a race to a limit, which is counted by a formula of its own. */
+	private static void theFormulaAtALimitTellsTheTwoOrdersApart(String km, int climb, int drop,
+			int seconds) {
+		double distance = new BigDecimal(km).doubleValue();
+
+		assertThat(BtlScoreCalculator.calculateAtALimit(distance, climb, drop, seconds))
+				.as("the formula gives the run the same points either way round, so this"
+						+ " measures nothing")
+				.isNotEqualByComparingTo(BtlScoreCalculator.calculateAtALimit(distance, drop, climb,
+						seconds));
+	}
+
 	/** What the portal put in his inbox, and it throws where there is nothing or more than
 	 *  one - so a case about the message a member got cannot pass on somebody else's. */
 	private String bodyOfTheMessageTo(String memberNumber) {
@@ -6155,15 +6173,15 @@ class VerificationWriteApiTest {
 
 	private static final String THE_RUN_IS_IMPOSSIBLE = "Nemoguć rezultat.";
 
-	private static final String THE_MOST = "{\"distanceKm\":98.1079,\"ascentM\":0,\"descentM\":0,\"seconds\":15500}";
+	private static final String THE_MOST = "{\"distanceKm\":130.8524,\"ascentM\":0,\"descentM\":0,\"seconds\":15500}";
 
 	private static final String ONE_HUNDREDTH_TOO_MANY =
-			"{\"distanceKm\":98.1082,\"ascentM\":0,\"descentM\":0,\"seconds\":15500}";
+			"{\"distanceKm\":130.8525,\"ascentM\":0,\"descentM\":0,\"seconds\":15500}";
 
 	@Test
 	void aCorrectionApprovedWithFiguresWorthMoreThanAnyRunIsRefusedAndTheMostIsTaken() throws Exception {
-		assertThat(BtlScoreCalculator.calculate(98.1079, 0, 0, 15500)).isEqualByComparingTo("999.99");
-		assertThat(BtlScoreCalculator.calculate(98.1082, 0, 0, 15500)).isEqualByComparingTo("1000.00");
+		assertThat(BtlScoreCalculator.calculate(130.8524, 0, 0, 15500)).isEqualByComparingTo("999.99");
+		assertThat(BtlScoreCalculator.calculate(130.8525, 0, 0, 15500)).isEqualByComparingTo("1000.00");
 
 		MockHttpServletResponse refused = decideWith(THE_SUPERADMIN, verasCorrection,
 				"{\"approved\":true,\"amended\":" + ONE_HUNDREDTH_TOO_MANY + "}");
@@ -6190,7 +6208,7 @@ class VerificationWriteApiTest {
 	 */
 	@Test
 	void aRunSentWorthMoreThanAnyRunIsRefusedUntilTheModeratorsFiguresMakeItARun() throws Exception {
-		long bojans = runWaitingFor(BOJAN, theTrail, SATURDAY, "98.1082", 0, 0, 15500, null);
+		long bojans = runWaitingFor(BOJAN, theTrail, SATURDAY, "130.8525", 0, 0, 15500, null);
 
 		MockHttpServletResponse asSent = decideWith(THE_SUPERADMIN, bojans, "{\"approved\":true}");
 
@@ -6210,7 +6228,7 @@ class VerificationWriteApiTest {
 	/** THE OTHER SOURCE: the same run sent worth more than any run, approved at figures of the moderator's own. */
 	@Test
 	void aRunSentWorthMoreThanAnyRunIsCountedAtTheModeratorsFigures() throws Exception {
-		long bojans = runWaitingFor(BOJAN, theTrail, SATURDAY, "98.1082", 0, 0, 15500, null);
+		long bojans = runWaitingFor(BOJAN, theTrail, SATURDAY, "130.8525", 0, 0, 15500, null);
 
 		assertThat(decideWith(THE_SUPERADMIN, bojans, "{\"approved\":true,\"amended\":{\"distanceKm\":10.0,"
 				+ "\"ascentM\":0,\"descentM\":0,\"seconds\":3600}}").getStatus()).isEqualTo(200);
@@ -6221,7 +6239,7 @@ class VerificationWriteApiTest {
 	/** AND A RUN SENT AS AN UNSCORED ONE KEEPS NOUGHT, so figures worth any number are approved there. */
 	@Test
 	void aRunOfAnUnscoredRaceIsApprovedWithFiguresWorthAnyNumber() throws Exception {
-		long unscored = sentAsUnscored(describedRun(ANA, "Ada", "free", THE_DAY_HE_RAN, "98.1082", 0, 0, 60));
+		long unscored = sentAsUnscored(describedRun(ANA, "Ada", "free", THE_DAY_HE_RAN, "130.8525", 0, 0, 60));
 
 		MockHttpServletResponse made = decideWith(THE_SUPERADMIN, unscored,
 				makingTheRace("Plivanje oko Ade", "Krug", "free", null));

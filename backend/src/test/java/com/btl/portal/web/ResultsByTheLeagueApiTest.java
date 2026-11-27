@@ -344,7 +344,11 @@ class ResultsByTheLeagueApiTest {
 				.getStatus()).isEqualTo(201);
 
 		assertThat(resultsOf(VERA)).containsExactly(figures(theSixHours, "61.25", 420, 380, SIX_HOURS,
-				BtlScoreCalculator.calculate(61.25, 420, 380, SIX_HOURS)));
+				BtlScoreCalculator.calculateAtALimit(61.25, 420, 380, SIX_HOURS)));
+		assertThat(resultsOf(VERA))
+				.as("by the formula of a race to a limit, worked in Python and not asked of the calculator"
+						+ " (the same figures as a race of a length are worth 25.98)")
+				.containsExactly(figures(theSixHours, "61.25", 420, 380, SIX_HOURS, new BigDecimal("34.79")));
 	}
 
 	/** A FREE RACE: all six are the runner's, and a row missing any one of the four is refused. */
@@ -2510,16 +2514,16 @@ class ResultsByTheLeagueApiTest {
 	 * veci nego trocifren uz jos dve decimale"): two lengths over 15500 seconds, worth exactly 999,99 and
 	 * exactly 1000,00 as the column keeps them, so the boundary is asked from both sides. */
 
-	private static final String THE_MOST = "98.1079";
+	private static final String THE_MOST = "130.8524";
 
-	private static final String ONE_HUNDREDTH_TOO_MANY = "98.1082";
+	private static final String ONE_HUNDREDTH_TOO_MANY = "130.8525";
 
 	private static final int THE_TIME_AT_THE_EDGE = 15500;
 
 	@Test
 	void aRowWorthMoreThanAnyRunIsRefusedAndNothingOfTheSaveIsWritten() throws Exception {
-		assertThat(BtlScoreCalculator.calculate(98.1079, 0, 0, THE_TIME_AT_THE_EDGE)).isEqualByComparingTo("999.99");
-		assertThat(BtlScoreCalculator.calculate(98.1082, 0, 0, THE_TIME_AT_THE_EDGE))
+		assertThat(BtlScoreCalculator.calculate(130.8524, 0, 0, THE_TIME_AT_THE_EDGE)).isEqualByComparingTo("999.99");
+		assertThat(BtlScoreCalculator.calculate(130.8525, 0, 0, THE_TIME_AT_THE_EDGE))
 				.isEqualByComparingTo("1000.00");
 
 		MockHttpServletResponse refused = entered(RESULTS_MODERATOR, theHill, rows(

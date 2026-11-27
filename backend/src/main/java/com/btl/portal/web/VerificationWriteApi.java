@@ -2437,7 +2437,7 @@ class VerificationWriteApi {
 
 		/* AND NOTHING AT AN UNSCORED RACE (PointsOfARun, PDL 14.11.2026), asked of the race the run is
 		   counted on, which is the one made just above where the calendar did not hold it. */
-		BigDecimal points = PointsOfARun.at(db, race, counted);
+		BigDecimal points = PointsOfARun.at(db, race, on.kind(), counted);
 
 		/* AND NOT A RUN ANYBODY RAN, which is refused here and not before the claim: only here are the
 		   figures the ones the run is counted at on the race it goes on, a race found under the name
@@ -3083,6 +3083,12 @@ class VerificationWriteApi {
 	 */
 	private record CountedOn(Long raceId, String raceName, LocalDate day,
 			WhatARaceCarries.ARace race, Made made) {
+
+		/** The kind of race the run is counted on: the calendar's where the race is there, and the
+		 *  moderator's where this approval makes it, which decides the formula it is counted by. */
+		String kind() {
+			return made == null ? race.kind() : made.kind();
+		}
 	}
 
 	/**

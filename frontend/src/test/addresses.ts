@@ -269,5 +269,5 @@ export const BEHIND: [string, Role, string | null, string][] = [
 export const WITH_ROWS: [address: string, heading: string, part?: string][] = [
   [`/sr/tabela?sezona=${String(inLeague(2019))}`, 'BTL tabele'],
   [`/sr/top-liste?sezona=${String(inLeague(2019))}`, 'Top liste'],
-  ['/sr/takmicar/000001/priznanja', 'Vladan Đurišić', 'Pehari 5'],
+  ['/sr/takmicar/000001/priznanja', 'Vladan Đurišić', 'Pehari 7'],
 ]

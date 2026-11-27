@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { Link } from 'react-router'
 import { Resource } from '../../components/Resource'
 import { resultsOf } from '../../data/derive'
+import { raceKind } from '../../data/raceKind'
 import { pointsOf } from '../../data/scoring'
 import type { SentRun } from '../../data/types'
 import {
@@ -214,7 +215,13 @@ function Mine({ me }: { me: string }) {
                           {one.eventKind !== 'unscored' &&
                             t('units.btlPoints', {
                               value: formatPoints(
-                                pointsOf(one.distanceKm, one.ascentM, one.descentM, one.seconds),
+                                pointsOf(
+                                  one.distanceKm,
+                                  one.ascentM,
+                                  one.descentM,
+                                  one.seconds,
+                                  raceKind(one.raceKind),
+                                ),
                                 locale,
                               ),
                             })}

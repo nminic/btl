@@ -107,8 +107,8 @@ describe('the races of an event while they are being entered', () => {
        with it. `min` on a number box is decoration here: the form is `noValidate`
        and nothing reads `checkValidity`, so a round measured a climb of minus five
        hundred metres saved on the real screen. The formula then works out a profile
-       nobody ran: `Le = L + (9×AP + 1×AN)/1000` with a negative climb takes
-       four and a half kilometres off the effective length. */
+       nobody ran: `Le = L + (5×AP + 2×AN)/1000` with a negative climb takes
+       two and a half kilometres off the effective length. */
     expect(whatIsMissing(row({ ascentM: '-500' }))).toBe('ascentM')
     expect(whatIsMissing(row({ descentM: '-1' }))).toBe('descentM')
     expect(whatIsMissing(row({ distanceKm: '9999999' }))).toBe('distanceKm')
