@@ -209,11 +209,11 @@ class Track {
 
   /**
    * How long the session had no fix after fix `i`, as the session came: a gap that only opened because the fixes in it
-   * were taken out as spikes is no silence, and a session's last fix has none after it.
+   * were taken out as spikes is no silence. Asked only of a fix that has another after it (a trip's `a` and a `c` that
+   * has the fixes `d` after it).
    */
   silenceAfter(i: number): number {
-    const next = this.original[this.source[i] + 1];
-    return next === undefined ? 0 : next.t - this.fixes[i].t;
+    return this.original[this.source[i] + 1].t - this.fixes[i].t;
   }
 
   without(drop: ReadonlySet<number>): Track {
