@@ -255,6 +255,45 @@ class ATeamLogoSentWhileItIsBeingDecidedTest {
 		}
 	}
 
+	/**
+	 * A SEND THAT STANDS BEHIND THE TEAM'S ROW WHILE THE TEAM IS DELETED IS TOLD THERE IS NO SUCH TEAM, and is not a
+	 * fault (PENDING, PR 836, 27.11.2026: the lock on the team's row is what makes a send and the team's deletion run
+	 * one after the other, and nothing held it).
+	 *
+	 * <p>This thread holds the team's row and the send stops behind it. The team is deleted and the row let go. A
+	 * send that took the row waits for it and then finds the team gone, which is the 404 of every door for a team that
+	 * is not there. A send that only READ the name before the deletion goes on to write a queue row for a team that is
+	 * gone and meets {@code verification_team_fk}, which is a 500.
+	 */
+	@Test
+	void aSendBehindTheTeamsRowWhileTheTeamIsDeletedIsToldThereIsNoSuchTeam() throws Exception {
+		Team team = aTeam();
+		ExecutorService pool = Executors.newFixedThreadPool(1);
+		List<Future<Answer>> submitted = new ArrayList<>();
+
+		try {
+			holdingTheRow.execute(heldOpen -> {
+				db.sql("select 1 from team where id = ? for update").param(team.id()).query(Integer.class).single();
+
+				submitted.add(pool.submit(() -> send(team, aJpeg("slanje dok se tim brise"))));
+				untilAllAreStopped(1, submitted);
+
+				db.sql("delete from team where id = ?").param(team.id()).update();
+
+				return null;
+			});
+
+			Answer answer = submitted.getFirst().get(30, TimeUnit.SECONDS);
+
+			assertThat(answer.status()).as("the send of a team that was deleted under it: %s", answer).isEqualTo(404);
+			assertThat(db.sql("select count(*) from verification where team_id = ?").param(team.id())
+					.query(Long.class).single()).isZero();
+		}
+		finally {
+			pool.shutdownNow();
+		}
+	}
+
 	/* ------------------------------------------------------------------------------------------ */
 
 	private void untilAllAreStopped(int wanted, List<? extends Future<?>> submitted) {
