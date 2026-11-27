@@ -155,9 +155,15 @@ class Track {
   readonly fixes: readonly LocationSample[];
   readonly x: Float64Array;
   readonly y: Float64Array;
+  /** Where each of the fixes stood among the good fixes of the session, before any was taken out. */
+  readonly source: readonly number[];
+  /** The good fixes of the session, as they came. */
+  readonly original: readonly LocationSample[];
 
-  constructor(fixes: readonly LocationSample[]) {
+  constructor(fixes: readonly LocationSample[], source: readonly number[] = fixes.map((_, i) => i), original: readonly LocationSample[] = fixes) {
     this.fixes = fixes;
+    this.source = source;
+    this.original = original;
     const n = fixes.length;
     this.x = new Float64Array(n);
     this.y = new Float64Array(n);
@@ -201,8 +207,22 @@ class Track {
     return least > doppler + (MAX_ACCELERATION_MPS2 * seconds) / 4 + DOPPLER_ERROR_MPS ? 'jump' : 'fast';
   }
 
+  /**
+   * How long the session had no fix after fix `i`, as the session came: a gap that only opened because the fixes in it
+   * were taken out as spikes is no silence, and a session's last fix has none after it.
+   */
+  silenceAfter(i: number): number {
+    const next = this.original[this.source[i] + 1];
+    return next === undefined ? 0 : next.t - this.fixes[i].t;
+  }
+
   without(drop: ReadonlySet<number>): Track {
-    return new Track(this.fixes.filter((_, i) => !drop.has(i)));
+    const kept = this.fixes.flatMap((_, i) => (drop.has(i) ? [] : [i]));
+    return new Track(
+      kept.map((i) => this.fixes[i]),
+      kept.map((i) => this.source[i]),
+      this.original,
+    );
   }
 }
 
@@ -323,14 +343,34 @@ function excursions(track: Track): Set<number> {
    * The fix the trip comes back to must not be a spike itself. It is one when it is not back at the place the trip
    * left and the fixes after it disown it: the next one cannot follow it, and neither can the one after that (two, so
    * that a single spike right after it does not disown it). A spike that happens to lie where a runner could be (on the
-   * way he runs a little later) would otherwise make the real fixes before it the trip. A fix that comes only after a
-   * gap follows nothing: across a gap a runner reaches a spike as easily as a real fix (round 6: a spike as the last fix
-   * before a gap, a minute from the fix after it, took the place of the fix the trip came back to). The last fix of a
-   * session has nothing after it to disown it.
+   * way he runs a little later) would otherwise make the real fixes before it the trip. The last fix of a session has
+   * nothing after it to disown it.
+   *
+   * Across a long silence a runner reaches a spike as easily as a real fix, so a fix that comes only after one follows
+   * nothing, and the fix before the silence may be the spike that ends a place (round 6: a spike as the last fix before
+   * a gap, a minute from the fix after it, took the place of the fix the trip came back to). That holds only where the
+   * trip could be such a place (`mayEndAPlace`), and each of the three exceptions was measured (round 7: the clause had
+   * been written for every gap of more than GAP_MS and for every trip, and a trip of spikes right after a gap of 15 s, a
+   * real fix and a gap of 15 s came out as 495 m for 276). All three are asked of the silences as the session had them
+   * (`silenceAfter`), since taking spikes out opens gaps that were never silence, and a clause that read those would
+   * decide on what the walk itself did one pass before:
+   * - the silence after `c` is a short one, GAP_MS to LONG_GAP_MS: it holds no way back long enough to walk, so no place
+   *   is hidden behind it, and a hole of 12 s between the fixes of a man who stands is one (WITH_DRIVE 590: 267 m too
+   *   long);
+   * - the trip comes right after such a short silence: a place he went to is reached across a long one, so a burst of
+   *   spikes first after a short one is a burst of spikes, and the real fix after it is the one the run goes on from
+   *   (WITH_DRIVE 757 and 969);
+   * - the trip is one fix that comes without a long silence before it, and not at the instant of `c`: one fix is not a
+   *   place that outweighs the fix next to it, unless a long silence says he was somewhere (WITH_DRIVE 49).
    */
-  const jumpsTo = (c: number, d: number) => d >= n || track.fixes[d].t - track.fixes[c].t > GAP_MS || track.step(c, d) === 'jump';
+  const shortSilence = (i: number) => track.silenceAfter(i) > GAP_MS && track.silenceAfter(i) < LONG_GAP_MS;
+  const mayEndAPlace = (a: number, c: number) => {
+    const lone = c - a === 2 && track.fixes[c].t !== track.fixes[c - 1].t;
+    return !shortSilence(c) && !shortSilence(a) && (!lone || track.silenceAfter(a) >= LONG_GAP_MS);
+  };
+  const jumpsTo = (a: number, c: number, d: number) => d >= n || (track.fixes[d].t - track.fixes[c].t > GAP_MS && mayEndAPlace(a, c)) || track.step(c, d) === 'jump';
   const confirmed = (a: number, c: number, near: number) =>
-    track.apartM(a, c) <= near || c + 1 >= n || !(jumpsTo(c, c + 1) && jumpsTo(c, c + 2));
+    track.apartM(a, c) <= near || c + 1 >= n || !(jumpsTo(a, c, c + 1) && jumpsTo(a, c, c + 2));
   /**
    * A fix with a second position at the same instant (one of the two is wrong) is the fix a trip leaves from or comes back
    * to only when the other position is not at the trip as well: if it is, the trip is where he was at that instant, and

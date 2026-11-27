@@ -33,7 +33,7 @@ import { offset } from './synth';
  *   of up to five among the first six fixes after a gap: 50 outside the tolerance, against
  *   19 as generated (4d5dc0c1b: 223 and 210).
  * - In the profiles of the rounds 5 to 7 below, the same limit stands where a place is made short: the spikes in its
- *   stay (SPIKES_AFTER_A_SHORT_STAY, TRIP_BACK_SHORT) never outnumber its real fixes, and the stay of TRIP_BACK_SHORT
+ *   stay (SPIKES_AFTER_A_SHORT_STAY, TRIP_BACK_SHORT) are always fewer than its real fixes, and the stay of TRIP_BACK_SHORT
  *   takes a spike for every two fixes it has beyond the first. The shapes where they do (a
  *   place of one fix with two spikes behind it, 721 m for 340) are cases of their own in distance.test.ts, not a
  *   property over sessions, and are not claimed to be solved. TWO_GAPS keeps the shape of the review as it was, with
@@ -188,8 +188,8 @@ export function session(seed: number, profile: Profile): Session {
     if (stays === 'stand') stands += 1;
     const [stayLo, stayHi] = profile.stayFixes ?? [6, 12];
     const stayTail = profile.spikesAfterStay === undefined ? 0 : countBetween(next, profile.spikesAfterStay);
-    // The spikes behind a place never outnumber its real fixes (see the end of the header).
-    const stayReal = Math.max(Math.round(between(next, stayLo, stayHi)), stayTail);
+    // The spikes behind a place are always fewer than its real fixes (see the end of the header): with as many, nothing but the true path tells which are which.
+    const stayReal = Math.max(Math.round(between(next, stayLo, stayHi)), stayTail + (stayTail > 0 ? 1 : 0));
     leg(stays, stays === 'stand' ? 0 : walking, stayReal + stayTail, theta + Math.PI / 2);
     const stayTo = t;
     stay = { from: stayFrom, to: stayTo, e: outFrom.e, n: outFrom.n, tail: stayTail > 0 ? stayTo - stayTail * 1000 : Infinity, real: stayReal };
@@ -319,7 +319,8 @@ export function session(seed: number, profile: Profile): Session {
       push({ t: p.t, ...offset(p.e + burstE + between(next, -5, 5), p.n + burstN + between(next, -5, 5)), accuracy: fixAccuracy, speed: doppler, mock: false, receivedAt: p.t }, 'spike');
       return;
     }
-    if (next() < 0.03) {
+    // (Not in the stay of SPIKES_AFTER_A_SHORT_STAY: a poor fix there would take one of the few real fixes the spikes are fewer than.)
+    if (next() < 0.03 && !(inStay && profile.spikesAfterStay !== undefined)) {
       push({ t: p.t, ...offset(p.e + between(next, -100, 100), p.n), accuracy: between(next, 25, 60), speed: doppler, mock: false, receivedAt: p.t }, 'poor');
       return;
     }
@@ -421,7 +422,7 @@ export const TWO_GAPS: Profile = {
   twoGaps: { realBetween: [1, 3] },
   burstAfterGap: { after: 1, length: [1, 5] },
 };
-/** A place of one to five fixes with one or two spikes at one point right after it, never more than the place has fixes, and nothing else in the stay. */
+/** A place of two to five fixes with one or two spikes at one point right after it, always fewer than the place has fixes, and nothing else in the stay. */
 export const SPIKES_AFTER_A_SHORT_STAY: Profile = {
   ...TRIP_BACK,
   afterGapSpikeRate: 0,

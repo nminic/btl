@@ -1113,7 +1113,7 @@ describe('properties against the true path, fixed seeds (testing/paths.ts)', () 
   const COSTS: ReadonlyMap<Profile, number> = new Map([
     [TRIP_BACK_SHORT, 11],
     [TWO_GAPS, 30],
-    [SPIKES_AFTER_A_SHORT_STAY, 17],
+    [SPIKES_AFTER_A_SHORT_STAY, 11],
     [BURST_AFTER_THE_SECOND_GAP, 7],
     [SPIKE_FIRST_AFTER_THE_FIRST_GAP, 1],
   ]);
@@ -1324,6 +1324,41 @@ describe('the probes of round 7 of the review', () => {
 
     expect(result.spikeFixes).toBe(3);
     expect(Math.abs(result.distanceM - truthM)).toBeLessThanOrEqual(2 * MIN_STEP_M);
+  });
+
+  it.each([
+    [11, 45],
+    [29, 45],
+    [45, 29],
+  ])(`${CLAUSE}: two spikes, a real fix, with %i s before the spikes and %i s after the real fix, where one of them is a short silence (GAP_MS to LONG_GAP_MS): the spikes are dropped`, (first, second) => {
+    const { fixes, truthM } = afterTwoGaps(2, first, second);
+    const result = measureDistance(fixes);
+
+    expect([result.spikeFixes, result.vehicleSegments]).toEqual([2, 0]);
+    expect(Math.abs(result.distanceM - truthM)).toBeLessThanOrEqual(2 * MIN_STEP_M);
+  });
+
+  it.each([
+    [30, 45],
+    [45, 30],
+    [45, 45],
+  ])(`${CLAUSE}: ... and with %i s before and %i s after, both of LONG_GAP_MS or more, they are a place he went to: the price of the PDL, one spike dropped and the other kept`, (first, second) => {
+    // „Mesto do kog se stiže preko duge rupe i sa kog se odlazi preko druge duge rupe broji se i kad ima samo jednu tačku.”
+    // Thirty seconds is a long silence, and twenty-nine is not: the edge of the exception above, on both sides.
+    const { fixes, truthM } = afterTwoGaps(2, first, second);
+    const result = measureDistance(fixes);
+
+    expect(result.spikeFixes).toBe(1);
+    expect(result.distanceM - truthM).toBeGreaterThan(140);
+    expect(result.distanceM - truthM).toBeLessThan(190);
+  });
+
+  it('ON_FOOT seed 869 of 1000: a gap that only opened because spikes were taken out is no silence, and the real fixes after it stay', () => {
+    // 37 m short as it is, 100 m short when the silences are read off the fixes that are left: a spike before a gap, the
+    // real fixes of a trip entered across a hole that an earlier pass made.
+    const { fixes, truth } = session(869, { ...ON_FOOT, quietEndFixes: 10 });
+
+    expect(Math.abs(measureDistance(fixes).distanceM - truth.idealM)).toBeLessThan(60);
   });
 
   it.each([
