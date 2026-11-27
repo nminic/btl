@@ -37,7 +37,13 @@ class BtlScoreCalculatorTest {
     // km, between the records, beyond the last, with a climb alone and a fall alone, and the rows the
     // owner printed as examples (10 km in 40:00 16.37, in 50:00 8.86, the marathon in 3:30 24.44, Red
     // Bull 400 5.69) and the walk at 5:00 per kilometre that showed him the curve has no corner
-    // (40 km 23.03, 42.1 km 24.09, 45 km 25.56). Each against the same independent Python working.
+    // (40 km 23.03, 42.1 km 24.09, 45 km 25.56), and the two the decision of 27.11.2026 prints that the rows
+    // above did not carry (42.195 km 24.14 and 50 km 28.15, PENDING, PR 841): flat, at 5:00 per kilometre, so
+    // 15000 s for 50 km, and 12658 s for 42.195 km. The decision gives the pace and not the seconds, and 5:00 per
+    // kilometre over 42.195 km is 12658.5 s, which a whole number of seconds cannot be: the printed 24.14 is what the
+    // formula gives at 12658 s (24.1357), which is 12658.5 rounded half to even as Python's round does, and at 12659
+    // s it is 24.13 (24.1305). That reading of the printed number is MINE, not the decision's. Each against the same
+    // independent Python working.
     @ParameterizedTest(name = "L={0}, AP={1}, AN={2}, Tsec={3} -> {4}")
     @CsvSource({
             "21.1,     250, 250,  6300,  18.59",
@@ -65,6 +71,8 @@ class BtlScoreCalculatorTest {
             "40,         0,   0, 12000,  23.03",
             "42.1,       0,   0, 12630,  24.09",
             "45,         0,   0, 13500,  25.56",
+            "42.195,     0,   0, 12658,  24.14",
+            "50,         0,   0, 15000,  28.15",
     })
     void theFormulaAgreesWithItsIndependentWorking(double lengthKm, double ascent, double descent,
             long timeSeconds, String expectedPoints) {
