@@ -35,7 +35,19 @@ export class FakeSensors implements BtlSensors {
     this.resumed += 1;
   }
 
+  /**
+   * The wall clock the phone has, a different number from `now` as on the phone:
+   * `Sessions.createNew` and the meta line's `wall` read it, the samples never do.
+   */
+  wallNow = 1764200000000;
+
+  /**
+   * As `BtlSensorsModule.kt`'s `stop` does: it writes the moment of the stop into the
+   * session file ITSELF, on the samples' clock, and does not ask the service to, which
+   * may be down. Nothing is written when no session is recording.
+   */
   stop() {
+    if (this.recording) this.write({ k: 'end', t: this.now, rx: this.now });
     this.recording = false;
   }
 
@@ -76,7 +88,7 @@ export class FakeSensors implements BtlSensors {
 
   /** What the service would write: the meta line first, then samples. */
   writeMeta(t = 0) {
-    this.write({ k: 'meta', v: 1, pressure: this.pressureSensor, wall: 1764200000000, t });
+    this.write({ k: 'meta', v: 1, pressure: this.pressureSensor, wall: this.wallNow, t });
   }
 
   write(line: object) {

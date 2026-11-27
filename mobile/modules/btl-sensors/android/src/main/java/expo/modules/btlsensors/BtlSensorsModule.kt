@@ -19,6 +19,8 @@ import expo.modules.kotlin.exception.CodedException
 import expo.modules.kotlin.exception.Exceptions
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
+import java.io.File
+import java.io.IOException
 
 /**
  * The sensor layer of the BTL meter, as JavaScript sees it. The contract is typed
@@ -128,7 +130,21 @@ class BtlSensorsModule : Module() {
       Unit
     }
 
+    // The moment of the stop goes into the session file here, by the module, because the
+    // service may be down when the member stops: PDL, „Kraj merenja je trenutak kad ga član
+    // zaustavi". `file` is null for a session a restart of the phone ended, and nothing is
+    // written then: that session has no stop, and its end is the last sample before the restart.
     Function("stop") {
+      ActiveSession(context).file?.let { path ->
+        try {
+          SampleWriter(File(path)).also {
+            it.end(SystemClock.elapsedRealtime())
+            it.close()
+          }
+        } catch (unwritable: IOException) {
+          // The session still stops; its end is then the last line written, as for a file without the stop.
+        }
+      }
       ActiveSession(context).end()
       context.stopService(Intent(context, RecordingService::class.java))
       Unit

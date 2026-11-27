@@ -258,9 +258,9 @@ describe('the timer', () => {
     await fireEvent.press(screen.getByRole('button', { name: 'Završi merenje' }));
 
     expect(screen.getByText(sr('meter.last'))).toBeTruthy();
-    expect(screen.getByLabelText('Trajanje: 1:02:04')).toBeTruthy();
+    expect(screen.getByLabelText('Trajanje: 1:02:05')).toBeTruthy();
     for (let s = 0; s < 5; s += 1) await second(sensors);
-    expect(screen.getByLabelText('Trajanje: 1:02:04')).toBeTruthy();
+    expect(screen.getByLabelText('Trajanje: 1:02:05')).toBeTruthy();
   });
 
   it('is there on a phone without a pressure sensor too', async () => {

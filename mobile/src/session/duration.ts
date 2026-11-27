@@ -8,15 +8,17 @@ import type { Recording, SessionMeta } from '../measure/recording';
  * Android has the service down, so the time a killed service was down is inside
  * the duration, as it is the same session.
  *
- * While it records, it lasts until now. Once it ended (the member stopped it, or a
- * restart of the phone ended it) it lasts until the last line written into it: the
- * only end the file holds, and the one that is the same however late the screen
- * reads it. A restart leaves nothing after it in `recording`, so its end is the
- * last line before the restart.
+ * While it records, it lasts until now. Once the member stopped it, it lasts until
+ * that moment, which the module wrote into the file: PDL, „Kraj merenja je trenutak kad
+ * ga član zaustavi, i trajanje završenog merenja je tačno ono što je tajmer pokazivao u
+ * tom trenutku". A session that has no such line (an older file, or one a restart of the
+ * phone ended, which has no stop) lasts until the last line written into it, the only
+ * end it holds.
  */
 export function sessionDurationMs(recording: Recording & { meta: SessionMeta }, now: number, live: boolean): number {
   const from = recording.meta.startedAt;
   if (live) return now - from;
+  if (recording.endedAt !== null) return recording.endedAt - from;
   let last = from;
   for (const sample of recording.locations) last = Math.max(last, sample.receivedAt);
   for (const sample of recording.pressures) last = Math.max(last, sample.receivedAt);
