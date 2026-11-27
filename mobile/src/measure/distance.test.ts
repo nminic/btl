@@ -1016,6 +1016,20 @@ describe('the silence around a place he went to, whatever spikes stand next to t
     holds((shape) => [moved(placeOf(shape)[1], 60, 40)]);
   });
 
+  it('a real fix whose second position at the same instant is the first fix of a trip of spikes is still the fix the trip leaves from', () => {
+    // ON_FOOT 255 of the comparison, reduced: after a gap of 71 s, two real fixes, a second position of the second one
+    // 72 m off, four spikes 177 m off, and the run on. The trip from the real fix holds its own second position, which
+    // says nothing against it; taking it as one made the four spikes a place and added 339 m.
+    const run = (fromS: number, toS: number, eastM: number, northM: number) =>
+      every(fromS * 1000, toS * 1000, 1).map((t) => fix(t, eastM, northM - 1.5 * (t / 1000 - fromS), { speed: 1.5 }));
+    const real = [...run(0, 60, 0, 0), off(130_000, -5, -100), off(131_000, -6, -101), off(143_000, -8, -104), ...run(154, 200, -10, -106)];
+    const spikes = [off(131_000, 54, -61), ...[132, 134, 140, 141].map((s) => off(s * 1000, -115, -240))];
+    const result = measureDistance([...real, ...spikes]);
+
+    expect(result.spikeFixes).toBe(spikes.length);
+    expect(Math.abs(result.distanceM - chord(real))).toBeLessThanOrEqual(2 * MIN_STEP_M);
+  });
+
   it('a stale position by the last fix of the place, delivered as the first fix after the second gap (SREDNJI 1 of round 6)', () => {
     holds((shape) => {
       const last = placeOf(shape).at(-1) as Fix;
@@ -1029,6 +1043,15 @@ describe('the silence around a place he went to, whatever spikes stand next to t
       const before = shape.real.filter((f) => f.t <= 100_000).at(-1) as Fix;
       const first = placeOf(shape)[0];
       return [{ ...moved(before, 1, 1), t: first.t - 1000, receivedAt: first.t - 1000 }];
+    });
+  });
+
+  it('a spike and a stale position as the first two fixes after the first gap (round 6)', () => {
+    // The fix the way there begins at is two fixes back from the one the trip can be said to leave from.
+    holds((shape) => {
+      const before = shape.real.filter((f) => f.t <= 100_000).at(-1) as Fix;
+      const first = placeOf(shape)[0];
+      return [off(first.t - 2000, 330, -60), { ...moved(before, 1, 1), t: first.t - 1000, receivedAt: first.t - 1000 }];
     });
   });
 
