@@ -138,6 +138,7 @@ class TheWrittenPagesLoseTheRowAboutTheThemeTest extends DatabaseTest {
 	@Test
 	void thePolicyAloneIsSignedOffOnTheTwentyFourthOfNovemberInBothLanguages() {
 		/* V114 moved the policy's day on to 25.11.2026; what V110 gave it is asked of the text V110 left. */
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "118");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "114");
 
 		assertThat(bodyOf(POLICY, 7, "sr")).endsWith("Poslednja izmena: 24.11.2026.").containsOnlyOnce("Poslednja izmena: ")
@@ -162,6 +163,7 @@ class TheWrittenPagesLoseTheRowAboutTheThemeTest extends DatabaseTest {
 	@Test
 	void everyOtherTextIsTheSameWithV110UndoneAsWithItApplied() {
 		/* V114 (25.11.2026) edits sections 5 and 7 of the policy after V110, so the text V110 left is the text with V114 undone. */
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "118");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "114");
 
 		Map<String, String> applied = everyTextByPlace();

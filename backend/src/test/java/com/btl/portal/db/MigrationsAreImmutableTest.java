@@ -989,7 +989,17 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   race with the row, because a race to a limit is counted by its own formula from this one. Flyway keeps
 			   no checksum for it, so the row pins none. Data only, measured over rows that stand
 			   (EveryRunCountedByTheFormulaOf27112026CarriedOverTest). 117 and no other: main stood at V116. */
-			new Applied("117", "com.btl.portal.web.V117__Every_run_is_counted_by_the_formula_of_27_11_2026", null));
+			new Applied("117", "com.btl.portal.web.V117__Every_run_is_counted_by_the_formula_of_27_11_2026", null),
+
+			/* V118. The rulebook says that a result may be proved by a comment alone: Article 35 gets a third sentence
+			   and Article 33 names „dokaz: link ka zvaničnim rezultatima, sliku ili komentar", in both languages, and
+			   the rulebook's sign-off moves to 28.11.2026 in both (owner, 28.11.2026: „Potvrđujem član 35 i 33.”, PDL,
+			   „Pravilnik o tekstu kao dokazu”; the Serbian is the assistant's proposal approved without a change, the
+			   English is the assistant's). No schema, row, key or index touched; measured over text that stands
+			   (TheWrittenPagesAcceptACommentAsProofCarriedOverTest). 118 and no other: main stood at V117.
+
+			   Pinned LAST, when the file was final (CLAUDE.md, section 9). */
+			new Applied("118", "V118__the_rulebook_accepts_a_comment_as_proof_of_a_result.sql", 1215484529));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {

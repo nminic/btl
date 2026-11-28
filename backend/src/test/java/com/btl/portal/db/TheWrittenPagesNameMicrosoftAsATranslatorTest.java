@@ -109,7 +109,7 @@ class TheWrittenPagesNameMicrosoftAsATranslatorTest extends DatabaseTest {
 	}
 
 	/**
-	 * THE POLICY IS SIGNED OFF ON THE DAY V114 GIVES IT, in both languages and once, and the terms and the rulebook keep the day V107
+	 * THE POLICY IS SIGNED OFF ON THE DAY V114 GIVES IT, in both languages and once, and the terms keep the day V107
 	 * gave them; the policy's old day is not served in either language.
 	 */
 	@Test
@@ -123,7 +123,8 @@ class TheWrittenPagesNameMicrosoftAsATranslatorTest extends DatabaseTest {
 			String signed = language.equals("sr") ? "Poslednja izmena: 21.11.2026." : "Last amended: 21.11.2026.";
 
 			assertThat(bodyOf(TERMS, 11, language)).as("the terms in %s", language).endsWith(signed);
-			assertThat(bodyOf(RULEBOOK, 19, language)).as("the rulebook in %s", language).endsWith(signed);
+			assertThat(bodyOf(RULEBOOK, 19, language)).as("the rulebook in %s, moved on by V118", language)
+					.endsWith(language.equals("sr") ? "Poslednja izmena: 28.11.2026." : "Last amended: 28.11.2026.");
 		}
 	}
 
