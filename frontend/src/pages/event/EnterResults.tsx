@@ -207,6 +207,7 @@ function TheRows() {
  */
 function Rows({
   heading,
+  headingIsHidden = false,
   kind,
   scored,
   runners,
@@ -217,6 +218,15 @@ function Rows({
   blockIsWrong,
 }: {
   heading: string
+  /**
+   * Whether the name of the screen is kept for a reader of the screen and not drawn (`visually-hidden`).
+   * The moderator's own screen, `administracija/unos-rezultata`, is an administrative screen, and PDL P21
+   * (30.07.2026) says „Nijedan administrativni ekran nema vidljiv naslov ni objašnjenje iznad posla":
+   * its name is in the navigation and in the tab, and stays in the code, unseen, because a page without a
+   * name is one a screen reader cannot announce (`admin/PendingQueue.tsx` and the screens beside it do
+   * the same). The entry on an event's own page is not an administrative screen and draws its title.
+   */
+  headingIsHidden?: boolean
   /** Read through the one function that knows the three words (`data/raceKind.ts`) by the caller. */
   kind: RaceKind
   /** Whether the race the rows are on is scored: at an unscored one the climb and the fall may be left
@@ -353,7 +363,7 @@ function Rows({
 
   return (
     <>
-      <h1>{heading}</h1>
+      <h1 className={headingIsHidden ? 'visually-hidden' : undefined}>{heading}</h1>
       <form noValidate onSubmit={onSubmit} ref={sheet}>
         {above}
         <div className="races">
@@ -781,6 +791,7 @@ function TheBlockAndTheRows() {
         {(listed) => (
           <Rows
             heading={t('leagueResults.forAnEvent')}
+            headingIsHidden
             kind={kind}
             scored={theRowsAreScored(block, ofTheBlock)}
             runners={listed}

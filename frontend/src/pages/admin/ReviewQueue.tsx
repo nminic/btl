@@ -609,7 +609,17 @@ export function ReviewQueue() {
                         return (
                           <tr key={one.id}>
                             <td>{one.raceDate === null ? '' : formatShortDate(one.raceDate, locale)}</td>
-                            <td>{one.memberNumber}</td>
+                            <td className="review__member">
+                              {/* THE NAME AND THE NUMBER (owner, 28.11.2026, O6 of the plan of the
+                                  administration: „kolona Član nosi ime i broj; ime se ne skraćuje"). The
+                                  name is the one the server already serves on every row of every queue
+                                  (`VerificationApi.Waiting.who`, off the member's own record and never
+                                  behind the choice to hide a profile: the administration reads a hidden
+                                  profile, PDL P23), whole, and the number under it as it stands under the
+                                  name on the rows of the members. A row naming nobody has the number only. */}
+                              {one.who !== '' && <span className="review__who">{one.who}</span>}
+                              <span className="table__member-number">{one.memberNumber}</span>
+                            </td>
                             <td>
                               {/* That the calendar does not hold this race, said in the corner
                                   of the row (owner, 31.08.2026: „te trke treba da imaju posebnu

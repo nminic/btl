@@ -282,8 +282,13 @@
   font-weight: 700;
 }
 
+/* THE BOX OF A DESCRIPTION IS ONE OF THESE CONTROLS TOO (28.11.2026): the description of a proposed team
+   stands in a `.rankings__field` on the queue of teams (`pages/admin/PendingQueue.tsx`), and without
+   `textarea` here it was drawn as the browser draws one, a grey ground and a monospaced face, in the
+   one theme the portal has (`geometry/adminFlaws.geometry.ts` asks Chrome for all five properties). */
 .rankings__field select,
-.rankings__field input {
+.rankings__field input,
+.rankings__field textarea {
   font: inherit;
   font-size: 0.9rem;
   text-transform: none;

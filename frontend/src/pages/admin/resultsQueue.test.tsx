@@ -230,7 +230,7 @@ async function membersInTheTable(): Promise<(string | null)[]> {
   return within(table)
     .getAllByRole('row')
     .slice(1)
-    .map((row) => at(within(row).getAllByRole('cell'), 1).textContent)
+    .map((row) => at(within(row).getAllByRole('cell'), 1).querySelector('.table__member-number')?.textContent ?? null)
 }
 
 const decidedIn = () => within(screen.getByRole('list', { name: 'session decisions' }))
@@ -346,7 +346,9 @@ describe('the queue of results as the server answers it', () => {
          so a column fed from the other's value is a different row (owner, 18.09.2026). The race
          stays among the first three columns, the ones the shared table reads from the left. */
       expect(cells[0]).toBe(formatShortDate('2027-03-06', 'sr'))
-      expect(cells[1]).toBe(RUNNER)
+      /* The name the row carries and the number under it (owner, 28.11.2026, O6: „kolona Član nosi ime i
+         broj"), which the last block of `adminFlaws.test.tsx` reads one block at a time. */
+      expect(cells[1]).toBe(`${OF_A_LENGTH.who}${RUNNER}`)
       expect(cells[3]).toBe(formatShortDate('2027-03-08', 'sr'))
       /* The race by the name the server answers, which is its name today, as an address the
          moderator can follow; and the member's own words on a line of their own. */

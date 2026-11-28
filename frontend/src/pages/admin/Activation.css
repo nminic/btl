@@ -93,6 +93,15 @@
   vertical-align: top;
 }
 
+/* THE MEMBER NUMBER STANDS UNDER THE NAME, on a line of its own, smaller and quieter, the way it stands
+   on the rows of the members (`.members-table__under`) and under the payer on the statement
+   (`.statement__lines .table__member-number`, `Verification.css`). `table__member-number` is an inline
+   span, and without this the number was glued to the surname: „Jovana Ilić000031" (the survey of
+   28.11.2026). A member with no number has an empty span, which as a block takes no room. */
+.activate .table__member-number {
+  display: block;
+}
+
 /*
  * AND THERE IS NO WIDTH QUERY IN THIS FILE, which is a change from the first draft and is worth
  * saying because the obvious thing to write here is one.

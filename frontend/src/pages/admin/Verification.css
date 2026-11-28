@@ -315,6 +315,16 @@
   gap: var(--space-6);
 }
 
+/* THE MEMBER OF A RUN IN THE QUEUE OF RESULTS: the name, whole, and the number under it, smaller and
+   quieter (`table__member-number`), as on the rows of the members (owner, 28.11.2026, O6: „kolona Član
+   nosi ime i broj; ime se ne skraćuje"). The name breaks between its words and never inside one
+   (PDL, 20.10.2026: „Imena i nazivi trka se nikad ne lome usred reči") and is never cut with dots; a
+   double barrelled surname breaks at its hyphen. */
+.review__who,
+.review__member .table__member-number {
+  display: block;
+}
+
 /* The town the member gave for a race the calendar does not hold, under the race's name in the
    queue of results (the owner's answer of 10.10.2026: the moderator sees it there). Anybody may
    type it, so it wraps wherever it has to rather than push the table sideways (PDL P24), the way
