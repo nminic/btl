@@ -20,10 +20,20 @@ import java.util.regex.Pattern;
  * „slika nikad ne stoji sama". So the two legs swap: whichever way the run is
  * shown, something says what it was.
  *
- * <p><b>A photograph with a comment needs no link, and a link needs no
- * photograph.</b> Those are the two ways through; everything else is one of the
- * three refusals below, and each is a different sentence to show the member
- * rather than one shrug covering all of them.
+ * <p><b>Words alone are a proof too, since 28.11.2026.</b> The owner, 09.10.2026:
+ * „tekst sam je dovoljan dokaz i bez slike", and on 03.10.2026, of every road a
+ * run is sent by: „Idealno, zelim da bude slika ili tekst". A comment with a
+ * letter in it, and nothing else, is enough ({@code optionalWhenFilled}'s second
+ * field on both forms: the link is let go by the comment as it is by the
+ * photograph). The sentence a report is refused with when it carries none of the
+ * three is the owner's choice of 28.11.2026 and names all three.
+ *
+ * <p><b>Three ways through, then</b>: a link on its own, a photograph with a
+ * comment, and a comment on its own. Everything else is one of the three
+ * refusals below, and each is a different sentence to show the member rather
+ * than one shrug covering all of them. <b>A comment never excuses a link that is
+ * not a web address</b>, for the reason {@link #decide} gives, and a comment of
+ * blanks is no comment.
  *
  * <p><b>The link's shape is judged here as well, and that is a 400 bought with a
  * 500.</b> {@code result_submission_link_shape} says the same thing in SQL and
@@ -86,7 +96,7 @@ public final class ProofThatTheRunHappened {
 		/** It may be looked at. */
 		GOOD,
 
-		/** No link and no photograph: nothing here says the run happened. */
+		/** No link, no photograph and no word: nothing here says the run happened. */
 		NOTHING_SHOWS_IT_HAPPENED,
 
 		/** A photograph came with no word about it, and „slika nikad ne stoji sama". */
@@ -122,7 +132,10 @@ public final class ProofThatTheRunHappened {
 			return blank(report.comment()) ? Outcome.A_PHOTOGRAPH_NEVER_STANDS_ALONE : Outcome.GOOD;
 		}
 
-		return link.isEmpty() ? Outcome.NOTHING_SHOWS_IT_HAPPENED : Outcome.GOOD;
+		/* A link is a proof, and so are words with no link beside them (the class note). The
+		   comment is asked as the photograph's own rule asks it, `blank`, so a comment of
+		   spaces is the nothing it is on the form. */
+		return link.isEmpty() && blank(report.comment()) ? Outcome.NOTHING_SHOWS_IT_HAPPENED : Outcome.GOOD;
 	}
 
 	/**

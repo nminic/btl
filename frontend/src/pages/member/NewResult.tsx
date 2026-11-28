@@ -769,9 +769,10 @@ function TheForm({ me }: { me: string }) {
             }
             /* And a counted result does not go back into the queue on somebody's
                word alone: „menja i dostavlja dokaz za tu izmenu" (owner,
-               27.08.2026). Either proof will do, which is the pair the portal
-               already treats as one (PDL P9: a link or a picture, and a picture
-               carries a comment with it).
+               27.08.2026). Any of the three proofs will do, which is the set the portal
+               already treats as one (PDL P9: a link, a picture that carries a comment
+               with it, or words alone: owner, 09.10.2026, „tekst sam je dovoljan dokaz
+               i bez slike", on every road of sending, 03.10.2026).
 
                Refused rather than the fields made required, because the requirement
                is about this one road in: on every other road both are optional, and a
@@ -787,7 +788,8 @@ function TheForm({ me }: { me: string }) {
                  lost was the explanation and not the guard. */
               fixingOne !== undefined &&
               String(values.link).trim() === '' &&
-              String(values.photo).trim() === ''
+              String(values.photo).trim() === '' &&
+              String(values.comment).trim() === ''
                 ? 'newResult.needsProof'
                 : /* And a result run in no time at all, which no single box can refuse
                      because each of the three is right to take nought on its own: a

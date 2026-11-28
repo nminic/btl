@@ -41,7 +41,8 @@
       "required": true,
       "pattern": "^https?:\\/\\/[^\\s]+$",
       "optionalWhenFilled": {
-        "field": "photo"
+        "field": "photo",
+        "orField": "comment"
       },
       "maxLength": 500
     },

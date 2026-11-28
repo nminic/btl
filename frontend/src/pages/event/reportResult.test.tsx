@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import { useEffect, useRef, type ReactNode } from 'react'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { ClockProvider } from '../../clock/ClockProvider'
@@ -12,6 +12,7 @@ import { loadResource } from '../../data/client'
 import { btlPoints } from '../../data/scoring'
 import type { BtlEvent, Race } from '../../data/types'
 import { first, must } from '../../test/at'
+import { SLOW } from '../../test/slow'
 import { formatDistance, formatNumber, formatShortDate, formatYear } from '../../i18n/format'
 import { raceLabel } from '../../data/raceLabel'
 
@@ -33,6 +34,10 @@ import { ReportResult } from './ReportResult'
 
 /** Somebody signed in, since the form is only for members. */
 const ME = '000007'
+
+/** A wait of half a case's clock (`SLOW`), so a screen that never says what a case waits for fails on that
+ *  assertion and not by running the case out of time, which names nothing. */
+const SOON = { timeout: SLOW / 2 }
 
 /**
  * EVERYTHING THIS SCREEN SENT TO `POST /api/results`, read off the requests themselves.
@@ -339,6 +344,63 @@ describe('a result reported this way', () => {
       server.stop()
     }
   })
+
+  it('sends words alone as the proof, with no address and no picture', async () => {
+    /* Owner, 09.10.2026: „tekst sam je dovoljan dokaz i bez slike", on every road of sending
+       (03.10.2026); put into force 28.11.2026. The form of the event is the second of the two forms
+       that carry the rule, and its comment is the one box that is also where a member who has no link
+       says where the result comes from (`ReportResult`). Held on what was SENT: the address empty and
+       the words as typed, which is what the server judges. */
+    const { races } = await racesOf(EVENT)
+    const user = setupUser()
+    const route = recording()
+
+    try {
+      renderAt(reportAddress(EVENT, first(races)), 'competitor', ME)
+
+      await user.type(await screen.findByLabelText(/Sati/), '3')
+      await user.type(screen.getByLabelText(/Minuti/), '41')
+      await user.type(screen.getByLabelText(/Sekunde/), '12')
+      expect(screen.getByLabelText(/Link ka zvaničnim/), 'with nothing else the link is asked for').toBeRequired()
+      await user.type(screen.getByLabelText(/Komentar/), 'Sat je stao, vreme je sa telefona.')
+      expect(screen.getByLabelText(/Link ka zvaničnim/), 'words did not let the link go').not.toBeRequired()
+      await user.click(screen.getByRole('button', { name: 'Pošalji rezultat' }))
+
+      expect(await screen.findByRole('heading', { name: 'Rezultat je poslat' }, SOON)).toBeVisible()
+      expect(route.sent()).toHaveLength(1)
+      expect(route.sent()[0]).toMatchObject({ link: '', comment: 'Sat je stao, vreme je sa telefona.' })
+    } finally {
+      route.stop()
+    }
+  }, SLOW)
+
+  it.each([
+    ['nothing at all', ''],
+    ['blanks', '    '],
+  ])('refuses %s in the comment and no link and no picture, and sends nothing', async (_, comment) => {
+    const { races } = await racesOf(EVENT)
+    const user = setupUser()
+    const route = recording()
+
+    try {
+      renderAt(reportAddress(EVENT, first(races)), 'competitor', ME)
+
+      await user.type(await screen.findByLabelText(/Sati/), '3')
+      await user.type(screen.getByLabelText(/Minuti/), '41')
+      await user.type(screen.getByLabelText(/Sekunde/), '12')
+
+      if (comment !== '') {
+        await user.type(screen.getByLabelText(/Komentar/), comment)
+      }
+
+      await user.click(screen.getByRole('button', { name: 'Pošalji rezultat' }))
+
+      await waitFor(() => expect(screen.getByLabelText(/Link ka zvaničnim/)).toHaveAttribute('aria-invalid', 'true'), SOON)
+      expect(route.sent()).toEqual([])
+    } finally {
+      route.stop()
+    }
+  }, SLOW)
 
   it('refuses a form that was never filled in', async () => {
     /* Four boxes and not three since 23.08.2026: the address of the official

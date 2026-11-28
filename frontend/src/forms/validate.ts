@@ -200,7 +200,11 @@ function answered(values: FormValues, name: string): boolean {
 function byAnswer(field: FieldDef, values: FormValues): FieldDef {
   const loosened = field.optionalWhenFilled
 
-  if (loosened !== undefined && answered(values, loosened.field)) {
+  if (
+    loosened !== undefined &&
+    (answered(values, loosened.field) ||
+      (loosened.orField !== undefined && answered(values, loosened.orField)))
+  ) {
     return { ...field, required: false }
   }
 

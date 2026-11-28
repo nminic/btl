@@ -938,7 +938,7 @@ describe('a result that has been counted', () => {
     await user.click(screen.getByRole('button', { name: /^Pošalji/ }))
 
     expect(
-      await screen.findByText(/mora da ide link ka zvaničnim rezultatima ili slika/),
+      await screen.findByText(/mora da ide dokaz: link ka zvaničnim rezultatima, slika ili komentar/),
     ).toBeVisible()
   })
 
@@ -989,7 +989,7 @@ describe('a result that has been counted', () => {
     await user.click(screen.getByRole('button', { name: /^Pošalji/ }))
 
     expect(
-      await screen.findByText(/mora da ide link ka zvaničnim rezultatima ili slika/),
+      await screen.findByText(/mora da ide dokaz: link ka zvaničnim rezultatima, slika ili komentar/),
     ).toBeVisible()
 
     await user.type(screen.getByLabelText(/^Link/), 'https://primer.rs/rezultati')
@@ -997,6 +997,47 @@ describe('a result that has been counted', () => {
 
     expect(await screen.findByText('Rezultat je ponovo poslat.')).toBeVisible()
   })
+
+  it('takes words alone as the new proof, and refuses blanks in their place', async () => {
+    /* Owner, 09.10.2026: „tekst sam je dovoljan dokaz i bez slike", on every road of sending
+       (03.10.2026), which includes the correction of a counted result (PDL P9, „Dokaz uz rezultat",
+       put into force 28.11.2026). Both sides of the one axis, on one form: a comment of blanks is
+       the nothing the other two boxes are, and it is refused in the sentence that now names all
+       three; a word is taken, and what goes to the server is the word with no address beside it. */
+    const user = setupUser()
+
+    renderAt(COUNTED, 'competitor', '000001', undefined, '2026-08-23')
+
+    const row = await firstCounted()
+
+    await user.click(row.getByRole('link', { name: /^Izmeni rezultat/ }))
+    await screen.findByText(/Menjaš rezultat koji je već uračunat/)
+    await user.type(screen.getByLabelText(/Komentar/), '   ')
+    await user.click(screen.getByRole('button', { name: /^Pošalji/ }))
+
+    /* Waits of half the case's clock, so a screen that never says it fails on its own assertion and
+       not by running the case out of time, which says nothing (the shape `newResult.test.tsx` keeps). */
+    const SOON = { timeout: SLOW / 2 }
+
+    expect(
+      await screen.findByText(
+        /mora da ide dokaz: link ka zvaničnim rezultatima, slika ili komentar/,
+        undefined,
+        SOON,
+      ),
+    ).toBeVisible()
+    expect(writes()).toHaveLength(0)
+
+    await user.type(screen.getByLabelText(/Komentar/), 'Sat je stao, vreme je sa telefona.')
+    await user.click(screen.getByRole('button', { name: /^Pošalji/ }))
+
+    expect(await screen.findByText('Rezultat je ponovo poslat.', undefined, SOON)).toBeVisible()
+
+    const sent = must(writes()[0], 'the correction')
+
+    expect(sent.method).toBe('PUT')
+    expect(sent.body).toMatchObject({ link: '', comment: 'Sat je stao, vreme je sa telefona.' })
+  }, SLOW)
 
   it('leaves the standing exactly as it was while the correction waits', async () => {
     /* Owner, 28.08.2026, choosing between four outcomes: the old result stays

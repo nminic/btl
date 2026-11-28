@@ -626,6 +626,53 @@ describe('a picture that lets one field go and demands another', () => {
   it('leaves a field with neither rule as it is written', () => {
     expect(validateForm(form, { link: 'https://x.rs', comment: '', photo: '' }, today)).toEqual({})
   })
+
+  /* WORDS ALONE LET THE LINK GO TOO (owner, 09.10.2026: „tekst sam je dovoljan dokaz i bez slike",
+     put into force 28.11.2026), which is the second answer the rule names (`orField`). The cases are
+     stood on both sides of it, and the comment is a field the form already carries, so a rule that
+     read it off any other box would let a case through that the blanks case refuses. */
+  describe('with the comment as the second answer that lets the link go', () => {
+    const loosened: FieldDef = { ...link, optionalWhenFilled: { field: 'photo', orField: 'comment' } }
+    const byWords: FormDef = { id: 'r', titleKey: 't', submitKey: 's', fields: [loosened, comment, photo] }
+
+    it('lets the link go for words alone', () => {
+      expect(validateForm(byWords, { link: '', comment: 'Sat je stao', photo: '' }, today)).toEqual({})
+    })
+
+    it('does not let it go for nothing, nor for blanks of any kind', () => {
+      for (const blank of ['', '   ', '\t\n', '\u2009']) {
+        expect(
+          validateForm(byWords, { link: '', comment: blank, photo: '' }, today),
+          `a comment of ${JSON.stringify(blank)} let the link go`,
+        ).toEqual({ link: { key: 'form.errors.required' } })
+      }
+
+      expect(validateForm(byWords, { link: '', photo: '' }, today)).toEqual({
+        link: { key: 'form.errors.required' },
+      })
+    })
+
+    it('still lets the picture do it, and still demands the comment beside the picture', () => {
+      expect(validateForm(byWords, { link: '', comment: '', photo: 'sat.jpg' }, today)).toEqual({
+        comment: { key: 'form.errors.required' },
+      })
+    })
+
+    it('lets go of nothing but the demand: what is typed in the link is still held to its shape', () => {
+      const shaped: FieldDef = { ...loosened, pattern: '^https?://.+' }
+      const withShape: FormDef = { id: 'r', titleKey: 't', submitKey: 's', fields: [shaped, comment, photo] }
+
+      expect(
+        validateForm(withShape, { link: 'nije adresa', comment: 'Sat je stao', photo: '' }, today),
+      ).not.toEqual({})
+    })
+
+    it('does not let the link go for words in a rule that names no second answer', () => {
+      expect(validateForm(form, { link: '', comment: 'Sat je stao', photo: '' }, today)).toEqual({
+        link: { key: 'form.errors.required' },
+      })
+    })
+  })
 })
 
 describe('a field asked of everybody and demanded of some', () => {

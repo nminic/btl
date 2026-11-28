@@ -30,13 +30,16 @@ class ProofThatTheRunHappenedTest {
 	private static final Path FORMS = Path.of("..", "frontend", "src", "forms", "definitions");
 
 	/**
-	 * A LINK ON ITS OWN IS ENOUGH, AND A PHOTOGRAPH WITH A WORD IS ENOUGH.
+	 * A LINK ON ITS OWN IS ENOUGH, A PHOTOGRAPH WITH A WORD IS ENOUGH, AND SO IS A WORD ON ITS OWN.
 	 *
-	 * <p>The two ways through, and they are written beside each other because the
-	 * rule is that the legs swap: neither one needs the other.
+	 * <p>The three ways through, written beside each other because the rule is that
+	 * the legs swap: none of them needs another. The third is the owner's of
+	 * 09.10.2026, „tekst sam je dovoljan dokaz i bez slike", put into force on
+	 * 28.11.2026; until then this class called a comment with no link and no
+	 * photograph nothing at all.
 	 */
 	@Test
-	void eitherHalfOfTheProofWillDo() {
+	void anyOfTheThreeWillDo() {
 		assertThat(ProofThatTheRunHappened.decide(new Report(A_LINK, false, "")))
 				.as("a link on its own was refused")
 				.isEqualTo(Outcome.GOOD);
@@ -44,24 +47,50 @@ class ProofThatTheRunHappenedTest {
 		assertThat(ProofThatTheRunHappened.decide(new Report("", true, "trcao sam sa Markom")))
 				.as("a photograph with a word about it was refused")
 				.isEqualTo(Outcome.GOOD);
+
+		assertThat(ProofThatTheRunHappened.decide(new Report("", false, "sat je stao na 12. km")))
+				.as("a word on its own was refused")
+				.isEqualTo(Outcome.GOOD);
+
+		assertThat(ProofThatTheRunHappened.decide(new Report(null, false, "sat je stao na 12. km")))
+				.as("a word on its own, with the link not sent at all, was refused")
+				.isEqualTo(Outcome.GOOD);
 	}
 
 	/**
-	 * AND NEITHER HALF IS NOTHING.
+	 * AND NONE OF THE THREE IS NOTHING.
 	 *
-	 * <p>Blank and absent are one case and both are here, because a form posts an
-	 * empty string where a script posts nothing, and a rule written against one of
-	 * them lets the other through to a table that takes anything but null.
+	 * <p>Blank and absent are one case and both are here, for the link and for the
+	 * word, because a form posts an empty string where a script posts nothing, and a
+	 * rule written against one of them lets the other through to a table that takes
+	 * anything but null. <b>Blanks of every kind a person can type</b> are the
+	 * comment's own axis: a comment of spaces is the nothing it is on the form.
 	 */
 	@ParameterizedTest
-	@ValueSource(strings = {"", "   "})
-	void withNoLinkAndNoPhotographThereIsNothingToLookAt(String nothing) {
-		assertThat(ProofThatTheRunHappened.decide(new Report(nothing, false, "trcao sam")))
-				.as("a report showing nothing at all was accepted, and a comment is not proof")
+	@ValueSource(strings = {"", "   ", "\t\n", "\u2009", "\u3000"})
+	void withNoLinkAndNoPhotographAndNoWordThereIsNothingToLookAt(String nothing) {
+		assertThat(ProofThatTheRunHappened.decide(new Report(nothing, false, nothing)))
+				.as("a report showing nothing at all was accepted")
 				.isEqualTo(Outcome.NOTHING_SHOWS_IT_HAPPENED);
 
 		assertThat(ProofThatTheRunHappened.decide(new Report(null, false, nothing)))
 				.isEqualTo(Outcome.NOTHING_SHOWS_IT_HAPPENED);
+
+		assertThat(ProofThatTheRunHappened.decide(new Report(nothing, false, null)))
+				.isEqualTo(Outcome.NOTHING_SHOWS_IT_HAPPENED);
+	}
+
+	/**
+	 * A WORD NEVER EXCUSES A LINK THAT IS NOT AN ADDRESS, and the word is not what is judged for it.
+	 *
+	 * <p>The shape is judged first, so a member who typed `pogledaj kod mene` in the link box and
+	 * a good sentence in the comment is told his link is not one, instead of having it thrown out
+	 * by the table as a server fault.
+	 */
+	@Test
+	void aWordDoesNotMakeAnAddressOutOfWhatIsNotOne() {
+		assertThat(ProofThatTheRunHappened.decide(new Report("pogledaj kod mene", false, "sat je stao")))
+				.isEqualTo(Outcome.A_LINK_THAT_IS_NOT_A_LINK);
 	}
 
 	/**
@@ -210,6 +239,49 @@ class ProofThatTheRunHappenedTest {
 					.as("%s lets a photograph stand alone, and the server will refuse what it accepts", form)
 					.isEqualTo(Map.of("comment", "photo"));
 		}
+	}
+
+	/**
+	 * WORDS ALONE LET THE LINK GO ON EVERY FORM THAT HAS THIS RULE, which is the half of the rule the
+	 * swap above does not hold, and it is held for the same reason: the forms are read and not
+	 * remembered.
+	 *
+	 * <p>The server takes a comment with no link and no photograph (owner, 09.10.2026, put into
+	 * force 28.11.2026), so a form that went on asking for the link of somebody who has written
+	 * words would refuse in front of the member what the server takes. Per form, and by the field the
+	 * photograph rule makes optional: that field's rule names the comment as its second answer, and the
+	 * comment is not itself made required by anything but the photograph.
+	 */
+	@Test
+	void everyFormThatHasTheSwapLetsTheLinkGoForTheComment() {
+		int checked = 0;
+
+		for (Path form : definitions()) {
+			String named = form.getFileName().toString();
+			JsonNode written = read(form);
+			Map<String, String> optional = new TreeMap<>();
+
+			collect(written, optional, new TreeMap<>());
+
+			for (String field : optional.keySet()) {
+				fields(written, one -> {
+					if (field.equals(one.path("name").asString(""))) {
+						assertThat(one.path("optionalWhenFilled").path("orField").asString(""))
+								.as("%s asks for %s of somebody who wrote words and no link, and the server takes them",
+										named, field)
+								.isEqualTo("comment");
+					}
+					if ("comment".equals(one.path("name").asString(""))) {
+						assertThat(one.path("required").asBoolean(false))
+								.as("%s asks for the comment of everybody, which is not the rule", named)
+								.isFalse();
+					}
+				});
+				checked++;
+			}
+		}
+
+		assertThat(checked).as("no form carries the rule, so nothing was compared").isPositive();
 	}
 
 	/**
