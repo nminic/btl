@@ -336,7 +336,9 @@
   margin-block-start: var(--space-4);
 }
 
-.review__proof img {
+/* By a class of its own and never as `img` under the link: the card of a picture that waits draws an `img`
+   too, and no rule of this sheet may cap that one (`verificationStyle.test.ts`). */
+.review__proof-picture {
   display: block;
   max-inline-size: 6rem;
   max-block-size: 6rem;

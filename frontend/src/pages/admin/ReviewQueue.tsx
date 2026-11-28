@@ -1162,6 +1162,7 @@ function ProofPicture({
     <a className="review__proof" href={address} target="_blank" rel="noopener">
       <img
         key={photoId}
+        className="review__proof-picture"
         src={address}
         alt={t('review.proofAlt', { who: one.who })}
         onLoad={() => onOutcome(one.id, photoId, 'loaded')}

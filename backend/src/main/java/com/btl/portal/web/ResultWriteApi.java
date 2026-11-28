@@ -36,8 +36,6 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.multipart.MultipartHttpServletRequest;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.util.WebUtils;
-import tools.jackson.core.JacksonException;
-import tools.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -400,17 +398,13 @@ class ResultWriteApi {
 	 *  member the session resolved, on both roads a run is sent by. */
 	private final ReportTesters testers;
 
-	/** What reads the part {@code run} of a request that carries a picture: the reader
-	 *  {@link WhatWasSent} reads a JSON body with, so the two shapes of one body are read alike. */
-	private final ObjectMapper json;
-
 	/** Where the file of a picture is kept, under the number of its row (ADL O8), the folder
 	 *  {@link PhotoApi} serves it from. */
 	private final Path folder;
 
 	ResultWriteApi(JdbcClient db, ActiveMemberOrAdministration readers, Postman postman, Clock clock,
 			TransactionTemplate inOneTransaction, DucatsFollowTheResults ducats, ReportTesters testers,
-			ObjectMapper json, @Value("${btl.photos.folder}") String folder) {
+			@Value("${btl.photos.folder}") String folder) {
 		this.db = db;
 		this.ducats = ducats;
 		this.readers = readers;
@@ -418,7 +412,6 @@ class ResultWriteApi {
 		this.clock = clock;
 		this.inOneTransaction = inOneTransaction;
 		this.testers = testers;
-		this.json = json;
 		this.folder = Path.of(folder);
 	}
 
@@ -539,7 +532,7 @@ class ResultWriteApi {
 			return awayAtAnOpenAddress();
 		}
 
-		Carried<Ran> carried = whatCameWith(sent, request, Ran.class);
+		Carried<Ran> carried = whatCameWith(sent, request);
 		Ran typed = carried.body();
 
 		if (typed == null) {
@@ -592,7 +585,7 @@ class ResultWriteApi {
 			throw nothingIsHere();
 		}
 
-		Carried<Correction> carried = whatCameWith(sent, request, Correction.class);
+		Carried<Correction> carried = whatCameWith(sent, request);
 		Correction typed = carried.body();
 
 		if (typed == null) {
@@ -1145,7 +1138,8 @@ class ResultWriteApi {
 	 * WHAT A REQUEST CARRIED, IN EITHER OF ITS TWO SHAPES.
 	 *
 	 * <p>A JSON body is read as it always was ({@link WhatWasSent}). A body with a picture carries
-	 * the same JSON as its part {@code run}, read by the same reader, and the file as its part
+	 * the same JSON as its part {@code run}, read by the same reader ({@link WhatWasSent#readFrom}), and
+	 * the file as its part
 	 * {@code picture}. A part {@code run} that is absent or not JSON is a body that is not JSON: a
 	 * form not filled in. A part {@code picture} that is empty is no picture, which is what a browser
 	 * sends for a file box nobody filled.
@@ -1156,8 +1150,7 @@ class ResultWriteApi {
 	 * read anywhere in this class), then the metadata taken off, so what is stored, counted and hashed is
 	 * the picture without where it was taken.
 	 */
-	private <T> Carried<T> whatCameWith(WhatWasSent<T> sent, HttpServletRequest request, Class<T> type)
-			throws IOException {
+	private <T> Carried<T> whatCameWith(WhatWasSent<T> sent, HttpServletRequest request) throws IOException {
 		MultipartHttpServletRequest parts =
 				WebUtils.getNativeRequest(request, MultipartHttpServletRequest.class);
 
@@ -1165,7 +1158,8 @@ class ResultWriteApi {
 			return new Carried<>(sent.read(), null, null);
 		}
 
-		T body = bodyIn(parts.getParameter("run"), type);
+		String run = parts.getParameter("run");
+		T body = run == null ? null : sent.readFrom(run);
 		MultipartFile picture = parts.getFile("picture");
 
 		if (picture == null || picture.isEmpty()) {
@@ -1186,17 +1180,6 @@ class ResultWriteApi {
 		return new Carried<>(body, new ThePicture(mediaType, WithoutMetadata.of(bytes, mediaType)), null);
 	}
 
-	private <T> T bodyIn(String run, Class<T> type) {
-		if (run == null) {
-			return null;
-		}
-
-		try {
-			return json.readValue(run, type);
-		} catch (JacksonException notJson) {
-			return null;
-		}
-	}
 
 	/**
 	 * THE RESULT, IF IT IS HIS.
