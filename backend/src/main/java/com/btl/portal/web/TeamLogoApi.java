@@ -83,7 +83,7 @@ import java.util.Optional;
  * leaving ({@code TeamWriteApi.takeOut}, which {@code TeamAdministrationWriteApi.remove} calls too), the deletion of
  * the member who holds it ({@code CompetitorWriteApi}, through {@code team_admin_fk}) and the cancellation of a
  * season ({@code ASeasonBegins.cancelled}) each take the queue row at their own start, through
- * {@code ATeamGoesWithItsLastMember.holdTheQueueOfTheTeamsOnlyHeIsIn} and {@code holdTheQueueOf}, and
+ * {@code ATeamGoesWithItsLastMember.holdTheQueueOfTheTeamsOnlyHeIsIn} and {@code holdTheQueueOfTheTeamsNobodyElseHoldsTheSeasonIn}, and
  * {@code ATeamGoingByEveryRoadWhileItsLogoIsSentTest} holds each of the four through the road itself.
  *
  * <p><b>THE ADMINISTRATION'S DOOR IS THE LEAGUE'S MARK</b> ({@link LeagueMarkApi}): the right over the teams at the

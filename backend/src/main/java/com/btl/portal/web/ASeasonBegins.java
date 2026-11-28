@@ -192,10 +192,13 @@ class ASeasonBegins implements WhatFollowsTheFreeze {
 			return;
 		}
 
-		/* THE QUEUE ROWS OF THE LOGOS OF THE TEAMS HE STOOD IN, before `out` writes `team.admin_id`: the delete below
-		   takes the queue row after the team's row, the other half of a cycle with a send of the logo (PENDING, review
-		   of PR 844, 28.11.2026). */
-		teams.holdTheQueueOf(before.teams());
+		/* THE QUEUE ROWS OF THE LOGOS OF THE TEAMS NOBODY ELSE HOLDS THE SEASON IN, before `out` writes
+		   `team.admin_id`: the delete below takes the queue row after the team's row, the other half of a cycle with
+		   a send of the logo (PENDING, review of PR 844, 28.11.2026). Only the teams the delete can reach, the
+		   condition `nobodyIsIn` below asks, and not the ones that stay: a refusal of the logo holds the queue row
+		   and then asks for this member's row, which his route holds (review of PR 846).
+		   */
+		teams.holdTheQueueOfTheTeamsNobodyElseHoldsTheSeasonIn(member, before.teams(), season);
 
 		out(List.of(member), season, true, before.teams(), before.seats(), now);
 

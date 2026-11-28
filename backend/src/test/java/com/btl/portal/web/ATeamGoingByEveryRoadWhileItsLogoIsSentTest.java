@@ -309,6 +309,103 @@ class ATeamGoingByEveryRoadWhileItsLogoIsSentTest {
 		}
 	}
 
+	/**
+	 * THE CANCELLATION OF THE SENDER OF A LOGO THAT WAITS, IN A TEAM THAT STAYS, AND THE REFUSAL OF THAT LOGO DO NOT
+	 * MAKE A CYCLE (PENDING, review of PR 846, 28.11.2026). The route of a cancellation takes the member's row
+	 * first; a refusal takes the queue row and then writes a message to the sender, which asks for his row. A
+	 * cancellation that held the queue row of a team that stays would wait for the refusal while the refusal waits
+	 * for it: measured as {@code deadlock detected}. This thread plays the refusal up to its second statement (it
+	 * holds the queue row), the road is the route's own order (the freeze, the member's row, the cancellation), and
+	 * the message is what the refusal does next. The team has a second member whose row covers the season, so it
+	 * stays and the road holds nothing of the queue.
+	 */
+	@Test
+	void theCancellationOfTheSenderInATeamThatStaysAndTheRefusalOfHisLogoDoNotMakeACycle() throws Exception {
+		Team team = aTeamWithALogoThatWaits(true);
+		Team mate = aMember();
+
+		db.sql("insert into team_membership (competitor_id, team_id, season_from) values (?, ?, ?)")
+				.params(mate.editor(), team.id(), A_SEASON_STILL_TO_COME).update();
+
+		weWroteTheFreeze = db.sql("insert into season_frozen (season, frozen_at) values (2027, ?)"
+						+ " on conflict do nothing")
+				.param(Timestamp.from(Instant.parse("2027-01-01T15:00:00Z"))).update() == 1;
+
+		ZonedDateTime now = ZonedDateTime.now(clock);
+		long theRow = theRowThatWaits(team);
+		ExecutorService pool = Executors.newFixedThreadPool(1);
+		List<Future<Integer>> submitted = new ArrayList<>();
+
+		try {
+			holdingTheRow.execute(heldOpen -> {
+				db.sql("select 1 from verification where id = ? for update").param(theRow).query(Integer.class)
+						.single();
+
+				submitted.add(pool.submit(() -> {
+					holdingTheRow.executeWithoutResult(cancelling -> {
+						ASeasonBegins.holdTheFreezeStill(db);
+						db.sql("select id from competitor where id = ? for update").param(team.editor())
+								.query(Long.class).list();
+						begins.cancelled(team.editor(), 2028, now, begins.before(team.editor(), 2028, now));
+					});
+
+					return 0;
+				}));
+
+				Instant deadline = Instant.now().plusSeconds(4);
+
+				while (!submitted.getFirst().isDone() && Instant.now().isBefore(deadline)) {
+					sleep();
+				}
+
+				assertThat(submitted.getFirst())
+						.as("the cancellation of a member of a team that stays waited for the queue row of a logo")
+						.isDone();
+
+				/* WHAT THE REFUSAL DOES NEXT: a message to the sender, which asks for his row. */
+				db.sql("insert into message (to_id, from_id, from_name, subject, body) values (?, null, 'BTL',"
+						+ " 'Stavka je odbijena', 'probe')").param(team.editor()).update();
+
+				return null;
+			});
+
+			assertThat(submitted.getFirst().get(30, TimeUnit.SECONDS)).isZero();
+			assertThat(db.sql("select count(*) from team where id = ?").param(team.id()).query(Long.class).single())
+					.as("a team with somebody who holds the season was deleted").isOne();
+		}
+		finally {
+			pool.shutdownNow();
+		}
+	}
+
+	/**
+	 * THE OTHER SIDE OF THE CONDITION: a team whose only other member left in 2027 (his row ends before the season
+	 * cancelled, so it does not cover it) is deleted by the cancellation, and the road holds the queue row first.
+	 * Without this case a condition that counted the wrong season would stay green.
+	 */
+	@Test
+	void theCancellationInATeamWhoseOnlyOtherRowEndedBeforeTheSeasonAndASendDoNotMakeACycle() throws Exception {
+		Team team = aTeamWithALogoThatWaits(true);
+		Team mate = aMember();
+
+		db.sql("insert into team_membership (competitor_id, team_id, season_from, season_to, left_reason)"
+				+ " values (?, ?, 2027, 2027, ?)")
+				.params(mate.editor(), team.id(), com.btl.portal.domain.team.Membership.LEFT_ON_HIS_OWN).update();
+
+		weWroteTheFreeze = db.sql("insert into season_frozen (season, frozen_at) values (2027, ?)"
+						+ " on conflict do nothing")
+				.param(Timestamp.from(Instant.parse("2027-01-01T15:00:00Z"))).update() == 1;
+
+		ZonedDateTime now = ZonedDateTime.now(clock);
+
+		theRoadAndTheSendsNextLockDoNotMakeACycle(team, () -> {
+			holdingTheRow.executeWithoutResult(cancelling -> begins.cancelled(team.editor(), 2028, now,
+					begins.before(team.editor(), 2028, now)));
+
+			return 0;
+		}, 0);
+	}
+
 	private void theRoadAndTheSendsNextLockDoNotMakeACycle(Team team, Callable<Integer> road, int answer)
 			throws Exception {
 
