@@ -1,0 +1,1483 @@
+import { GAP_MS, LONG_GAP_MS, measureDistance, MAX_ACCURACY_M, MIN_STEP_M, STATIONARY_SPEED_MPS } from './distance';
+import {
+  BURST_AFTER_THE_SECOND_GAP,
+  NO_GAP,
+  ON_FOOT,
+  type Profile,
+  session,
+  SPIKE_FIRST_AFTER_THE_FIRST_GAP,
+  SPIKES_AFTER_A_SHORT_STAY,
+  STANDING,
+  TRIP_BACK,
+  TRIP_BACK_SHORT,
+  TWO_GAPS,
+  type Truth,
+  WITH_DRIVE,
+} from './testing/paths';
+import { haversineM } from './geo';
+import { every, fix, jitter } from './testing/synth';
+
+/** A straight run east at `speed` m/s, one fix a second. */
+function straight(fromS: number, toS: number, speed = 3, startM = 0) {
+  return every(fromS * 1000, toS * 1000, 1).map((t) => fix(t, startM + speed * (t / 1000 - fromS), 0, { speed }));
+}
+
+describe('standing and moving', () => {
+  it('adds nothing while the position wanders around a runner who stands', () => {
+    const next = jitter(1);
+    const fixes = every(0, 600_000, 1).map((t) => fix(t, next() * 6, next() * 6, { speed: 0.1 }));
+
+    const result = measureDistance(fixes);
+
+    expect(result.distanceM).toBe(0);
+    expect(fixes.length).toBe(600);
+  });
+
+  it('adds the whole run when the same number of fixes moves in a straight line', () => {
+    const result = measureDistance(straight(0, 600));
+
+    expect(result.distanceM).toBeGreaterThan(1797 * 0.995 - 6);
+    expect(result.distanceM).toBeLessThanOrEqual(1797.000001);
+  });
+
+  it('without Doppler speed, holds jitter below both errors together', () => {
+    const next = jitter(2);
+    const fixes = every(0, 300_000, 1).map((t) => fix(t, next() * 1.5, next() * 1.5, { speed: undefined }));
+
+    expect(measureDistance(fixes).distanceM).toBe(0);
+  });
+});
+
+describe('good and poor accuracy', () => {
+  /** A run east with a stretch from 60 to 100 s that wanders 60 m north and back. */
+  function withDetour(accuracy: number) {
+    return straight(0, 160).map((f, i) => {
+      if (i < 60 || i >= 100) return f;
+      const north = i < 80 ? (i - 60) * 3 : (100 - i) * 3;
+      return fix(f.t, 3 * i, north, { accuracy, speed: 3 });
+    });
+  }
+
+  it(`drops fixes worse than ${MAX_ACCURACY_M} m even when they wander slowly enough to look real`, () => {
+    const result = measureDistance(withDetour(30));
+
+    expect(result.distanceM).toBeLessThanOrEqual(477.000001);
+    expect(result.distanceM).toBeGreaterThan(470);
+    expect(result.poorFixes).toBe(40);
+  });
+
+  it('counts the same detour when its fixes are good', () => {
+    const result = measureDistance(withDetour(4));
+
+    expect(result.distanceM).toBeGreaterThan(515);
+    expect(result.poorFixes).toBe(0);
+  });
+
+  it('treats a fix that reports no accuracy as poor', () => {
+    const fixes = straight(0, 10).map((f) => ({ ...f, accuracy: undefined }));
+
+    const result = measureDistance(fixes);
+
+    expect(result.distanceM).toBe(0);
+    expect(result.poorFixes).toBe(10);
+    expect(result.lastFixPoor).toBe(true);
+  });
+});
+
+describe('a lost signal and a continuous one', () => {
+  it('bridges a gap of a minute with the straight line, as the continuous run would have', () => {
+    const continuous = measureDistance(straight(0, 400));
+    const gapped = measureDistance(straight(0, 400).filter((f) => f.t < 130_000 || f.t >= 200_000));
+
+    expect(continuous.distanceM).toBeGreaterThan(1190);
+    expect(gapped.distanceM).toBeCloseTo(continuous.distanceM, 0);
+  });
+});
+
+describe('the time a fix was taken and the time it was read', () => {
+  it('measures by sample time when Android hands fixes over in batches, out of order', () => {
+    const fixes = straight(0, 300).map((f) => ({ ...f, receivedAt: Math.ceil((f.t + 1) / 10_000) * 10_000 }));
+    // Within every batch of ten the file holds them reversed.
+    const delivered = [];
+    for (let i = 0; i < fixes.length; i += 10) delivered.push(...fixes.slice(i, i + 10).reverse());
+
+    const result = measureDistance(delivered);
+
+    expect(result.distanceM).toBeGreaterThan(890);
+    expect(result.vehicleSegments).toBe(0);
+    expect(result.spikeFixes).toBe(0);
+  });
+});
+
+describe('a spike and a vehicle', () => {
+  it('drops a single fix that jumps 80 m and back, and counts it', () => {
+    const fixes = straight(0, 100).map((f, i) => (i === 50 ? fix(f.t, 150, 80) : f));
+
+    const result = measureDistance(fixes);
+
+    expect(result.distanceM).toBeGreaterThan(290);
+    expect(result.distanceM).toBeLessThanOrEqual(297.000001);
+    expect(result.spikeFixes).toBe(1);
+    expect(result.vehicleSegments).toBe(0);
+  });
+
+  it('counts a spike at the very end of the session', () => {
+    const fixes = [...straight(0, 20), fix(20_000, 500, 0)];
+
+    expect(measureDistance(fixes).spikeFixes).toBe(1);
+  });
+
+  it('counts a stretch at vehicle speed as it counts running, and marks how many and how long', () => {
+    // PDL, „Deonica pređena brzinom vozila se RAČUNA, uz napomenu za moderatora".
+    const run = measureDistance(straight(0, 600));
+    const drive = measureDistance([...straight(0, 100), ...straight(100, 160, 20, 300), ...straight(160, 260, 3, 1500)]);
+
+    expect(run.distanceM).toBeGreaterThan(1780);
+    expect(drive.distanceM).toBeGreaterThan(1780);
+    expect(drive.distanceM).toBeLessThanOrEqual(1797.000001);
+    expect(run.vehicleSegments).toBe(0);
+    expect(run.vehicleDurationMs).toBe(0);
+    expect(drive.vehicleSegments).toBe(1);
+    expect(drive.vehicleDurationMs).toBeGreaterThanOrEqual(58_000);
+    expect(drive.vehicleDurationMs).toBeLessThanOrEqual(62_000);
+  });
+
+  it('counts the first fixes of a drive too, the ones it held until the drive was confirmed', () => {
+    // Ends at 90 m; the three fixes at 50, 70 and 90 m are the ones held.
+    const fixes = [...straight(0, 10), ...straight(10, 14, 20, 30)];
+
+    const result = measureDistance(fixes);
+
+    expect(result.vehicleSegments).toBe(1);
+    expect(result.distanceM).toBeGreaterThan(89.99);
+    expect(result.distanceM).toBeLessThanOrEqual(90.000001);
+  });
+
+  it('closes a vehicle stretch that lasts to the end of the session', () => {
+    const fixes = [...straight(0, 100), ...straight(100, 131, 20, 300)];
+
+    const result = measureDistance(fixes);
+
+    expect(result.vehicleSegments).toBe(1);
+    expect(result.vehicleDurationMs).toBe(30_000);
+    expect(result.spikeFixes).toBe(0);
+  });
+
+  it('in a drive counts every fix as it comes, and skips one repeated at the same instant', () => {
+    const drive = straight(100, 132, 20, 300);
+    const fixes = [...straight(0, 100), ...drive.slice(0, 20), { ...drive[19] }, ...drive.slice(20)];
+
+    const result = measureDistance(fixes);
+
+    expect(result.vehicleDurationMs).toBe(31_000);
+    expect(result.spikeFixes).toBe(0);
+    expect(result.distanceM).toBeGreaterThan(297 + 620 - 6);
+    expect(result.distanceM).toBeLessThanOrEqual(920.000001);
+  });
+
+  it('counts two separate drives as two', () => {
+    const fixes = [
+      ...straight(0, 50),
+      ...straight(50, 80, 20, 150),
+      ...straight(80, 130, 3, 750),
+      ...straight(130, 160, 20, 900),
+      ...straight(160, 200, 3, 1500),
+    ];
+
+    expect(measureDistance(fixes).vehicleSegments).toBe(2);
+  });
+});
+
+/** Seconds `fromS` to `toS` at `speed`, the runner at `eastM` at `fromS`, one fix a second. */
+const run = (fromS: number, toS: number, eastM: number) =>
+  every(fromS * 1000, toS * 1000, 1).map((t) => fix(t, eastM + 3 * (t / 1000 - fromS), 0, { speed: 3 }));
+
+/** The fix at `at` replaced by one 80 m north of where the runner is (`eastM`), with the same accuracy and Doppler speed as a real one. */
+const jumpAt = (fixes: ReturnType<typeof run>, at: number, eastM: number) =>
+  fixes.map((f, i) => (i === at ? fix(f.t, eastM, 80, { speed: 3 }) : f));
+
+describe('a spike after the speed check has lost its reference', () => {
+  // A stand does not move the anchor, so the speed of the next fix used to be measured over the whole
+  // stand and an 80 m jump looked like a slow walk. A gap in the signal does the same: the anchor is old.
+  const standing = (fromS: number, toS: number, eastM: number) =>
+    every(fromS * 1000, toS * 1000, 1).map((t) => fix(t, eastM, 0, { speed: 0 }));
+
+  const standResume = (spike: boolean) => {
+    const after = run(160, 260, 300);
+    return [...run(0, 100, 0), ...standing(100, 160, 300), ...(spike ? jumpAt(after, 0, 300) : after)];
+  };
+
+  it('drops a jump right after a minute of standing, as it drops one in the middle of a run', () => {
+    const clean = measureDistance(standResume(false));
+    const spiked = measureDistance(standResume(true));
+
+    expect(clean.distanceM).toBeGreaterThan(590);
+    expect(spiked.spikeFixes).toBe(1);
+    expect(spiked.vehicleSegments).toBe(0);
+    expect(Math.abs(spiked.distanceM - clean.distanceM)).toBeLessThanOrEqual(MIN_STEP_M);
+    expect(spiked.distanceM).toBeLessThanOrEqual(597.000001);
+  });
+
+  it('still drops the same jump in the middle of a run without any stand', () => {
+    const result = measureDistance(jumpAt(run(0, 200, 0), 100, 300));
+
+    expect(result.spikeFixes).toBe(1);
+    expect(result.distanceM).toBeLessThanOrEqual(597.000001);
+  });
+
+  it('counts a run that resumes after a stand, and marks no vehicle', () => {
+    const result = measureDistance(standResume(false));
+
+    expect(result.distanceM).toBeGreaterThan(590);
+    expect(result.distanceM).toBeLessThanOrEqual(597.000001);
+    expect(result.spikeFixes).toBe(0);
+    expect(result.vehicleSegments).toBe(0);
+  });
+
+  it('counts a run that resumes after a stand whose fixes Android delivered in a late batch', () => {
+    const stand = standing(100, 160, 300).map((f) => ({ ...f, receivedAt: Math.ceil((f.t + 1) / 30_000) * 30_000 }));
+    const result = measureDistance([...run(0, 100, 0), ...stand, ...run(160, 260, 300)]);
+
+    expect(result.distanceM).toBeGreaterThan(590);
+    expect(result.vehicleSegments).toBe(0);
+    expect(result.spikeFixes).toBe(0);
+  });
+
+  it('drops a jump right after a minute without any fix', () => {
+    const after = run(160, 260, 480);
+    const result = measureDistance([...run(0, 100, 0), ...jumpAt(after, 0, 480)]);
+
+    expect(result.spikeFixes).toBe(1);
+    expect(result.vehicleSegments).toBe(0);
+    expect(result.distanceM).toBeLessThanOrEqual(777.000001);
+    expect(result.distanceM).toBeGreaterThan(770);
+  });
+
+  it('drops a jump right after a service that was killed and started again, 40 s later', () => {
+    const after = run(140, 240, 420);
+    const result = measureDistance([...run(0, 100, 0), ...jumpAt(after, 0, 420)]);
+
+    expect(result.spikeFixes).toBe(1);
+    expect(result.vehicleSegments).toBe(0);
+    expect(result.distanceM).toBeLessThanOrEqual(717.000001);
+    expect(result.distanceM).toBeGreaterThan(710);
+  });
+
+  it('counts a real run that resumes after the gap, bridged as before', () => {
+    const result = measureDistance([...run(0, 100, 0), ...run(160, 260, 480)]);
+
+    expect(result.spikeFixes).toBe(0);
+    expect(result.vehicleSegments).toBe(0);
+    expect(result.distanceM).toBeGreaterThan(770);
+    expect(result.distanceM).toBeLessThanOrEqual(777.000001);
+  });
+
+  it('counts the fix that ends a gap when it is the last of the session', () => {
+    const result = measureDistance([...run(0, 100, 0), fix(200_000, 497, 0, { speed: 3 })]);
+
+    expect(result.spikeFixes).toBe(0);
+    expect(result.distanceM).toBeGreaterThan(490);
+  });
+});
+
+describe('a stand right after a gap in the signal', () => {
+  // The first fix after a gap is held until the next one says whether it is real. A fix that says the runner
+  // stands used to move the stand clock to now and leave the anchor where it was before the gap, so the next
+  // fix looked like a hundred metres in one second and three of them became a vehicle.
+  const standing = (fromS: number, toS: number, eastM: number) =>
+    every(fromS * 1000, toS * 1000, 1).map((t) => fix(t, eastM, 0, { speed: 0 }));
+  const control = measureDistance([...run(0, 100, 0), ...run(160, 260, 480)]);
+
+  const afterStand = (standS: number) => measureDistance([...run(0, 100, 0), ...standing(160, 160 + standS, 480), ...run(160 + standS, 260 + standS, 480)]);
+
+  it('has no vehicle and the same distance when the runner stands ten seconds after a minute without a fix', () => {
+    const result = afterStand(10);
+
+    expect(result.vehicleSegments).toBe(0);
+    expect(result.vehicleDurationMs).toBe(0);
+    expect(result.spikeFixes).toBe(0);
+    expect(Math.abs(result.distanceM - control.distanceM)).toBeLessThanOrEqual(MIN_STEP_M);
+  });
+
+  it('has no vehicle when he stands three seconds, or for a single fix', () => {
+    for (const seconds of [3, 1]) {
+      const result = afterStand(seconds);
+
+      expect(result.vehicleSegments).toBe(0);
+      expect(result.spikeFixes).toBe(0);
+      expect(result.distanceM).toBeGreaterThan(control.distanceM - MIN_STEP_M);
+    }
+  });
+
+  it('has no vehicle when the minute was filled with fixes too poor to use, not left empty', () => {
+    const poor = every(100_000, 160_000, 1).map((t) => fix(t, 300 + 3 * (t / 1000 - 100), 0, { accuracy: 50, speed: 3 }));
+    const result = measureDistance([...run(0, 100, 0), ...poor, ...standing(160, 170, 480), ...run(170, 270, 480)]);
+
+    expect(result.poorFixes).toBe(60);
+    expect(result.vehicleSegments).toBe(0);
+    expect(Math.abs(result.distanceM - control.distanceM)).toBeLessThanOrEqual(MIN_STEP_M);
+  });
+
+  it('counts the bridge to where he stands, so the distance does not stay at the anchor before the gap', () => {
+    expect(afterStand(10).distanceM).toBeGreaterThan(770);
+  });
+
+  it('still marks a real drive that starts after a stand that follows a gap', () => {
+    const drive = straight(161, 200, 20, 480);
+    const result = measureDistance([...run(0, 100, 0), ...standing(160, 161, 480), ...drive]);
+
+    expect(result.vehicleSegments).toBe(1);
+    expect(result.vehicleDurationMs).toBeGreaterThan(30_000);
+    expect(result.distanceM).toBeGreaterThan(297 + 183 + 700);
+  });
+
+  it('counts the bridge to the place where he stands when the stand is the end of the session', () => {
+    const result = measureDistance([...run(0, 100, 0), ...standing(160, 161, 480)]);
+
+    expect(result.distanceM).toBeGreaterThan(470);
+    expect(result.vehicleSegments).toBe(0);
+  });
+
+  it('drops a held fix of standing that the fix after it contradicts, as it drops any held fix', () => {
+    const result = measureDistance([...run(0, 100, 0), fix(160_000, 480, 80, { speed: 0 }), ...run(161, 261, 480)]);
+
+    expect(result.spikeFixes).toBe(1);
+    expect(result.vehicleSegments).toBe(0);
+  });
+
+  it('keeps the stand clock moving when fixes of standing come further apart than a gap', () => {
+    // Every one of them is the first after a gap. Without the clock a jump of 80 m looks like a walk of five minutes.
+    const stands = every(115_000, 401_000, 1 / 15).map((t) => fix(t, 300, 0, { speed: 0 }));
+    const result = measureDistance([...run(0, 100, 0), ...stands, ...jumpAt(run(401, 501, 300), 1, 303)]);
+
+    expect(result.spikeFixes).toBe(1);
+    expect(result.vehicleSegments).toBe(0);
+    expect(result.distanceM).toBeGreaterThan(590);
+    expect(result.distanceM).toBeLessThanOrEqual(597.000001);
+  });
+});
+
+describe('the first fixes after a gap in the signal, as a class', () => {
+  // Rule above `consider()` in distance.ts: a fix after a gap is held until the next one confirms it; a dropped one
+  // leaves the gap open; a fix of standing never moves the anchor and never adds distance, before a gap or after one.
+  const standing = (fromS: number, toS: number, eastM: number) =>
+    every(fromS * 1000, toS * 1000, 1).map((t) => fix(t, eastM, 0, { speed: 0 }));
+  const control = measureDistance([...run(0, 100, 0), ...run(160, 260, 480)]);
+
+  it('has no vehicle when the held fix after a gap is dropped as a spike and the runner then stands', () => {
+    const result = measureDistance([...run(0, 100, 0), fix(160_000, 480, 80, { speed: 0 }), ...standing(161, 171, 480), ...run(171, 271, 480)]);
+
+    expect(result.spikeFixes).toBe(1);
+    expect(result.vehicleSegments).toBe(0);
+    expect(result.vehicleDurationMs).toBe(0);
+    expect(Math.abs(result.distanceM - control.distanceM)).toBeLessThanOrEqual(MIN_STEP_M);
+  });
+
+  it('has no vehicle when two fixes of standing come at the same instant right after a gap', () => {
+    // The second is a copy of the first: one fix delivered twice, so it is neither a second place nor a spike.
+    const twice = fix(160_000, 480, 0, { speed: 0 });
+    const result = measureDistance([...run(0, 100, 0), twice, { ...twice }, ...run(161, 261, 480)]);
+
+    expect(result.vehicleSegments).toBe(0);
+    expect(result.spikeFixes).toBe(0);
+    expect(Math.abs(result.distanceM - control.distanceM)).toBeLessThanOrEqual(MIN_STEP_M);
+  });
+
+  it('drops two spikes in a row after a gap, so the second is never measured over the gap', () => {
+    const spikes = [fix(160_000, 480, 80), fix(161_000, 300, -90)];
+    const result = measureDistance([...run(0, 100, 0), ...spikes, ...run(162, 262, 486)]);
+
+    expect(result.spikeFixes).toBe(2);
+    expect(result.vehicleSegments).toBe(0);
+    expect(result.distanceM).toBeGreaterThan(783 - MIN_STEP_M);
+    expect(result.distanceM).toBeLessThanOrEqual(783.000001);
+  });
+
+  it('adds nothing while he stands with a fix every 15 s whose position wanders past the accuracy', () => {
+    // The case of round 3, verbatim: noise of ±6 m with an accuracy of 4 m gave 702.48 m instead of 594.00 m.
+    const next = jitter(31);
+    const stands = every(115_000, 415_000, 1 / 15).map((t) => fix(t, 297 + next() * 6, next() * 6, { speed: 0.1 }));
+    const result = measureDistance([...run(0, 100, 0), ...stands, ...run(415, 515, 297)]);
+
+    expect(result.distanceM).toBeCloseTo(594, 6);
+    expect(result.vehicleSegments).toBe(0);
+    expect(result.spikeFixes).toBe(0);
+  });
+
+  it('marks a gap crossed at vehicle speed that ends in a stand, and counts it', () => {
+    // Before the gap he is at 297 m at 99 s; 61 s later he stands at 2000 m: 28 m/s.
+    const result = measureDistance([...run(0, 100, 0), ...standing(160, 170, 2000), ...run(170, 270, 2000)]);
+
+    expect(result.vehicleSegments).toBe(1);
+    // From 99 s, the time of the fix before the gap, where he is known to have been; not 98 s, the anchor's time
+    // (the fix at 99 s was a step of 3 m, too short to count, but he was there).
+    expect(result.vehicleDurationMs).toBe(61_000);
+    expect(result.distanceM).toBeGreaterThan(2297 - MIN_STEP_M);
+    expect(result.distanceM).toBeLessThanOrEqual(2297.000001);
+  });
+
+  it('marks a gap crossed at vehicle speed after he stood ten minutes before it', () => {
+    // From the time of the last fix he ran to, the gap would be 1700 m in eleven minutes, a walk.
+    const result = measureDistance([...run(0, 100, 0), ...standing(100, 700, 297), ...standing(760, 770, 2000), ...run(770, 870, 2000)]);
+
+    expect(result.vehicleSegments).toBe(1);
+    expect(result.vehicleDurationMs).toBe(61_000);
+    expect(result.distanceM).toBeGreaterThan(2297 - MIN_STEP_M);
+  });
+
+  it('counts a spike held just before such a gap as a spike, not as part of the vehicle', () => {
+    const fixes = [...run(0, 100, 0), fix(100_000, 300, 80), ...standing(160, 170, 2000), ...run(170, 270, 2000)];
+    const result = measureDistance(fixes);
+
+    expect(result.spikeFixes).toBe(1);
+    expect(result.vehicleSegments).toBe(1);
+    expect(result.distanceM).toBeLessThanOrEqual(2297.000001);
+  });
+
+  it('marks a drive that starts right as the gap ends, drops none of its fixes, and counts it', () => {
+    const result = measureDistance([...run(0, 100, 0), ...straight(160, 200, 20, 480)]);
+
+    expect(result.vehicleSegments).toBe(1);
+    expect(result.spikeFixes).toBe(0);
+    expect(result.vehicleDurationMs).toBe(39_000);
+    expect(result.distanceM).toBeGreaterThan(1260 - 0.000001);
+    expect(result.distanceM).toBeLessThanOrEqual(1260.000001);
+  });
+
+  it('keeps one drive one stretch when the signal is lost while the car keeps going', () => {
+    const drive = straight(100, 220, 20, 297).filter((f) => f.t < 140_000 || f.t >= 155_000);
+    const result = measureDistance([...run(0, 100, 0), ...drive, ...run(220, 260, 2697)]);
+
+    expect(result.vehicleSegments).toBe(1);
+    // From 100 s, the fix the first step at 20 m/s leaves, to 220 s, the first fix of the run, which is itself still
+    // reached 20 m from the drive's last fix in one second.
+    expect(result.vehicleDurationMs).toBe(120_000);
+    expect(result.distanceM).toBeGreaterThan(2814 - MIN_STEP_M);
+    expect(result.distanceM).toBeLessThanOrEqual(2814.000001);
+  });
+
+  it('starts a drive where the stand clock is, after a stand and after a gap that ends in one', () => {
+    // A drive is marked from the last time he was known to be where its speed is measured from.
+    const plain = measureDistance([...run(0, 100, 0), ...standing(100, 160, 297), ...straight(160, 200, 20, 317)]);
+    const afterGap = measureDistance([...run(0, 100, 0), ...standing(160, 170, 480), ...straight(170, 210, 20, 500)]);
+
+    expect(plain.vehicleSegments).toBe(1);
+    expect(plain.vehicleDurationMs).toBe(40_000);
+    expect(afterGap.vehicleSegments).toBe(1);
+    expect(afterGap.vehicleDurationMs).toBe(40_000);
+    expect(afterGap.distanceM).toBeGreaterThan(297 + 183 + 780 - MIN_STEP_M);
+  });
+
+  it('measures a second gap from where he stands after the first, not from the anchor before both', () => {
+    // 297 m at 99 s, then 1000 m at 160 s (11.5 m/s, a runner), then 15 s later 10 m further on.
+    const second = measureDistance([...run(0, 100, 0), ...standing(160, 170, 1000), ...standing(185, 195, 1010), ...run(195, 295, 1010)]);
+    // The same, but the second gap was a drive of 2000 m: the bridge from the anchor across both gaps counts.
+    const drive = measureDistance([...run(0, 100, 0), ...standing(160, 170, 1000), ...standing(185, 195, 3000), ...run(195, 295, 3000)]);
+
+    expect(second.vehicleSegments).toBe(0);
+    expect(second.distanceM).toBeGreaterThan(1307 - MIN_STEP_M);
+    expect(drive.vehicleSegments).toBe(1);
+    expect(drive.distanceM).toBeGreaterThan(3297 - MIN_STEP_M);
+    expect(drive.distanceM).toBeLessThanOrEqual(3297.000001);
+  });
+
+  it('drops a spike two fixes after a gap that ends in a stand, after a step too short to count', () => {
+    // The anchor is at 294 m. He stands at 296 m after the gap, then takes a step of 4 m from the anchor, too short to
+    // count, so the stand clock is still the time of the stand; from the time before the gap the spike would be a walk.
+    const fixes = [...run(0, 100, 0), fix(160_000, 296, 0, { speed: 0 }), fix(161_000, 298, 0), fix(162_000, 298, 80), ...run(163, 263, 300)];
+    const result = measureDistance(fixes);
+
+    expect(result.spikeFixes).toBe(1);
+    expect(result.distanceM).toBeLessThanOrEqual(597.000001);
+    expect(result.distanceM).toBeGreaterThan(597 - MIN_STEP_M);
+  });
+
+  it('holds a fix that comes a gap after the one it confirmed, so a spike there is dropped', () => {
+    // 480 m at 160 s is real; 15 s later a fix 80 m off is confirmed by nothing.
+    const fixes = [...run(0, 100, 0), fix(160_000, 480, 0), fix(175_000, 525, 80), ...run(176, 276, 528)];
+    const result = measureDistance(fixes);
+
+    expect(result.spikeFixes).toBe(1);
+    expect(result.distanceM).toBeLessThanOrEqual(825.000001);
+    expect(result.distanceM).toBeGreaterThan(825 - MIN_STEP_M);
+  });
+
+  it('keeps one drive one stretch when the car stands at a light, with no gap', () => {
+    // A fix of standing never ends a drive. The first fix after the light is already 20 m on, so nothing else ends it either.
+    const fixes = [...run(0, 100, 0), ...straight(100, 160, 20, 297), ...standing(160, 180, 1477), ...straight(180, 240, 20, 1497), ...run(240, 300, 2677)];
+    const result = measureDistance(fixes);
+
+    expect(result.vehicleSegments).toBe(1);
+    expect(result.distanceM).toBeGreaterThan(2854 - MIN_STEP_M);
+    expect(result.distanceM).toBeLessThanOrEqual(2854.000001);
+  });
+
+  it('drops a spike that is the first fix after a gap and the session ends with the fix after it', () => {
+    const result = measureDistance([...run(0, 100, 0), fix(200_000, 497, 80), fix(201_000, 500, 0)]);
+
+    expect(result.spikeFixes).toBe(1);
+    expect(result.distanceM).toBeGreaterThan(500 - MIN_STEP_M);
+    expect(result.distanceM).toBeLessThanOrEqual(500.000001);
+  });
+
+  it('adds no bridge at the end of the session when he stands, after a gap, where the anchor is', () => {
+    // The anchor is at 294 m (the fix at 297 m was a step too short to count); 5 m from it is no step either.
+    const result = measureDistance([...run(0, 100, 0), ...standing(160, 170, 299)]);
+
+    expect(result.distanceM).toBeCloseTo(294, 6);
+  });
+});
+
+describe('properties over random sessions, fixed seeds', () => {
+  const SEEDS = Array.from({ length: 200 }, (_, i) => 1000 + i);
+  const u01 = (next: () => number) => (next() + 1) / 2;
+  const between = (next: () => number, lo: number, hi: number) => lo + u01(next) * (hi - lo);
+  /** A point uniformly inside a circle of `radiusM` around `eastM`, 0. */
+  const within = (next: () => number, eastM: number, radiusM: number) => {
+    const r = radiusM * Math.sqrt(u01(next));
+    const a = u01(next) * 2 * Math.PI;
+    return [eastM + r * Math.cos(a), r * Math.sin(a)] as const;
+  };
+
+  /**
+   * Fixes of a runner who stands at `eastM` from `fromMs`: Doppler below the stand speed, every position within the
+   * reported accuracy, and fixes a second apart, a few seconds apart, or further apart than a gap, in any mix.
+   */
+  const stand = (next: () => number, fromMs: number, count: number, eastM: number, accuracy: number) => {
+    const out: ReturnType<typeof fix>[] = [];
+    let t = fromMs;
+    for (let i = 0; i < count; i += 1) {
+      const [e, n] = within(next, eastM, accuracy);
+      out.push(fix(t, e, n, { speed: u01(next) * STATIONARY_SPEED_MPS * 0.98, accuracy }));
+      const p = u01(next);
+      t += Math.round(p < 0.4 ? 1000 : p < 0.7 ? between(next, 2000, 9000) : between(next, GAP_MS + 1000, 45_000));
+    }
+    return { fixes: out, endMs: t };
+  };
+
+  it('a runner who stands the whole session adds no more than one bridge, however sparse his fixes and however many gaps', () => {
+    for (const seed of SEEDS) {
+      const next = jitter(seed);
+      const accuracy = Math.round(between(next, 3, 10));
+      const { fixes } = stand(next, 0, Math.round(between(next, 20, 80)), 500, accuracy);
+
+      const result = measureDistance(fixes);
+
+      expect({ seed, d: result.distanceM <= 2 * accuracy, vehicles: result.vehicleSegments }).toEqual({ seed, d: true, vehicles: 0 });
+    }
+  });
+
+  it('a stand between two runs adds no more than one bridge to the runs, however sparse and gapped', () => {
+    for (const seed of SEEDS) {
+      const next = jitter(seed);
+      const accuracy = Math.round(between(next, 3, 10));
+      const { fixes: stands, endMs } = stand(next, 100_000, Math.round(between(next, 10, 40)), 297, accuracy);
+      const fromS = Math.ceil(endMs / 1000);
+      const fixes = [...run(0, 100, 0), ...stands, ...run(fromS, fromS + 100, 297)];
+      // Both runs are straight lines east: 297 m, then 297 m from the place where he stood.
+      const result = measureDistance(fixes);
+
+      expect({ seed, low: result.distanceM >= 594 - 2 * MIN_STEP_M, high: result.distanceM <= 594 + 2 * accuracy }).toEqual({ seed, low: true, high: true });
+      expect({ seed, vehicles: result.vehicleSegments }).toEqual({ seed, vehicles: 0 });
+    }
+  });
+
+  /**
+   * Ten minutes a second at a time of a runner on foot, east: stretches of running at 2 to 5 m/s and of standing,
+   * single spikes 80 to 150 m off with a believable Doppler speed while he runs, and fixes repeated at the same
+   * instant. No vehicle. Spikes only while he runs: three spikes during one stand are a vehicle without any gap,
+   * because a fix of standing does not settle the held ones, and that is not this property.
+   */
+  const onFoot = (next: () => number) => {
+    const out: ReturnType<typeof fix>[] = [];
+    let eastM = 0;
+    // Nothing odd in the first seconds: the first fix of a session is the anchor, whatever it is.
+    let odd = 0;
+    let modeLeftS = 0;
+    let speed = 3;
+    for (let s = 0; s < 600; s += 1) {
+      if (modeLeftS <= 0) {
+        modeLeftS = Math.round(between(next, 10, 60));
+        speed = u01(next) < 0.35 ? 0 : between(next, 2, 5);
+      }
+      modeLeftS -= 1;
+      eastM += speed;
+      const t = s * 1000;
+      const [e, n] = speed === 0 ? within(next, eastM, 4) : [eastM, 0];
+      const doppler = speed === 0 ? 0.1 : speed;
+      const p = u01(next);
+      if (p < 0.03 && s - odd > 4 && speed > 0) {
+        out.push(fix(t, eastM, between(next, 80, 150), { speed: doppler === 0.1 ? 3 : doppler }));
+        odd = s;
+      } else {
+        out.push(fix(t, e, n, { speed: doppler }));
+        if (p > 0.98 && s - odd > 4) {
+          out.push(fix(t, e, n, { speed: doppler }));
+          odd = s;
+        }
+      }
+    }
+    return out;
+  };
+
+  it('taking fixes out, so that the signal has gaps, never makes a vehicle out of a runner on foot', () => {
+    for (const seed of SEEDS) {
+      const next = jitter(seed);
+      const fixes = onFoot(next);
+      const windows = Array.from({ length: 1 + Math.floor(u01(next) * 3) }, () => {
+        // Every window ends before the session does, so that the gapped session ends where the continuous one does.
+        const from = Math.round(between(next, 20_000, 500_000));
+        return [from, from + Math.round(between(next, GAP_MS + 1000, 90_000))] as const;
+      });
+      const gapped = fixes.filter((f) => windows.every(([from, to]) => f.t < from || f.t >= to));
+
+      const continuous = measureDistance(fixes);
+      const result = measureDistance(gapped);
+
+      expect({ seed, continuous: continuous.vehicleSegments, gapped: result.vehicleSegments }).toEqual({ seed, continuous: 0, gapped: 0 });
+      expect({ seed, d: Math.abs(result.distanceM - continuous.distanceM) <= 2 * MIN_STEP_M * (windows.length + 1) }).toEqual({ seed, d: true });
+    }
+  });
+
+  it('a real drive is marked and counted, with the signal lost before, inside or after it', () => {
+    for (const seed of SEEDS) {
+      const next = jitter(seed);
+      const before = Math.round(between(next, 30, 100));
+      const driveS = Math.round(between(next, 60, 120));
+      const speed = between(next, 15, 30);
+      const fixes = [
+        ...run(0, before, 0),
+        ...straight(before, before + driveS, speed, 3 * before),
+        ...run(before + driveS, before + driveS + 60, 3 * before + speed * driveS),
+      ];
+      const endM = 3 * before + speed * driveS + 3 * 59;
+      const windows = Array.from({ length: Math.floor(u01(next) * 3) }, () => {
+        const from = Math.round(between(next, (before - 20) * 1000, (before + driveS + 20) * 1000));
+        return [from, from + Math.round(between(next, GAP_MS + 1000, 20_000))] as const;
+      });
+      const gapped = fixes.filter((f) => windows.every(([from, to]) => f.t < from || f.t >= to));
+
+      const result = measureDistance(gapped);
+
+      expect({ seed, marked: result.vehicleSegments >= 1, low: result.distanceM >= endM - 2 * MIN_STEP_M, high: result.distanceM <= endM + 0.000001 }).toEqual({
+        seed,
+        marked: true,
+        low: true,
+        high: true,
+      });
+    }
+  });
+});
+
+describe('the cases of round 4 of the review', () => {
+  const standing = (fromS: number, toS: number, eastM: number, northM = 0) =>
+    every(fromS * 1000, toS * 1000, 1).map((t) => fix(t, eastM, northM, { speed: 0 }));
+  /** A run north at 3 m/s from `eastM`, `northM` at `fromS`, one fix a second. */
+  const north = (fromS: number, toS: number, eastM: number, northM: number) =>
+    every(fromS * 1000, toS * 1000, 1).map((t) => fix(t, eastM, northM + 3 * (t / 1000 - fromS), { speed: 3 }));
+
+  // K1 and K1b: after a gap, spike, real, spike, real (and once more). The rule before this one took the chain as
+  // confirming the spike: +97 to +273 m and a vehicle.
+  const after = (spikesAt: readonly number[]) =>
+    run(160, 264, 480).map((f, i) => (spikesAt.includes(i) ? fix(f.t, 480 + 3 * i, i % 4 === 0 ? 80 : -90) : f));
+  it.each([[[0, 2]], [[0, 2, 4]]])('K1: drops the spikes at %j right after a gap and keeps the run between them', (spikesAt) => {
+    const control = measureDistance([...run(0, 100, 0), ...after([])]);
+    const result = measureDistance([...run(0, 100, 0), ...after(spikesAt)]);
+
+    expect(result.vehicleSegments).toBe(0);
+    expect(result.spikeFixes).toBe(spikesAt.length);
+    expect(Math.abs(result.distanceM - control.distanceM)).toBeLessThanOrEqual(MIN_STEP_M);
+  });
+
+  it('K3: adds nothing for a spike with a Doppler speed of standing, to a man who stands, and nothing when he runs on', () => {
+    const before = [...run(0, 100, 0), ...standing(100, 130, 297)];
+    const spike = fix(190_000, 297, 150, { speed: 0 });
+    const stand = standing(191, 200, 297);
+    const control = measureDistance([...before, ...standing(190, 200, 297)]);
+    const controlRun = measureDistance([...before, ...standing(190, 200, 297), ...run(200, 261, 297)]);
+
+    const spiked = measureDistance([...before, spike, ...stand]);
+    const spikedRun = measureDistance([...before, spike, ...stand, ...run(200, 261, 297)]);
+
+    expect(control.distanceM).toBeCloseTo(294, 6);
+    expect(controlRun.distanceM).toBeGreaterThan(470);
+    expect(spiked.distanceM).toBeCloseTo(control.distanceM, 6);
+    expect(spikedRun.distanceM).toBeCloseTo(controlRun.distanceM, 6);
+    expect([spiked.vehicleSegments, spiked.spikeFixes, spikedRun.vehicleSegments, spikedRun.spikeFixes]).toEqual([0, 1, 0, 1]);
+  });
+
+  it('K2: measures the way through a place where he stood between two gaps, on a path that turns', () => {
+    // 297 m east at 99 s; standing at (700, 400) from 160 s; running north from (297, 800) at 230 s. A straight line from
+    // before the first gap to after the second would be 800 m instead of 1136 m.
+    const result = measureDistance([...run(0, 100, 0), ...standing(160, 170, 700, 400), ...north(230, 330, 297, 800)]);
+    const truth = 294 + leg([294, 0], [700, 400]) + leg([700, 400], [297, 800]) + 294;
+
+    expect(result.vehicleSegments).toBe(0);
+    expect(result.distanceM).toBeGreaterThan(truth - MIN_STEP_M);
+    expect(result.distanceM).toBeLessThanOrEqual(truth + MIN_STEP_M);
+  });
+
+  it('K2b: and through two such places, the first held by two fixes a gap apart', () => {
+    const fixes = [
+      ...run(0, 100, 0),
+      fix(140_000, 600, 300, { speed: 0 }),
+      fix(155_000, 600, 300, { speed: 0 }),
+      ...standing(200, 203, 400, 700),
+      ...north(260, 360, 100, 900),
+    ];
+    const truth = 294 + leg([294, 0], [600, 300]) + leg([600, 300], [400, 700]) + leg([400, 700], [100, 900]) + 294;
+
+    const result = measureDistance(fixes);
+
+    expect(result.vehicleSegments).toBe(0);
+    expect(result.distanceM).toBeGreaterThan(truth - MIN_STEP_M);
+    expect(result.distanceM).toBeLessThanOrEqual(truth + MIN_STEP_M);
+  });
+});
+
+describe('what tells a spike from a drive, and a trip away from a place he went to', () => {
+  const standing = (fromS: number, toS: number, eastM: number, northM = 0, hz = 1) =>
+    every(fromS * 1000, toS * 1000, hz).map((t) => fix(t, eastM, northM, { speed: 0.1 }));
+
+  it('drops fixes at the end of a session that jump ahead of a runner whose Doppler speed says he runs', () => {
+    // Four fixes 45 m ahead and moving with him: no drive, because his own Doppler speed rules out the jump.
+    const ahead = every(100_000, 104_000, 1).map((t) => fix(t, 3 * (t / 1000) + 45, 0, { speed: 3 }));
+    const result = measureDistance([...run(0, 100, 0), ...ahead]);
+
+    expect(result.vehicleSegments).toBe(0);
+    expect(result.spikeFixes).toBe(4);
+    expect(result.distanceM).toBeCloseTo(294, 6);
+  });
+
+  it('marks three fixes in a row at vehicle speed as a drive, though a runner could have covered the whole stretch', () => {
+    // 150 m at 50 s, then 170, 190 and 210 m a second apart at 20 m/s, then a run from 213 m at 56 s: from 50 s to 56 s
+    // is 63 m in 6 s, a runner's speed, but each of the three steps is a car's, with a car's Doppler speed.
+    const fixes = [...run(0, 50, 0), fix(50_000, 150, 0, { speed: 0.1 }), ...straight(51, 54, 20, 170), ...run(56, 100, 213)];
+    const result = measureDistance(fixes);
+
+    expect(result.vehicleSegments).toBe(1);
+    expect(result.spikeFixes).toBe(0);
+  });
+
+  it('counts and marks a drive across a gap that leaves only two fixes before it', () => {
+    // Two fixes at the start, then the next one 397 m on, 29 s later: dropping the two would be cheaper than a drive
+    // that begins like any other.
+    const result = measureDistance([...run(0, 2, 0), ...run(30, 90, 400)]);
+
+    expect(result.vehicleSegments).toBe(1);
+    expect(result.vehicleDurationMs).toBe(29_000);
+    expect(result.distanceM).toBeGreaterThan(400 + 174 - 0.000001);
+  });
+
+  it('drops a trip away that the session ends coming back from, though the trip has more fixes than the return', () => {
+    // A fix every 5 s at one place, then three fixes 142 m off, then the session ends on one back at the place.
+    const trip = [312, 319, 333].map((s) => fix(s * 1000, -90, -110, { speed: 0.1 }));
+    const result = measureDistance([...standing(0, 300, 0, 0, 1 / 5), ...trip, fix(339_000, 0, 0, { speed: 0.1 })]);
+
+    expect(result.distanceM).toBe(0);
+    expect(result.spikeFixes).toBe(3);
+  });
+
+  it('keeps the real fixes between two spikes at one place, which only look like a trip away', () => {
+    const spike = (s: number, eastM: number, northM: number) => fix(s * 1000, eastM, northM, { speed: 0.1 });
+    const fixes = [...standing(0, 60, 0), spike(60, -120, -95), spike(61, -120, -95), ...standing(62, 71, 0), spike(71, -54, -67)];
+    const result = measureDistance(fixes);
+
+    expect(result.distanceM).toBe(0);
+    expect(result.spikeFixes).toBe(3);
+  });
+
+  it('measures a gap by the real fixes, so a lone fix no one reaches from a burst does not end the silence after it', () => {
+    // Five fixes at one place 31 s after he last stood here, one more 205 m from them 5 s later, then 31 s with no fix.
+    // The five are a place hidden by two long gaps whether the sixth is there or not (round 6; until then the sixth
+    // ended the silence, and both were dropped). That five fixes like these may be a burst of spikes is the price the
+    // PDL states for such a place: „Mesto do kog se stiže preko duge rupe i sa kog se odlazi preko druge duge rupe
+    // broji se i kad ima samo jednu tačku.”
+    const burst = every(131_000, 136_000, 1).map((t) => fix(t, -90, 115, { speed: 0.1 }));
+    const without = measureDistance([...standing(0, 101, 0), ...burst, ...standing(171, 200, 0)]);
+    const result = measureDistance([...standing(0, 101, 0), ...burst, fix(140_000, 80, 0, { speed: 0.1 }), ...standing(171, 200, 0)]);
+
+    expect(without.distanceM).toBeCloseTo(2 * haversineM(fix(0, 0, 0), fix(0, -90, 115)), 6);
+    expect(result.distanceM).toBeCloseTo(without.distanceM, 6);
+    expect([without.spikeFixes, result.spikeFixes]).toEqual([0, 1]);
+  });
+
+  it('counts a place he walked to and back from across two long gaps as a place he went to', () => {
+    const walk = (fromS: number, toS: number, eastM: number, northM: number) =>
+      every(fromS * 1000, toS * 1000, 1).map((t) => fix(t, eastM + 1.5 * (t / 1000 - fromS), northM, { speed: 1.5 }));
+    // Out 80 m north during a minute without a fix, five fixes there, back during another minute; and the same with
+    // three fixes of standing there, which would be a trip of spikes but for the two long gaps.
+    const moving = measureDistance([...walk(0, 100, 0, 0), ...walk(160, 165, 150, 80), ...walk(225, 260, 150, 0)]);
+    const stood = measureDistance([...walk(0, 100, 0, 0), ...standing(160, 163, 150, 80), ...walk(225, 260, 150, 0)]);
+    const not = measureDistance([...walk(0, 100, 0, 0), ...walk(225, 260, 150, 0)]);
+
+    expect([moving.spikeFixes, stood.spikeFixes]).toEqual([0, 0]);
+    expect(moving.distanceM - not.distanceM).toBeGreaterThan(2 * 80 - 2 * MIN_STEP_M);
+    expect(stood.distanceM - not.distanceM).toBeGreaterThan(2 * 80 - 2 * MIN_STEP_M);
+  });
+
+  it('keeps every fix of a man who stands while his position wanders within its accuracy, faster than a runner', () => {
+    // Accuracy 8 m, positions 7 m either side of where he stands: 14 m apart a second, faster than a runner unless the
+    // two errors are taken off, and then nothing.
+    const fixes = every(0, 60_000, 1).map((t, i) => fix(t, i % 2 === 0 ? 7 : -7, 0, { speed: 0.1, accuracy: 8 }));
+    const result = measureDistance(fixes);
+
+    expect(result.spikeFixes).toBe(0);
+    expect(result.vehicleSegments).toBe(0);
+  });
+
+  it('drops a burst of six fixes 100 m off without a Doppler speed, a jump no vehicle makes', () => {
+    const plain = (fromS: number, toS: number, eastM: number, northM: number) =>
+      every(fromS * 1000, toS * 1000, 1).map((t) => fix(t, eastM + 3 * (t / 1000 - fromS), northM, { speed: undefined }));
+    const result = measureDistance([...plain(0, 100, 0, 0), ...plain(100, 106, 300, 100), ...plain(106, 200, 318, 0)]);
+
+    expect(result.vehicleSegments).toBe(0);
+    expect(result.spikeFixes).toBe(6);
+    expect(result.distanceM).toBeGreaterThan(597 - 2 * MIN_STEP_M);
+    expect(result.distanceM).toBeLessThanOrEqual(597.000001);
+  });
+
+  it('keeps a run that a trip seems to leave from, when the fix it would come back to is itself a spike', () => {
+    // ON_FOOT 1501 of the comparison, reduced. A walk ends at (-55, 0) at 88 s; 69 s with no fix; a spike; six fixes of
+    // running south; a second spike 30 m from where the walk ended, on the way he runs a few seconds later. Taking that
+    // spike as the place the trip came back to made the six real fixes a trip of spikes, and lost 45 m.
+    const walk = every(0, 89_000, 1).map((t) => fix(t, -143 + t / 1000, 0, { speed: 1 }));
+    const south = every(158_000, 164_000, 1).map((t) => fix(t, -115, 36 - 3.3 * (t / 1000 - 158), { speed: 3.3 }));
+    const on = every(165_000, 230_000, 1).map((t) => fix(t, -111 + 2.14 * (t / 1000 - 165), 13.4 - 2.1 * (t / 1000 - 165), { speed: 3 }));
+    const spikes = [fix(157_000, -170, -131, { speed: 3.2 }), fix(164_000, -83, -14, { speed: 3.4 })];
+
+    const control = measureDistance([...walk, ...south, ...on]);
+    const result = measureDistance([...walk, spikes[0], ...south, spikes[1], ...on]);
+
+    expect(result.spikeFixes).toBe(2);
+    expect(result.vehicleSegments).toBe(0);
+    expect(Math.abs(result.distanceM - control.distanceM)).toBeLessThanOrEqual(MIN_STEP_M);
+  });
+
+  it('keeps a loop he ran out and back through a gap, entered and left at a runner speed', () => {
+    // 19 fixes of running after a gap of a minute, which end 15 m from where he then stands, 10 m from where he was
+    // before the gap.
+    const loop = every(280_000, 299_000, 1).map((t) => fix(t, -79 + 2.6 * (t / 1000 - 280), -49 + 2.7 * (t / 1000 - 280), { speed: 4 }));
+    const before = every(0, 10_000, 1).map((t) => fix(t, -52 + 3 * (t / 1000), 17, { speed: 3 }));
+    const fixes = [...before, ...loop, ...standing(306, 360, -33, 17)];
+    const result = measureDistance(fixes);
+
+    expect(result.spikeFixes).toBe(0);
+    expect(result.distanceM).toBeGreaterThan(24 + leg([-25, 17], [-79, -49]) + 18 * 3.7 - 3 * MIN_STEP_M);
+  });
+});
+
+describe('a place he went to across two long gaps, with a spike as the first fix after the second', () => {
+  // K2 of round 4 keeps a place reached across one long gap and left across another. A spike right before the way back
+  // must not undo it: the silence before the return is the one before the spike, measured from the last fix of the
+  // place, and not the one second between the spike and the return. The expected length is the chord through the real
+  // fixes, the true positions at the times of the good ones, never the output of a version of the code.
+  const walk = (fromS: number, toS: number, eastM: number, northM: number) =>
+    every(fromS * 1000, toS * 1000, 1).map((t) => fix(t, eastM + 1.5 * (t / 1000 - fromS), northM, { speed: 1.5 }));
+  const stood = (fromS: number, toS: number, eastM: number, northM: number) =>
+    every(fromS * 1000, toS * 1000, 1).map((t) => fix(t, eastM, northM, { speed: 0.1 }));
+  const spike = fix(224_000, 330, -60, { speed: 1.5 });
+  const chord = (fixes: ReturnType<typeof walk>) =>
+    fixes.slice(1).reduce((sum, f, i) => sum + haversineM(fixes[i], f), 0);
+
+  const lap = () => ({
+    first: every(0, 100_000, 1).map((t) => fix(t, 3 * (t / 1000), 0, { speed: 3 })),
+    around: every(160_000, 175_000, 1).map((t) => fix(t, 400 - 5 * (t / 1000 - 160), 180, { speed: 5 })),
+    last: every(236_000, 336_000, 1).map((t) => fix(t, 300 + 3 * (t / 1000 - 236), 0, { speed: 3 })),
+  });
+
+  it.each([
+    ['moving there', () => [...walk(0, 100, 0, 0), ...walk(160, 165, 150, 80), ...walk(225, 260, 150, 0)], spike],
+    ['standing there', () => [...walk(0, 100, 0, 0), ...stood(160, 163, 150, 80), ...walk(225, 260, 150, 0)], spike],
+    ['around a block', () => Object.values(lap()).flat(), fix(235_000, 600, -100, { speed: 3 })],
+    ['and the session ends right after the return', () => [...walk(0, 100, 0, 0), ...walk(160, 165, 150, 80), ...walk(225, 227, 150, 0)], spike],
+  ] as const)('counts the place, %s, though the fix before the way back is a spike', (_, make, jump) => {
+    const real = make();
+    const result = measureDistance([...real, jump]);
+
+    expect(result.spikeFixes).toBe(1);
+    expect(Math.abs(result.distanceM - chord(real))).toBeLessThanOrEqual(2 * MIN_STEP_M);
+  });
+
+  it.each([
+    [30, 30, true],
+    [29, 30, false],
+    [30, 29, false],
+  ] as const)('is a place only when both silences reach LONG_GAP_MS: %i s before the stay, %i s from the stay to the return', (before, after, counted) => {
+    // The silence before the way back is measured from the last fix of the stay to the return, through the spike
+    // that comes between them, so 30 s there is 30 s with the spike one second before the return.
+    const lastBefore = 99;
+    const stay = stood(lastBefore + before, lastBefore + before + 3, 150, 80);
+    const backAt = lastBefore + before + 2 + after;
+    const home = walk(backAt, backAt + 40, 150, 0);
+    const out = walk(0, 100, 0, 0);
+    const result = measureDistance([...out, ...stay, fix((backAt - 1) * 1000, 330, -60, { speed: 1.5 }), ...home]);
+
+    expect(LONG_GAP_MS).toBe(30_000);
+    expect(result.spikeFixes).toBe(counted ? 1 : 4);
+    expect(Math.abs(result.distanceM - chord(counted ? [...out, ...stay, ...home] : [...out, ...home]))).toBeLessThanOrEqual(2 * MIN_STEP_M);
+  });
+
+  it('counts four fixes that a long gap runs through as a place, though a fifth at the same place comes a second before the return', () => {
+    // Four fixes 190 m off after 30 s without a fix, a fifth at the same place 33 s later, then he is back where he
+    // stood. No one gets back 198 m in a second, so the fifth is no fix of the way back, and the four are a place hidden
+    // by two long gaps whether it is there or not, exactly as a stale position by the last fix of a place he went to is
+    // (round 6; until then the fifth ended the silence, and all five were dropped). The price is the one of the case
+    // above: four fixes like these may be a burst of spikes that the signal gave on both sides of a gap.
+    const four = every(129_000, 133_000, 1).map((t) => fix(t, 190 + (t - 129_000) / 1000, 0, { speed: 0.1 }));
+    const without = measureDistance([...stood(0, 100, 0, 0), ...four, ...stood(167, 200, 0, 0)]);
+    const result = measureDistance([...stood(0, 100, 0, 0), ...four, fix(166_000, 198, 0, { speed: 0.1 }), ...stood(167, 200, 0, 0)]);
+
+    expect(without.distanceM).toBeGreaterThan(2 * 190 - 2 * MIN_STEP_M);
+    expect(result.distanceM).toBeCloseTo(without.distanceM, 6);
+    expect([without.spikeFixes, result.spikeFixes]).toEqual([0, 1]);
+  });
+
+  it('does not count the time before the fix before the return when the return does not jump away from that fix', () => {
+    // A spike 200 m off after 40 s without a fix, then 36 s later a fix 15 m from where he stands, then the return two
+    // seconds after it. The fix before the return is no spike (the return is a run from it), so the time back is the two
+    // seconds, and the spike is not a place he went to.
+    const fixes = [...stood(0, 100, 0, 0), fix(139_000, 200, 0, { speed: 0.1 }), fix(175_000, 15, 0, { speed: 0.1 }), ...stood(177, 220, 0, 0)];
+    const result = measureDistance(fixes);
+
+    expect(result.spikeFixes).toBeGreaterThanOrEqual(1);
+    expect(result.distanceM).toBeLessThanOrEqual(MIN_STEP_M * 2);
+  });
+
+  it('still drops a place he stood at when the way there was not hidden by a long gap, spike or no spike', () => {
+    // He could not have walked 80 m in five seconds, and no gap hides it: the three fixes at 80 m are a trip of spikes.
+    const real = [...walk(0, 100, 0, 0), ...walk(225, 260, 150, 0)];
+    const trip = stood(105, 108, 150, 80);
+    const result = measureDistance([...walk(0, 100, 0, 0), ...trip, ...walk(225, 260, 150, 0), spike]);
+
+    expect(result.spikeFixes).toBe(4);
+    expect(Math.abs(result.distanceM - chord(real))).toBeLessThanOrEqual(2 * MIN_STEP_M);
+  });
+});
+
+describe('the silence around a place he went to, whatever spikes stand next to the gaps (round 6)', () => {
+  // Whether a place is hidden behind two long gaps is asked of its real fixes and of nothing else: a spike, a burst of
+  // them, a stale position or a second position at the same instant next to a gap is no fix of the way there or back,
+  // so it neither shortens a silence nor stands in for the fix the trip leaves from or comes back to. Every case is
+  // the same five sessions (the cases of round 5 and the lap around a block), and the expected length is the chord
+  // through their real fixes, never the output of a version of the code.
+  const walk = (fromS: number, toS: number, eastM: number, northM: number) =>
+    every(fromS * 1000, toS * 1000, 1).map((t) => fix(t, eastM + 1.5 * (t / 1000 - fromS), northM, { speed: 1.5 }));
+  const stood = (fromS: number, toS: number, eastM: number, northM: number) =>
+    every(fromS * 1000, toS * 1000, 1).map((t) => fix(t, eastM, northM, { speed: 0.1 }));
+  const chord = (fixes: readonly Fix[]) => fixes.slice(1).reduce((sum, f, i) => sum + haversineM(fixes[i], f), 0);
+  /** The real fixes; `back` is the first fix after the second gap, the one he comes back to. */
+  type Shape = { real: ReturnType<typeof walk>; back: number };
+  const lap = (): Shape => ({
+    real: [
+      ...every(0, 100_000, 1).map((t) => fix(t, 3 * (t / 1000), 0, { speed: 3 })),
+      ...every(160_000, 175_000, 1).map((t) => fix(t, 400 - 5 * (t / 1000 - 160), 180, { speed: 5 })),
+      ...every(236_000, 336_000, 1).map((t) => fix(t, 300 + 3 * (t / 1000 - 236), 0, { speed: 3 })),
+    ],
+    back: 236_000,
+  });
+  const SHAPES: readonly (readonly [string, () => Shape])[] = [
+    ['moving there', () => ({ real: [...walk(0, 100, 0, 0), ...walk(160, 165, 150, 80), ...walk(225, 260, 150, 0)], back: 225_000 })],
+    ['standing there', () => ({ real: [...walk(0, 100, 0, 0), ...stood(160, 163, 150, 80), ...walk(225, 260, 150, 0)], back: 225_000 })],
+    ['around a block', lap],
+    ['moving there, the session ending right after the return', () => ({ real: [...walk(0, 100, 0, 0), ...walk(160, 165, 150, 80), ...walk(225, 227, 150, 0)], back: 225_000 })],
+    ['standing there, the session ending right after the return', () => ({ real: [...walk(0, 100, 0, 0), ...stood(160, 163, 150, 80), ...walk(225, 227, 150, 0)], back: 225_000 })],
+  ];
+  /** The real fixes of the place: those between the two gaps. */
+  const placeOf = ({ real, back }: Shape) => real.filter((f) => f.t > 100_000 && f.t < back);
+  const off = (t: number, eastM: number, northM: number) => fix(t, eastM, northM, { speed: 1.5 });
+  type Fix = ReturnType<typeof walk>[number];
+  const metresPerDegree = haversineM({ lat: 44.8, lon: 20.46 }, { lat: 45.8, lon: 20.46 });
+  /** The same fix `eastM` and `northM` metres further on. */
+  const moved = (f: Fix, eastM: number, northM: number): Fix => ({
+    ...f,
+    lat: f.lat + northM / metresPerDegree,
+    lon: f.lon + eastM / (metresPerDegree * Math.cos((f.lat * Math.PI) / 180)),
+  });
+
+  /** Each shape with the extra fixes `extra` makes of it gives the chord of its real fixes, and every extra fix is dropped. */
+  const holds = (extra: (shape: Shape) => Fix[]) => {
+    const wrong = SHAPES.flatMap(([name, make]) => {
+      const shape = make();
+      const more = extra(shape);
+      const result = measureDistance([...shape.real, ...more]);
+      const ok = Math.abs(result.distanceM - chord(shape.real)) <= 2 * MIN_STEP_M && result.spikeFixes === more.length;
+      return ok ? [] : [`${name}: ${result.distanceM.toFixed(0)} m against ${chord(shape.real).toFixed(0)} m, ${result.spikeFixes} dropped of ${more.length}`];
+    });
+    expect(wrong).toEqual([]);
+  };
+
+  it('control: with no fix but the real ones, each shape gives the chord of its real fixes and drops none', () => {
+    holds(() => []);
+  });
+
+  it('two spikes apart right before the return (VISOK 1 of round 6)', () => {
+    holds(({ back }) => [off(back - 2000, 330, -60), off(back - 1000, -50, 200)]);
+  });
+
+  it('two and three spikes at one place right before the return (VISOK 1 of round 6)', () => {
+    holds(({ back }) => [off(back - 2000, 330, -60), off(back - 1000, 332, -61)]);
+    holds(({ back }) => [off(back - 3000, 330, -60), off(back - 2000, 331, -60), off(back - 1000, 332, -61)]);
+  });
+
+  it('a spike as the first fix after the first gap (VISOK 2 of round 6)', () => {
+    holds((shape) => [off(placeOf(shape)[0].t - 1000, 330, -60)]);
+  });
+
+  it('a second position at the same instant inside the place (SREDNJI 2 of round 6)', () => {
+    // By the point he left from, where it can pass for the fix a trip leaves from or comes back to, and 72 m off the place.
+    holds((shape) => [off(placeOf(shape)[1].t, 150, 2)]);
+    holds((shape) => [moved(placeOf(shape)[1], 60, 40)]);
+  });
+
+  it('a real fix whose second position at the same instant is the first fix of a trip of spikes is still the fix the trip leaves from', () => {
+    // ON_FOOT 255 of the comparison, reduced: after a gap of 71 s, two real fixes, a second position of the second one
+    // 72 m off, four spikes 177 m off, and the run on. The trip from the real fix holds its own second position, which
+    // says nothing against it; taking it as one made the four spikes a place and added 339 m.
+    const run = (fromS: number, toS: number, eastM: number, northM: number) =>
+      every(fromS * 1000, toS * 1000, 1).map((t) => fix(t, eastM, northM - 1.5 * (t / 1000 - fromS), { speed: 1.5 }));
+    const real = [...run(0, 60, 0, 0), off(130_000, -5, -100), off(131_000, -6, -101), off(143_000, -8, -104), ...run(154, 200, -10, -106)];
+    const spikes = [off(131_000, 54, -61), ...[132, 134, 140, 141].map((s) => off(s * 1000, -115, -240))];
+    const result = measureDistance([...real, ...spikes]);
+
+    expect(result.spikeFixes).toBe(spikes.length);
+    expect(Math.abs(result.distanceM - chord(real))).toBeLessThanOrEqual(2 * MIN_STEP_M);
+  });
+
+  it('measures the way there from the fix the trip leaves from when the walk keeps no fix before the place', () => {
+    // The first fix of the session is 5 km from the place he stands at a minute later, which no car reaches: it is
+    // dropped, and the way there is still the minute from it. Then a drive of 138 s back to where it was, counted and
+    // marked (PDL, „Deonica pređena brzinom vozila se RAČUNA, uz napomenu za moderatora”).
+    const real = [...stood(60, 63, 5000, 0), ...stood(200, 240, 0, 0)];
+    const result = measureDistance([fix(0, 0, 0, { speed: 3 }), ...real]);
+
+    expect([result.spikeFixes, result.vehicleSegments]).toEqual([1, 1]);
+    expect(Math.abs(result.distanceM - chord(real))).toBeLessThanOrEqual(2 * MIN_STEP_M);
+  });
+
+  it('a stale position by the last fix of the place, delivered as the first fix after the second gap (SREDNJI 1 of round 6)', () => {
+    holds((shape) => {
+      const last = placeOf(shape).at(-1) as Fix;
+      return [{ ...moved(last, 1, 1), t: shape.back - 1000, receivedAt: shape.back - 1000 }];
+    });
+  });
+
+  it('a stale position by the last fix before the first gap, delivered as the first fix after it (round 6)', () => {
+    // The mirror of the one above: it can pass for the fix the trip leaves from, a second before the place.
+    holds((shape) => {
+      const before = shape.real.filter((f) => f.t <= 100_000).at(-1) as Fix;
+      const first = placeOf(shape)[0];
+      return [{ ...moved(before, 1, 1), t: first.t - 1000, receivedAt: first.t - 1000 }];
+    });
+  });
+
+  it('a spike and a stale position as the first two fixes after the first gap (round 6)', () => {
+    // The fix the way there begins at is two fixes back from the one the trip can be said to leave from.
+    holds((shape) => {
+      const before = shape.real.filter((f) => f.t <= 100_000).at(-1) as Fix;
+      const first = placeOf(shape)[0];
+      return [off(first.t - 2000, 330, -60), { ...moved(before, 1, 1), t: first.t - 1000, receivedAt: first.t - 1000 }];
+    });
+  });
+
+  it('a spike as the last fix before the second gap, which the fix after the gap could follow (round 6)', () => {
+    holds((shape) => [off((placeOf(shape).at(-1) as Fix).t + 2000, 330, -60)]);
+  });
+});
+
+describe('properties against the true path, fixed seeds (testing/paths.ts)', () => {
+  const SEEDS = Array.from({ length: 150 }, (_, i) => i + 1);
+  /**
+   * What the fixes can know at best (`idealM`), within 2 % of it and two shortest steps per gap and per stand: corners
+   * cut by the shortest step, GPS error, and the step left over at either end of a stand or a gap.
+   */
+  const tolerance = (t: Truth) => 0.02 * t.idealM + 2 * MIN_STEP_M * (1 + t.gaps + t.stands);
+  const sessions = (profile: Profile) => SEEDS.map((seed) => ({ seed, ...session(seed, { ...profile, quietEndFixes: 10 }) }));
+  /**
+   * Sessions that the price stated in the PDL costs, and nothing else: „Mesto do kog se stiže preko duge rupe i sa kog
+   * se odlazi preko druge duge rupe broji se i kad ima samo jednu tačku”, so a burst of spikes that two long gaps hide
+   * counts as such a place. STANDING 90: three spikes 150 m off a second after a gap of 90 s, the fourth fix of the
+   * same burst 77 s later and a second before he is back. Each of them must still cost it (the floor below), so that
+   * the list goes when the price does.
+   */
+  const PRICED: ReadonlyMap<Profile, readonly number[]> = new Map([[STANDING, [90]]]);
+  /**
+   * The profiles of rounds 5 to 7 of the review (testing/paths.ts) hold shapes that no count of fixes can tell apart: a
+   * burst of up to five spikes against one to three real fixes after a gap, or a place of one fix between two gaps
+   * long enough to hide the way there and back (PDL, „Mesto do kog se stiže preko duge rupe i sa kog se odlazi preko
+   * druge duge rupe broji se i kad ima samo jednu tačku”). How many of the 150 sessions of each the measure still gets
+   * wrong is stated as a count, and it is exact in both directions: a clause that is made wider raises it, and one that
+   * is made narrower lowers it, and either must be written down here with what it does to the sessions it moves.
+   * 4d5dc0c1b, which had none of the clauses of rounds 5 and 6, gets 46, 30, 27, 99 and 37 of the same sessions wrong.
+   */
+  const COSTS: ReadonlyMap<Profile, number> = new Map([
+    [TRIP_BACK_SHORT, 11],
+    [TWO_GAPS, 30],
+    [SPIKES_AFTER_A_SHORT_STAY, 11],
+    [BURST_AFTER_THE_SECOND_GAP, 7],
+    [SPIKE_FIRST_AFTER_THE_FIRST_GAP, 1],
+  ]);
+
+  it.each([
+    ['on foot', ON_FOOT],
+    ['with a drive', WITH_DRIVE],
+    ['with no gap', NO_GAP],
+    ['standing', STANDING],
+    ['out to a place and back across long gaps, with everything a gap can have next to it', TRIP_BACK],
+    ['out to a place of one to five fixes and back', TRIP_BACK_SHORT],
+    ['two gaps of 11 to 40 s with a burst of spikes after the first and one to three real fixes before the second', TWO_GAPS],
+    ['a place of a few fixes with one or two spikes at one point right after it', SPIKES_AFTER_A_SHORT_STAY],
+    ['a burst of two to four spikes as the first fixes after the second gap', BURST_AFTER_THE_SECOND_GAP],
+    ['a spike as the first fix after the first gap', SPIKE_FIRST_AFTER_THE_FIRST_GAP],
+  ] as const)('%s: the length is within its tolerance of the true path, and a vehicle is marked exactly when there was one', (_, profile) => {
+    const priced = PRICED.get(profile) ?? [];
+    const wrong = sessions(profile).flatMap(({ seed, fixes, truth }) => {
+      const result = measureDistance(fixes);
+      const out: string[] = [];
+      if (Math.abs(result.distanceM - truth.idealM) > tolerance(truth)) out.push(`${seed}: ${result.distanceM.toFixed(1)} m against ${truth.idealM.toFixed(1)} m`);
+      if (truth.noVehicle && result.vehicleSegments > 0) out.push(`${seed}: a vehicle without a drive`);
+      if (truth.vehicleVisible && result.vehicleSegments === 0) out.push(`${seed}: a drive not marked`);
+      if (truth.standsOnly && result.distanceM > 2 * truth.accuracy) out.push(`${seed}: ${result.distanceM.toFixed(1)} m to a man who stands`);
+      return out;
+    });
+
+    const cost = COSTS.get(profile);
+    if (cost !== undefined) {
+      expect(new Set(wrong.map((w) => w.split(':')[0])).size).toBe(cost);
+      return;
+    }
+    expect(wrong.filter((w) => !priced.includes(Number(w.split(':')[0])))).toEqual([]);
+    expect(priced.filter((seed) => !wrong.some((w) => w.startsWith(`${seed}:`)))).toEqual([]);
+  });
+
+  it.each([
+    ['on foot', ON_FOOT, 1525, 'the next fix alone does not disown the fix a trip comes back to'],
+    ['on foot', ON_FOOT, 1493, 'a return to the place the trip left needs nothing after it'],
+    ['standing', STANDING, 125, 'the last fix of a session is not disowned (it ends on a spike after a gap, which waits for a decision)'],
+  ] as const)('%s, seed %i of the comparison: %s', (_, profile, seed, _why) => {
+    // Each of these sessions is decided by one clause of the rule for the fix a trip comes back to; without the clause
+    // the trip before it stays, and the length goes 290 to 370 m past its tolerance.
+    const { fixes, truth } = session(seed, profile);
+
+    expect(Math.abs(measureDistance(fixes).distanceM - truth.idealM)).toBeLessThanOrEqual(tolerance(truth));
+  });
+
+  it('the generator holds every state it claims, so that no property is met by leaving one out', () => {
+    const all = [ON_FOOT, WITH_DRIVE, NO_GAP, STANDING, TRIP_BACK].flatMap((p) => sessions(p));
+
+    expect(all.some((s) => s.truth.standsOnly)).toBe(true);
+    expect(all.some((s) => s.truth.vehicleVisible && s.truth.gaps > 0)).toBe(true);
+    expect(all.filter((s) => s.truth.gaps > 0).length).toBeGreaterThan(all.length / 3);
+    expect(all.some((s) => s.fixes.some((f, i) => s.fixes.some((g, j) => j !== i && g.t === f.t)))).toBe(true);
+    expect(all.some((s) => s.fixes.some((f) => (f.accuracy as number) > MAX_ACCURACY_M))).toBe(true);
+    const back = sessions(TRIP_BACK);
+    expect(back.some((s) => s.truth.gaps === 1)).toBe(true);
+    expect(back.some((s) => s.truth.gaps === 2 && s.truth.stands === 1)).toBe(true);
+    expect(back.some((s) => s.truth.gaps === 2 && s.truth.stands === 0)).toBe(true);
+  });
+
+  it('out to a place and back holds every state next to a gap that the measure must see past (round 6)', () => {
+    // Read off the fixes themselves, in the order of their time, with what the generator says each one is.
+    const states = sessions(TRIP_BACK).map(({ fixes, kinds }) => {
+      const ordered = fixes.map((f, i) => ({ t: f.t, kind: kinds[i] })).sort((a, b) => a.t - b.t);
+      const gaps = ordered.flatMap((f, i) => (i > 0 && f.t - ordered[i - 1].t > GAP_MS ? [i] : []));
+      const at = (i: number) => ordered[i]?.kind;
+      const stay = gaps.length === 2 ? ordered.slice(gaps[0], gaps[1]) : [];
+      return {
+        twoInARowAfterTheSecondGap: gaps.length === 2 && at(gaps[1]) === 'spike' && at(gaps[1] + 1) === 'spike',
+        spikeFirstAfterTheFirstGap: gaps.length === 2 && at(gaps[0]) === 'spike',
+        spikeLastBeforeAGap: gaps.some((g) => at(g - 1) === 'spike'),
+        staleFirstAfterAGap: gaps.some((g) => at(g) === 'stale'),
+        twinInTheStay: stay.some((f) => f.kind === 'twin'),
+      };
+    });
+
+    for (const state of Object.keys(states[0]) as (keyof (typeof states)[number])[]) {
+      expect({ state, held: states.some((s) => s[state]) }).toEqual({ state, held: true });
+    }
+  });
+});
+
+const leg = (a: readonly [number, number], b: readonly [number, number]) => Math.hypot(b[0] - a[0], b[1] - a[1]);
+
+describe('the shapes of rounds 5 to 7 of the review, as profiles that hold what they are named for', () => {
+  const SEEDS = Array.from({ length: 150 }, (_, i) => i + 1);
+  /** What each fix of a session is, in the order of its time, and where its gaps are. */
+  const shape = (profile: Profile) =>
+    SEEDS.map((seed) => {
+      const { fixes, kinds } = session(seed, { ...profile, quietEndFixes: 10 });
+      const ordered = fixes.map((f, i) => ({ t: f.t, kind: kinds[i] })).sort((a, b) => a.t - b.t);
+      const gaps = ordered.flatMap((f, i) => (i > 0 && f.t - ordered[i - 1].t > GAP_MS ? [i] : []));
+      /** The kinds of the fixes from the gap `gap` (0 or 1) up to the next gap, or the end. */
+      const after = (gap: number) => ordered.slice(gaps[gap], gaps[gap + 1] ?? ordered.length).map((f) => f.kind as string);
+      /** How many of the first kinds are `kind`. */
+      const leading = (kinds: readonly string[], kind: string) => {
+        const other = kinds.findIndex((k) => k !== kind);
+        return other < 0 ? kinds.length : other;
+      };
+      return { gaps, after, leading };
+    });
+
+  it('a place of one to five fixes: a stay that holds one real fix, and one that holds four or more', () => {
+    const stays = shape(TRIP_BACK_SHORT).flatMap(({ gaps, after }) => (gaps.length === 2 ? [after(0).filter((k) => k === 'real').length] : []));
+
+    expect(Math.min(...stays)).toBe(1);
+    expect(Math.max(...stays)).toBeGreaterThanOrEqual(4);
+  });
+
+  it('two gaps with a burst of one to five spikes right after the first and one to three real fixes before the second', () => {
+    const lengths = new Set<number>();
+    const reals = new Set<number>();
+    for (const { gaps, after, leading } of shape(TWO_GAPS)) {
+      if (gaps.length !== 2) continue;
+      const between = after(0);
+      const burst = leading(between, 'spike');
+      lengths.add(burst);
+      reals.add(between.filter((k) => k === 'real').length);
+      expect(between.slice(burst).includes('spike')).toBe(false);
+    }
+
+    expect([...lengths].filter((n) => n > 0).sort()).toEqual([1, 2, 3, 4, 5]);
+    expect(reals.has(1) && reals.has(3)).toBe(true);
+  });
+
+  it('one or two spikes at one point right after a stay that holds at least as many real fixes, and no other spike in the stay', () => {
+    const tails = new Set<number>();
+    for (const { gaps, after } of shape(SPIKES_AFTER_A_SHORT_STAY)) {
+      if (gaps.length !== 2) continue;
+      const stay = after(0);
+      const spikes = stay.filter((k) => k === 'spike').length;
+      tails.add(spikes);
+      expect(stay.slice(stay.length - spikes).every((k) => k === 'spike')).toBe(true);
+    }
+
+    expect([...tails].sort()).toEqual([1, 2]);
+  });
+
+  it('two to four spikes as the first fixes after the second gap', () => {
+    const lengths = new Set<number>();
+    for (const { gaps, after, leading } of shape(BURST_AFTER_THE_SECOND_GAP)) {
+      if (gaps.length === 2) lengths.add(leading(after(1), 'spike'));
+    }
+
+    expect([2, 3, 4].every((n) => lengths.has(n))).toBe(true);
+  });
+
+  it('a spike as the first fix after the first gap, in every session that has one, and sometimes only that one', () => {
+    const lengths = shape(SPIKE_FIRST_AFTER_THE_FIRST_GAP).flatMap(({ gaps, after, leading }) => (gaps.length > 0 ? [leading(after(0), 'spike')] : []));
+
+    expect(lengths).toHaveLength(150);
+    expect(lengths.every((n) => n >= 1)).toBe(true);
+    expect(lengths.some((n) => n === 1)).toBe(true);
+  });
+});
+
+describe('the probes of round 7 of the review', () => {
+  const CLAUSE = 'the gap clause of the fix a trip comes back to (VISOK 1 of round 7)';
+  /**
+   * A run east at 3 m/s for 20 s, `first` s with no fix, `spikes` fixes 150 m north of it a second apart, one real fix,
+   * `second` s with no fix, and the run on for 40 s. The true length is the straight line, whatever the spikes say.
+   * With `hole`, the first three fixes after the second gap come that many seconds apart, as those of a man who stands.
+   */
+  const afterTwoGaps = (spikes: number, first: number, second: number, hole = 0) => {
+    const v = 3;
+    const fixes = [];
+    for (let s = 0; s <= 20; s += 1) fixes.push(fix(s * 1000, v * s, 0));
+    const t = 20 + first;
+    for (let k = 0; k < spikes; k += 1) fixes.push(fix((t + k) * 1000, v * 20 + 40 + k, 150 + k));
+    const back = t + spikes;
+    fixes.push(fix(back * 1000, v * back, 0));
+    let at = back + second;
+    for (let q = 0; q < 41; q += 1) {
+      fixes.push(fix(at * 1000, v * at, 0));
+      at += q < 3 && hole > 0 ? hole : 1;
+    }
+    return { fixes, truthM: v * (at - 1) };
+  };
+
+  it(`${CLAUSE}: two spikes after a gap of 15 s, a real fix, a gap of 15 s: 276 m, not 495`, () => {
+    const { fixes, truthM } = afterTwoGaps(2, 15, 15);
+    const result = measureDistance(fixes);
+
+    expect(truthM).toBe(276);
+    expect(result.distanceM).toBeCloseTo(276, 0);
+    expect([result.spikeFixes, result.vehicleSegments]).toEqual([2, 0]);
+  });
+
+  it.each([1, 2, 3, 4])(`${CLAUSE}: %i spikes, whatever the two gaps of 12 to 25 s`, (spikes) => {
+    const wrong = [12, 15, 20].flatMap((first) =>
+      [12, 15, 25].flatMap((second) => {
+        const { fixes, truthM } = afterTwoGaps(spikes, first, second);
+        const result = measureDistance(fixes);
+        const ok = Math.abs(result.distanceM - truthM) <= 2 * MIN_STEP_M && result.spikeFixes === spikes && result.vehicleSegments === 0;
+        return ok ? [] : [`${first} s and ${second} s: ${result.distanceM.toFixed(0)} m against ${truthM.toFixed(0)} m, ${result.spikeFixes} dropped, ${result.vehicleSegments} drives`];
+      }),
+    );
+
+    expect(wrong).toEqual([]);
+  });
+
+  it(`${CLAUSE}: spikes after a gap of 45 s, a real fix, and then fixes 12 s apart (a stand sampled sparsely) are still spikes`, () => {
+    // WITH_DRIVE 590, reduced: twelve seconds between the fixes after the real fix is no silence that hides a place.
+    const { fixes, truthM } = afterTwoGaps(3, 45, 12, 12);
+    const result = measureDistance(fixes);
+
+    expect(result.spikeFixes).toBe(3);
+    expect(Math.abs(result.distanceM - truthM)).toBeLessThanOrEqual(2 * MIN_STEP_M);
+  });
+
+  it.each([
+    [11, 45],
+    [29, 45],
+    [45, 29],
+  ])(`${CLAUSE}: two spikes, a real fix, with %i s before the spikes and %i s after the real fix, where one of them is a short silence (GAP_MS to LONG_GAP_MS): the spikes are dropped`, (first, second) => {
+    const { fixes, truthM } = afterTwoGaps(2, first, second);
+    const result = measureDistance(fixes);
+
+    expect([result.spikeFixes, result.vehicleSegments]).toEqual([2, 0]);
+    expect(Math.abs(result.distanceM - truthM)).toBeLessThanOrEqual(2 * MIN_STEP_M);
+  });
+
+  it.each([
+    [30, 45],
+    [45, 30],
+    [45, 45],
+  ])(`${CLAUSE}: ... and with %i s before and %i s after, both of LONG_GAP_MS or more, they are a place he went to: the price of the PDL, one spike dropped and the other kept`, (first, second) => {
+    // „Mesto do kog se stiže preko duge rupe i sa kog se odlazi preko druge duge rupe broji se i kad ima samo jednu tačku.”
+    // Thirty seconds is a long silence, and twenty-nine is not: the edge of the exception above, on both sides.
+    const { fixes, truthM } = afterTwoGaps(2, first, second);
+    const result = measureDistance(fixes);
+
+    expect(result.spikeFixes).toBe(1);
+    expect(result.distanceM - truthM).toBeGreaterThan(140);
+    expect(result.distanceM - truthM).toBeLessThan(190);
+  });
+
+  it.each([77, 30])(`${CLAUSE}: a fix of a man who stands, %i s after the last fix of a walk, with a spike three seconds after it, is a place of one fix and the spike is dropped`, (silence) => {
+    // MY footSparse 602, reduced. One fix cannot be told from a spike three seconds from it, but the long silence
+    // before it says that he went somewhere, and the fix of the place is the one that has fixes after it. Without the
+    // silence of 30 s or more the same fix is taken for the spike's neighbour and goes with it.
+    const walk = [225, 228, 232, 235, 241].map((t) => fix(t * 1000, -1.5 * (241 - t), 0, { speed: 1.5, accuracy: 6 }));
+    const there = 241 + silence;
+    const place = fix(there * 1000, -19, -175, { speed: 0.02, accuracy: 5 });
+    const spike = fix((there + 3) * 1000, -38, -50, { speed: 2.2, accuracy: 8 });
+    const onwards = [9, 14, 19, 22, 23, 25].map((s) => fix((there + s) * 1000, -33 - 1.5 * (s - 9), -173, { speed: 1.8, accuracy: 8 }));
+    const real = [...walk, place, ...onwards];
+    const result = measureDistance([...real, spike].sort((a, b) => a.t - b.t));
+
+    expect(result.spikeFixes).toBe(1);
+    expect(Math.abs(result.distanceM - real.slice(1).reduce((sum, f, i) => sum + haversineM(real[i], f), 0))).toBeLessThanOrEqual(2 * MIN_STEP_M);
+  });
+
+  it('TRIP_BACK seed 628 of 1000: a trip of two real fixes is no lone fix, and the spike that ends it before a long silence does not take them', () => {
+    // 55 m short as it is, 152 m short when a trip of two fixes is counted as one.
+    const { fixes, truth } = session(628, { ...TRIP_BACK, quietEndFixes: 10 });
+
+    expect(Math.abs(measureDistance(fixes).distanceM - truth.idealM)).toBeLessThan(100);
+  });
+
+  it('ON_FOOT seed 869 of 1000: a gap that only opened because spikes were taken out is no silence, and the real fixes after it stay', () => {
+    // 37 m short as it is, 100 m short when the silences are read off the fixes that are left: a spike before a gap, the
+    // real fixes of a trip entered across a hole that an earlier pass made.
+    const { fixes, truth } = session(869, { ...ON_FOOT, quietEndFixes: 10 });
+
+    expect(Math.abs(measureDistance(fixes).distanceM - truth.idealM)).toBeLessThan(60);
+  });
+
+  it.each([
+    [49, 10],
+    [590, 50],
+    [757, 10],
+    [969, 40],
+  ])(`${CLAUSE}: WITH_DRIVE seed %i of 1000 is as long as the true path says, within %i m`, (seed, metres) => {
+    // Four sessions with a drive that the clause made 45, 267, 215 and 88 m too long: not the price of the place of
+    // one fix (that is the five STANDING seeds below), the price of a clause wider than the place it was written for.
+    const { fixes, truth } = session(seed, { ...WITH_DRIVE, quietEndFixes: 10 });
+
+    expect(Math.abs(measureDistance(fixes).distanceM - truth.idealM)).toBeLessThanOrEqual(metres);
+  });
+
+  it.each([
+    [90, 301],
+    [163, 80],
+    [225, 208],
+    [424, 386],
+    [675, 172],
+  ])('the price of the place of one fix, STANDING seed %i of 1000: a man who stands is given %i m, as the PDL states', (seed, metres) => {
+    const { fixes, truth } = session(seed, { ...STANDING, quietEndFixes: 10 });
+
+    expect(Math.round(measureDistance(fixes).distanceM - truth.idealM)).toBe(metres);
+  });
+
+  describe('a place of m real fixes between two gaps of 60 s, with k spikes at one point', () => {
+    const stood = (fromS: number, toS: number, eastM: number, northM: number, speed: number) =>
+      every(fromS * 1000, toS * 1000, 1).map((t) => fix(t, eastM, northM, { speed }));
+    const chordM = 2 * Math.hypot(150, 80);
+    const place = (m: number, k: number, where: 'after the place' | 'before the return', speed: number) => {
+      const t0 = where === 'after the place' ? 160 + m : 235 - k;
+      const spikes = Array.from({ length: k }, (_, q) => fix((t0 + q) * 1000, -200 + q, 300, { speed }));
+      return [...stood(0, 101, 0, 0, 0.1), ...stood(160, 160 + m, 150, 80, speed), ...spikes, ...stood(235, 300, 0, 0, 0.1)];
+    };
+    const cases = [1, 2, 3, 4].flatMap((m) =>
+      [1, 2, 3].flatMap((k) => (['after the place', 'before the return'] as const).flatMap((where) => [0.1, 1.5].map((speed) => [m, k, where, speed] as const))),
+    );
+
+    it.each(cases)('m %i, k %i, %s, Doppler %f m/s: the spikes are dropped and the chord through the real fixes is the length', (m, k, where, speed) => {
+      // The cases where the spikes outnumber the real fixes of the place and come right after them (m 1 and k 2 or 3,
+      // m 2 and k 3: 721 m for 340) are the limit written at the head of testing/paths.ts and are not claimed.
+      if (where === 'after the place' && k > m) return;
+      const result = measureDistance(place(m, k, where, speed));
+
+      expect(Math.abs(result.distanceM - chordM)).toBeLessThanOrEqual(10);
+      expect(result.spikeFixes).toBe(k);
+    });
+  });
+
+  describe('a burst of spikes right before the first gap, and right after the second, with a place of m real fixes between', () => {
+    const stood = (fromS: number, toS: number, eastM: number, northM: number) => every(fromS * 1000, toS * 1000, 1).map((t) => fix(t, eastM, northM, { speed: 0.1 }));
+    const chordM = 2 * Math.hypot(150, 80);
+    const cases = [0, 1, 2, 3, 4, 6, 10].flatMap((k) => [1, 3].flatMap((m) => (['before the first gap', 'after the second gap'] as const).map((where) => [k, m, where] as const)));
+
+    it.each(cases)('k %i spikes, a place of %i real fixes, the burst %s: every spike is dropped and the place stays', (k, m, where) => {
+      const t0 = where === 'before the first gap' ? 101 : 235;
+      const spikes = Array.from({ length: k }, (_, q) => fix((t0 + q) * 1000, -120 + q, 200, { speed: 0.1 }));
+      const fixes = [
+        ...stood(0, 101, 0, 0),
+        ...(where === 'before the first gap' ? spikes : []),
+        ...stood(160, 160 + m, 150, 80),
+        ...(where === 'after the second gap' ? spikes : []),
+        ...stood(235 + (where === 'after the second gap' ? k : 0), 300, 0, 0),
+      ];
+      const result = measureDistance(fixes);
+
+      // Bursts of 11 and more spikes before the first gap are the stated limits of LOOK_BACK_FIXES and of the window of
+      // the walk (PENDING), and are not claimed here.
+      expect(Math.abs(result.distanceM - chordM)).toBeLessThanOrEqual(10);
+      expect(result.spikeFixes).toBe(k);
+    });
+  });
+});
+
+describe('a mock location', () => {
+  it('counts the distance and exposes the fixes Android marked as mock', () => {
+    const fixes = straight(0, 100).map((f, i) => ({ ...f, mock: i % 2 === 0 }));
+
+    const result = measureDistance(fixes);
+
+    expect(result.mockFixes).toBe(50);
+    expect(result.distanceM).toBeGreaterThan(290);
+  });
+});
+
+it('answers an empty session with nothing', () => {
+  expect(measureDistance([])).toEqual({
+    distanceM: 0,
+    poorFixes: 0,
+    spikeFixes: 0,
+    vehicleSegments: 0,
+    vehicleDurationMs: 0,
+    mockFixes: 0,
+    lastFixT: null,
+    lastFixPoor: false,
+  });
+});
