@@ -340,6 +340,11 @@ class AResultsPictureAsProofTest {
 
 		Map<String, Object> run = Map.of("raceId", race, "seconds", 12345, "link", "", "comment", "Sat");
 
+		/* AND A RUN OF HIS THAT WAITS WITH NO PICTURE, proved by its link: it is a row in the same tab and holds no
+		   file, so a count of his rows rather than of his pictures would refuse the third. */
+		assertThat(sent(multipart("/api/results").param("run", json(Map.of("raceId", race, "seconds", 12000,
+				"link", "https://rezultati.rs/prvo-bez-slike", "comment", ""))), ME).getStatus()).isEqualTo(201);
+
 		for (int one = 1; one <= ResultWriteApi.AT_MOST_PICTURES_WAITING; one++) {
 			assertThat(reported(ME, run, aJpeg("slika " + one)).getStatus()).as("picture %d", one).isEqualTo(201);
 		}
@@ -359,7 +364,7 @@ class AResultsPictureAsProofTest {
 		assertThat(db.sql("select count(*) from message m join competitor c on c.id = m.to_id"
 						+ " where c.member_number = ?").param(ME).query(Long.class).single())
 				.as("a refused fourth told him in his inbox that something was sent")
-				.isEqualTo(3L);
+				.isEqualTo(4L);
 
 		/* A run proved by its link alone holds no picture, and goes. */
 		assertThat(sent(multipart("/api/results").param("run", json(Map.of("raceId", race, "seconds", 12345,
