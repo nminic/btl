@@ -15,6 +15,7 @@ import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.mock.web.MockPart;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
@@ -226,8 +227,8 @@ class AFourthProofSentAtOnceTest {
 
 		return http.perform(multipart("/api/results/" + result)
 						.file(new MockMultipartFile("picture", "sat.jpg", MediaType.IMAGE_JPEG_VALUE, jpeg))
-						.param("run", "{\"distanceKm\":\"21.10\",\"ascentM\":0,\"descentM\":0,\"seconds\":5000,"
-								+ "\"link\":\"\",\"comment\":\"Sat\"}")
+						.part(new MockPart("run", "{\"distanceKm\":\"21.10\",\"ascentM\":0,\"descentM\":0,\"seconds\":5000,"
+								+ "\"link\":\"\",\"comment\":\"Sat\"}".getBytes(StandardCharsets.UTF_8)))
 						.with(request -> {
 							request.setMethod("PUT");
 							return request;

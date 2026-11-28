@@ -118,10 +118,10 @@ export const WHEN_A_RESULT_IS_WRITTEN: Record<string, string> = {
      10.10.2026). Reachable only from the road where the member describes a race. */
   theTownIsTooLong: 'results.refused.theTownIsTooLong',
   theTownHoldsAnInvisibleCharacter: 'results.refused.theTownHoldsAnInvisibleCharacter',
-  /* The three the proof rule names (`ProofThatTheRunHappened`). The forms ask for a link
-     unless a picture stands in for it, so the first two are what a body that went round a
-     form would meet; the third is a link that is not a web address, which a form does not
-     judge. */
+  /* The three the proof rule names (`ProofThatTheRunHappened`). The forms ask for a proof: a link,
+     a picture with a word about it, or words alone (PDL P9, 28.11.2026), so the first two are what
+     a body that went round a form would meet; the third is a link that is not a web address,
+     which a form does not judge. */
   nothingShowsItHappened: 'results.refused.nothingShowsItHappened',
   aPhotographNeverStandsAlone: 'results.refused.aPhotographNeverStandsAlone',
   aLinkThatIsNotALink: 'results.refused.aLinkThatIsNotALink',

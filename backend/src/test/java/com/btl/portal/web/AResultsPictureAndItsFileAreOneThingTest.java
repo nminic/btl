@@ -14,6 +14,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.mock.web.MockPart;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
@@ -167,8 +168,8 @@ class AResultsPictureAndItsFileAreOneThingTest {
 		Throwable thrown = catchThrowable(() -> http.perform(multipart("/api/results/" + result)
 				.file(new MockMultipartFile("picture", "sat.jpg", MediaType.IMAGE_JPEG_VALUE,
 						new byte[] { (byte) 0xFF, (byte) 0xD8, (byte) 0xFF, 'x' }))
-				.param("run", "{\"distanceKm\":\"21.10\",\"ascentM\":0,\"descentM\":0,\"seconds\":5000,"
-						+ "\"link\":\"\",\"comment\":\"Sat\"}")
+				.part(new MockPart("run", "{\"distanceKm\":\"21.10\",\"ascentM\":0,\"descentM\":0,\"seconds\":5000,"
+						+ "\"link\":\"\",\"comment\":\"Sat\"}".getBytes(StandardCharsets.UTF_8)))
 				.with(request -> {
 					request.setMethod("PUT");
 					return request;
@@ -185,8 +186,8 @@ class AResultsPictureAndItsFileAreOneThingTest {
 	@Test
 	void theSameCorrectionWithNoPictureGoesThrough() throws Exception {
 		int status = http.perform(multipart("/api/results/" + result)
-						.param("run", "{\"distanceKm\":\"21.10\",\"ascentM\":0,\"descentM\":0,\"seconds\":5000,"
-								+ "\"link\":\"https://rezultati.rs/x\",\"comment\":\"Sat\"}")
+						.part(new MockPart("run", "{\"distanceKm\":\"21.10\",\"ascentM\":0,\"descentM\":0,\"seconds\":5000,"
+								+ "\"link\":\"https://rezultati.rs/x\",\"comment\":\"Sat\"}".getBytes(StandardCharsets.UTF_8)))
 						.with(request -> {
 							request.setMethod("PUT");
 							return request;

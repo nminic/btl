@@ -821,12 +821,6 @@ class TeamWriteApi {
 			Membership his, String why, ZonedDateTime now) {
 		int running = SeasonClock.seasonBeingRun(now);
 
-		/* THE QUEUE ROW OF THE TEAM'S WAITING LOGO FIRST, before anything of `team` is written: the seat below is a
-		   write of the team's row, and the delete at the end of this method takes the queue row after it, which is
-		   the other half of a cycle with a send of the logo (PENDING, review of PR 844, 28.11.2026). Taken only where
-		   nobody but this member is in the team, the case in which the delete can follow. */
-		emptyTeams.holdTheQueueOfTheTeamsOnlyHeIsIn(member, List.of(team));
-
 		if (his.covers(running)) {
 			/* ENDED, and the season and the reason are taken off `Membership.ended` rather
 			   than written straight into the statement. That is where the two halves of
@@ -846,6 +840,14 @@ class TeamWriteApi {
 					.params(left.seasonTo(), left.leftReason(), member, team)
 					.update();
 		} else {
+			/* THE QUEUE ROW OF THE TEAM'S WAITING LOGO FIRST, before anything of `team` is written: the seat below is
+			   a write of the team's row, and the delete at the end of this method takes the queue row after it, which
+			   is the other half of a cycle with a send of the logo (PENDING, review of PR 844, 28.11.2026). Taken
+			   only where nobody but this member is in the team, and only on this branch, where his row GOES: the
+			   branch above leaves his ended row standing and the team with it, so the delete cannot follow and
+			   there is no cycle to avoid (review of PR 846, 28.11.2026). */
+			emptyTeams.holdTheQueueOfTheTeamsOnlyHeIsIn(member, List.of(team));
+
 			db.sql("delete from team_membership"
 							+ " where competitor_id = ? and team_id = ? and season_to is null")
 					.params(member, team)

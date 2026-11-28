@@ -81,6 +81,33 @@ class ProofThatTheRunHappenedTest {
 	}
 
 	/**
+	 * A COMMENT IS NOTHING EXACTLY WHERE THE FORM SAYS IT IS NOTHING (review of PR 847): the form asks it of
+	 * {@code value.trim()}, which takes off the no-break spaces (U+00A0, U+2007, U+202F) and the byte order mark
+	 * (U+FEFF) that Java's {@code isBlank} leaves, and leaves the four separators U+001C to U+001F that
+	 * {@code isBlank} takes. Asked of the comment alone and with a picture beside it, the two places the rule asks
+	 * it; a word with one of them beside it is still a word.
+	 */
+	@ParameterizedTest
+	@ValueSource(strings = {"\u00A0", "\u2007", "\u202F", "\uFEFF", "\u00A0\uFEFF \t\u2028\u3000"})
+	void aCommentOfWhatTheFormTrimsIsNoWordWhateverTheLanguageSaysIsBlank(String nothing) {
+		assertThat(ProofThatTheRunHappened.decide(new Report("", false, nothing)))
+				.as("a comment the form calls empty was a proof of a run")
+				.isEqualTo(Outcome.NOTHING_SHOWS_IT_HAPPENED);
+		assertThat(ProofThatTheRunHappened.decide(new Report("", true, nothing)))
+				.as("a comment the form calls empty stood beside a picture")
+				.isEqualTo(Outcome.A_PHOTOGRAPH_NEVER_STANDS_ALONE);
+		assertThat(ProofThatTheRunHappened.decide(new Report("", false, nothing + "Sat" + nothing)))
+				.isEqualTo(Outcome.GOOD);
+	}
+
+	/** And a control character the form does NOT trim is a word to the form, so it is one here. */
+	@Test
+	void aSeparatorControlCharacterTheFormKeepsIsAWord() {
+		assertThat(ProofThatTheRunHappened.decide(new Report("", false, "\u001F")))
+				.isEqualTo(Outcome.GOOD);
+	}
+
+	/**
 	 * A WORD NEVER EXCUSES A LINK THAT IS NOT AN ADDRESS, and the word is not what is judged for it.
 	 *
 	 * <p>The shape is judged first, so a member who typed `pogledaj kod mene` in the link box and

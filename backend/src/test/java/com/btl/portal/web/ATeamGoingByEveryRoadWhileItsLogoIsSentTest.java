@@ -239,6 +239,139 @@ class ATeamGoingByEveryRoadWhileItsLogoIsSentTest {
 	}
 
 	/**
+	 * THE JOB OF 1 JANUARY IS A ROAD THAT WRITES THE SEAT AND THEN DELETES THE TEAM (review of PR 846, 28.11.2026:
+	 * measured as {@code deadlock detected}, the victim possibly the transaction that freezes the season). The
+	 * editor does not hold 2028, so {@code begin(2028)} takes him out ({@code team.admin_id}) and then the team
+	 * nobody holds the season in goes; the queue row is taken before the first of the two.
+	 *
+	 * <p>The job runs inside a transaction that is rolled back after the check, so the case commits nothing of the
+	 * job's and the rest of the database, which the job reads whole, is left as it was; what the job did to the team
+	 * is asked inside it.
+	 */
+	@Test
+	void theTurnOfTheSeasonAndASendOverTheLogoDoNotMakeACycle() throws Exception {
+		Team team = aTeamWithALogoThatWaits(true);
+
+		theRoadAndTheSendsNextLockDoNotMakeACycle(team, () -> {
+			holdingTheRow.executeWithoutResult(turning -> {
+				begins.begin(2028);
+
+				assertThat(db.sql("select count(*) from team where id = ?").param(team.id()).query(Long.class)
+						.single()).as("the turn did not delete the team nobody holds the season in").isZero();
+
+				turning.setRollbackOnly();
+			});
+
+			return 0;
+		}, 0, false);
+	}
+
+	/**
+	 * AND A TEAM THAT STAYS IS NOT WAITED FOR BY THE TURN: its editor does not hold 2028 and goes, a second member
+	 * holds it, so the delete cannot follow and the queue row of the logo that waits is not taken.
+	 */
+	@Test
+	void theTurnOfTheSeasonDoesNotWaitForASendOverTheLogoOfATeamThatStays() throws Exception {
+		Team team = aTeamWithALogoThatWaits(true);
+		Team mate = aMember();
+
+		db.sql("insert into team_membership (competitor_id, team_id, season_from) values (?, ?, ?)")
+				.params(mate.editor(), team.id(), A_SEASON_STILL_TO_COME).update();
+		HeldOn.season(db, mate.editor(), 2028, "feeExempt");
+
+		long theRow = theRowThatWaits(team);
+		ExecutorService pool = Executors.newFixedThreadPool(1);
+		List<Future<Integer>> submitted = new ArrayList<>();
+
+		try {
+			holdingTheRow.execute(heldOpen -> {
+				db.sql("select 1 from verification where id = ? for update").param(theRow).query(Integer.class)
+						.single();
+
+				submitted.add(pool.submit(() -> {
+					holdingTheRow.executeWithoutResult(turning -> {
+						begins.begin(2028);
+
+						assertThat(db.sql("select count(*) from team where id = ?").param(team.id())
+								.query(Long.class).single()).as("a team with a member who holds 2028 went").isOne();
+
+						turning.setRollbackOnly();
+					});
+
+					return 0;
+				}));
+
+				Instant deadline = Instant.now().plusSeconds(10);
+
+				while (!submitted.getFirst().isDone() && Instant.now().isBefore(deadline)) {
+					sleep();
+				}
+
+				assertThat(submitted.getFirst())
+						.as("the turn of the season waited for the queue row of a logo of a team that stays")
+						.isDone();
+
+				return null;
+			});
+
+			assertThat(submitted.getFirst().get(30, TimeUnit.SECONDS)).isZero();
+		}
+		finally {
+			pool.shutdownNow();
+		}
+	}
+
+	/**
+	 * A MEMBER WHOSE ROW ONLY ENDS DOES NOT WAIT FOR A SEND OF THE LOGO EITHER (review of PR 846, 28.11.2026): the
+	 * sole member of a team whose membership has begun leaves it, his row is ended and stays, and the team stays
+	 * with it, so the delete cannot follow and there is no cycle to avoid. The queue row of a logo that waits was
+	 * taken all the same, and the leaving waited for one send.
+	 */
+	@Test
+	void aSoleMemberWhoseRowOnlyEndsDoesNotWaitForASendOfTheLogo() throws Exception {
+		Team team = aTeamWithALogoThatWaits(true);
+
+		db.sql("update team_membership set season_from = 2027 where team_id = ?").param(team.id()).update();
+
+		long theRow = theRowThatWaits(team);
+		ExecutorService pool = Executors.newFixedThreadPool(1);
+		List<Future<Integer>> submitted = new ArrayList<>();
+
+		try {
+			holdingTheRow.execute(heldOpen -> {
+				db.sql("select 1 from verification where id = ? for update").param(theRow).query(Integer.class)
+						.single();
+
+				submitted.add(pool.submit(() -> http.perform(delete("/api/teams/" + team.id() + "/membership")
+								.with(csrf()).cookie(new Cookie(SessionCookie.NAME, team.session().secret())))
+						.andReturn().getResponse().getStatus()));
+
+				Instant deadline = Instant.now().plusSeconds(10);
+
+				while (!submitted.getFirst().isDone() && Instant.now().isBefore(deadline)) {
+					sleep();
+				}
+
+				assertThat(submitted.getFirst())
+						.as("the member whose row only ends waited for the queue row of a send")
+						.isDone();
+
+				return null;
+			});
+
+			assertThat(submitted.getFirst().get(30, TimeUnit.SECONDS)).isEqualTo(204);
+			assertThat(db.sql("select count(*) from team where id = ?").param(team.id()).query(Long.class).single())
+					.as("a team whose last member's row only ended was deleted").isOne();
+			assertThat(db.sql("select season_to is not null from team_membership where team_id = ?")
+					.param(team.id()).query(Boolean.class).single()).as("his row was removed and not ended")
+					.isTrue();
+		}
+		finally {
+			pool.shutdownNow();
+		}
+	}
+
+	/**
 	 * A CANCELLATION OF A MEMBER WHO STOOD IN NO TEAM HOLDS NOTHING: there is no queue row to take, and asking for
 	 * the rows of no teams must not be written as {@code in ()}, which is not a statement.
 	 */
@@ -430,6 +563,17 @@ class ATeamGoingByEveryRoadWhileItsLogoIsSentTest {
 	private void theRoadAndTheSendsNextLockDoNotMakeACycle(Team team, Callable<Integer> road, int answer)
 			throws Exception {
 
+		theRoadAndTheSendsNextLockDoNotMakeACycle(team, road, answer, true);
+	}
+
+	/**
+	 * @param committed whether the road commits, so that the team is gone afterwards; a road that is rolled back
+	 *                  after it asked its own question inside (the turn of the season, which reads the whole
+	 *                  database) leaves the team where it was
+	 */
+	private void theRoadAndTheSendsNextLockDoNotMakeACycle(Team team, Callable<Integer> road, int answer,
+			boolean committed) throws Exception {
+
 		long theRow = theRowThatWaits(team);
 		ExecutorService pool = Executors.newFixedThreadPool(1);
 		List<Future<Integer>> submitted = new ArrayList<>();
@@ -463,9 +607,10 @@ class ATeamGoingByEveryRoadWhileItsLogoIsSentTest {
 
 			assertThat(submitted.getFirst().get(30, TimeUnit.SECONDS)).as("what the road answered").isEqualTo(answer);
 			assertThat(db.sql("select count(*) from team where id = ?").param(team.id()).query(Long.class).single())
-					.as("the team was not deleted").isZero();
+					.as("the team was not deleted").isEqualTo(committed ? 0L : 1L);
 			assertThat(db.sql("select count(*) from verification where team_id = ?").param(team.id())
-					.query(Long.class).single()).as("the queue row of its logo went with the team").isZero();
+					.query(Long.class).single()).as("the queue row of its logo went with the team")
+					.isEqualTo(committed ? 0L : 1L);
 		}
 		finally {
 			pool.shutdownNow();

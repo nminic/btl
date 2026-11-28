@@ -442,8 +442,11 @@ class VerificationWriteApi {
 	/**
 	 * THE CIRCLE THE MODERATOR SET BESIDE ANYTHING BUT AN APPROVAL OF A PICTURE: a form fault, so 400, for
 	 * the reason {@link #A_SEEN_PICTURE_GOES_WITH_A_DECISION_ABOUT_ONE} gives. A refusal publishes nothing,
-	 * so a circle sent with one would be dropped, and a row with no picture has nothing to cut. The sentence
-	 * is mine, in the shape of the others of this route; nothing on the portal sends one there.
+	 * so a circle sent with one would be dropped, and a row with no picture has nothing to cut. <b>And a proof
+	 * of a run is no picture to cut either</b> (PDL: „Slika uz rezultat (dokaz sa sata) se zato ni ne
+	 * kropuje"): an approval of a results row writes no circle, so one sent beside it would be taken and
+	 * dropped, which is what the sentence above refuses. The sentence is mine, in the shape of the others of
+	 * this route; nothing on the portal sends one there.
 	 */
 	private static final String A_CIRCLE_GOES_WITH_AN_APPROVED_PICTURE =
 			"Krug se zadaje samo uz odobravanje slike.";
@@ -1213,9 +1216,12 @@ class VerificationWriteApi {
 			return no(HttpStatus.BAD_REQUEST, THE_RACE_IS_NAMED_TWICE);
 		}
 
-		/* AND THE CIRCLE THE MODERATOR SET THE SAME WAY: with an approval of a picture and nothing else,
-		   and only a circle the column holds (`Answered#crop`). */
-		if (typed.crop() != null && !(typed.approved() && item.photoId() != null)) {
+		/* AND THE CIRCLE THE MODERATOR SET THE SAME WAY: with an approval of a picture that is cut and nothing
+		   else, and only a circle the column holds (`Answered#crop`). The proof of a run is a picture that is
+		   never cut, so an approval of a results row writes no circle and one sent beside it is refused here
+		   rather than dropped (review of PR 845). */
+		if (typed.crop() != null
+				&& !(typed.approved() && item.photoId() != null && !RESULTS.equals(item.queue()))) {
 			return no(HttpStatus.BAD_REQUEST, A_CIRCLE_GOES_WITH_AN_APPROVED_PICTURE);
 		}
 
