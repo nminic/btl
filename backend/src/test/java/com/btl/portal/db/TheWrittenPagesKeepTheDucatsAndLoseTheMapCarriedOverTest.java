@@ -91,6 +91,7 @@ class TheWrittenPagesKeepTheDucatsAndLoseTheMapCarriedOverTest extends DatabaseT
 	 * V96 itself, and what is put back below is then the text V78 itself left.
 	 */
 	private void theTextAsItStoodBeforeV78() {
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "118");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "114");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "110");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "107");
@@ -147,6 +148,7 @@ class TheWrittenPagesKeepTheDucatsAndLoseTheMapCarriedOverTest extends DatabaseT
 		Map<String, String> servedNow = everyText();
 
 		/* The portal serves V96 on top of V78; what V78 is held to is the text V78 itself left. */
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "118");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "114");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "110");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "107");
@@ -186,6 +188,7 @@ class TheWrittenPagesKeepTheDucatsAndLoseTheMapCarriedOverTest extends DatabaseT
 	@Test
 	void v78RunAgainOverTheFinishedTextStopsAndListsEveryEdit() {
 		/* The text V78 finished: V96 replaced its ducat sentence, and over that text V78 would not find its new text. */
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "118");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "114");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "110");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "107");
