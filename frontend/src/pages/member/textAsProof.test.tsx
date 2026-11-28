@@ -230,3 +230,19 @@ describe('the sentences said when none of the three proofs came', () => {
     }
   })
 })
+
+describe('the hint under the link box', () => {
+  it('is, in Serbian, the owner\'s sentence of 28.11.2026, which lets the comment stand in for the link as the picture does', () => {
+    /* „Obavezno, osim ukoliko prilažete slike rezultata / aplikacije kao dokaz ili u komentaru napišete
+       odakle je rezultat." (PDL P9, 28.11.2026). One key serves both forms (`newResult.linkHint`). The
+       dictionary and its snapshot are held to each other elsewhere, which lets the two be changed
+       together; this holds the words themselves. */
+    expect(sr.newResult.linkHint).toBe(
+      'Obavezno, osim ukoliko prilažete slike rezultata / aplikacije kao dokaz ili u komentaru napišete odakle je rezultat.',
+    )
+  })
+
+  it('names the comment in English as well', () => {
+    expect(en.newResult.linkHint.toLowerCase()).toContain('comment')
+  })
+})

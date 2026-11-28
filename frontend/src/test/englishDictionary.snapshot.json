@@ -1139,7 +1139,7 @@
     "minutes": "Minutes",
     "seconds": "Seconds",
     "link": "A link to the official results",
-    "linkHint": "Required, unless you attach pictures of the results or of an app as proof.",
+    "linkHint": "Required, unless you attach pictures of the results or of an app as proof, or write in the comment where the result comes from.",
     "photo": "A picture as proof",
     "doneTitle": "The result has been sent",
     "doneWaiting": "The result enters the boards and your profile once it is confirmed.",
