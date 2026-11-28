@@ -441,20 +441,20 @@ class AResultsPictureAsProofTest {
 		long before = everything();
 
 		MockHttpServletResponse inTheAddress = sent(multipart("/api/results").queryParam("run",
-				json(Map.of("raceId", race, "seconds", 111, "link", "", "comment", "U adresi"))), ME);
+				json(Map.of("raceId", race, "seconds", 12000, "link", "", "comment", "U adresi"))), ME);
 
 		assertThat(inTheAddress.getStatus()).isEqualTo(400);
 		assertThat(reasonOf(inTheAddress)).isEqualTo(ResultWriteApi.THE_FORM_IS_NOT_COMPLETE);
 		assertThat(everything()).as("a run in the address was written").isEqualTo(before);
 
 		MockHttpServletResponse both = sent(multipart("/api/results")
-				.queryParam("run", json(Map.of("raceId", race, "seconds", 111, "link", "", "comment", "U adresi")))
-				.part(new MockPart("run", json(Map.of("raceId", race, "seconds", 222, "link", "",
+				.queryParam("run", json(Map.of("raceId", race, "seconds", 12000, "link", "", "comment", "U adresi")))
+				.part(new MockPart("run", json(Map.of("raceId", race, "seconds", 12345, "link", "",
 						"comment", "U telu")).getBytes(StandardCharsets.UTF_8))), ME);
 
 		assertThat(both.getStatus()).isEqualTo(201);
 		assertThat(db.sql("select seconds || ' ' || comment from result_submission where id = ?")
-				.param(idIn(both)).query(String.class).single()).isEqualTo("222 U telu");
+				.param(idIn(both)).query(String.class).single()).isEqualTo("12345 U telu");
 	}
 
 	/**

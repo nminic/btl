@@ -227,8 +227,8 @@ class AFourthProofSentAtOnceTest {
 
 		return http.perform(multipart("/api/results/" + result)
 						.file(new MockMultipartFile("picture", "sat.jpg", MediaType.IMAGE_JPEG_VALUE, jpeg))
-						.part(new MockPart("run", "{\"distanceKm\":\"21.10\",\"ascentM\":0,\"descentM\":0,\"seconds\":5000,"
-								+ "\"link\":\"\",\"comment\":\"Sat\"}".getBytes(StandardCharsets.UTF_8)))
+						.part(new MockPart("run", ("{\"distanceKm\":\"21.10\",\"ascentM\":0,\"descentM\":0,\"seconds\":5000,"
+								+ "\"link\":\"\",\"comment\":\"Sat\"}").getBytes(StandardCharsets.UTF_8)))
 						.with(request -> {
 							request.setMethod("PUT");
 							return request;
