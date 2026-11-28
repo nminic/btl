@@ -201,6 +201,67 @@ class ATeamGoesWithItsLastMember {
 	}
 
 	/**
+	 * THE QUEUE ROW OF A TEAM'S WAITING LOGO, TAKEN BEFORE THE FIRST WRITE TO {@code team} ON A ROAD THAT MAY END IN
+	 * THE DELETE (PENDING, review of PR 844, 28.11.2026). The lock {@link #away} takes is right where it stands, but
+	 * it comes too late for every road that wrote the team's row first: {@code update team set admin_id} (a member
+	 * who holds the seat leaves or is taken out, a cancellation moves the seat) and {@code delete from competitor}
+	 * ({@code team_admin_fk}, {@code on delete set null}) both take the team's row and only then reach the delete,
+	 * and so are the other half of the cycle with a send that already holds the queue row and wants the team.
+	 * Measured on PostgreSQL 18: {@code deadlock detected} on the first two. A road taking the queue row first
+	 * holds nothing while it waits, so the send finishes and the road goes on.
+	 *
+	 * <p><b>Only where nobody but him is in the team</b>, the condition {@link #AND_NOBODY_IS_LEFT} carries after he
+	 * is gone, so a member who walks out of a team that stays does not wait for a send of its logo
+	 * ({@code ATeamLogoSentWhileItIsBeingDecidedTest}). It is asked inside the statement, in the one question, and a
+	 * membership another transaction removes between this and the delete leaves the moment the class note names.
+	 * Rows are taken in key order, as {@link #away} takes them.
+	 *
+	 * @param member the member who is going out of these teams or out of the portal
+	 * @param teams  the teams he is in, from {@link #teamsOf} or the one he walks out of
+	 */
+	void holdTheQueueOfTheTeamsOnlyHeIsIn(long member, Collection<Long> teams) {
+		if (teams.isEmpty()) {
+			return;
+		}
+
+		db.sql("select v.id from verification v where v.team_id in (:teams) and v.state = 'waiting'"
+						+ " and not exists (select 1 from team_membership o where o.team_id = v.team_id"
+						+ " and o.competitor_id <> :member) order by v.id for update of v")
+				.param("teams", teams)
+				.param("member", member)
+				.query(Long.class)
+				.list();
+	}
+
+	/**
+	 * THE SAME TAKING, FOR A CANCELLATION OF THE SEASON ({@link ASeasonBegins#cancelled}), which deletes a team by
+	 * {@link #takeAway} on a count of its own: nobody but him has a row that covers the season. Asked the same way
+	 * here, inside the statement, so that a team that STAYS is not held (PENDING, review of PR 846, 28.11.2026): the
+	 * route of a cancellation takes the member's row first, and a refusal of the logo takes the queue row and then
+	 * writes a message to the sender, which asks for his row, so a cancelled member who is the sender of a logo
+	 * that waits in a team that stays was a cycle (measured, {@code deadlock detected}).
+	 *
+	 * @param member the member whose season is cancelled
+	 * @param teams  the teams he stood in
+	 * @param season the season cancelled
+	 */
+	void holdTheQueueOfTheTeamsNobodyElseHoldsTheSeasonIn(long member, Collection<Long> teams, int season) {
+		if (teams.isEmpty()) {
+			return;
+		}
+
+		db.sql("select v.id from verification v where v.team_id in (:teams) and v.state = 'waiting'"
+						+ " and not exists (select 1 from team_membership o where o.team_id = v.team_id"
+						+ " and o.competitor_id <> :member and (o.season_to is null or o.season_to >= :season))"
+						+ " order by v.id for update of v")
+				.param("teams", teams)
+				.param("member", member)
+				.param("season", season)
+				.query(Long.class)
+				.list();
+	}
+
+	/**
 	 * Deletes each of these teams that now has nobody, and leaves the rest alone.
 	 *
 	 * <p>This is the owner's rule of 25.09.2026 that the class note quotes, and the whole of
@@ -279,7 +340,10 @@ class ATeamGoesWithItsLastMember {
 		String nobodyIsLeft = onlyIfNobodyIsLeft ? AND_NOBODY_IS_LEFT : "";
 
 		/* THE QUEUE ROW OF A LOGO THAT WAITS IS TAKEN BEFORE THE TEAM'S OWN ROW, which is the order a decision and
-		   a send of the logo take them in ({@link TeamLogoApi}: the turn, the queue row, then the team). The
+		   a send of the logo take them in ({@link TeamLogoApi}: the turn, the queue row, then the team). This is
+		   enough only for a road that has not written the team yet: a road that writes `team.admin_id` or deletes the
+		   member who holds the seat first takes the row EARLIER, with {@link #holdTheQueueOfTheTeamsOnlyHeIsIn} or
+		   {@link #holdTheQueueOfTheTeamsNobodyElseHoldsTheSeasonIn}, and arrives here with the queue row already held (28.11.2026). The
 		   `delete from team` below takes the team and then meets the queue row through the cascade
 		   (`verification_team_fk`, V112, `on delete cascade`): the other half of a cycle with a send that already
 		   holds the queue row and wants the team, measured on PostgreSQL 18 as `deadlock detected` with the send
