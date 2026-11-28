@@ -100,10 +100,12 @@ class ProofThatTheRunHappenedTest {
 				.isEqualTo(Outcome.GOOD);
 	}
 
-	/** And a control character the form does NOT trim is a word to the form, so it is one here. */
-	@Test
-	void aSeparatorControlCharacterTheFormKeepsIsAWord() {
-		assertThat(ProofThatTheRunHappened.decide(new Report("", false, "\u001F")))
+	/** And a control character the form does NOT trim is a word to the form, so it is one here, on both sides of
+	 *  the range the form trims (U+0009 to U+000D). */
+	@ParameterizedTest
+	@ValueSource(strings = {"\u001F", "\u0001", "\u0008", "\u000E"})
+	void aControlCharacterTheFormKeepsIsAWord(String word) {
+		assertThat(ProofThatTheRunHappened.decide(new Report("", false, word)))
 				.isEqualTo(Outcome.GOOD);
 	}
 
