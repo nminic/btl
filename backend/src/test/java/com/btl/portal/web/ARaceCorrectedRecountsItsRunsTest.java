@@ -1584,6 +1584,44 @@ class ARaceCorrectedRecountsItsRunsTest {
 		assertThat(rowOf(runnersFirst).points()).isEqualByComparingTo("999.99");
 	}
 
+	/**
+	 * THE SAME BOUND AT A RACE TO A LIMIT, where the limit is what a correction moves and the run's own length, climb
+	 * and fall stay (PENDING, review of PR 841, 28.11.2026: the bound was asked of a race of a length only, so a
+	 * recount that asked the wrong formula of a timed race passed every case). A limit of 80 minutes would make the
+	 * first run worth more than 999,99 by the formula of a race to a limit and 90 minutes would leave it under; by
+	 * the formula of a race of a length both are over it, so a check that read this race as a length would refuse the
+	 * limit that is taken.
+	 */
+	@Test
+	void aCorrectedLimitThatWouldMakeARunWorthMoreThanAnyRunIsRefusedAndOneThatDoesNotIsTaken() throws Exception {
+		assertThat(BtlScoreCalculator.calculateAtALimit(61.3, 120, 130, 4800))
+				.as("the limit chosen must put the first run over the most a run can be")
+				.isGreaterThan(new BigDecimal("999.99"));
+		assertThat(BtlScoreCalculator.calculateAtALimit(61.3, 120, 130, 5400))
+				.as("the limit taken must leave the first run under it")
+				.isLessThan(new BigDecimal("999.99"));
+		assertThat(counted("61.3", 120, 130, 5400))
+				.as("counted as a race of a length the same figures are over it, which is what tells the two"
+						+ " formulas apart: a check that read this race as a length would refuse the limit taken")
+				.isGreaterThan(new BigDecimal("999.99"));
+
+		Map<Long, Run> before = rowsOf(runnersSixHours, thirdsSixHours);
+
+		MockHttpServletResponse refused = change(sixHours, toALimit("Sest sati", SIX_HOURS_DAY, 4800, 350, 410));
+
+		assertThat(refused.getStatus()).as(refused.getContentAsString()).isEqualTo(409);
+		assertThat(reasonIn(refused)).isEqualTo(RaceWriteApi.THE_RACE_WOULD_MAKE_A_RUN_IMPOSSIBLE);
+		assertThat(rowsOf(runnersSixHours, thirdsSixHours))
+				.as("a refused edit counted the runs again").isEqualTo(before);
+		assertThat(db.sql("select limit_seconds from race where id = ?").param(sixHours)
+				.query(Integer.class).single()).as("a refused edit wrote the race").isEqualTo(21600);
+		assertThat(newLines()).isEmpty();
+
+		assertThat(change(sixHours, toALimit("Sest sati", SIX_HOURS_DAY, 5400, 350, 410)).getStatus())
+				.isEqualTo(200);
+		assertThat(rowOf(runnersSixHours)).isEqualTo(countedAtALimit("61.3", 120, 130, 5400, "ultra"));
+	}
+
 	/** AND AT AN UNSCORED RACE A RUN KEEPS NOUGHT, so a course that would make it worth any number is taken. */
 	@Test
 	void anUnscoredRaceTakesACourseThatWouldMakeARunWorthAnyNumber() throws Exception {

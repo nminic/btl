@@ -28,6 +28,45 @@ class PayerNameTest {
 		assertThat(PayerName.inside("", "Branko", "Milević")).isFalse();
 	}
 
+	/**
+	 * A NAME FOLDED ONCE ANSWERS EXACTLY AS THE SAME NAME AS TEXT DOES (PENDING, security review of PR 843, S4,
+	 * 28.11.2026): every payer against every member, in the shapes the statements print, and the two ways of asking
+	 * agree on each pair, both questions. The members include one whose two names read the same either way round
+	 * and one whose name folds to nothing, so a cache that kept only one of the orders, or only one of the two
+	 * names, has a pair to be wrong on.
+	 */
+	@Test
+	void aNameFoldedOnceAnswersAsTheNameAsTextDoes() {
+		String[][] members = {{"Duško", "Kunić"}, {"Branko", "Milević"}, {"Marko", "Petrović-Jović"},
+				{"Đorđe", "Đorđević"}, {"Ana", "Ana"}, {"", ""}};
+		String[] payers = {"DUSKO KUNIC", "KUNIĆ DUŠKO, KRALJA PETRA 1, BEOGRAD", "MILEVIC BRANKO",
+				"POSTA ZA MILEVIC BRANKO STEVANA OPACICA 30 BEOGRAD", "ZA MARKO PETROVIĆ-JOVIĆ", "DJORDJE DJORDJEVIC",
+				"ANA ANA", "ANA", "", "   ", "KUNIC"};
+		int agreed = 0;
+
+		for (String payer : payers) {
+			String folded = PayerName.folded(PayerName.of(payer));
+
+			for (String[] member : members) {
+				PayerName.Member once = PayerName.member(member[0], member[1]);
+
+				assertThat(PayerName.names(folded, once)).as("names %s / %s", payer, String.join(" ", member))
+						.isEqualTo(PayerName.names(PayerName.of(payer), member[0], member[1]));
+				assertThat(PayerName.inside(PayerName.wordsOf(payer), once))
+						.as("inside %s / %s", payer, String.join(" ", member))
+						.isEqualTo(PayerName.inside(payer, member[0], member[1]));
+				agreed++;
+			}
+		}
+
+		assertThat(agreed).isEqualTo(payers.length * members.length);
+		assertThat(PayerName.names("DUSKO KUNIC", PayerName.member("Duško", "Kunić"))).isTrue();
+		assertThat(PayerName.names("KUNIC DUSKO", PayerName.member("Duško", "Kunić"))).isTrue();
+		assertThat(PayerName.inside(PayerName.wordsOf("ZA KUNIC DUSKO 1"), PayerName.member("Duško", "Kunić")))
+				.isTrue();
+		assertThat(PayerName.inside(PayerName.wordsOf("ZA DUSKO 1"), PayerName.member("Duško", "Kunić"))).isFalse();
+	}
+
 	@Test
 	void theNameIsWhatStandsBeforeTheAddress() {
 		assertThat(PayerName.of("DUŠKO KUNIĆ, KRALJEVAČKIH ŽRTAVA 53, BEOGRAD")).isEqualTo("DUŠKO KUNIĆ");

@@ -1,9 +1,13 @@
 package com.btl.portal.web;
 
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.btl.portal.TestcontainersConfiguration;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -344,6 +348,46 @@ class TextsAreTranslatedTest {
 		assertThat(service.asked).hasSize(2);
 		assertThat(service.asked.get(1).texts()).containsExactly("Otrovan tekst");
 		assertThat(translationsOf(before)).hasSize(2);
+	}
+
+	/**
+	 * A TEXT THE SERVICE DID NOT ANSWER IS CAUGHT BY THE PASS'S OWN QUESTION AND NOT BY THE CATCH BELOW IT (PENDING,
+	 * review of PR 842, 28.11.2026). The pass asks whether the text came back with nothing and says so, once; a text
+	 * that got past that question would reach {@code kept} with a {@code null}, and the catch meant for a text the
+	 * database refuses would swallow the {@link NullPointerException}, so the written translations and the next pass
+	 * look the same either way. The log is what tells the two roads apart, so it is what is asked: one warning in the
+	 * words of the pass's own question, and none that names a fault of the database's kind.
+	 */
+	@Test
+	void aTextTheServiceDidNotAnswerIsLoggedByThePassOwnQuestionAndNotByTheCatchOfTheDatabase() throws Exception {
+		event("prevod-pre", "Dobar tekst pre");
+		long poisoned = event("prevod-otrovan", "Otrovan tekst");
+		service.answeredWithHalf.add("Otrovan tekst");
+
+		Logger speaking = (Logger) LoggerFactory.getLogger(TextsAreTranslated.class);
+		ListAppender<ILoggingEvent> heard = new ListAppender<>();
+
+		heard.start();
+		speaking.addAppender(heard);
+
+		try {
+			ran(job());
+		}
+		finally {
+			speaking.detachAppender(heard);
+			heard.stop();
+		}
+
+		List<String> said = heard.list.stream().map(ILoggingEvent::getFormattedMessage).toList();
+
+		assertThat(said).as("the pass wrote no warning at all, so the case is not asking the road it says it asks")
+				.isNotEmpty();
+		assertThat(said).filteredOn(one -> one.contains("the service did not answer this text with one translation"
+				+ " into each language")).as("the pass's own question did not catch the text: %s", said)
+				.singleElement().satisfies(one -> assertThat(one).contains(String.valueOf(poisoned)));
+		assertThat(said).as("the text got past the pass's question and was caught as a refusal of the database: %s",
+				said).noneMatch(one -> one.contains("NullPointerException"));
+		assertThat(translationsOf(poisoned)).isEmpty();
 	}
 
 	/**

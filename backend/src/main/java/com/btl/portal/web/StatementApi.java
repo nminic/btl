@@ -289,7 +289,18 @@ class StatementApi {
 
 		List<Fresh> fresh = new ArrayList<>();
 
-		for (AikStatement.Credit credit : read.credits()) {
+		/* IN THE ORDER OF THE ORDER NUMBERS AND NOT OF THE FILE, because `bank_statement_line_one_order_once`
+		   (V74) is one number for the whole table and `on conflict do nothing` WAITS for an uncommitted line of
+		   another statement that carries the same number. Two statements that share two numbers and print them in
+		   opposite orders are a cycle: each holds the first and waits for the second. Measured on PostgreSQL 18
+		   with the same statements in two sessions: `deadlock detected` after one second, one of the two
+		   uploads answered 500 and nothing was written by it (PENDING, PR 843, 28.11.2026). Taken in one order
+		   by both, the second waits for the first and then finds the lines already kept. The `position` is each
+		   line's own and does not follow the order they are inserted in. */
+		List<AikStatement.Credit> inTheOrderOfTheNumbers = read.credits().stream()
+				.sorted(Comparator.comparing(AikStatement.Credit::orderNumber)).toList();
+
+		for (AikStatement.Credit credit : inTheOrderOfTheNumbers) {
 			db.sql("insert into bank_statement_line (statement_id, position, order_number, payer, payer_account,"
 							+ " amount, payment_code, purpose, reference, season)"
 							+ " values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) on conflict do nothing returning id")
@@ -307,8 +318,8 @@ class StatementApi {
 		}
 
 		List<Bookable> bookable = new ArrayList<>();
-		List<Candidate> everybody = fresh.stream().anyMatch(one -> one.credit().reference() == null)
-				? everybody() : List.of();
+		List<Known> everybody = fresh.stream().anyMatch(one -> one.credit().reference() == null)
+				? known(everybody()) : List.of();
 
 		for (Fresh one : fresh) {
 			if (one.credit().reference() == null) {
@@ -480,6 +491,7 @@ class StatementApi {
 	 */
 	private List<Line> seen(List<Stored> lines) {
 		List<Candidate> everybody = lines.isEmpty() ? List.of() : everybody();
+		List<Known> known = known(everybody);
 
 		return lines.stream().map(one -> {
 			/* BOOKED IS A FACT ABOUT THE LINE, AND WHOSE IS A FACT ABOUT THE PAYMENT. Read off the payment's
@@ -494,7 +506,7 @@ class StatementApi {
 				return line(one, SET_ASIDE, null, List.of(), null);
 			}
 
-			Suggested suggested = candidatesFor(one, everybody);
+			Suggested suggested = candidatesFor(one, known);
 			List<Candidate> candidates = suggested.candidates();
 
 			/* ALREADY RECORDED ONLY WHEN THE LINE IS ABOUT ONE MEMBER, and he holds the season the line was
@@ -523,10 +535,10 @@ class StatementApi {
 	private record Suggested(List<Candidate> candidates, boolean onlyInsideTheText) {
 	}
 
-	private static Suggested candidatesFor(Stored line, List<Candidate> everybody) {
+	private static Suggested candidatesFor(Stored line, List<Known> everybody) {
 		if (line.reference() != null && PaymentApi.A_REFERENCE.matcher(line.reference()).matches()) {
 			String number = line.reference().substring(4);
-			List<Candidate> named = everybody.stream()
+			List<Candidate> named = everybody.stream().map(Known::candidate)
 					.filter(one -> number.equals(one.memberNumber())).toList();
 
 			if (!named.isEmpty()) {
@@ -549,14 +561,15 @@ class StatementApi {
 	 */
 	private record ByName(List<Candidate> whole, List<Candidate> inside) {
 
-		static ByName of(String payer, List<Candidate> everybody) {
-			String name = PayerName.of(payer);
+		static ByName of(String payer, List<Known> everybody) {
+			String name = PayerName.folded(PayerName.of(payer));
+			List<String> words = PayerName.wordsOf(payer);
 			List<Candidate> whole = everybody.stream()
-					.filter(one -> PayerName.names(name, one.firstName(), one.lastName())).toList();
+					.filter(one -> PayerName.names(name, one.folded())).map(Known::candidate).toList();
 
 			return new ByName(whole, everybody.stream()
-					.filter(one -> !whole.contains(one) && PayerName.inside(payer, one.firstName(), one.lastName()))
-					.toList());
+					.filter(one -> !whole.contains(one.candidate()) && PayerName.inside(words, one.folded()))
+					.map(Known::candidate).toList());
 		}
 
 		/** The whole name's members first, then the rest: the order the line suggests them in. */
@@ -586,6 +599,19 @@ class StatementApi {
 		return Boolean.TRUE.equals(db.sql("select exists(select 1 from membership"
 						+ " where competitor_id = ? and season = ?)")
 				.params(competitorId, season).query(Boolean.class).single());
+	}
+
+	/**
+	 * A member with his name folded ONCE, for the whole statement: the payer's name is asked of every member for
+	 * every line, and folding it there made the comparison 305 to 538 ms for a hundred lines and six hundred
+	 * members, inside the write transaction (PENDING, security review of PR 843, S4, 28.11.2026).
+	 */
+	record Known(Candidate candidate, PayerName.Member folded) {
+	}
+
+	private static List<Known> known(List<Candidate> everybody) {
+		return everybody.stream()
+				.map(one -> new Known(one, PayerName.member(one.firstName(), one.lastName()))).toList();
 	}
 
 	private static Candidate find(List<Candidate> everybody, long competitorId) {
