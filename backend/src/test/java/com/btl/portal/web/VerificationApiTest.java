@@ -1529,6 +1529,36 @@ class VerificationApiTest {
 	}
 
 	/**
+	 * A RUN IN THE RESULTS TAB NAMES THE MEMBER WHO SENT IT, WHOLE, AND A HIDDEN PROFILE DOES NOT TAKE
+	 * THE NAME AWAY FROM THE MODERATOR.
+	 *
+	 * <p>The column „Član" of the queue draws the name and the number (owner, 28.11.2026, the plan of
+	 * the administration, O6: „kolona Član nosi ime i broj; ime se ne skraćuje"), and the name is the
+	 * one this answer already carries as {@code who}. The administration reads a hidden profile (PDL
+	 * P23, the addition of 03.10.2026: everybody who is not an active member or the administration is
+	 * kept from it), so the first run is Ana's, <b>whose profile is hidden</b>, and a query that took
+	 * the name from a view that honours the hiding would answer her run blank and be read here.
+	 * <b>The sender is not the moderator and not the subject</b>: four runs by three people, so no
+	 * run's name is the one value every row carries.
+	 */
+	@Test
+	void everyRunInTheResultsTabNamesItsSenderAndAHiddenProfileDoesNotBlankTheName() throws Exception {
+		runsWaitInTheResultsTab();
+		db.sql("update competitor set profile_hidden = true where member_number = ?")
+				.param(MEMBER_ONE).update();
+
+		assertThat(waitingIn(THE_SUPERADMIN, RESULTS)).hasSize(4);
+		assertThat(List.of(
+				itemIn(THE_SUPERADMIN, RESULTS, 0).path("who").asString(),
+				itemIn(THE_SUPERADMIN, RESULTS, 1).path("who").asString(),
+				itemIn(THE_SUPERADMIN, RESULTS, 2).path("who").asString(),
+				itemIn(THE_SUPERADMIN, RESULTS, 3).path("who").asString()))
+				.as("who sent each run in, in the order the tab draws them: Ana (hidden), Bojan, Vera,"
+						+ " and Bojan's correction")
+				.containsExactly("Ana Anic", "Bojan Bojic", "Vera Veric", "Bojan Bojic");
+	}
+
+	/**
 	 * WHOSE ITEM IT IS, AND THE TWO ORDINARY WAYS OF THERE BEING NO NUMBER TO GIVE.
 	 *
 	 * <p>V9 makes {@code competitor_id} nullable on purpose - „A payment waiting to be
