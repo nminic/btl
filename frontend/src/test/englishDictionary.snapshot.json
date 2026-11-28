@@ -1170,7 +1170,10 @@
       "theTownHoldsAnInvisibleCharacter": "The name of the town contains a character that is not allowed.",
       "nothingShowsItHappened": "Proof is missing. Enter a link to the official results.",
       "aPhotographNeverStandsAlone": "A picture must come with a comment saying what can be seen in it.",
-      "aLinkThatIsNotALink": "The link to the official results is not a valid web address. It must begin with http:// or https://."
+      "aLinkThatIsNotALink": "The link to the official results is not a valid web address. It must begin with http:// or https://.",
+      "thePictureIsTooBig": "The picture is too big for the portal. Choose a smaller one, or reduce it before sending.",
+      "thisIsNotAPicture": "This file is not a picture. Send a photograph, in JPG or PNG form for instance.",
+      "threePicturesWait": "Three of your pictures are already waiting to be checked. You can send a new one once a moderator has decided on one of them."
     }
   },
   "status": {
@@ -1297,6 +1300,7 @@
     "reasonKeptPlaceholder": "Enter the reason for refusing.",
     "instructionPlaceholder": "Write exactly what has to change in the picture for it to be accepted.",
     "unusableLink": "The member sent an address the portal does not open.",
+    "proofAlt": "The proof picture of the result: {who}",
     "sentOn": "Sent",
     "decision": "Decision",
     "confirmSendBack": "Refuse with this reason",

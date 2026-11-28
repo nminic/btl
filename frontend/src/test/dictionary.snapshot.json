@@ -1170,7 +1170,10 @@
       "theTownHoldsAnInvisibleCharacter": "Naziv grada sadrži nedozvoljen znak.",
       "nothingShowsItHappened": "Nedostaje dokaz. Upiši link ka zvaničnim rezultatima.",
       "aPhotographNeverStandsAlone": "Uz sliku mora da ide komentar u kom piše šta se na njoj vidi.",
-      "aLinkThatIsNotALink": "Link ka zvaničnim rezultatima nije ispravna veb adresa. Mora da počinje sa http:// ili https://."
+      "aLinkThatIsNotALink": "Link ka zvaničnim rezultatima nije ispravna veb adresa. Mora da počinje sa http:// ili https://.",
+      "thePictureIsTooBig": "Slika je prevelika za portal. Izaberi manju ili je smanji pre slanja.",
+      "thisIsNotAPicture": "Ovaj fajl nije slika. Pošalji fotografiju, na primer u JPG ili PNG obliku.",
+      "threePicturesWait": "Već ti čekaju tri slike na proveri. Novu možeš da pošalješ kad moderator odluči o nekoj od njih."
     }
   },
   "status": {
@@ -1297,6 +1300,7 @@
     "reasonKeptPlaceholder": "Upiši razlog odbijanja.",
     "instructionPlaceholder": "Napiši tačno šta na slici treba promeniti da bi bila prihvaćena.",
     "unusableLink": "Član je poslao adresu koju portal ne otvara.",
+    "proofAlt": "Slika dokaza uz rezultat: {who}",
     "sentOn": "Poslato",
     "decision": "Odluka",
     "confirmSendBack": "Odbij uz ovaj razlog",

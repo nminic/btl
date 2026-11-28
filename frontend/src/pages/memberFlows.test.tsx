@@ -2091,7 +2091,10 @@ function aServerThatKeepsWhatIsSent(): {
 } {
   let held: SentRun[] = []
   const bodyOf = (init: RequestInit | undefined): Record<string, unknown> => {
-    const said: unknown = JSON.parse(String(init?.body ?? '{}'))
+    /* A run with a picture is the part `run` of a body that carries the file beside it (`resultWrites.ts`,
+       since 28.11.2026). */
+    const sent = init?.body
+    const said: unknown = JSON.parse(sent instanceof FormData ? String(sent.get('run')) : String(sent ?? '{}'))
 
     return typeof said === 'object' && said !== null ? { ...said } : {}
   }

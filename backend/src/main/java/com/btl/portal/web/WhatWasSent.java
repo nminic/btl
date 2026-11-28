@@ -83,6 +83,23 @@ final class WhatWasSent<T> {
 	}
 
 	/**
+	 * THE SAME RECORD READ OUT OF A TEXT THE REQUEST CARRIED BESIDE A FILE, OR NOTHING AT ALL: the part
+	 * {@code run} of a run sent with a picture ({@code ResultWriteApi}, 28.11.2026). Read by this reader and
+	 * its mapper, so the body of a request with a file is held to everything a JSON body is held to
+	 * ({@link NoTextHoldsAZero} among it), and no controller holds a mapper of its own for it.
+	 *
+	 * @param text the JSON, never {@code null}
+	 */
+	T readFrom(String text) {
+		try {
+			return json.readValue(text, type);
+		}
+		catch (JacksonException cannot) {
+			return null;
+		}
+	}
+
+	/**
 	 * WHAT WAS SENT, TURNED INTO THE RECORD, OR NOTHING AT ALL.
 	 *
 	 * <p>Asked once, after the member question is answered. A second call would read what is left of

@@ -322,10 +322,19 @@ describe('a result reported this way', () => {
 
       expect(sent).toHaveLength(1)
 
-      const body: { link: unknown; comment: unknown } = JSON.parse(String(sent[0]?.init?.body ?? '{}'))
+      /* WITH THE PICTURE BESIDE IT since 28.11.2026 (owner: „Odradi i sliku kao dokaz uz rezultat"): the run is
+         the part `run` of a body that carries the file as its part `picture` (`resultWrites.ts`). */
+      const parts = sent[0]?.init?.body
+
+      if (!(parts instanceof FormData)) {
+        throw new Error('the run went without the picture that stood in for its address')
+      }
+
+      const body: { link: unknown; comment: unknown } = JSON.parse(String(parts.get('run')))
 
       expect(body.link, 'an address was sent where the picture stood in for one').toBe('')
       expect(body.comment).toBe('Snimak sa sata, bez zvanicne liste')
+      expect(parts.get('picture')).toBeInstanceOf(File)
     } finally {
       server.stop()
     }
