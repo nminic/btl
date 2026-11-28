@@ -192,6 +192,11 @@ class ASeasonBegins implements WhatFollowsTheFreeze {
 			return;
 		}
 
+		/* THE QUEUE ROWS OF THE LOGOS OF THE TEAMS HE STOOD IN, before `out` writes `team.admin_id`: the delete below
+		   takes the queue row after the team's row, the other half of a cycle with a send of the logo (PENDING, review
+		   of PR 844, 28.11.2026). */
+		teams.holdTheQueueOf(before.teams());
+
 		out(List.of(member), season, true, before.teams(), before.seats(), now);
 
 		for (Long team : before.teams()) {

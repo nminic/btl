@@ -821,6 +821,12 @@ class TeamWriteApi {
 			Membership his, String why, ZonedDateTime now) {
 		int running = SeasonClock.seasonBeingRun(now);
 
+		/* THE QUEUE ROW OF THE TEAM'S WAITING LOGO FIRST, before anything of `team` is written: the seat below is a
+		   write of the team's row, and the delete at the end of this method takes the queue row after it, which is
+		   the other half of a cycle with a send of the logo (PENDING, review of PR 844, 28.11.2026). Taken only where
+		   nobody but this member is in the team, the case in which the delete can follow. */
+		emptyTeams.holdTheQueueOfTheTeamsOnlyHeIsIn(member, List.of(team));
+
 		if (his.covers(running)) {
 			/* ENDED, and the season and the reason are taken off `Membership.ended` rather
 			   than written straight into the statement. That is where the two halves of

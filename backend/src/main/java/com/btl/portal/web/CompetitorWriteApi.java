@@ -403,6 +403,12 @@ class CompetitorWriteApi {
 		List<Long> teams = emptyTeams.teamsOf(gone);
 		Optional<Long> photo = photoOf(gone);
 
+		/* AND THE QUEUE ROW OF THE LOGO OF A TEAM HE IS THE ONLY ONE IN, taken before the delete below: that statement
+		   writes the row of every team that names him in `admin_id` (`team_admin_fk`, `on delete set null`) and the
+		   team's own delete then meets the queue row, the other half of a cycle with a send of the logo (PENDING,
+		   review of PR 844, 28.11.2026). */
+		emptyTeams.holdTheQueueOfTheTeamsOnlyHeIsIn(gone, teams);
+
 		/* AND WHAT FACEBOOK HOLDS OF HIS PROFILE, read here for the same reason: `shared_card` is
 		   `on delete cascade` (V103). The owner, PDL P11, 16.11.2026, item 14, with my recommendation: the server asks Facebook at once to
 		   read his addresses again, so that it gets the front page's preview, and keeps the name not a minute after.

@@ -2,6 +2,9 @@ package com.btl.portal.domain.statement;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.Collections;
+import java.util.List;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -29,11 +32,14 @@ class PayerNameTest {
 	}
 
 	/**
-	 * A NAME FOLDED ONCE ANSWERS EXACTLY AS THE SAME NAME AS TEXT DOES (PENDING, security review of PR 843, S4,
-	 * 28.11.2026): every payer against every member, in the shapes the statements print, and the two ways of asking
-	 * agree on each pair, both questions. The members include one whose two names read the same either way round
-	 * and one whose name folds to nothing, so a cache that kept only one of the orders, or only one of the two
-	 * names, has a pair to be wrong on.
+	 * A NAME FOLDED ONCE ANSWERS EXACTLY AS THE NAME WAS ANSWERED BEFORE IT WAS FOLDED ONCE (PENDING, security review
+	 * of PR 843, S4, 28.11.2026, and review of PR 844, 28.11.2026: the loop compared the new implementation with
+	 * itself, because the two methods that take the name as text now delegate to it). The left side is the new
+	 * question asked of a name folded once; the right side is {@link #before}, the two questions as they were written
+	 * in 76a58ea0e before the change, in this file and not in the class. Every payer against every member, in the
+	 * shapes the statements print. The members include one whose two names read the same either way round and one whose
+	 * name folds to nothing, so a cache that kept only one of the orders, or only one of the two names, has a pair to be
+	 * wrong on.
 	 */
 	@Test
 	void aNameFoldedOnceAnswersAsTheNameAsTextDoes() {
@@ -43,6 +49,7 @@ class PayerNameTest {
 				"POSTA ZA MILEVIC BRANKO STEVANA OPACICA 30 BEOGRAD", "ZA MARKO PETROVIĆ-JOVIĆ", "DJORDJE DJORDJEVIC",
 				"ANA ANA", "ANA", "", "   ", "KUNIC"};
 		int agreed = 0;
+		TheQuestionsAsTheyWere before = new TheQuestionsAsTheyWere();
 
 		for (String payer : payers) {
 			String folded = PayerName.folded(PayerName.of(payer));
@@ -51,10 +58,10 @@ class PayerNameTest {
 				PayerName.Member once = PayerName.member(member[0], member[1]);
 
 				assertThat(PayerName.names(folded, once)).as("names %s / %s", payer, String.join(" ", member))
-						.isEqualTo(PayerName.names(PayerName.of(payer), member[0], member[1]));
+						.isEqualTo(before.names(PayerName.of(payer), member[0], member[1]));
 				assertThat(PayerName.inside(PayerName.wordsOf(payer), once))
 						.as("inside %s / %s", payer, String.join(" ", member))
-						.isEqualTo(PayerName.inside(payer, member[0], member[1]));
+						.isEqualTo(before.inside(payer, member[0], member[1]));
 				agreed++;
 			}
 		}
@@ -65,6 +72,34 @@ class PayerNameTest {
 		assertThat(PayerName.inside(PayerName.wordsOf("ZA KUNIC DUSKO 1"), PayerName.member("Duško", "Kunić")))
 				.isTrue();
 		assertThat(PayerName.inside(PayerName.wordsOf("ZA DUSKO 1"), PayerName.member("Duško", "Kunić"))).isFalse();
+	}
+
+	/**
+	 * THE TWO QUESTIONS AS THEY WERE WRITTEN BEFORE A NAME WAS FOLDED ONCE (the bodies of {@code names} and
+	 * {@code inside} in 76a58ea0e): the member's name is folded inside each question, in both orders, from the two
+	 * strings. Nothing here reads {@link PayerName.Member}, so the loop above compares two ways of arriving at the
+	 * answer and not one way with itself. Only {@code folded} is shared, which is the folding the owner chose for
+	 * both (27.11.2026) and which both versions call.
+	 */
+	private static final class TheQuestionsAsTheyWere {
+
+		boolean names(String payer, String firstName, String lastName) {
+			String printed = PayerName.folded(payer);
+
+			return !printed.isEmpty() && (printed.equals(PayerName.folded(firstName + " " + lastName))
+					|| printed.equals(PayerName.folded(lastName + " " + firstName)));
+		}
+
+		boolean inside(String printed, String firstName, String lastName) {
+			List<String> words = PayerName.wordsOf(printed);
+
+			return contains(words, PayerName.wordsOf(firstName + " " + lastName))
+					|| contains(words, PayerName.wordsOf(lastName + " " + firstName));
+		}
+
+		private static boolean contains(List<String> words, List<String> name) {
+			return !name.isEmpty() && Collections.indexOfSubList(words, name) >= 0;
+		}
 	}
 
 	@Test

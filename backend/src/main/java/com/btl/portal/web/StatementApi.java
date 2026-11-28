@@ -348,8 +348,15 @@ class StatementApi {
 		/* IN THE ORDER OF THE MEMBERS AND NOT OF THE STATEMENT, so that two statements taken at once
 		   that book the same two members take their rows in one order and cannot hold each other. The
 		   lines booked by the name are in this one list for that reason: a second loop after it would
-		   take a row out of that order. */
-		bookable.sort(Comparator.comparingLong(Bookable::competitorId));
+		   take a row out of that order.
+
+		   AND, FOR TWO LINES OF ONE MEMBER, THE ONE THE BANK PRINTED FIRST: `fresh` goes in the order of the order
+		   numbers since PR 844 (above), so a tie in this sort used to be broken by the numbers and not by the
+		   statement, and a member who is on two lines was booked by the second payment when the numbers ran the
+		   other way (PENDING, review of PR 844, 28.11.2026). The outcome of a booking is the one it had before that
+		   PR; only the order the rows were INSERTED in changed, and that is the loop above. */
+		bookable.sort(Comparator.comparingLong(Bookable::competitorId)
+				.thenComparingInt(one -> one.credit().position()));
 
 		int booked = 0;
 

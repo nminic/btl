@@ -78,7 +78,13 @@ import java.util.Optional;
  * Measured on PostgreSQL 18: {@code deadlock detected} and the send answered 500, nothing torn. It now takes the queue
  * rows of the team's waiting logo {@code for update} before it deletes, and
  * {@code ATeamLogoSentWhileItIsBeingDecidedTest} holds that order for both roads that end in the delete
- * ({@code takeAway} and {@code goIfEmpty}).
+ * ({@code takeAway} and {@code goIfEmpty}). <b>That alone was not enough for the roads that write the team's row
+ * first</b> (review of PR 844, 28.11.2026, measured as {@code deadlock detected}): a member who holds the seat
+ * leaving ({@code TeamWriteApi.takeOut}, which {@code TeamAdministrationWriteApi.remove} calls too), the deletion of
+ * the member who holds it ({@code CompetitorWriteApi}, through {@code team_admin_fk}) and the cancellation of a
+ * season ({@code ASeasonBegins.cancelled}) each take the queue row at their own start, through
+ * {@code ATeamGoesWithItsLastMember.holdTheQueueOfTheTeamsOnlyHeIsIn} and {@code holdTheQueueOf}, and
+ * {@code ATeamGoingByEveryRoadWhileItsLogoIsSentTest} holds each of the four through the road itself.
  *
  * <p><b>THE ADMINISTRATION'S DOOR IS THE LEAGUE'S MARK</b> ({@link LeagueMarkApi}): the right over the teams at the
  * door, a new picture with its circle and nothing that waits, and the logo taken down at once. <b>What waits is not
