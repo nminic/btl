@@ -289,7 +289,18 @@ class StatementApi {
 
 		List<Fresh> fresh = new ArrayList<>();
 
-		for (AikStatement.Credit credit : read.credits()) {
+		/* IN THE ORDER OF THE ORDER NUMBERS AND NOT OF THE FILE, because `bank_statement_line_one_order_once`
+		   (V74) is one number for the whole table and `on conflict do nothing` WAITS for an uncommitted line of
+		   another statement that carries the same number. Two statements that share two numbers and print them in
+		   opposite orders are a cycle: each holds the first and waits for the second. Measured on PostgreSQL 18
+		   with the same statements in two sessions: `deadlock detected` after one second, one of the two
+		   uploads answered 500 and nothing was written by it (PENDING, PR 843, 28.11.2026). Taken in one order
+		   by both, the second waits for the first and then finds the lines already kept. The `position` is each
+		   line's own and does not follow the order they are inserted in. */
+		List<AikStatement.Credit> inTheOrderOfTheNumbers = read.credits().stream()
+				.sorted(Comparator.comparing(AikStatement.Credit::orderNumber)).toList();
+
+		for (AikStatement.Credit credit : inTheOrderOfTheNumbers) {
 			db.sql("insert into bank_statement_line (statement_id, position, order_number, payer, payer_account,"
 							+ " amount, payment_code, purpose, reference, season)"
 							+ " values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) on conflict do nothing returning id")

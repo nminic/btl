@@ -547,6 +547,29 @@ describe('a payment that waits, confirmed or set aside', () => {
     expect(within(rows[1] ?? document.body).getByLabelText(/Uplaćeno/)).toHaveValue('4200')
   })
 
+  /**
+   * A MEMBER THE LINE SUGGESTS HAS HIS OWN TICK AND IS NOT OFFERED AGAIN UNDER „DRUGI ČLAN" (PENDING, review of
+   * PR 843, 28.11.2026). Measured before the fix: choosing the suggested member in „Drugi član" put two ticks named
+   * „Potvrdi: Duško Kunić (000004), Beograd" on one line, two controls that open the same row. „Drugi član" is for
+   * somebody else (owner, 26.11.2026: it opens „anybody else's row"), so the list holds the members in dinars minus
+   * the ones the line already has a tick for. Ana, suggested and in euro, is on neither list, and Marko, in dinars
+   * and not suggested, is the only one left.
+   */
+  it('does not offer a suggested member under „Drugi član" again, so one member has one tick on a line', async () => {
+    aServerOfPayments([[WAITING]])
+    renderAt(PAYMENTS, 'superadmin')
+
+    const another = await screen.findByLabelText('Drugi član')
+
+    expect(screen.getAllByRole('button', { name: 'Potvrdi: Duško Kunić (000004), Beograd' })).toHaveLength(1)
+    expect(
+      within(another)
+        .getAllByRole('option')
+        .slice(1)
+        .map((option) => option.textContent),
+    ).toEqual(['Marko Marković (000027), Niš'])
+  })
+
   it('sets a line aside, and the list that waits is read again without it', async () => {
     const asked = aServerOfPayments([[WAITING], []])
     const user = setupUser()

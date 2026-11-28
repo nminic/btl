@@ -347,12 +347,18 @@ function WaitingLine({
   const confirmable = one.candidates.filter((candidate) =>
     owing.some((member) => member.competitorId === candidate.competitorId),
   )
+  /* THE MEMBERS „DRUGI ČLAN" OFFERS ARE THOSE WHO OWE AND HAVE NO TICK OF THEIR OWN ON THIS LINE: a suggested
+     member chosen there too would put two ticks named for the same member on one line, two controls for one
+     row (PENDING, review of PR 843, 28.11.2026). It is for somebody else (owner, 26.11.2026). */
+  const others = owing.filter(
+    (member) => !confirmable.some((candidate) => candidate.competitorId === member.competitorId),
+  )
   /* ALREADY RECORDED, AND STILL HERE (owner, 26.10.2026): „ostaje na spisku sa oznakom „Već evidentirano"
      i dugmetom „Nije članarina"". Nothing to book, so no „Potvrdi" and no other member; only the closing. */
   const recorded = one.state === 'alreadyRecorded' ? one.member : null
   const anotherId = `another-${one.id}`
   /* WHOM „DRUGI ČLAN" HOLDS, read off the same list its options are drawn from. */
-  const chosen = owing.find((member) => String(member.competitorId) === another)
+  const chosen = others.find((member) => String(member.competitorId) === another)
 
   async function setAside() {
     if (outstanding.current) {
@@ -452,7 +458,7 @@ function WaitingLine({
                   onChange={(event) => setAnother(event.target.value)}
                 >
                   <option value="">{t('review.statement.anotherNone')}</option>
-                  {owing.map((member) => (
+                  {others.map((member) => (
                     <option key={member.competitorId} value={String(member.competitorId)}>
                       {whose(member)}
                     </option>

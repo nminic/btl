@@ -97,6 +97,9 @@ class ATeamLogoSentWhileItIsBeingDecidedTest {
 	@Autowired
 	private ObjectMapper mapper;
 
+	@Autowired
+	private ATeamGoesWithItsLastMember emptyTeams;
+
 	/** The row's own lock, held from this thread so every request queues behind it. */
 	@Autowired
 	private TransactionTemplate holdingTheRow;
@@ -288,6 +291,141 @@ class ATeamLogoSentWhileItIsBeingDecidedTest {
 			assertThat(answer.status()).as("the send of a team that was deleted under it: %s", answer).isEqualTo(404);
 			assertThat(db.sql("select count(*) from verification where team_id = ?").param(team.id())
 					.query(Long.class).single()).isZero();
+		}
+		finally {
+			pool.shutdownNow();
+		}
+	}
+
+	/**
+	 * THE TEAM'S DELETION AND A SEND OVER THE LOGO THAT WAITS DO NOT MAKE A CYCLE (PENDING, review of PR 842,
+	 * 28.11.2026). The send takes the team's turn, then the queue row of the logo that waits, then the team's row;
+	 * a deletion that took the team's row first (the {@code delete from team}) and met the queue row through the
+	 * cascade ({@code verification_team_fk}, V112) was the other half of a cycle: measured on PostgreSQL 18,
+	 * {@code deadlock detected} and the send answered 500, nothing torn.
+	 *
+	 * <p>This thread plays the send up to its second lock: it holds the queue row. The deletion
+	 * ({@link ATeamGoesWithItsLastMember#takeAway}, the one method that runs {@code delete from team}) is submitted
+	 * and the lock manager is asked until it shows it stopped. Then this thread does what the send does next, takes
+	 * the team's row. A deletion that already held the team would be waiting for the row this thread holds while this
+	 * thread waits for the team: the statement below is the one the database ends. A deletion that took the queue
+	 * row first holds nothing, so the send finishes, lets go, and the deletion goes through.
+	 */
+	@Test
+	void theDeletionOfATeamAndASendOverItsWaitingLogoDoNotMakeACycle() throws Exception {
+		Team team = aTeamWithALogoThatWaits();
+
+		theDeletionAndTheSendsNextLockDoNotMakeACycle(team, () -> emptyTeams.takeAway(team.id()));
+	}
+
+	/**
+	 * THE SAME FOR THE ROAD A MEMBER'S LEAVING TAKES ({@link ATeamGoesWithItsLastMember#goIfEmpty}), where nobody is
+	 * left in the team: both roads end in one statement, and a lock taken for one of them only would be a cycle for
+	 * the other.
+	 */
+	@Test
+	void theDeletionOfAnEmptiedTeamAndASendOverItsWaitingLogoDoNotMakeACycle() throws Exception {
+		Team team = aTeamWithALogoThatWaits();
+
+		db.sql("delete from team_membership where team_id = ?").param(team.id()).update();
+
+		theDeletionAndTheSendsNextLockDoNotMakeACycle(team, () -> emptyTeams.goIfEmpty(List.of(team.id())));
+	}
+
+	/**
+	 * A TEAM THAT STILL HAS SOMEBODY IN IT IS NOT HELD BEHIND A SEND BY THE ASKING WHETHER IT IS EMPTY. The lock the
+	 * deletion takes carries the condition the delete carries ({@code AND_NOBODY_IS_LEFT}): a member who walks out of
+	 * a team that stays must not wait for a send of its logo, nor hold the queue row of that send while he is at it.
+	 * The row is held from this thread and the asking has to come back while it is held.
+	 */
+	@Test
+	void theAskingWhetherATeamThatStaysIsEmptyDoesNotWaitForASendOfItsLogo() throws Exception {
+		Team team = aTeamWithALogoThatWaits();
+		long theRow = theRowThatWaits(team);
+		ExecutorService pool = Executors.newFixedThreadPool(1);
+		List<Future<Object>> submitted = new ArrayList<>();
+
+		try {
+			holdingTheRow.execute(heldOpen -> {
+				db.sql("select 1 from verification where id = ? for update").param(theRow).query(Integer.class)
+						.single();
+
+				submitted.add(pool.submit(() -> {
+					holdingTheRow.executeWithoutResult(asking -> emptyTeams.goIfEmpty(List.of(team.id())));
+
+					return null;
+				}));
+
+				Instant deadline = Instant.now().plusSeconds(10);
+
+				while (!submitted.getFirst().isDone() && Instant.now().isBefore(deadline)) {
+					try {
+						Thread.sleep(20);
+					}
+					catch (InterruptedException interrupted) {
+						throw new IllegalStateException(interrupted);
+					}
+				}
+
+				assertThat(submitted.getFirst())
+						.as("the asking waited for the queue row of a team that has somebody in it and stays")
+						.isDone();
+
+				return null;
+			});
+
+			submitted.getFirst().get(30, TimeUnit.SECONDS);
+
+			assertThat(db.sql("select count(*) from team where id = ?").param(team.id()).query(Long.class).single())
+					.as("a team with somebody in it was deleted").isOne();
+		}
+		finally {
+			pool.shutdownNow();
+		}
+	}
+
+	private void theDeletionAndTheSendsNextLockDoNotMakeACycle(Team team, Runnable deleting) throws Exception {
+		long theRow = theRowThatWaits(team);
+		ExecutorService pool = Executors.newFixedThreadPool(1);
+		List<Future<Object>> submitted = new ArrayList<>();
+
+		try {
+			holdingTheRow.execute(heldOpen -> {
+				db.sql("select 1 from verification where id = ? for update").param(theRow).query(Integer.class)
+						.single();
+
+				assertThat(BlockedBehindThisHold.count(db))
+						.as("the row is held and nothing has been submitted yet")
+						.isZero();
+
+				submitted.add(pool.submit(() -> {
+					holdingTheRow.executeWithoutResult(deletingInItsOwnTransaction -> deleting.run());
+
+					return null;
+				}));
+				untilAllAreStopped(1, submitted);
+
+				/* WHAT THE SEND DOES NEXT: it takes the team's row. */
+				assertThat(db.sql("select id from team where id = ? for update").param(team.id())
+						.query(Long.class).single())
+						.as("the send could not take the team: the deletion holds it while it waits for the queue"
+								+ " row the send holds, which is a cycle")
+						.isEqualTo(team.id());
+
+				assertThat(submitted.getFirst())
+						.as("the deletion was let through while the queue row was held, so the case is not holding"
+								+ " the thing it says it holds")
+						.isNotDone();
+
+				return null;
+			});
+
+			submitted.getFirst().get(30, TimeUnit.SECONDS);
+
+			assertThat(db.sql("select count(*) from team where id = ?").param(team.id()).query(Long.class).single())
+					.as("the team was not deleted").isZero();
+			assertThat(db.sql("select count(*) from verification where team_id = ?").param(team.id())
+					.query(Long.class).single()).as("the queue row of its logo went with the team").isZero();
 		}
 		finally {
 			pool.shutdownNow();
