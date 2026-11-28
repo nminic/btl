@@ -272,8 +272,8 @@ class AResultsPictureAsProofTest {
 
 	/**
 	 * A FILE BOX NOBODY FILLED IS NO PICTURE: the link alone still proves the run and nothing is held, and with
-	 * no link either nothing shows it happened. A request with no part {@code run}, or one that is not JSON, is a
-	 * form not filled in.
+	 * no link and no word either nothing shows it happened. A request with no part {@code run}, or one that is not
+	 * JSON, is a form not filled in.
 	 */
 	@Test
 	void anEmptyFileIsNoPictureAndABodyThatIsNotThereIsAFormNotFilledIn() throws Exception {
@@ -287,7 +287,16 @@ class AResultsPictureAsProofTest {
 				.param(idIn(withALink)).query(Long.class).optional()).isEmpty();
 
 		assertThat(reasonOf(reported(ME, Map.of("raceId", race, "seconds", 12345, "link", "",
-				"comment", "Sat"), new byte[0]))).isEqualTo("nothingShowsItHappened");
+				"comment", "  "), new byte[0]))).isEqualTo("nothingShowsItHappened");
+
+		/* And words with the empty file box are words alone, which is a proof (PDL P9, 28.11.2026): the
+		   empty box is no picture, and no picture is what holds nothing, not what refuses. */
+		MockHttpServletResponse byWords = reported(ME, Map.of("raceId", race, "seconds", 12345, "link", "",
+				"comment", "Sat"), new byte[0]);
+
+		assertThat(byWords.getStatus()).isEqualTo(201);
+		assertThat(db.sql("select photo_id from verification where result_submission_id = ?")
+				.param(idIn(byWords)).query(Long.class).optional()).isEmpty();
 
 		assertThat(sent(multipart("/api/results").param("run", json(linked)), ME).getStatus()).isEqualTo(201);
 

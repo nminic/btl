@@ -272,8 +272,14 @@ export type FieldDef = {
    *
    * Named rather than general, like the two rules above and for the same reason:
    * a condition language in a JSON file is a small programming language.
+   *
+   * `orField` is the one more answer that lets it go, and it is the comment (owner, 09.10.2026: „tekst sam
+   * je dovoljan dokaz i bez slike", put into force on 28.11.2026): words with no link and no picture are a
+   * proof too. Either answer lets the link go, and the two are asked of the SAME answered-ness
+   * (`validate.ts`), so a comment of blanks lets nothing go. Not a list, because a list is the first step
+   * of the language above.
    */
-  optionalWhenFilled?: { field: string }
+  optionalWhenFilled?: { field: string; orField?: string }
   /**
    * Asked of everybody, and required of somebody who has answered `field`.
    *

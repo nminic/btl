@@ -1224,13 +1224,19 @@ class ResultWriteApiTest {
 	}
 
 	/** NOTHING SHOWS THE RUN HAPPENED, which is {@link ProofThatTheRunHappened}'s own
-	 *  sentence and the one refusal the forms already make. */
+	 *  sentence and the one refusal the forms already make: no link, no picture and no word. */
 	@Test
 	void aRunWithNoProofAtAllIsRefused() throws Exception {
 		assertThat(reasonIn(reportedAs(ME, form(Map.of(
 				"raceId", lengthRace,
 				"seconds", 3600,
-				"comment", "Sat mi je stao")))))
+				"comment", "   ")))))
+				.as("a comment of blanks was taken for a word")
+				.isEqualTo(ResultWriteApi.WHY_NOT.get(Outcome.NOTHING_SHOWS_IT_HAPPENED));
+
+		assertThat(reasonIn(reportedAs(ME, form(Map.of(
+				"raceId", lengthRace,
+				"seconds", 3600)))))
 				.isEqualTo(ResultWriteApi.WHY_NOT.get(Outcome.NOTHING_SHOWS_IT_HAPPENED));
 
 		assertThat(reasonIn(reportedAs(ME, form(Map.of(
@@ -1649,8 +1655,110 @@ class ResultWriteApiTest {
 	@Test
 	void aCorrectionWithNoFreshProofIsRefused() throws Exception {
 		assertThat(reasonIn(correctedAs(ME, myResult,
-				correction("42.20", 350, 410, 11400, null, "Verujte mi"))))
+				correction("42.20", 350, 410, 11400, null, "    "))))
 				.isEqualTo(ResultWriteApi.WHY_NOT.get(Outcome.NOTHING_SHOWS_IT_HAPPENED));
+
+		assertThat(reasonIn(correctedAs(ME, myResult,
+				correction("42.20", 350, 410, 11400, null, null))))
+				.isEqualTo(ResultWriteApi.WHY_NOT.get(Outcome.NOTHING_SHOWS_IT_HAPPENED));
+
+		assertThat(howManySubmissions()).isZero();
+	}
+
+	/**
+	 * WORDS ALONE ARE A PROOF ON EVERY ROAD A RUN IS SENT BY (owner, 09.10.2026: „tekst sam je dovoljan
+	 * dokaz i bez slike"; 03.10.2026: „Ovo treba da vazi na svim slanjima rezultata"; put into force
+	 * 28.11.2026).
+	 *
+	 * <p><b>Three roads, one decision</b>: a run on a race of the calendar, a run described by the member
+	 * (which is also the road a run sent back goes again by), and the correction of a counted result. Each
+	 * is held with a comment and no link and no picture, and the row it writes is read column by column: the
+	 * address is the empty string the column is made to hold, and the words are the member's own.
+	 */
+	@Test
+	void wordsAloneAreTheProofOnTheThreeRoads() throws Exception {
+		String words = "Sat je stao na 12. km, vreme je sa telefona.";
+
+		MockHttpServletResponse fromTheCalendar = reportedAs(ME, form(Map.of(
+				"raceId", lengthRace,
+				"seconds", 3600,
+				"comment", words)));
+
+		assertThat(fromTheCalendar.getStatus()).as("a run on the calendar, proved by words").isEqualTo(201);
+		assertThat(theSubmission(idIn(fromTheCalendar)))
+				.containsEntry("link", "")
+				.containsEntry("comment", words);
+
+		Map<String, Object> described = aDescribedRun();
+
+		described.put("link", "");
+		described.put("comment", words);
+
+		MockHttpServletResponse byTheMember = reportedAs(ME, form(described));
+
+		assertThat(byTheMember.getStatus()).as("a run described by the member, proved by words").isEqualTo(201);
+		assertThat(theSubmission(idIn(byTheMember)))
+				.containsEntry("link", "")
+				.containsEntry("comment", words);
+
+		MockHttpServletResponse corrected = correctedAs(ME, myResult,
+				correction("42.20", 350, 410, 11400, "", words));
+
+		assertThat(corrected.getStatus()).as("a correction, proved by words").isEqualTo(200);
+		assertThat(theSubmission(idIn(corrected)))
+				.containsEntry("link", "")
+				.containsEntry("comment", words);
+	}
+
+	/**
+	 * THE WORDS ARE THE COMMENT AND NOTHING ELSE THE BODY CARRIES, on the road where the body carries the
+	 * most text: a run described by the member names an event, a race and a town, every one of them
+	 * words, and none of them is a proof. A rule that took the words from any of those boxes would let
+	 * this through.
+	 */
+	@Test
+	void theNameOfTheEventAndOfTheRaceAreNoWordsOfProof() throws Exception {
+		Map<String, Object> described = aDescribedRun();
+
+		described.put("link", "");
+
+		assertThat(reasonIn(reportedAs(ME, form(described))))
+				.isEqualTo(ResultWriteApi.WHY_NOT.get(Outcome.NOTHING_SHOWS_IT_HAPPENED));
+
+		described.put("comment", "   ");
+
+		assertThat(reasonIn(reportedAs(ME, form(described))))
+				.isEqualTo(ResultWriteApi.WHY_NOT.get(Outcome.NOTHING_SHOWS_IT_HAPPENED));
+
+		assertThat(howManySubmissions()).isZero();
+	}
+
+	/**
+	 * A WORD DOES NOT MAKE AN ADDRESS OF WHAT IS NOT ONE, on all three roads: the link box is judged by
+	 * its shape before anything beside it is looked at, so the member is told his address is not an
+	 * address and not that a table refused it.
+	 */
+	@Test
+	void aWordDoesNotExcuseALinkThatIsNotAnAddress() throws Exception {
+		String why = ResultWriteApi.WHY_NOT.get(Outcome.A_LINK_THAT_IS_NOT_A_LINK);
+
+		assertThat(reasonIn(reportedAs(ME, form(Map.of(
+				"raceId", lengthRace,
+				"seconds", 3600,
+				"link", "pogledaj kod mene",
+				"comment", "Sat je stao")))))
+				.isEqualTo(why);
+
+		Map<String, Object> described = aDescribedRun();
+
+		described.put("link", "pogledaj kod mene");
+		described.put("comment", "Sat je stao");
+
+		assertThat(reasonIn(reportedAs(ME, form(described)))).isEqualTo(why);
+
+		assertThat(reasonIn(correctedAs(ME, myResult,
+				correction("42.20", 350, 410, 11400, "pogledaj kod mene", "Sat je stao"))))
+				.isEqualTo(why);
 
 		assertThat(howManySubmissions()).isZero();
 	}

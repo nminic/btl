@@ -13,6 +13,8 @@ import { I18nProvider } from '../i18n/I18nProvider'
 import registration from '../forms/definitions/registracija.form.json'
 import profile from '../forms/definitions/profil.form.json'
 import newResult from '../forms/definitions/unos-rezultata.form.json'
+import { formDef } from '../forms/definitions'
+import { validateForm } from '../forms/validate'
 import fromEvent from '../forms/definitions/prijava-sa-trke.form.json'
 import written from '../test/mock/pages.json'
 /* The served price list, read from the very file `test/setup.ts` answers `/api/pricing`
@@ -2962,6 +2964,23 @@ describe('what the written pages say the fee buys', () => {
       expect(must(link.optionalWhenFilled, `the link of ${what} carries no rule`).field).toBe(
         'photo',
       )
+      /* And words alone let it go as well (owner, 09.10.2026: „tekst sam je dovoljan dokaz i bez
+         slike", put into force 28.11.2026), on BOTH forms, read off what the member meets: the form
+         with nothing in the three boxes asks for the link, and the same form with a word in the
+         comment does not. A rule taken off one of the two forms leaves the other half of the portal
+         refusing what the server takes. */
+      expect(link.optionalWhenFilled?.orField, `${what} lets the link go for no comment`).toBe('comment')
+
+      const nothing = Object.fromEntries(form.fields.map((one) => [one.name, '']))
+      const noLink = validateForm(formDef(form), nothing, new Date(Date.UTC(2027, 7, 23)))
+      const withWords = validateForm(
+        formDef(form),
+        { ...nothing, comment: 'Sat je stao na 12. km.' },
+        new Date(Date.UTC(2027, 7, 23)),
+      )
+
+      expect(noLink.link, `${what} did not ask for the link with no proof at all`).toBeDefined()
+      expect(withWords.link, `${what} asked for the link of somebody who gave words`).toBeUndefined()
       expect(
         must(comment.requiredWhenFilled, `the comment of ${what} carries no rule`).field,
       ).toBe('photo')

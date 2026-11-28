@@ -340,6 +340,63 @@ describe('a result reported this way', () => {
     }
   })
 
+  it('sends words alone as the proof, with no address and no picture', async () => {
+    /* Owner, 09.10.2026: „tekst sam je dovoljan dokaz i bez slike", on every road of sending
+       (03.10.2026); put into force 28.11.2026. The form of the event is the second of the two forms
+       that carry the rule, and its comment is the one box that is also where a member who has no link
+       says where the result comes from (`ReportResult`). Held on what was SENT: the address empty and
+       the words as typed, which is what the server judges. */
+    const { races } = await racesOf(EVENT)
+    const user = setupUser()
+    const route = recording()
+
+    try {
+      renderAt(reportAddress(EVENT, first(races)), 'competitor', ME)
+
+      await user.type(await screen.findByLabelText(/Sati/), '3')
+      await user.type(screen.getByLabelText(/Minuti/), '41')
+      await user.type(screen.getByLabelText(/Sekunde/), '12')
+      expect(screen.getByLabelText(/Link ka zvaničnim/), 'with nothing else the link is asked for').toBeRequired()
+      await user.type(screen.getByLabelText(/Komentar/), 'Sat je stao, vreme je sa telefona.')
+      expect(screen.getByLabelText(/Link ka zvaničnim/), 'words did not let the link go').not.toBeRequired()
+      await user.click(screen.getByRole('button', { name: 'Pošalji rezultat' }))
+
+      expect(await screen.findByRole('heading', { name: 'Rezultat je poslat' })).toBeVisible()
+      expect(route.sent()).toHaveLength(1)
+      expect(route.sent()[0]).toMatchObject({ link: '', comment: 'Sat je stao, vreme je sa telefona.' })
+    } finally {
+      route.stop()
+    }
+  })
+
+  it.each([
+    ['nothing at all', ''],
+    ['blanks', '    '],
+  ])('refuses %s in the comment and no link and no picture, and sends nothing', async (_, comment) => {
+    const { races } = await racesOf(EVENT)
+    const user = setupUser()
+    const route = recording()
+
+    try {
+      renderAt(reportAddress(EVENT, first(races)), 'competitor', ME)
+
+      await user.type(await screen.findByLabelText(/Sati/), '3')
+      await user.type(screen.getByLabelText(/Minuti/), '41')
+      await user.type(screen.getByLabelText(/Sekunde/), '12')
+
+      if (comment !== '') {
+        await user.type(screen.getByLabelText(/Komentar/), comment)
+      }
+
+      await user.click(screen.getByRole('button', { name: 'Pošalji rezultat' }))
+
+      expect(await screen.findByLabelText(/Link ka zvaničnim/)).toHaveAttribute('aria-invalid', 'true')
+      expect(route.sent()).toEqual([])
+    } finally {
+      route.stop()
+    }
+  })
+
   it('refuses a form that was never filled in', async () => {
     /* Four boxes and not three since 23.08.2026: the address of the official
        results is asked for here exactly as it is asked for on the form outside
