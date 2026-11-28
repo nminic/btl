@@ -321,11 +321,32 @@ class ATeamGoingByEveryRoadWhileItsLogoIsSentTest {
 	 */
 	@Test
 	void theCancellationOfTheSenderInATeamThatStaysAndTheRefusalOfHisLogoDoNotMakeACycle() throws Exception {
+		theCancellationAndTheRefusalWhereTheMateRowIs(null);
+	}
+
+	/**
+	 * THE SAME WHERE THE OTHER MEMBER'S ROW ENDED IN THE SEASON CANCELLED (2028) AND NOT BEFORE IT: it covers that
+	 * season, so the team stays, and a condition that counted the season after it would hold the queue row here.
+	 */
+	@Test
+	void theCancellationInATeamWhoseOtherRowEndsInTheSeasonAndTheRefusalOfHisLogoDoNotMakeACycle() throws Exception {
+		theCancellationAndTheRefusalWhereTheMateRowIs(2028);
+	}
+
+	private void theCancellationAndTheRefusalWhereTheMateRowIs(Integer endsIn) throws Exception {
 		Team team = aTeamWithALogoThatWaits(true);
 		Team mate = aMember();
 
-		db.sql("insert into team_membership (competitor_id, team_id, season_from) values (?, ?, ?)")
-				.params(mate.editor(), team.id(), A_SEASON_STILL_TO_COME).update();
+		if (endsIn == null) {
+			db.sql("insert into team_membership (competitor_id, team_id, season_from) values (?, ?, ?)")
+					.params(mate.editor(), team.id(), A_SEASON_STILL_TO_COME).update();
+		}
+		else {
+			db.sql("insert into team_membership (competitor_id, team_id, season_from, season_to, left_reason)"
+					+ " values (?, ?, 2027, ?, ?)")
+					.params(mate.editor(), team.id(), endsIn,
+							com.btl.portal.domain.team.Membership.LEFT_ON_HIS_OWN).update();
+		}
 
 		weWroteTheFreeze = db.sql("insert into season_frozen (season, frozen_at) values (2027, ?)"
 						+ " on conflict do nothing")
