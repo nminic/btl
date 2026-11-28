@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { screen, waitFor, within } from '@testing-library/react'
+import { configure, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 import type { BtlEvent, Race } from '../../data/types'
 import { renderAt } from '../../test/render'
@@ -22,6 +22,9 @@ import { thePictureTheFormHolds, withItsPicture } from './resultWrites'
  * writes, and its content is a word no other value carries, so a body that held the name, or a file of the
  * wrong box, is told apart from the one the member chose.
  */
+
+/* EVERY WAIT HAS HALF THE CASE'S CLOCK (`saveWhileSaving.test.tsx`'s arrangement, CLAUDE.md section 25). */
+configure({ asyncUtilTimeout: SLOW / 2 })
 
 const ME = '000007'
 

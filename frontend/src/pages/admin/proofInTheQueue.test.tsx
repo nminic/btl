@@ -1,14 +1,19 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { configure, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { NO_RATING, type ServedPendingItem } from '../../data/types'
 import sr from '../../i18n/sr.json'
 import { must } from '../../test/at'
 import { renderAt } from '../../test/render'
 import { serverThat, type Asked } from '../../test/serverAnswers'
+import { SLOW } from '../../test/slow'
 import { setupUser } from '../../test/user'
 import { QUEUE } from './queues'
+
+/* EVERY WAIT HAS HALF THE CASE'S CLOCK (`saveWhileSaving.test.tsx`'s arrangement, CLAUDE.md section 25), so a
+   wait that does not come true fails on its own assertion and never on the clock of the case. */
+configure({ asyncUtilTimeout: SLOW / 2 })
 
 /**
  * THE PICTURE SENT AS THE PROOF OF A RUN, IN THE QUEUE OF RESULTS.
@@ -142,7 +147,7 @@ describe('the picture sent as proof, in the queue of results', () => {
     } finally {
       server.stop()
     }
-  })
+  }, SLOW)
 
   it('waits for its picture before it approves, and then names the picture it drew', async () => {
     const user = setupUser()
@@ -185,7 +190,7 @@ describe('the picture sent as proof, in the queue of results', () => {
     } finally {
       server.stop()
     }
-  })
+  }, SLOW)
 
   it('cannot be approved where its picture will not load, and is refused naming it', async () => {
     const user = setupUser()
@@ -219,7 +224,7 @@ describe('the picture sent as proof, in the queue of results', () => {
     } finally {
       server.stop()
     }
-  })
+  }, SLOW)
 
   it('names no picture on a row that holds none', async () => {
     const user = setupUser()
@@ -237,7 +242,7 @@ describe('the picture sent as proof, in the queue of results', () => {
     } finally {
       server.stop()
     }
-  })
+  }, SLOW)
 
   it('is stepped over by the sweep until it has been seen, and then swept naming its own picture', async () => {
     const user = setupUser()
@@ -262,5 +267,5 @@ describe('the picture sent as proof, in the queue of results', () => {
     } finally {
       server.stop()
     }
-  })
+  }, SLOW)
 })
