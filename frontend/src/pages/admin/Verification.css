@@ -326,6 +326,32 @@
   overflow-wrap: anywhere;
 }
 
+/* THE PICTURE SENT AS THE PROOF OF A RUN, under the member's own words and above his town: small enough
+   that the row stays a row at 360, and a press away from the whole of it (owner, 28.09.2026: „moderator ih
+   vidi uz rezultat u redu za proveru"). Its own block, as the words and the town are, so it never sits on
+   the line of the race's name. The sentence that stands in for a picture that cannot be loaded is muted
+   the way `.pending__unavailable` is on the profile cards, for the same reason. */
+.review__proof {
+  display: block;
+  margin-block-start: var(--space-4);
+}
+
+/* By a class of its own and never as `img` under the link: the card of a picture that waits draws an `img`
+   too, and no rule of this sheet may cap that one (`verificationStyle.test.ts`). */
+.review__proof-picture {
+  display: block;
+  max-inline-size: 6rem;
+  max-block-size: 6rem;
+  inline-size: auto;
+  block-size: auto;
+}
+
+.review__proof--unavailable {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+
 /* The figures and the day a run was sent, under the race's name on a telephone, where their
    columns are not drawn (the owner's answer of 10.10.2026: „pokazuje brojke ... ispod naziva
    trke"). Whether it is drawn at all is `table__phone-only`'s on the box around it, never this

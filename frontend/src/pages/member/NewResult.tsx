@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import type { ReactElement } from 'react'
 import { useSend, useSent } from '../sent'
 import { useFilterParams } from '../../app/useFilterParams'
@@ -36,6 +36,7 @@ import { aCorrectionWaitsOn } from './correctionWaits'
 import {
   saysTheResultIsGone,
   theCorrectionWasSentIn,
+  thePictureTheFormHolds,
   theRunWasSentIn,
   WHEN_A_RESULT_IS_WRITTEN,
 } from './resultWrites'
@@ -306,6 +307,15 @@ function TheForm({ me }: { me: string }) {
      beside it: a ref is read and written in the same tick, so a redraw cannot land between
      two presses that arrive before one answer does. */
   const outstanding = useRef(false)
+  /* THE PICTURE THE PHOTO FIELD HOLDS, as the file and not as its name (owner, 28.11.2026: „Odradi i sliku
+     kao dokaz uz rezultat"; `FormRenderer`, `onPicture`). A ref, because nothing is drawn from it: it is
+     read once, when the run is sent, and only while the field still names a file
+     (`thePictureTheFormHolds`), so a form drawn again with the box empty never sends a picture it no
+     longer shows. */
+  const picture = useRef<File | null>(null)
+  const keepThePicture = useCallback((file: File | null) => {
+    picture.current = file
+  }, [])
   /* HOW MANY TIMES A REFUSAL HAS SAID THAT WHAT THIS FORM WAS OPENED ON IS NOT THERE, which is
      what makes the two lists it reads ask again (`HowToRead.revision`). Bumped on the one answer
      that says so, an empty 404 from `PUT /api/results/{id}` (`resultWrites.ts`,
@@ -474,9 +484,12 @@ function TheForm({ me }: { me: string }) {
       seconds: fromBoxes(values),
     }
     const proof = { link: String(values.link), comment: String(values.comment) }
+    /* AND THE PICTURE, ON ALL THREE ROADS (owner, 03.10.2026: „Ovo treba da vazi na svim slanjima
+       rezultata"): a new run, a run sent back and sent again, and the correction of a counted result. */
+    const proofPicture = thePictureTheFormHolds(values, picture.current)
 
     if (corrects !== null) {
-      return theCorrectionWasSentIn(corrects, { ...figures, ...proof })
+      return theCorrectionWasSentIn(corrects, { ...figures, ...proof }, proofPicture)
     }
 
     /* The race is the one the member chose from the list, which is the one thing that puts an id in
@@ -525,6 +538,7 @@ function TheForm({ me }: { me: string }) {
             ...proof,
           }
         : { raceId, ...figures, ...proof },
+      proofPicture,
     )
   }
 
@@ -547,15 +561,12 @@ function TheForm({ me }: { me: string }) {
    * `resultWrites.ts` drops it after every write the server agreed to, so „Moji rezultati" reads
    * the row the server holds.
    *
-   * <p><b>WHAT IS NOT SENT, and it is written down rather than left to be found:</b> the
-   * picture. The form carries a `photo` field, and `ResultWriteApi.Ran` has no field for one -
-   * measured 28.09.2026, the route builds its proof as `new Report(link, false, comment)`, so no
-   * picture can reach it whatever this screen sends. `FormRenderer` only ever holds the file's
-   * NAME (`e.target.files?.[0]?.name`), so no bytes have ever existed for a result either.
-   * Owner, 28.09.2026: the upload is to be built, in October, and is carried as technical debt
-   * until then (`PDL.md`, „Slika kao dokaz uz rezultat: upload se gradi, ali u oktobru"). The
-   * decision of 22.08.2026 that a picture replaces a link is NOT overturned by this; it is
-   * waiting for the upload, and no result can be entered before 2027 in any case.
+   * <p><b>THE PICTURE GOES WITH IT since 28.11.2026</b> (owner: „Odradi i sliku kao dokaz uz rezultat",
+   * which carries out his choice of 28.09.2026, „polje šalje bajtove, server ih prima i čuva"): the form
+   * keeps the file's name, which is what its rules read, and hands the file to this screen
+   * (`onPicture`), which sends it beside the run (`resultWrites.ts`, `withItsPicture`). The decision of
+   * 22.08.2026 that a picture stands in for the link and asks a comment beside it is the server's to
+   * hold as well (`ProofThatTheRunHappened`).
    */
   async function tellTheServer(values: FormValues): Promise<void> {
     outstanding.current = true
@@ -837,6 +848,7 @@ function TheForm({ me }: { me: string }) {
             follows={{ raceName: 'eventName' }}
             /* „Tačno otkucan naziv postojećeg događaja vezuje taj događaj i bez klika” (owner, 19.10.2026). */
             linksWhenTyped={['eventName']}
+            onPicture={keepThePicture}
             onSubmit={onSubmit}
           />
         )}

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { useToday } from '../../clock/useClock'
 import { Resource } from '../../components/Resource'
@@ -17,7 +17,7 @@ import { useMemberScreen } from '../member/memberScreen'
 import { WhileAReportIsOpen } from '../member/WhileAReportIsOpen'
 import type { Answer } from '../account/askTheServer'
 import { ServerSaid } from '../account/ServerSaid'
-import { theRunWasSentIn, WHEN_A_RESULT_IS_WRITTEN } from '../member/resultWrites'
+import { thePictureTheFormHolds, theRunWasSentIn, WHEN_A_RESULT_IS_WRITTEN } from '../member/resultWrites'
 import '../member/Member.css'
 
 
@@ -74,6 +74,15 @@ export function ReportResult() {
      written in the same tick and a redraw cannot land between two presses that arrive before
      one - which is what `RateEvent.tsx`, `ProposeTeam.tsx` and `Registration.tsx` all do. */
   const outstanding = useRef(false)
+  /* THE PICTURE THE PHOTO FIELD HOLDS, as the file and not as its name (owner, 28.11.2026: „Odradi i sliku
+     kao dokaz uz rezultat"; `FormRenderer`, `onPicture`). A ref, because nothing is drawn from it: it is
+     read once, when the run is sent, and only while the field still names a file
+     (`thePictureTheFormHolds`), so a form drawn again with the box empty never sends a picture it no
+     longer shows. */
+  const picture = useRef<File | null>(null)
+  const keepThePicture = useCallback((file: File | null) => {
+    picture.current = file
+  }, [])
 
   if (who.memberNumber === null) {
     return who.instead
@@ -214,7 +223,7 @@ export function ReportResult() {
                 seconds: run.seconds,
                 link: String(values.link),
                 comment: String(values.comment),
-              })
+              }, thePictureTheFormHolds(values, picture.current))
 
               outstanding.current = false
               setSending(false)
@@ -273,6 +282,7 @@ export function ReportResult() {
                   alsoRefuses={(values) =>
                     kind === 'time' || !noTime(values) ? undefined : 'newResult.needsTime'
                   }
+                  onPicture={keepThePicture}
                   onSubmit={onSubmit}
                 />
 

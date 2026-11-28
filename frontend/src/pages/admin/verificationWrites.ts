@@ -411,3 +411,19 @@ export function aRefusalOfTheText(reason: string, seenText: string): Answered {
 export function aRefusalOfThePicture(reason: string, seenPhotoId: number, seenCrop: Crop): Answered {
   return { approved: false, reason, seenPhotoId, seenCrop }
 }
+
+/**
+ * A DECISION ABOUT A RUN, NAMING THE PICTURE SENT AS ITS PROOF WHERE THE ROW HOLDS ONE.
+ *
+ * <p>The route asks it of every row that holds a picture, whichever tab it stands in
+ * (`VerificationWriteApi.whyThePictureIsNotNamedRight`; PDL, 10.10.2026: „Odobrava se samo slika koju je
+ * moderator video", and „I odbijanje slike traži viđenu sliku."), and a run sent with a picture is such a row
+ * since 28.11.2026 (owner: „Odradi i sliku kao dokaz uz rezultat"). Its circle is the whole picture, which
+ * nothing moves (`ResultWriteApi.queue`), so it is named as the queue served it and never chosen here.
+ *
+ * <p><b>One function for every door of the results queue</b> - its own Odobri, the figures set first, the race
+ * named first, the refusal and the sweep - so none of them can spell the decision its own way.
+ */
+export function namingTheProof(answered: Answered, photoId: number | null, crop: Crop): Answered {
+  return photoId === null ? answered : { ...answered, seenPhotoId: photoId, seenCrop: crop }
+}
