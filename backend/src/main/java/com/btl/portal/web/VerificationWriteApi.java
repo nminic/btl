@@ -1663,7 +1663,9 @@ class VerificationWriteApi {
 	 * {@code WaitingPicture}), and the screen asks the same fact to decide what it sends, so the
 	 * two cannot come apart. Two tabs hold one since 25.11.2026: the profiles tab ({@code MePhotoApi})
 	 * and the teams tab, where a team's logo waits ({@code TeamLogoApi}, V112), decided the same way
-	 * (owner, 12.08.2026: „Prolazi kroz isto odobravanje kao profilna slika”).
+	 * (owner, 12.08.2026: „Prolazi kroz isto odobravanje kao profilna slika”). A third since 28.11.2026: the
+	 * results tab, where a picture sent as the proof of a run waits ({@code ResultWriteApi}), whose queue
+	 * ({@code ReviewQueue.tsx}) names it the same way.
 	 *
 	 * <p><b>The same answer for the approval and the refusal</b> (PDL, 10.10.2026: „I odbijanje
 	 * slike traži viđenu sliku."), which is why this takes no {@code answer}: a version that asked

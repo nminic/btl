@@ -8,6 +8,8 @@ import com.btl.portal.domain.mail.MailLanguage;
 import com.btl.portal.domain.mail.WhatAResultChangeSays;
 import com.btl.portal.domain.mail.WhatAResultChangeSays.Run;
 import com.btl.portal.domain.mail.WhatTheMessageSays.Said;
+import com.btl.portal.domain.photo.WhatAPictureIs;
+import com.btl.portal.domain.photo.WithoutMetadata;
 import com.btl.portal.domain.result.ProofThatTheRunHappened;
 import com.btl.portal.domain.result.ProofThatTheRunHappened.Outcome;
 import com.btl.portal.domain.result.ProofThatTheRunHappened.Report;
@@ -16,6 +18,8 @@ import com.btl.portal.domain.season.SeasonClock;
 import com.btl.portal.mail.Postman;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -28,9 +32,18 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.multipart.MultipartHttpServletRequest;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.util.WebUtils;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDate;
@@ -162,14 +175,48 @@ import java.util.Optional;
  * withholding the running season of a lapsed member from every READER is the other half, and is
  * unchanged (PDL P11). The decision is quoted in full on {@link ActiveMemberOrAdministration}.
  *
+ * <p><b>A PICTURE COMES WITH THE RUN, ON BOTH VERBS THAT SEND ONE.</b> The owner, 28.11.2026: „Odradi i
+ * sliku kao dokaz uz rezultat", which carries out what he chose on 28.09.2026 („polje šalje bajtove,
+ * server ih prima i čuva, moderator ih vidi uz rezultat") and with it the decision of 22.08.2026 that a
+ * picture stands in for the link and asks a comment beside it, „na obe forme" and, by his words of
+ * 03.10.2026, „na svim slanjima rezultata". So {@link #report} and {@link #change} take the body they
+ * always took as JSON, or the same body as the part {@code run} of a {@code multipart/form-data}
+ * request with the file as the part {@code picture}. One route and one method each, so every floor that
+ * reads the dispatcher sees the routes it saw.
+ *
+ * <ul>
+ * <li><b>What the server asks of the file is what ADL asks of a proof, 23.08.2026</b>: „server proverava
+ * tip po sadržaju a ne po nazivu ni po {@code Content-Type} zaglavlju, ograničava veličinu, nikad ne
+ * upotrebljava ime fajla kao putanju i briše fajl posle odluke". The order and the words are
+ * {@link TeamLogoApi}'s and {@link MePhotoApi}'s: the size before the bytes are read
+ * ({@link WhatAPictureIs#AT_MOST_BYTES}), the type by the bytes, and what the camera wrote about the
+ * picture taken off before anything is stored ({@link WithoutMetadata}; a telephone writes where the
+ * picture was taken). The two refusals are this class's own constants with the words those classes give
+ * the same faults, so the screen that answers this route reads them here.
+ * <li><b>Not held to the ceiling of the cut</b> ({@code SmallPicture.isLargerThanItCuts}), because a proof
+ * is never cut (PDL: „Slika uz rezultat (dokaz sa sata) se zato ni ne kropuje"): that ceiling is the
+ * cut's, and a photograph of a watch from a telephone of fifty million points would be refused for a cut
+ * nobody makes. My reasoning, said in the PR.
+ * <li><b>Kept where V9 and V10 said it would be</b>: a {@code photo} row whose circle is the whole picture
+ * (P11, it is not cut), {@code verification.photo_id} on the row that waits, and the file under the
+ * number the database issued (ADL O8). No column is added: {@code verification_decided_keeps_no_photo}
+ * empties the pointer the moment the row is decided either way (PDL: „Priložena slika se i dalje briše
+ * sa portala posle verifikacije", and O11 for a refusal, „slika se briše odmah"), V54 deletes the row of
+ * a picture nobody holds at the end of that transaction, and the sweep takes the file
+ * ({@code ThePicturesFolderIsSwept}, ADL A68).
+ * <li><b>Who sees it while it waits</b>: the moderator who may decide the row, through
+ * {@link PhotoApi#waitingOn}, which serves the picture of any row by the right the row carries; and
+ * nobody else. ADL A60 names {@code verification.photo_id} („dokaz sa sata") among the holders that are
+ * not public, so {@link PhotoApi#photo} answers it as a picture that is not there.
+ * </ul>
+ *
  * <p><b>WHAT IS DELIBERATELY NOT HERE, each named rather than left to be found.</b>
  *
  * <ul>
- * <li><b>A photograph.</b> {@link ProofThatTheRunHappened} knows about one because the
- * forms do, and nothing on this server can receive one: there is no {@code insert into
- * photo} anywhere in {@code src/main} and no upload route of any kind. So the report handed
- * to that class always says there is none, and the day an upload exists is the day this
- * line changes - written down here rather than discovered by whoever writes it.
+ * <li><b>A way for the member to see his own picture once it is sent.</b> Nothing decides
+ * who besides the moderator sees a picture that waits, so the narrowest reading is taken: the
+ * moderator through {@link PhotoApi#waitingOn} and nobody else (see the note on the picture,
+ * below). My reasoning and not the owner's word, put to him as a question.
  * <li><b>Withdrawing a submission that is still waiting.</b> That is a different row in a
  * different table and a different verb, and PDL keeps them apart: a result is „njegov
  * podatak" and a submission is a question he asked. This class is about {@code result}.
@@ -291,14 +338,26 @@ class ResultWriteApi {
 	static final int A_TYPED_TOWN_HOLDS_AT_MOST = 80;
 
 	/**
+	 * THE PICTURE SENT AS PROOF IS LARGER THAN A PICTURE ON THIS PORTAL MAY BE
+	 * ({@link WhatAPictureIs#AT_MOST_BYTES}, 5 MiB, ADL A65). Its own constant with the word
+	 * {@link MePhotoApi} gives the same fault, so the screens that answer this route read it here.
+	 */
+	static final String THE_PICTURE_IS_TOO_BIG = "thePictureIsTooBig";
+
+	/**
+	 * THE FILE SENT AS PROOF IS NONE OF THE THREE KINDS OF PICTURE THE SCHEMA HOLDS, judged by its bytes and
+	 * by nothing the browser said about it (ADL, 23.08.2026, „server proverava tip po sadržaju a ne po
+	 * nazivu ni po {@code Content-Type} zaglavlju"). The word {@link MePhotoApi} gives the same fault.
+	 */
+	static final String THIS_IS_NOT_A_PICTURE = "thisIsNotAPicture";
+
+	/**
 	 * WHY A REPORT IS NOT READY, IN THE PORTAL'S OWN WORDS, AND IT IS A MAP RATHER THAN A
 	 * {@code switch}.
 	 *
-	 * <p>A {@code switch} would carry a branch for
-	 * {@link Outcome#A_PHOTOGRAPH_NEVER_STANDS_ALONE} that nothing can reach, because no
-	 * photograph can arrive at this server at all (see the class note) - an arm that is
-	 * dead, that coverage cannot forgive, and that would be deleted by whoever met it next
-	 * without knowing it is waiting for an upload route.
+	 * <p>Kept a map from the days when no picture could arrive and
+	 * {@link Outcome#A_PHOTOGRAPH_NEVER_STANDS_ALONE} was a word nothing could reach: a
+	 * {@code switch} would be one branch per outcome for the same four answers.
 	 *
 	 * <p><b>The floor over it is {@code everyReasonARunCanBeRefusedForHasAWordForIt}</b>,
 	 * which asks the ENUM for its constants rather than reading this, so an outcome added
@@ -341,8 +400,17 @@ class ResultWriteApi {
 	 *  member the session resolved, on both roads a run is sent by. */
 	private final ReportTesters testers;
 
+	/** What reads the part {@code run} of a request that carries a picture: the reader
+	 *  {@link WhatWasSent} reads a JSON body with, so the two shapes of one body are read alike. */
+	private final ObjectMapper json;
+
+	/** Where the file of a picture is kept, under the number of its row (ADL O8), the folder
+	 *  {@link PhotoApi} serves it from. */
+	private final Path folder;
+
 	ResultWriteApi(JdbcClient db, ActiveMemberOrAdministration readers, Postman postman, Clock clock,
-			TransactionTemplate inOneTransaction, DucatsFollowTheResults ducats, ReportTesters testers) {
+			TransactionTemplate inOneTransaction, DucatsFollowTheResults ducats, ReportTesters testers,
+			ObjectMapper json, @Value("${btl.photos.folder}") String folder) {
 		this.db = db;
 		this.ducats = ducats;
 		this.readers = readers;
@@ -350,6 +418,20 @@ class ResultWriteApi {
 		this.clock = clock;
 		this.inOneTransaction = inOneTransaction;
 		this.testers = testers;
+		this.json = json;
+		this.folder = Path.of(folder);
+	}
+
+	/**
+	 * THE PICTURE THAT CAME WITH A RUN, as it is stored: the bytes with their metadata taken off, and the
+	 * kind they were found to be.
+	 */
+	private record ThePicture(String mediaType, byte[] bytes) {
+	}
+
+	/** What a request carried: the body, and the picture where one came and is a picture ({@code null}
+	 *  where none came); or the refusal of the file that came. */
+	private record Carried<T>(T body, ThePicture picture, ResponseEntity<?> refused) {
 	}
 
 	/**
@@ -442,31 +524,41 @@ class ResultWriteApi {
 	 * verifikacije, pa ne postoji ni oznaka `nepotvrdjen` u tabelama." So nothing here
 	 * touches {@code result}, and {@link ResultApi} goes on answering exactly what it did.
 	 */
-	@PostMapping(path = "/api/results", consumes = MediaType.APPLICATION_JSON_VALUE)
+	@PostMapping(path = "/api/results",
+			consumes = { MediaType.APPLICATION_JSON_VALUE, MediaType.MULTIPART_FORM_DATA_VALUE })
 	ResponseEntity<?> report(@AuthenticationPrincipal WhoIsAsking.Member asking,
-			WhatWasSent<Ran> sent) throws IOException {
+			WhatWasSent<Ran> sent, HttpServletRequest request) throws IOException {
 		Long me = readers.activeMember(asking).orElse(null);
 
 		/* AN ACCOUNT THAT NAMES NO MEMBER, OR A MEMBER WHOSE FEE DOES NOT STAND (see the class
 		   note), and his body is not read: it is read below, after this question, and not bound
-		   as an argument (register 166). */
+		   as an argument (register 166). A body with a picture is parsed by the container before
+		   any method runs, as every picture of the portal is (`MePhotoApi`); what it says is read
+		   here, after the question, all the same. */
 		if (me == null) {
 			return awayAtAnOpenAddress();
 		}
 
-		Ran typed = sent.read();
+		Carried<Ran> carried = whatCameWith(sent, request, Ran.class);
+		Ran typed = carried.body();
 
 		if (typed == null) {
 			return no(THE_FORM_IS_NOT_COMPLETE);
 		}
 
-		ResponseEntity<?> proof = whatIsWrongWithTheProof(typed.link(), typed.comment());
+		if (carried.refused() != null) {
+			return carried.refused();
+		}
+
+		ResponseEntity<?> proof = whatIsWrongWithTheProof(typed.link(), carried.picture() != null,
+				typed.comment());
 
 		if (proof != null) {
 			return proof;
 		}
 
-		return typed.raceId() == null ? described(me, typed) : fromTheCalendar(me, typed);
+		return typed.raceId() == null ? described(me, typed, carried.picture())
+				: fromTheCalendar(me, typed, carried.picture());
 	}
 
 	/**
@@ -489,16 +581,19 @@ class ResultWriteApi {
 	 * depends on what the race fixes (see the class note) - a correction does not get a
 	 * second, looser answer to that question just for being a correction.
 	 */
-	@PutMapping(path = "/api/results/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
+	@PutMapping(path = "/api/results/{id}",
+			consumes = { MediaType.APPLICATION_JSON_VALUE, MediaType.MULTIPART_FORM_DATA_VALUE })
 	ResponseEntity<?> change(@AuthenticationPrincipal WhoIsAsking.Member asking,
-			@PathVariable AKey id, WhatWasSent<Correction> sent) throws IOException {
+			@PathVariable AKey id, WhatWasSent<Correction> sent, HttpServletRequest request)
+			throws IOException {
 		Long me = readers.activeMember(asking).orElse(null);
 
 		if (me == null) {
 			throw nothingIsHere();
 		}
 
-		Correction typed = sent.read();
+		Carried<Correction> carried = whatCameWith(sent, request, Correction.class);
+		Correction typed = carried.body();
 
 		if (typed == null) {
 			return no(THE_FORM_IS_NOT_COMPLETE);
@@ -510,7 +605,15 @@ class ResultWriteApi {
 			throw nothingIsHere();
 		}
 
-		ResponseEntity<?> proof = whatIsWrongWithTheProof(typed.link(), typed.comment());
+		/* AFTER THE QUESTION WHOSE RESULT IT IS, so a picture sent at somebody else's result is
+		   answered as that result is, and nothing about the file is told about a result he may not
+		   know of (ADL A8). */
+		if (carried.refused() != null) {
+			return carried.refused();
+		}
+
+		ResponseEntity<?> proof = whatIsWrongWithTheProof(typed.link(), carried.picture() != null,
+				typed.comment());
 
 		if (proof != null) {
 			return proof;
@@ -550,7 +653,7 @@ class ResultWriteApi {
 					null, null, null, TheEvent.NONE, null, after, typed.link(), typed.comment(),
 					id.value());
 
-			queue(me, submission, before.raceName(), typed.comment());
+			queue(me, submission, before.raceName(), typed.comment(), carried.picture());
 			tell(me, said);
 
 			return submission;
@@ -629,7 +732,7 @@ class ResultWriteApi {
 	 * that disagreed with the calendar could not be written anyway, and asking for one would
 	 * be a 500 where an answer belongs.
 	 */
-	private ResponseEntity<?> fromTheCalendar(long me, Ran typed) {
+	private ResponseEntity<?> fromTheCalendar(long me, Ran typed, ThePicture picture) {
 		/* AN EVENT BESIDE A RACE OF THE CALENDAR is the same request as a town beside one: the race
 		   has its event already, and V66 (`result_submission_only_a_described_run_names_its_event`)
 		   holds the row to that. Refused with the same reason and not dropped, for the reason that
@@ -687,7 +790,7 @@ class ResultWriteApi {
 								figures.seconds())));
 
 		return write(me, typed.raceId(), race.day(), null, null, null, null, null, TheEvent.NONE,
-				null, run, typed, race.name());
+				null, run, typed, race.name(), picture);
 	}
 
 	/*
@@ -706,7 +809,7 @@ class ResultWriteApi {
 	 * approval will need to make an event and a race out of is collected here, at the one
 	 * moment somebody knows it - which is V10's own reason for these columns.
 	 */
-	private ResponseEntity<?> described(long me, Ran typed) {
+	private ResponseEntity<?> described(long me, Ran typed, ThePicture picture) {
 		/* THE KIND OF THE EVENT, FIRST, because whether the climb and the fall may be left out turns on
 		   it (PointsOfARun#withTheClimbOptional). The member's own where he typed the event, and the
 		   chosen event's where he chose one (V101 keeps either). A chosen event that is not there, or
@@ -814,7 +917,7 @@ class ResultWriteApi {
 				chosen || fromTheCodebook ? null : countryKey(typed.country()).orElseThrow(),
 				chosen ? new TheEvent(typed.eventId(), null)
 						: new TheEvent(null, typed.eventName().strip()),
-				kind, run, typed, named);
+				kind, run, typed, named, picture);
 	}
 
 	/** The kind of an event of the calendar, and nothing where no event answers to the key. */
@@ -932,7 +1035,7 @@ class ResultWriteApi {
 	 */
 	private ResponseEntity<?> write(long me, Long raceId, LocalDate day, String raceName,
 			String raceKind, Long theTownsKey, String city, Long theCountrysKey, TheEvent event,
-			String eventKind, Run run, Ran typed, String subject) {
+			String eventKind, Run run, Ran typed, String subject, ThePicture picture) {
 		/* IN HIS LANGUAGE, which is the account's (owner, 10.10.2026, Q3: the inbox copy of the
 		   messages about a result follows the language of the letter). There is no letter for a
 		   run sent in, and so no address to read the language beside; it is read off the account
@@ -948,7 +1051,7 @@ class ResultWriteApi {
 			long submission = writeTheSubmission(me, raceId, day, raceName, raceKind, theTownsKey,
 					city, theCountrysKey, event, eventKind, run, typed.link(), typed.comment(), null);
 
-			queue(me, submission, subject, typed.comment());
+			queue(me, submission, subject, typed.comment(), picture);
 			tell(me, said);
 
 			return submission;
@@ -985,7 +1088,7 @@ class ResultWriteApi {
 						+ " values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) returning id")
 				.params(me, raceId, day, raceName, raceKind, theTownsKey, city, theCountrysKey,
 						run.distanceKm(), run.ascentM(), run.descentM(), run.seconds(),
-						ProofThatTheRunHappened.linkAsItGoesIn(report(link, comment)),
+						ProofThatTheRunHappened.linkAsItGoesIn(report(link, false, comment)),
 						orEmpty(comment), amends, event.chosen(), event.typed(), eventKind)
 				.query(Long.class)
 				.single();
@@ -998,11 +1101,101 @@ class ResultWriteApi {
 	 * <p>{@code state}, {@code raised_at} and {@code right_code} are left to V9's own
 	 * defaults, the same absence {@link CommentWriteApi} and {@link TeamWriteApi} leave.
 	 */
-	private void queue(long me, long submission, String subject, String comment) {
+	/**
+	 * THE ROW THAT WAITS, AND THE PICTURE ON IT WHERE ONE CAME.
+	 *
+	 * <p><b>The picture's row first, the queue row pointing at it, and the file last</b>, which is
+	 * {@link TeamLogoApi}'s order and its reason: the file is named by the number the database issues
+	 * for the row (ADL O8), so nothing a member sent comes near the path, and a disk that refuses the
+	 * file throws out of the transaction and takes both rows back with it. A commit that fails after
+	 * the file is written leaves a file no row names, which the sweep takes (ADL A68), the state
+	 * {@code MePhotoApi} already accepts by the same reasoning.
+	 *
+	 * <p><b>Its circle is the whole picture</b> ({@code 0.5}, {@code 0.5}, {@code 1}), the values V21
+	 * gave every picture that stood before the circle existed: a proof is not cut (P11), and the columns
+	 * are not null. A decision about the row names this circle beside the key
+	 * ({@code VerificationWriteApi}: a decision about a row that holds a picture names the picture the
+	 * moderator saw), and nothing ever moves it.
+	 */
+	private void queue(long me, long submission, String subject, String comment, ThePicture picture) {
+		Long photo = picture == null ? null : db.sql("insert into photo (media_type, byte_size, digest,"
+						+ " crop_x, crop_y, crop_diameter) values (?, ?, ?, 0.5, 0.5, 1) returning id")
+				.params(picture.mediaType(), picture.bytes().length,
+						WhatAPictureIs.digestOf(picture.bytes()))
+				.query(Long.class)
+				.single();
+
 		db.sql("insert into verification (queue, competitor_id, subject, body,"
-						+ " result_submission_id) values (?, ?, ?, ?, ?)")
-				.params(RESULTS, me, subject, orEmpty(comment), submission)
+						+ " result_submission_id, photo_id) values (?, ?, ?, ?, ?, ?)")
+				.params(RESULTS, me, subject, orEmpty(comment), submission, photo)
 				.update();
+
+		if (photo != null) {
+			try {
+				Files.createDirectories(folder);
+				Files.write(folder.resolve(String.valueOf(photo)), picture.bytes(),
+						StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
+			} catch (IOException notWritten) {
+				throw new UncheckedIOException(notWritten);
+			}
+		}
+	}
+
+	/**
+	 * WHAT A REQUEST CARRIED, IN EITHER OF ITS TWO SHAPES.
+	 *
+	 * <p>A JSON body is read as it always was ({@link WhatWasSent}). A body with a picture carries
+	 * the same JSON as its part {@code run}, read by the same reader, and the file as its part
+	 * {@code picture}. A part {@code run} that is absent or not JSON is a body that is not JSON: a
+	 * form not filled in. A part {@code picture} that is empty is no picture, which is what a browser
+	 * sends for a file box nobody filled.
+	 *
+	 * <p><b>The picture is judged here, in {@link TeamLogoApi}'s order</b>: the size asked of the part
+	 * before its bytes are read, then the type by the bytes and never by the header or the name of the
+	 * file (neither {@link MultipartFile#getContentType} nor {@link MultipartFile#getOriginalFilename} is
+	 * read anywhere in this class), then the metadata taken off, so what is stored, counted and hashed is
+	 * the picture without where it was taken.
+	 */
+	private <T> Carried<T> whatCameWith(WhatWasSent<T> sent, HttpServletRequest request, Class<T> type)
+			throws IOException {
+		MultipartHttpServletRequest parts =
+				WebUtils.getNativeRequest(request, MultipartHttpServletRequest.class);
+
+		if (parts == null) {
+			return new Carried<>(sent.read(), null, null);
+		}
+
+		T body = bodyIn(parts.getParameter("run"), type);
+		MultipartFile picture = parts.getFile("picture");
+
+		if (picture == null || picture.isEmpty()) {
+			return new Carried<>(body, null, null);
+		}
+
+		if (picture.getSize() > WhatAPictureIs.AT_MOST_BYTES) {
+			return new Carried<>(body, null, no(THE_PICTURE_IS_TOO_BIG));
+		}
+
+		byte[] bytes = picture.getBytes();
+		String mediaType = WhatAPictureIs.sniff(bytes);
+
+		if (mediaType == null) {
+			return new Carried<>(body, null, no(THIS_IS_NOT_A_PICTURE));
+		}
+
+		return new Carried<>(body, new ThePicture(mediaType, WithoutMetadata.of(bytes, mediaType)), null);
+	}
+
+	private <T> T bodyIn(String run, Class<T> type) {
+		if (run == null) {
+			return null;
+		}
+
+		try {
+			return json.readValue(run, type);
+		} catch (JacksonException notJson) {
+			return null;
+		}
 	}
 
 	/**
@@ -1115,14 +1308,14 @@ class ResultWriteApi {
 	private record Recipient(String address, MailLanguage language, Gender gender) {
 	}
 
-	/** What the proof rule is asked about, and the photograph is always absent - see the
-	 *  class note on why, and on what changes the day an upload route exists. */
-	private static Report report(String link, String comment) {
-		return new Report(link, false, comment);
+	/** What the proof rule is asked about: the link, whether a picture came that is a picture, and
+	 *  the comment (see the class note on the picture). */
+	private static Report report(String link, boolean aPicture, String comment) {
+		return new Report(link, aPicture, comment);
 	}
 
-	private ResponseEntity<?> whatIsWrongWithTheProof(String link, String comment) {
-		Outcome outcome = ProofThatTheRunHappened.decide(report(link, comment));
+	private ResponseEntity<?> whatIsWrongWithTheProof(String link, boolean aPicture, String comment) {
+		Outcome outcome = ProofThatTheRunHappened.decide(report(link, aPicture, comment));
 
 		return outcome == Outcome.GOOD ? null : no(WHY_NOT.get(outcome));
 	}
