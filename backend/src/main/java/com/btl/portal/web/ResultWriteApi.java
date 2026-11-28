@@ -8,6 +8,7 @@ import com.btl.portal.domain.mail.MailLanguage;
 import com.btl.portal.domain.mail.WhatAResultChangeSays;
 import com.btl.portal.domain.mail.WhatAResultChangeSays.Run;
 import com.btl.portal.domain.mail.WhatTheMessageSays.Said;
+import com.btl.portal.domain.photo.SmallPicture;
 import com.btl.portal.domain.photo.WhatAPictureIs;
 import com.btl.portal.domain.photo.WithoutMetadata;
 import com.btl.portal.domain.result.ProofThatTheRunHappened;
@@ -18,7 +19,9 @@ import com.btl.portal.domain.season.SeasonClock;
 import com.btl.portal.mail.Postman;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.Part;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -39,6 +42,7 @@ import org.springframework.web.util.WebUtils;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
@@ -364,6 +368,16 @@ class ResultWriteApi {
 	static final int AT_MOST_PICTURES_WAITING = 3;
 
 	/**
+	 * THE MOST PIXELS A PICTURE SENT AS PROOF MAY CLAIM IN ITS OWN HEADER: 100 megapixels, beside the 5 MiB of
+	 * {@link WhatAPictureIs#AT_MOST_BYTES}. The owner, 28.11.2026 (PDL): „Za sliku kao dokaz važi i granica od 100
+	 * megapiksela (dimenzije iz zaglavlja), uz granicu od 5 MB; veća se odbija kao prevelika." The reason is the
+	 * review of PR 845: a PNG of 389 KB that says 20000 by 20000 passes every byte check and is drawn by the
+	 * moderator's browser. <b>It is not the ceiling of the cut</b> (25 megapixels, 4 for a WebP), which does not
+	 * apply to a picture that is never cut; the answer is the one {@link #THE_PICTURE_IS_TOO_BIG} already gives.
+	 */
+	static final long AT_MOST_PIXELS_OF_A_PROOF = 100_000_000L;
+
+	/**
 	 * WHY A REPORT IS NOT READY, IN THE PORTAL'S OWN WORDS, AND IT IS A MAP RATHER THAN A
 	 * {@code switch}.
 	 *
@@ -467,8 +481,8 @@ class ResultWriteApi {
 	 *                   either
 	 * @param distanceKm what the member covered, and it is read only where the race does not
 	 *                   fix it
-	 * @param link       the official results, required unless a photograph stands in for it
-	 *                   ({@link ProofThatTheRunHappened})
+	 * @param link       the official results; one of three proofs, beside a picture with a word and words
+	 *                   alone ({@link ProofThatTheRunHappened}, PDL P9, 28.11.2026)
 	 * @param comment    his own note, which may be empty
 	 * @param eventId    THE EVENT HE CHOSE for a race the calendar does not hold, by its key, and
 	 *                   only on the described road (V66; PDL P9, owner, 19.10.2026: „Prvo ima
@@ -534,7 +548,7 @@ class ResultWriteApi {
 	@PostMapping(path = "/api/results",
 			consumes = { MediaType.APPLICATION_JSON_VALUE, MediaType.MULTIPART_FORM_DATA_VALUE })
 	ResponseEntity<?> report(@AuthenticationPrincipal WhoIsAsking.Member asking,
-			WhatWasSent<Ran> sent, HttpServletRequest request) throws IOException {
+			WhatWasSent<Ran> sent, HttpServletRequest request) throws IOException, ServletException {
 		Long me = readers.activeMember(asking).orElse(null);
 
 		/* AN ACCOUNT THAT NAMES NO MEMBER, OR A MEMBER WHOSE FEE DOES NOT STAND (see the class
@@ -592,7 +606,7 @@ class ResultWriteApi {
 			consumes = { MediaType.APPLICATION_JSON_VALUE, MediaType.MULTIPART_FORM_DATA_VALUE })
 	ResponseEntity<?> change(@AuthenticationPrincipal WhoIsAsking.Member asking,
 			@PathVariable AKey id, WhatWasSent<Correction> sent, HttpServletRequest request)
-			throws IOException {
+			throws IOException, ServletException {
 		Long me = readers.activeMember(asking).orElse(null);
 
 		if (me == null) {
@@ -1208,7 +1222,8 @@ class ResultWriteApi {
 	 * read anywhere in this class), then the metadata taken off, so what is stored, counted and hashed is
 	 * the picture without where it was taken.
 	 */
-	private <T> Carried<T> whatCameWith(WhatWasSent<T> sent, HttpServletRequest request) throws IOException {
+	private <T> Carried<T> whatCameWith(WhatWasSent<T> sent, HttpServletRequest request)
+			throws IOException, ServletException {
 		MultipartHttpServletRequest parts =
 				WebUtils.getNativeRequest(request, MultipartHttpServletRequest.class);
 
@@ -1216,7 +1231,7 @@ class ResultWriteApi {
 			return new Carried<>(sent.read(), null, null);
 		}
 
-		String run = parts.getParameter("run");
+		String run = theRunPart(request);
 		T body = run == null ? null : sent.readFrom(run);
 		MultipartFile picture = parts.getFile("picture");
 
@@ -1235,9 +1250,39 @@ class ResultWriteApi {
 			return new Carried<>(body, null, no(THIS_IS_NOT_A_PICTURE));
 		}
 
+		if (SmallPicture.claimsMoreThan(bytes, mediaType, AT_MOST_PIXELS_OF_A_PROOF)) {
+			return new Carried<>(body, null, no(THE_PICTURE_IS_TOO_BIG));
+		}
+
 		return new Carried<>(body, new ThePicture(mediaType, WithoutMetadata.of(bytes, mediaType)), null);
 	}
 
+
+	/**
+	 * THE TEXT OF THE PART {@code run}, FROM THE BODY AND FROM NOWHERE ELSE, AND NOT LONGER THAN A BODY MAY BE.
+	 *
+	 * <p><b>Asked of the part and not of {@code getParameter}</b>, which answers from the query string as well:
+	 * {@code POST /api/results?run={...}} would be read as a run and its comment would stand in the access log
+	 * (review of PR 845, security, N4). <b>And held to {@link NoBodyIsLargerThan#BYTES}</b>, which a multipart
+	 * body is left out of ({@code NoBodyIsLargerThan} says so), so a comment of 600000 characters is the 413 the
+	 * JSON road gives it and not a row (review of PR 845, N1). The size is the part's own, asked before a byte of
+	 * it is read.
+	 *
+	 * @return the text, or {@code null} for a request that has no such part
+	 */
+	private static String theRunPart(HttpServletRequest request) throws IOException, ServletException {
+		Part run = request.getPart("run");
+
+		if (run == null) {
+			return null;
+		}
+
+		if (run.getSize() > NoBodyIsLargerThan.BYTES) {
+			throw new NoBodyIsLargerThan.TooLarge();
+		}
+
+		return new String(run.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+	}
 
 	/**
 	 * THE RESULT, IF IT IS HIS.

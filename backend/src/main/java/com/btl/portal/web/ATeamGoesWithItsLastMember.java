@@ -212,7 +212,11 @@ class ATeamGoesWithItsLastMember {
 	 *
 	 * <p><b>Only where nobody but him is in the team</b>, the condition {@link #AND_NOBODY_IS_LEFT} carries after he
 	 * is gone, so a member who walks out of a team that stays does not wait for a send of its logo
-	 * ({@code ATeamLogoSentWhileItIsBeingDecidedTest}). It is asked inside the statement, in the one question, and a
+	 * ({@code ATeamLogoSentWhileItIsBeingDecidedTest}). <b>And only by a road on which his row GOES</b>: a member
+	 * whose membership has begun does not go from the team, his row is ended and stays, and with it the team
+	 * ({@link #AND_NOBODY_IS_LEFT} asks for any row at all), so {@link TeamWriteApi#takeOut} does not ask for the
+	 * queue row on that branch (review of PR 846, 28.11.2026: it would wait for one send and never be in a cycle).
+	 * It is asked inside the statement, in the one question, and a
 	 * membership another transaction removes between this and the delete leaves the moment the class note names.
 	 * Rows are taken in key order, as {@link #away} takes them.
 	 *
@@ -241,21 +245,29 @@ class ATeamGoesWithItsLastMember {
 	 * writes a message to the sender, which asks for his row, so a cancelled member who is the sender of a logo
 	 * that waits in a team that stays was a cycle (measured, {@code deadlock detected}).
 	 *
-	 * @param member the member whose season is cancelled
-	 * @param teams  the teams he stood in
-	 * @param season the season cancelled
+	 * <p><b>Of every member who goes out together</b>, which is what the job of 1 January does
+	 * ({@link ASeasonBegins#begin}): it writes the seat of a team ({@code outOfHisTeam}) and only then deletes the
+	 * team nobody holds the season in, the order the reviewer of PR 846 measured as {@code deadlock detected}
+	 * (28.11.2026). A team in which another of the members who go out is the only one left is held as well, so the
+	 * question is asked of all of them at once and not of each.
+	 *
+	 * @param members the members whose season is cancelled, or who do not hold the season that begins
+	 * @param teams   the teams they stood in
+	 * @param season  the season cancelled, or the one that begins
 	 */
-	void holdTheQueueOfTheTeamsNobodyElseHoldsTheSeasonIn(long member, Collection<Long> teams, int season) {
+	void holdTheQueueOfTheTeamsNobodyElseHoldsTheSeasonIn(Collection<Long> members, Collection<Long> teams,
+			int season) {
 		if (teams.isEmpty()) {
 			return;
 		}
 
 		db.sql("select v.id from verification v where v.team_id in (:teams) and v.state = 'waiting'"
 						+ " and not exists (select 1 from team_membership o where o.team_id = v.team_id"
-						+ " and o.competitor_id <> :member and (o.season_to is null or o.season_to >= :season))"
+						+ " and o.competitor_id not in (:members)"
+						+ " and (o.season_to is null or o.season_to >= :season))"
 						+ " order by v.id for update of v")
 				.param("teams", teams)
-				.param("member", member)
+				.param("members", members)
 				.param("season", season)
 				.query(Long.class)
 				.list();

@@ -152,6 +152,13 @@ class ASeasonBegins implements WhatFollowsTheFreeze {
 		ZonedDateTime beforeTheCut = SeasonClock.tablesFreeze(season - 1).minusNanos(1);
 		Set<Long> touched = teamsOf(lapsed);
 
+		/* THE QUEUE ROWS OF THE LOGOS OF THE TEAMS THIS TURN EMPTIES, before `out` writes `team.admin_id`, for the
+		   reason `cancelled` gives: the delete below takes the queue row after the team's row, the other half of a
+		   cycle with a send of the logo. Only the teams nobody who stays holds the season in, which are the ones the
+		   delete reaches (`nobodyIsIn` below), so a team that stays is not waited for (review of PR 846,
+		   28.11.2026). */
+		teams.holdTheQueueOfTheTeamsNobodyElseHoldsTheSeasonIn(lapsed, touched, season);
+
 		out(lapsed, season, false, touched, seats(touched, beforeTheCut), beforeTheCut);
 
 		List<Long> nobodyIsIn = db.sql("select t.id from team t where not exists(select 1 from team_membership m"
@@ -198,7 +205,7 @@ class ASeasonBegins implements WhatFollowsTheFreeze {
 		   condition `nobodyIsIn` below asks, and not the ones that stay: a refusal of the logo holds the queue row
 		   and then asks for this member's row, which his route holds (review of PR 846).
 		   */
-		teams.holdTheQueueOfTheTeamsNobodyElseHoldsTheSeasonIn(member, before.teams(), season);
+		teams.holdTheQueueOfTheTeamsNobodyElseHoldsTheSeasonIn(List.of(member), before.teams(), season);
 
 		out(List.of(member), season, true, before.teams(), before.seats(), now);
 

@@ -190,6 +190,20 @@ public final class SmallPicture {
 	 * and refusing them here would be a decision about a picture's readability that nobody made.
 	 */
 	public static boolean isLargerThanItCuts(byte[] original, String mediaType) {
+		return claimsMoreThan(original, mediaType, ceilingOf(mediaType));
+	}
+
+	/**
+	 * WHETHER THIS PICTURE CLAIMS MORE PIXELS THAN THE NUMBER ASKED, READ FROM ITS HEADER AND FROM NOTHING
+	 * DECODED (IHDR of a PNG, the frame of a JPEG, the canvas and the frames of a WebP).
+	 *
+	 * <p>{@link #isLargerThanItCuts} asks it of the ceiling of the cut; a picture that is never cut, the proof
+	 * of a run, asks it of a ceiling of its own (PDL, 28.11.2026: „Za sliku kao dokaz važi i granica od 100
+	 * megapiksela (dimenzije iz zaglavlja), uz granicu od 5 MB; veća se odbija kao prevelika."). The same
+	 * read, so the two cannot disagree about what a header says. <b>A header the reader cannot read is not
+	 * answered „more"</b>, for the reason {@link #isLargerThanItCuts} gives.
+	 */
+	public static boolean claimsMoreThan(byte[] original, String mediaType, long pixels) {
 		try {
 			ImageReader reader = readerFor(mediaType);
 
@@ -197,8 +211,7 @@ public final class SmallPicture {
 					new ByteArrayInputStream(original))) {
 				reader.setInput(in, true, true);
 
-				return pixelsIn(reader.getWidth(0), reader.getHeight(0), original, mediaType)
-						> ceilingOf(mediaType);
+				return pixelsIn(reader.getWidth(0), reader.getHeight(0), original, mediaType) > pixels;
 			} finally {
 				reader.dispose();
 			}
