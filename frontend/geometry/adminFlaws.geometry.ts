@@ -38,6 +38,9 @@ const ME: Answers = { '/api/me': { role: 'superadmin', account: 41, membershipBa
 
 /* ---------------------------------------------------------------- 1. the moderators */
 
+const THE_SAMPLE: Answers = { ...ME, '/api/moderators': SAMPLE_OF<Record<string, unknown>[]>('moderators') }
+
+/* And the sample with one more moderator, whose surname is fourteen letters long. */
 const MODERATORS: Answers = {
   ...ME,
   '/api/moderators': [
@@ -52,9 +55,17 @@ const MODERATORS: Answers = {
   ],
 }
 
+/* The sample as served must fit its box to the pixel at every width; the sample with the long surname must too,
+   but for the few pixels a wider typeface takes on a telephone (see the sheet, `Rights.css`). */
+const MODERATOR_CASES = [
+  ['the moderators of the sample', THE_SAMPLE, 'Aleksandra', () => 0],
+  ['with a surname of fourteen letters', MODERATORS, 'Hadžiantonović', (at: At) => (at.width < 700 ? 12 : 0)],
+] as const
+
 for (const at of WIDTHS) {
-  test(`no name of a moderator is broken inside a word, and the table fits its box (but for the allowance) at ${label(at)}`, async ({ open }) => {
-    const { page, probe } = await open(at, '/sr/administracija/moderatori', 'table.moderators tbody tr', MODERATORS)
+  for (const [what, answers, longest, allowed] of MODERATOR_CASES) {
+  test(`no name of a moderator is broken inside a word, and the table fits its box, ${what}, at ${label(at)}`, async ({ open }) => {
+    const { page, probe } = await open(at, '/sr/administracija/moderatori', 'table.moderators tbody tr', answers)
 
     expect(probe.sideways).toBe(0)
     expect(probe.widened).toBe(0)
@@ -97,14 +108,14 @@ for (const at of WIDTHS) {
       return { broken, said, inside: box.scrollWidth, outside: box.clientWidth }
     })
 
-    expect(seen.said).toContain('Hadžiantonović')
+    expect(seen.said).toContain(longest)
     expect(seen.broken).toEqual([])
-    /* NO SCROLL IN THE BOX, but for one allowance that is mine and not the owner's for this list ([IZVEDENO],
-       borrowed from his rule for the table of results, PDL 20.10.2026, „osim kod moderatora na telefonu sa vrlo
-       dugim prezimenom, gde smeju da odstupe za nekoliko piksela"): the sample holds a surname of fourteen
-       letters, which on a telephone may take up to ten pixels over. */
-    expect(seen.inside - seen.outside).toBeLessThanOrEqual(at.width < 700 ? 10 : 0)
+    /* NO SCROLL IN THE BOX; the allowance of the case with the long surname is mine and not the owner's for this list
+       ([IZVEDENO]: his rule for the table of results, PDL 20.10.2026, „osim kod moderatora na telefonu sa vrlo dugim
+       prezimenom, gde smeju da odstupe za nekoliko piksela", is about another table). */
+    expect(seen.inside - seen.outside).toBeLessThanOrEqual(allowed(at))
   })
+  }
 }
 
 /* ---------------------------------------------------------------- 2. the box of a team's description */

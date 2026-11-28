@@ -89,19 +89,22 @@
 
 /* WHAT THE NAMES TAKE, THE PADDING GIVES BACK, on a telephone. With the names whole, the four columns of
    this list ask for 350 of the 328 pixels the box has at 360 (measured 28.11.2026; before, the names broke
-   inside a word and the list fitted to the pixel), so the cells give up half of their side room, which is
-   32 pixels where 22 were missing. A very long surname (fourteen letters, as „Hadžiantonović") is the one
-   case that still makes the box scroll, by under ten pixels inside its own box and never the page.
-   **[IZVEDENO, moje, ne vlasnikova reč]** Letting that case deviate is borrowed from the owner's rule for
-   the table of results on a telephone (PDL, 20.10.2026, „osim kod moderatora na telefonu sa vrlo dugim
-   prezimenom, gde smeju da odstupe za nekoliko piksela"), which is about another table; whether it is his
-   wish for this list is his to say. The query is the width `styles/table.css` ends the
-   phone shape of a table at (699.98px), written in `em` because it decides how much room a cell has and not
+   inside a word and the list fitted to the pixel), so each cell keeps two pixels of side room and not eight,
+   which is 32 pixels back where 22 were missing. The list still reads as columns: a column of the words
+   is as far from the next as the hole the widest word leaves. A surname of fourteen letters
+   („Hadžiantonović", in the sample of `geometry/adminFlaws.geometry.ts`) still fits to the pixel here and
+   a few pixels over on a machine whose typeface is wider (the runner's Chrome, measured 28.11.2026: 20 over
+   with four pixels of room per side, so about 4 with two); that case never moves the page and only moves
+   the box it scrolls in. **[IZVEDENO, moje, ne vlasnikova reč]** Letting it do so is borrowed from the
+   owner's rule for the table of results on a telephone (PDL, 20.10.2026, „osim kod moderatora na telefonu sa
+   vrlo dugim prezimenom, gde smeju da odstupe za nekoliko piksela"), which is about another table; whether
+   it is his wish for this list is his to say. The query is the width `styles/table.css` ends the phone
+   shape of a table at (699.98px), written in `em` because it decides how much room a cell has and not
    whether a column is drawn (`styles/scale.test.ts`). */
 @media (max-width: 43.74875em) {
   .moderators td,
   .moderators th {
-    padding-inline: var(--space-4);
+    padding-inline: var(--space-2);
   }
 }
 
