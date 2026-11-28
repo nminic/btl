@@ -577,6 +577,10 @@ describe('a sentence with a value put into it', () => {
          measure joined by dashes (`member/racesToOffer.ts`), after a colon, where nothing asks a
          case of it. */
       'review.chosenRace',
+      /* „Slika dokaza uz rezultat: {who}" (28.11.2026), the alternative text of the picture sent as the proof of a
+         run in the queue of results: the member's name as the queue serves it, after a colon, where nothing asks a
+         case or a gender of it. */
+      'review.proofAlt',
       /* THE BANK STATEMENT ON THE PAYMENTS SCREEN (25.10.2026, PDL „Učitavanje izvoda iz banke"). Every
          value is a figure, a number of an account, a date in figures or a name standing after a colon or
          on its own: „Već evidentirano: {whose}, sezona {season}", „Proknjiženo samo od sebe: {whose},

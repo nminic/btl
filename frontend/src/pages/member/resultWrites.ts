@@ -125,6 +125,11 @@ export const WHEN_A_RESULT_IS_WRITTEN: Record<string, string> = {
   nothingShowsItHappened: 'results.refused.nothingShowsItHappened',
   aPhotographNeverStandsAlone: 'results.refused.aPhotographNeverStandsAlone',
   aLinkThatIsNotALink: 'results.refused.aLinkThatIsNotALink',
+  /* The two a picture sent as proof is refused for (owner, 28.11.2026, „Odradi i sliku kao dokaz uz
+     rezultat"; ADL, 23.08.2026: the type by the bytes, and a size held to). The sentences are the ones the
+     portal already gives the same two faults of a profile picture. */
+  thePictureIsTooBig: 'results.refused.thePictureIsTooBig',
+  thisIsNotAPicture: 'results.refused.thisIsNotAPicture',
 }
 
 /** The four figures every body carries, whichever of the three writes it is. */
@@ -295,6 +300,37 @@ function whatAResultThatIsGoneChanges(answer: Answer): void {
 }
 
 /**
+ * THE PICTURE A RUN IS SENT WITH: the file the photo field handed the screen, and only while the field
+ * still names one. The form's value is the fact every rule over the field reads (`optionalWhenFilled`,
+ * `requiredWhenFilled`), so it is what decides whether there is a picture; the file is what is sent. A form
+ * drawn again with its box empty therefore sends no picture it no longer shows, and a box that names a file
+ * the screen was never handed sends none either.
+ */
+export function thePictureTheFormHolds(values: Record<string, string | boolean>, file: File | null): File | null {
+  return String(values.photo ?? '').trim() === '' ? null : file
+}
+
+/**
+ * A BODY WITH ITS PICTURE, AS THE ROUTE TAKES IT: the same JSON a run or a correction is sent as, in the
+ * part `run`, and the file in the part `picture` (`ResultWriteApi.whatCameWith`).
+ *
+ * <p>The owner, 28.11.2026: „Odradi i sliku kao dokaz uz rezultat", which carries out his choice of
+ * 28.09.2026, „polje šalje bajtove, server ih prima i čuva". The type of the file and its name go with it
+ * because a browser writes them, and the server reads neither: the type is decided by the bytes.
+ *
+ * <p><b>Only where there is a picture.</b> A run with none goes as it always went, as JSON, so nothing about
+ * the road without a picture changes.
+ */
+export function withItsPicture(body: object, picture: File): FormData {
+  const sent = new FormData()
+
+  sent.append('run', JSON.stringify(body))
+  sent.append('picture', picture)
+
+  return sent
+}
+
+/**
  * Sends one run, from either door or sent again, and says what came back.
  *
  * <p><b>The caches are dropped only where the server agreed</b>, which is the axis this
@@ -302,8 +338,11 @@ function whatAResultThatIsGoneChanges(answer: Answer): void {
  * portal that dropped them on the asking would draw a member a queue item the server never
  * took.
  */
-export async function theRunWasSentIn(run: ARunFromTheCalendar | ARunDescribed): Promise<Answer> {
-  const answer = await askTheServer(A_RUN_IS_SENT_TO, run)
+export async function theRunWasSentIn(
+  run: ARunFromTheCalendar | ARunDescribed,
+  picture: File | null = null,
+): Promise<Answer> {
+  const answer = await askTheServer(A_RUN_IS_SENT_TO, picture === null ? run : withItsPicture(run, picture))
 
   if (answer.got === 'done') {
     whatAWaitingRowChanges()
@@ -321,8 +360,13 @@ export async function theRunWasSentIn(run: ARunFromTheCalendar | ARunDescribed):
 export async function theCorrectionWasSentIn(
   result: number,
   correction: ACorrection,
+  picture: File | null = null,
 ): Promise<Answer> {
-  const answer = await askTheServer(theResultAt(result), correction, 'PUT')
+  const answer = await askTheServer(
+    theResultAt(result),
+    picture === null ? correction : withItsPicture(correction, picture),
+    'PUT',
+  )
 
   if (answer.got === 'done') {
     whatAWaitingRowChanges()

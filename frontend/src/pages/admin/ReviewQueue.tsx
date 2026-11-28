@@ -20,7 +20,17 @@ import { QUEUE, refusalTo } from './queues'
 import { RaceForTheRun } from './RaceForTheRun'
 import type { Placing } from './placingTheRace'
 import { Swept } from './Swept'
-import { aRefusal, anApproval, anApprovalWith, decisionPath, type Amended, type Answered } from './verificationWrites'
+import {
+  aRefusal,
+  anApproval,
+  anApprovalWith,
+  decisionPath,
+  namingTheProof,
+  photoPath,
+  type Amended,
+  type Answered,
+} from './verificationWrites'
+import { cardPictureOf, mayApprove, mayRefuse, pictureKey, type Outcome, type Outcomes } from './cardPicture'
 import { WhatTheServerSaid } from './WhatTheServerSaid'
 import '../../styles/outsideLink.css'
 import '../member/Member.css'
@@ -191,6 +201,15 @@ export function ReviewQueue() {
    */
   const outstanding = useRef(false)
   const [deciding, setDeciding] = useState(false)
+  /* WHAT BECAME OF EACH PICTURE SENT AS PROOF, as its own element reported it (`cardPicture.ts`, the profile
+     cards' arrangement): an approval waits for the picture it names and is never sent while that picture
+     cannot be seen (PDL, „Dokaz uz rezultat (DK)": „Slika dokaza koja ne može da se učita drži „Odobri"
+     onemogućenim"), and a refusal waits while it is still on its way. Keyed by the row and the picture, so an
+     outcome cannot be read against another picture than the one that produced it. */
+  const [proofs, setProofs] = useState<Outcomes>(new Map())
+  const reportTheProof = (id: string, photoId: number, outcome: Outcome): void => {
+    setProofs((were) => new Map(were).set(pictureKey(id, photoId), outcome))
+  }
   /**
    * THE RUN WHOSE SINGLE DECISION IS OUT WITH THE ROUTE, or nothing where none is: which of the two
    * boxes is waiting for an answer, which `deciding` above cannot say.
@@ -318,7 +337,7 @@ export function ReviewQueue() {
    * @return whether the route recorded it
    */
   const sendOne = async (one: WaitingRun, answered: Answered): Promise<boolean> => {
-    const answer = await askTheServer(decisionPath(one.id), answered)
+    const answer = await askTheServer(decisionPath(one.id), namingTheProof(answered, one.photoId, one.crop))
 
     if (answer.got !== 'done') {
       setSaid({ id: one.id, answer })
@@ -342,7 +361,12 @@ export function ReviewQueue() {
 
   /** A single row's decision, guarded against a second press while one is out. */
   const decide = async (one: WaitingRun, answered: Answered): Promise<void> => {
-    if (outstanding.current) {
+    /* AN APPROVAL OF A PICTURE NOBODY HAS SEEN IS NOT SENT, whichever door it comes by: the row's own Odobri,
+       the figures set first, or the race named first. A refusal waits at the button that opens its box, which a
+       picture still on its way keeps shut, and a picture that has arrived or failed does not go back. */
+    const proof = cardPictureOf(one, proofs)
+
+    if (outstanding.current || (answered.approved && !mayApprove(proof))) {
       return
     }
 
@@ -428,7 +452,7 @@ export function ReviewQueue() {
       const settled = new Set<string>()
 
       for (const one of rows) {
-        const answer = await askTheServer(decisionPath(one.id), anApproval())
+        const answer = await askTheServer(decisionPath(one.id), namingTheProof(anApproval(), one.photoId, one.crop))
 
         if (answer.got !== 'done') {
           refusals.push({ id: one.id, answer })
@@ -480,7 +504,9 @@ export function ReviewQueue() {
           /* What the sweep may approve: a run on a race the calendar holds. Asked once, so
              whether the sweep is offered, the number it asks about and the rows it walks
              are one list. */
-          const sweepable = waiting.filter((one) => one.raceId !== null)
+          /* And whose picture, where it was sent one, has been seen: the sweep is a door to the same
+             approval as a row's own Odobri, so it does not approve what that button may not. */
+          const sweepable = waiting.filter((one) => one.raceId !== null && mayApprove(cardPictureOf(one, proofs)))
           const leftOver = waiting.filter(onARaceNotInTheCalendar).length
           const fixingRow = waiting.find((one) => one.id === fixing?.id)
           const placingRow = waiting.find((one) => one.id === placing?.id)
@@ -643,6 +669,14 @@ export function ReviewQueue() {
                                   <AddressesAsLinks text={one.body} />
                                 </span>
                               )}
+                              {/* THE PICTURE SENT AS PROOF, beside the run it proves (owner, 28.09.2026:
+                                  „moderator ih vidi uz rezultat u redu za proveru"), drawn small in the row
+                                  and opened whole by a press, because a proof is never cut (PDL P11). */}
+                              <ProofPicture
+                                one={one}
+                                broken={cardPictureOf(one, proofs) === 'failed'}
+                                onOutcome={reportTheProof}
+                              />
                               {/* WHERE THE MEMBER SAID THE RACE WAS RUN, on a run on a race the
                                   calendar does not hold, and its country: the owner's answer of
                                   10.10.2026, „moderator u redu vidi mesto koje je član upisao", the
@@ -757,7 +791,7 @@ export function ReviewQueue() {
                                     symbol={SYMBOL.check}
                                     word={t('review.approve')}
                                     className="button button--primary"
-                                    aria-disabled={deciding}
+                                    aria-disabled={deciding || !mayApprove(cardPictureOf(one, proofs))}
                                     onClick={() => {
                                       void decide(one, anApproval())
                                     }}
@@ -769,8 +803,13 @@ export function ReviewQueue() {
                                   symbol={SYMBOL.back}
                                   word={t('review.sendBack')}
                                   className="button button--secondary"
+                                  aria-disabled={!mayRefuse(cardPictureOf(one, proofs))}
                                   ref={buttonFor(one.id, 'reason')}
                                   onClick={() => {
+                                    if (!mayRefuse(cardPictureOf(one, proofs))) {
+                                      return
+                                    }
+
                                     openedFrom(one.id, 'reason')
                                     setFixing(null)
                                     setPlacing(null)
@@ -1083,5 +1122,51 @@ function AmendPanel({
         </p>
       )}
     </div>
+  )
+}
+
+/**
+ * THE PICTURE A MEMBER SENT AS THE PROOF OF HIS RUN, small in the row and whole behind a press.
+ *
+ * <p>Served by the route that serves a moderator the picture of a row he may decide
+ * (`PhotoApi.waitingOn`), at the address that carries the picture's key (`photoPath`), so the picture drawn and
+ * the picture the decision names are one value. The element reports what became of its picture
+ * (`cardPicture.ts`), and a picture that cannot be loaded says so with the sentence the profile cards use, in
+ * place of a broken image: approving it stays shut (`mayApprove`).
+ *
+ * <p>Nothing where the run came with no picture: there is nothing to fail, so nothing is reported missing.
+ */
+function ProofPicture({
+  one,
+  broken,
+  onOutcome,
+}: {
+  one: WaitingRun
+  broken: boolean
+  onOutcome: (id: string, photoId: number, outcome: Outcome) => void
+}) {
+  const { t } = useI18n()
+  const { photoId } = one
+
+  if (photoId === null) {
+    return null
+  }
+
+  if (broken) {
+    return <span className="review__proof review__proof--unavailable">{t('verification.pictureUnavailable')}</span>
+  }
+
+  const address = photoPath(one.id, photoId)
+
+  return (
+    <a className="review__proof" href={address} target="_blank" rel="noopener">
+      <img
+        key={photoId}
+        src={address}
+        alt={t('review.proofAlt', { who: one.who })}
+        onLoad={() => onOutcome(one.id, photoId, 'loaded')}
+        onError={() => onOutcome(one.id, photoId, 'failed')}
+      />
+    </a>
   )
 }

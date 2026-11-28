@@ -130,6 +130,14 @@ type Props = {
    * they are depends on the record being copied and a definition knows no records.
    */
   steps?: { label: string; title: string; to: string }[]
+  /**
+   * THE FILE A PICTURE FIELD HOLDS, handed to the screen the moment it is chosen or thrown away, and
+   * `null` then. The form's values keep the file's NAME, which is what every rule over the field reads
+   * (`optionalWhenFilled`, `requiredWhenFilled`); the bytes are the screen's to send, and a form that sends
+   * nothing itself has no other way to hand them over. The owner, 28.11.2026: „Odradi i sliku kao dokaz uz
+   * rezultat", which is the first form whose picture leaves the browser.
+   */
+  onPicture?: (file: File | null) => void
   /** What the fields start out holding. Empty when nothing is handed in, which
    *  is a form that creates something rather than one that changes it. */
   initial?: FormValues
@@ -489,6 +497,7 @@ const Field = memo(function Field({
   error,
   choices,
   onChange,
+  onPicture,
   open = false,
   locked = false,
   saidBy,
@@ -511,6 +520,8 @@ const Field = memo(function Field({
   error: FieldError | undefined
   choices: readonly FieldOption[]
   onChange: (field: FieldDef, value: string | boolean, also?: Record<string, string>) => void
+  /** Where a picture field hands the file it holds (`onPicture` on the form). */
+  onPicture?: (file: File | null) => void
   /** Whether the cursor starts here. One field on one form ever does. */
   open?: boolean
   /**
@@ -909,7 +920,12 @@ const Field = memo(function Field({
             }}
             type="file"
             accept="image/*"
-            onChange={(e) => change(e.target.files?.[0]?.name ?? '')}
+            onChange={(e) => {
+              const file = e.target.files?.[0] ?? null
+
+              change(file?.name ?? '')
+              onPicture?.(file)
+            }}
           />
 
           {String(value) !== '' && (
@@ -928,6 +944,7 @@ const Field = memo(function Field({
                 putBack.current = true
                 setCleared((was) => was + 1)
                 change('')
+                onPicture?.(null)
               }}
             />
           )}
@@ -1096,6 +1113,7 @@ export function FormRenderer({
   above,
   alsoRefuses,
   steps,
+  onPicture,
 }: Props) {
   const { t } = useI18n()
   const [values, setValues] = useState<FormValues>(() => ({ ...emptyValues(form), ...initial }))
@@ -1697,6 +1715,7 @@ export function FormRenderer({
               error={shown[field.name]}
               choices={optionsFor(field, options)}
               onChange={handleChange}
+              onPicture={field.type === 'photo' ? onPicture : undefined}
               open={field.name === openAt}
               locked={locked.includes(field.name) || fixed.includes(field.name)}
               saidBy={fixed.includes(field.name) ? fixedSaidBy : undefined}
