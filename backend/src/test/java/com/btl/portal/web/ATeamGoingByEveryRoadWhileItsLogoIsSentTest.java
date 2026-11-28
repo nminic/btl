@@ -239,6 +239,29 @@ class ATeamGoingByEveryRoadWhileItsLogoIsSentTest {
 	}
 
 	/**
+	 * A CANCELLATION OF A MEMBER WHO STOOD IN NO TEAM HOLDS NOTHING: there is no queue row to take, and asking for
+	 * the rows of no teams must not be written as {@code in ()}, which is not a statement.
+	 */
+	@Test
+	void theCancellationOfAMemberInNoTeamHoldsNothingAndGoesThrough() {
+		long member = aMember().editor();
+
+		weWroteTheFreeze = db.sql("insert into season_frozen (season, frozen_at) values (2027, ?)"
+						+ " on conflict do nothing")
+				.param(Timestamp.from(Instant.parse("2027-01-01T15:00:00Z"))).update() == 1;
+
+		ZonedDateTime now = ZonedDateTime.now(clock);
+
+		holdingTheRow.executeWithoutResult(cancelling -> {
+			ASeasonBegins.Before before = begins.before(member, 2028, now);
+
+			assertThat(before.teams()).as("the member stands in a team, so the case holds nothing").isEmpty();
+
+			begins.cancelled(member, 2028, now, before);
+		});
+	}
+
+	/**
 	 * A MEMBER WHO LEAVES A TEAM THAT STAYS DOES NOT WAIT FOR A SEND OF ITS LOGO. The lock a road takes carries the
 	 * condition the delete carries, nobody else in the team: with a team-mate the road must come back while the queue
 	 * row is held.
