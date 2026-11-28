@@ -46,12 +46,31 @@ public final class PayerName {
 		return withoutMarks.toUpperCase(Locale.ROOT).replaceAll("[^\\p{L}]+", " ").strip();
 	}
 
+	/**
+	 * A MEMBER'S NAME FOLDED ONCE, in both orders and as words, so that a statement of a hundred lines against six
+	 * hundred members folds six hundred names and not sixty thousand (PENDING, security review of PR 843, S4,
+	 * 28.11.2026: the comparison ran inside the write transaction and was measured at 305 to 538 ms). The answer
+	 * of {@link #names(String, Member)} and {@link #inside(List, Member)} is exactly that of the two methods that
+	 * take the name as text, which are written as these.
+	 */
+	public record Member(String firstLast, String lastFirst, List<String> firstLastWords,
+			List<String> lastFirstWords) {
+	}
+
+	public static Member member(String firstName, String lastName) {
+		return new Member(folded(firstName + " " + lastName), folded(lastName + " " + firstName),
+				wordsOf(firstName + " " + lastName), wordsOf(lastName + " " + firstName));
+	}
+
 	/** Whether a payer, as printed, is this first and last name in either order. */
 	public static boolean names(String payer, String firstName, String lastName) {
-		String printed = folded(payer);
+		return names(folded(payer), member(firstName, lastName));
+	}
 
-		return !printed.isEmpty() && (printed.equals(folded(firstName + " " + lastName))
-				|| printed.equals(folded(lastName + " " + firstName)));
+	/** The same for a payer already folded ({@link #folded}), asked of a name folded once ({@link #member}). */
+	public static boolean names(String foldedPayer, Member member) {
+		return !foldedPayer.isEmpty()
+				&& (foldedPayer.equals(member.firstLast()) || foldedPayer.equals(member.lastFirst()));
 	}
 
 	/**
@@ -60,13 +79,16 @@ public final class PayerName {
 	 * it, „BRANKOVIC MILEVIC" and „MILEVIC ZA BRANKO" do not.
 	 */
 	public static boolean inside(String printed, String firstName, String lastName) {
-		List<String> words = wordsOf(printed);
-
-		return contains(words, wordsOf(firstName + " " + lastName))
-				|| contains(words, wordsOf(lastName + " " + firstName));
+		return inside(wordsOf(printed), member(firstName, lastName));
 	}
 
-	private static List<String> wordsOf(String text) {
+	/** The same for a payer already read as words ({@link #wordsOf}), asked of a name folded once. */
+	public static boolean inside(List<String> printedWords, Member member) {
+		return contains(printedWords, member.firstLastWords()) || contains(printedWords, member.lastFirstWords());
+	}
+
+	/** The words of a text once folded: what {@link #inside(List, Member)} is asked of. */
+	public static List<String> wordsOf(String text) {
 		String folded = folded(text);
 
 		return folded.isEmpty() ? List.of() : List.of(folded.split(" "));
