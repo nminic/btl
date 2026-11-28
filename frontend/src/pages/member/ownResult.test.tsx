@@ -1015,15 +1015,23 @@ describe('a result that has been counted', () => {
     await user.type(screen.getByLabelText(/Komentar/), '   ')
     await user.click(screen.getByRole('button', { name: /^Pošalji/ }))
 
+    /* Waits of half the case's clock, so a screen that never says it fails on its own assertion and
+       not by running the case out of time, which says nothing (the shape `newResult.test.tsx` keeps). */
+    const SOON = { timeout: SLOW / 2 }
+
     expect(
-      await screen.findByText(/mora da ide dokaz: link ka zvaničnim rezultatima, slika ili komentar/),
+      await screen.findByText(
+        /mora da ide dokaz: link ka zvaničnim rezultatima, slika ili komentar/,
+        undefined,
+        SOON,
+      ),
     ).toBeVisible()
     expect(writes()).toHaveLength(0)
 
     await user.type(screen.getByLabelText(/Komentar/), 'Sat je stao, vreme je sa telefona.')
     await user.click(screen.getByRole('button', { name: /^Pošalji/ }))
 
-    expect(await screen.findByText('Rezultat je ponovo poslat.')).toBeVisible()
+    expect(await screen.findByText('Rezultat je ponovo poslat.', undefined, SOON)).toBeVisible()
 
     const sent = must(writes()[0], 'the correction')
 
