@@ -350,6 +350,20 @@ class ResultWriteApi {
 	static final String THIS_IS_NOT_A_PICTURE = "thisIsNotAPicture";
 
 	/**
+	 * THREE PICTURES OF HIS ALREADY WAIT FOR A DECISION, SO A FOURTH IS REFUSED.
+	 *
+	 * <p>The owner, 28.11.2026 (PDL, „Slika kao dokaz uz rezultat, posle izgradnje"): „Član sme da drži najviše tri
+	 * slike kao dokaz na čekanju istovremeno; četvrta se odbija rečenicom „Već ti čekaju tri slike na proveri. Novu
+	 * možeš da pošalješ kad moderator odluči o nekoj od njih.”" On every road a run with a picture is sent by, since
+	 * the security review of PR 845 found that nothing bounded how many files one member could leave on the disk the
+	 * database shares.
+	 */
+	static final String THREE_PICTURES_WAIT = "threePicturesWait";
+
+	/** How many pictures sent as proof one member may have waiting at once (the owner, 28.11.2026). */
+	static final int AT_MOST_PICTURES_WAITING = 3;
+
+	/**
 	 * WHY A REPORT IS NOT READY, IN THE PORTAL'S OWN WORDS, AND IT IS A MAP RATHER THAN A
 	 * {@code switch}.
 	 *
@@ -642,6 +656,10 @@ class ResultWriteApi {
 		Said said = WhatAResultChangeSays.changed(before.run(), after, him.language(), him.gender());
 
 		Long made = inOneTransaction.execute(committing -> {
+			if (carried.picture() != null && !roomForAnotherPicture(me)) {
+				return null;
+			}
+
 			long submission = writeTheSubmission(me, before.raceId(), before.day(), null, null,
 					null, null, null, TheEvent.NONE, null, after, typed.link(), typed.comment(),
 					id.value());
@@ -651,6 +669,12 @@ class ResultWriteApi {
 
 			return submission;
 		});
+
+		/* THREE OF HIS PICTURES ALREADY WAIT, and nothing was written: no correction, no line in his inbox, no
+		   letter. */
+		if (made == null) {
+			return no(THREE_PICTURES_WAIT);
+		}
 
 		post(asking.account(), him, said);
 
@@ -1041,6 +1065,10 @@ class ResultWriteApi {
 		Said said = WhatAResultChangeSays.entered(run, him.language(), him.gender());
 
 		Long made = inOneTransaction.execute(committing -> {
+			if (picture != null && !roomForAnotherPicture(me)) {
+				return null;
+			}
+
 			long submission = writeTheSubmission(me, raceId, day, raceName, raceKind, theTownsKey,
 					city, theCountrysKey, event, eventKind, run, typed.link(), typed.comment(), null);
 
@@ -1050,7 +1078,37 @@ class ResultWriteApi {
 			return submission;
 		});
 
+		if (made == null) {
+			return no(THREE_PICTURES_WAIT);
+		}
+
 		return ResponseEntity.status(HttpStatus.CREATED).body(new Made(made));
+	}
+
+	/**
+	 * WHETHER HE MAY HAVE ONE MORE PICTURE WAITING, ASKED WITH HIS TURN TAKEN.
+	 *
+	 * <p><b>The turn first and the count after it, in the transaction that then writes</b>, which is
+	 * {@link MePhotoApi#oneSendOfAMemberAtATime}'s lock keyed by the member and by this sort of picture: two sends
+	 * of his that arrive together take turns, so the second counts after the first has committed. Counted first and
+	 * locked after, both would count the same two and write a third and a fourth. A unique index (V55, V112) holds
+	 * one, never three, so the turn is the whole of it; it ends with the transaction, on success and on failure.
+	 *
+	 * <p><b>What is counted is his pictures in the results tab that still wait</b>: a decision empties the pointer
+	 * either way (V9), so a decided run frees its place at once, and a picture of his profile or of his team waits in
+	 * another tab and is not a proof.
+	 */
+	private boolean roomForAnotherPicture(long me) {
+		db.sql("select pg_advisory_xact_lock(hashtextextended(?, 0))::text")
+				.param("proof-picture:" + me)
+				.query(String.class)
+				.single();
+
+		return db.sql("select count(*) from verification where competitor_id = ? and queue = ?"
+						+ " and state = 'waiting' and photo_id is not null")
+				.params(me, RESULTS)
+				.query(Long.class)
+				.single() < AT_MOST_PICTURES_WAITING;
 	}
 
 	/**

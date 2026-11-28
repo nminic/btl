@@ -233,6 +233,33 @@ describe('the picture sent as proof', () => {
   )
 
   it(
+    'is refused with the owner’s sentence where three pictures of his already wait',
+    async () => {
+      const user = setupUser()
+      const { race, event } = reportable()
+
+      listening(() => refused('threePicturesWait'))
+      renderAt(`/sr/kalendar/${event.slug}/prijava?trka=${String(race.id)}`, 'competitor', ME, undefined, '2026-08-23')
+
+      await user.upload(await screen.findByLabelText(/^Slika kao dokaz/), aPictureOfTheWatch())
+      await user.type(screen.getByLabelText(/^Komentar/), 'Sat')
+      await user.type(screen.getByLabelText('Sati'), '0')
+      await user.type(screen.getByLabelText('Minuti'), '44')
+      await user.type(screen.getByLabelText('Sekunde'), '2')
+      await user.click(screen.getByRole('button', { name: 'Pošalji rezultat' }))
+
+      expect(
+        await screen.findByText(
+          'Već ti čekaju tri slike na proveri. Novu možeš da pošalješ kad moderator odluči o nekoj od njih.',
+          undefined,
+          SOON,
+        ),
+      ).toBeVisible()
+    },
+    SLOW,
+  )
+
+  it(
     'is refused with a sentence of its own where the server says it is not a picture',
     async () => {
       const user = setupUser()

@@ -135,21 +135,22 @@ describe('every reason the result routes can name', () => {
    * (`theRaceIsOutsideTheSeason`, PDL P9), and to nine on 23.11.2026, when a run worth more than
    * 999,99 points was refused when it is sent (`theRunIsImpossible`, PDL P4, 10.10.2026), and to
    * eleven on 28.11.2026, when a picture came with a run and could be too large or not a picture
-   * (`thePictureIsTooBig`, `thisIsNotAPicture`). A twentieth reason added to that class fails here
+   * (`thePictureIsTooBig`, `thisIsNotAPicture`), and to twelve the same day, when a fourth picture waiting
+   * was refused (`threePicturesWait`, the owner, 28.11.2026). A twenty-first reason added to that class fails here
    * with the number in the message, and somebody decides once what its sentence is.
    */
   it('is found by all three readers, and none of them has gone quiet', () => {
     const ours = declaredIn(java('ResultWriteApi.java'))
 
-    expect([...ours.values()], 'ResultWriteApi declares no constant at all').toHaveLength(13)
+    expect([...ours.values()], 'ResultWriteApi declares no constant at all').toHaveLength(14)
     expect(
       [...ours.values()].filter((one) => !NOT_A_REASON.includes(one)),
       'the declared refusals of ResultWriteApi',
-    ).toHaveLength(11)
-    expect(declaredHere(), 'the declared refusals').toHaveLength(11)
+    ).toHaveLength(12)
+    expect(declaredHere(), 'the declared refusals').toHaveLength(12)
     expect(borrowedForTheTown(), 'the town reasons borrowed from EventWriteApi').toHaveLength(5)
     expect(forTheProof(), 'the reasons the proof rule names').toHaveLength(3)
-    expect(everyReasonTheRouteCanName(), 'every reason across the three readers').toHaveLength(19)
+    expect(everyReasonTheRouteCanName(), 'every reason across the three readers').toHaveLength(20)
   })
 
   /**

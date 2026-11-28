@@ -130,6 +130,9 @@ export const WHEN_A_RESULT_IS_WRITTEN: Record<string, string> = {
      portal already gives the same two faults of a profile picture. */
   thePictureIsTooBig: 'results.refused.thePictureIsTooBig',
   thisIsNotAPicture: 'results.refused.thisIsNotAPicture',
+  /* Three of his pictures already wait (owner, 28.11.2026: „Član sme da drži najviše tri slike kao dokaz na
+     čekanju istovremeno"), on every road a run with a picture is sent by. The owner's own sentence. */
+  threePicturesWait: 'results.refused.threePicturesWait',
 }
 
 /** The four figures every body carries, whichever of the three writes it is. */

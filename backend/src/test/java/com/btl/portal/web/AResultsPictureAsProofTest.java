@@ -318,6 +318,125 @@ class AResultsPictureAsProofTest {
 				.isEqualTo(Files.readAllBytes(PHOTOS.resolve(String.valueOf(second))));
 	}
 
+	// THREE AT MOST -----------------------------------------------------------------------------------------
+
+	/**
+	 * THE THIRD PICTURE WAITING IS TAKEN AND A FOURTH IS REFUSED, ON EVERY ROAD A RUN IS SENT BY. The owner,
+	 * 28.11.2026: „Član sme da drži najviše tri slike kao dokaz na čekanju istovremeno; četvrta se odbija".
+	 *
+	 * <p><b>The counts are kept apart from every other picture that waits</b>: somebody else's proof already waits
+	 * in the same tab (the fixture), and a picture of his own waits in the profiles tab, so a count over the whole
+	 * tab or over every tab would refuse his third. And somebody else may still send his own after the refusal.
+	 */
+	@Test
+	void aThirdPictureWaitingIsTakenAndAFourthIsRefusedOnEveryRoad() throws Exception {
+		long portrait = db.sql("insert into photo (media_type, byte_size, digest, crop_x, crop_y, crop_diameter)"
+						+ " values ('image/jpeg', 4, ?, 0.5, 0.5, 1) returning id")
+				.param("b".repeat(64)).query(Long.class).single();
+
+		db.sql("insert into verification (queue, competitor_id, subject, body, photo_id)"
+						+ " values ('profiles', (select id from competitor where member_number = ?), 'Vera', '', ?)")
+				.params(ME, portrait).update();
+
+		Map<String, Object> run = Map.of("raceId", race, "seconds", 12345, "link", "", "comment", "Sat");
+
+		for (int one = 1; one <= ResultWriteApi.AT_MOST_PICTURES_WAITING; one++) {
+			assertThat(reported(ME, run, aJpeg("slika " + one)).getStatus()).as("picture %d", one).isEqualTo(201);
+		}
+
+		long before = everything();
+
+		MockHttpServletResponse fromTheCalendar = reported(ME, run, aJpeg("cetvrta"));
+		MockHttpServletResponse described = reported(ME, aDescribedRun(), aJpeg("cetvrta, opisana"));
+		MockHttpServletResponse correction = corrected(myResult, aJpeg("cetvrta, ispravka"), "Sat");
+
+		for (MockHttpServletResponse refused : List.of(fromTheCalendar, described, correction)) {
+			assertThat(refused.getStatus()).isEqualTo(400);
+			assertThat(reasonOf(refused)).isEqualTo(ResultWriteApi.THREE_PICTURES_WAIT);
+		}
+
+		assertThat(everything()).as("a refused fourth left something behind").isEqualTo(before);
+		assertThat(db.sql("select count(*) from message m join competitor c on c.id = m.to_id"
+						+ " where c.member_number = ?").param(ME).query(Long.class).single())
+				.as("a refused fourth told him in his inbox that something was sent")
+				.isEqualTo(3L);
+
+		/* A run proved by its link alone holds no picture, and goes. */
+		assertThat(sent(multipart("/api/results").param("run", json(Map.of("raceId", race, "seconds", 12345,
+				"link", "https://rezultati.rs/bez-slike", "comment", ""))), ME).getStatus()).isEqualTo(201);
+
+		/* And somebody else, with one of his own waiting, still sends two. */
+		assertThat(reported(SOMEBODY_ELSE, run, aJpeg("njegova druga")).getStatus()).isEqualTo(201);
+		assertThat(reported(SOMEBODY_ELSE, run, aJpeg("njegova treca")).getStatus()).isEqualTo(201);
+		assertThat(reasonOf(reported(SOMEBODY_ELSE, run, aJpeg("njegova cetvrta"))))
+				.isEqualTo(ResultWriteApi.THREE_PICTURES_WAIT);
+	}
+
+	/** A decision about one of the three frees its place at once, refused or approved. */
+	@Test
+	void aDecisionAboutOneOfTheThreeFreesItsPlace() throws Exception {
+		Map<String, Object> run = Map.of("raceId", race, "seconds", 12345, "link", "", "comment", "Sat");
+		long first = idIn(reported(ME, run, aJpeg("prva od tri")));
+
+		reported(ME, run, aJpeg("druga od tri"));
+		reported(ME, run, aJpeg("treca od tri"));
+
+		assertThat(reasonOf(reported(ME, run, aJpeg("pre odluke")))).isEqualTo(ResultWriteApi.THREE_PICTURES_WAIT);
+
+		long row = theRowOf(first);
+
+		assertThat(decide(row, "{\"approved\":false,\"reason\":\"Ne vidi se.\"," + seen(row) + "}").getStatus())
+				.isEqualTo(200);
+		assertThat(reported(ME, run, aJpeg("posle odluke")).getStatus()).isEqualTo(201);
+		assertThat(reasonOf(reported(ME, run, aJpeg("opet cetvrta")))).isEqualTo(ResultWriteApi.THREE_PICTURES_WAIT);
+	}
+
+	/**
+	 * A PICTURE BESIDE A LINK STILL ASKS ITS COMMENT (Član 37: „Ukoliko podignete sliku, link ka zvaničnim
+	 * rezultatima postaje neobavezan, ali polje Komentar postaje obavezno"), on a new run and on a correction: a
+	 * comment of spaces is no comment, and the link does not stand in for it.
+	 */
+	@Test
+	void aPictureBesideALinkStillAsksItsComment() throws Exception {
+		long before = everything();
+
+		MockHttpServletResponse sentIn = reported(ME, Map.of("raceId", race, "seconds", 12345,
+				"link", "https://rezultati.rs/moja-trka", "comment", "   "), aJpeg("uz link"));
+		MockHttpServletResponse correction = sent(multipart("/api/results/" + myResult)
+				.file(new MockMultipartFile("picture", "sat.jpg", MediaType.IMAGE_JPEG_VALUE, aJpeg("uz link")))
+				.param("run", json(Map.of("distanceKm", "21.10", "ascentM", 0, "descentM", 0, "seconds", 5000,
+						"link", "https://rezultati.rs/ispravka", "comment", "   ")))
+				.with(request -> {
+					request.setMethod("PUT");
+					return request;
+				}), ME);
+
+		for (MockHttpServletResponse refused : List.of(sentIn, correction)) {
+			assertThat(refused.getStatus()).isEqualTo(400);
+			assertThat(reasonOf(refused)).isEqualTo("aPhotographNeverStandsAlone");
+		}
+
+		assertThat(everything()).isEqualTo(before);
+	}
+
+	private static Map<String, Object> aDescribedRun() {
+		Map<String, Object> described = new HashMap<>();
+		described.put("raceName", "Trka van kalendara");
+		described.put("day", "2027-05-20");
+		described.put("raceKind", "length");
+		described.put("eventName", "Dogadjaj van kalendara");
+		described.put("eventKind", "race");
+		described.put("city", "Negde");
+		described.put("country", "RS");
+		described.put("distanceKm", "21.10");
+		described.put("ascentM", 100);
+		described.put("descentM", 100);
+		described.put("seconds", 6000);
+		described.put("link", "");
+		described.put("comment", "Diploma sa trke");
+		return described;
+	}
+
 	// A CORRECTION ----------------------------------------------------------------------------------------
 
 	/** A correction is the third road a run is sent by, and a picture with a comment proves it as well. */

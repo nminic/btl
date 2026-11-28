@@ -1172,7 +1172,8 @@
       "aPhotographNeverStandsAlone": "A picture must come with a comment saying what can be seen in it.",
       "aLinkThatIsNotALink": "The link to the official results is not a valid web address. It must begin with http:// or https://.",
       "thePictureIsTooBig": "The picture is too big for the portal. Choose a smaller one, or reduce it before sending.",
-      "thisIsNotAPicture": "This file is not a picture. Send a photograph, in JPG or PNG form for instance."
+      "thisIsNotAPicture": "This file is not a picture. Send a photograph, in JPG or PNG form for instance.",
+      "threePicturesWait": "Three of your pictures are already waiting to be checked. You can send a new one once a moderator has decided on one of them."
     }
   },
   "status": {

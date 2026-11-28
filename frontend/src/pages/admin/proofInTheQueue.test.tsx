@@ -244,6 +244,34 @@ describe('the picture sent as proof, in the queue of results', () => {
     }
   }, SLOW)
 
+  it('is stepped over by the sweep where it cannot be loaded, while the picture of another row that loaded is swept', async () => {
+    const user = setupUser()
+    const server = serverWith([WITH_A_PICTURE, WITH_ANOTHER_PICTURE, WITH_NONE])
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+
+    try {
+      renderAt(PATH, 'superadmin', RUNNER, undefined, null)
+
+      /* A failed picture may be refused (`mayRefuse`) and never approved (`mayApprove`): the sweep approves. */
+      fireEvent.error((await rowOf(RUNNER)).getByRole('img'))
+      fireEvent.load((await rowOf('000020')).getByRole('img'))
+      await screen.findByText(sr.verification.pictureUnavailable)
+      await user.click(await screen.findByRole('button', { name: 'Odobri sve' }))
+
+      await waitFor(() => {
+        expect(decisionsIn(server.asked)).toHaveLength(2)
+      })
+
+      expect(decisionsIn(server.asked).map((one) => one.path)).toEqual([
+        '/api/verification/712/decision',
+        '/api/verification/713/decision',
+      ])
+      expect(screen.getByText(RUNNER)).toBeInTheDocument()
+    } finally {
+      server.stop()
+    }
+  }, SLOW)
+
   it('is stepped over by the sweep until it has been seen, and then swept naming its own picture', async () => {
     const user = setupUser()
     const server = serverWith([WITH_A_PICTURE, WITH_ANOTHER_PICTURE, WITH_NONE])
