@@ -71,9 +71,14 @@ import java.util.Optional;
  * {@code team.logo_id} ({@code VerificationWriteApi}), and a send that took the team's row first was the other half
  * of a cycle: measured on PostgreSQL 18 with the same statements in two sessions, {@code deadlock detected} and one
  * of the two answered 500, nothing torn. The precedent is {@link MePhotoApi}'s send (the turn, the queue row, then
- * the member's row), and {@code ATeamLogoSentWhileItIsBeingDecidedTest} holds the order. <b>Not covered:</b> the
- * team's deletion takes the team and then, through the cascade, the queue row, which is the order a decision has
- * had all along and now the send's too; it is not measured and is not changed here.
+ * the member's row), and {@code ATeamLogoSentWhileItIsBeingDecidedTest} holds the order.
+ * <b>The team's deletion takes them in it too</b> (PENDING, review of PR 842, 28.11.2026):
+ * {@link ATeamGoesWithItsLastMember} runs the one {@code delete from team}, which takes the team and then meets the
+ * queue row through the cascade ({@code verification_team_fk}, V112), the opposite of a decision's and a send's order.
+ * Measured on PostgreSQL 18: {@code deadlock detected} and the send answered 500, nothing torn. It now takes the queue
+ * rows of the team's waiting logo {@code for update} before it deletes, and
+ * {@code ATeamLogoSentWhileItIsBeingDecidedTest} holds that order for both roads that end in the delete
+ * ({@code takeAway} and {@code goIfEmpty}).
  *
  * <p><b>THE ADMINISTRATION'S DOOR IS THE LEAGUE'S MARK</b> ({@link LeagueMarkApi}): the right over the teams at the
  * door, a new picture with its circle and nothing that waits, and the logo taken down at once. <b>What waits is not

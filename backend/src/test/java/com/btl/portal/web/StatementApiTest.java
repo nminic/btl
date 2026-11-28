@@ -570,6 +570,35 @@ class StatementApiTest {
 		assertThat(again.get(0).get("candidates").get(0).get("competitorId").asLong()).isEqualTo(marko);
 	}
 
+	/**
+	 * THE LINES OF A STATEMENT ARE WRITTEN IN THE ORDER OF THEIR ORDER NUMBERS AND NOT OF THE FILE (PENDING, PR 843,
+	 * 28.11.2026). {@code bank_statement_line_one_order_once} is one number for the whole table and the insert waits
+	 * for an uncommitted line of another statement with the same number, so two statements that share two numbers
+	 * and print them in opposite orders were a cycle (measured: {@code deadlock detected}, one upload answered 500).
+	 * Taken in one order by every statement, the second waits for the first and finds its lines kept.
+	 *
+	 * <p>The order the rows were inserted in is the order of their keys, and the keys are what the case reads: the
+	 * statement prints the numbers largest first, so the file's order and the order of the numbers are opposite, and
+	 * each line keeps the position it was printed at.
+	 */
+	@Test
+	void theLinesOfAStatementAreWrittenInTheOrderOfTheirOrderNumbersWhateverTheFilePrintsFirst() throws Exception {
+		String first = String.format("59%014d (19%014d-1)", 9003, 9003);
+		String second = String.format("59%014d (19%014d-1)", 9002, 9002);
+		String third = String.format("59%014d (19%014d-1)", 9001, 9001);
+
+		taken(statement(31).credit("PRVI PLATIOC", EXPECTED, null, first).credit("DRUGI PLATIOC", EXPECTED, null, second)
+				.credit("TRECI PLATIOC", EXPECTED, null, third));
+
+		assertThat(db.sql("select order_number from bank_statement_line order by id")
+				.query(String.class).list())
+				.as("the lines were written in the order the file printed them")
+				.containsExactly(third, second, first);
+		assertThat(db.sql("select position from bank_statement_line order by id").query(Integer.class).list())
+				.as("a line lost the position it was printed at")
+				.containsExactly(3, 2, 1);
+	}
+
 	/** A STATEMENT WITH NOTHING BUT THE BANK'S CHARGES ON IT is taken, and has no payment to show. */
 	@Test
 	void aStatementOfChargesOnlyIsTakenAndHasNoLines() throws Exception {

@@ -278,6 +278,22 @@ class ATeamGoesWithItsLastMember {
 
 		String nobodyIsLeft = onlyIfNobodyIsLeft ? AND_NOBODY_IS_LEFT : "";
 
+		/* THE QUEUE ROW OF A LOGO THAT WAITS IS TAKEN BEFORE THE TEAM'S OWN ROW, which is the order a decision and
+		   a send of the logo take them in ({@link TeamLogoApi}: the turn, the queue row, then the team). The
+		   `delete from team` below takes the team and then meets the queue row through the cascade
+		   (`verification_team_fk`, V112, `on delete cascade`): the other half of a cycle with a send that already
+		   holds the queue row and wants the team, measured on PostgreSQL 18 as `deadlock detected` with the send
+		   answered 500 (PENDING, review of PR 842, 28.11.2026). Taken first, the deletion holds nothing while it
+		   waits, so the send finishes and the deletion goes through.
+
+		   The same condition as the delete carries: a team that stays is not this method's to hold anything of. */
+		db.sql("select v.id from verification v join team on team.id = v.team_id"
+						+ " where v.team_id = ? and v.state = 'waiting'" + nobodyIsLeft
+						+ " order by v.id for update of v")
+				.param(team)
+				.query(Long.class)
+				.list();
+
 		/* AND THE QUESTION IN SOMEBODY ELSE'S INBOX IS EMPTIED BEFORE THE ROW IT POINTS AT
 		   GOES, which is the owner's decision of 06.09.2026 quoted on this class: the message
 		   stays and stops being a question, rather than being deleted out of an inbox that is
