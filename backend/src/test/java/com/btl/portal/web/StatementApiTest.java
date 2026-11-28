@@ -599,6 +599,32 @@ class StatementApiTest {
 				.containsExactly(3, 2, 1);
 	}
 
+	/**
+	 * A MEMBER ON TWO LINES IS BOOKED BY THE LINE THE BANK PRINTED FIRST, WHATEVER THE ORDER NUMBERS RUN (PENDING,
+	 * review of PR 844, 28.11.2026). The lines are written in the order of their numbers, and a member's two lines
+	 * tie in the sort that takes the members' rows in one order, so the tie must be broken by the position the line was
+	 * printed at and not by the order it was written in: this statement prints the larger number first, which is the
+	 * line written second. The one that books is the one at position 1, and the other finds him active.
+	 */
+	@Test
+	void aMemberOnTwoLinesIsBookedByTheLinePrintedFirstWhateverTheOrderNumbersRun() throws Exception {
+		long member = competitor("000052", "Dvaput", "Stampan", A_TOWN_IN_SERBIA);
+		String larger = String.format("59%014d (19%014d-1)", 9102, 9102);
+		String smaller = String.format("59%014d (19%014d-1)", 9101, 9101);
+
+		JsonNode taken = taken(statement(33).credit("DVAPUT STAMPAN", EXPECTED, null, larger)
+				.credit("STAMPAN DVAPUT", EXPECTED, null, smaller));
+
+		assertThat(taken.get("bookedNow").asInt()).isEqualTo(1);
+		assertThat(db.sql("select position from bank_statement_line where payment_id is not null")
+				.query(Integer.class).list())
+				.as("the member was booked by the line that was printed second")
+				.containsExactly(1);
+		assertThat(db.sql("select count(*) from payment where competitor_id = ?").param(member)
+				.query(Long.class).single()).isEqualTo(1);
+		assertThat(states(taken)).containsExactlyInAnyOrder("booked", "alreadyRecorded");
+	}
+
 	/** A STATEMENT WITH NOTHING BUT THE BANK'S CHARGES ON IT is taken, and has no payment to show. */
 	@Test
 	void aStatementOfChargesOnlyIsTakenAndHasNoLines() throws Exception {

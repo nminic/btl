@@ -195,18 +195,24 @@ describe('two panels with their own ids, drawn again together', () => {
     expect(cells.getByRole('button', { name: other })).toHaveAttribute('aria-expanded', 'false')
   })
 
-  it('gives the focus to the panel that had it, though the other is drawn first and asks for it too', async () => {
+  /* IN BOTH ORDERS (PENDING, review of PR 820, 28.11.2026): with the focus on the second only, a panel that took
+     the focus for itself because it is drawn last passes, and so does a panel that never asked at all. With the focus
+     on the first, the panel drawn after it also asks for the focus when it is drawn again, and it must not get it. */
+  it.each([
+    ['first', 'Open the first', 'Open the second'],
+    ['second', 'Open the second', 'Open the first'],
+  ])('gives the focus to the %s, the panel that had it, though the other asks for it too', async (_which, had, other) => {
     const user = setupUser()
 
     render(<TwoPanels />)
-    await user.click(screen.getByRole('button', { name: 'Open the second' }))
-    expect(screen.getByRole('button', { name: 'Open the second' })).toHaveFocus()
+    await user.click(screen.getByRole('button', { name: had }))
+    expect(screen.getByRole('button', { name: had })).toHaveFocus()
 
     fireEvent.click(screen.getByRole('button', { name: 'turn' }))
 
     const cells = within(screen.getByTestId('cells'))
 
-    expect(cells.getByRole('button', { name: 'Open the second' })).toHaveFocus()
-    expect(cells.getByRole('button', { name: 'Open the first' })).not.toHaveFocus()
+    expect(cells.getByRole('button', { name: had })).toHaveFocus()
+    expect(cells.getByRole('button', { name: other })).not.toHaveFocus()
   })
 })

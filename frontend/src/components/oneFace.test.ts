@@ -152,6 +152,41 @@ function exportedBy(wanted: string): string[] {
     .sort()
 }
 
+/**
+ * Where every export of a module is DECLARED, as the compiler resolves it: the export's own name and the module of
+ * each declaration the name finally stands for. An alias (`export { CropSliders as Sliders } from './CropSliders'`,
+ * `export *`, a chain of them) is followed to the symbol it names with `getAliasedSymbol`, so the answer is about the
+ * declaration and not about what somebody chose to call it (PENDING, review of PR 820, 28.11.2026: a renamed
+ * re-export passed a case that compared names).
+ */
+function declaredWhereExportedBy(wanted: string): { name: string; declaredIn: string[] }[] {
+  const at = join(SRC, wanted).split(sep).join('/')
+  const program = ts.createProgram([at], {
+    ...AS_THE_BUNDLER_DOES,
+    jsx: ts.JsxEmit.ReactJSX,
+    module: ts.ModuleKind.ESNext,
+    target: ts.ScriptTarget.ES2022,
+    noEmit: true,
+    skipLibCheck: true,
+  })
+  const file = program.getSourceFile(at)
+  const checker = program.getTypeChecker()
+  const module = file === undefined ? undefined : checker.getSymbolAtLocation(file)
+
+  if (module === undefined) {
+    throw new Error(`the compiler found no module at ${wanted}`)
+  }
+
+  return checker.getExportsOfModule(module).map((one) => {
+    const real = (one.flags & ts.SymbolFlags.Alias) === 0 ? one : checker.getAliasedSymbol(one)
+
+    return {
+      name: one.name,
+      declaredIn: (real.declarations ?? []).map((where) => named(where.getSourceFile().fileName)).sort(),
+    }
+  })
+}
+
 describe('the circle a member is drawn in', () => {
   it('takes its letters from a member’s own record, so only an account asks for a monogram', () => {
     /* The other trace, and the one that found the header. `app/monogram.ts` answers the last
@@ -248,12 +283,38 @@ describe('the control a circle is moved with', () => {
     /* THE SECOND DOOR TO THE SAME PARTS (PENDING, review of PR 815): the case above asks who IMPORTS `CropWindow`
        and `CropSliders`, and a line `export { CropSliders } from './CropSliders'` in `CropChooser` is the one
        importer that is allowed, so every screen could then take the sliders from it and the case above would
-       stay green. Asked of what the module exports, as the compiler counts it, so `export *` and a renamed
-       re-export are the same answer as the plain one. */
+       stay green. Asked of the NAMES the module exports, as the compiler counts them, so `export *` is the same
+       answer as the plain one; a renamed re-export is a name on neither list and is the case below. */
     const handed = exportedBy('components/CropChooser.tsx')
 
     expect(handed, 'the module hands nothing out, so there is nothing to ask of it').toContain('CropChooser')
     expect(handed, 'CropChooser hands out a part of the control').not.toContain('CropWindow')
     expect(handed, 'CropChooser hands out a part of the control').not.toContain('CropSliders')
+  })
+
+  it('hands out nothing that is DECLARED in one of its two parts, whatever the export is called', () => {
+    /* THE SAME DOOR UNDER ANOTHER NAME (PENDING, review of PR 820, 28.11.2026): the case above compares the names an
+       export has, and `export { CropSliders as Sliders } from './CropSliders'` is the second door under a name that
+       is on neither list, so it passed 5 of 5. Asked of where each export is DECLARED, which the compiler answers by
+       following an alias to the symbol it names, the spelling no longer matters: a plain re-export, a renamed one,
+       `export *` and a chain of them all end at the same declaration.
+
+       WHAT THIS DOES NOT HOLD: a NEW value in `CropChooser.tsx` that is set to a part
+       (`export const Sliders = CropSliders`) is declared in `CropChooser.tsx` and passes, as a copy of the part under
+       another name does. It is a hand-made door and a review question, as the case on who imports the parts says of a
+       circle drawn with code of its own. */
+    const handed = declaredWhereExportedBy('components/CropChooser.tsx')
+
+    expect(
+      handed.find((one) => one.name === 'CropChooser')?.declaredIn,
+      'the module does not hand out CropChooser from CropChooser.tsx, so what follows asks nothing',
+    ).toEqual(['components/CropChooser.tsx'])
+
+    for (const part of ['components/CropWindow.tsx', 'components/CropSliders.tsx']) {
+      expect(
+        handed.filter((one) => one.declaredIn.includes(part)).map((one) => one.name),
+        `CropChooser hands out what is declared in ${part}, under a name of its own or not`,
+      ).toEqual([])
+    }
   })
 })
