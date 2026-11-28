@@ -3,11 +3,14 @@ package com.btl.portal.web;
 import com.btl.portal.TestcontainersConfiguration;
 import com.btl.portal.TheEndOfTheTransaction;
 import com.btl.portal.domain.account.SessionLife;
+import com.btl.portal.domain.mail.WhatTheMessageSays.Said;
+import com.btl.portal.domain.photo.PicturesOfASize;
 import com.btl.portal.domain.photo.PicturesThatCarryMetadata;
 import com.btl.portal.domain.photo.WhatAPictureIs;
 import com.btl.portal.domain.photo.WithoutMetadata;
 import com.btl.portal.domain.season.SeasonClock;
 import com.btl.portal.domain.token.SecretToken;
+import com.btl.portal.mail.Postman;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -22,6 +25,8 @@ import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.mock.web.MockPart;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
@@ -44,6 +49,13 @@ import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -120,6 +132,10 @@ class AResultsPictureAsProofTest {
 	@Autowired
 	private ObjectMapper mapper;
 
+	/** The letter a correction sends, watched and not sent: the relay is not what these cases are about. */
+	@MockitoSpyBean
+	private Postman postman;
+
 	private final Map<String, String> cookies = new HashMap<>();
 
 	private long race;
@@ -136,6 +152,8 @@ class AResultsPictureAsProofTest {
 		member(SOMEBODY_ELSE, "Bojan", "Drugi");
 		staff(OVER_THE_RESULTS, "queue:results");
 		staff(OVER_THE_PROFILES, "queue:profiles");
+
+		doNothing().when(postman).send(any(Said.class), anyString());
 
 		race = race("Dugi maraton", "2027-05-05");
 		long theRaceIRan = race("Polumaraton", "2027-04-04");
@@ -165,8 +183,8 @@ class AResultsPictureAsProofTest {
 
 		MockHttpServletResponse answered = sent(multipart("/api/results")
 				.file(new MockMultipartFile("picture", "../../../izlazim.jpg", MediaType.IMAGE_JPEG_VALUE, png))
-				.param("run", json(Map.of("raceId", race, "seconds", 12345, "link", "",
-						"comment", "Sat pokazuje 3:25:45"))), ME);
+				.part(new MockPart("run", json(Map.of("raceId", race, "seconds", 12345, "link", "",
+						"comment", "Sat pokazuje 3:25:45")).getBytes(StandardCharsets.UTF_8))), ME);
 
 		assertThat(answered.getStatus()).isEqualTo(201);
 
@@ -235,7 +253,7 @@ class AResultsPictureAsProofTest {
 		MockHttpServletResponse answered = sent(multipart("/api/results")
 				.file(new MockMultipartFile("picture", "sat.png", MediaType.IMAGE_PNG_VALUE,
 						"nije slika".getBytes(StandardCharsets.UTF_8)))
-				.param("run", json(Map.of("raceId", race, "seconds", 12345, "link", "", "comment", "Sat"))), ME);
+				.part(new MockPart("run", json(Map.of("raceId", race, "seconds", 12345, "link", "", "comment", "Sat")).getBytes(StandardCharsets.UTF_8))), ME);
 
 		assertThat(answered.getStatus()).isEqualTo(400);
 		assertThat(reasonOf(answered)).isEqualTo(ResultWriteApi.THIS_IS_NOT_A_PICTURE);
@@ -298,7 +316,7 @@ class AResultsPictureAsProofTest {
 		assertThat(db.sql("select photo_id from verification where result_submission_id = ?")
 				.param(idIn(byWords)).query(Long.class).optional()).isEmpty();
 
-		assertThat(sent(multipart("/api/results").param("run", json(linked)), ME).getStatus()).isEqualTo(201);
+		assertThat(sent(multipart("/api/results").part(new MockPart("run", json(linked).getBytes(StandardCharsets.UTF_8))), ME).getStatus()).isEqualTo(201);
 
 		MockHttpServletResponse noRun = sent(multipart("/api/results")
 				.file(new MockMultipartFile("picture", "a.jpg", MediaType.IMAGE_JPEG_VALUE, aJpeg("x"))), ME);
@@ -306,7 +324,7 @@ class AResultsPictureAsProofTest {
 		assertThat(noRun.getStatus()).isEqualTo(400);
 		assertThat(reasonOf(noRun)).isEqualTo(ResultWriteApi.THE_FORM_IS_NOT_COMPLETE);
 
-		MockHttpServletResponse notJson = sent(multipart("/api/results").param("run", "{nije json"), ME);
+		MockHttpServletResponse notJson = sent(multipart("/api/results").part(new MockPart("run", "{nije json".getBytes(StandardCharsets.UTF_8))), ME);
 
 		assertThat(reasonOf(notJson)).isEqualTo(ResultWriteApi.THE_FORM_IS_NOT_COMPLETE);
 	}
@@ -325,6 +343,234 @@ class AResultsPictureAsProofTest {
 		assertThat(first).isNotEqualTo(second);
 		assertThat(Files.readAllBytes(PHOTOS.resolve(String.valueOf(first))))
 				.isEqualTo(Files.readAllBytes(PHOTOS.resolve(String.valueOf(second))));
+	}
+
+	// THE PICTURE'S OWN SIZE ---------------------------------------------------------------------------------
+
+	/**
+	 * A PICTURE THAT CLAIMS MORE THAN A HUNDRED MEGAPIXELS IN ITS OWN HEADER IS TOO BIG, WHATEVER IT WEIGHS. The
+	 * owner, 28.11.2026 (PDL): „Za sliku kao dokaz važi i granica od 100 megapiksela (dimenzije iz zaglavlja), uz
+	 * granicu od 5 MB; veća se odbija kao prevelika." The finding of the review of PR 845 was a PNG of 389 KB that
+	 * says 20000 by 20000 and passed byte for byte.
+	 *
+	 * <p><b>Each side of the ceiling for each of the types whose header says it</b>: 10000 by 10000 is taken and one
+	 * row or column over it is not, as a PNG and as a JPEG, and the two 20000 by 20000 are the finding itself. And
+	 * <b>the ceiling of the cut does not apply</b> (PDL: a proof is never cut): a PNG of a hundred million pixels
+	 * (four times the 25 million the cut takes) and a WebP over the four million the cut takes of one are taken,
+	 * the second on a correction, since three pictures wait at most. The refusal is the sentence the route already
+	 * gives a picture of more than five megabytes, and nothing is written, on the correction as on the new run.
+	 */
+	@Test
+	void aPictureThatClaimsMoreThanAHundredMegapixelsIsTooBigWhateverItWeighs() throws Exception {
+		Map<String, Object> run = Map.of("raceId", race, "seconds", 12345, "link", "", "comment", "Velika");
+		long before = everything();
+
+		for (byte[] over : List.of(PicturesOfASize.png(10_000, 10_001), PicturesOfASize.png(20_000, 20_000),
+				PicturesOfASize.jpeg(10_001, 10_000), PicturesOfASize.jpeg(20_000, 20_000))) {
+			MockHttpServletResponse refused = reported(ME, run, over);
+
+			assertThat(refused.getStatus()).isEqualTo(400);
+			assertThat(reasonOf(refused)).isEqualTo(ResultWriteApi.THE_PICTURE_IS_TOO_BIG);
+		}
+
+		MockHttpServletResponse correction = corrected(myResult, PicturesOfASize.png(20_000, 20_000), "Velika");
+
+		assertThat(correction.getStatus()).isEqualTo(400);
+		assertThat(reasonOf(correction)).isEqualTo(ResultWriteApi.THE_PICTURE_IS_TOO_BIG);
+		assertThat(everything()).as("a picture that was too big left something behind").isEqualTo(before);
+
+		assertThat(reported(ME, run, PicturesOfASize.png(10_000, 10_000)).getStatus())
+				.as("exactly a hundred megapixels").isEqualTo(201);
+		assertThat(reported(ME, run, PicturesOfASize.jpeg(10_000, 10_000)).getStatus())
+				.as("exactly a hundred megapixels, as a JPEG").isEqualTo(201);
+		assertThat(corrected(myResult, PicturesOfASize.webpOverItsCeiling(), "Preko granice sečenja").getStatus())
+				.as("the four million pixels the cut takes of a WebP were asked of a proof").isEqualTo(200);
+	}
+
+	// THE RUN, FROM THE BODY AND NOT LONGER THAN A BODY ------------------------------------------------------
+
+	/**
+	 * THE PART {@code run} IS HELD TO THE SAME 512 KIB AS A JSON BODY, and answered the same way (review of PR 845,
+	 * N1: a multipart body is left out of {@code NoBodyIsLargerThan}, so a comment of 600000 characters was a row).
+	 * The JSON road is asked beside it so that „the same answer" is two answers read off the same server, and the
+	 * boundary is exact: a part of exactly {@link NoBodyIsLargerThan#BYTES} is taken and one byte more is not.
+	 */
+	@Test
+	void aRunLongerThanABodyMayBeIsRefusedAsTheJsonRoadRefusesIt() throws Exception {
+		Map<String, Object> empty = new HashMap<>(Map.of("raceId", race, "seconds", 12345, "link", "", "comment", ""));
+		int room = (int) NoBodyIsLargerThan.BYTES - json(empty).length();
+		long before = everything();
+
+		empty.put("comment", "a".repeat(room));
+		String atTheLimit = json(empty);
+
+		empty.put("comment", "a".repeat(room + 1));
+		String oneOver = json(empty);
+
+		assertThat(atTheLimit.getBytes(StandardCharsets.UTF_8)).hasSize((int) NoBodyIsLargerThan.BYTES);
+
+		MockHttpServletResponse jsonRoad = sent(post("/api/results").contentType(MediaType.APPLICATION_JSON)
+				.content(oneOver), ME);
+		MockHttpServletResponse multipartRoad = sent(multipart("/api/results")
+				.part(new MockPart("run", oneOver.getBytes(StandardCharsets.UTF_8))), ME);
+		MockHttpServletResponse correction = sent(multipart("/api/results/" + myResult)
+				.part(new MockPart("run", oneOver.getBytes(StandardCharsets.UTF_8)))
+				.with(request -> {
+					request.setMethod("PUT");
+					return request;
+				}), ME);
+
+		assertThat(jsonRoad.getStatus()).as("the JSON road, which is what the others are measured against")
+				.isEqualTo(413);
+		assertThat(multipartRoad.getStatus()).as("a part run one byte over a body").isEqualTo(jsonRoad.getStatus());
+		assertThat(correction.getStatus()).as("the same on a correction").isEqualTo(jsonRoad.getStatus());
+		assertThat(everything()).as("a run too long left something behind").isEqualTo(before);
+
+		assertThat(sent(multipart("/api/results")
+				.part(new MockPart("run", atTheLimit.getBytes(StandardCharsets.UTF_8))), ME).getStatus())
+				.as("a part of exactly a body's length").isEqualTo(201);
+	}
+
+	/**
+	 * THE PART {@code run} IS READ FROM THE BODY AND FROM NOWHERE ELSE (review of PR 845, security, N4): a run in
+	 * the ADDRESS of a request ({@code POST /api/results?run=...}) is a form not filled in, so a comment never
+	 * stands in an access log as a thing the route took. And with both, the body is the run.
+	 */
+	@Test
+	void theRunIsReadFromTheBodyOfTheRequestAndNeverFromItsAddress() throws Exception {
+		long before = everything();
+
+		MockHttpServletResponse inTheAddress = sent(multipart("/api/results").queryParam("run",
+				json(Map.of("raceId", race, "seconds", 12000, "link", "", "comment", "U adresi"))), ME);
+
+		assertThat(inTheAddress.getStatus()).isEqualTo(400);
+		assertThat(reasonOf(inTheAddress)).isEqualTo(ResultWriteApi.THE_FORM_IS_NOT_COMPLETE);
+		assertThat(everything()).as("a run in the address was written").isEqualTo(before);
+
+		MockHttpServletResponse both = sent(multipart("/api/results")
+				.queryParam("run", json(Map.of("raceId", race, "seconds", 12000, "link", "", "comment", "U adresi")))
+				.part(new MockPart("run", json(Map.of("raceId", race, "seconds", 12345, "link", "",
+						"comment", "U telu")).getBytes(StandardCharsets.UTF_8))), ME);
+
+		assertThat(both.getStatus()).isEqualTo(201);
+		assertThat(db.sql("select seconds || ' ' || comment from result_submission where id = ?")
+				.param(idIn(both)).query(String.class).single()).isEqualTo("12345 U telu");
+	}
+
+	/**
+	 * THE DOOR IS THE SAME FOR A BODY WITH A PICTURE AS FOR A JSON ONE (review of PR 845, N3), on both roads that
+	 * take a picture: nobody signed in is told 401, an account that names no member 404, a member whose fee does
+	 * not stand 404 (A8: the same answer as an address that is not there), and a request with no CSRF token 403.
+	 * Nothing is written by any of them.
+	 */
+	@Test
+	void aBodyWithAPictureMeetsTheSameDoorAsAJsonOne() throws Exception {
+		member("000923", "Lena", "Zakasnela");
+		db.sql("delete from membership where competitor_id = (select id from competitor where member_number = ?)")
+				.param("000923").update();
+
+		long before = everything();
+		String run = json(Map.of("raceId", race, "seconds", 12345, "link", "", "comment", "Sat"));
+
+		for (boolean correction : List.of(false, true)) {
+			String road = correction ? "a correction" : "a new run";
+
+			assertThat(withAPicture(correction, run, null, true).getStatus()).as("%s, nobody signed in", road)
+					.isEqualTo(401);
+			assertThat(withAPicture(correction, run, OVER_THE_PROFILES, true).getStatus())
+					.as("%s, an account that names no member", road).isEqualTo(404);
+			assertThat(withAPicture(correction, run, "000923", true).getStatus())
+					.as("%s, a member whose fee does not stand", road).isEqualTo(404);
+			assertThat(withAPicture(correction, run, ME, false).getStatus())
+					.as("%s, no CSRF token", road).isEqualTo(403);
+		}
+
+		assertThat(everything()).as("a door that refused left something behind").isEqualTo(before);
+	}
+
+	// A CIRCLE BESIDE THE APPROVAL OF A PROOF ----------------------------------------------------------------
+
+	/**
+	 * A CIRCLE SENT BESIDE THE APPROVAL OF A RUN'S PROOF IS REFUSED AND NOT DROPPED (review of PR 845, general,
+	 * N5): a proof is never cut, so an approval of a results row writes no circle, and the route's own rule for
+	 * every other thing it does not carry out is „refused rather than dropping". The run is not counted, the row
+	 * keeps its picture, and the same approval without the circle goes through.
+	 */
+	@Test
+	void aCircleBesideTheApprovalOfAProofIsRefusedAndNothingIsDecided() throws Exception {
+		long submission = idIn(reported(ME, Map.of("raceId", race, "seconds", 12345, "link", "",
+				"comment", "Sat"), aJpeg("sa krugom")));
+		long row = theRowOf(submission);
+		long photo = thePictureOf(submission);
+
+		MockHttpServletResponse refused = decide(row, "{\"approved\":true," + seen(row)
+				+ ",\"crop\":{\"x\":0.25,\"y\":0.75,\"size\":0.5}}");
+
+		assertThat(refused.getStatus()).isEqualTo(400);
+		assertThat(reasonOf(refused)).isEqualTo("Krug se zadaje samo uz odobravanje slike.");
+		assertThat(db.sql("select state || ' ' || photo_id from verification where id = ?").param(row)
+				.query(String.class).single()).isEqualTo("waiting " + photo);
+		assertThat(db.sql("select count(*) from result r join competitor c on c.id = r.competitor_id"
+						+ " where c.member_number = ? and r.race_id = ?").params(ME, race).query(Long.class)
+				.single()).isZero();
+
+		assertThat(decide(row, "{\"approved\":true," + seen(row) + "}").getStatus()).isEqualTo(200);
+	}
+
+	// WHAT IS WRITTEN IN THE QUEUE AS THE WORDS ---------------------------------------------------------------
+
+	/**
+	 * A COMMENT OF NOTHING BUT WHAT THE FORM TAKES OFF IS NO COMMENT ON THE ROAD EITHER (review of PR 847): a no-break
+	 * space, a figure space, a narrow no-break space and a byte order mark are blank to {@code trim()} and were words
+	 * to {@code isBlank()}, so a body that went round the form proved a run with a comment that is nothing.
+	 */
+	@Test
+	void aCommentOfNothingButWhatTheFormTrimsIsNoCommentOnTheRoad() throws Exception {
+		long before = everything();
+
+		for (String nothing : List.of("\u00A0", "\u2007", "\u202F", "\uFEFF", "\u00A0\uFEFF \t")) {
+			MockHttpServletResponse alone = reported(ME, Map.of("raceId", race, "seconds", 12345, "link", "",
+					"comment", nothing), new byte[0]);
+			MockHttpServletResponse withAPicture = reported(ME, Map.of("raceId", race, "seconds", 12345, "link", "",
+					"comment", nothing), aJpeg("bez reci"));
+
+			assertThat(reasonOf(alone)).as("%s as the only proof", nothing.codePoints().boxed().toList())
+					.isEqualTo("nothingShowsItHappened");
+			assertThat(reasonOf(withAPicture)).as("%s beside a picture", nothing.codePoints().boxed().toList())
+					.isEqualTo("aPhotographNeverStandsAlone");
+		}
+
+		assertThat(everything()).isEqualTo(before);
+	}
+
+	/**
+	 * A CORRECTION THAT IS ACCEPTED SENDS ONE LETTER, AND ONE THAT IS REFUSED SENDS NONE (review of PR 845, round
+	 * 2: moving the post ahead of the refusal of a fourth picture kept the whole class green, since nothing watched
+	 * the post). A run sent in is answered by no letter at all ({@code ResultWriteApi}: the line in his inbox is the
+	 * whole of it), so the three it takes are watched to send nothing, and the letter goes to HIS address and to
+	 * nobody else's.
+	 */
+	@Test
+	void aRefusedFourthPictureSendsNoLetterAndAnAcceptedCorrectionSendsOne() throws Exception {
+		Map<String, Object> run = Map.of("raceId", race, "seconds", 12345, "link", "", "comment", "Sat");
+		long first = idIn(reported(ME, run, aJpeg("prva")));
+
+		reported(ME, run, aJpeg("druga"));
+		reported(ME, run, aJpeg("treca"));
+
+		verify(postman, never()).send(any(Said.class), anyString());
+
+		MockHttpServletResponse refused = corrected(myResult, aJpeg("cetvrta"), "Sat");
+
+		assertThat(reasonOf(refused)).isEqualTo(ResultWriteApi.THREE_PICTURES_WAIT);
+		verify(postman, never()).send(any(Said.class), anyString());
+
+		assertThat(decide(theRowOf(first), "{\"approved\":false,\"reason\":\"Ne vidi se.\","
+				+ seen(theRowOf(first)) + "}").getStatus()).isEqualTo(200);
+		assertThat(corrected(myResult, aJpeg("posle odluke"), "Sat").getStatus()).isEqualTo(200);
+
+		verify(postman, times(1)).send(any(Said.class), eq(ME + "@primer.rs"));
+		verify(postman, times(1)).send(any(Said.class), anyString());
 	}
 
 	// THREE AT MOST -----------------------------------------------------------------------------------------
@@ -347,12 +593,27 @@ class AResultsPictureAsProofTest {
 						+ " values ('profiles', (select id from competitor where member_number = ?), 'Vera', '', ?)")
 				.params(ME, portrait).update();
 
+		/* AND A LOGO OF A TEAM OF HIS THAT WAITS, in the tab of the teams and with his number on it: a count over
+		   „every tab but the profiles" or over „the results and the teams" would refuse his third (review of PR 845,
+		   round 2: the count read as `queue in (?, 'teams')` kept the class green). */
+		long team = db.sql("insert into team (slug, name, bio, link, place_id, city, country_id, first_season)"
+						+ " values ('dokaz-tim', 'Dokazni tim', '', '', (select id from place where rank = 1),"
+						+ " null, null, 2027) returning id")
+				.query(Long.class).single();
+		long logo = db.sql("insert into photo (media_type, byte_size, digest, crop_x, crop_y, crop_diameter)"
+						+ " values ('image/png', 4, ?, 0.5, 0.5, 1) returning id")
+				.param("c".repeat(64)).query(Long.class).single();
+
+		db.sql("insert into verification (queue, competitor_id, subject, body, photo_id, team_id)"
+						+ " values ('teams', (select id from competitor where member_number = ?), 'Tim', '', ?, ?)")
+				.params(ME, logo, team).update();
+
 		Map<String, Object> run = Map.of("raceId", race, "seconds", 12345, "link", "", "comment", "Sat");
 
 		/* AND A RUN OF HIS THAT WAITS WITH NO PICTURE, proved by its link: it is a row in the same tab and holds no
 		   file, so a count of his rows rather than of his pictures would refuse the third. */
-		assertThat(sent(multipart("/api/results").param("run", json(Map.of("raceId", race, "seconds", 12000,
-				"link", "https://rezultati.rs/prvo-bez-slike", "comment", ""))), ME).getStatus()).isEqualTo(201);
+		assertThat(sent(multipart("/api/results").part(new MockPart("run", json(Map.of("raceId", race, "seconds", 12000,
+				"link", "https://rezultati.rs/prvo-bez-slike", "comment", "")).getBytes(StandardCharsets.UTF_8))), ME).getStatus()).isEqualTo(201);
 
 		for (int one = 1; one <= ResultWriteApi.AT_MOST_PICTURES_WAITING; one++) {
 			assertThat(reported(ME, run, aJpeg("slika " + one)).getStatus()).as("picture %d", one).isEqualTo(201);
@@ -376,8 +637,8 @@ class AResultsPictureAsProofTest {
 				.isEqualTo(4L);
 
 		/* A run proved by its link alone holds no picture, and goes. */
-		assertThat(sent(multipart("/api/results").param("run", json(Map.of("raceId", race, "seconds", 12345,
-				"link", "https://rezultati.rs/bez-slike", "comment", ""))), ME).getStatus()).isEqualTo(201);
+		assertThat(sent(multipart("/api/results").part(new MockPart("run", json(Map.of("raceId", race, "seconds", 12345,
+				"link", "https://rezultati.rs/bez-slike", "comment", "")).getBytes(StandardCharsets.UTF_8))), ME).getStatus()).isEqualTo(201);
 
 		/* And somebody else, with one of his own waiting, still sends two. */
 		assertThat(reported(SOMEBODY_ELSE, run, aJpeg("njegova druga")).getStatus()).isEqualTo(201);
@@ -418,8 +679,8 @@ class AResultsPictureAsProofTest {
 				"link", "https://rezultati.rs/moja-trka", "comment", "   "), aJpeg("uz link"));
 		MockHttpServletResponse correction = sent(multipart("/api/results/" + myResult)
 				.file(new MockMultipartFile("picture", "sat.jpg", MediaType.IMAGE_JPEG_VALUE, aJpeg("uz link")))
-				.param("run", json(Map.of("distanceKm", "21.10", "ascentM", 0, "descentM", 0, "seconds", 5000,
-						"link", "https://rezultati.rs/ispravka", "comment", "   ")))
+				.part(new MockPart("run", json(Map.of("distanceKm", "21.10", "ascentM", 0, "descentM", 0, "seconds", 5000,
+						"link", "https://rezultati.rs/ispravka", "comment", "   ")).getBytes(StandardCharsets.UTF_8)))
 				.with(request -> {
 					request.setMethod("PUT");
 					return request;
@@ -458,8 +719,8 @@ class AResultsPictureAsProofTest {
 	void aCorrectionCarriesItsPictureAndAmendsTheResultItNames() throws Exception {
 		MockHttpServletResponse answered = sent(multipart("/api/results/" + myResult)
 				.file(new MockMultipartFile("picture", "sat.jpg", MediaType.IMAGE_JPEG_VALUE, aJpeg("ispravka")))
-				.param("run", json(Map.of("distanceKm", "21.10", "ascentM", 0, "descentM", 0, "seconds", 5000,
-						"link", "", "comment", "Sat je stao na 1:23:20")))
+				.part(new MockPart("run", json(Map.of("distanceKm", "21.10", "ascentM", 0, "descentM", 0, "seconds", 5000,
+						"link", "", "comment", "Sat je stao na 1:23:20")).getBytes(StandardCharsets.UTF_8)))
 				.with(request -> {
 					request.setMethod("PUT");
 					return request;
@@ -480,7 +741,7 @@ class AResultsPictureAsProofTest {
 
 		MockHttpServletResponse notJson = sent(multipart("/api/results/" + myResult)
 				.file(new MockMultipartFile("picture", "sat.jpg", MediaType.IMAGE_JPEG_VALUE, aJpeg("x")))
-				.param("run", "nije json")
+				.part(new MockPart("run", "nije json".getBytes(StandardCharsets.UTF_8)))
 				.with(request -> {
 					request.setMethod("PUT");
 					return request;
@@ -497,8 +758,8 @@ class AResultsPictureAsProofTest {
 		MockHttpServletResponse answered = sent(multipart("/api/results/" + somebodyElsesResult)
 				.file(new MockMultipartFile("picture", "sat.jpg", MediaType.IMAGE_JPEG_VALUE,
 						"nije slika".getBytes(StandardCharsets.UTF_8)))
-				.param("run", json(Map.of("distanceKm", "21.10", "ascentM", 0, "descentM", 0, "seconds", 5000,
-						"link", "", "comment", "Tudji")))
+				.part(new MockPart("run", json(Map.of("distanceKm", "21.10", "ascentM", 0, "descentM", 0, "seconds", 5000,
+						"link", "", "comment", "Tudji")).getBytes(StandardCharsets.UTF_8)))
 				.with(request -> {
 					request.setMethod("PUT");
 					return request;
@@ -712,18 +973,41 @@ class AResultsPictureAsProofTest {
 		MockMultipartHttpServletRequestBuilder asking = multipart("/api/results")
 				.file(new MockMultipartFile("picture", "sat.jpg", MediaType.IMAGE_JPEG_VALUE, picture));
 
-		return sent(asking.param("run", json(run)), who);
+		return sent(asking.part(new MockPart("run", json(run).getBytes(StandardCharsets.UTF_8))), who);
 	}
 
 	private MockHttpServletResponse corrected(long result, byte[] picture, String comment) throws Exception {
 		return sent(multipart("/api/results/" + result)
 				.file(new MockMultipartFile("picture", "sat.jpg", MediaType.IMAGE_JPEG_VALUE, picture))
-				.param("run", json(Map.of("distanceKm", "21.10", "ascentM", 0, "descentM", 0, "seconds", 5000,
-						"link", "", "comment", comment)))
+				.part(new MockPart("run", json(Map.of("distanceKm", "21.10", "ascentM", 0, "descentM", 0, "seconds", 5000,
+						"link", "", "comment", comment)).getBytes(StandardCharsets.UTF_8)))
 				.with(request -> {
 					request.setMethod("PUT");
 					return request;
 				}), ME);
+	}
+
+	/** A body with a picture sent to the door, as somebody or nobody, with the CSRF token or without it. */
+	private MockHttpServletResponse withAPicture(boolean correction, String run, String who, boolean withToken)
+			throws Exception {
+		MockMultipartHttpServletRequestBuilder asking = multipart(correction ? "/api/results/" + myResult
+				: "/api/results")
+				.file(new MockMultipartFile("picture", "sat.jpg", MediaType.IMAGE_JPEG_VALUE, aJpeg("na vratima")))
+				.part(new MockPart("run", run.getBytes(StandardCharsets.UTF_8)));
+
+		if (correction) {
+			asking.with(request -> {
+				request.setMethod("PUT");
+				return request;
+			});
+		}
+
+		if (withToken) {
+			return sent(asking, who);
+		}
+
+		return http.perform(asking.cookie(new Cookie(SessionCookie.NAME, cookies.get(who)))).andReturn()
+				.getResponse();
 	}
 
 	private MockHttpServletResponse decide(long row, String body) throws Exception {

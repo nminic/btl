@@ -561,6 +561,37 @@ class SmallPictureTest {
 	}
 
 	/**
+	 * THE NUMBER ASKED IS THE NUMBER ASKED, for the type whose header says it (PDL 28.11.2026: a picture sent as the
+	 * proof of a run is held to a hundred megapixels of its own header, and the ceiling of the cut is not its
+	 * ceiling). Exactly the number is not more and one more is, as a PNG, a JPEG and a WebP, and a WebP whose frame
+	 * claims more than its canvas is more as well, which the reader's canvas alone would not say. A header the
+	 * reader cannot read is not more, whatever is asked.
+	 */
+	@Test
+	void aPictureClaimsMoreThanTheNumberAskedOfItsHeaderAndOfNothingDecoded() {
+		long hundredMillion = 100_000_000L;
+
+		assertThat(SmallPicture.claimsMoreThan(PicturesOfASize.png(10_000, 10_000), "image/png", hundredMillion))
+				.isFalse();
+		assertThat(SmallPicture.claimsMoreThan(PicturesOfASize.png(10_000, 10_001), "image/png", hundredMillion))
+				.isTrue();
+		assertThat(SmallPicture.claimsMoreThan(PicturesOfASize.jpeg(10_000, 10_000), "image/jpeg", hundredMillion))
+				.isFalse();
+		assertThat(SmallPicture.claimsMoreThan(PicturesOfASize.jpeg(10_001, 10_000), "image/jpeg", hundredMillion))
+				.isTrue();
+
+		byte[] aWebp = PicturesOfASize.webpOverItsCeiling();
+
+		assertThat(SmallPicture.claimsMoreThan(aWebp, "image/webp", 2_001L * 2_000L)).isFalse();
+		assertThat(SmallPicture.claimsMoreThan(aWebp, "image/webp", 2_001L * 2_000L - 1)).isTrue();
+		assertThat(SmallPicture.claimsMoreThan(resource("bomb.webp"), "image/webp", hundredMillion))
+				.as("a frame larger than its canvas was let through on the canvas").isTrue();
+
+		assertThat(SmallPicture.claimsMoreThan(new byte[] { (byte) 0xFF, (byte) 0xD8, (byte) 0xFF, 'n', 'o' },
+				"image/jpeg", 0)).isFalse();
+	}
+
+	/**
 	 * ONE CEILING AND NOT TWO: for every picture here, „larger than the cut takes" is exactly „the cut
 	 * refuses it as more than it cuts". A ceiling copied into the doors and then moved in one place only
 	 * would part the two on the pictures between the old number and the new one, which is why the set

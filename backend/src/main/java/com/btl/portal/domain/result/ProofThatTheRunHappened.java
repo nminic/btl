@@ -129,13 +129,13 @@ public final class ProofThatTheRunHappened {
 		}
 
 		if (report.aPhotograph()) {
-			return blank(report.comment()) ? Outcome.A_PHOTOGRAPH_NEVER_STANDS_ALONE : Outcome.GOOD;
+			return noWord(report.comment()) ? Outcome.A_PHOTOGRAPH_NEVER_STANDS_ALONE : Outcome.GOOD;
 		}
 
 		/* A link is a proof, and so are words with no link beside them (the class note). The
 		   comment is asked as the photograph's own rule asks it, `blank`, so a comment of
 		   spaces is the nothing it is on the form. */
-		return link.isEmpty() && blank(report.comment()) ? Outcome.NOTHING_SHOWS_IT_HAPPENED : Outcome.GOOD;
+		return link.isEmpty() && noWord(report.comment()) ? Outcome.NOTHING_SHOWS_IT_HAPPENED : Outcome.GOOD;
 	}
 
 	/**
@@ -167,5 +167,25 @@ public final class ProofThatTheRunHappened {
 	/** Absent and whitespace are one thing here: both are a field nobody filled in. */
 	private static boolean blank(String typed) {
 		return typed == null || typed.isBlank();
+	}
+
+	/**
+	 * WHETHER A COMMENT SAYS NOTHING, AS THE FORM SAYS IT: absent, or made only of what {@code String.prototype.trim}
+	 * takes off (the form asks it of {@code value.trim()}, {@code frontend/src/forms/validate.ts}).
+	 *
+	 * <p>Java's {@link String#isBlank} is not that: it leaves the three no-break spaces (U+00A0, U+2007, U+202F) and
+	 * the byte order mark (U+FEFF) as words, and it takes the four separators U+001C to U+001F off, which the form
+	 * does not. A comment of nothing but a no-break space is therefore „nothing" on the form and was a proof of a run
+	 * to a body that went round it (review of PR 847). The set is the form's: the space separators (Zs, and the line
+	 * and paragraph separators of the same category family), the five ASCII whitespace characters, and U+FEFF.
+	 * <b>The link keeps {@link #blank}</b>: its stored shape is the table's ({@code result_submission_link_shape}).
+	 */
+	private static boolean noWord(String comment) {
+		return comment == null || comment.chars().allMatch(ProofThatTheRunHappened::theFormTrimsIt);
+	}
+
+	private static boolean theFormTrimsIt(int character) {
+		return Character.isSpaceChar(character) || character == 0xFEFF
+				|| (character >= 0x09 && character <= 0x0D);
 	}
 }

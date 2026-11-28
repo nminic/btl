@@ -1688,6 +1688,9 @@ class ResultWriteApiTest {
 		assertThat(theSubmission(idIn(fromTheCalendar)))
 				.containsEntry("link", "")
 				.containsEntry("comment", words);
+		assertThat(theModeratorsWords(idIn(fromTheCalendar)))
+				.as("the words the moderator reads are the proof and nothing else stands in their place")
+				.isEqualTo(words);
 
 		Map<String, Object> described = aDescribedRun();
 
@@ -1700,6 +1703,7 @@ class ResultWriteApiTest {
 		assertThat(theSubmission(idIn(byTheMember)))
 				.containsEntry("link", "")
 				.containsEntry("comment", words);
+		assertThat(theModeratorsWords(idIn(byTheMember))).isEqualTo(words);
 
 		MockHttpServletResponse corrected = correctedAs(ME, myResult,
 				correction("42.20", 350, 410, 11400, "", words));
@@ -1708,6 +1712,17 @@ class ResultWriteApiTest {
 		assertThat(theSubmission(idIn(corrected)))
 				.containsEntry("link", "")
 				.containsEntry("comment", words);
+		assertThat(theModeratorsWords(idIn(corrected))).isEqualTo(words);
+	}
+
+	/**
+	 * WHAT THE MODERATOR READS IN THE QUEUE, {@code verification.body}, which is the proof itself when words stand
+	 * alone (review of PR 847): read off the row the submission wrote, and not off the submission, whose
+	 * {@code comment} column is a second home of the same words.
+	 */
+	private String theModeratorsWords(long submission) {
+		return db.sql("select body from verification where result_submission_id = ?").param(submission)
+				.query(String.class).single();
 	}
 
 	/**

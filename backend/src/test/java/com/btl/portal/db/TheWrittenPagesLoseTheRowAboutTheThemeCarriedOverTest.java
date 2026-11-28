@@ -102,6 +102,7 @@ class TheWrittenPagesLoseTheRowAboutTheThemeCarriedOverTest extends DatabaseTest
 	 * is the text V110 gives and the day it signs off on.
 	 */
 	private void theTextAsV110LeftIt() {
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "118");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "114");
 	}
 

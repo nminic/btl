@@ -2110,7 +2110,7 @@ describe('the rulebook', () => {
        22.08.2026). The forms are held to the same thing in src/forms/definitions.test.ts
        and in the case on the picture further down. */
     expect(rulebook).toMatch(
-      /Upisuješ događaj i trku, dužinu, uspon i spust, vreme i link ka zvaničnim rezultatima/,
+      /Upisuješ događaj i trku, dužinu, uspon i spust, vreme i dokaz: link ka zvaničnim rezultatima, sliku ili komentar\./,
     )
     expect(rulebook).toMatch(
       /Ako ga nemaš, pošalji sliku, na primer snimak sata ili diplomu, i kratko napiši zašto linka nema/,
@@ -2915,6 +2915,11 @@ describe('what the written pages say the fee buys', () => {
 
     expect(proof).toMatch(/Ako ga nemaš, pošalji sliku/)
     expect(proof).toMatch(/kratko napiši zašto linka nema i šta se na slici vidi/)
+    /* The third sentence (owner, 28.11.2026: „Potvrđujem član 35 i 33."), between the picture's reason and the
+       sentence that says the picture is deleted: a comment alone is proof when there is neither link nor picture. */
+    expect(proof).toMatch(
+      /šta se na slici vidi\. Ako nemaš ni link ni sliku, dovoljno je da u komentaru napišeš odakle je rezultat, na primer ko je merio i gde je objavljen\. Sliku brišemo čim proverimo rezultat\./,
+    )
 
     /* **What the article „Kako se prijavljuje rezultat" says about how a result reaches the portal is held in the
        snapshot now, with the rest of the written pages** (`writtenVerification.test.ts`,
@@ -2930,7 +2935,7 @@ describe('what the written pages say the fee buys', () => {
        other, is where the rule about the two roads lives, and that the address is
        still asked for on both of them. */
     expect(article).toMatch(/sa svog profila ili sa strane događaja, dugmetom uz trku/)
-    expect(article).toMatch(/vreme i link ka zvaničnim rezultatima/)
+    expect(article).toMatch(/vreme i dokaz: link ka zvaničnim rezultatima, sliku ili komentar\./)
     expect(article).toMatch(/portal sam popuni ono što ta trka zadaje/)
 
     expect(article, 'the article still sends the address into the comment').not.toMatch(
@@ -3085,11 +3090,12 @@ describe('what the written pages say the fee buys', () => {
       to 24.11.2026 with the row about the choice of theme taken out of it (V110; owner, 24.11.2026, the day it is expected on QA),
       by the same rule, and the terms and the rulebook kept 21.11.2026. The policy alone moved on to 25.11.2026 with the row that names
       Microsoft (Azure Translator) as a processor (V114; owner, 25.11.2026, the day it is expected on QA), by the same rule, and the
-      terms and the rulebook kept 21.11.2026. Written per
+      terms and the rulebook kept 21.11.2026. The rulebook alone moved on to 28.11.2026 with the sentence that lets a comment
+      prove a result (V118; owner, 28.11.2026, the day it is expected on QA), by the same rule, and the terms kept 21.11.2026. Written per
        document and not as one day for all three, so a date moved on one of them,
        or left behind on one, is a failure that names the document. */
     const SIGNED_OFF = {
-      pravilnik: '21.11.2026',
+      pravilnik: '28.11.2026',
       'uslovi-koriscenja': '21.11.2026',
       'politika-privatnosti': '25.11.2026',
     } as const
