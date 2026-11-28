@@ -3,6 +3,8 @@ import { must } from '../../test/at'
 import { renderAt } from '../../test/render'
 import { serverThat } from '../../test/serverAnswers'
 import { setupUser } from '../../test/user'
+import en from '../../i18n/en.json'
+import sr from '../../i18n/sr.json'
 import { SLOW } from '../../test/slow'
 
 /**
@@ -205,4 +207,26 @@ describe('a run sent back, sent again with words alone', () => {
       route.stop()
     }
   }, SLOW)
+})
+
+describe('the sentences said when none of the three proofs came', () => {
+  it('is, in Serbian, the owner\'s sentence of 28.11.2026 and nothing near it', () => {
+    /* „Nedostaje dokaz. Upiši link ka zvaničnim rezultatima, priloži sliku ili u komentaru napiši odakle
+       je rezultat." (PDL P9, „Slika kao dokaz uz rezultat, posle izgradnje": the owner chose it among the
+       offered). The dictionary and its snapshot are held to each other elsewhere, which would let the
+       two be changed together; this holds the words themselves. */
+    expect(sr.results.refused.nothingShowsItHappened).toBe(
+      'Nedostaje dokaz. Upiši link ka zvaničnim rezultatima, priloži sliku ili u komentaru napiši odakle je rezultat.',
+    )
+  })
+
+  it.each([
+    ['Serbian', sr.results.refused.nothingShowsItHappened, sr.newResult.needsProof, ['link', 'slik', 'komentar']],
+    ['English', en.results.refused.nothingShowsItHappened, en.newResult.needsProof, ['link', 'picture', 'comment']],
+  ])('names all three ways of proving a run, in %s, on the server\'s refusal and on the correction\'s', (_, refused, correcting, three) => {
+    for (const word of three) {
+      expect(refused.toLowerCase(), `the refusal does not name ${word}`).toContain(word)
+      expect(correcting.toLowerCase(), `the correction's sentence does not name ${word}`).toContain(word)
+    }
+  })
 })
