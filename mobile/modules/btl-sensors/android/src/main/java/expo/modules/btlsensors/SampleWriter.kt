@@ -63,6 +63,14 @@ class SampleWriter(file: File) {
     )
   }
 
+  /**
+   * The member's stop, written by the module and not by the service, which may be down:
+   * the moment on the same elapsedRealtime clock as every `t`, never the wall clock.
+   */
+  fun end(elapsedMs: Long) {
+    write(JSONObject().put("k", "end").put("t", elapsedMs).put("rx", elapsedMs))
+  }
+
   fun close() {
     out.close()
   }

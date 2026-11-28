@@ -149,3 +149,48 @@ ${loc(6000, 6100)}
     expect(recording.pressures).toHaveLength(2);
   });
 });
+
+describe('the line the module writes when the member stops', () => {
+  const END = '{"k":"end","t":9000,"rx":9000}';
+
+  it('is read as the end of the session, and is not damage', () => {
+    const recording = new Recording();
+    recording.append(`${META}\n${LOC}\n${END}\n`);
+
+    expect(recording.endedAt).toBe(9000);
+    expect(recording.unreadable).toBe(0);
+    expect(recording.locations).toHaveLength(1);
+  });
+
+  it('is absent from a file written before it existed, and from one still recording', () => {
+    const recording = new Recording();
+    recording.append(`${META}\n${LOC}\n`);
+
+    expect(recording.endedAt).toBeNull();
+  });
+
+  it('a half of it is damage, and no end', () => {
+    const recording = new Recording();
+    recording.append(`${META}\n${LOC}\n{"k":"end","t":90`);
+
+    expect(recording.endedAt).toBeNull();
+    expect(recording.unreadable).toBe(1);
+  });
+
+  it('without the time it was written at, or without its own time, is damage, as it is for a sample', () => {
+    const recording = new Recording();
+    recording.append(`${META}\n{"k":"end","t":9000}\n{"k":"end","rx":9000}\n`);
+
+    expect(recording.endedAt).toBeNull();
+    expect(recording.unreadable).toBe(2);
+  });
+
+  it('written on the clock after a restart is left out with everything else after it, and is no end', () => {
+    const recording = new Recording();
+    recording.append(`${META}\n${LOC}\n{"k":"end","t":40,"rx":40}\n`);
+
+    expect(recording.restarted).toBe(true);
+    expect(recording.endedAt).toBeNull();
+    expect(recording.unreadable).toBe(0);
+  });
+});

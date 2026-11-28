@@ -1,4 +1,4 @@
-import type { BtlSensors } from '../../../modules/btl-sensors';
+import type { BtlSensors, GpsFix } from '../../../modules/btl-sensors';
 
 /**
  * The Kotlin module as the tests see it: a session file held as text, read the
@@ -35,13 +35,49 @@ export class FakeSensors implements BtlSensors {
     this.resumed += 1;
   }
 
+  /**
+   * The wall clock the phone has, a different number from `now` as on the phone:
+   * `Sessions.createNew` and the meta line's `wall` read it, the samples never do.
+   */
+  wallNow = 1764200000000;
+
+  /**
+   * As `BtlSensorsModule.kt`'s `stop` does: it writes the moment of the stop into the
+   * session file ITSELF, on the samples' clock, and does not ask the service to, which
+   * may be down. Nothing is written when no session is recording.
+   */
   stop() {
+    if (this.recording) this.write({ k: 'end', t: this.now, rx: this.now });
     this.recording = false;
   }
 
   askBatteryExemptionOnce() {
     this.batteryAsked += 1;
     return true;
+  }
+
+  /** Whether fine location is granted, as the module checks it before it listens to GPS. */
+  fineLocation = true;
+  watchingGps = false;
+  /**
+   * The phone has a good GPS fix at every moment it is asked, unless a case says
+   * otherwise by setting `gpsFix`. A case that is not about the start button
+   * presses it as a member does once the GPS is good.
+   */
+  gpsFix: GpsFix | null | 'good now' = 'good now';
+
+  watchGps() {
+    if (!this.fineLocation) return false;
+    this.watchingGps = true;
+    return true;
+  }
+
+  unwatchGps() {
+    this.watchingGps = false;
+  }
+
+  lastGpsFix(): GpsFix | null {
+    return this.gpsFix === 'good now' ? { t: this.now, acc: 4 } : this.gpsFix;
   }
 
   read(offset: number) {
@@ -52,7 +88,7 @@ export class FakeSensors implements BtlSensors {
 
   /** What the service would write: the meta line first, then samples. */
   writeMeta(t = 0) {
-    this.write({ k: 'meta', v: 1, pressure: this.pressureSensor, wall: 1764200000000, t });
+    this.write({ k: 'meta', v: 1, pressure: this.pressureSensor, wall: this.wallNow, t });
   }
 
   write(line: object) {

@@ -72,6 +72,14 @@ export class Recording {
    * be earlier than the pressure sample written before it.
    */
   restarted = false;
+  /**
+   * The moment the member stopped the session, on the same clock as every `t`: the
+   * `end` line the module writes itself (the service may be down), or null for a file
+   * that has none: one still recording, one written before the line existed, one a
+   * restart of the phone ended, whose stop line is on the clock after the restart and
+   * is left out as everything else after it.
+   */
+  endedAt: number | null = null;
   /** The latest time any line was written at: the meta line's `t`, then every sample's `rx`. */
   private clock = -Infinity;
 
@@ -107,6 +115,10 @@ export class Recording {
     if (!isNumber(t) || !isNumber(rx)) return false;
     if (this.restart(rx)) return true;
 
+    if (k === 'end') {
+      this.endedAt = t;
+      return true;
+    }
     if (k === 'loc') {
       if (!isNumber(line.lat) || !isNumber(line.lon)) return false;
       this.locations.push({

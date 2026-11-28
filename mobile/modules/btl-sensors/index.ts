@@ -1,5 +1,8 @@
 import { requireNativeModule } from 'expo';
 
+/** The latest fix of the GPS the screen listens to before a start: its time on the elapsedRealtime clock, and its accuracy in metres when it has one. */
+export type GpsFix = { t: number; acc?: number };
+
 /**
  * The sensor layer, as written in Kotlin in `android/.../BtlSensorsModule.kt`.
  * Android only (PDL, „Aplikacija je samo za Android").
@@ -18,6 +21,14 @@ export interface BtlSensors {
   read(offset: number): { text: string; next: number };
   /** Asks for the battery exemption the first time only; true when it asked. */
   askBatteryExemptionOnce(): boolean;
+  /**
+   * Listens to GPS for the screen, before a start: once a second, nothing written
+   * anywhere. False when fine location is not granted; it does not throw.
+   */
+  watchGps(): boolean;
+  unwatchGps(): void;
+  /** The latest fix that listener received, of any age and quality; null when it has received none. */
+  lastGpsFix(): GpsFix | null;
 }
 
 export default requireNativeModule<BtlSensors>('BtlSensors');

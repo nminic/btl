@@ -1,6 +1,7 @@
 {
   "meter": {
     "title": "BTL meter",
+    "duration": "Duration",
     "distance": "Distance",
     "ascent": "Ascent",
     "descent": "Descent",
@@ -10,6 +11,8 @@
     "stop": "Stop measuring",
     "idle": "The meter records distance, ascent and descent from the moment you start it, also with the screen off.",
     "starting": "Measuring is starting.",
+    "waitingForGps": "Waiting for a good GPS signal. Measuring can start only once it arrives.",
+    "gpsReady": "The GPS signal is good, measuring can start.",
     "last": "Last measurement",
     "denied": "Without permission for precise location, measuring cannot start. You grant it in the phone's settings.",
     "noPressureSensor": "This phone has no pressure sensor, so ascent and descent cannot be measured.",

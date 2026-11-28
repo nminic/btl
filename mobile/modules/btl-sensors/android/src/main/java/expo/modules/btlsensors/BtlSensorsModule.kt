@@ -1,11 +1,17 @@
 package expo.modules.btlsensors
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.location.Location
+import android.location.LocationListener
+import android.location.LocationManager
 import android.net.Uri
 import android.os.Build
+import android.os.Bundle
+import android.os.Looper
 import android.os.PowerManager
 import android.os.SystemClock
 import android.provider.Settings
@@ -13,6 +19,8 @@ import expo.modules.kotlin.exception.CodedException
 import expo.modules.kotlin.exception.Exceptions
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
+import java.io.File
+import java.io.IOException
 
 /**
  * The sensor layer of the BTL meter, as JavaScript sees it. The contract is typed
@@ -21,6 +29,57 @@ import expo.modules.kotlin.modules.ModuleDefinition
 class BtlSensorsModule : Module() {
   private val context: Context
     get() = appContext.reactContext ?: throw Exceptions.AppContextLost()
+
+  /**
+   * The GPS the screen listens to before a start, and only then: the screen asks
+   * for it while it is seen and lets it go when it is not, so that it does not
+   * drain the battery. It writes nothing and judges nothing; it keeps the latest
+   * fix for `lastGpsFix`, and TypeScript decides whether that fix lets the member
+   * start (`mobile/src/session/startGate.ts`), with the test the length algorithm
+   * applies to every fix.
+   */
+  private var gpsListener: LocationListener? = null
+
+  @Volatile
+  private var lastFix: Location? = null
+
+  private val locationManager: LocationManager
+    get() = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+
+  private fun hasFineLocation() =
+    context.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+
+  @SuppressLint("MissingPermission")
+  private fun watchGps(): Boolean {
+    if (!hasFineLocation()) return false
+    if (gpsListener != null) return true
+    val listener = object : LocationListener {
+      override fun onLocationChanged(location: Location) {
+        lastFix = location
+      }
+
+      // Abstract before API 30, so they are overridden for the older phones.
+      override fun onProviderEnabled(provider: String) = Unit
+
+      override fun onProviderDisabled(provider: String) = Unit
+
+      @Deprecated("Deprecated in API 29")
+      override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) = Unit
+    }
+    try {
+      // The interval of the recording service, on the main looper: a fix a second is all the screen reads.
+      locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000L, 0f, listener, Looper.getMainLooper())
+    } catch (refused: SecurityException) {
+      return false
+    }
+    gpsListener = listener
+    return true
+  }
+
+  private fun unwatchGps() {
+    gpsListener?.let { locationManager.removeUpdates(it) }
+    gpsListener = null
+  }
 
   private fun startService() {
     val intent = Intent(context, RecordingService::class.java)
@@ -71,7 +130,21 @@ class BtlSensorsModule : Module() {
       Unit
     }
 
+    // The moment of the stop goes into the session file here, by the module, because the
+    // service may be down when the member stops: PDL, „Kraj merenja je trenutak kad ga član
+    // zaustavi". `file` is null for a session a restart of the phone ended, and nothing is
+    // written then: that session has no stop, and its end is the last sample before the restart.
     Function("stop") {
+      ActiveSession(context).file?.let { path ->
+        try {
+          SampleWriter(File(path)).also {
+            it.end(SystemClock.elapsedRealtime())
+            it.close()
+          }
+        } catch (unwritable: IOException) {
+          // The session still stops; its end is then the last line written, as for a file without the stop.
+        }
+      }
       ActiveSession(context).end()
       context.stopService(Intent(context, RecordingService::class.java))
       Unit
@@ -83,6 +156,29 @@ class BtlSensorsModule : Module() {
     }
 
     // „Aplikacija na prvom pokretanju traži izuzetak od štednje baterije" (PDL).
+    Function("watchGps") {
+      watchGps()
+    }
+
+    Function("unwatchGps") {
+      unwatchGps()
+      Unit
+    }
+
+    // The fix on the clock of the samples (`elapsedRealtimeNanos`, as SampleWriter writes `t`), and its accuracy
+    // only when it has one, so that a fix without one is poor here as it is in the session file.
+    Function("lastGpsFix") {
+      val fix = lastFix ?: return@Function null
+      val answer = mutableMapOf<String, Any>("t" to fix.elapsedRealtimeNanos / 1_000_000.0)
+      if (fix.hasAccuracy()) answer["acc"] = fix.accuracy.toDouble()
+      answer
+    }
+
+    // The screen is gone with the module: nothing keeps listening after it.
+    OnDestroy {
+      unwatchGps()
+    }
+
     Function("askBatteryExemptionOnce") {
       val power = context.getSystemService(Context.POWER_SERVICE) as PowerManager
       if (power.isIgnoringBatteryOptimizations(context.packageName)) return@Function false
